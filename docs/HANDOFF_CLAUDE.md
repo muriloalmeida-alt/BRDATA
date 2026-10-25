@@ -321,7 +321,7 @@ GE-SCOUT-001 → GE-CALENDAR-001 (B1 → B2 → B3).
 
 GE-CALENDAR-001 — Calendário real jan–dez, pré-temporada e amistosos
 
-Status: B1 APROVADA e mesclada; B2 em REVISÃO DO PM NECESSÁRIA (branch `claude/ge-calendar-001-b2`); B3 PRONTA PARA IMPLEMENTAÇÃO
+Status: B1 APROVADA e mesclada; B2 e B3 em REVISÃO DO PM NECESSÁRIA (branch `claude/ge-calendar-001-b2`, com as 2 partes)
 Prioridade: P1 (Game Engine) · Etapa do loop: todo o loop (Calendar)
 
 Decisões do Murilo: semanas com 2 jogos; 3 amistosos na pré-temporada +
@@ -362,6 +362,32 @@ rodadas + Copa encaixadas sem conflito; janelas abrem/fecham nas datas;
 saldo anual de caixa equivalente ao atual (±10%) em simulação; volume
 de transferências CPU por temporada dentro de ±20% do atual; saves
 antigos carregam e viram a temporada sem erro.
+
+Relatório de implementação — B3: calendário na interface (Claude, 25/10/2026)
+
+* **Data no topo do Início**: "Dom 26/mar · 3ª rodada" em semana de
+  jogo; "Semana de 06/fev" em semana sem jogo. Tocar nela abre o
+  Calendário.
+* **Tela Calendário** (`renderCalendarScreen`, menu "≡" → "🗓️
+  Calendário"): o ano mês a mês, com cada semana mostrando data, fase,
+  rodada (adversário, casa/fora, "disputada"), Copa do Brasil na quarta
+  (semana de 2 jogos) e amistoso (convites, adversário escolhido ou
+  placar). A semana atual fica destacada e a tela abre rolada nela.
+  Carreira ainda no modelo antigo vê um aviso de que o calendário
+  começa na próxima temporada.
+* **Aviso de rodízio**: na confirmação pré-jogo de semana de 2 jogos
+  aparece "Semana de 2 jogos (Copa do Brasil na quarta)" com os
+  titulares abaixo de 75% de condição — ou "Titulares em boa condição".
+
+Testes: novo `tests/e2e/test_ge_calendar_001_b3.js` (passa) cobre a
+data no topo; o calendário aberto pela data (todas as semanas, 12
+meses, semana atual, 5 amistosos, 12 semanas de Copa, rodadas); e o
+aviso de rodízio com a data "Dom dd/mmm · Nª rodada". Mobile
+conferido.
+
+Suíte completa da branch (B2 + B3, 151 scripts): 22 falhas, todas
+pré-existentes; a única diferença (`test_noticias_fullscreen_fluxo.js`)
+é a instabilidade sob concorrência já registrada e passa isolada.
 
 Relatório de implementação — B2: amistosos (Claude, 25/10/2026)
 

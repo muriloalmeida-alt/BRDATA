@@ -9522,7 +9522,9 @@ function renderCentral() {
       ? `<svg viewBox="0 0 24 24" fill="currentColor"><polygon points="4,4 12,12 4,20"/><polygon points="12,4 20,12 12,20"/></svg>Avançar semana`
       : `<svg viewBox="0 0 24 24" fill="currentColor"><polygon points="6,4 20,12 6,20"/></svg>${friendlyOn ? "Ir para o amistoso" : "Ir para o jogo"}`;
     document.getElementById("btnSkipToMatch").classList.toggle("hidden", !offWeek);
-    if (calendarOn()) document.getElementById("roundPill").textContent = `${calendarDateLabel(week)} · ${Math.min(round, 38)}/38`;
+    // GE-CALENDAR-001 (B3) — data no topo: dia do jogo na semana de
+    // rodada, início da semana nas semanas sem jogo.
+    if (calendarOn()) document.getElementById("roundPill").textContent = week.r ? `Dom ${calendarDateLabel(week, 6)} · ${week.r}ª rodada` : `Semana de ${calendarDateLabel(week)}`;
     if (offWeek) {
       const phaseWeeks = CAREER.calendar.weeks.filter((w) => w.p === week.p && calendarWeekMonth(w) === calendarWeekMonth(week));
       const nextWi = calendarWeekIndexOfRound(round);
@@ -11670,6 +11672,15 @@ function renderPreMatchConfirm() {
   warningEl.textContent = filled < 11
     ? `⚠️ Escalação incompleta: ${filled}/11 titulares definidos — o time entra com força reduzida.`
     : "";
+  // GE-CALENDAR-001 (B3) — semana de 2 jogos: lista os titulares mais
+  // cansados pra o técnico decidir se roda o elenco.
+  const rotationEl = document.getElementById("preMatchRotation");
+  const week = calendarWeek();
+  const tired = week && week.c ? CAREER.lineup.starters.map((id) => id && CAREER.squad.find((p) => p.id === id)).filter((p) => p && (p.condition == null ? 100 : p.condition) < 75) : [];
+  rotationEl.classList.toggle("hidden", !(week && week.c));
+  rotationEl.textContent = week && week.c
+    ? `Semana de 2 jogos (Copa do Brasil na quarta). ${tired.length ? `Titulares cansados: ${tired.map((p) => `${abbreviateName(p.name)} (${Math.round(p.condition)}%)`).join(", ")} — considere rodar o elenco.` : "Titulares em boa condição."}`
+    : "";
   document.getElementById("preMatchMeta").textContent = `Esquema ${CAREER.lineup.formation} · Banco: ${CAREER.lineup.bench.length} jogador(es)`;
   const slots = FORMATIONS[CAREER.lineup.formation].map(([grp, label], i) => ({ grp, label, i }));
   document.getElementById("preMatchLineup").innerHTML = slots.map(preMatchStarterRowHTML).join("");
@@ -11848,6 +11859,62 @@ async function finishFriendlyLive() {
   await persistCareer();
   renderAll();
   toast({ title: `Amistoso: ${lm.gh} x ${lm.ga}`, detail: `Contra o ${opp.name} — não vale pontos${injuriesKept ? `; ${injuriesKept} lesão confirmada` : ""}. Semana concluída.` }, { type: lm.gh >= lm.ga ? "pos" : "info" });
+}
+/* ---------- GE-CALENDAR-001 (B3) — tela Calendário ----------
+   Visão do ano inteiro, mês a mês: cada semana com a fase, o jogo do
+   Brasileirão (adversário, casa/fora, disputado ou não), a Copa na
+   quarta (semana de 2 jogos) e o amistoso. A semana atual fica
+   destacada e a tela abre já rolada nela. Abre pelo menu "≡" e tocando
+   na data do topo do Início. */
+function calendarWeekRowHTML(w, i) {
+  const cal = CAREER.calendar;
+  const isNow = i === cal.idx;
+  const lines = [];
+  if (w.r) {
+    const fx = (CAREER.schedule[w.r] || []).find((m) => String(m.home) === String(CAREER.clubId) || String(m.away) === String(CAREER.clubId));
+    const opp = fx ? teamById(String(fx.home) === String(CAREER.clubId) ? fx.away : fx.home) : null;
+    const where = fx ? (String(fx.home) === String(CAREER.clubId) ? "em casa" : "fora") : "";
+    const done = w.r < CAREER.currentRound;
+    lines.push(`<b>${w.r}ª rodada</b> · Dom ${calendarDateLabel(w, 6)}${opp ? ` · ${escapeHtml(opp.name)} (${where})` : " · folga"}${done ? " · disputada" : ""}`);
+    if (w.c) lines.push(`Copa do Brasil na quarta (${calendarDateLabel(w, 2)}) — semana de 2 jogos`);
+  }
+  const fr = (cal.friendlies || []).find((f) => f.wi === i);
+  if (fr) {
+    const opp = fr.opp ? teamById(fr.opp) : null;
+    lines.push(fr.result ? `Amistoso: ${fr.result.gh} x ${fr.result.ga} ${opp ? escapeHtml(opp.name) : ""}`
+      : fr.played ? "Amistoso não disputado"
+      : `Amistoso${fr.optional ? " (opcional)" : ""}${opp ? ` contra o ${escapeHtml(opp.name)}` : " — escolha entre 3 convites"}`);
+  }
+  if (!lines.length) lines.push(w.p === "ferias" ? "Folga do elenco" : w.p === "temporada" ? "Semana livre — treinos" : "Treinos");
+  return `<div class="mt-cal-week${isNow ? " now" : ""}${i < cal.idx ? " past" : ""}" ${isNow ? 'id="calendarNowRow"' : ""}>
+    <div class="mt-cal-date">${calendarDateLabel(w)}<span>${CALENDAR_PHASE_LABEL[w.p]}</span></div>
+    <div class="mt-cal-body">${lines.map((l) => `<div>${l}</div>`).join("")}</div>
+  </div>`;
+}
+function renderCalendarScreen() {
+  const cal = CAREER.calendar;
+  const win = transferWindowStatus(CAREER.currentRound);
+  document.getElementById("calendarSub").textContent = `Temporada ${cal.year} · mercado ${win.open ? `aberto ${win.closesLabel}` : `fechado — ${win.opensLabel}`}`;
+  const byMonth = new Map();
+  cal.weeks.forEach((w, i) => {
+    const m = calendarWeekMonth(w);
+    if (!byMonth.has(m)) byMonth.set(m, []);
+    byMonth.get(m).push(calendarWeekRowHTML(w, i));
+  });
+  document.getElementById("calendarList").innerHTML = [...byMonth.entries()].map(([m, rows]) =>
+    `<div class="mt-cal-month">${MONTH_LONG[m][0].toUpperCase() + MONTH_LONG[m].slice(1)}</div>${rows.join("")}`).join("");
+}
+function openCalendarScreen() {
+  if (!calendarOn()) {
+    toast("O calendário começa na próxima temporada desta carreira (ela ainda está no modelo de rodadas).", { type: "info" });
+    return;
+  }
+  renderCalendarScreen();
+  document.getElementById("calendarOverlay").classList.add("open");
+  requestAnimationFrame(() => document.getElementById("calendarNowRow")?.scrollIntoView({ block: "center" }));
+}
+function closeCalendarScreen() {
+  document.getElementById("calendarOverlay").classList.remove("open");
 }
 // GE-CALENDAR-001 — avança 1 semana sem jogo, ou todas até a semana do
 // próximo jogo ("Pular até o próximo jogo"), e resume o que aconteceu.
@@ -15448,6 +15515,10 @@ function wireStaticListeners() {
   // tudo em dia; Ranking é diferente (async, publica o placar sempre
   // que abre, ver renderRanking) — chamado manualmente aqui em vez de
   // entrar em renderAll, pra não publicar score a cada re-render bobo.
+  document.getElementById("btnOpenCalendar").addEventListener("click", () => { document.getElementById("topbarMenu").classList.remove("open"); openCalendarScreen(); });
+  document.getElementById("calendarClose").addEventListener("click", closeCalendarScreen);
+  document.getElementById("btnCalendarCloseFooter").addEventListener("click", closeCalendarScreen);
+  document.getElementById("roundPill").addEventListener("click", openCalendarScreen);
   document.getElementById("btnOpenObjetivos").addEventListener("click", () => {
     document.getElementById("topbarMenu").classList.remove("open");
     switchToPanel("objetivos");
