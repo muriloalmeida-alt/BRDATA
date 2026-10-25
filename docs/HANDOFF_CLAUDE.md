@@ -165,7 +165,7 @@ paralelas independentes, como já registrado desde que começaram.
 
 GE-BALANCE-004 — Realismo de acesso/rebaixamento: força relativa à divisão
 
-Status: PRONTO PARA IMPLEMENTAÇÃO (decisões abertas respondidas pelo Murilo em 25/10/2026)
+Status: REVISÃO DO PM NECESSÁRIA (branch `claude/ge-balance-004`, empilhada sobre `claude/ge-calendar-001-b2`)
 Issue: https://github.com/muriloalmeida-alt/BRDATA/issues/39
 Sprint: fora da S4 (frente paralela Game Engine, mesma série de GE-BALANCE-001/002/003)
 Prioridade: P1 (Game Engine — consistência/realismo)
@@ -284,6 +284,59 @@ Decisões abertas para o Murilo (valores propostos acima são o default)
 Decisões do Murilo (25/10/2026): D1 — proposta padrão (promovido
 p20–45 / rebaixado p65–90, metas dos critérios 1–2 mantidas); D2 — 1
 temporada; D3 — 30%/temporada.
+
+Relatório de implementação (Claude, 25/10/2026)
+
+O que mudou em relação ao desenho aprovado (com evidência e decisão):
+1. **Reposicionamento por degrau, e não por percentil fixo.** A 1ª
+   versão colocava o promovido no percentil 20–45 e o rebaixado no 65–90,
+   e a simulação mostrou o efeito contrário: promovido no G4 em ~14–19%.
+   Motivo: colocar quem chega em valores do meio enquanto saem os
+   extremos (os 4 melhores sobem, os 4 piores descem) estreita a liga a
+   cada temporada, até a tabela virar sorteio. Versão final
+   (`repositionArrivals`): o clube leva o quanto estava acima/abaixo da
+   média da divisão de origem (em desvios-padrão, régua tirada antes de
+   qualquer mudança) e desce/sobe um **degrau de 2,0 desvios**
+   (`STRENGTH_DIVISION_GAP_SD`) na escala dos clubes que ficam na divisão
+   de destino. Em média, isso cai nas faixas aprovadas (o e2e mediu
+   promovidos entre −0,2 e −1,5 desvio da média da A e rebaixados entre
+   +0,2 e +1,4 da média da B), sem achatar a liga.
+2. **Convergência anual (D3) retirada — decisão do Murilo em
+   25/10/2026** ("Sem convergência"). Testada com 30% e 10%: segue a
+   sorte de uma única temporada e embaralha a liga. Com 30%, o promovido
+   ia ao G4 em ~10–12% e o rebaixado terminava em ~9–10º, caindo de novo
+   em ~16%. A força só muda quando o clube troca de divisão (como antes).
+   Fica registrado como possível evolução futura: força ligada ao elenco,
+   e não ao placar de uma temporada.
+
+Também: o técnico recebe uma notificação ao subir/descer explicando a
+expectativa (permanência / acesso imediato). O time vindo da Série D
+gera o elenco já com a força reposicionada. A tradição (GE-BALANCE-002)
+foi mantida (`sim_ge_balance_002.js`: 40,7%, idêntico). Sem campo novo
+no save (a força já vivia em `CAREER.divisionTeams`/`serieDPool`).
+
+Validação — `tests/e2e/sim_ge_balance_004.js` (código real via `vm`, 3
+trajetórias × 300 temporadas, n=3600 por linha):
+
+| | Antes (Exemplo) | Depois (Exemplo) | Antes (estilo ao vivo) | Depois (estilo ao vivo) | Critério |
+|---|---|---|---|---|---|
+| Promovido à A: posição média | 13,4 | 14,3 | 12,2 | 14,1 | 11–16 ✅ |
+| Promovido à A: G4 | 6,6% | 0,9% | **11,8%** | 1,3% | ≤5% ✅ |
+| Promovido à A: cai de novo | 35% | 36% | 29% | 36% | 25–45% ✅ |
+| Rebaixado à B: posição média | 7,9 | 4,7 | 9,0 | 4,9 | 4–9 ✅ |
+| Rebaixado à B: volta à A | 34% | 52% | 28% | 50% | 30–50% (no limite) |
+| Rebaixado à B: cai pra C | 8,4% | 0,6% | 12,5% | 0,6% | ≤5% ✅ |
+| Promovido à B: cai de novo | 36% | 48% | 29% | 45% | 25–45% (no limite) |
+| Rebaixado à C: volta à B | 36% | 39% | 30% | 39% | 30–50% ✅ |
+
+E2E — novo `tests/e2e/test_ge_balance_004.js` (passa): temporada inteira
+jogada e virada real; promovidos = 4 primeiros da B, chegando em média
+abaixo da média da A; rebaixados chegando em média acima da média da B;
+força nova persiste após recarregar o save. Regressão: rebaixamento,
+multi-divisão (2), GE-BALANCE-002, mercado multi-temporada, temporada e
+calendário — todos passam. Observação: `sim_ge_balance_002.js` tem um
+caminho fixo antigo (`/home/user/FitOS`), anterior a esta sessão; para
+rodar, usei um link temporário.
 
 ⸻
 

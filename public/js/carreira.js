@@ -3761,6 +3761,52 @@ function applyTraditionReprieve(zone, sortedRows, seedKey) {
   });
   return currentZone;
 }
+/* ---------- GE-BALANCE-004 (issue #39) — força relativa à divisão ----------
+   Pedido do usuário: "times que sobem de uma divisão para outra não
+   podem se destacar com tanta facilidade no ano seguinte. Assim como os
+   times que caem não podem ir tão mal." Causa (ver docs/HANDOFF_CLAUDE.md):
+   a força de partida é club.atk/club.def, que viajava INTACTA na troca
+   de divisão — e em modo ao vivo ela é relativa à própria liga
+   (calibrateStrengths), então o líder da B chegava na A com força de
+   candidato ao título. Decisões do Murilo (D1–D3): promovido entra no
+   percentil 20–45 da divisão nova, rebaixado no 65–90 (paraquedas de 1
+   temporada). A convergência anual de 30% pro desempenho (D3) foi
+   testada e RETIRADA por decisão do Murilo (25/10/2026): ela segue a
+   sorte de uma única temporada e embaralha a liga (promovido voltava ao
+   G4 em ~11% das vezes). Achado da simulação (tests/e2e/sim_ge_balance_004.js): COLOCAR quem
+   chega num percentil fixo estreita a liga a cada ano (saem os extremos,
+   entram valores do meio) e em poucas temporadas a tabela vira sorteio.
+   Por isso o clube leva consigo o quanto está acima/abaixo da média da
+   divisão de origem (em desvios-padrão), deslocado por um DEGRAU entre
+   divisões (STRENGTH_DIVISION_GAP_SD): os melhores da divisão de baixo
+   chegam, em média, perto das faixas aprovadas sem achatar a liga.
+   Lembrete de sentido: atk alto = ataca melhor; def ALTO = defende PIOR
+   (lambda = atk * def adversário, GE-BALANCE-003). As funções puras
+   abaixo são extraídas por tests/e2e/sim_ge_balance_004.js. */
+const STRENGTH_DIVISION_GAP_SD = 2.0;
+// Média e desvio de ataque/defesa de um conjunto de clubes.
+function divisionStrengthScale(teams) {
+  const atks = teams.map((t) => t.atk).filter(Number.isFinite);
+  const defs = teams.map((t) => t.def).filter(Number.isFinite);
+  const mean = (arr) => arr.reduce((a, v) => a + v, 0) / (arr.length || 1);
+  const sd = (arr, m) => Math.sqrt(arr.reduce((a, v) => a + (v - m) ** 2, 0) / (arr.length || 1)) || 1;
+  const meanAtk = mean(atks), meanDef = mean(defs);
+  return { meanAtk, meanDef, sdAtk: sd(atks, meanAtk), sdDef: sd(defs, meanDef) };
+}
+// Reposiciona quem chega numa divisão: mantém o desvio (em sd) que o
+// clube tinha na divisão de ORIGEM (`originScale`, tirada antes de
+// qualquer mudança) e aplica o degrau — promovido desce, rebaixado sobe
+// — na escala dos clubes que FICAM na divisão de destino.
+function repositionArrivals(arrivals, stayers, direction, originScale) {
+  const dest = divisionStrengthScale(stayers);
+  const gap = direction === "promoted" ? -STRENGTH_DIVISION_GAP_SD : STRENGTH_DIVISION_GAP_SD;
+  arrivals.forEach((t) => {
+    const zAtk = (t.atk - originScale.meanAtk) / originScale.sdAtk + gap;
+    const zDef = (t.def - originScale.meanDef) / originScale.sdDef - gap; // def alto = pior
+    t.atk = Math.round(clamp(dest.meanAtk + zAtk * dest.sdAtk, 0.35, 2.6) * 1000) / 1000;
+    t.def = Math.round(clamp(dest.meanDef + zDef * dest.sdDef, 0.3, 2.6) * 1000) / 1000;
+  });
+}
 // Cascata de acesso/rebaixamento entre A/B/C + repositório da Série D
 // na virada de temporada (ver advanceSeason, chamado ANTES de
 // LEAGUE_TEAMS/CAREER.schedule/CAREER.standings serem recalculados pra
@@ -3795,6 +3841,24 @@ async function applyPromotionRelegation() {
   const teamsFor = (ids) => ids.map((id) => byId.get(String(id))).filter(Boolean);
   const idsOf = (rows) => rows.map((r) => String(r.id));
 
+  // GE-BALANCE-004 — antes de montar as divisões novas, quem troca de
+  // divisão é recolocado na escala da divisão nova com o degrau entre
+  // divisões (ver repositionArrivals; réguas tiradas antes). Os objetos
+  // de time são os mesmos de CAREER.divisionTeams/serieDPool, então a
+  // força nova é a que vai pra temporada seguinte (e pro save).
+  const scaleA = divisionStrengthScale(CAREER.divisionTeams.brasileirao || []);
+  const scaleB = divisionStrengthScale(CAREER.divisionTeams.serie_b || []);
+  const scaleC = divisionStrengthScale(CAREER.divisionTeams.serie_c || []);
+  const scaleD = divisionStrengthScale(dPool);
+  const stayA = teamsFor(idsOf(rowsA).filter((id) => !relegatedA.includes(id)));
+  const stayB = teamsFor(idsOf(rowsB).filter((id) => !promotedB.includes(id) && !relegatedB.includes(id)));
+  const stayC = teamsFor(idsOf(rowsC).filter((id) => !promotedC.includes(id) && !relegatedC.includes(id)));
+  repositionArrivals(teamsFor(promotedB), stayA, "promoted", scaleB);
+  repositionArrivals(teamsFor(relegatedA), stayB, "relegated", scaleA);
+  repositionArrivals(teamsFor(promotedC), stayB, "promoted", scaleC);
+  repositionArrivals(teamsFor(relegatedB), stayC, "relegated", scaleB);
+  repositionArrivals(promotedD, stayC, "promoted", scaleD);
+
   const newA = [...teamsFor(idsOf(rowsA).filter((id) => !relegatedA.includes(id))), ...teamsFor(promotedB)];
   const newB = [
     ...teamsFor(idsOf(rowsB).filter((id) => !promotedB.includes(id) && !relegatedB.includes(id))),
@@ -3828,6 +3892,12 @@ async function applyPromotionRelegation() {
   CAREER.serieDPool = newDPool.map((t) => ({ ...t, competitionId: "serie_d" }));
 
   if (divisionChanged) {
+    // GE-BALANCE-004 — explica o contexto da força nova (CLAUDE.md §45).
+    const promoted = ALL_COMPETITIONS_ORDER.indexOf(humanNewCompId) < ALL_COMPETITIONS_ORDER.indexOf(CURRENT_COMPETITION_ID);
+    const divName = COMPETITION_SHORT[humanNewCompId] || humanNewCompId;
+    pushNotification("posicao", promoted
+      ? `Recém-promovido à ${divName}: o elenco chega abaixo da média da divisão — a diretoria espera permanência, não título.`
+      : `Rebaixado à ${divName}: o elenco ainda está entre os mais fortes da divisão nesta temporada — a cobrança é pelo acesso imediato.`);
     CURRENT_COMPETITION_ID = humanNewCompId;
     CAREER.competitionId = humanNewCompId;
   }
