@@ -3436,6 +3436,7 @@ async function advanceSeason() {
   // de antes do calendário) começa em janeiro, nas férias, com a folha
   // de janeiro já cobrada (12 meses por ano, ver applyCalendarMonthlyFinances).
   CAREER.calendar = buildSeasonCalendar(CAREER.seasonYear);
+  CAREER.calendar.friendlies = buildFriendlySlots(CAREER.calendar);
   applyCalendarMonthlyFinances(0);
   // P0-IDS-001 — reposição de base/elenco e times vindos da Série D
   // reusam ids (`base_<clube>_<n>`, `gen_<clube>_<n>`) — garante ids
@@ -3760,6 +3761,52 @@ function applyTraditionReprieve(zone, sortedRows, seedKey) {
   });
   return currentZone;
 }
+/* ---------- GE-BALANCE-004 (issue #39) — força relativa à divisão ----------
+   Pedido do usuário: "times que sobem de uma divisão para outra não
+   podem se destacar com tanta facilidade no ano seguinte. Assim como os
+   times que caem não podem ir tão mal." Causa (ver docs/HANDOFF_CLAUDE.md):
+   a força de partida é club.atk/club.def, que viajava INTACTA na troca
+   de divisão — e em modo ao vivo ela é relativa à própria liga
+   (calibrateStrengths), então o líder da B chegava na A com força de
+   candidato ao título. Decisões do Murilo (D1–D3): promovido entra no
+   percentil 20–45 da divisão nova, rebaixado no 65–90 (paraquedas de 1
+   temporada). A convergência anual de 30% pro desempenho (D3) foi
+   testada e RETIRADA por decisão do Murilo (25/10/2026): ela segue a
+   sorte de uma única temporada e embaralha a liga (promovido voltava ao
+   G4 em ~11% das vezes). Achado da simulação (tests/e2e/sim_ge_balance_004.js): COLOCAR quem
+   chega num percentil fixo estreita a liga a cada ano (saem os extremos,
+   entram valores do meio) e em poucas temporadas a tabela vira sorteio.
+   Por isso o clube leva consigo o quanto está acima/abaixo da média da
+   divisão de origem (em desvios-padrão), deslocado por um DEGRAU entre
+   divisões (STRENGTH_DIVISION_GAP_SD): os melhores da divisão de baixo
+   chegam, em média, perto das faixas aprovadas sem achatar a liga.
+   Lembrete de sentido: atk alto = ataca melhor; def ALTO = defende PIOR
+   (lambda = atk * def adversário, GE-BALANCE-003). As funções puras
+   abaixo são extraídas por tests/e2e/sim_ge_balance_004.js. */
+const STRENGTH_DIVISION_GAP_SD = 2.0;
+// Média e desvio de ataque/defesa de um conjunto de clubes.
+function divisionStrengthScale(teams) {
+  const atks = teams.map((t) => t.atk).filter(Number.isFinite);
+  const defs = teams.map((t) => t.def).filter(Number.isFinite);
+  const mean = (arr) => arr.reduce((a, v) => a + v, 0) / (arr.length || 1);
+  const sd = (arr, m) => Math.sqrt(arr.reduce((a, v) => a + (v - m) ** 2, 0) / (arr.length || 1)) || 1;
+  const meanAtk = mean(atks), meanDef = mean(defs);
+  return { meanAtk, meanDef, sdAtk: sd(atks, meanAtk), sdDef: sd(defs, meanDef) };
+}
+// Reposiciona quem chega numa divisão: mantém o desvio (em sd) que o
+// clube tinha na divisão de ORIGEM (`originScale`, tirada antes de
+// qualquer mudança) e aplica o degrau — promovido desce, rebaixado sobe
+// — na escala dos clubes que FICAM na divisão de destino.
+function repositionArrivals(arrivals, stayers, direction, originScale) {
+  const dest = divisionStrengthScale(stayers);
+  const gap = direction === "promoted" ? -STRENGTH_DIVISION_GAP_SD : STRENGTH_DIVISION_GAP_SD;
+  arrivals.forEach((t) => {
+    const zAtk = (t.atk - originScale.meanAtk) / originScale.sdAtk + gap;
+    const zDef = (t.def - originScale.meanDef) / originScale.sdDef - gap; // def alto = pior
+    t.atk = Math.round(clamp(dest.meanAtk + zAtk * dest.sdAtk, 0.35, 2.6) * 1000) / 1000;
+    t.def = Math.round(clamp(dest.meanDef + zDef * dest.sdDef, 0.3, 2.6) * 1000) / 1000;
+  });
+}
 // Cascata de acesso/rebaixamento entre A/B/C + repositório da Série D
 // na virada de temporada (ver advanceSeason, chamado ANTES de
 // LEAGUE_TEAMS/CAREER.schedule/CAREER.standings serem recalculados pra
@@ -3794,6 +3841,24 @@ async function applyPromotionRelegation() {
   const teamsFor = (ids) => ids.map((id) => byId.get(String(id))).filter(Boolean);
   const idsOf = (rows) => rows.map((r) => String(r.id));
 
+  // GE-BALANCE-004 — antes de montar as divisões novas, quem troca de
+  // divisão é recolocado na escala da divisão nova com o degrau entre
+  // divisões (ver repositionArrivals; réguas tiradas antes). Os objetos
+  // de time são os mesmos de CAREER.divisionTeams/serieDPool, então a
+  // força nova é a que vai pra temporada seguinte (e pro save).
+  const scaleA = divisionStrengthScale(CAREER.divisionTeams.brasileirao || []);
+  const scaleB = divisionStrengthScale(CAREER.divisionTeams.serie_b || []);
+  const scaleC = divisionStrengthScale(CAREER.divisionTeams.serie_c || []);
+  const scaleD = divisionStrengthScale(dPool);
+  const stayA = teamsFor(idsOf(rowsA).filter((id) => !relegatedA.includes(id)));
+  const stayB = teamsFor(idsOf(rowsB).filter((id) => !promotedB.includes(id) && !relegatedB.includes(id)));
+  const stayC = teamsFor(idsOf(rowsC).filter((id) => !promotedC.includes(id) && !relegatedC.includes(id)));
+  repositionArrivals(teamsFor(promotedB), stayA, "promoted", scaleB);
+  repositionArrivals(teamsFor(relegatedA), stayB, "relegated", scaleA);
+  repositionArrivals(teamsFor(promotedC), stayB, "promoted", scaleC);
+  repositionArrivals(teamsFor(relegatedB), stayC, "relegated", scaleB);
+  repositionArrivals(promotedD, stayC, "promoted", scaleD);
+
   const newA = [...teamsFor(idsOf(rowsA).filter((id) => !relegatedA.includes(id))), ...teamsFor(promotedB)];
   const newB = [
     ...teamsFor(idsOf(rowsB).filter((id) => !promotedB.includes(id) && !relegatedB.includes(id))),
@@ -3827,6 +3892,12 @@ async function applyPromotionRelegation() {
   CAREER.serieDPool = newDPool.map((t) => ({ ...t, competitionId: "serie_d" }));
 
   if (divisionChanged) {
+    // GE-BALANCE-004 — explica o contexto da força nova (CLAUDE.md §45).
+    const promoted = ALL_COMPETITIONS_ORDER.indexOf(humanNewCompId) < ALL_COMPETITIONS_ORDER.indexOf(CURRENT_COMPETITION_ID);
+    const divName = COMPETITION_SHORT[humanNewCompId] || humanNewCompId;
+    pushNotification("posicao", promoted
+      ? `Recém-promovido à ${divName}: o elenco chega abaixo da média da divisão — a diretoria espera permanência, não título.`
+      : `Rebaixado à ${divName}: o elenco ainda está entre os mais fortes da divisão nesta temporada — a cobrança é pelo acesso imediato.`);
     CURRENT_COMPETITION_ID = humanNewCompId;
     CAREER.competitionId = humanNewCompId;
   }
@@ -5554,6 +5625,7 @@ async function startCareer(clubId) {
     // janela aberta); férias só existem entre uma temporada e outra.
     CAREER.calendar = buildSeasonCalendar(CAREER.seasonYear);
     CAREER.calendar.idx = Math.max(0, CAREER.calendar.weeks.findIndex((w) => w.p === "pre"));
+    CAREER.calendar.friendlies = buildFriendlySlots(CAREER.calendar);
     TECHNICIAN_CARRY = null;
     // Nova feature (pedido do usuário: "reinicie o tema do
     // rebaixamento") — só carreira NOVA nasce com o sistema de acesso/
@@ -8817,7 +8889,7 @@ function resolveLiveChunk() {
   // — só Brasileirão, de propósito (CAREER.currentUnbeatenStreak não é
   // somado nem lido pela Copa, ver GE-COPA-001/finishCupLegLive).
   const cpuSide = lm.isHome ? as : hs;
-  const motivationMod = lm.cupContext ? 1 : opponentMotivationMod();
+  const motivationMod = lm.cupContext || lm.friendlyContext ? 1 : opponentMotivationMod();
   // GE-BALANCE-003 (issue #30) — mesmo motivo do formationPenalty acima:
   // "adversário mais ligado" precisa de um def MENOR (defesa melhor),
   // por isso def usa /= em vez de *= (atk continua *=, maior=melhor).
@@ -9016,6 +9088,7 @@ async function finishLiveMatch() {
   // termina é diferente (agregado/chaveamento em vez de tabela de
   // pontos corridos) — ver finishCupLegLive.
   if (lm.cupContext) return finishCupLegLive();
+  if (lm.friendlyContext) return finishFriendlyLive(); // GE-CALENDAR-001 (B2)
   lm.finished = true;
   playWhistle(3);
   stopCrowdAmbience();
@@ -9513,11 +9586,15 @@ function renderCentral() {
     // o botão principal avança a semana e o card mostra a fase.
     const week = calendarWeek();
     const offWeek = !!(week && !week.r);
-    btn.innerHTML = offWeek
+    const friendly = offWeek ? friendlySlotThisWeek() : null;
+    const friendlyOn = !!(friendly && (!friendly.optional || friendly.opp));
+    btn.innerHTML = offWeek && !friendlyOn
       ? `<svg viewBox="0 0 24 24" fill="currentColor"><polygon points="4,4 12,12 4,20"/><polygon points="12,4 20,12 12,20"/></svg>Avançar semana`
-      : `<svg viewBox="0 0 24 24" fill="currentColor"><polygon points="6,4 20,12 6,20"/></svg>Ir para o jogo`;
+      : `<svg viewBox="0 0 24 24" fill="currentColor"><polygon points="6,4 20,12 6,20"/></svg>${friendlyOn ? "Ir para o amistoso" : "Ir para o jogo"}`;
     document.getElementById("btnSkipToMatch").classList.toggle("hidden", !offWeek);
-    if (calendarOn()) document.getElementById("roundPill").textContent = `${calendarDateLabel(week)} · ${Math.min(round, 38)}/38`;
+    // GE-CALENDAR-001 (B3) — data no topo: dia do jogo na semana de
+    // rodada, início da semana nas semanas sem jogo.
+    if (calendarOn()) document.getElementById("roundPill").textContent = week.r ? `Dom ${calendarDateLabel(week, 6)} · ${week.r}ª rodada` : `Semana de ${calendarDateLabel(week)}`;
     if (offWeek) {
       const phaseWeeks = CAREER.calendar.weeks.filter((w) => w.p === week.p && calendarWeekMonth(w) === calendarWeekMonth(week));
       const nextWi = calendarWeekIndexOfRound(round);
@@ -9527,7 +9604,9 @@ function renderCentral() {
           <b>${CALENDAR_PHASE_LABEL[week.p]} · semana ${phaseWeeks.indexOf(week) + 1} de ${phaseWeeks.length}</b>
           <span>${week.p === "ferias" ? "Elenco de folga, recuperando." : "Treinos da semana valendo."} Mercado: ${win.open ? `aberto ${win.closesLabel}` : `fechado — ${win.opensLabel}`}.</span>
           ${nextWi >= 0 ? `<span>Próximo jogo: rodada ${round} em ${calendarDateLabel(CAREER.calendar.weeks[nextWi], 6)}${nextOpp ? ` contra o ${escapeHtml(nextOpp.name)}` : ""}.</span>` : ""}
+          ${friendly ? friendlyInvitesHTML(friendly) : ""}
         </div>`;
+      box.querySelectorAll("[data-friendly-pick]").forEach((b) => b.addEventListener("click", (e) => { e.stopPropagation(); pickFriendlyOpponent(b.dataset.friendlyPick); }));
       delete box.dataset.opponentId;
       btn.disabled = false;
     } else if (fx) {
@@ -11663,6 +11742,15 @@ function renderPreMatchConfirm() {
   warningEl.textContent = filled < 11
     ? `⚠️ Escalação incompleta: ${filled}/11 titulares definidos — o time entra com força reduzida.`
     : "";
+  // GE-CALENDAR-001 (B3) — semana de 2 jogos: lista os titulares mais
+  // cansados pra o técnico decidir se roda o elenco.
+  const rotationEl = document.getElementById("preMatchRotation");
+  const week = calendarWeek();
+  const tired = week && week.c ? CAREER.lineup.starters.map((id) => id && CAREER.squad.find((p) => p.id === id)).filter((p) => p && (p.condition == null ? 100 : p.condition) < 75) : [];
+  rotationEl.classList.toggle("hidden", !(week && week.c));
+  rotationEl.textContent = week && week.c
+    ? `Semana de 2 jogos (Copa do Brasil na quarta). ${tired.length ? `Titulares cansados: ${tired.map((p) => `${abbreviateName(p.name)} (${Math.round(p.condition)}%)`).join(", ")} — considere rodar o elenco.` : "Titulares em boa condição."}`
+    : "";
   document.getElementById("preMatchMeta").textContent = `Esquema ${CAREER.lineup.formation} · Banco: ${CAREER.lineup.bench.length} jogador(es)`;
   const slots = FORMATIONS[CAREER.lineup.formation].map(([grp, label], i) => ({ grp, label, i }));
   document.getElementById("preMatchLineup").innerHTML = slots.map(preMatchStarterRowHTML).join("");
@@ -11726,11 +11814,186 @@ function closeAdjustLineupModal() {
 // — fecha as duas modais (a que estiver aberta) e dispara a simulação
 // de sempre. commitLineupTactics() garante que táticas mudadas sem
 // clicar em "Salvar escalação e táticas" não se percam.
+/* ---------- GE-CALENDAR-001 (B2) — amistosos ----------
+   Decisão do Murilo: 3 amistosos na pré-temporada + até 2 opcionais na
+   pausa de julho. Cada amistoso tem 3 convites (clubes da mesma divisão
+   ou de divisão abaixo — sorteio determinístico por semana); o técnico
+   escolhe o adversário (na pré, se não escolher, vai o 1º convite; em
+   julho, sem escolha o amistoso não acontece). Motor ao vivo
+   reaproveitado tal e qual (mesmo caminho do jogo de Copa, ver
+   friendlyContext em finishLiveMatch). Não vale ponto nem estatística
+   oficial (gol/assistência), cartão não gera suspensão, só metade das
+   lesões se confirma (risco menor) e a minutagem conta pra evolução
+   (GE-BALANCE-005). Bilheteria de 30% de um jogo oficial. */
+const FRIENDLY_TICKET_SHARE = 0.3;
+function buildFriendlySlots(cal) {
+  const myComp = ALL_COMPETITIONS_ORDER.indexOf(CURRENT_COMPETITION_ID);
+  const pool = marketTeamsPool().filter((t) => String(t.id) !== String(CAREER.clubId)
+    && leagueSquadFor(t.id).length >= 11
+    && ALL_COMPETITIONS_ORDER.indexOf(t.competitionId || CURRENT_COMPETITION_ID) >= myComp);
+  const slots = [];
+  const addFor = (phase, count, optional) => {
+    const idxs = cal.weeks.map((w, i) => (w.p === phase ? i : -1)).filter((i) => i >= 0).slice(-count);
+    idxs.forEach((wi) => {
+      const rng = seededRngFromKey(`friendly:${CAREER.clubId}:${cal.year}:${wi}`);
+      const invites = shuffleWithRng(pool.slice(), rng).slice(0, 3).map((t) => String(t.id));
+      if (invites.length) slots.push({ wi, invites, opp: null, optional, played: false, result: null });
+    });
+  };
+  addFor("pre", 3, false);
+  addFor("pausa", 2, true);
+  return slots;
+}
+function friendlySlotThisWeek() {
+  if (!calendarOn() || !CAREER.calendar.friendlies) return null;
+  return CAREER.calendar.friendlies.find((f) => f.wi === CAREER.calendar.idx && !f.played) || null;
+}
+function friendlyInvitesHTML(slot) {
+  const chips = slot.invites.map((id) => {
+    const t = teamById(id);
+    if (!t) return "";
+    const on = slot.opp === id || (!slot.opp && !slot.optional && slot.invites[0] === id);
+    return `<button type="button" class="m3-filter-chip${on ? " on" : ""}" data-friendly-pick="${escapeHtml(id)}">${escapeHtml(t.short || t.name)} · ${COMPETITION_SHORT[t.competitionId || CURRENT_COMPETITION_ID] || ""}</button>`;
+  }).join("");
+  return `<span><b>Amistoso desta semana</b> — ${slot.optional ? "opcional: escolha um convite pra jogar, ou só avance a semana." : "escolha o adversário (não vale pontos)."}</span>
+    <div class="m3-filter-row" style="margin:4px 0 0;">${chips}</div>`;
+}
+function pickFriendlyOpponent(clubId) {
+  const slot = friendlySlotThisWeek();
+  if (!slot || !slot.invites.includes(String(clubId))) return;
+  slot.opp = String(clubId);
+  persistCareer();
+  renderAll();
+}
+function startFriendlyLive(slot) {
+  if (!slot.opp) slot.opp = slot.invites[0];
+  commitLineupTactics();
+  const home = teamById(CAREER.clubId), away = teamById(slot.opp);
+  // Snapshot do que o amistoso NÃO pode mudar (ver finishFriendlyLive).
+  const snapshot = new Map(CAREER.squad.map((p) => [p.id, {
+    status: p.status, outUntilRound: p.outUntilRound, injurySeverity: p.injurySeverity, yellowCards: p.yellowCards,
+    goalsSeason: p.goalsSeason, assistsSeason: p.assistsSeason, goalsCareer: p.goalsCareer, assistsCareer: p.assistsCareer, apps: p.apps,
+  }]));
+  LIVE_MATCH = {
+    round: CAREER.currentRound, humanFx: { home: CAREER.clubId, away: slot.opp }, isHome: true, home, away,
+    cpuXI: pickCpuXI(leagueSquadFor(slot.opp)), otherResults: [], standingsBefore: null,
+    friendlyContext: { slot, snapshot },
+    chunkIndex: 0, gh: 0, ga: 0, events: [], appeared: new Set(),
+    subsUsed: 0, subsBonus: 0, formationPenaltyChunksLeft: 0,
+    lastHsStarters: [], lastAsStarters: [],
+    timerId: null, paused: false, finished: false,
+    speed: 1,
+    stats: { possWeightHome: 0, shots: { home: 0, away: 0 }, shotsOnTarget: { home: 0, away: 0 }, fouls: { home: 0, away: 0 } },
+    goalHighlightQueue: [], goalHighlightOnDone: null, goalHighlightTimer: null,
+    injuredBeforeIds: new Set(CAREER.squad.filter((p) => p.status === "contundido").map((p) => p.id)),
+  };
+  renderLiveMatch();
+  document.getElementById("liveMatchOverlay").classList.add("open");
+  playWhistle(1);
+  startCrowdAmbience();
+  toast({ title: "Amistoso", detail: `${home.name} x ${away.name} — não vale pontos.` }, { type: "info" });
+  scheduleNextChunk();
+}
+async function finishFriendlyLive() {
+  const lm = LIVE_MATCH;
+  const { slot, snapshot } = lm.friendlyContext;
+  lm.finished = true;
+  playWhistle(3);
+  stopCrowdAmbience();
+  applyConditionRecovery(Array.from(lm.appeared));
+  applyNaturalAgingEvolution(lm.lastHsStarters);
+  const rng = seededRngFromKey(`friendly-injury:${calendarTurnKey()}`);
+  let injuriesKept = 0;
+  CAREER.squad.forEach((p) => {
+    const before = snapshot.get(p.id);
+    if (!before) return;
+    const newInjury = p.status === "contundido" && before.status !== "contundido";
+    if (newInjury && rng() < 0.5) { injuriesKept++; } // lesão confirmada (risco menor: metade)
+    else { p.status = before.status; p.outUntilRound = before.outUntilRound; p.injurySeverity = before.injurySeverity; }
+    // cartão não vale em amistoso; gol/assistência/jogo oficial também não
+    p.yellowCards = before.yellowCards;
+    if (p.status === "suspenso" && before.status !== "suspenso") { p.status = before.status; p.outUntilRound = before.outUntilRound; }
+    ["goalsSeason", "assistsSeason", "goalsCareer", "assistsCareer", "apps"].forEach((k) => { p[k] = before[k]; });
+  });
+  const ticket = Math.round(computeTicketRevenue(lm.home).revenue * FRIENDLY_TICKET_SHARE);
+  CAREER.finances.cash += ticket;
+  if (ticket) pushLedger("bilheteria", "Bilheteria de amistoso", ticket, CAREER.currentRound);
+  slot.played = true;
+  slot.result = { gh: lm.gh, ga: lm.ga };
+  const opp = lm.away;
+  pushNotification("partida", `Amistoso: ${CAREER.clubName} ${lm.gh} x ${lm.ga} ${opp.name}.`);
+  document.getElementById("liveMatchOverlay").classList.remove("open");
+  LIVE_MATCH = null;
+  // O amistoso é o jogo da semana — fecha a semana (treino, prazos, mês).
+  runCalendarOffWeek();
+  await persistCareer();
+  renderAll();
+  toast({ title: `Amistoso: ${lm.gh} x ${lm.ga}`, detail: `Contra o ${opp.name} — não vale pontos${injuriesKept ? `; ${injuriesKept} lesão confirmada` : ""}. Semana concluída.` }, { type: lm.gh >= lm.ga ? "pos" : "info" });
+}
+/* ---------- GE-CALENDAR-001 (B3) — tela Calendário ----------
+   Visão do ano inteiro, mês a mês: cada semana com a fase, o jogo do
+   Brasileirão (adversário, casa/fora, disputado ou não), a Copa na
+   quarta (semana de 2 jogos) e o amistoso. A semana atual fica
+   destacada e a tela abre já rolada nela. Abre pelo menu "≡" e tocando
+   na data do topo do Início. */
+function calendarWeekRowHTML(w, i) {
+  const cal = CAREER.calendar;
+  const isNow = i === cal.idx;
+  const lines = [];
+  if (w.r) {
+    const fx = (CAREER.schedule[w.r] || []).find((m) => String(m.home) === String(CAREER.clubId) || String(m.away) === String(CAREER.clubId));
+    const opp = fx ? teamById(String(fx.home) === String(CAREER.clubId) ? fx.away : fx.home) : null;
+    const where = fx ? (String(fx.home) === String(CAREER.clubId) ? "em casa" : "fora") : "";
+    const done = w.r < CAREER.currentRound;
+    lines.push(`<b>${w.r}ª rodada</b> · Dom ${calendarDateLabel(w, 6)}${opp ? ` · ${escapeHtml(opp.name)} (${where})` : " · folga"}${done ? " · disputada" : ""}`);
+    if (w.c) lines.push(`Copa do Brasil na quarta (${calendarDateLabel(w, 2)}) — semana de 2 jogos`);
+  }
+  const fr = (cal.friendlies || []).find((f) => f.wi === i);
+  if (fr) {
+    const opp = fr.opp ? teamById(fr.opp) : null;
+    lines.push(fr.result ? `Amistoso: ${fr.result.gh} x ${fr.result.ga} ${opp ? escapeHtml(opp.name) : ""}`
+      : fr.played ? "Amistoso não disputado"
+      : `Amistoso${fr.optional ? " (opcional)" : ""}${opp ? ` contra o ${escapeHtml(opp.name)}` : " — escolha entre 3 convites"}`);
+  }
+  if (!lines.length) lines.push(w.p === "ferias" ? "Folga do elenco" : w.p === "temporada" ? "Semana livre — treinos" : "Treinos");
+  return `<div class="mt-cal-week${isNow ? " now" : ""}${i < cal.idx ? " past" : ""}" ${isNow ? 'id="calendarNowRow"' : ""}>
+    <div class="mt-cal-date">${calendarDateLabel(w)}<span>${CALENDAR_PHASE_LABEL[w.p]}</span></div>
+    <div class="mt-cal-body">${lines.map((l) => `<div>${l}</div>`).join("")}</div>
+  </div>`;
+}
+function renderCalendarScreen() {
+  const cal = CAREER.calendar;
+  const win = transferWindowStatus(CAREER.currentRound);
+  document.getElementById("calendarSub").textContent = `Temporada ${cal.year} · mercado ${win.open ? `aberto ${win.closesLabel}` : `fechado — ${win.opensLabel}`}`;
+  const byMonth = new Map();
+  cal.weeks.forEach((w, i) => {
+    const m = calendarWeekMonth(w);
+    if (!byMonth.has(m)) byMonth.set(m, []);
+    byMonth.get(m).push(calendarWeekRowHTML(w, i));
+  });
+  document.getElementById("calendarList").innerHTML = [...byMonth.entries()].map(([m, rows]) =>
+    `<div class="mt-cal-month">${MONTH_LONG[m][0].toUpperCase() + MONTH_LONG[m].slice(1)}</div>${rows.join("")}`).join("");
+}
+function openCalendarScreen() {
+  if (!calendarOn()) {
+    toast("O calendário começa na próxima temporada desta carreira (ela ainda está no modelo de rodadas).", { type: "info" });
+    return;
+  }
+  renderCalendarScreen();
+  document.getElementById("calendarOverlay").classList.add("open");
+  requestAnimationFrame(() => document.getElementById("calendarNowRow")?.scrollIntoView({ block: "center" }));
+}
+function closeCalendarScreen() {
+  document.getElementById("calendarOverlay").classList.remove("open");
+}
 // GE-CALENDAR-001 — avança 1 semana sem jogo, ou todas até a semana do
 // próximo jogo ("Pular até o próximo jogo"), e resume o que aconteceu.
 async function advanceCalendarFromUI(untilMatch) {
   let weeks = 0, wage = 0, income = 0;
   do {
+    // Pular semanas = abrir mão do amistoso delas (sem resultado).
+    const skipped = friendlySlotThisWeek();
+    if (skipped) skipped.played = true;
     const r = runCalendarOffWeek();
     if (!r) break;
     weeks++; wage += r.wagePaid; income += r.sponsorIncome;
@@ -14941,7 +15204,14 @@ function wireStaticListeners() {
   document.getElementById("btnSimulate").addEventListener("click", () => {
     // GE-CALENDAR-001 — semana sem jogo: o botão avança a semana.
     const week = calendarWeek();
-    if (week && !week.r && CAREER.currentRound <= 38) { advanceCalendarFromUI(false); return; }
+    if (week && !week.r && CAREER.currentRound <= 38) {
+      // GE-CALENDAR-001 (B2) — semana de amistoso: o botão leva pro jogo
+      // (na pré-temporada sempre; em julho só se o técnico aceitou um convite).
+      const slot = friendlySlotThisWeek();
+      if (slot && (!slot.optional || slot.opp)) { startFriendlyLive(slot); return; }
+      advanceCalendarFromUI(false);
+      return;
+    }
     openPreMatchConfirm();
   });
   document.getElementById("btnSkipToMatch").addEventListener("click", () => advanceCalendarFromUI(true));
@@ -15315,6 +15585,10 @@ function wireStaticListeners() {
   // tudo em dia; Ranking é diferente (async, publica o placar sempre
   // que abre, ver renderRanking) — chamado manualmente aqui em vez de
   // entrar em renderAll, pra não publicar score a cada re-render bobo.
+  document.getElementById("btnOpenCalendar").addEventListener("click", () => { document.getElementById("topbarMenu").classList.remove("open"); openCalendarScreen(); });
+  document.getElementById("calendarClose").addEventListener("click", closeCalendarScreen);
+  document.getElementById("btnCalendarCloseFooter").addEventListener("click", closeCalendarScreen);
+  document.getElementById("roundPill").addEventListener("click", openCalendarScreen);
   document.getElementById("btnOpenObjetivos").addEventListener("click", () => {
     document.getElementById("topbarMenu").classList.remove("open");
     switchToPanel("objetivos");

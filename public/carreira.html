@@ -2282,6 +2282,15 @@
   .mt-calendar-phase{ display:flex; flex-direction:column; gap:6px; text-align:left; width:100%; font-size:14px; color:var(--m3-on-surface); }
   .mt-calendar-phase span{ color:var(--m3-on-surface-variant); font-size:13px; }
   .mt-calendar-double{ width:100%; margin:10px 0 0; font-size:12px; color:var(--m3-on-surface-variant); text-align:center; }
+  /* GE-CALENDAR-001 (B3) — tela Calendário. */
+  .mt-cal-month{ font-weight:700; font-size:13px; letter-spacing:.04em; text-transform:uppercase; color:var(--m3-on-surface-variant); margin:16px 0 8px; }
+  .mt-cal-week{ display:flex; gap:12px; padding:10px 12px; border-radius:var(--m3-shape-md); background:var(--m3-surface-container); margin-bottom:6px; }
+  .mt-cal-week.past{ opacity:.6; }
+  .mt-cal-week.now{ outline:2px solid var(--m3-primary); opacity:1; }
+  .mt-cal-date{ flex:0 0 64px; font-weight:700; color:var(--m3-on-surface); display:flex; flex-direction:column; gap:2px; }
+  .mt-cal-date span{ font-weight:500; font-size:11px; color:var(--m3-on-surface-variant); }
+  .mt-cal-body{ flex:1; min-width:0; font-size:13px; color:var(--m3-on-surface); display:flex; flex-direction:column; gap:3px; }
+  #roundPill{ cursor:pointer; }
   .mt-player-link{ cursor:pointer; text-decoration:underline; text-decoration-color:color-mix(in srgb, currentColor 40%, transparent); text-underline-offset:2px; }
   .mt-player-link:focus-visible{ outline:2px solid var(--m3-primary); outline-offset:2px; border-radius:2px; }
   .mt-mini-col{ flex:1; text-align:center; font-family:'Rajdhani', var(--font); font-weight:700; color:var(--mt-ivory-100); }
@@ -2915,6 +2924,9 @@
              pagamento de verdade acontece ainda. Fica solta na raiz
              (não é "categoria" de mais nada) — mesmo critério de
              Reiniciar/Sair abaixo. -->
+        <!-- GE-CALENDAR-001 (B3) — Calendário da temporada (também abre
+             tocando na data do topo do Início). -->
+        <button class="mt-topbar-menu-item" id="btnOpenCalendar">🗓️ Calendário</button>
         <button class="mt-topbar-menu-item" id="btnOpenLoja">🛒 Loja</button>
         <!-- Bloco 8 (brtreinadorbloco8sistema.html) — Configurações:
              hub de perfil/jogo/notificações/conta — mesmo critério de
@@ -4202,6 +4214,27 @@
      Mercado, CAREER.transferLog — ver renderTransferHistoryScreen em
      carreira.js), cada linha com um ícone por tipo de evento (compra/
      venda/empréstimo/proposta perdida/outros). -->
+<!-- GE-CALENDAR-001 (B3) — Calendário da temporada, mês a mês (ver
+     renderCalendarScreen em carreira.js). -->
+<div class="ct-modal-overlay ct-modal-fullscreen" id="calendarOverlay">
+  <div class="ct-modal">
+    <div class="ct-modal-header mt-fullheader">
+      <span class="ct-modal-icon">🗓️</span>
+      <div class="ct-modal-header-text">
+        <h3>Calendário</h3>
+        <div class="ct-modal-sub" id="calendarSub"></div>
+      </div>
+      <button class="ct-modal-close" id="calendarClose">✕</button>
+    </div>
+    <div class="ct-modal-body">
+      <div id="calendarList"></div>
+    </div>
+    <div class="ct-modal-footer">
+      <button class="mt-btn-ghost" id="btnCalendarCloseFooter">Fechar</button>
+    </div>
+  </div>
+</div>
+
 <div class="ct-modal-overlay ct-modal-fullscreen" id="transferHistoryOverlay">
   <div class="ct-modal">
     <div class="ct-modal-header mt-fullheader">
@@ -4649,6 +4682,8 @@
       <div class="mt-card">
         <div class="ct-next-match" id="preMatchOpponent"></div>
         <p class="mt-badge-alert hidden" id="preMatchWarning" style="display:flex; width:100%; box-sizing:border-box;"></p>
+        <!-- GE-CALENDAR-001 (B3) — aviso de rodízio em semana de 2 jogos. -->
+        <p class="mt-badge-gold hidden" id="preMatchRotation" style="display:flex; width:100%; box-sizing:border-box;"></p>
         <p class="ct-sub" id="preMatchMeta" style="text-align:center; font-weight:700; color:var(--mt-ink-muted);"></p>
       </div>
       <div class="mt-card">
