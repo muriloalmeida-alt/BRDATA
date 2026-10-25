@@ -334,7 +334,10 @@ jogada e virada real; promovidos = 4 primeiros da B, chegando em média
 abaixo da média da A; rebaixados chegando em média acima da média da B;
 força nova persiste após recarregar o save. Regressão: rebaixamento,
 multi-divisão (2), GE-BALANCE-002, mercado multi-temporada, temporada e
-calendário — todos passam. Observação: `sim_ge_balance_002.js` tem um
+calendário — todos passam. Suíte completa da branch final (B2 + B3 + esta): 27 falhas — as 22
+pré-existentes mais 5 que falharam só sob concorrência
+(`test_botoes_rodape`, `test_ge_calendar_001_b2`, `test_h2h2`,
+`test_serie_b_escudos`, `test_toast_reposiciona`) e passam isoladas. Observação: `sim_ge_balance_002.js` tem um
 caminho fixo antigo (`/home/user/FitOS`), anterior a esta sessão; para
 rodar, usei um link temporário.
 
