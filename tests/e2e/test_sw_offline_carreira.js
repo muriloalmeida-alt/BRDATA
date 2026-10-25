@@ -7,6 +7,7 @@
 // manifest-treinador.json na INSTALAÇÃO (sem precisar de nenhuma visita
 // online antes), e a tela abre de verdade offline logo na 1ª visita.
 const { chromium } = require("playwright-core");
+const { check } = require("./_check");
 
 (async () => {
   const browser = await chromium.launch({ executablePath: process.env.PW_CHROMIUM_PATH || undefined, headless: true, args: ["--host-resolver-rules=MAP fonts.googleapis.com 127.0.0.1,MAP fonts.gstatic.com 127.0.0.1"] });
@@ -36,7 +37,7 @@ const { chromium } = require("playwright-core");
     for (const p of paths) results[p] = !!(await cache.match(p));
     return results;
   });
-  console.log("1) carreira.html/carreira.js/manifest-treinador.json/brand-icon já em cache sem nunca ter visitado /carreira.html:",
+  check("1) carreira.html/carreira.js/manifest-treinador.json/brand-icon já em cache sem nunca ter visitado /carreira.html:",
     cached["/carreira.html"] && cached["/js/carreira.js"] && cached["/manifest-treinador.json"] && cached["/img/brand-icon.png"],
     JSON.stringify(cached));
 
@@ -49,7 +50,7 @@ const { chromium } = require("playwright-core");
     hasLoginScreen: !!document.getElementById("screenLoginRequired"),
     carreiraJsLoaded: typeof window.boot === "function" || typeof window.CAREER !== "undefined" || document.querySelector('script[src="js/carreira.js"]') !== null,
   })).catch((e) => ({ error: e.message }));
-  console.log("2) /carreira.html abre OFFLINE (1ª vez, sem visita online prévia à própria tela):", !resp?.error && offlineLoaded.hasLoginScreen, JSON.stringify({ respOk: !resp?.error, offlineLoaded }));
+  check("2) /carreira.html abre OFFLINE (1ª vez, sem visita online prévia à própria tela):", !resp?.error && offlineLoaded.hasLoginScreen, JSON.stringify({ respOk: !resp?.error, offlineLoaded }));
 
   await context.setOffline(false);
   await browser.close();

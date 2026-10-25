@@ -17,6 +17,8 @@
 // toggle continua desligado) — o que importa é que nenhum dos dois
 // quebra o app.
 const { chromium } = require("playwright-core");
+const { check } = require("./_check");
+const { skipOnboarding } = require("./_startup");
 const path = require("path");
 const fs = require("fs");
 
@@ -47,7 +49,7 @@ const fs = require("fs");
   await page.click(".m3-club-row");
   await page.waitForTimeout(150);
   await page.click("#btnConfirmClub");
-  await page.click("#btnOnboardSkip", { timeout: 2000 }).catch(() => {});
+  await skipOnboarding(page);
   await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
   await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
   await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
@@ -70,7 +72,7 @@ const fs = require("fs");
     const btn = document.getElementById("settingsPushToggleBtn");
     return { exists: !!btn, on: btn?.classList.contains("on"), disabled: btn?.disabled };
   });
-  console.log("1) Toggle de push presente, habilitado (navegador suporta) e começa desligado:", initial.exists && !initial.disabled && !initial.on, JSON.stringify(initial));
+  check("1) Toggle de push presente, habilitado (navegador suporta) e começa desligado:", initial.exists && !initial.disabled && !initial.on, JSON.stringify(initial));
 
   // 2) Ativar o toggle -- pede permissão (auto-concedida via
   // context permissions) e tenta assinar de verdade.
@@ -86,19 +88,19 @@ const fs = require("fs");
   if (afterEnable.toggleOn) {
     // Ambiente com acesso de verdade ao serviço de push (fora deste
     // sandbox) -- valida a assinatura completa.
-    console.log("2) Assinatura de push bem-sucedida (rede alcançou o serviço de push):", meAfterEnable === true && afterEnable.testRowVisible);
+    check("2) Assinatura de push bem-sucedida (rede alcançou o serviço de push):", meAfterEnable === true && afterEnable.testRowVisible);
     const subReal = await page.evaluate(async () => {
       const reg = await navigator.serviceWorker.ready;
       const sub = await reg.pushManager.getSubscription();
       return sub ? { hasEndpoint: !!sub.endpoint, hasKeys: !!sub.toJSON().keys?.p256dh } : null;
     });
-    console.log("3) Assinatura real do navegador tem endpoint + chaves:", subReal?.hasEndpoint && subReal?.hasKeys, JSON.stringify(subReal));
+    check("3) Assinatura real do navegador tem endpoint + chaves:", subReal?.hasEndpoint && subReal?.hasKeys, JSON.stringify(subReal));
   } else {
     // Este sandbox: pushManager.subscribe() não alcança o serviço de
     // push (proxy de rede) -- o esperado é falhar com ELEGÂNCIA (toast
     // de aviso, toggle continua desligado, nada trava).
-    console.log("2) [sandbox sem acesso ao serviço de push] Falha tratada com elegância -- toggle continua desligado, sem crash:", !afterEnable.toggleOn && meAfterEnable === false);
-    console.log("3) Toast de aviso apareceu em vez de travar a tela:", toastVisible);
+    check("2) [sandbox sem acesso ao serviço de push] Falha tratada com elegância -- toggle continua desligado, sem crash:", !afterEnable.toggleOn && meAfterEnable === false);
+    check("3) Toast de aviso apareceu em vez de travar a tela:", toastVisible);
   }
 
   // 4) Desativar sempre é seguro de chamar, mesmo sem assinatura real
@@ -106,13 +108,13 @@ const fs = require("fs");
   await page.click("#settingsPushToggleBtn").catch(() => {});
   await page.waitForTimeout(600);
   const meFinal = await page.evaluate(async () => (await (await fetch("/api/auth/me")).json()).user.pushEnabled);
-  console.log("4) Desativar continua seguro/idempotente (pushEnabled false no fim):", meFinal === false);
+  check("4) Desativar continua seguro/idempotente (pushEnabled false no fim):", meFinal === false);
 
   // 5) Service worker tem os handlers de push/notificationclick (ver
   // sw.js) -- confirma que o código está no ar, mesmo sem poder
   // disparar um evento "push" de verdade neste ambiente.
   const swSource = await page.evaluate(async () => (await (await fetch("/sw.js")).text()));
-  console.log("5) sw.js servido de verdade tem handler de 'push' e 'notificationclick':",
+  check("5) sw.js servido de verdade tem handler de 'push' e 'notificationclick':",
     swSource.includes('addEventListener("push"') && swSource.includes('addEventListener("notificationclick"'));
 
   // 6) O resto do app continua 100% funcional depois de mexer no
@@ -122,7 +124,7 @@ const fs = require("fs");
   await page.click(".m3-nav-item[data-panel='elenco']");
   await page.waitForTimeout(300);
   const elencoOk = await page.evaluate(() => document.querySelectorAll("#panel-elenco .m3-list-item").length > 0);
-  console.log("6) Resto do app continua funcional (Elenco renderiza normal):", elencoOk);
+  check("6) Resto do app continua funcional (Elenco renderiza normal):", elencoOk);
 
   await context.close();
   console.log("OK");

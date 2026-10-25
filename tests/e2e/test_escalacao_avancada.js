@@ -1,4 +1,6 @@
 const { chromium } = require("playwright-core");
+const { check } = require("./_check");
+const { skipOnboarding } = require("./_startup");
 
 async function newCareer(page, base, email) {
   await page.goto(base + "/", { waitUntil: "load" });
@@ -12,7 +14,7 @@ async function newCareer(page, base, email) {
   await page.click(".m3-club-row");
   await page.waitForTimeout(150);
   await page.click("#btnConfirmClub");
-  await page.click("#btnOnboardSkip", { timeout: 2000 }).catch(() => {});
+  await skipOnboarding(page);
   await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
   await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
   await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
@@ -42,14 +44,14 @@ async function getCareer(page) {
   // 1) Todas as 14 formações disponíveis nos chips (Bloco 2 M3, era
   // <select>, ver renderFormationChips).
   const formationCount = await page.evaluate(() => document.querySelectorAll("#formationChipRow .m3-filter-chip").length);
-  console.log("1) 14 formações disponíveis nos chips:", formationCount === 14, "(tem", formationCount, ")");
+  check("1) 14 formações disponíveis nos chips:", formationCount === 14, "(tem", formationCount, ")");
 
   // 2) Trocar pra uma formação nova (ex: 4-2-2-2, "quadrado mágico")
   // não quebra o campinho nem o resto da tela.
   await page.evaluate(() => document.querySelector('#formationChipRow [data-formation="4-2-2-2"]').click());
   await page.waitForTimeout(200);
   const pieceCount = await page.evaluate(() => document.querySelectorAll(".mt-pos-slot").length);
-  console.log("2) Formação nova (4-2-2-2) renderiza 11 posições no campinho:", pieceCount === 11);
+  check("2) Formação nova (4-2-2-2) renderiza 11 posições no campinho:", pieceCount === 11);
 
   // 3) Botão "Escalar automaticamente" -- preenche com melhores
   // overalls por grupo de posição, sem mudar formação/táticas.
@@ -68,7 +70,7 @@ async function getCareer(page) {
       return p && p.status === "ok";
     }),
   }));
-  console.log("3) Escalar automaticamente -- 11 titulares preenchidos:", afterAuto.startersFilled === 11, "| formação intacta (4-2-2-2):", afterAuto.formation === "4-2-2-2", "| táticas intactas:", afterAuto.tactics === beforeTactics, "| todos titulares disponíveis:", afterAuto.allOk);
+  check("3) Escalar automaticamente -- 11 titulares preenchidos:", afterAuto.startersFilled === 11, "| formação intacta (4-2-2-2):", afterAuto.formation === "4-2-2-2", "| táticas intactas:", afterAuto.tactics === beforeTactics, "| todos titulares disponíveis:", afterAuto.allOk);
 
   // Confere que é mesmo "melhor overall por grupo": pega o melhor
   // zagueiro do elenco principal e confere que ele está escalado (numa
@@ -78,7 +80,7 @@ async function getCareer(page) {
     return pool ? pool.id : null;
   });
   const bestDefStarts = await page.evaluate((id) => CAREER.lineup.starters.includes(id), bestDef);
-  console.log("4) Melhor zagueiro do elenco está entre os titulares:", bestDefStarts);
+  check("4) Melhor zagueiro do elenco está entre os titulares:", bestDefStarts);
 
   // 5) Troca simples: clicar numa vaga titular e escolher alguém que
   // JÁ é titular de outra posição deve fazer os dois trocarem de lugar
@@ -95,11 +97,11 @@ async function getCareer(page) {
     const row = document.querySelector(`#pickerList [data-id="${id}"] .mt-sel-name`);
     return row ? row.textContent : null;
   }, before5.slot1);
-  console.log("5) Jogador já titular aparece na lista com tag '(titular)':", tagText && tagText.includes("(titular)"));
+  check("5) Jogador já titular aparece na lista com tag '(titular)':", tagText && tagText.includes("(titular)"));
   await page.click(`#pickerList [data-id="${before5.slot1}"]`);
   await page.waitForTimeout(300);
   const after5 = await page.evaluate(() => ({ slot0: CAREER.lineup.starters[0], slot1: CAREER.lineup.starters[1] }));
-  console.log("6) Troca simples entre 2 titulares -- slot0 agora tem quem era slot1:", after5.slot0 === before5.slot1, "| slot1 agora tem quem era slot0 (voltou pra lá):", after5.slot1 === before5.slot0);
+  check("6) Troca simples entre 2 titulares -- slot0 agora tem quem era slot1:", after5.slot0 === before5.slot1, "| slot1 agora tem quem era slot0 (voltou pra lá):", after5.slot1 === before5.slot0);
 
   // 7) Troca titular <-> banco: escolher no campinho alguém que já
   // está no banco deve trazer ele pro time e mandar quem saiu pro
@@ -116,7 +118,7 @@ async function getCareer(page) {
     const row = document.querySelector(`#pickerList [data-id="${id}"] .mt-sel-name`);
     return row ? row.textContent : null;
   }, before7.benchFirst);
-  console.log("7) Jogador do banco aparece na lista com tag '(banco)':", tagBench && tagBench.includes("(banco)"));
+  check("7) Jogador do banco aparece na lista com tag '(banco)':", tagBench && tagBench.includes("(banco)"));
   await page.click(`#pickerList [data-id="${before7.benchFirst}"]`);
   await page.waitForTimeout(300);
   const after7 = await page.evaluate(() => ({
@@ -125,7 +127,7 @@ async function getCareer(page) {
     benchLen: CAREER.lineup.bench.length,
   }));
   const after7b = await page.evaluate((oldSlot2) => CAREER.lineup.bench.includes(oldSlot2), before7.slot2);
-  console.log("8) Reserva escolhida virou titular na vaga 2:", after7.slot2 === before7.benchFirst, "| quem saiu foi pro banco (ninguém sumiu):", after7b, "| banco manteve o mesmo tamanho:", after7.benchLen === before7.benchLen);
+  check("8) Reserva escolhida virou titular na vaga 2:", after7.slot2 === before7.benchFirst, "| quem saiu foi pro banco (ninguém sumiu):", after7b, "| banco manteve o mesmo tamanho:", after7.benchLen === before7.benchLen);
 
   await browser.close();
 })().catch((e) => { console.error("FATAL:", e); process.exit(1); });

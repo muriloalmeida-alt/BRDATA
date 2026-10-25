@@ -3,6 +3,8 @@
 // reposiciona sozinho quando a tela troca pra Notícias (rodapé fixo
 // de verdade) enquanto ele ainda está visível.
 const { chromium } = require("playwright-core");
+const { check } = require("./_check");
+const { skipOnboarding } = require("./_startup");
 const { skipPreseason } = require("./_calendar_skip");
 
 (async () => {
@@ -23,7 +25,7 @@ const { skipPreseason } = require("./_calendar_skip");
   await page.click(".m3-club-row");
   await page.waitForTimeout(150);
   await page.click("#btnConfirmClub");
-  await page.click("#btnOnboardSkip", { timeout: 2000 }).catch(() => {});
+  await skipOnboarding(page);
   await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
   await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
   await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
@@ -53,7 +55,7 @@ const { skipPreseason } = require("./_calendar_skip");
   // Confere ANTES de responder: a coletiva realmente não tem rodapé
   // fixo (é o cenário que expõe o bug).
   const pressHasFooter = await page.evaluate(() => !!document.querySelector("#pressOverlay .ct-modal-footer"));
-  console.log("0) Coletiva de imprensa não tem rodapé fixo (cenário do bug):", !pressHasFooter);
+  check("0) Coletiva de imprensa não tem rodapé fixo (cenário do bug):", !pressHasFooter);
 
   await page.click("#pressOptions [data-press]");
   // Não espera nada -- o toast já deve ter dado o primeiro cálculo
@@ -77,8 +79,8 @@ const { skipPreseason } = require("./_calendar_skip");
       gap: f.top - t.bottom,
     };
   });
-  console.log("1) Toast ainda visível (dentro dos 4s) com o texto de reputação/moral:", state.toastVisible && state.toastText.includes("Reputação"));
-  console.log("2) Toast reposicionado acima do rodapé de Notícias (gap >= 0), não mais preso na posição da coletiva:", state.gap >= 0, JSON.stringify(state));
+  check("1) Toast ainda visível (dentro dos 4s) com o texto de reputação/moral:", state.toastVisible && state.toastText.includes("Reputação"));
+  check("2) Toast reposicionado acima do rodapé de Notícias (gap >= 0), não mais preso na posição da coletiva:", state.gap >= 0, JSON.stringify(state));
 
   await browser.close();
 })().catch((e) => { console.error("FATAL:", e); process.exit(1); });

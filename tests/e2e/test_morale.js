@@ -1,4 +1,8 @@
 const { chromium } = require("playwright-core");
+const { check } = require("./_check");
+const { skipOnboarding } = require("./_startup");
+const { skipPreseason } = require("./_calendar_skip");
+const { playRound, playNextMatchRound } = require("./_round");
 
 async function newCareer(page, base, email) {
   await page.goto(base + "/", { waitUntil: "load" });
@@ -12,7 +16,7 @@ async function newCareer(page, base, email) {
   await page.click(".m3-club-row");
   await page.waitForTimeout(150);
   await page.click("#btnConfirmClub");
-  await page.click("#btnOnboardSkip", { timeout: 2000 }).catch(() => {});
+  await skipOnboarding(page);
   await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
   await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
   await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
@@ -44,14 +48,14 @@ async function putCareer(page, career) {
   // 1) Todo mundo nasce em 70
   let career = await getCareer(page);
   const allAt70 = career.squad.every((p) => p.morale === 70);
-  console.log("1) Todo o elenco nasce em moral 70:", allAt70);
+  check("1) Todo o elenco nasce em moral 70:", allAt70);
 
   // 2) AJUSTE (pedido do usuário: "remover o card de situação do
   // elenco") — o KPI "Moral do elenco" (média) morava nesse card,
   // removido da Central; a moral continua existindo e visível de
   // verdade só no detalhe de CADA jogador (ver checagem 3 abaixo).
   const squadKpisRemoved = await page.evaluate(() => !document.getElementById("squadKpis"));
-  console.log("2) Card 'Situação do elenco' (com a média de moral) removido da Central:", squadKpisRemoved);
+  check("2) Card 'Situação do elenco' (com a média de moral) removido da Central:", squadKpisRemoved);
 
   // 3) KPI no detalhe do jogador
   const firstId = career.squad[0].id;
@@ -65,7 +69,7 @@ async function putCareer(page, career) {
   // (maiúsculas, igual ao mockup), não mais "Moral" — comparação
   // case-insensitive pra não depender de qual convenção de caixa a
   // tela usa.
-  console.log("3) KPI 'Moral' aparece no detalhe:", detailText.toLowerCase().includes("moral"));
+  check("3) KPI 'Moral' aparece no detalhe:", detailText.toLowerCase().includes("moral"));
   await page.click("#detailClose");
   await page.waitForTimeout(200);
 
@@ -75,20 +79,15 @@ async function putCareer(page, career) {
   await page.waitForTimeout(300);
   const startersBefore = career.lineup.starters.filter(Boolean);
   const benchBefore = career.lineup.bench;
-  await page.click("#btnSimulate");
-  await page.waitForSelector("#matchDetailOverlay.open, #roundResultsOverlay.open", { timeout: 10000 });
-  await page.waitForTimeout(300);
-  const matchOpen = await page.evaluate(() => document.getElementById("matchDetailOverlay").classList.contains("open"));
-  if (matchOpen) { await page.click("#btnMatchDetailContinue"); await page.waitForTimeout(300); }
-  const resOpen = await page.evaluate(() => document.getElementById("roundResultsOverlay").classList.contains("open"));
-  if (resOpen) { await page.click("#btnRoundResultsContinue"); await page.waitForTimeout(300); }
+  await skipPreseason(page); // GE-CALENDAR-001: carreira nova começa na pré-temporada
+  await playNextMatchRound(page); // fluxo atual da rodada, ver _round.js
 
   career = await getCareer(page);
   const starterMorales = career.squad.filter((p) => startersBefore.includes(p.id)).map((p) => p.morale);
   const benchMorales = career.squad.filter((p) => benchBefore.includes(p.id)).map((p) => p.morale);
   const restIds = new Set([...startersBefore, ...benchBefore]);
   const restMorales = career.squad.filter((p) => !restIds.has(p.id)).map((p) => p.morale);
-  console.log("4) Moral dos titulares depois da rodada 1 (deve ter mudado de 70):", [...new Set(starterMorales)]);
+  check("4) Moral dos titulares depois da rodada 1 (deve ter mudado de 70):", starterMorales.length > 0 && starterMorales.some((m) => m !== 70), [...new Set(starterMorales)]);
   console.log("   Moral do banco:", [...new Set(benchMorales)]);
   console.log("   Moral de quem nem entrou na súmula (deve ser 68 = 70-2):", [...new Set(restMorales)]);
 
@@ -112,7 +111,7 @@ async function putCareer(page, career) {
   await page.click("#btnRenewPropose");
   await page.waitForTimeout(200);
   const toastLowMorale = await page.evaluate(() => document.getElementById("toast").textContent);
-  console.log("5) Toast recusa por moral baixa (deve recusar mesmo com salário generoso e contrato longo):", toastLowMorale);
+  check("5) Toast recusa por moral baixa (deve recusar mesmo com salário generoso e contrato longo):", toastLowMorale.includes("recusou"), toastLowMorale.replace(/\s+/g, " ").trim());
 
   // 6) Força moral alta e testa recusa de proposta de 1 ano
   career = await getCareer(page);
@@ -135,8 +134,8 @@ async function putCareer(page, career) {
   await page.click("#btnRenewPropose");
   await page.waitForTimeout(200);
   const toastHighMorale = await page.evaluate(() => document.getElementById("toast").textContent);
-  console.log("6) Salário sugerido pra moral 90 (deve ser mais que 1.05x):", suggested, "| wage original:", p2.wage);
-  console.log("   Toast recusa por duração curta + moral alta:", toastHighMorale);
+  check("6) Salário sugerido pra moral 90 (deve ser mais que 1.05x):", Number(suggested) > 1.05 * p2.wage, "| sugerido:", suggested, "| wage original:", p2.wage);
+  console.log("   Toast recusa por duração curta + moral alta:", toastHighMorale.replace(/\s+/g, " ").trim());
 
   await browser.close();
 })().catch((e) => { console.error("FATAL:", e); process.exit(1); });

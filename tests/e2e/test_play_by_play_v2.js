@@ -3,6 +3,8 @@
 // até achar cada tipo pelo menos uma vez, ou desiste depois de um
 // número razoável de tentativas (são decorativos/probabilísticos).
 const { chromium } = require("playwright-core");
+const { check } = require("./_check");
+const { skipOnboarding } = require("./_startup");
 const { skipPreseason } = require("./_calendar_skip");
 
 async function playOneMatch(page) {
@@ -37,7 +39,7 @@ async function playOneMatch(page) {
   await page.click(".m3-club-row");
   await page.waitForTimeout(150);
   await page.click("#btnConfirmClub");
-  await page.click("#btnOnboardSkip", { timeout: 2000 }).catch(() => {});
+  await skipOnboarding(page);
   await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
   await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
   await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
@@ -56,14 +58,14 @@ async function playOneMatch(page) {
     mine: document.getElementById("livePossMineLabel").textContent,
     opp: document.getElementById("livePossOppLabel").textContent,
   }));
-  console.log("1) Barra de posse inicia 50%/50%:", possInitial.mine === "50%" && possInitial.opp === "50%", JSON.stringify(possInitial));
+  check("1) Barra de posse inicia 50%/50%:", possInitial.mine === "50%" && possInitial.opp === "50%", JSON.stringify(possInitial));
   await page.waitForTimeout(2000);
   const possAfter = await page.evaluate(() => ({
     mine: document.getElementById("livePossMineLabel").textContent,
     opp: document.getElementById("livePossOppLabel").textContent,
   }));
   const sumOk = parseInt(possAfter.mine) + parseInt(possAfter.opp) === 100;
-  console.log("2) Barra de posse atualiza depois de alguns tempos (soma 100%):", sumOk, JSON.stringify(possAfter));
+  check("2) Barra de posse atualiza depois de alguns tempos (soma 100%):", sumOk, JSON.stringify(possAfter));
   await page.click("#btnLiveSkip");
   await page.waitForSelector("#matchDetailOverlay.open", { timeout: 8000 });
   await page.click("#btnMatchDetailCloseFooter");
@@ -78,7 +80,7 @@ async function playOneMatch(page) {
     const types = await playOneMatch(page);
     types.forEach((t) => found.add(t));
   }
-  console.log("3) Tipos v2 encontrados rodando várias partidas:", JSON.stringify([...found].filter((t) => wanted.includes(t))));
+  check("3) Tipos v2 encontrados rodando várias partidas:", JSON.stringify([...found].filter((t) => wanted.includes(t))));
   wanted.forEach((t) => console.log(`   - ${t} apareceu:`, found.has(t)));
 
   await browser.close();

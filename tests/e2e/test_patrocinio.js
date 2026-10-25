@@ -1,4 +1,6 @@
 const { chromium } = require("playwright-core");
+const { check } = require("./_check");
+const { skipOnboarding } = require("./_startup");
 const { skipPreseason } = require("./_calendar_skip");
 
 async function newCareer(page, base, email) {
@@ -13,7 +15,7 @@ async function newCareer(page, base, email) {
   await page.click(".m3-club-row");
   await page.waitForTimeout(150);
   await page.click("#btnConfirmClub");
-  await page.click("#btnOnboardSkip", { timeout: 2000 }).catch(() => {});
+  await skipOnboarding(page);
   await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
   await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
   await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
@@ -46,14 +48,14 @@ async function putCareer(page, career) {
 
   // 1) Carreira nova já nasce com os 2 contratos de patrocínio.
   let career = await getCareer(page);
-  console.log("1) Nasce com contrato master:", !!career.sponsorship.master, "| material:", !!career.sponsorship.material);
+  check("1) Nasce com contrato master:", !!career.sponsorship.master, "| material:", !!career.sponsorship.material);
   console.log("   Valores plausíveis:", career.sponsorship.master.valorTemporada > 0, career.sponsorship.material.valorTemporada > 0);
 
   // 2) Card "Patrocínios" aparece na Central com os 2 contratos.
   await page.click(".m3-nav-item[data-panel='central']");
   await page.waitForTimeout(300);
   const boxText = await page.evaluate(() => document.getElementById("sponsorshipBox").textContent);
-  console.log("2) Card mostra Patrocinador Master e Material Esportivo:", boxText.includes("Patrocinador Master") && boxText.includes("Material Esportivo"));
+  check("2) Card mostra Patrocinador Master e Material Esportivo:", boxText.includes("Patrocinador Master") && boxText.includes("Material Esportivo"));
 
   // 3) Contrato vence (temporadasRestantes chega a 0) -- vira propostas
   // pendentes e o botão "Ver propostas" aparece.
@@ -70,7 +72,7 @@ async function putCareer(page, career) {
   await page.click("#confirmOkBtn");
   await page.waitForTimeout(500);
   career = await getCareer(page);
-  console.log("3) Contrato master venceu (null) e virou propostas pendentes:", career.sponsorship.master === null, "| 3 propostas:", (career.sponsorProposals.master || []).length === 3);
+  check("3) Contrato master venceu (null) e virou propostas pendentes:", career.sponsorship.master === null, "| 3 propostas:", (career.sponsorProposals.master || []).length === 3);
   console.log("   Material (tinha mais tempo) continua igual:", !!career.sponsorship.material);
 
   // Fecha o modal de nova temporada pra poder navegar.
@@ -85,7 +87,7 @@ async function putCareer(page, career) {
   // 4) Botão "Ver propostas" aparece só pro master (vencido).
   const hasBtnMaster = await page.evaluate(() => !!document.querySelector('[data-sponsor-choose="master"]'));
   const hasBtnMaterial = await page.evaluate(() => !!document.querySelector('[data-sponsor-choose="material"]'));
-  console.log("4) Botão 'Ver propostas' só aparece pro master:", hasBtnMaster && !hasBtnMaterial);
+  check("4) Botão 'Ver propostas' só aparece pro master:", hasBtnMaster && !hasBtnMaterial);
 
   // 5) Abre o modal, assina uma proposta, confere que o contrato é
   // atualizado e o caixa cresce nas rodadas seguintes.
@@ -97,7 +99,7 @@ async function putCareer(page, career) {
   await page.click('[data-sponsor-sign="0"]');
   await page.waitForTimeout(300);
   career = await getCareer(page);
-  console.log("5) Modal mostrou 3 propostas:", proposalRows === 3, "| contrato master assinado (não é mais null):", !!career.sponsorship.master);
+  check("5) Modal mostrou 3 propostas:", proposalRows === 3, "| contrato master assinado (não é mais null):", !!career.sponsorship.master);
 
   // "Ir para o jogo" mora na aba Início -- volta pra lá antes de continuar.
   await page.click(".m3-nav-item[data-panel='central']");
@@ -135,7 +137,7 @@ async function putCareer(page, career) {
   // Resultados da rodada (pré-existente, sem relação com o checklist
   // de UX desta etapa; o teste nunca foi atualizado).
   const financeText = await page.evaluate(() => document.getElementById("newsFinanceRow").textContent);
-  console.log("6) Linha financeira da rodada menciona patrocínio:", financeText.includes("Patrocínio"));
+  check("6) Linha financeira da rodada menciona patrocínio:", financeText.includes("Patrocínio"));
   await page.click("#btnNewsContinue");
   await page.waitForTimeout(300);
   await page.click("#btnRoundResultsContinue").catch(() => {});

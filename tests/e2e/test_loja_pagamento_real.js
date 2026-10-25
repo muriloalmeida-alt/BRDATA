@@ -14,6 +14,8 @@
 // falha de forma clara sem saldo suficiente. Também valida o retorno
 // do Checkout Pro (?status=approved na URL).
 const { chromium } = require("playwright-core");
+const { check } = require("./_check");
+const { skipOnboarding } = require("./_startup");
 
 async function newCareer(page, base, email) {
   await page.goto(base + "/", { waitUntil: "load" });
@@ -27,7 +29,7 @@ async function newCareer(page, base, email) {
   await page.click(".m3-club-row");
   await page.waitForTimeout(150);
   await page.click("#btnConfirmClub");
-  await page.click("#btnOnboardSkip", { timeout: 2000 }).catch(() => {});
+  await skipOnboarding(page);
   await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
   await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
   await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
@@ -70,13 +72,13 @@ async function openLojaBoosts(page) {
     paymentLabel: document.getElementById("purchasePaymentLabel").textContent,
     disclosure: document.getElementById("purchaseDisclosureText").textContent,
   }));
-  console.log("1) Modal de confirmação (pacote) mostra o rail de pagamento certo:", packageModalState.paymentLabel.includes("Mercado Pago") && packageModalState.disclosure.includes("redirecionado"), JSON.stringify(packageModalState));
+  check("1) Modal de confirmação (pacote) mostra o rail de pagamento certo:", packageModalState.paymentLabel.includes("Mercado Pago") && packageModalState.disclosure.includes("redirecionado"), JSON.stringify(packageModalState));
   const checkoutReqPromise = page.waitForResponse((r) => r.url().includes("/api/loja/checkout"));
   await page.click("#btnConfirmPurchase");
   const checkoutRes = await checkoutReqPromise;
   await page.waitForTimeout(200);
   const stillOnCarreira = page.url().includes("carreira.html");
-  console.log("2) Botão chama /api/loja/checkout de verdade (502 sem MP token nesta sandbox -- caminho de erro esperado) e não navega embora:", checkoutRes.status() === 502 && stillOnCarreira, checkoutRes.status());
+  check("2) Botão chama /api/loja/checkout de verdade (502 sem MP token nesta sandbox -- caminho de erro esperado) e não navega embora:", checkoutRes.status() === 502 && stillOnCarreira, checkoutRes.status());
 
   // 3) Boost: modal mostra saldo/débito de Créditos BR, sem saldo
   // suficiente o botão fica desabilitado com aviso.
@@ -87,7 +89,7 @@ async function openLojaBoosts(page) {
     paymentLabel: document.getElementById("purchasePaymentLabel").textContent,
     disabled: document.getElementById("btnConfirmPurchase").disabled,
   }));
-  console.log("3) Sem saldo suficiente, botão de confirmar fica desabilitado:", boostModalNoSaldo.paymentLabel.includes("Créditos BR") && boostModalNoSaldo.disabled === true, JSON.stringify(boostModalNoSaldo));
+  check("3) Sem saldo suficiente, botão de confirmar fica desabilitado:", boostModalNoSaldo.paymentLabel.includes("Créditos BR") && boostModalNoSaldo.disabled === true, JSON.stringify(boostModalNoSaldo));
   await page.click("#purchaseConfirmClose");
   await page.waitForTimeout(150);
 
@@ -110,7 +112,7 @@ async function openLojaBoosts(page) {
   await page2.click(".m3-club-row");
   await page2.waitForTimeout(150);
   await page2.click("#btnConfirmClub");
-  await page2.click("#btnOnboardSkip", { timeout: 4000 }).catch(() => {});
+  await skipOnboarding(page2);
   await page2.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
   await page2.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
   await page2.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
@@ -120,7 +122,7 @@ async function openLojaBoosts(page) {
   await page2.waitForSelector("#dailyLoginOverlay:not(.open)", { timeout: 6000 }).catch(() => {});
   await page2.waitForTimeout(500);
   const creditsGranted = await page2.evaluate(() => ME.creditsBR);
-  console.log("4) Saldo de teste concedido de verdade (via addCredits, mesma função do webhook, antes do servidor subir):", creditsGranted === creditsExpected, creditsGranted, JSON.stringify(meData && meData.user && meData.user.id));
+  check("4) Saldo de teste concedido de verdade (via addCredits, mesma função do webhook, antes do servidor subir):", creditsGranted === creditsExpected, creditsGranted, JSON.stringify(meData && meData.user && meData.user.id));
 
   // 5) Com saldo suficiente, comprar um boost debita de verdade, aplica
   // o efeito na carreira, e loga no Histórico de compras.
@@ -135,7 +137,7 @@ async function openLojaBoosts(page) {
     moraleAfter: CAREER.squad[0].morale,
     historyFirst: CAREER.purchaseHistory && CAREER.purchaseHistory[0],
   }));
-  console.log("5) Comprar boost debita de verdade (5000-120=4880), aplica o efeito (moral=90) e loga no histórico:",
+  check("5) Comprar boost debita de verdade (5000-120=4880), aplica o efeito (moral=90) e loga no histórico:",
     afterBoost.creditsBR === 4880 && afterBoost.moraleAfter === 90 && afterBoost.historyFirst && afterBoost.historyFirst.name === "Reset de Moral",
     JSON.stringify(afterBoost));
 
@@ -164,7 +166,7 @@ async function openLojaBoosts(page) {
       discountApplied = { marketValue, prefillValue, expected: Math.round(marketValue * 0.85) };
     }
   }
-  console.log("6) 'Desconto de Contratação' sugere 15% a menos na próxima proposta:", !!discountApplied && discountApplied.prefillValue === discountApplied.expected, JSON.stringify(discountApplied));
+  check("6) 'Desconto de Contratação' sugere 15% a menos na próxima proposta:", !!discountApplied && discountApplied.prefillValue === discountApplied.expected, JSON.stringify(discountApplied));
 
   // 7) Retorno do Checkout Pro (?status=approved) mostra toast e limpa
   // a URL — o saldo real só muda de verdade via webhook (não testável
@@ -176,7 +178,7 @@ async function openLojaBoosts(page) {
     urlClean: !location.search.includes("status"),
     toastVisible: getComputedStyle(document.getElementById("toast")).display !== "none",
   }));
-  console.log("7) Retorno do Checkout Pro limpa a URL e mostra um toast de status:", returnState.urlClean && returnState.toastVisible, JSON.stringify(returnState));
+  check("7) Retorno do Checkout Pro limpa a URL e mostra um toast de status:", returnState.urlClean && returnState.toastVisible, JSON.stringify(returnState));
 
   await browser.close();
   console.log("OK");

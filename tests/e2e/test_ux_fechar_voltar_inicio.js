@@ -4,6 +4,8 @@
 // proposta -- e que fluxos ENCADEADOS (coletiva no pós-jogo, "Proposta
 // em destaque" -> Tabela) continuam funcionando sem redirecionar.
 const { chromium } = require("playwright-core");
+const { check } = require("./_check");
+const { skipOnboarding } = require("./_startup");
 
 (async () => {
   const browser = await chromium.launch({ executablePath: process.env.PW_CHROMIUM_PATH || undefined, headless: true, args: ["--host-resolver-rules=MAP fonts.googleapis.com 127.0.0.1,MAP fonts.gstatic.com 127.0.0.1"] });
@@ -24,7 +26,7 @@ const { chromium } = require("playwright-core");
   await page.click(".m3-club-row");
   await page.waitForTimeout(150);
   await page.click("#btnConfirmClub");
-  await page.click("#btnOnboardSkip", { timeout: 2000 }).catch(() => {});
+  await skipOnboarding(page);
   await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
   await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
   await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
@@ -56,7 +58,7 @@ const { chromium } = require("playwright-core");
   const offerBtnFound = await page.evaluate(() => !!document.getElementById("offerOverlay").querySelector("button"));
   await page.evaluate(() => { if (typeof confirmOfferFromModal === "function") confirmOfferFromModal(); });
   await page.waitForTimeout(150);
-  console.log("1) Comprar (enviar proposta) fecha tudo e volta pra Início:", await activePanel() === "panel-central" && await anyOverlayOpen() === 0, { offerBtnFound });
+  check("1) Comprar (enviar proposta) fecha tudo e volta pra Início:", await activePanel() === "panel-central" && await anyOverlayOpen() === 0, { offerBtnFound });
 
   // 2) Vender (colocar à venda) -> Início
   await goToPanel("elenco");
@@ -65,7 +67,7 @@ const { chromium } = require("playwright-core");
   await page.waitForTimeout(100);
   await page.evaluate(() => confirmListFromModal());
   await page.waitForTimeout(150);
-  console.log("2) Vender (colocar à venda) fecha tudo e volta pra Início:", await activePanel() === "panel-central" && await anyOverlayOpen() === 0);
+  check("2) Vender (colocar à venda) fecha tudo e volta pra Início:", await activePanel() === "panel-central" && await anyOverlayOpen() === 0);
 
   // 3) Emprestar -> Início (findInterestedBuyer é por sorteio -- tenta
   // algumas vezes com jogadores diferentes até achar um interessado,
@@ -85,7 +87,7 @@ const { chromium } = require("playwright-core");
     await page.evaluate(async () => { await confirmLoanFromModal(); });
     await page.waitForTimeout(200);
   }
-  console.log("3) Emprestar fecha tudo e volta pra Início:", !loanOk || (await activePanel() === "panel-central" && await anyOverlayOpen() === 0), { loanOk });
+  check("3) Emprestar fecha tudo e volta pra Início:", !loanOk || (await activePanel() === "panel-central" && await anyOverlayOpen() === 0), { loanOk });
 
   // 4) Renovar contrato (sucesso) -> Início
   await goToPanel("elenco");
@@ -104,7 +106,7 @@ const { chromium } = require("playwright-core");
   }, renewInfo.wage);
   await page.evaluate(() => proposeRenewal());
   await page.waitForTimeout(150);
-  console.log("4) Renovar contrato (sucesso) fecha tudo e volta pra Início:", await activePanel() === "panel-central" && await anyOverlayOpen() === 0);
+  check("4) Renovar contrato (sucesso) fecha tudo e volta pra Início:", await activePanel() === "panel-central" && await anyOverlayOpen() === 0);
 
   // 5) Renovar recusado -> abre coletiva standalone -> responder -> Início
   await goToPanel("elenco");
@@ -118,19 +120,19 @@ const { chromium } = require("playwright-core");
   await page.evaluate(() => proposeRenewal());
   await page.waitForTimeout(150);
   const pressOpenAfterRefusal = await page.evaluate(() => document.getElementById("pressOverlay").classList.contains("open"));
-  console.log("5a) Renovar recusado abre coletiva (não vai pra Início ainda):", pressOpenAfterRefusal);
+  check("5a) Renovar recusado abre coletiva (não vai pra Início ainda):", pressOpenAfterRefusal);
   if (pressOpenAfterRefusal) {
     await page.click("#pressOptions [data-press]");
     await page.waitForTimeout(150);
   }
-  console.log("5b) Depois de responder a coletiva standalone, fecha tudo e volta pra Início:", await activePanel() === "panel-central" && await anyOverlayOpen() === 0);
+  check("5b) Depois de responder a coletiva standalone, fecha tudo e volta pra Início:", await activePanel() === "panel-central" && await anyOverlayOpen() === 0);
 
   // 6) Aplicar treino -> Início
   await goToPanel("treinos");
   await page.evaluate(() => { CAREER.trainingAppliedForRound = null; });
   await page.click("#btnApplyTraining");
   await page.waitForTimeout(200);
-  console.log("6) Aplicar treino fecha tudo e volta pra Início:", await activePanel() === "panel-central" && await anyOverlayOpen() === 0);
+  check("6) Aplicar treino fecha tudo e volta pra Início:", await activePanel() === "panel-central" && await anyOverlayOpen() === 0);
 
   // 7) Aceitar proposta recebida (Mercado, standalone) -> Início
   await goToPanel("mercado");
@@ -142,7 +144,7 @@ const { chromium } = require("playwright-core");
   await page.waitForTimeout(100);
   await page.click("#btnAcceptOffer");
   await page.waitForTimeout(150);
-  console.log("7) Aceitar proposta recebida (Mercado) fecha tudo e volta pra Início:", await activePanel() === "panel-central" && await anyOverlayOpen() === 0);
+  check("7) Aceitar proposta recebida (Mercado) fecha tudo e volta pra Início:", await activePanel() === "panel-central" && await anyOverlayOpen() === 0);
 
   // 8) NEGATIVO: "Proposta em destaque" (pós-jogo) continua indo pra Tabela, não Início
   await goToPanel("elenco");
@@ -156,7 +158,7 @@ const { chromium } = require("playwright-core");
   await page.evaluate(() => acceptOfferFromModal());
   await page.waitForTimeout(150);
   const wentToTabela = await page.evaluate(() => document.getElementById("tabelaModalOverlay").classList.contains("open"));
-  console.log("8) Proposta em destaque (pós-jogo) continua indo pra Tabela, NÃO pra Início:", destaqueOpen && wentToTabela);
+  check("8) Proposta em destaque (pós-jogo) continua indo pra Tabela, NÃO pra Início:", destaqueOpen && wentToTabela);
 
   // 9) NEGATIVO: coletiva ENCADEADA no pós-jogo continua indo pra Notícias, não Início
   await page.evaluate(() => { document.getElementById("tabelaModalOverlay").classList.remove("open"); });
@@ -172,7 +174,7 @@ const { chromium } = require("playwright-core");
   await page.waitForTimeout(200);
   const wentToNews = await page.evaluate(() => document.getElementById("newsOverlay").classList.contains("open"));
   const centralAfterChain = await activePanel();
-  console.log("9) Coletiva ENCADEADA (pós-jogo) continua indo pra Notícias, NÃO pra Início:", chainedPressOpen && wentToNews);
+  check("9) Coletiva ENCADEADA (pós-jogo) continua indo pra Notícias, NÃO pra Início:", chainedPressOpen && wentToNews);
 
   await browser.close();
 })();

@@ -4,6 +4,8 @@
 // depois (env vars configuradas) -- não pode trocar de fonte de dado
 // silenciosamente e quebrar os ids já gravados no calendário/elenco.
 const { chromium } = require("playwright-core");
+const { check } = require("./_check");
+const { skipOnboarding } = require("./_startup");
 
 (async () => {
   const browser = await chromium.launch({ executablePath: process.env.PW_CHROMIUM_PATH || undefined, headless: true, args: ["--host-resolver-rules=MAP fonts.googleapis.com 127.0.0.1,MAP fonts.gstatic.com 127.0.0.1"] });
@@ -23,7 +25,7 @@ const { chromium } = require("playwright-core");
   await page.click(".m3-club-row");
   await page.waitForTimeout(150);
   await page.click("#btnConfirmClub");
-  await page.click("#btnOnboardSkip", { timeout: 2000 }).catch(() => {});
+  await skipOnboarding(page);
   await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
   await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
   await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
@@ -38,7 +40,7 @@ const { chromium } = require("playwright-core");
     liveMode: CAREER.liveMode,
     hasOpeInSchedule: Object.values(CAREER.schedule).some((round) => round.some((m) => m.home === "ope" || m.away === "ope")),
   }));
-  console.log("1) Carreira criada em Modo Exemplo (liveMode=false):", initial.liveMode === false, "| calendário usa ids fictícios (ex.: 'ope'):", initial.hasOpeInSchedule);
+  check("1) Carreira criada em Modo Exemplo (liveMode=false):", initial.liveMode === false, "| calendário usa ids fictícios (ex.: 'ope'):", initial.hasOpeInSchedule);
 
   // 2) Simula o cenário do bug: o fornecedor real "fica disponível"
   // (troca fetch pra devolver um catálogo de times com ids
@@ -75,7 +77,7 @@ const { chromium } = require("playwright-core");
     window.fetch = realFetch;
     return { liveMode: LIVE_MODE, opeName };
   });
-  console.log("2) SEM a correção (loadLeague sem forceDemo), o bug reproduz -- 'Time #ope' aparece:", withoutFix.opeName === "Time #ope", JSON.stringify(withoutFix));
+  check("2) SEM a correção (loadLeague sem forceDemo), o bug reproduz -- 'Time #ope' aparece:", withoutFix.opeName === "Time #ope", JSON.stringify(withoutFix));
 
   // 3) Com a correção de verdade (forceDemo baseado em CAREER.liveMode
   // === false, do jeito que enterAfterAuth agora faz), o mesmo cenário
@@ -99,7 +101,7 @@ const { chromium } = require("playwright-core");
     window.fetch = realFetch;
     return { liveMode: LIVE_MODE, opeName };
   });
-  console.log("3) COM a correção, 'Operário-PR' continua resolvendo certo (sem quebrar):", withFix.opeName === "Operário-PR", "| continua em Modo Exemplo:", withFix.liveMode === false, JSON.stringify(withFix));
+  check("3) COM a correção, 'Operário-PR' continua resolvendo certo (sem quebrar):", withFix.opeName === "Operário-PR", "| continua em Modo Exemplo:", withFix.liveMode === false, JSON.stringify(withFix));
 
   // 4) Fluxo real de verdade: recarregar a página (enterAfterAuth) não
   // quebra nada -- clube/central continuam mostrando nomes certos.
@@ -109,7 +111,7 @@ const { chromium } = require("playwright-core");
     const nextMatch = document.querySelector(".mt-nextmatch");
     return { text: nextMatch ? nextMatch.textContent : null, hasQuebrado: nextMatch ? nextMatch.textContent.includes("Time #") : null };
   });
-  console.log("4) Depois de recarregar de verdade (enterAfterAuth), Central não mostra 'Time #' quebrado:", afterReload.hasQuebrado === false, JSON.stringify(afterReload.text));
+  check("4) Depois de recarregar de verdade (enterAfterAuth), Central não mostra 'Time #' quebrado:", afterReload.hasQuebrado === false, JSON.stringify(afterReload.text));
 
   await browser.close();
 })().catch((e) => { console.error("FATAL:", e); process.exit(1); });

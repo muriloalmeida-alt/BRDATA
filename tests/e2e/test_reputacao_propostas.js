@@ -1,4 +1,6 @@
 const { chromium } = require("playwright-core");
+const { check } = require("./_check");
+const { skipOnboarding } = require("./_startup");
 
 async function newCareer(page, base, email) {
   await page.goto(base + "/", { waitUntil: "domcontentloaded" });
@@ -12,7 +14,7 @@ async function newCareer(page, base, email) {
   await page.click(".m3-club-row");
   await page.waitForTimeout(150);
   await page.click("#btnConfirmClub");
-  await page.click("#btnOnboardSkip", { timeout: 2000 }).catch(() => {});
+  await skipOnboarding(page);
   await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
   await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
   await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
@@ -57,9 +59,9 @@ async function newCareer(page, base, email) {
 
     return out;
   });
-  console.log("1) Reputação nasce em 50, sem currículo:", r1.repStarts50, r1.historyEmpty);
-  console.log("2) Meta batida sobe / não batida desce:", r1.metaBatidaSobe, r1.metaNaoBatidaDesce);
-  console.log("3) Títulos somam reputação além da meta sozinha:", r1.doisTitulosSomamMais);
+  check("1) Reputação nasce em 50, sem currículo:", r1.repStarts50, r1.historyEmpty);
+  check("2) Meta batida sobe / não batida desce:", r1.metaBatidaSobe, r1.metaNaoBatidaDesce);
+  check("3) Títulos somam reputação além da meta sozinha:", r1.doisTitulosSomamMais);
 
   // 4) endCurrentClubStint registra no currículo e aplica penalidade de
   // demissão; TECHNICIAN_CARRY é consumido por startCareer() na
@@ -77,7 +79,7 @@ async function newCareer(page, base, email) {
       prevClubName,
     };
   });
-  console.log("4) Demissão registra no currículo (1 entrada) com reason='dismissed':", r2.carryHistoryLen === 1 && r2.firstEntry.reason === "dismissed");
+  check("4) Demissão registra no currículo (1 entrada) com reason='dismissed':", r2.carryHistoryLen === 1 && r2.firstEntry.reason === "dismissed");
   console.log("   Penalidade de demissão aplicada (60 -> 35):", r2.carryReputation === 35);
   console.log("   Currículo tem 2 temporadas, 1 título, posição média 4:", r2.firstEntry.seasons === 2 && r2.firstEntry.titles === 1 && r2.firstEntry.avgPosition === 4);
   console.log("   Nome do clube anterior registrado:", r2.firstEntry.clubName === r2.prevClubName);
@@ -92,7 +94,7 @@ async function newCareer(page, base, email) {
     await startCareer(otherClub);
     return { reputation: CAREER.reputation, historyLen: (CAREER.clubHistory || []).length, carryCleared: TECHNICIAN_CARRY === null, clubId: CAREER.clubId };
   }, otherClub);
-  console.log("5) Reputação sobrevive à troca de clube (35):", r3.reputation === 35, "| currículo com 1 entrada anterior:", r3.historyLen === 1);
+  check("5) Reputação sobrevive à troca de clube (35):", r3.reputation === 35, "| currículo com 1 entrada anterior:", r3.historyLen === 1);
   console.log("   TECHNICIAN_CARRY consumido/limpo:", r3.carryCleared, "| clube realmente trocou:", r3.clubId === otherClub);
 
   // 6) "Reiniciar" (via UI de verdade) NÃO carrega reputação -- nasce
@@ -108,7 +110,7 @@ async function newCareer(page, base, email) {
   await page.click(".m3-club-row");
   await page.waitForTimeout(150);
   await page.click("#btnConfirmClub");
-  await page.click("#btnOnboardSkip", { timeout: 2000 }).catch(() => {});
+  await skipOnboarding(page);
   await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
   await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
   await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
@@ -116,7 +118,7 @@ async function newCareer(page, base, email) {
   await page.click("#btnClaimDailyLogin", { timeout: 3000 }).catch(() => {});
   await page.waitForTimeout(500);
   const r4 = await page.evaluate(() => ({ reputation: CAREER.reputation, historyLen: (CAREER.clubHistory || []).length }));
-  console.log("6) 'Reiniciar' não carrega reputação (nasce 50, sem currículo):", r4.reputation === 50 && r4.historyLen === 0);
+  check("6) 'Reiniciar' não carrega reputação (nasce 50, sem currículo):", r4.reputation === 50 && r4.historyLen === 0);
 
   // 7) maybeGenerateClubProposals gera proposta quando reputação bate o
   // patamar de um clube mais forte; some quando reputação é baixa.
@@ -142,7 +144,7 @@ async function newCareer(page, base, email) {
     renderCentral();
     return { semProposta, comProposta, naoEmpilha, proposal: CAREER.clubProposals[0] };
   });
-  console.log("7) Reputação baixa não gera proposta / alta gera:", r5.semProposta, r5.comProposta);
+  check("7) Reputação baixa não gera proposta / alta gera:", r5.semProposta, r5.comProposta);
   console.log("   Não empilha 2ª proposta em cima da pendente:", r5.naoEmpilha);
   console.log("   Proposta tem clube/orçamento plausíveis:", !!r5.proposal.clubName && r5.proposal.budgetOffered > 0);
 
@@ -153,7 +155,7 @@ async function newCareer(page, base, email) {
   await page.click(".m3-nav-item[data-panel='clube']");
   await page.waitForTimeout(300);
   const cardVisible = await page.evaluate(() => document.getElementById("clubProposalCard").style.display !== "none");
-  console.log("8) Card de proposta aparece na aba Clube:", cardVisible);
+  check("8) Card de proposta aparece na aba Clube:", cardVisible);
   await page.click("#btnViewClubProposal");
   await page.waitForSelector("#clubProposalOverlay.open");
   await page.waitForTimeout(150);
@@ -189,12 +191,12 @@ async function newCareer(page, base, email) {
     bannerVisible: !document.getElementById("pickerContextBanner").hidden,
     bannerText: document.getElementById("pickerContextBanner").textContent,
   }));
-  console.log("9) Tela de escolha reaparece filtrada só no clube ofertante:", pickerState.cardCount === 1);
+  check("9) Tela de escolha reaparece filtrada só no clube ofertante:", pickerState.cardCount === 1);
   console.log("   Banner de contexto visível com o clube anterior:", pickerState.bannerVisible && pickerState.bannerText.includes(clubBefore.clubName));
   await page.click("#clubGrid .m3-club-row");
   await page.waitForTimeout(150);
   await page.click("#btnConfirmClub");
-  await page.click("#btnOnboardSkip", { timeout: 2000 }).catch(() => {});
+  await skipOnboarding(page);
   await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
   await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
   await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
@@ -213,7 +215,7 @@ async function newCareer(page, base, email) {
   await page.waitForSelector("#coachProfileOverlay.open");
   await page.waitForTimeout(200);
   const profileText = await page.evaluate(() => document.getElementById("coachProfileBody").textContent);
-  console.log("10) Perfil do técnico mostra Reputação e o clube anterior no currículo:", profileText.includes("Reputação") && profileText.includes(clubBefore.clubName));
+  check("10) Perfil do técnico mostra Reputação e o clube anterior no currículo:", profileText.includes("Reputação") && profileText.includes(clubBefore.clubName));
   await page.click("#coachProfileClose");
 
   await browser.close();

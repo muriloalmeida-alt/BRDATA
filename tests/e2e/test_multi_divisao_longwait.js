@@ -2,6 +2,8 @@
 // Escolha do Clube restrita à divisão escolhida, CAREER.competitionId
 // persistido, e reabertura (reload) carregando a divisão certa.
 const { chromium } = require("playwright-core");
+const { check } = require("./_check");
+const { skipOnboarding } = require("./_startup");
 
 (async () => {
   const browser = await chromium.launch({ executablePath: process.env.PW_CHROMIUM_PATH || undefined, headless: true, args: ["--host-resolver-rules=MAP fonts.googleapis.com 127.0.0.1,MAP fonts.gstatic.com 127.0.0.1"] });
@@ -21,7 +23,7 @@ const { chromium } = require("playwright-core");
   // 1) Seletor de campeonato aparece primeiro (carreira nova).
   const pickerVisible = await page.evaluate(() => !document.getElementById("screenCompetitionPicker").classList.contains("hidden"));
   const cards = await page.evaluate(() => [...document.querySelectorAll(".mt-competition-card .mt-competition-title")].map((el) => el.textContent));
-  console.log("1) Seletor de campeonato aparece com as 3 divisões:", pickerVisible && cards.length === 3, JSON.stringify(cards));
+  check("1) Seletor de campeonato aparece com as 3 divisões:", pickerVisible && cards.length === 3, JSON.stringify(cards));
 
   // 2) Escolher Série B carrega os times certos (demo, plano freemium
   // -- sem chave de API neste ambiente) e mostra a Escolha do Clube.
@@ -33,7 +35,7 @@ const { chromium } = require("playwright-core");
     teamCount: LEAGUE_TEAMS.length,
     hasCoritiba: LEAGUE_TEAMS.some((t) => t.name === "Coritiba"),
   }));
-  console.log("2) Após escolher Série B: Escolha do Clube mostra os times certos:", afterChoice.screenPickerVisible && afterChoice.competitionId === "serie_b" && afterChoice.teamCount === 20 && afterChoice.hasCoritiba, JSON.stringify(afterChoice));
+  check("2) Após escolher Série B: Escolha do Clube mostra os times certos:", afterChoice.screenPickerVisible && afterChoice.competitionId === "serie_b" && afterChoice.teamCount === 20 && afterChoice.hasCoritiba, JSON.stringify(afterChoice));
 
   // 3) Criar a carreira grava competitionId certo -- já estamos na
   // Escolha do Clube da Série B (passo 2 acima), sem precisar passar
@@ -41,7 +43,7 @@ const { chromium } = require("playwright-core");
   await page.click(".m3-club-row");
   await page.waitForTimeout(150);
   await page.click("#btnConfirmClub");
-  await page.click("#btnOnboardSkip", { timeout: 2000 }).catch(() => {});
+  await skipOnboarding(page);
   await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
   await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
   await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
@@ -49,7 +51,7 @@ const { chromium } = require("playwright-core");
   await page.click("#btnClaimDailyLogin", { timeout: 3000 }).catch(() => {});
   await page.waitForTimeout(600);
   const career = await page.evaluate(async () => (await (await fetch("/api/career")).json()).career);
-  console.log("3) Carreira criada com competitionId='serie_b':", career.competitionId === "serie_b", career.competitionId);
+  check("3) Carreira criada com competitionId='serie_b':", career.competitionId === "serie_b", career.competitionId);
 
   // 4) Recarregar a página (sessão + carreira salva) reabre DIRETO na
   // Série B, sem passar pelo seletor de novo, e sem misturar times de
@@ -61,7 +63,7 @@ const { chromium } = require("playwright-core");
     competitionId: CURRENT_COMPETITION_ID,
     clubName: CAREER.clubName,
   }));
-  console.log("4) Reload reabre direto no jogo, na Série B (sem passar pelo seletor de novo):", afterReload.gameVisible && afterReload.competitionId === "serie_b", JSON.stringify(afterReload));
+  check("4) Reload reabre direto no jogo, na Série B (sem passar pelo seletor de novo):", afterReload.gameVisible && afterReload.competitionId === "serie_b", JSON.stringify(afterReload));
 
   // 5) "Reiniciar" volta pro seletor de campeonato (não direto pro
   // picker de clube da mesma divisão de antes).
@@ -72,7 +74,7 @@ const { chromium } = require("playwright-core");
   await page.click("#confirmOkBtn");
   await page.waitForTimeout(2000);
   const afterRestart = await page.evaluate(() => !document.getElementById("screenCompetitionPicker").classList.contains("hidden"));
-  console.log("5) 'Reiniciar' volta pro seletor de campeonato:", afterRestart);
+  check("5) 'Reiniciar' volta pro seletor de campeonato:", afterRestart);
 
   await browser.close();
 })().catch((e) => { console.error("FATAL:", e); process.exit(1); });

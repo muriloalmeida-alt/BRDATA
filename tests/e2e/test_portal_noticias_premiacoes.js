@@ -1,4 +1,6 @@
 const { chromium } = require("playwright-core");
+const { check } = require("./_check");
+const { skipOnboarding } = require("./_startup");
 const { skipPreseason } = require("./_calendar_skip");
 
 async function newCareer(page, base, email) {
@@ -13,7 +15,7 @@ async function newCareer(page, base, email) {
   await page.click(".m3-club-row");
   await page.waitForTimeout(150);
   await page.click("#btnConfirmClub");
-  await page.click("#btnOnboardSkip", { timeout: 2000 }).catch(() => {});
+  await skipOnboarding(page);
   await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
   await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
   await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
@@ -48,7 +50,7 @@ async function newCareer(page, base, email) {
     tagline: document.getElementById("newsTagline").textContent,
     emptyText: document.getElementById("newsList").textContent,
   }));
-  console.log("1) Masthead do portal presente:", emptyState.hasMasthead, "| tagline com o clube:", emptyState.tagline.length > 10);
+  check("1) Masthead do portal presente:", emptyState.hasMasthead, "| tagline com o clube:", emptyState.tagline.length > 10);
   console.log("   Estado vazio explicativo antes de qualquer rodada:", emptyState.emptyText.includes("Nenhuma notícia"));
   await page.click("#newsClose");
   await page.waitForTimeout(150);
@@ -69,7 +71,7 @@ async function newCareer(page, base, email) {
     persistCareer();
     return { feedLen: CAREER.newsFeed.length, topType: CAREER.newsFeed[0].type };
   });
-  console.log("2) Feed acumulou as 2 rodadas (mais nova primeiro):", seeded.feedLen >= 2 && seeded.topType === "generico");
+  check("2) Feed acumulou as 2 rodadas (mais nova primeiro):", seeded.feedLen >= 2 && seeded.topType === "generico");
 
   await page.click("#btnBottomMenu");
   await page.waitForTimeout(150);
@@ -83,7 +85,7 @@ async function newCareer(page, base, email) {
     hasTag: !!document.querySelector(".m3-news-sq"),
     hasRoundMeta: document.getElementById("newsList").textContent.includes("Rodada 10"),
   }));
-  console.log("3) Manchete em destaque preenchida:", filled.featuredText.trim().length > 10);
+  check("3) Manchete em destaque preenchida:", filled.featuredText.trim().length > 10);
   console.log("   Feed abaixo mostra a notícia da rodada anterior com round/temporada:", filled.hasRoundMeta);
   console.log("   Quadrado de categoria aparece nos itens do feed:", filled.hasTag);
   await page.click("#newsClose");
@@ -121,7 +123,7 @@ async function newCareer(page, base, email) {
   await page.waitForSelector("#roundResultsOverlay.open");
   await page.waitForTimeout(300);
   const after = await page.evaluate(() => (CAREER.newsFeed || []).length);
-  console.log("4) Simular rodada de verdade acrescenta ao feed navegável:", after > before);
+  check("4) Simular rodada de verdade acrescenta ao feed navegável:", after > before);
   await page.click("#btnRoundResultsContinue").catch(() => {});
   await page.waitForTimeout(200);
   await page.click("#tabelaModalClose").catch(() => {});
@@ -164,7 +166,7 @@ async function newCareer(page, base, email) {
     mineStatHighlighted: !!document.querySelector(".ct-award-stat.mine"),
     minePodiumHighlighted: !!document.querySelector(".ct-award-podium .slot.mine"),
   }));
-  console.log("5) Hero mostra total de títulos do currículo:", awardsUI.heroText.includes("🏆") || awardsUI.heroText.includes("Brasileirão"));
+  check("5) Hero mostra total de títulos do currículo:", awardsUI.heroText.includes("🏆") || awardsUI.heroText.includes("Brasileirão"));
   console.log("   Card da temporada campeã tem borda/faixa de destaque:", awardsUI.hasChampionCard && awardsUI.hasRibbon);
   console.log("   Pódio com escudo do clube:", awardsUI.hasPodium && awardsUI.hasCrestInPodium);
   console.log("   Prêmios individuais em blocos (>=3):", awardsUI.hasStatTiles);

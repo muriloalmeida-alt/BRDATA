@@ -18,6 +18,8 @@
 // (test_portal_noticias_premiacoes.js, test_noticias_fullscreen_fluxo.js,
 // test_intervalo_noticias_proposta_destino.js).
 const { chromium } = require("playwright-core");
+const { check } = require("./_check");
+const { skipOnboarding } = require("./_startup");
 
 (async () => {
   const browser = await chromium.launch({ executablePath: process.env.PW_CHROMIUM_PATH || undefined, headless: true, args: ["--host-resolver-rules=MAP fonts.googleapis.com 127.0.0.1,MAP fonts.gstatic.com 127.0.0.1"] });
@@ -38,7 +40,7 @@ const { chromium } = require("playwright-core");
   await page.click(".m3-club-row");
   await page.waitForTimeout(150);
   await page.click("#btnConfirmClub");
-  await page.click("#btnOnboardSkip", { timeout: 2000 }).catch(() => {});
+  await skipOnboarding(page);
   await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
   await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
   await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
@@ -81,7 +83,7 @@ const { chromium } = require("playwright-core");
       briefIsMine: briefHtml.includes("m3-news-brief mine"),
     };
   });
-  console.log("1) newsCardHTML() formalizado — mesmo item vira featured (kicker+headline) ou linha compacta (sq), conforme a opção:",
+  check("1) newsCardHTML() formalizado — mesmo item vira featured (kicker+headline) ou linha compacta (sq), conforme a opção:",
     contract.isFunction && contract.featuredHasKicker && contract.featuredHasHeadline && contract.briefHasSq && contract.briefIsMine,
     JSON.stringify(contract));
 
@@ -93,7 +95,7 @@ const { chromium } = require("playwright-core");
     hasNewBrief: !!document.querySelector("#newsList .m3-news-brief"),
     noneOldClasses: !document.querySelector(".mt-news-kicker, .mt-news-headline, .mt-news-brief, .mt-news-sq"),
   }));
-  console.log("2) Tela renderizada usa as classes novas do NewsCard (.m3-news-*), nenhuma .mt-news-* de layout restante:",
+  check("2) Tela renderizada usa as classes novas do NewsCard (.m3-news-*), nenhuma .mt-news-* de layout restante:",
     rendered.hasNewFeatured && rendered.hasNewKicker && rendered.hasNewBrief && rendered.noneOldClasses, JSON.stringify(rendered));
 
   // 3) Tokens migrados: kicker/headline/brief-title resolvem pros
@@ -115,7 +117,7 @@ const { chromium } = require("playwright-core");
   const kickerOk = tokens.kickerColor === hexToRgb(tokens.secondary);
   const headlineOk = tokens.headlineColor === hexToRgb(tokens.onSurface);
   const briefTitleOk = tokens.briefTitleColor === hexToRgb(tokens.onSurface);
-  console.log("3) Tokens migrados — kicker --m3-secondary, headline/título da linha --m3-on-surface (não mais --mt-gold-400/--mt-ivory-50):",
+  check("3) Tokens migrados — kicker --m3-secondary, headline/título da linha --m3-on-surface (não mais --mt-gold-400/--mt-ivory-50):",
     kickerOk && headlineOk && briefTitleOk, JSON.stringify({ ...tokens, kickerOk, headlineOk, briefTitleOk }));
 
   // 4) Comportamento preservado: manchete em destaque é a mais nova
@@ -126,7 +128,7 @@ const { chromium } = require("playwright-core");
     listHasRound10: document.getElementById("newsList").textContent.includes("Rodada 10"),
     mineBriefExists: !!document.querySelector("#newsList .m3-news-brief.mine"),
   }));
-  console.log("4) Comportamento preservado — destaque é a manchete mais nova, feed mostra a rodada anterior com destaque 'mine':",
+  check("4) Comportamento preservado — destaque é a manchete mais nova, feed mostra a rodada anterior com destaque 'mine':",
     behavior.featuredText.includes("Rodada 11") && behavior.listHasRound10 && behavior.mineBriefExists, JSON.stringify(behavior));
 
   await browser.close();

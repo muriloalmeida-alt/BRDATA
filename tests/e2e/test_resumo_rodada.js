@@ -2,6 +2,8 @@
 // (não só o seu), aberta a qualquer momento pelo Menu, com 2 estados de
 // verdade (Atual = não jogada ainda, Anterior = com placar real).
 const { chromium } = require("playwright-core");
+const { check } = require("./_check");
+const { skipOnboarding } = require("./_startup");
 const { skipPreseason } = require("./_calendar_skip");
 
 (async () => {
@@ -22,7 +24,7 @@ const { skipPreseason } = require("./_calendar_skip");
   await page.click(".m3-club-row");
   await page.waitForTimeout(150);
   await page.click("#btnConfirmClub");
-  await page.click("#btnOnboardSkip", { timeout: 2000 }).catch(() => {});
+  await skipOnboarding(page);
   await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
   await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
   await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
@@ -47,7 +49,7 @@ const { skipPreseason } = require("./_calendar_skip");
     const tabAnteriorHidden = document.getElementById("rodadaTabAnterior").classList.contains("hidden");
     return { open, label, rowCount: rows.length, allPlaceholder, tabAnteriorHidden };
   });
-  console.log("1) Modal abre na Rodada 1, sem histórico, 10 confrontos '— x —', sem tab Anterior:",
+  check("1) Modal abre na Rodada 1, sem histórico, 10 confrontos '— x —', sem tab Anterior:",
     check1.open && check1.label.includes("1") && check1.rowCount === 10 && check1.allPlaceholder && check1.tabAnteriorHidden,
     JSON.stringify(check1));
   await page.click("#rodadaClose");
@@ -102,7 +104,7 @@ const { skipPreseason } = require("./_calendar_skip");
     const allPlaceholderAtual = rows.every((r) => r.querySelector(".m3-mc-score").textContent.replace(/\s/g, "").includes("—x—"));
     return { currentRound, label, tabAnteriorVisible, rowCountAtual: rows.length, allPlaceholderAtual };
   });
-  console.log("2) Depois de jogar a rodada 1: currentRound=2, mostra Rodada 2 atual (placeholder), tab Anterior visível:",
+  check("2) Depois de jogar a rodada 1: currentRound=2, mostra Rodada 2 atual (placeholder), tab Anterior visível:",
     check2.currentRound === 2 && check2.label.includes("2") && check2.tabAnteriorVisible && check2.rowCountAtual === 10 && check2.allPlaceholderAtual,
     JSON.stringify(check2));
 
@@ -120,7 +122,7 @@ const { skipPreseason } = require("./_calendar_skip");
     const meRow = rows.find((r) => r.parentElement.classList.contains("m3-mc-mine"));
     return { label, rowCount: rows.length, anyRealScore, hasMeHighlight: !!meRow, sampleScores: scores.slice(0, 3) };
   });
-  console.log("3) Rodada anterior mostra a Rodada 1 com placares reais e destaque do próprio clube:",
+  check("3) Rodada anterior mostra a Rodada 1 com placares reais e destaque do próprio clube:",
     check3.label.includes("1") && check3.rowCount === 10 && check3.anyRealScore && check3.hasMeHighlight,
     JSON.stringify(check3));
 
@@ -132,7 +134,7 @@ const { skipPreseason } = require("./_calendar_skip");
   await page.click("#btnRodadaCloseFooter");
   await page.waitForTimeout(150);
   const check4 = await page.evaluate(() => !document.getElementById("rodadaOverlay").classList.contains("open"));
-  console.log("4) Fechar fecha o modal:", check4);
+  check("4) Fechar fecha o modal:", check4);
 
   await browser.close();
 })().catch((e) => { console.error("FATAL:", e); process.exit(1); });

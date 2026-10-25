@@ -6,6 +6,8 @@
 // financeiro) já vinha de graça das Fases 1.1-1.4 — nenhuma dessas
 // continua "por acidente": os testes abaixo provam isso.
 const { chromium } = require("playwright-core");
+const { check } = require("./_check");
+const { skipOnboarding } = require("./_startup");
 
 (async () => {
   const browser = await chromium.launch({ executablePath: process.env.PW_CHROMIUM_PATH || undefined, headless: true, args: ["--host-resolver-rules=MAP fonts.googleapis.com 127.0.0.1,MAP fonts.gstatic.com 127.0.0.1"] });
@@ -26,7 +28,7 @@ const { chromium } = require("playwright-core");
   await page.click(".m3-club-row");
   await page.waitForTimeout(150);
   await page.click("#btnConfirmClub");
-  await page.click("#btnOnboardSkip", { timeout: 2000 }).catch(() => {});
+  await skipOnboarding(page);
   await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
   await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
   await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
@@ -74,7 +76,7 @@ const { chromium } = require("playwright-core");
     const after = necessidadeScore(candidate, afterSquad);
     return { before, after, sizeBefore: squad.length, sizeAfter: afterSquad.length };
   });
-  console.log("1) Venda (remover 1 jogador do grupo) aumenta necessidade daquele grupo:", n1.after > n1.before, JSON.stringify(n1));
+  check("1) Venda (remover 1 jogador do grupo) aumenta necessidade daquele grupo:", n1.after > n1.before, JSON.stringify(n1));
 
   // 2) compra reduz necessidade — adiciona um jogador ao grupo carente.
   const n2 = await page.evaluate(() => {
@@ -86,7 +88,7 @@ const { chromium } = require("playwright-core");
     const after = necessidadeScore(candidate, afterSquad);
     return { before, after };
   });
-  console.log("2) Compra (adicionar 1 jogador ao grupo) reduz necessidade daquele grupo:", n2.after < n2.before, JSON.stringify(n2));
+  check("2) Compra (adicionar 1 jogador ao grupo) reduz necessidade daquele grupo:", n2.after < n2.before, JSON.stringify(n2));
 
   // 3) necessidade continua respeitando squad size (squadSizeNeedFactor, Fase 1.3.2 — confirma que não regrediu).
   const n3 = await page.evaluate(() => {
@@ -101,7 +103,7 @@ const { chromium } = require("playwright-core");
     }
     return { necNearMin: necessidadeScore(candidate, squadOfSize(min), clubId), necNearMax: necessidadeScore(candidate, squadOfSize(max), clubId) };
   });
-  console.log("3) necessidadeScore continua reduzindo perto do teto de elenco (squadSizeNeedFactor, Fase 1.3.2 intacta):", n3.necNearMin > n3.necNearMax, JSON.stringify(n3));
+  check("3) necessidadeScore continua reduzindo perto do teto de elenco (squadSizeNeedFactor, Fase 1.3.2 intacta):", n3.necNearMin > n3.necNearMax, JSON.stringify(n3));
 
   // 4) pesos do transferScore continuam 35/30/20/15 (nenhuma duplicidade nova).
   const n4 = await page.evaluate(() => {
@@ -116,7 +118,7 @@ const { chromium } = require("playwright-core");
     const real = transferScore(p, clubId);
     return { manual: Math.round(manual * 1e6) / 1e6, real: Math.round(real * 1e6) / 1e6, matches: Math.abs(manual - real) < 1e-9 };
   });
-  console.log("4) Pesos continuam 35/30/20/15, sem duplicidade nova introduzida pela Fase 1.5:", n4.matches, JSON.stringify(n4));
+  check("4) Pesos continuam 35/30/20/15, sem duplicidade nova introduzida pela Fase 1.5:", n4.matches, JSON.stringify(n4));
 
   // =========================================================
   // MERCADO (5-8)
@@ -138,7 +140,7 @@ const { chromium } = require("playwright-core");
     delete CAREER.leagueSquads[clubId];
     return { scoreBefore, scoreAfter };
   });
-  console.log("5) Depois de uma transferência concluída, o score de um candidato do MESMO perfil cai (contexto mudou de verdade):", n5.scoreAfter < n5.scoreBefore, JSON.stringify(n5));
+  check("5) Depois de uma transferência concluída, o score de um candidato do MESMO perfil cai (contexto mudou de verdade):", n5.scoreAfter < n5.scoreBefore, JSON.stringify(n5));
 
   // 6) nova decisão usa estado atualizado — simulateAiTransfers real
   // roda 2x seguidas; a 2ª leitura de necessidade já reflete o que a
@@ -153,7 +155,7 @@ const { chromium } = require("playwright-core");
     const totalAfter = afterSecond.reduce((s, x) => s + x, 0);
     return { totalBefore, totalAfterFirst: afterFirst.reduce((s, x) => s + x, 0), totalAfter, conservedCount: totalBefore === totalAfter };
   });
-  console.log("6) simulateAiTransfers real roda 2x seguidas lendo estado sempre atualizado (nenhum jogador perdido/duplicado no total):", n6.conservedCount, JSON.stringify(n6));
+  check("6) simulateAiTransfers real roda 2x seguidas lendo estado sempre atualizado (nenhum jogador perdido/duplicado no total):", n6.conservedCount, JSON.stringify(n6));
 
   // 7) não existe loop infinito — 300 rodadas de simulateAiTransfers
   // real terminam num tempo finito (não trava o processo).
@@ -163,7 +165,7 @@ const { chromium } = require("playwright-core");
     return true;
   });
   const t7ms = Date.now() - t7start;
-  console.log("7) 300 rodadas de simulateAiTransfers terminam em tempo finito (nunca loop infinito):", n7 === true && t7ms < 30000, JSON.stringify({ ms: t7ms }));
+  check("7) 300 rodadas de simulateAiTransfers terminam em tempo finito (nunca loop infinito):", n7 === true && t7ms < 30000, JSON.stringify({ ms: t7ms }));
 
   // 8) não existe spam de ofertas — cooldown pós-recusa (item 11):
   // depois de recusar uma oferta, o MESMO par jogador/clube não
@@ -179,7 +181,7 @@ const { chromium } = require("playwright-core");
     const differentClubNotBlocked = wasRecentlyDeclined(playerId, "outro_clube", round);
     return { blockedSameRound, blockedNextRound, blockedLastCooldownRound, allowedAfterCooldown, differentClubNotBlocked };
   });
-  console.log("8) Cooldown pós-recusa bloqueia o MESMO par jogador/clube por DECLINE_COOLDOWN_ROUNDS rounds, depois libera, e não afeta outro clube (sem spam nem bloqueio permanente):",
+  check("8) Cooldown pós-recusa bloqueia o MESMO par jogador/clube por DECLINE_COOLDOWN_ROUNDS rounds, depois libera, e não afeta outro clube (sem spam nem bloqueio permanente):",
     n8.blockedSameRound && n8.blockedNextRound && n8.blockedLastCooldownRound && !n8.allowedAfterCooldown && !n8.differentClubNotBlocked, JSON.stringify(n8));
 
   // =========================================================
@@ -210,7 +212,7 @@ const { chromium } = require("playwright-core");
     CAREER.leagueSquads = backup;
     return { offersCount: listing.offers.length, competitorCountSeen };
   });
-  console.log("9) Dois interessados REAIS (2 ofertas de fato geradas na mesma listagem) — competição real, não fabricada:", n9.competitorCountSeen, JSON.stringify(n9));
+  check("9) Dois interessados REAIS (2 ofertas de fato geradas na mesma listagem) — competição real, não fabricada:", n9.competitorCountSeen, JSON.stringify(n9));
 
   // 10) ausência de rivais não cria competição artificial — sem
   // nenhuma oferta concorrente registrada, competitorCount usado pela
@@ -226,7 +228,7 @@ const { chromium } = require("playwright-core");
     const v1 = transferValuation(player, clubId, CAREER.clubId, { competitorCount: 0 });
     return { v0, v1, sameAsExplicitZero: v0 === v1 };
   }, Object.keys(await page.evaluate(() => CAREER.leagueSquads))[0]);
-  console.log("10) Sem rival real, a negociação usa competitorCount=0 (nunca inventa concorrência):", n10.sameAsExplicitZero, JSON.stringify(n10));
+  check("10) Sem rival real, a negociação usa competitorCount=0 (nunca inventa concorrência):", n10.sameAsExplicitZero, JSON.stringify(n10));
 
   // 11) múltiplos interessados não quebram a negociação — aceitar UMA
   // das ofertas de uma listagem com 2+ ofertas reais continua íntegro
@@ -235,7 +237,7 @@ const { chromium } = require("playwright-core");
     if (offersCount < 2) return { skipped: true };
     return { ok: true };
   }, n9.offersCount);
-  console.log("11) Múltiplos interessados reais não quebram a negociação (verificado via cenário do teste 9, mesma listagem com 2+ ofertas íntegras):", n9.offersCount >= 2, JSON.stringify(n11));
+  check("11) Múltiplos interessados reais não quebram a negociação (verificado via cenário do teste 9, mesma listagem com 2+ ofertas íntegras):", n9.offersCount >= 2, JSON.stringify(n11));
 
   // =========================================================
   // URGÊNCIA (12-14)
@@ -246,14 +248,14 @@ const { chromium } = require("playwright-core");
     const open = TRANSFER_WINDOWS[0][0]; // 1º round da 1ª janela
     return { atOpen: urgencyMultiplier(0.9, open) }; // mesmo com necessidade máxima, 1º round = 1x
   });
-  console.log("12) Início da janela (1º round) tem urgência neutra (1x), mesmo com necessidade alta:", n12.atOpen === 1, JSON.stringify(n12));
+  check("12) Início da janela (1º round) tem urgência neutra (1x), mesmo com necessidade alta:", n12.atOpen === 1, JSON.stringify(n12));
 
   // 13) final da janela só aumenta urgência quando existe necessidade real.
   const n13 = await page.evaluate(() => {
     const close = TRANSFER_WINDOWS[0][1]; // último round da 1ª janela
     return { semNecessidade: urgencyMultiplier(0.05, close), comNecessidade: urgencyMultiplier(0.8, close) };
   });
-  console.log("13) Final da janela: sem necessidade real -> urgência continua 1x; com necessidade real -> urgência sobe:",
+  check("13) Final da janela: sem necessidade real -> urgência continua 1x; com necessidade real -> urgência sobe:",
     n13.semNecessidade === 1 && n13.comNecessidade > 1, JSON.stringify(n13));
 
   // 14) urgência nunca cria inflação absurda — teto de +30% em
@@ -275,7 +277,7 @@ const { chromium } = require("playwright-core");
     const vRound22 = transferValuation(player, clubId, CAREER.clubId); // transferValuation não recebe round nenhum -> mesmo valor sempre
     return { maxMultiplier, neverExceeds130: maxMultiplier <= 1.30 + 1e-9, valuationUnaffectedByRound: vRound1 === vRound22 };
   }, Object.keys(await page.evaluate(() => CAREER.leagueSquads))[0]);
-  console.log("14) Urgência nunca ultrapassa +30% e nunca toca transferValuation (sem inflação absurda):",
+  check("14) Urgência nunca ultrapassa +30% e nunca toca transferValuation (sem inflação absurda):",
     n14.neverExceeds130 && n14.valuationUnaffectedByRound, JSON.stringify(n14));
 
   // =========================================================
@@ -288,7 +290,7 @@ const { chromium } = require("playwright-core");
     CAREER.finances.cash -= 5000000; // mesma mecânica de sempre (finalizeIncomingPurchase/acceptCounterOffer debitam cash direto)
     return { cashBefore, cashAfter: CAREER.finances.cash, reduced: CAREER.finances.cash === cashBefore - 5000000 };
   });
-  console.log("15) Compra reduz CAREER.finances.cash de verdade (mesma mecânica de sempre, sem 2ª economia):", n15.reduced, JSON.stringify(n15));
+  check("15) Compra reduz CAREER.finances.cash de verdade (mesma mecânica de sempre, sem 2ª economia):", n15.reduced, JSON.stringify(n15));
 
   // 16) financeiroScore é recalculado ao vivo depois da mudança de caixa/elenco.
   const n16 = await page.evaluate(() => {
@@ -301,7 +303,7 @@ const { chromium } = require("playwright-core");
     const after = financeiroScore(player, squadPlus, clubId);
     return { before, after, changed: before !== after };
   });
-  console.log("16) financeiroScore recalcula na hora quando o elenco/folha do clube muda:", n16.changed, JSON.stringify(n16));
+  check("16) financeiroScore recalcula na hora quando o elenco/folha do clube muda:", n16.changed, JSON.stringify(n16));
 
   // 17) clube não ultrapassa o teto financeiro real (buyerHardCap, Fase 1.4 — confirma que segue intacto).
   const n17 = await page.evaluate((clubId) => {
@@ -312,7 +314,7 @@ const { chromium } = require("playwright-core");
     const dec = buyerNegotiationDecision(impossible, cf.value, player, clubId);
     return { dec, cash: budget.cash };
   }, Object.keys(await page.evaluate(() => CAREER.leagueSquads))[0]);
-  console.log("17) Comprador nunca aceita além do teto financeiro real (buyerHardCap intacto):", n17.dec.action === "walk", JSON.stringify(n17));
+  check("17) Comprador nunca aceita além do teto financeiro real (buyerHardCap intacto):", n17.dec.action === "walk", JSON.stringify(n17));
 
   // =========================================================
   // ELENCO (18-20)
@@ -328,7 +330,7 @@ const { chromium } = require("playwright-core");
     });
     return { bad };
   });
-  console.log("18) Nenhum elenco CPU ultrapassa o teto de tamanho mesmo depois de 300+2 rodadas de simulateAiTransfers:", n18.bad.length === 0, JSON.stringify(n18.bad));
+  check("18) Nenhum elenco CPU ultrapassa o teto de tamanho mesmo depois de 300+2 rodadas de simulateAiTransfers:", n18.bad.length === 0, JSON.stringify(n18.bad));
 
   // 19) vendas alteram elenco (tamanho muda de verdade).
   const n19 = await page.evaluate(() => {
@@ -339,7 +341,7 @@ const { chromium } = require("playwright-core");
     CAREER.leagueSquads[clubId].push(removed); // devolve, não é uma venda de verdade, só confirma que o array reflete a mudança
     return { before, after, changed: after === before - 1 };
   });
-  console.log("19) Vendas (remoção de jogador do array do elenco) alteram o elenco de verdade:", n19.changed, JSON.stringify(n19));
+  check("19) Vendas (remoção de jogador do array do elenco) alteram o elenco de verdade:", n19.changed, JSON.stringify(n19));
 
   // 20) nenhuma duplicação NOVA de jogador introduzida pela Fase 1.5.
   // ACHADO IMPORTANTE (não desta fase): a geração de elenco real
@@ -368,7 +370,7 @@ const { chromium } = require("playwright-core");
     const after = countDuplicates();
     return { before, after, noNewDuplicates: after <= before };
   }, countDuplicates.toString());
-  console.log("20) simulateAiTransfers não CRIA duplicações novas de jogador (duplicatas pré-existentes na geração de elenco real são um achado separado, fora do escopo desta fase — ver relatório):",
+  check("20) simulateAiTransfers não CRIA duplicações novas de jogador (duplicatas pré-existentes na geração de elenco real são um achado separado, fora do escopo desta fase — ver relatório):",
     n20.noNewDuplicates, JSON.stringify(n20));
 
   // =========================================================
@@ -402,7 +404,7 @@ const { chromium } = require("playwright-core");
     });
     return { results, anyWorks: results.some((r) => r.total > 0) };
   }, divisionInfo);
-  console.log("21) Mercado multi-divisão (A<->B<->C) continua funcionando (candidatos reais entre divisões):", n21.anyWorks, JSON.stringify(n21.results));
+  check("21) Mercado multi-divisão (A<->B<->C) continua funcionando (candidatos reais entre divisões):", n21.anyWorks, JSON.stringify(n21.results));
 
   // 22) não existe bloqueio artificial por divisão — nem
   // urgencyMultiplier nem o cooldown de recusa fazem qualquer
@@ -415,7 +417,7 @@ const { chromium } = require("playwright-core");
     const b = urgencyMultiplier(0.8, round); // sem clubId nenhum no parâmetro -> não há como discriminar por divisão
     return { a, b, identical: a === b, fnSource: urgencyMultiplier.toString().includes("competitionId") || urgencyMultiplier.toString().includes("Division") };
   });
-  console.log("22) Nenhum bloqueio artificial por divisão (urgencyMultiplier não recebe/usa clube ou divisão nenhuma):", n22.identical && !n22.fnSource, JSON.stringify(n22));
+  check("22) Nenhum bloqueio artificial por divisão (urgencyMultiplier não recebe/usa clube ou divisão nenhuma):", n22.identical && !n22.fnSource, JSON.stringify(n22));
 
   // =========================================================
   // INTEGRIDADE (23-26)
@@ -429,12 +431,12 @@ const { chromium } = require("playwright-core");
     negotiateOffer(p, clubId, CAREER.clubId);
     return { idBefore, idAfter: p.id, unchanged: idBefore === p.id };
   });
-  console.log("23) IDs preservados (funções da Fase 1.5 não alteram id de jogador):", n23.unchanged, JSON.stringify(n23));
+  check("23) IDs preservados (funções da Fase 1.5 não alteram id de jogador):", n23.unchanged, JSON.stringify(n23));
 
   const schemaAfter = await page.evaluate(() => Object.keys(CAREER).sort());
   const newTopLevelKeys = schemaAfter.filter((k) => !schemaBefore.includes(k));
   const ALLOWED_NEW_KEYS = ["transferLog", "recentDeclines", "pendingOffersOut"];
-  console.log("24) Schema preservado — única chave nova de CAREER é recentDeclines (temporária, podada, justificada no relatório):",
+  check("24) Schema preservado — única chave nova de CAREER é recentDeclines (temporária, podada, justificada no relatório):",
     newTopLevelKeys.filter((k) => !ALLOWED_NEW_KEYS.includes(k)).length === 0, JSON.stringify(newTopLevelKeys));
 
   const n25 = await page.evaluate(async () => {
@@ -442,7 +444,7 @@ const { chromium } = require("playwright-core");
     const r = await (await fetch("/api/career")).json();
     return { ok: !!r.career, size: JSON.stringify(r.career).length };
   });
-  console.log("25) Persistência preservada (save via persistCareer/API continua funcionando, inclusive com recentDeclines dentro):", n25.ok, JSON.stringify(n25));
+  check("25) Persistência preservada (save via persistCareer/API continua funcionando, inclusive com recentDeclines dentro):", n25.ok, JSON.stringify(n25));
 
   const n26 = await page.evaluate(() => {
     const p = CAREER.squad.find((x) => x.origin === "principal");
@@ -453,7 +455,7 @@ const { chromium } = require("playwright-core");
     }
     return { ok };
   });
-  console.log("26) Empréstimos continuam funcionando (findInterestedBuyer, não tocado nesta fase):", n26.ok, JSON.stringify(n26));
+  check("26) Empréstimos continuam funcionando (findInterestedBuyer, não tocado nesta fase):", n26.ok, JSON.stringify(n26));
 
   await browser.close();
   console.log("OK");

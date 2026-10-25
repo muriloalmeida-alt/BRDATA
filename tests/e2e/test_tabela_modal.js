@@ -1,4 +1,6 @@
 const { chromium } = require("playwright-core");
+const { check } = require("./_check");
+const { skipOnboarding } = require("./_startup");
 const { skipPreseason } = require("./_calendar_skip");
 
 async function newCareer(page, base, email) {
@@ -13,7 +15,7 @@ async function newCareer(page, base, email) {
   await page.click(".m3-club-row");
   await page.waitForTimeout(150);
   await page.click("#btnConfirmClub");
-  await page.click("#btnOnboardSkip", { timeout: 2000 }).catch(() => {});
+  await skipOnboarding(page);
   await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
   await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
   await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
@@ -88,7 +90,7 @@ async function newCareer(page, base, email) {
   }
   await page.waitForSelector("#tabelaModalOverlay.open", { timeout: 5000 });
   const activePanelAfter = await page.evaluate(() => document.querySelector(".ct-panel.active").id);
-  console.log("1) Modal da tabela abriu:", true, "| aba ativa não mudou:", activePanelBefore === activePanelAfter, `(${activePanelBefore})`);
+  check("1) Modal da tabela abriu:", true, "| aba ativa não mudou:", activePanelBefore === activePanelAfter, `(${activePanelBefore})`);
 
   // Modal é tela cheia.
   const modalInfo = await page.evaluate(() => {
@@ -97,27 +99,27 @@ async function newCareer(page, base, email) {
     const rect = modal.getBoundingClientRect();
     return { hasClass: overlay.classList.contains("ct-modal-fullscreen"), w: rect.width, h: rect.height, vw: window.innerWidth, vh: window.innerHeight };
   });
-  console.log("2) Modal é tela cheia:", modalInfo.hasClass, "| ocupa toda largura:", modalInfo.w >= modalInfo.vw - 2, "| ocupa toda altura:", modalInfo.h >= modalInfo.vh - 2);
+  check("2) Modal é tela cheia:", modalInfo.hasClass, "| ocupa toda largura:", modalInfo.w >= modalInfo.vw - 2, "| ocupa toda altura:", modalInfo.h >= modalInfo.vh - 2);
 
   // Tabela dentro do modal tem os mesmos dados da aba Tabela.
   const rowsMatch = await page.evaluate(() => {
     const modalRows = document.querySelectorAll("#standingsTableModal .mt-tr").length;
     return modalRows;
   });
-  console.log("3) Tabela do modal tem 20 linhas (times):", rowsMatch === 20);
+  check("3) Tabela do modal tem 20 linhas (times):", rowsMatch === 20);
 
   const meRow = await page.evaluate(() => {
     const tr = document.querySelector("#standingsTableModal .mt-tr.highlight");
     return tr ? tr.textContent.includes("Flamengo") : false;
   });
-  console.log("4) Linha do próprio clube aparece destacada:", meRow);
+  check("4) Linha do próprio clube aparece destacada:", meRow);
 
   // Fecha no X e confirma que continua na mesma aba (sem navegar).
   await page.click("#tabelaModalClose");
   await page.waitForTimeout(200);
   const stillClosed = await page.evaluate(() => !document.getElementById("tabelaModalOverlay").classList.contains("open"));
   const panelAfterClose = await page.evaluate(() => document.querySelector(".ct-panel.active").id);
-  console.log("5) X fecha o modal:", stillClosed, "| continua na mesma aba de antes:", panelAfterClose === activePanelBefore);
+  check("5) X fecha o modal:", stillClosed, "| continua na mesma aba de antes:", panelAfterClose === activePanelBefore);
 
   // A aba Tabela normal (clicando na nav) continua funcionando do jeito
   // de sempre, sem modal.
@@ -128,7 +130,7 @@ async function newCareer(page, base, email) {
   await page.waitForTimeout(300);
   const tabRows = await page.evaluate(() => document.querySelectorAll("#standingsTable .mt-tr").length);
   const modalStillClosed = await page.evaluate(() => !document.getElementById("tabelaModalOverlay").classList.contains("open"));
-  console.log("6) Aba Tabela de sempre continua funcionando (20 linhas, sem modal aberto):", tabRows === 20, modalStillClosed);
+  check("6) Aba Tabela de sempre continua funcionando (20 linhas, sem modal aberto):", tabRows === 20, modalStillClosed);
 
   await browser.close();
 })().catch((e) => { console.error("FATAL:", e); process.exit(1); });

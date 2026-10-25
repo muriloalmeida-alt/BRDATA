@@ -5,6 +5,8 @@
 // comprimida (Content-Encoding: gzip em GET /api/career), e o cap
 // novo de CLUB_HISTORY_MAX no cliente (carreira.js).
 const { chromium } = require("playwright-core");
+const { check } = require("./_check");
+const { skipOnboarding } = require("./_startup");
 
 (async () => {
   const browser = await chromium.launch({ executablePath: process.env.PW_CHROMIUM_PATH || undefined, headless: true, args: ["--host-resolver-rules=MAP fonts.googleapis.com 127.0.0.1,MAP fonts.gstatic.com 127.0.0.1"] });
@@ -34,7 +36,7 @@ const { chromium } = require("playwright-core");
   await page.click(".m3-club-row");
   await page.waitForTimeout(150);
   await page.click("#btnConfirmClub");
-  await page.click("#btnOnboardSkip", { timeout: 2000 }).catch(() => {});
+  await skipOnboarding(page);
   await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
   await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
   await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
@@ -45,7 +47,7 @@ const { chromium } = require("playwright-core");
   // 1) Carreira "multi" real (marketScope sempre "multi" hoje) salva
   // sem 413 — o cenário relatado pelo usuário ("save ficou grande
   // demais") era exatamente na criação/1ª tentativa de salvar.
-  console.log("1) Carreira 'multi' real (~500-600KB de JSON bruto) salva sem 413:",
+  check("1) Carreira 'multi' real (~500-600KB de JSON bruto) salva sem 413:",
     putStatus === 200, JSON.stringify({ putStatus, putBodyBytes }));
 
   // 2) GET /api/career volta comprimido (Content-Encoding: gzip) e os
@@ -55,7 +57,7 @@ const { chromium } = require("playwright-core");
     const data = await res.json();
     return { contentEncoding: res.headers.get("content-encoding"), matches: JSON.stringify(data.career) === JSON.stringify(CAREER) };
   });
-  console.log("2) GET /api/career comprimido (Content-Encoding: gzip) e os dados batem 1:1:",
+  check("2) GET /api/career comprimido (Content-Encoding: gzip) e os dados batem 1:1:",
     check2.contentEncoding === "gzip" && check2.matches, JSON.stringify(check2));
 
   // 3) CLUB_HISTORY_MAX: forçar 20 trocas de clube nunca deixa mais de
@@ -67,7 +69,7 @@ const { chromium } = require("playwright-core");
     }
     return { length: CAREER.clubHistory.length };
   });
-  console.log("3) CLUB_HISTORY_MAX capa em 15 mesmo depois de 20 trocas de clube:", check3.length === 15, JSON.stringify(check3));
+  check("3) CLUB_HISTORY_MAX capa em 15 mesmo depois de 20 trocas de clube:", check3.length === 15, JSON.stringify(check3));
 
   // 4) Save antigo (sem o cap novo, > 15 entradas) é normalizado ao
   // carregar — mesmo tratamento de compatibilidade de qualquer outro
@@ -77,12 +79,12 @@ const { chromium } = require("playwright-core");
     migrateCareerDefaults();
     return { length: CAREER.clubHistory.length };
   });
-  console.log("4) Save antigo com clubHistory > 15 é normalizado ao carregar (compatibilidade preservada):", check4.length === 15, JSON.stringify(check4));
+  check("4) Save antigo com clubHistory > 15 é normalizado ao carregar (compatibilidade preservada):", check4.length === 15, JSON.stringify(check4));
 
   // 5) Depois de tudo isso, salvar continua funcionando normalmente
   // (nenhuma regressão na persistência normal do jogo).
   const ok5 = await page.evaluate(async () => await persistCareer());
-  console.log("5) persistCareer() continua funcionando normalmente depois de tudo isso:", ok5);
+  check("5) persistCareer() continua funcionando normalmente depois de tudo isso:", ok5);
 
   await browser.close();
 })().catch((e) => { console.error("FATAL:", e); process.exit(1); });

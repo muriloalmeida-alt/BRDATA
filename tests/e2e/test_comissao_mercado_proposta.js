@@ -4,6 +4,8 @@
 // MESMA proposta real do Mercado (openOfferModal), em vez de comprar
 // na hora (buyPlayer, removida). Ver suggestMarket em carreira.js.
 const { chromium } = require("playwright-core");
+const { check } = require("./_check");
+const { skipOnboarding } = require("./_startup");
 
 (async () => {
   const browser = await chromium.launch({ executablePath: process.env.PW_CHROMIUM_PATH || undefined, headless: true, args: ["--host-resolver-rules=MAP fonts.googleapis.com 127.0.0.1,MAP fonts.gstatic.com 127.0.0.1"] });
@@ -23,7 +25,7 @@ const { chromium } = require("playwright-core");
   await page.click(".m3-club-row");
   await page.waitForTimeout(150);
   await page.click("#btnConfirmClub");
-  await page.click("#btnOnboardSkip", { timeout: 2000 }).catch(() => {});
+  await skipOnboarding(page);
   await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
   await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
   await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
@@ -66,7 +68,7 @@ const { chromium } = require("playwright-core");
     const btn = [...document.querySelectorAll("#commissionSummaryList .m3-commission-icon-btn")].find((b) => b.title.startsWith("Mercado:"));
     return btn ? { disabled: btn.disabled, hasSuggestion: btn.classList.contains("has-suggestion"), title: btn.title } : null;
   });
-  console.log("1) Botão de Mercado está clicável (has-suggestion) com sugestão de verdade:",
+  check("1) Botão de Mercado está clicável (has-suggestion) com sugestão de verdade:",
     !!marketBtnInfo && !marketBtnInfo.disabled && marketBtnInfo.hasSuggestion, JSON.stringify({ suggestionBefore, marketBtnInfo }));
 
   const cashBefore = await page.evaluate(() => CAREER.finances.cash);
@@ -77,7 +79,7 @@ const { chromium } = require("playwright-core");
   // UX-COMISSAO-001 — o ícone abre primeiro a sugestão num diálogo de
   // confirmação; "Fazer proposta" é que abre a proposta real.
   const confirmLabel = await page.evaluate(() => document.querySelector('.m3-dialog-overlay [data-commission-act="apply"]')?.textContent || "");
-  console.log("1b) Ícone abre a sugestão com 'Fazer proposta' (nada aberto/comprado ainda):", confirmLabel === "Fazer proposta" && !(await page.evaluate(() => OFFER_CTX)), confirmLabel);
+  check("1b) Ícone abre a sugestão com 'Fazer proposta' (nada aberto/comprado ainda):", confirmLabel === "Fazer proposta" && !(await page.evaluate(() => OFFER_CTX)), confirmLabel);
   await page.click('.m3-dialog-overlay [data-commission-act="apply"]');
   await page.waitForTimeout(300);
 
@@ -91,13 +93,13 @@ const { chromium } = require("playwright-core");
     squadCount: CAREER.squad.length,
     toastVisible: getComputedStyle(document.getElementById("toast")).display !== "none" && document.getElementById("toast").classList.contains("show"),
   }));
-  console.log("2) Clicar abre a proposta real (não compra na hora, caixa/elenco intactos):",
+  check("2) Clicar abre a proposta real (não compra na hora, caixa/elenco intactos):",
     afterClick.offerOpen && !!afterClick.offerCtx && afterClick.cash === cashBefore && afterClick.squadCount === squadCountBefore,
     JSON.stringify({ offerOpen: afterClick.offerOpen, offerSub: afterClick.offerSub, offerCtx: afterClick.offerCtx, cashChanged: afterClick.cash !== cashBefore, squadChanged: afterClick.squadCount !== squadCountBefore }));
 
   // 2b) Não mostra o toast genérico de "aceita/aplicada" (seria
   // enganoso -- nada foi decidido ainda, só abriu a tela).
-  console.log("2b) Sem toast de 'aceita' precoce (a confirmação real é dentro da proposta):", !afterClick.toastVisible, afterClick.toastVisible);
+  check("2b) Sem toast de 'aceita' precoce (a confirmação real é dentro da proposta):", !afterClick.toastVisible, afterClick.toastVisible);
 
   // 3) Confirmar a proposta dentro do modal cria a negociação de
   // verdade (CAREER.pendingOffersOut), com o toast certo de "enviada".
@@ -108,7 +110,7 @@ const { chromium } = require("playwright-core");
     pendingCount: (CAREER.pendingOffersOut || []).length,
     toastTitle: document.querySelector("#toast .ct-toast-title")?.textContent || document.getElementById("toast").textContent,
   }));
-  console.log("3) Confirmar dentro do modal cria a proposta de verdade (pendingOffersOut) e mostra 'enviada ao <clube>':",
+  check("3) Confirmar dentro do modal cria a proposta de verdade (pendingOffersOut) e mostra 'enviada ao <clube>':",
     afterConfirm.offerClosed && afterConfirm.pendingCount === 1 && afterConfirm.toastTitle.includes("enviada"), JSON.stringify(afterConfirm));
 
   await browser.close();

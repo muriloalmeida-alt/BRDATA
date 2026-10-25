@@ -1,4 +1,6 @@
 const { chromium } = require("playwright-core");
+const { check } = require("./_check");
+const { skipOnboarding } = require("./_startup");
 (async () => {
   const browser = await chromium.launch({ executablePath: process.env.PW_CHROMIUM_PATH || undefined, headless: true, args: ["--host-resolver-rules=MAP fonts.googleapis.com 127.0.0.1,MAP fonts.gstatic.com 127.0.0.1"] });
   const page = await browser.newPage({ viewport: { width: 390, height: 700 } });
@@ -8,16 +10,16 @@ const { chromium } = require("playwright-core");
   // 1) Viewport meta bloqueia zoom
   await page.goto(base + "/carreira.html", { waitUntil: "domcontentloaded" });
   const vp = await page.evaluate(() => document.querySelector('meta[name="viewport"]').content);
-  console.log("1) viewport meta bloqueia zoom (maximum-scale=1, user-scalable=no):", vp.includes("maximum-scale=1.0") && vp.includes("user-scalable=no"), vp);
+  check("1) viewport meta bloqueia zoom (maximum-scale=1, user-scalable=no):", vp.includes("maximum-scale=1.0") && vp.includes("user-scalable=no"), vp);
   const touchAction = await page.evaluate(() => getComputedStyle(document.body).touchAction);
-  console.log("1b) touch-action:manipulation no body:", touchAction === "manipulation", touchAction);
+  check("1b) touch-action:manipulation no body:", touchAction === "manipulation", touchAction);
 
   const vpHist = await page.evaluate(async () => {
     const r = await fetch("/historico.html");
     const html = await r.text();
     return /maximum-scale=1\.0/.test(html) && /user-scalable=no/.test(html);
   });
-  console.log("1c) historico.html também bloqueia zoom:", vpHist);
+  check("1c) historico.html também bloqueia zoom:", vpHist);
 
   // login + criar carreira
   const email = `uxscroll${Date.now()}@teste.com`;
@@ -32,7 +34,7 @@ const { chromium } = require("playwright-core");
   await page.click(".m3-club-row");
   await page.waitForTimeout(150);
   await page.click("#btnConfirmClub");
-  await page.click("#btnOnboardSkip", { timeout: 2000 }).catch(() => {});
+  await skipOnboarding(page);
   await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
   await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
   await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
@@ -49,7 +51,7 @@ const { chromium } = require("playwright-core");
   await page.click('.m3-nav-item[data-panel="mercado"]');
   await page.waitForTimeout(150);
   const after = await page.evaluate(() => window.scrollY);
-  console.log("2) switchToPanel reseta o scroll (era > 0, virou 0):", before > 0 && after === 0, { before, after });
+  check("2) switchToPanel reseta o scroll (era > 0, virou 0):", before > 0 && after === 0, { before, after });
 
   // 3) Scroll interno de modal reseta ao reabrir
   await page.click(".m3-nav-item[data-panel='inicio'], .m3-nav-item[data-panel='central']").catch(() => {});
@@ -66,7 +68,7 @@ const { chromium } = require("playwright-core");
   await page.click("#btnOpenSettings");
   await page.waitForTimeout(150);
   const scrollAfter = await page.evaluate(() => document.getElementById("settingsBody").scrollTop);
-  console.log("3) Reabrir uma modal reseta o scroll interno dela:", scrollAfter === 0, { scrollBefore, scrollAfter });
+  check("3) Reabrir uma modal reseta o scroll interno dela:", scrollAfter === 0, { scrollBefore, scrollAfter });
 
   await browser.close();
 })();

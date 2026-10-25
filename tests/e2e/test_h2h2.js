@@ -1,4 +1,6 @@
 const { chromium } = require("playwright-core");
+const { check } = require("./_check");
+const { skipOnboarding } = require("./_startup");
 const { skipPreseason } = require("./_calendar_skip");
 (async () => {
   const browser = await chromium.launch({ executablePath: process.env.PW_CHROMIUM_PATH || undefined, headless: true, args: ["--host-resolver-rules=MAP fonts.googleapis.com 127.0.0.1,MAP fonts.gstatic.com 127.0.0.1"] });
@@ -19,7 +21,7 @@ const { skipPreseason } = require("./_calendar_skip");
   await page.click(".m3-club-row");
   await page.waitForTimeout(150);
   await page.click("#btnConfirmClub");
-  await page.click("#btnOnboardSkip", { timeout: 2000 }).catch(() => {});
+  await skipOnboarding(page);
   await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
   await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
   await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
@@ -40,7 +42,7 @@ const { skipPreseason } = require("./_calendar_skip");
     record: document.getElementById("h2hRecord").textContent,
     sub: document.getElementById("h2hSub").textContent,
   }));
-  console.log("1) H2H sem histórico:", before.record === "—" && /ainda não/.test(before.sub), JSON.stringify(before));
+  check("1) H2H sem histórico:", before.record === "—" && /ainda não/.test(before.sub), JSON.stringify(before));
   await page.click("#h2hClose");
   await page.waitForTimeout(150);
 
@@ -62,7 +64,7 @@ const { skipPreseason } = require("./_calendar_skip");
     formDots: [...document.querySelectorAll("#h2hFormRow .m3-form-dot")].map((d) => d.textContent),
     matchRows: [...document.querySelectorAll("#h2hMatchList .m3-match-row .m3-match-score")].map((d) => d.textContent),
   }));
-  console.log("2) H2H calcula V-E-D corretamente (2-1-1):", after.record === "2–1–1", JSON.stringify(after));
+  check("2) H2H calcula V-E-D corretamente (2-1-1):", after.record === "2–1–1", JSON.stringify(after));
 
   await page.screenshot({ path: "m3_31_h2h.png" });
   console.log("OK");

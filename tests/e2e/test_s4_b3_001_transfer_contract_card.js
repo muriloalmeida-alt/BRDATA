@@ -6,6 +6,8 @@
 // transferCardHTML()/contractCardHTML() direto via page.evaluate() e
 // injeta o HTML resultante no DOM pra medir tokens computados.
 const { chromium } = require("playwright-core");
+const { check } = require("./_check");
+const { skipOnboarding } = require("./_startup");
 
 (async () => {
   const browser = await chromium.launch({ executablePath: process.env.PW_CHROMIUM_PATH || undefined, headless: true, args: ["--host-resolver-rules=MAP fonts.googleapis.com 127.0.0.1,MAP fonts.gstatic.com 127.0.0.1"] });
@@ -27,7 +29,7 @@ const { chromium } = require("playwright-core");
   await page.click(".m3-club-row");
   await page.waitForTimeout(150);
   await page.click("#btnConfirmClub");
-  await page.click("#btnOnboardSkip", { timeout: 2000 }).catch(() => {});
+  await skipOnboarding(page);
   await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
   await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
   await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
@@ -69,7 +71,7 @@ const { chromium } = require("playwright-core");
     return result;
   });
   // --m3-on-surface:#E7E2DE = rgb(231,226,222); --m3-surface-container-high:#2C2A27 = rgb(44,42,39).
-  console.log("1) TransferCard: card/nome/clube/posição/status/detalhe/ação renderizam certo (tokens --m3-*):",
+  check("1) TransferCard: card/nome/clube/posição/status/detalhe/ação renderizam certo (tokens --m3-*):",
     tc.hasCard && tc.dataId === "p1" && tc.nameText === "Jogador Um" && tc.nameColor === "rgb(231, 226, 222)"
     && (tc.detailText || "").includes("Salário") && (tc.detailText || "").includes("Valor")
     && tc.statusText === "Disponível" && tc.statusClass.includes("gold")
@@ -97,7 +99,7 @@ const { chromium } = require("playwright-core");
     host.remove();
     return result;
   });
-  console.log("2) TransferCard sem overall/position omite badge/chip; metaText substitui a linha padrão:",
+  check("2) TransferCard sem overall/position omite badge/chip; metaText substitui a linha padrão:",
     !tc2.hasBadge && !tc2.hasPosChip && tc2.detailText.includes("aguardando resposta"), JSON.stringify(tc2));
 
   // 3) ContractCard: badge/nome/clube/salário/duração renderizam com os
@@ -126,7 +128,7 @@ const { chromium } = require("playwright-core");
     host.remove();
     return result;
   });
-  console.log("3) ContractCard: badge/detalhe(salário+duração)/status 'crimson' automático (expiring)/ação:",
+  check("3) ContractCard: badge/detalhe(salário+duração)/status 'crimson' automático (expiring)/ação:",
     cc.hasBadge && cc.detailText.includes("Contrato até 2026") && cc.statusClass.includes("crimson")
     && cc.statusText === "Vence em breve" && cc.infoOpenPlayer === "p3" && cc.hasAction,
     JSON.stringify(cc));
@@ -147,7 +149,7 @@ const { chromium } = require("playwright-core");
     host.remove();
     return result;
   });
-  console.log("4) ContractCard: statusVariant explícito respeitado (não força crimson sem expiring):",
+  check("4) ContractCard: statusVariant explícito respeitado (não força crimson sem expiring):",
     cc2.statusClass.includes("neutral") && !cc2.statusClass.includes("crimson"), JSON.stringify(cc2));
 
   // 5) Nenhum dos 2 componentes tem lógica de negócio embutida — são
@@ -158,7 +160,7 @@ const { chromium } = require("playwright-core");
     const b = transferCardHTML({ playerId: "x", playerName: "X", value: 100 });
     return { equal: a === b, touchesCareer: transferCardHTML.toString().includes("CAREER") || contractCardHTML.toString().includes("CAREER") };
   });
-  console.log("5) Componentes são puros (mesma entrada -> mesma saída, sem tocar CAREER):",
+  check("5) Componentes são puros (mesma entrada -> mesma saída, sem tocar CAREER):",
     pureCheck.equal && !pureCheck.touchesCareer, JSON.stringify(pureCheck));
 
   await browser.close();

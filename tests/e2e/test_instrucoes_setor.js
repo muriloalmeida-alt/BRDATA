@@ -2,6 +2,8 @@
 // 5 instruções cada em barra de 5 segmentos, com efeito REAL (camada
 // adicional sobre os 4 eixos gerais de Tática).
 const { chromium } = require("playwright-core");
+const { check } = require("./_check");
+const { skipOnboarding } = require("./_startup");
 
 (async () => {
   const browser = await chromium.launch({ executablePath: process.env.PW_CHROMIUM_PATH || undefined, headless: true, args: ["--host-resolver-rules=MAP fonts.googleapis.com 127.0.0.1,MAP fonts.gstatic.com 127.0.0.1"] });
@@ -21,7 +23,7 @@ const { chromium } = require("playwright-core");
   await page.click(".m3-club-row");
   await page.waitForTimeout(150);
   await page.click("#btnConfirmClub");
-  await page.click("#btnOnboardSkip", { timeout: 2000 }).catch(() => {});
+  await skipOnboarding(page);
   await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
   await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
   await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
@@ -48,7 +50,7 @@ const { chromium } = require("playwright-core");
       allNeutral: rows.every((r) => Number(r.dataset.level) === 3),
     };
   });
-  console.log("1) Abre na aba Defesa, 5 instruções certas, todas neutras:",
+  check("1) Abre na aba Defesa, 5 instruções certas, todas neutras:",
     check1.open && check1.activeTab === "defesa" && check1.count === 5 && check1.allNeutral
     && JSON.stringify(check1.labels) === JSON.stringify(["Linha defensiva", "Pressão pós-perda", "Compactação", "Saída de bola", "Bola parada defensiva"]),
     JSON.stringify(check1));
@@ -60,7 +62,7 @@ const { chromium } = require("playwright-core");
   await page.click('#sectorTabs [data-sector="ataque"]');
   await page.waitForTimeout(150);
   const ataqueLabels = await page.evaluate(() => [...document.querySelectorAll("#sectorInstrRows .m3-instr-label")].map((l) => l.textContent));
-  console.log("2) Meio e Ataque com 5 instruções cada, diferentes de Defesa:",
+  check("2) Meio e Ataque com 5 instruções cada, diferentes de Defesa:",
     meioLabels.length === 5 && ataqueLabels.length === 5 && JSON.stringify(meioLabels) !== JSON.stringify(ataqueLabels),
     JSON.stringify({ meioLabels, ataqueLabels }));
 
@@ -73,7 +75,7 @@ const { chromium } = require("playwright-core");
   });
   await page.waitForTimeout(200);
   const check3 = await page.evaluate(() => CAREER.lineup.sectorTactics.ataque.amplitudeOfensiva);
-  console.log("3) Clicar num segmento grava na hora em CAREER (sem precisar salvar):", check3 === 5, check3);
+  check("3) Clicar num segmento grava na hora em CAREER (sem precisar salvar):", check3 === 5, check3);
 
   // 4) Efeito REAL: combinedSectorTacticMod() reflete o valor não-neutro
   // definido, e combinedTacticMod() (usada de verdade em
@@ -83,7 +85,7 @@ const { chromium } = require("playwright-core");
     const combined = combinedTacticMod();
     return { sectorMod, combined, neitherIsNeutral: sectorMod.atk !== 1 && combined.atk !== 1 };
   });
-  console.log("4) combinedSectorTacticMod/combinedTacticMod refletem o ajuste (não ficam em 1/1 neutro):",
+  check("4) combinedSectorTacticMod/combinedTacticMod refletem o ajuste (não ficam em 1/1 neutro):",
     check4.neitherIsNeutral, JSON.stringify(check4));
 
   // 5) Migração: carreira SEM sectorTactics (save antigo simulado) migra
@@ -103,7 +105,7 @@ const { chromium } = require("playwright-core");
     const allNeutral = ["defesa", "meio", "ataque"].every((s) => Object.values(st[s]).every((v) => v === 3));
     return { allSectorsPresent, allNeutral };
   });
-  console.log("5) Save antigo sem sectorTactics migra pras 15 instruções neutras:", check5.allSectorsPresent && check5.allNeutral, JSON.stringify(check5));
+  check("5) Save antigo sem sectorTactics migra pras 15 instruções neutras:", check5.allSectorsPresent && check5.allNeutral, JSON.stringify(check5));
 
   await browser.close();
 })().catch((e) => { console.error("FATAL:", e); process.exit(1); });

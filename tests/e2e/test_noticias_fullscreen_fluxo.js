@@ -1,4 +1,6 @@
 const { chromium } = require("playwright-core");
+const { check } = require("./_check");
+const { skipOnboarding } = require("./_startup");
 const { skipPreseason } = require("./_calendar_skip");
 
 async function newCareer(page, base, email) {
@@ -13,7 +15,7 @@ async function newCareer(page, base, email) {
   await page.click(".m3-club-row");
   await page.waitForTimeout(150);
   await page.click("#btnConfirmClub");
-  await page.click("#btnOnboardSkip", { timeout: 2000 }).catch(() => {});
+  await skipOnboarding(page);
   await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
   await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
   await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
@@ -81,18 +83,18 @@ async function newCareer(page, base, email) {
     roundResultsOpen: document.getElementById("roundResultsOverlay").classList.contains("open"),
     continueVisible: !document.getElementById("newsFooter").classList.contains("hidden"),
   }));
-  console.log("1) Notícias abre em tela cheia ANTES dos Resultados da rodada:", newsState.newsOpen && newsState.isFullscreen && !newsState.roundResultsOpen);
+  check("1) Notícias abre em tela cheia ANTES dos Resultados da rodada:", newsState.newsOpen && newsState.isFullscreen && !newsState.roundResultsOpen);
   console.log("   Botão Continuar aparece (faz parte do fluxo pós-jogo):", newsState.continueVisible);
 
   // 2) Seção "Notícias do Brasileirão" com o feed de sempre.
   const brasileiraoSection = await page.evaluate(() => document.getElementById("newsFeatured").textContent.trim().length > 5);
-  console.log("2) Seção 'Notícias do Brasileirão' preenchida:", brasileiraoSection);
+  check("2) Seção 'Notícias do Brasileirão' preenchida:", brasileiraoSection);
 
   // 3) Seção "Notícias do seu time" mostra o lesionado e o suspenso.
   const teamNewsText = await page.evaluate(() => document.getElementById("newsTeamStatus").textContent);
   const injuredName = await page.evaluate(() => window.__injuredName);
   const suspendedName = await page.evaluate(() => window.__suspendedName);
-  console.log("3) Notícias do seu time mostra o lesionado:", teamNewsText.includes(injuredName.split(" ")[0]) || teamNewsText.includes("está fora, lesionado"));
+  check("3) Notícias do seu time mostra o lesionado:", teamNewsText.includes(injuredName.split(" ")[0]) || teamNewsText.includes("está fora, lesionado"));
   console.log("   ...e o suspenso:", teamNewsText.includes(suspendedName.split(" ")[0]) || teamNewsText.includes("está suspenso"));
 
   // 4) Botão de classificação abre o modal de tabela POR CIMA da tela
@@ -104,7 +106,7 @@ async function newCareer(page, base, email) {
     newsStillOpen: document.getElementById("newsOverlay").classList.contains("open"),
     rows: document.querySelectorAll("#standingsTableModal .mt-tr").length,
   }));
-  console.log("4) 'Ver classificação atualizada' abre o modal de tabela por cima:", tabelaState.tabelaOpen && tabelaState.newsStillOpen && tabelaState.rows === 20);
+  check("4) 'Ver classificação atualizada' abre o modal de tabela por cima:", tabelaState.tabelaOpen && tabelaState.newsStillOpen && tabelaState.rows === 20);
   await page.click("#tabelaModalClose");
   await page.waitForTimeout(200);
 
@@ -115,7 +117,7 @@ async function newCareer(page, base, email) {
     newsClosed: !document.getElementById("newsOverlay").classList.contains("open"),
     roundResultsOpen: document.getElementById("roundResultsOverlay").classList.contains("open"),
   }));
-  console.log("5) 'Continuar' fecha Notícias e abre Resultados da rodada:", afterContinue.newsClosed && afterContinue.roundResultsOpen);
+  check("5) 'Continuar' fecha Notícias e abre Resultados da rodada:", afterContinue.newsClosed && afterContinue.roundResultsOpen);
   await page.click("#btnRoundResultsContinue").catch(() => {});
   await page.waitForTimeout(200);
   await page.click("#tabelaModalClose").catch(() => {});
@@ -130,7 +132,7 @@ async function newCareer(page, base, email) {
   await page.waitForSelector("#newsOverlay.open");
   await page.waitForTimeout(150);
   const menuMode = await page.evaluate(() => document.getElementById("newsFooter").classList.contains("hidden"));
-  console.log("6) Aberta pelo menu, 'Continuar' fica escondido (é só consulta):", menuMode);
+  check("6) Aberta pelo menu, 'Continuar' fica escondido (é só consulta):", menuMode);
   await page.click("#newsClose");
 
   await browser.close();

@@ -8,6 +8,8 @@
 // reais (apito de início/fim + som de gol) disparam sem quebrar a
 // partida ao vivo de verdade.
 const { chromium } = require("playwright-core");
+const { check } = require("./_check");
+const { skipOnboarding } = require("./_startup");
 const { skipPreseason } = require("./_calendar_skip");
 
 async function newCareer(page, base, email) {
@@ -22,7 +24,7 @@ async function newCareer(page, base, email) {
   await page.click(".m3-club-row");
   await page.waitForTimeout(150);
   await page.click("#btnConfirmClub");
-  await page.click("#btnOnboardSkip", { timeout: 2000 }).catch(() => {});
+  await skipOnboarding(page);
   await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
   await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
   await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
@@ -47,7 +49,7 @@ async function newCareer(page, base, email) {
 
   // 1) Default é ligado (sem nada salvo ainda em localStorage).
   const defaultOn = await page.evaluate(() => typeof SFX_ENABLED === "boolean" && SFX_ENABLED === true);
-  console.log("1) Efeitos sonoros vêm ligados por padrão:", defaultOn);
+  check("1) Efeitos sonoros vêm ligados por padrão:", defaultOn);
 
   // 2) Toggle em Configurações desliga de verdade e persiste em
   // localStorage (dado de DISPOSITIVO, não de conta/carreira).
@@ -56,11 +58,11 @@ async function newCareer(page, base, email) {
   await page.click("#btnOpenSettings");
   await page.waitForTimeout(200);
   const sfxToggle = await page.$("#settingsSfxToggleBtn");
-  console.log("2a) Toggle 'Efeitos sonoros' existe em Configurações:", !!sfxToggle);
+  check("2a) Toggle 'Efeitos sonoros' existe em Configurações:", !!sfxToggle);
   await page.click("#settingsSfxToggleBtn");
   await page.waitForTimeout(100);
   const offState = await page.evaluate(() => ({ sfxEnabled: SFX_ENABLED, stored: localStorage.getItem("mt_sfx_enabled"), toggleOn: document.getElementById("settingsSfxToggleBtn").classList.contains("on") }));
-  console.log("2b) Desligar o toggle atualiza SFX_ENABLED, localStorage e a classe visual:", offState.sfxEnabled === false && offState.stored === "0" && offState.toggleOn === false, JSON.stringify(offState));
+  check("2b) Desligar o toggle atualiza SFX_ENABLED, localStorage e a classe visual:", offState.sfxEnabled === false && offState.stored === "0" && offState.toggleOn === false, JSON.stringify(offState));
 
   // 3) Com som desligado, chamar as funções de som não cria contexto
   // nenhum (sfxCtx() retorna null) nem estoura erro.
@@ -68,7 +70,7 @@ async function newCareer(page, base, email) {
     playWhistle(1); playGoal(true); playGoal(false); startCrowdAmbience(); stopCrowdAmbience();
     return SFX_CTX === null;
   });
-  console.log("3) Com som desligado, as funções não criam AudioContext (no-op silencioso):", disabledNoop);
+  check("3) Com som desligado, as funções não criam AudioContext (no-op silencioso):", disabledNoop);
 
   // 4) Religar o toggle e confirmar que as funções agora criam um
   // AudioContext de verdade e não estouram erro nenhum. Achado real
@@ -91,7 +93,7 @@ async function newCareer(page, base, email) {
   await page.click("#settingsSfxToggleBtn");
   await page.waitForTimeout(100);
   const instantFeedback = await page.evaluate(() => window.__oscCountBeforeToggle > 0);
-  console.log("4a) Ligar o toggle já toca um apito de confirmação na hora (sem precisar esperar uma partida):", instantFeedback);
+  check("4a) Ligar o toggle já toca um apito de confirmação na hora (sem precisar esperar uma partida):", instantFeedback);
   const enabledWorks = await page.evaluate(() => {
     playWhistle(1);
     playGoal(true);
@@ -102,7 +104,7 @@ async function newCareer(page, base, email) {
     stopCrowdAmbience();
     return { stored: localStorage.getItem("mt_sfx_enabled"), hasCtx, hasCrowd, crowdStoppedAfter: SFX_CROWD_SOURCE === null };
   });
-  console.log("4) Religado, as funções criam AudioContext real e a torcida ambiente liga/desliga:", enabledWorks.stored === "1" && enabledWorks.hasCtx && enabledWorks.hasCrowd && enabledWorks.crowdStoppedAfter, JSON.stringify(enabledWorks));
+  check("4) Religado, as funções criam AudioContext real e a torcida ambiente liga/desliga:", enabledWorks.stored === "1" && enabledWorks.hasCtx && enabledWorks.hasCrowd && enabledWorks.crowdStoppedAfter, JSON.stringify(enabledWorks));
 
   // Fecha Configurações antes de seguir pro fluxo real de partida.
   await page.evaluate(() => { closeSettingsScreen(); });
@@ -119,7 +121,7 @@ async function newCareer(page, base, email) {
   await page.click("#btnPreMatchGo");
   await page.waitForSelector("#liveMatchOverlay.open", { timeout: 5000 });
   const kickoff = await page.evaluate(() => ({ hasCtx: !!SFX_CTX, hasCrowd: !!SFX_CROWD_SOURCE }));
-  console.log("5) Apito de início + torcida ambiente disparam ao abrir a partida:", kickoff.hasCtx && kickoff.hasCrowd, JSON.stringify(kickoff));
+  check("5) Apito de início + torcida ambiente disparam ao abrir a partida:", kickoff.hasCtx && kickoff.hasCrowd, JSON.stringify(kickoff));
 
   // 6) "Pular pro fim" resolve a partida inteira (com possíveis gols,
   // cada um chamando playGoal via showNextGoalHighlight) sem nenhum
@@ -128,7 +130,7 @@ async function newCareer(page, base, email) {
   await page.waitForSelector("#liveMatchOverlay:not(.open)", { timeout: 8000 }).catch(() => {});
   await page.waitForTimeout(600);
   const afterMatch = await page.evaluate(() => ({ overlayOpen: document.getElementById("liveMatchOverlay").classList.contains("open"), crowdStopped: SFX_CROWD_SOURCE === null }));
-  console.log("6) Partida termina normalmente (sem travar) e a torcida ambiente para no apito final:", !afterMatch.overlayOpen && afterMatch.crowdStopped, JSON.stringify(afterMatch));
+  check("6) Partida termina normalmente (sem travar) e a torcida ambiente para no apito final:", !afterMatch.overlayOpen && afterMatch.crowdStopped, JSON.stringify(afterMatch));
 
   await browser.close();
   console.log("OK");

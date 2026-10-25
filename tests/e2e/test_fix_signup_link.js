@@ -1,4 +1,5 @@
 const { chromium } = require("playwright-core");
+const { check } = require("./_check");
 (async () => {
   const browser = await chromium.launch({
     executablePath: process.env.PW_CHROMIUM_PATH || undefined,
@@ -16,7 +17,7 @@ const { chromium } = require("playwright-core");
   await page.goto(base + "/carreira.html", { waitUntil: "load" });
   await page.waitForTimeout(500);
   const loginScreenVisible = await page.evaluate(() => !document.getElementById("screenLoginRequired").classList.contains("hidden"));
-  console.log("1) Tela de login do Modo Técnico aparece sem sessão:", loginScreenVisible);
+  check("1) Tela de login do Modo Técnico aparece sem sessão:", loginScreenVisible);
 
   const linkHref = await page.evaluate(() => document.querySelector('#screenLoginRequired a[href^="/"]').getAttribute("href"));
   console.log("   Link 'Cadastre-se' aponta pra:", linkHref);
@@ -28,13 +29,13 @@ const { chromium } = require("playwright-core");
   await page.waitForTimeout(600);
 
   const urlAfter = page.url();
-  console.log("2) URL depois do clique:", urlAfter);
+  check("2) URL depois do clique:", urlAfter);
 
   const gateVisible = await page.evaluate(() => document.getElementById("authGate").style.display);
   const signupVisible = await page.evaluate(() => document.getElementById("gateSignupView").style.display);
   const loginVisible = await page.evaluate(() => document.getElementById("gateLoginView").style.display);
   console.log("   Gate visível:", gateVisible, "| view cadastro:", signupVisible, "| view login:", loginVisible);
-  console.log("3) Corrigido -- abre direto a tela de CADASTRO (não a home comum):", gateVisible === "flex" && signupVisible === "block");
+  check("3) Corrigido -- abre direto a tela de CADASTRO (não a home comum):", gateVisible === "flex" && signupVisible === "block");
 
   // 4) Confirma que o cadastro em si continua funcionando dali.
   await page.waitForSelector("#gatePlansGrid .plan-card", { timeout: 5000 });
@@ -48,10 +49,10 @@ const { chromium } = require("playwright-core");
   await page.click("#gateSignupSubmit");
   await page.waitForTimeout(1200);
   const successMsg = await page.evaluate(() => document.getElementById("gateLoginNotice")?.textContent || "");
-  console.log("4) Cadastro concluído com sucesso a partir desse fluxo:", successMsg.includes("Conta criada"));
+  check("4) Cadastro concluído com sucesso a partir desse fluxo:", successMsg.includes("Conta criada"));
 
   // 5) URL com ?signup=1 não fica "grudada" (limpa depois de processar).
-  console.log("5) URL final sem o parâmetro signup pendurado:", !urlAfter.includes("signup=1") || page.url().indexOf("signup=1") === -1);
+  check("5) URL final sem o parâmetro signup pendurado:", !urlAfter.includes("signup=1") || page.url().indexOf("signup=1") === -1);
   console.log("   URL final:", page.url());
 
   await browser.close();

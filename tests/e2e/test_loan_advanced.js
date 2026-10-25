@@ -1,4 +1,6 @@
 const { chromium } = require("playwright-core");
+const { check } = require("./_check");
+const { skipOnboarding } = require("./_startup");
 
 async function newCareer(page, base, email) {
   await page.goto(base + "/", { waitUntil: "load" });
@@ -12,7 +14,7 @@ async function newCareer(page, base, email) {
   await page.click(".m3-club-row");
   await page.waitForTimeout(150);
   await page.click("#btnConfirmClub");
-  await page.click("#btnOnboardSkip", { timeout: 2000 }).catch(() => {});
+  await skipOnboarding(page);
   await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
   await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
   await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
@@ -67,7 +69,7 @@ async function putCareer(page, career) {
     const found = squad.find((p) => p.id === outPlayer.id);
     if (found) { loanedOutFound = { clubId, returnRound: found.loanReturnRound, buyOption: found.loanBuyOption }; break; }
   }
-  console.log("1) Modal 'out': campo % salário escondido:", wagePctHiddenOut, "| campo valor cláusula aparece ao escolher 'obrigatoria':", buyValueFieldVisible);
+  check("1) Modal 'out': campo % salário escondido:", wagePctHiddenOut, "| campo valor cláusula aparece ao escolher 'obrigatoria':", buyValueFieldVisible);
   console.log("   Saiu do elenco:", !career.squad.some((p) => p.id === outPlayer.id), "| loanReturnRound = startRound+19:", loanedOutFound && loanedOutFound.returnRound === startRound + 19, "| cláusula obrigatória de 5M salva:", loanedOutFound && loanedOutFound.buyOption && loanedOutFound.buyOption.mandatory === true && loanedOutFound.buyOption.value === 5000000);
 
   // Avança rodadas até o loanReturnRound -- cláusula obrigatória deve
@@ -85,7 +87,7 @@ async function putCareer(page, career) {
   career = await getCareer(page);
   const stillMineAfterClause = career.squad.some((p) => p.id === outPlayer.id);
   const permanentlyAtBuyer = (career.leagueSquads[String(loanedOutFound.clubId)] || []).find((p) => p.id === outPlayer.id);
-  console.log("2) Após rodada da cláusula obrigatória -- jogador NÃO voltou (permanece vendido):", !stillMineAfterClause, "| está permanentemente no clube comprador sem onLoanFromClubId:", !!permanentlyAtBuyer && !permanentlyAtBuyer.onLoanFromClubId);
+  check("2) Após rodada da cláusula obrigatória -- jogador NÃO voltou (permanece vendido):", !stillMineAfterClause, "| está permanentemente no clube comprador sem onLoanFromClubId:", !!permanentlyAtBuyer && !permanentlyAtBuyer.onLoanFromClubId);
   console.log("   Caixa recebeu os 5M da cláusula:", career.finances.cash >= cashAfterLoanOut + 5000000 - 1);
 
   // ===== TESTE 2: Empréstimo IN com % de salário customizado (100%) e sem cláusula =====
@@ -106,7 +108,7 @@ async function putCareer(page, career) {
   await page.waitForTimeout(300);
   career = await getCareer(page);
   const loanedIn = career.squad.find((p) => p.id === otherEntry.id);
-  console.log("3) Modal 'in': campo % salário VISÍVEL:", wagePctVisibleIn);
+  check("3) Modal 'in': campo % salário VISÍVEL:", wagePctVisibleIn);
   console.log("   Jogador emprestado IN com 100% do salário original:", loanedIn && loanedIn.wage === otherEntry.wage, "| loanReturnRound null (temporada inteira):", loanedIn && loanedIn.loanReturnRound == null);
 
   // ===== TESTE 3: virada de temporada devolve quem ficou pra "temporada inteira" =====
@@ -121,7 +123,7 @@ async function putCareer(page, career) {
   career = await getCareer(page);
   const inPlayerGone = !career.squad.some((p) => p.id === otherEntry.id);
   const backAtOrigin = (career.leagueSquads[String(otherEntry.clubId)] || []).find((p) => p.id === otherEntry.id);
-  console.log("4) Empréstimo 'temporada inteira' voltou na virada de temporada:", inPlayerGone, "| salário restaurado no clube de origem:", backAtOrigin && backAtOrigin.wage === otherEntry.wage);
+  check("4) Empréstimo 'temporada inteira' voltou na virada de temporada:", inPlayerGone, "| salário restaurado no clube de origem:", backAtOrigin && backAtOrigin.wage === otherEntry.wage);
 
   await browser.close();
 })().catch((e) => { console.error("FATAL:", e); process.exit(1); });

@@ -1,4 +1,6 @@
 const { chromium } = require("playwright-core");
+const { check } = require("./_check");
+const { skipOnboarding } = require("./_startup");
 (async () => {
   const browser = await chromium.launch({ executablePath: process.env.PW_CHROMIUM_PATH || undefined, headless: true, args: ["--host-resolver-rules=MAP fonts.googleapis.com 127.0.0.1,MAP fonts.gstatic.com 127.0.0.1"] });
   const page = await browser.newPage({ viewport: { width: 390, height: 900 } });
@@ -18,7 +20,7 @@ const { chromium } = require("playwright-core");
   await page.click(".m3-club-row");
   await page.waitForTimeout(150);
   await page.click("#btnConfirmClub");
-  await page.click("#btnOnboardSkip", { timeout: 2000 }).catch(() => {});
+  await skipOnboarding(page);
   await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
   await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
   await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
@@ -37,7 +39,7 @@ const { chromium } = require("playwright-core");
     sub: document.getElementById("h2hSub").textContent,
     oppName: document.getElementById("h2hOppName").textContent,
   }));
-  console.log("1) H2H abre sem histórico ainda:", before.record === "—" && /nunca/.test(before.sub), JSON.stringify(before));
+  check("1) H2H abre sem histórico ainda:", before.record === "—" && /nunca/.test(before.sub), JSON.stringify(before));
   await page.click("#h2hClose");
   await page.waitForTimeout(150);
 
@@ -75,7 +77,7 @@ const { chromium } = require("playwright-core");
     }
   }
   const matchLogLen = await page.evaluate(() => (CAREER.matchLog || []).length);
-  console.log("2) matchLog registrou as 3 partidas jogadas:", matchLogLen === 3, matchLogLen);
+  check("2) matchLog registrou as 3 partidas jogadas:", matchLogLen === 3, matchLogLen);
 
   await page.click("#nextMatchBox");
   await page.waitForSelector("#h2hOverlay.open", { timeout: 3000 });
@@ -84,7 +86,7 @@ const { chromium } = require("playwright-core");
     matchListRows: document.querySelectorAll("#h2hMatchList .m3-match-row").length,
     formDots: document.querySelectorAll("#h2hFormRow .m3-form-dot").length,
   }));
-  console.log("3) H2H mostra a lista de confrontos (mesmo sem repetir adversário, deve ser 0 rows contra o NOVO adversário):", after.matchListRows === 0, JSON.stringify(after));
+  check("3) H2H mostra a lista de confrontos (mesmo sem repetir adversário, deve ser 0 rows contra o NOVO adversário):", after.matchListRows === 0, JSON.stringify(after));
 
   await page.screenshot({ path: "m3_31_h2h.png" });
   console.log("OK");

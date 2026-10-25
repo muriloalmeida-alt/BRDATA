@@ -13,6 +13,8 @@
 // continua 100% preservado — nenhuma mudança de lógica, só de token
 // visual, conforme o escopo.
 const { chromium } = require("playwright-core");
+const { check } = require("./_check");
+const { skipOnboarding } = require("./_startup");
 
 (async () => {
   const browser = await chromium.launch({ executablePath: process.env.PW_CHROMIUM_PATH || undefined, headless: true, args: ["--host-resolver-rules=MAP fonts.googleapis.com 127.0.0.1,MAP fonts.gstatic.com 127.0.0.1"] });
@@ -33,7 +35,7 @@ const { chromium } = require("playwright-core");
   await page.click(".m3-club-row");
   await page.waitForTimeout(150);
   await page.click("#btnConfirmClub");
-  await page.click("#btnOnboardSkip", { timeout: 2000 }).catch(() => {});
+  await skipOnboarding(page);
   await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
   await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
   await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
@@ -54,7 +56,7 @@ const { chromium } = require("playwright-core");
     open: document.getElementById("schemesOverlay").classList.contains("open"),
     emptyMsg: document.getElementById("schemesList").textContent.includes("Nenhum esquema salvo"),
   }));
-  console.log("1) 'Meus esquemas' abre vazio pelo Menu (casca já --m3-* de antes, sem mudança):", check1.open && check1.emptyMsg, JSON.stringify(check1));
+  check("1) 'Meus esquemas' abre vazio pelo Menu (casca já --m3-* de antes, sem mudança):", check1.open && check1.emptyMsg, JSON.stringify(check1));
 
   // 2) Abre o sheet "Novo esquema" e confere que o campo de nome
   // (#newSchemeNameInput) agora resolve pra --m3-on-surface (dentro de
@@ -73,7 +75,7 @@ const { chromium } = require("playwright-core");
   });
   const hexToRgb = (hex) => { const h = hex.replace("#", ""); const n = parseInt(h, 16); return `rgb(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255})`; };
   const inputColorOk = tokens.inputColor === hexToRgb(tokens.onSurface);
-  console.log("2) Campo 'Novo esquema' migrado (envolvido em .mt-form-row, cor resolve pra --m3-on-surface, não mais --mt-ivory-50):",
+  check("2) Campo 'Novo esquema' migrado (envolvido em .mt-form-row, cor resolve pra --m3-on-surface, não mais --mt-ivory-50):",
     tokens.wrappedInFormRow && inputColorOk, JSON.stringify({ ...tokens, inputColorOk }));
 
   // 3) Comportamento 100% preservado: salvar o esquema atual funciona
@@ -106,7 +108,7 @@ const { chromium } = require("playwright-core");
       total: CAREER.tacticalSchemes.length,
     };
   });
-  console.log("3) Salvar esquema continua funcionando igual (aparece na lista, marcado ATIVO):",
+  check("3) Salvar esquema continua funcionando igual (aparece na lista, marcado ATIVO):",
     check3.name === "Padrão M3" && check3.isActive && check3.total === 1, JSON.stringify(check3));
 
   // 4) Apagar continua funcionando igual (some da lista, volta ao vazio).
@@ -118,7 +120,7 @@ const { chromium } = require("playwright-core");
     emptyMsg: document.getElementById("schemesList").textContent.includes("Nenhum esquema salvo"),
     total: CAREER.tacticalSchemes.length,
   }));
-  console.log("4) Apagar esquema continua funcionando igual (volta ao estado vazio):", check4.emptyMsg && check4.total === 0, JSON.stringify(check4));
+  check("4) Apagar esquema continua funcionando igual (volta ao estado vazio):", check4.emptyMsg && check4.total === 0, JSON.stringify(check4));
 
   await browser.close();
 })().catch((e) => { console.error("FATAL:", e); process.exit(1); });

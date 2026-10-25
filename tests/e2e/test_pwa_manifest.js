@@ -1,6 +1,7 @@
 // Verifica o manifest e as tags PWA da página do Modo Técnico
 // (carreira.html) sem afetar o manifest/instalação do site principal.
 const { chromium } = require("playwright-core");
+const { check } = require("./_check");
 
 (async () => {
   const browser = await chromium.launch({ executablePath: process.env.PW_CHROMIUM_PATH || undefined, headless: true, args: ["--host-resolver-rules=MAP fonts.googleapis.com 127.0.0.1,MAP fonts.gstatic.com 127.0.0.1"] });
@@ -23,7 +24,7 @@ const { chromium } = require("playwright-core");
       pageTitle: document.title,
     };
   });
-  console.log("1) carreira.html referencia manifest-treinador.json (próprio, não o do site):", headInfo.manifestHref === "manifest-treinador.json");
+  check("1) carreira.html referencia manifest-treinador.json (próprio, não o do site):", headInfo.manifestHref === "manifest-treinador.json");
   console.log("   apple-mobile-web-app-title = 'BR Treinador':", headInfo.appleTitle === "BR Treinador");
   console.log("   apple-touch-icon presente:", !!headInfo.appleTouchIcon);
   console.log("   theme-color definida:", !!headInfo.themeColor);
@@ -37,7 +38,7 @@ const { chromium } = require("playwright-core");
     const res = await fetch(url);
     return { ok: res.ok, contentType: res.headers.get("content-type"), body: await res.json() };
   }, manifestUrl);
-  console.log("2) manifest-treinador.json responde 200:", manifestRes.ok);
+  check("2) manifest-treinador.json responde 200:", manifestRes.ok);
   console.log("   name/short_name = 'BR Treinador':", manifestRes.body.name === "BR Treinador" && manifestRes.body.short_name === "BR Treinador");
   console.log("   start_url aponta pra carreira.html:", manifestRes.body.start_url.includes("carreira.html"));
   console.log("   tem ícone maskable de 512 (brasão em destaque, área de segurança do Android):", manifestRes.body.icons.some((i) => i.purpose === "maskable" && i.sizes === "512x512"));
@@ -53,14 +54,14 @@ const { chromium } = require("playwright-core");
     }
     return results;
   }, manifestRes.body.icons);
-  console.log("3) Todos os ícones do manifest existem (200):", iconChecks.every((r) => r.ok), JSON.stringify(iconChecks.filter((r) => !r.ok)));
+  check("3) Todos os ícones do manifest existem (200):", iconChecks.every((r) => r.ok), JSON.stringify(iconChecks.filter((r) => !r.ok)));
 
   // 4) O manifest do site PRINCIPAL continua intacto (não foi
   // mexido/sobrescrito por engano).
   await page.goto(base + "/", { waitUntil: "domcontentloaded" });
   const mainManifestHref = await page.evaluate(() => document.querySelector('link[rel="manifest"]')?.getAttribute("href"));
   const mainManifest = await page.evaluate(async () => (await (await fetch("/manifest.json")).json()));
-  console.log("4) index.html continua referenciando manifest.json (não mudou):", mainManifestHref === "manifest.json");
+  check("4) index.html continua referenciando manifest.json (não mudou):", mainManifestHref === "manifest.json");
   console.log("   manifest.json do site principal continua 'BR Data' (intacto):", mainManifest.name === "BR Data — Brasileirão 2026" && mainManifest.short_name === "BR Data");
 
   await browser.close();

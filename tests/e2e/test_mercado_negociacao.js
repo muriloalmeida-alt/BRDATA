@@ -3,6 +3,8 @@
 // negociação de compra: proposta demora rodadas pra responder, pode
 // aumentar/retirar, contraproposta do clube, parcelamento real.
 const { chromium } = require("playwright-core");
+const { check } = require("./_check");
+const { skipOnboarding } = require("./_startup");
 
 (async () => {
   const browser = await chromium.launch({ executablePath: process.env.PW_CHROMIUM_PATH || undefined, headless: true, args: ["--host-resolver-rules=MAP fonts.googleapis.com 127.0.0.1,MAP fonts.gstatic.com 127.0.0.1"] });
@@ -22,7 +24,7 @@ const { chromium } = require("playwright-core");
   await page.click(".m3-club-row");
   await page.waitForTimeout(150);
   await page.click("#btnConfirmClub");
-  await page.click("#btnOnboardSkip", { timeout: 2000 }).catch(() => {});
+  await skipOnboarding(page);
   await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
   await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
   await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
@@ -40,7 +42,7 @@ const { chromium } = require("playwright-core");
     const btn = document.querySelector("#marketList [data-buy]");
     return { exists: !!btn, club: btn?.dataset.club, playerId: btn?.dataset.buy };
   });
-  console.log("0) Achou um botão de propor no Mercado:", buyBtnInfo.exists, JSON.stringify(buyBtnInfo));
+  check("0) Achou um botão de propor no Mercado:", buyBtnInfo.exists, JSON.stringify(buyBtnInfo));
   await page.click("#marketList [data-buy]");
   await page.waitForTimeout(200);
   const modalInfo = await page.evaluate(() => ({
@@ -51,7 +53,7 @@ const { chromium } = require("playwright-core");
     value: Number(document.getElementById("offerValueInput").value),
     sub: document.querySelector(".m3-dialog-overlay.open .m3-dialog-sub")?.textContent || "",
   }));
-  console.log("1) Clicar 'Comprar' abre a modal de proposta com o valor de mercado pré-preenchido:",
+  check("1) Clicar 'Comprar' abre a modal de proposta com o valor de mercado pré-preenchido:",
     modalInfo.open && modalInfo.value > 0 && modalInfo.sub.length > 5, JSON.stringify(modalInfo));
 
   // 2) Propor um valor MENOR que o de mercado, parcelado em 2x -- vira
@@ -73,7 +75,7 @@ const { chromium } = require("playwright-core");
       modalClosed: !document.querySelector(".m3-dialog-overlay.open"),
     };
   }, { playerId: buyBtnInfo.playerId, cashBefore });
-  console.log("2) Propor valor menor (70%) parcelado em 2x cria a proposta, cash não muda ainda, ícone vira 'pendente':",
+  check("2) Propor valor menor (70%) parcelado em 2x cria a proposta, cash não muda ainda, ícone vira 'pendente':",
     afterOffer.cashUnchanged && afterOffer.offer && afterOffer.offer.installments === 2 && afterOffer.offer.status === "pending"
     && afterOffer.pendingIconShown && afterOffer.modalClosed, JSON.stringify(afterOffer));
 
@@ -92,7 +94,7 @@ const { chromium } = require("playwright-core");
     badgeText: document.getElementById("myOffersBadge").textContent,
     badgeHidden: document.getElementById("myOffersBadge").classList.contains("hidden"),
   }));
-  console.log("3) 'Minhas propostas' abre com 1 proposta listada e o badge mostrando 1:",
+  check("3) 'Minhas propostas' abre com 1 proposta listada e o badge mostrando 1:",
     myOffersInfo.open && myOffersInfo.rowCount === 1 && myOffersInfo.badgeText === "1" && !myOffersInfo.badgeHidden, JSON.stringify(myOffersInfo));
   await page.click("#myOffersClose");
   await page.waitForTimeout(150);
@@ -106,7 +108,7 @@ const { chromium } = require("playwright-core");
     stillPending: !!CAREER.pendingOffersOut.find((x) => String(x.playerId) === String(pid)),
     buyIconBack: !!document.querySelector(`#marketList [data-buy="${pid}"]`),
   }), buyBtnInfo.playerId);
-  console.log("4) Retirar a proposta some da lista e volta o botão de propor normal:",
+  check("4) Retirar a proposta some da lista e volta o botão de propor normal:",
     !afterWithdraw.stillPending && afterWithdraw.buyIconBack, JSON.stringify(afterWithdraw));
 
   // 5) Proposta ACEITA (ratio 1.0, RNG forçado pra dentro da faixa de
@@ -138,7 +140,7 @@ const { chromium } = require("playwright-core");
       stillPending: !!CAREER.pendingOffersOut.find((x) => x.id === "test_offer_accept"),
     };
   }, target);
-  console.log("5) Proposta aceita (ratio 1.0) entra no elenco, cobra só a 1ª de 3 parcelas, agenda as outras 2:",
+  check("5) Proposta aceita (ratio 1.0) entra no elenco, cobra só a 1ª de 3 parcelas, agenda as outras 2:",
     check5.inSquad && check5.cashDelta === check5.expectedFirst && check5.installmentsLeft === 1
     && check5.installmentsAmount === check5.expectedFirst && check5.installmentsRoundsLeft === 2 && !check5.stillPending,
     JSON.stringify(check5));
@@ -155,7 +157,7 @@ const { chromium } = require("playwright-core");
     const after = CAREER.finances.cash;
     return { before, mid, after, paid1, paid2, remaining: CAREER.pendingInstallments.length };
   });
-  console.log("5b) Parcelas restantes descontam o caixa rodada a rodada e terminam quitadas:",
+  check("5b) Parcelas restantes descontam o caixa rodada a rodada e terminam quitadas:",
     check5b.before - check5b.mid === check5b.paid1 && check5b.mid - check5b.after === check5b.paid2
     && check5b.paid1 === check5b.paid2 && check5b.remaining === 0, JSON.stringify(check5b));
 
@@ -194,7 +196,7 @@ const { chromium } = require("playwright-core");
       stillPending: !!CAREER.pendingOffersOut.find((x) => x.id === "test_offer_reject"),
     };
   }, target2);
-  console.log("6) Proposta muito abaixo do valor de mercado (50%) é recusada direto, sem afetar nada:",
+  check("6) Proposta muito abaixo do valor de mercado (50%) é recusada direto, sem afetar nada:",
     check6.cashUnchanged && check6.stillInLeagueSquad && !check6.stillPending, JSON.stringify(check6));
   await page.evaluate(() => renderMercado());
 
@@ -217,7 +219,7 @@ const { chromium } = require("playwright-core");
     const o = CAREER.pendingOffersOut.find((x) => x.id === "test_offer_counter");
     return { countered: o && o.status === "countered", counterValue: o?.counterValue, offerValue: o?.offerValue, marketValue: p.value };
   }, target3);
-  console.log("7) Ratio no meio-termo (65%) com RNG na faixa certa vira contraproposta (não recusa nem aceita direto):",
+  check("7) Ratio no meio-termo (65%) com RNG na faixa certa vira contraproposta (não recusa nem aceita direto):",
     check7.countered && check7.counterValue > check7.offerValue && check7.counterValue <= check7.marketValue, JSON.stringify(check7));
 
   // Responder a coletiva de imprensa da contratação polêmica (se
@@ -231,7 +233,7 @@ const { chromium } = require("playwright-core");
     hasAcceptBtn: !!document.querySelector('[data-acceptcounter="test_offer_counter"]'),
     text: document.getElementById("myOffersList").textContent,
   }));
-  console.log("7b) 'Minhas propostas' mostra a contraproposta com botão de aceitar:", counterRowInfo.hasAcceptBtn && counterRowInfo.text.includes("Contraproposta"), JSON.stringify({ hasAcceptBtn: counterRowInfo.hasAcceptBtn }));
+  check("7b) 'Minhas propostas' mostra a contraproposta com botão de aceitar:", counterRowInfo.hasAcceptBtn && counterRowInfo.text.includes("Contraproposta"), JSON.stringify({ hasAcceptBtn: counterRowInfo.hasAcceptBtn }));
 
   // Passos anteriores já compraram/parcelaram um craque nesta mesma
   // carreira de teste, deixando pouca (ou nenhuma) folga real de teto
@@ -252,7 +254,7 @@ const { chromium } = require("playwright-core");
       stillPending: !!CAREER.pendingOffersOut.find((x) => x.id === "test_offer_counter"),
     };
   }, target3);
-  console.log("7c) Aceitar a contraproposta fecha na hora, cobrando o valor pedido pelo clube:",
+  check("7c) Aceitar a contraproposta fecha na hora, cobrando o valor pedido pelo clube:",
     check7c.cashDelta === check7c.counterValue && check7c.inSquad && !check7c.stillPending, JSON.stringify(check7c));
 
   await page.screenshot({ path: "screens/mercado_minhas_propostas.png" });

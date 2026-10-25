@@ -1,6 +1,8 @@
 // Verifica que o toast nunca fica atrás/colado nos botões fixos do
 // rodapé (nav, barra de ação, rodapé de modal) em várias situações.
 const { chromium } = require("playwright-core");
+const { check } = require("./_check");
+const { skipOnboarding } = require("./_startup");
 const { skipPreseason } = require("./_calendar_skip");
 
 function toastVsChrome(page, chromeSelector) {
@@ -37,7 +39,7 @@ function toastVsChrome(page, chromeSelector) {
   await page.click(".m3-club-row");
   await page.waitForTimeout(150);
   await page.click("#btnConfirmClub");
-  await page.click("#btnOnboardSkip", { timeout: 2000 }).catch(() => {});
+  await skipOnboarding(page);
   await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
   await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
   await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
@@ -52,13 +54,13 @@ function toastVsChrome(page, chromeSelector) {
   await page.click("#btnAutoLineup");
   await page.waitForTimeout(100);
   const r1 = await toastVsChrome(page, ".mt-action-bar");
-  console.log("1) Escalação (auto-escalar) -- toast acima da barra de ação (gap >= 0):", r1.toastVisible && r1.gap >= 0, JSON.stringify(r1));
+  check("1) Escalação (auto-escalar) -- toast acima da barra de ação (gap >= 0):", r1.toastVisible && r1.gap >= 0, JSON.stringify(r1));
 
   // 2) Salvar escalação e táticas -- mesma barra de ação.
   await page.click("#btnSaveLineup");
   await page.waitForTimeout(100);
   const r2 = await toastVsChrome(page, ".mt-action-bar");
-  console.log("2) Escalação (salvar) -- toast acima da barra de ação:", r2.toastVisible && r2.gap >= 0, JSON.stringify(r2));
+  check("2) Escalação (salvar) -- toast acima da barra de ação:", r2.toastVisible && r2.gap >= 0, JSON.stringify(r2));
 
   // 3) Aba SEM barra de ação (Elenco) -- toast deve subir acima da nav
   // mesmo sem action-bar (algum toast simples: usa o helper direto).
@@ -67,7 +69,7 @@ function toastVsChrome(page, chromeSelector) {
   await page.evaluate(() => toast("Teste de toast sem barra de ação"));
   await page.waitForTimeout(100);
   const r3 = await toastVsChrome(page, ".m3-bottom-nav");
-  console.log("3) Elenco (sem barra de ação) -- toast acima da nav:", r3.toastVisible && r3.gap >= 0, JSON.stringify(r3));
+  check("3) Elenco (sem barra de ação) -- toast acima da nav:", r3.toastVisible && r3.gap >= 0, JSON.stringify(r3));
 
   // 4) Dentro da modal "Ajustar escalação" (dois rodapés fixos
   // empilhados: o da modal por cima do Confirmar escalação por baixo)
@@ -83,7 +85,7 @@ function toastVsChrome(page, chromeSelector) {
   await page.click("#btnAutoLineup");
   await page.waitForTimeout(100);
   const r4 = await toastVsChrome(page, "#adjustLineupOverlay .ct-modal-footer");
-  console.log("4) Dentro de 'Ajustar escalação' -- toast acima do rodapé DESSA modal:", r4.toastVisible && r4.gap >= 0, JSON.stringify(r4));
+  check("4) Dentro de 'Ajustar escalação' -- toast acima do rodapé DESSA modal:", r4.toastVisible && r4.gap >= 0, JSON.stringify(r4));
 
   await browser.close();
 })().catch((e) => { console.error("FATAL:", e); process.exit(1); });

@@ -2,6 +2,8 @@
 // ponta no Modo Técnico: servidor precisa estar rodando com
 // DATA_PROVIDER=frozen + ENABLED_COMPETITIONS=serie_b,serie_c.
 const { chromium } = require("playwright-core");
+const { check } = require("./_check");
+const { skipOnboarding } = require("./_startup");
 
 (async () => {
   const browser = await chromium.launch({ executablePath: process.env.PW_CHROMIUM_PATH || undefined, headless: true, args: ["--host-resolver-rules=MAP fonts.googleapis.com 127.0.0.1,MAP fonts.gstatic.com 127.0.0.1"] });
@@ -20,7 +22,7 @@ const { chromium } = require("playwright-core");
 
   // 1) health confirma hasKey:true com provider frozen.
   const health = await page.evaluate(() => fetch("/api/health").then((r) => r.json()));
-  console.log("1) /api/health reporta hasKey:true, provider frozen:", health.hasKey === true && health.provider === "frozen", JSON.stringify(health));
+  check("1) /api/health reporta hasKey:true, provider frozen:", health.hasKey === true && health.provider === "frozen", JSON.stringify(health));
 
   // 2) Escolher Brasileirão -> Escolha do Clube mostra time REAL
   // (Corinthians, não fictício) com escudo real.
@@ -28,14 +30,14 @@ const { chromium } = require("playwright-core");
   await page.waitForTimeout(400);
   const clubNames = await page.evaluate(() => [...document.querySelectorAll(".m3-club-row .m3-club-name, .m3-club-row")].map((el) => el.textContent).join(" | "));
   const liveModeAfterPick = await page.evaluate(() => typeof LIVE_MODE !== "undefined" ? LIVE_MODE : null);
-  console.log("2) Escolha do Clube em modo AO VIVO (dado real congelado), lista tem Corinthians:", liveModeAfterPick === true && clubNames.includes("Corinthians"), liveModeAfterPick);
+  check("2) Escolha do Clube em modo AO VIVO (dado real congelado), lista tem Corinthians:", liveModeAfterPick === true && clubNames.includes("Corinthians"), liveModeAfterPick);
 
   // 3) Criar carreira no Corinthians (id 303, real, tem Yuri Alberto/
   // Gabriel Paulista no elenco real) e confirmar elenco real aparece.
   await page.click('.m3-club-row[data-id="303"]');
   await page.waitForTimeout(150);
   await page.click("#btnConfirmClub");
-  await page.click("#btnOnboardSkip", { timeout: 2000 }).catch(() => {});
+  await skipOnboarding(page);
   await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
   await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
   await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
@@ -45,12 +47,12 @@ const { chromium } = require("playwright-core");
   await page.waitForTimeout(300);
   const squadNames = await page.evaluate(() => CAREER.squad.map((p) => p.name));
   const hasRealPlayer = squadNames.some((n) => n.includes("Yuri Alberto") || n.includes("Gabriel Paulista") || n.includes("Garro"));
-  console.log("3) Elenco do Corinthians tem jogador real de verdade (Yuri Alberto/Gabriel Paulista/Garro):", hasRealPlayer, JSON.stringify(squadNames.slice(0, 8)));
+  check("3) Elenco do Corinthians tem jogador real de verdade (Yuri Alberto/Gabriel Paulista/Garro):", hasRealPlayer, JSON.stringify(squadNames.slice(0, 8)));
 
   // 4) Times de Série B/C também reais (ex.: Coritiba deixou de ser
   // fictício -- agora está na Série A de verdade nesta captura).
   const compId = await page.evaluate(() => CAREER.competitionId);
-  console.log("4) competitionId gravado na carreira:", compId === "brasileirao", compId);
+  check("4) competitionId gravado na carreira:", compId === "brasileirao", compId);
 
   await page.screenshot({ path: "frozen_01_central.png" });
 

@@ -1,4 +1,5 @@
 const { chromium } = require("playwright-core");
+const { check } = require("./_check");
 (async () => {
   const browser = await chromium.launch({
     executablePath: process.env.PW_CHROMIUM_PATH || undefined,
@@ -21,12 +22,12 @@ const { chromium } = require("playwright-core");
   await page.goto(base + "/carreira.html", { waitUntil: "load" });
   await page.waitForTimeout(500);
   const loginVisible = await page.evaluate(() => !document.getElementById("screenLoginRequired").classList.contains("hidden"));
-  console.log("1) Tela de login aparece:", loginVisible);
+  check("1) Tela de login aparece:", loginVisible);
   await page.fill("#ctLoginEmail", email);
   await page.fill("#ctLoginPassword", "senha123");
   await page.click("#screenLoginRequired button[type=submit]");
   await page.waitForTimeout(1000);
   const loggedIn = await page.evaluate(() => document.getElementById("screenLoginRequired").classList.contains("hidden"));
-  console.log("2) Login pelo formulário funciona (tela de login some):", loggedIn);
+  check("2) Login pelo formulário funciona (tela de login some):", loggedIn);
   await browser.close();
 })().catch((e) => { console.error("FATAL:", e); process.exit(1); });

@@ -1,4 +1,6 @@
 const { chromium } = require("playwright-core");
+const { check } = require("./_check");
+const { skipOnboarding } = require("./_startup");
 
 async function newCareer(page, base, email) {
   await page.goto(base + "/", { waitUntil: "domcontentloaded" });
@@ -12,7 +14,7 @@ async function newCareer(page, base, email) {
   await page.click(".m3-club-row");
   await page.waitForTimeout(150);
   await page.click("#btnConfirmClub");
-  await page.click("#btnOnboardSkip", { timeout: 2000 }).catch(() => {});
+  await skipOnboarding(page);
   await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
   await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
   await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
@@ -48,7 +50,7 @@ async function newCareer(page, base, email) {
     bannerVisible: !document.getElementById("liveHalftimeBanner").classList.contains("hidden"),
     minuteText: document.getElementById("liveMatchMinute") ? document.getElementById("liveMatchMinute").textContent : (document.querySelector("[id*='inute']") ? "?" : "n/a"),
   }));
-  console.log("4) Jogo pausa no intervalo (45'):", halftimeState.paused);
+  check("4) Jogo pausa no intervalo (45'):", halftimeState.paused);
   console.log("   Banner de intervalo aparece:", halftimeState.bannerVisible);
 
   // não resume sozinho depois de esperar um pouco
@@ -79,7 +81,7 @@ async function newCareer(page, base, email) {
   const pressOpen = await page.evaluate(() => document.getElementById("pressOverlay").classList.contains("open"));
   if (pressOpen) { await page.click("#pressClose"); await page.waitForTimeout(400); }
   const newsOpen = await page.waitForSelector("#newsOverlay.open", { timeout: 5000 }).then(() => true).catch(() => false);
-  console.log("5) Tela de notícias abre em tela cheia no fluxo pós-jogo:", newsOpen);
+  check("5) Tela de notícias abre em tela cheia no fluxo pós-jogo:", newsOpen);
   if (newsOpen) {
     const newsRoundState = await page.evaluate(() => {
       const items = document.querySelectorAll("#newsFeatured, #newsList .ct-news-item");
@@ -113,7 +115,7 @@ async function newCareer(page, base, email) {
     text: document.getElementById("playerOfferText").textContent,
     tabelaNotOpenYet: !document.getElementById("tabelaModalOverlay").classList.contains("open"),
   }));
-  console.log("6) Proposta recebida abre modal de destaque com ação imediata:", offerModalState.text.length > 0 && offerModalState.tabelaNotOpenYet);
+  check("6) Proposta recebida abre modal de destaque com ação imediata:", offerModalState.text.length > 0 && offerModalState.tabelaNotOpenYet);
 
   // X fecha o modal mas segue o fluxo pra Tabela mesmo assim
   await page.click("#playerOfferClose");
@@ -169,7 +171,7 @@ async function newCareer(page, base, email) {
       setTimeout(() => resolve(null), 2000);
     });
   }, sellDestId);
-  console.log("7) Confirmação de venda mostra o clube de destino:", !!sellConfirmText && / pro /.test(sellConfirmText));
+  check("7) Confirmação de venda mostra o clube de destino:", !!sellConfirmText && / pro /.test(sellConfirmText));
   await page.click("#detailClose").catch(() => {});
 
   // Empréstimo: abrir o modal já mostra o clube destino no subtítulo

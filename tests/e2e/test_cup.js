@@ -15,6 +15,8 @@
 // na REPRESENTAÇÃO NA UI (texto da aba Tabela, seção de Copa no modal
 // de resultados), não na estatística do chaveamento.
 const { chromium } = require("playwright-core");
+const { check } = require("./_check");
+const { skipOnboarding } = require("./_startup");
 
 async function newCareer(page, base, email) {
   await page.goto(base + "/", { waitUntil: "load" });
@@ -28,7 +30,7 @@ async function newCareer(page, base, email) {
   await page.click(".m3-club-row");
   await page.waitForTimeout(150);
   await page.click("#btnConfirmClub");
-  await page.click("#btnOnboardSkip", { timeout: 2000 }).catch(() => {});
+  await skipOnboarding(page);
   await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
   await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
   await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
@@ -84,7 +86,7 @@ async function resolveOneRoundProgrammatic(page) {
   let career = await getCareer(page);
   const fase1Clubs = career.cup.ties.fase1.flatMap((t) => [String(t.home), String(t.away)]);
   const seeds = career.cup.seeds || [];
-  console.log("1) cup.expanded:", career.cup.expanded, "| phase:", career.cup.phase, "| Fase 1 tem 56 clubes (28 confrontos):", fase1Clubs.length === 56, "| 4 cabeças de chave:", seeds.length === 4);
+  check("1) cup.expanded:", career.cup.expanded, "| phase:", career.cup.phase, "| Fase 1 tem 56 clubes (28 confrontos):", fase1Clubs.length === 56, "| 4 cabeças de chave:", seeds.length === 4);
   const meInFase1 = fase1Clubs.includes(String(career.clubId));
   const meIsSeed = seeds.map(String).includes(String(career.clubId));
   console.log("   Meu clube participa (Fase 1 OU cabeça de chave, nunca os 2):", meInFase1 !== meIsSeed);
@@ -96,7 +98,7 @@ async function resolveOneRoundProgrammatic(page) {
     await resolveOneRoundProgrammatic(page);
   }
   career = await getCareer(page);
-  console.log("2) Depois da rodada 6 (volta da Fase 1), avançou pra r32 (se o técnico seguiu vivo) ou ficou eliminado — fase:", career.cup.phase, "| humanAlive:", career.cup.humanAlive);
+  check("2) Depois da rodada 6 (volta da Fase 1), avançou pra r32 (se o técnico seguiu vivo) ou ficou eliminado — fase:", career.cup.phase, "| humanAlive:", career.cup.humanAlive);
   console.log("   r32 tem 32 clubes (16 confrontos), se ainda ativo:", career.cup.phase === "r32" ? new Set(career.cup.ties.r32.flatMap((t) => [String(t.home), String(t.away)])).size === 32 : "N/A (eliminado)");
   // Se o confronto do técnico virou ao vivo em alguma dessas rodadas
   // (ver finishCupLegLive), a MESMA cadeia normal de pós-rodada já
@@ -114,7 +116,7 @@ async function resolveOneRoundProgrammatic(page) {
   await page.click("#btnOpenTabela");
   await page.waitForTimeout(300);
   const cupStatusText = await page.evaluate(() => document.getElementById("cupStatusText").textContent);
-  console.log("3) Texto de status na aba Tabela:", cupStatusText);
+  check("3) Texto de status na aba Tabela:", cupStatusText);
   await page.evaluate(() => closeTabelaModal());
   await page.waitForTimeout(200);
 
@@ -135,7 +137,7 @@ async function resolveOneRoundProgrammatic(page) {
   await page.click("#btnOpenTabela");
   await page.waitForTimeout(300);
   const championText = await page.evaluate(() => document.getElementById("cupStatusText").innerHTML);
-  console.log("4) Texto de campeão:", championText);
+  check("4) Texto de campeão:", championText);
 
   // 5) Força "não classificado" (cup.active=false) e confere o texto —
   // não acontece mais na prática pro formato expandido (todos os 60
@@ -152,7 +154,7 @@ async function resolveOneRoundProgrammatic(page) {
   await page.click("#btnOpenTabela");
   await page.waitForTimeout(300);
   const notQualifiedText = await page.evaluate(() => document.getElementById("cupStatusText").textContent);
-  console.log("5) Texto de não classificado:", notQualifiedText);
+  check("5) Texto de não classificado:", notQualifiedText);
 
   // 6) Migração: remove CAREER.cup, força rodada 20 (entre r16.volta=18
   // e qf.ida=21 no calendário expandido), recarrega — setupCup deve
@@ -164,7 +166,7 @@ async function resolveOneRoundProgrammatic(page) {
   await page.reload({ waitUntil: "load" });
   await page.waitForTimeout(800);
   career = await getCareer(page);
-  console.log("6) Migração com rodada 20 -- cup existe:", !!career.cup, "| expanded:", career.cup.expanded, "| fase (deve ser 'qf', já fechadas fase1/r32/r16 por trás):", career.cup.phase);
+  check("6) Migração com rodada 20 -- cup existe:", !!career.cup, "| expanded:", career.cup.expanded, "| fase (deve ser 'qf', já fechadas fase1/r32/r16 por trás):", career.cup.phase);
 
   await browser.close();
 })().catch((e) => { console.error("FATAL:", e); process.exit(1); });

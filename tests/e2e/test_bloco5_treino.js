@@ -7,6 +7,8 @@
 // virar lista de exercícios) e manter a edição instantânea (sem
 // bottom sheet de confirmação por dia).
 const { chromium } = require("playwright-core");
+const { check } = require("./_check");
+const { skipOnboarding } = require("./_startup");
 
 (async () => {
   const browser = await chromium.launch({ executablePath: process.env.PW_CHROMIUM_PATH || undefined, headless: true, args: ["--host-resolver-rules=MAP fonts.googleapis.com 127.0.0.1,MAP fonts.gstatic.com 127.0.0.1"] });
@@ -26,7 +28,7 @@ const { chromium } = require("playwright-core");
   await page.click(".m3-club-row");
   await page.waitForTimeout(150);
   await page.click("#btnConfirmClub");
-  await page.click("#btnOnboardSkip", { timeout: 2000 }).catch(() => {});
+  await skipOnboarding(page);
   await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
   await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
   await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
@@ -45,7 +47,7 @@ const { chromium } = require("playwright-core");
     const cards = [...document.querySelectorAll("#trainingWeekSummary .mt-stat-block")];
     return { count: cards.length, labels: cards.map((c) => c.querySelector(".lbl")?.textContent) };
   });
-  console.log("1) Resumo semanal com 3 cards (fadiga média/moral/folga protegida):",
+  check("1) Resumo semanal com 3 cards (fadiga média/moral/folga protegida):",
     summary.count === 3 && summary.labels.includes("Fadiga média") && summary.labels.includes("Moral do elenco") && summary.labels.includes("Folga protegida"),
     JSON.stringify(summary));
 
@@ -59,7 +61,7 @@ const { chromium } = require("playwright-core");
     hasOptions: document.getElementById("fatigueHistoryPlayerSelect").options.length > 15,
     chartEmpty: !document.getElementById("fatigueHistoryChartEmpty").classList.contains("hidden"),
   }));
-  console.log("1b) Histórico de fadiga abre com o seletor cheio, gráfico vazio (carreira nova):", emptyHist.open && emptyHist.hasOptions && emptyHist.chartEmpty, JSON.stringify(emptyHist));
+  check("1b) Histórico de fadiga abre com o seletor cheio, gráfico vazio (carreira nova):", emptyHist.open && emptyHist.hasOptions && emptyHist.chartEmpty, JSON.stringify(emptyHist));
   await page.click("#fatigueHistoryClose");
   await page.waitForTimeout(150);
 
@@ -71,7 +73,7 @@ const { chromium } = require("playwright-core");
   await page.click('.mt-seg-btn[data-seg="foco"][data-value="tatico"]');
   await page.waitForTimeout(150);
   const afterTatico = await page.evaluate(() => ({ ...CAREER.trainingPlan[0] }));
-  console.log("2) 'Tático' existe como foco e fica ativo no dia:", hasTatico && afterTatico.foco === "tatico", JSON.stringify(afterTatico));
+  check("2) 'Tático' existe como foco e fica ativo no dia:", hasTatico && afterTatico.foco === "tatico", JSON.stringify(afterTatico));
 
   const before = await page.evaluate(() => CAREER.squad.filter((p) => p.origin === "principal" || p.origin === "loan").map((p) => ({ id: p.id, atk: p.atk, def: p.def, overall: p.overall, phys: p.phys })));
   await page.click("#btnApplyTraining");
@@ -88,7 +90,7 @@ const { chromium } = require("playwright-core");
     const anyAtkOrDefGain = after.some((p) => { const pb = b.get(p.id); return pb && (p.atk > pb.atk || p.def > pb.def); });
     return { anyAtkOrDefGain };
   }, before);
-  console.log("2b) Aplicar treino com dia 'Tático' evolui ataque e/ou defesa de algum jogador:", check2.anyAtkOrDefGain, JSON.stringify(check2));
+  check("2b) Aplicar treino com dia 'Tático' evolui ataque e/ou defesa de algum jogador:", check2.anyAtkOrDefGain, JSON.stringify(check2));
 
   // Ao concluir a operação "Aplicar treino da semana", o app agora
   // fecha tudo e volta pra Início (pedido do usuário: "ao encerrar uma
@@ -108,7 +110,7 @@ const { chromium } = require("playwright-core");
   await page.click("#btnTrainingDurMinus");
   await page.waitForTimeout(150);
   const afterMinus = await page.evaluate(() => ({ label: document.querySelector(".mt-dur-val")?.textContent, duracao: CAREER.trainingPlan[0].duracao }));
-  console.log("3) Duração default 60min (moderada) e stepper +15/-15 funciona:",
+  check("3) Duração default 60min (moderada) e stepper +15/-15 funciona:",
     initialDur === "60 min" && afterPlus.duracao === 75 && afterMinus.duracao === 45,
     JSON.stringify({ initialDur, afterPlus, afterMinus }));
 
@@ -123,12 +125,12 @@ const { chromium } = require("playwright-core");
   });
   await page.waitForTimeout(150);
   const riskShown = await page.evaluate(() => document.querySelector("#trainingRiskWarning .mt-training-warning") ? document.getElementById("trainingRiskWarning").textContent : null);
-  console.log("4) Aviso de risco aparece pro jogador bem fadigado:", !!riskShown && riskShown.includes("% de fadiga"), riskShown);
+  check("4) Aviso de risco aparece pro jogador bem fadigado:", !!riskShown && riskShown.includes("% de fadiga"), riskShown);
 
   await page.evaluate(() => { CAREER.squad.forEach((p) => { p.condition = 100; }); renderTreinos(); });
   await page.waitForTimeout(150);
   const riskHidden = await page.evaluate(() => document.getElementById("trainingRiskWarning").innerHTML.trim() === "");
-  console.log("4b) Aviso de risco some quando ninguém está em risco:", riskHidden);
+  check("4b) Aviso de risco some quando ninguém está em risco:", riskHidden);
 
   // 6) Simula mais 2 rodadas de treino aplicado (a rodada 1 já foi
   // aplicada na checagem 2b) -- gráfico acumula 3 barras no total pro
@@ -156,7 +158,7 @@ const { chromium } = require("playwright-core");
     labels: [...document.querySelectorAll("#fatigueHistoryLabels span")].map((s) => s.textContent),
     fatigueHistoryLen: CAREER.squad.find((p) => p.id === targetId).fatigueHistory.length,
   }), targetId);
-  console.log("6) Gráfico mostra 1 barra por rodada aplicada, com rótulo de rodada:",
+  check("6) Gráfico mostra 1 barra por rodada aplicada, com rótulo de rodada:",
     withHistory.bars === withHistory.fatigueHistoryLen && withHistory.bars >= 3 && withHistory.labels.every((l) => /^R\d+$/.test(l)),
     JSON.stringify(withHistory));
 
@@ -170,13 +172,13 @@ const { chromium } = require("playwright-core");
   await page.evaluate(() => {}); // no-op, só documenta a injeção acima
   await page.click("#fatigueHistoryPlayerSelect"); // reabre o mesmo select, força re-render manual abaixo
   const injuryShown = await page.evaluate(() => { renderFatigueHistoryScreen(); return document.getElementById("fatigueHistoryInjuries").textContent; });
-  console.log("7) Lesão registrada aparece na lista cruzada com a fadiga do momento:",
+  check("7) Lesão registrada aparece na lista cruzada com a fadiga do momento:",
     injuryShown.includes("Lesão") && injuryShown.includes("72%"), injuryShown.trim());
 
   await page.click("#btnFatigueHistoryCloseFooter");
   await page.waitForTimeout(150);
   const closedOk = await page.evaluate(() => !document.getElementById("fatigueHistoryOverlay").classList.contains("open"));
-  console.log("8) 'Fechar' no rodapé fecha a tela:", closedOk);
+  check("8) 'Fechar' no rodapé fecha a tela:", closedOk);
 
   await browser.close();
 })().catch((e) => { console.error("FATAL:", e); process.exit(1); });

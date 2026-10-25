@@ -1,4 +1,6 @@
 const { chromium } = require("playwright-core");
+const { check } = require("./_check");
+const { skipOnboarding } = require("./_startup");
 const { skipPreseason } = require("./_calendar_skip");
 
 async function newCareer(page, base, email) {
@@ -13,7 +15,7 @@ async function newCareer(page, base, email) {
   await page.click(".m3-club-row");
   await page.waitForTimeout(150);
   await page.click("#btnConfirmClub");
-  await page.click("#btnOnboardSkip", { timeout: 2000 }).catch(() => {});
+  await skipOnboarding(page);
   await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
   await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
   await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
@@ -146,12 +148,12 @@ async function simulateOneRound(page) {
   }, starterId);
   career = await getCareer(page);
   const starterAfter = career.squad.find((p) => p.id === starterId);
-  console.log("1) Titular prime com treino técnico moderado -- overall cresceu (+2, round(2*1)):", starterAfter.overall === starter.overall + 2);
+  check("1) Titular prime com treino técnico moderado -- overall cresceu (+2, round(2*1)):", starterAfter.overall === starter.overall + 2);
   console.log("   atk/def NÃO mudam com treino (só overall/phys, ver mapeamento técnico->overall):", starterAfter.atk === starter.atk && starterAfter.def === starter.def);
   console.log("   condição caiu com a fadiga (-6, round(6*1)):", starterAfter.condition === 100 - 6);
 
   const cpuPlayerAfter = career.leagueSquads[cpuClubId].find((p) => p.id === cpuPlayerBefore.id);
-  console.log("2) Jogador CPU não evolui com o treino do técnico (atk/def/phys/overall iguais):", cpuPlayerAfter && cpuPlayerAfter.atk === cpuPlayerBefore.atk && cpuPlayerAfter.def === cpuPlayerBefore.def && cpuPlayerAfter.overall === cpuPlayerBefore.overall);
+  check("2) Jogador CPU não evolui com o treino do técnico (atk/def/phys/overall iguais):", cpuPlayerAfter && cpuPlayerAfter.atk === cpuPlayerBefore.atk && cpuPlayerAfter.def === cpuPlayerBefore.def && cpuPlayerAfter.overall === cpuPlayerBefore.overall);
 
   // Indicador de tendência no detalhe -- deve aparecer ▲ só na linha
   // de GERAL (overall, o único atributo que o treino técnico mexeu).
@@ -168,7 +170,7 @@ async function simulateOneRound(page) {
   // innerHTML; recorta a seção entre "Geral" e "Ataque" (próxima linha)
   // pra confirmar que a seta está na linha certa.
   const geralSection = kpiHtml.split("Geral")[1]?.split("Ataque")[0] || "";
-  console.log("3) Só 1 seta de tendência aparece (na de Geral):", arrowCount === 1, "| a seta está na linha de Geral:", /▲|▼/.test(geralSection));
+  check("3) Só 1 seta de tendência aparece (na de Geral):", arrowCount === 1, "| a seta está na linha de Geral:", /▲|▼/.test(geralSection));
   await page.click("#detailClose");
   await page.waitForTimeout(200);
 
@@ -177,7 +179,7 @@ async function simulateOneRound(page) {
   await page.waitForSelector("#detailOverlay.open");
   await page.waitForTimeout(200);
   const kpiHtml2 = await page.evaluate(() => document.getElementById("detailBody").querySelector(".m3-attr-bars").innerHTML);
-  console.log("4) Seta sumiu depois de já ter sido checada:", !/▲|▼/.test(kpiHtml2));
+  check("4) Seta sumiu depois de já ter sido checada:", !/▲|▼/.test(kpiHtml2));
   await page.click("#detailClose");
   await page.waitForTimeout(200);
 
@@ -225,7 +227,7 @@ async function simulateOneRound(page) {
       return CAREER.squad.find((p) => p.id === id);
     }, oldBench.id);
     const declined = ["atk", "def", "phys", "overall"].every((k) => afterDecline[k] === beforeDecline[k] - 1);
-    console.log("5) Veterano no banco regrediu em TODOS os 4 atributos:", declined, JSON.stringify(beforeDecline), "->", JSON.stringify({ atk: afterDecline.atk, def: afterDecline.def, phys: afterDecline.phys, overall: afterDecline.overall }));
+    check("5) Veterano no banco regrediu em TODOS os 4 atributos:", declined, JSON.stringify(beforeDecline), "->", JSON.stringify({ atk: afterDecline.atk, def: afterDecline.def, phys: afterDecline.phys, overall: afterDecline.overall }));
   }
 
   await browser.close();

@@ -7,6 +7,8 @@
 // anterior, destaque do próprio clube, nomes clicáveis, "— x —" pra
 // confronto ainda não jogado. Nenhuma regra de negócio nova.
 const { chromium } = require("playwright-core");
+const { check } = require("./_check");
+const { skipOnboarding } = require("./_startup");
 
 (async () => {
   const browser = await chromium.launch({ executablePath: process.env.PW_CHROMIUM_PATH || undefined, headless: true, args: ["--host-resolver-rules=MAP fonts.googleapis.com 127.0.0.1,MAP fonts.gstatic.com 127.0.0.1"] });
@@ -29,7 +31,7 @@ const { chromium } = require("playwright-core");
   await page.click(".m3-club-row");
   await page.waitForTimeout(150);
   await page.click("#btnConfirmClub");
-  await page.click("#btnOnboardSkip", { timeout: 2000 }).catch(() => {});
+  await skipOnboarding(page);
   await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
   await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
   await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
@@ -52,14 +54,14 @@ const { chromium } = require("playwright-core");
     const mine = cards.find((c) => c.parentElement.classList.contains("m3-mc-mine"));
     return { cardCount: cards.length, oldRows, allPlaceholder, hasMine: !!mine, hasCrest: !!cards[0]?.querySelector(".m3-mc-side img, .m3-mc-side") };
   });
-  console.log("1) 'Rodada' (atual, nada jogado): 10 MatchCard, zero .ct-round-result-row antigo, placar '— x —', próprio clube destacado:",
+  check("1) 'Rodada' (atual, nada jogado): 10 MatchCard, zero .ct-round-result-row antigo, placar '— x —', próprio clube destacado:",
     check1.cardCount === 10 && check1.oldRows === 0 && check1.allPlaceholder && check1.hasMine, JSON.stringify(check1));
 
   // 2) Nome do clube no MatchCard continua clicável (abre elenco).
   await page.click("#rodadaList .m3-match-card .m3-mc-side[data-openclub]");
   await page.waitForTimeout(150);
   const check2 = await page.evaluate(() => document.getElementById("clubRosterOverlay").classList.contains("open") || document.querySelector(".ct-panel.active")?.id === "panel-elenco");
-  console.log("2) Clicar no nome do clube no MatchCard abre o elenco (ou vai pra Elenco, se for o meu):", check2);
+  check("2) Clicar no nome do clube no MatchCard abre o elenco (ou vai pra Elenco, se for o meu):", check2);
   await page.evaluate(() => { document.getElementById("clubRosterOverlay").classList.remove("open"); });
   await page.click("#rodadaClose");
   await page.waitForTimeout(150);
@@ -93,7 +95,7 @@ const { chromium } = require("playwright-core");
     const mine = cards.find((c) => c.parentElement.classList.contains("m3-mc-mine"));
     return { cardCount: cards.length, oldRows, anyRealScore, hasMine: !!mine };
   });
-  console.log("3) 'Resultados da rodada' (pós-jogo): 10 MatchCard com placar real, zero .ct-round-result-row antigo, próprio jogo destacado:",
+  check("3) 'Resultados da rodada' (pós-jogo): 10 MatchCard com placar real, zero .ct-round-result-row antigo, próprio jogo destacado:",
     check3.cardCount === 10 && check3.oldRows === 0 && check3.anyRealScore && check3.hasMine, JSON.stringify(check3));
 
   // 4) Copa do Brasil (sub-bloco dentro do mesmo modal, quando existe)
@@ -119,7 +121,7 @@ const { chromium } = require("playwright-core");
       hasStatusLine: wrap.textContent.includes("Oitavas"),
     };
   });
-  console.log("4) Copa do Brasil (cupRoundResultsHTML) usa MatchCard, zero .ct-round-result-row antigo, mostra 'Pênaltis' e a fase:",
+  check("4) Copa do Brasil (cupRoundResultsHTML) usa MatchCard, zero .ct-round-result-row antigo, mostra 'Pênaltis' e a fase:",
     check4.hasCard && !check4.oldRow && check4.scoreText === "2x2" && check4.hasPenaltiesTag && check4.hasStatusLine, JSON.stringify(check4));
 
   // 5) "Continuar" preserva o fluxo de sempre: fecha "Resultados da
@@ -131,7 +133,7 @@ const { chromium } = require("playwright-core");
     resultsClosed: !document.getElementById("roundResultsOverlay").classList.contains("open"),
     followUpOpen: document.getElementById("tabelaModalOverlay").classList.contains("open") || document.getElementById("playerOfferOverlay")?.classList.contains("open"),
   }));
-  console.log("5) 'Continuar' fecha 'Resultados da rodada' e segue o fluxo de sempre (Tabela ou proposta em destaque):",
+  check("5) 'Continuar' fecha 'Resultados da rodada' e segue o fluxo de sempre (Tabela ou proposta em destaque):",
     check5.resultsClosed && check5.followUpOpen, JSON.stringify(check5));
 
   await browser.close();

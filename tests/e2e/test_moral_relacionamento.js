@@ -1,4 +1,6 @@
 const { chromium } = require("playwright-core");
+const { check } = require("./_check");
+const { skipOnboarding } = require("./_startup");
 
 async function newCareer(page, base, email) {
   await page.goto(base + "/", { waitUntil: "domcontentloaded" });
@@ -12,7 +14,7 @@ async function newCareer(page, base, email) {
   await page.click(".m3-club-row");
   await page.waitForTimeout(150);
   await page.click("#btnConfirmClub");
-  await page.click("#btnOnboardSkip", { timeout: 2000 }).catch(() => {});
+  await skipOnboarding(page);
   await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
   await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
   await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
@@ -80,14 +82,14 @@ async function newCareer(page, base, email) {
     return out;
   });
 
-  console.log("1) benchStreak sobe pra reserva (3 rodadas fora):", result.benchStreak === 3);
+  check("1) benchStreak sobe pra reserva (3 rodadas fora):", result.benchStreak === 3);
   console.log("   motivo reflete insatisfação:", result.reasonAfter3.includes("Insatisfeito") || result.reasonAfter3.includes("Contrariado"));
   console.log("   titular não acumula benchStreak:", result.starterBenchStreakZero);
-  console.log("2) Conversar disponível pro insatisfeito, não pro titular feliz:", result.canTalkBench === true, result.canTalkStarter === false);
-  console.log("3) Moral sobe após 'Ouvir e apoiar':", result.moraleRoseAfterTalk, "| motivo atualizado:", result.reasonAfterTalk.includes("Conversou"));
+  check("2) Conversar disponível pro insatisfeito, não pro titular feliz:", result.canTalkBench === true, result.canTalkStarter === false);
+  check("3) Moral sobe após 'Ouvir e apoiar':", result.moraleRoseAfterTalk, "| motivo atualizado:", result.reasonAfterTalk.includes("Conversou"));
   console.log("   Não pode conversar de novo na mesma rodada:", result.cannotTalkAgainSameRound);
-  console.log("4) 'Pede transferência' fica marcado com moral muito baixa + banco prolongado:", result.wantsTransfer === true);
-  console.log("5) 'Cobrar postura' piora quem já está muito infeliz (efeito contextual):", result.cobrarPioraQuandoMuitoInfeliz);
+  check("4) 'Pede transferência' fica marcado com moral muito baixa + banco prolongado:", result.wantsTransfer === true);
+  check("5) 'Cobrar postura' piora quem já está muito infeliz (efeito contextual):", result.cobrarPioraQuandoMuitoInfeliz);
 
   // 6) Fluxo real via UI: abre o detalhe do jogador insatisfeito, vê a
   // seção "Relacionamento" e o botão Conversar, conversa e confere o
@@ -101,7 +103,7 @@ async function newCareer(page, base, email) {
     openDetail(bench.id);
     return { id: bench.id, hasTalkBtn: !!document.querySelector('[data-act="talk"]') };
   });
-  console.log("6) Botão Conversar aparece no detalhe:", uiResult.hasTalkBtn);
+  check("6) Botão Conversar aparece no detalhe:", uiResult.hasTalkBtn);
   await page.click('[data-act="talk"]');
   await page.waitForSelector("#talkOverlay.open");
   await page.waitForTimeout(150);

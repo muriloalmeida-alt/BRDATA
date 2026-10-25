@@ -8,6 +8,8 @@
 // tocados nesta fase — os testes abaixo confirmam isso, não testam
 // mudança neles.
 const { chromium } = require("playwright-core");
+const { check } = require("./_check");
+const { skipOnboarding } = require("./_startup");
 
 (async () => {
   const browser = await chromium.launch({ executablePath: process.env.PW_CHROMIUM_PATH || undefined, headless: true, args: ["--host-resolver-rules=MAP fonts.googleapis.com 127.0.0.1,MAP fonts.gstatic.com 127.0.0.1"] });
@@ -28,7 +30,7 @@ const { chromium } = require("playwright-core");
   await page.click(".m3-club-row");
   await page.waitForTimeout(150);
   await page.click("#btnConfirmClub");
-  await page.click("#btnOnboardSkip", { timeout: 2000 }).catch(() => {});
+  await skipOnboarding(page);
   await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
   await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
   await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
@@ -64,7 +66,7 @@ const { chromium } = require("playwright-core");
     const squadFull = window.__fabricateSquad(16, 65, ["G", "D", "D", "D", "M", "F", "F", "F", "F"]); // atacantes em excesso
     return { deficit: necessidadeScore(candidate, squadDeficit), full: necessidadeScore(candidate, squadFull) };
   });
-  console.log("1) Clube com déficit de grupo tem necessidade maior que clube com o grupo cheio:", t1.deficit > t1.full, JSON.stringify(t1));
+  check("1) Clube com déficit de grupo tem necessidade maior que clube com o grupo cheio:", t1.deficit > t1.full, JSON.stringify(t1));
 
   // 2) elenco equilibrado (proporção igual à SQUAD_GROUP_PROPORTION) -> necessidade menor que elenco desequilibrado.
   const t2 = await page.evaluate(() => {
@@ -79,7 +81,7 @@ const { chromium } = require("playwright-core");
     const unbalanced = window.__fabricateSquad(25, 65, ["G", "M", "M", "M", "F", "F"]); // sem D nenhum
     return { balanced: necessidadeScore(candidate, balanced), unbalanced: necessidadeScore(candidate, unbalanced) };
   });
-  console.log("2) Elenco equilibrado tem necessidade menor que elenco desequilibrado (mesmo grupo do candidato):", t2.balanced < t2.unbalanced, JSON.stringify(t2));
+  check("2) Elenco equilibrado tem necessidade menor que elenco desequilibrado (mesmo grupo do candidato):", t2.balanced < t2.unbalanced, JSON.stringify(t2));
 
   // 3) déficit QUALITATIVO moderado — grupo numericamente cheio (déficit
   // de grupo = 0), mas overall dos jogadores do grupo bem inferior ao
@@ -97,7 +99,7 @@ const { chromium } = require("playwright-core");
     const necGroupDeficitPure = necessidadeScore({ group: "F", overall: 78 }, window.__fabricateSquad(24, 55, ["G", "D", "D", "D", "D", "D", "D", "D", "D", "M", "M", "M", "M", "M", "M", "M", "M"])); // 0 atacantes de propósito (déficit de grupo puro)
     return { necStrong, necSimilar, necGroupDeficitPure };
   });
-  console.log("3) Déficit qualitativo (grupo cheio, nível baixo): candidato bem melhor gera necessidade > 0 e MODERADA (menor que déficit de grupo puro); candidato equivalente não gera necessidade:",
+  check("3) Déficit qualitativo (grupo cheio, nível baixo): candidato bem melhor gera necessidade > 0 e MODERADA (menor que déficit de grupo puro); candidato equivalente não gera necessidade:",
     t3.necStrong > 0 && t3.necSimilar === 0 && t3.necStrong < t3.necGroupDeficitPure, JSON.stringify(t3));
 
   // 4) elenco perto do TETO -> necessidade reduzida; elenco perto do
@@ -117,7 +119,7 @@ const { chromium } = require("playwright-core");
     const nearMax = squadOfSize(max);
     return { min, max, necNearMin: necessidadeScore(candidate, nearMin, clubId), necNearMax: necessidadeScore(candidate, nearMax, clubId) };
   });
-  console.log("4) Elenco perto do PISO tem necessidade maior que elenco perto do TETO (mesmo déficit de grupo, só o tamanho muda):", t4.necNearMin > t4.necNearMax, JSON.stringify(t4));
+  check("4) Elenco perto do PISO tem necessidade maior que elenco perto do TETO (mesmo déficit de grupo, só o tamanho muda):", t4.necNearMin > t4.necNearMax, JSON.stringify(t4));
 
   // 5) necessidadeScore permanece em [0,1] em combos extremos (inclusive
   // sem buyingClubId — compat com chamada de 2 argumentos).
@@ -130,7 +132,7 @@ const { chromium } = require("playwright-core");
     ];
     return { cases, allWithin01: cases.every((v) => v >= 0 && v <= 1 && !Number.isNaN(v)) };
   });
-  console.log("5) necessidadeScore permanece em [0,1] mesmo em combos extremos (incl. sem overall/sem buyingClubId):", t5.allWithin01, JSON.stringify(t5));
+  check("5) necessidadeScore permanece em [0,1] mesmo em combos extremos (incl. sem overall/sem buyingClubId):", t5.allWithin01, JSON.stringify(t5));
 
   // ---------- FINANCEIRO ----------
 
@@ -146,7 +148,7 @@ const { chromium } = require("playwright-core");
     delete CAREER.leagueSquads[fakeId];
     return { fin, withinRange: fin > 0 && fin <= 1 };
   });
-  console.log("6) Clube pobre consegue participar (financeiro > 0) de um jogador acessível à sua realidade:", t6.withinRange, JSON.stringify(t6));
+  check("6) Clube pobre consegue participar (financeiro > 0) de um jogador acessível à sua realidade:", t6.withinRange, JSON.stringify(t6));
 
   // 7) clube pobre NÃO consegue comprar jogador claramente inacessível
   // (ratio >= 2.5x a capacidade) — continua 0, o filtro financeiro
@@ -161,7 +163,7 @@ const { chromium } = require("playwright-core");
     delete CAREER.leagueSquads[fakeId];
     return { fin, blocked: fin === 0 };
   });
-  console.log("7) Clube pobre NÃO consegue comprar jogador claramente inacessível (financeiro permanece 0):", t7.blocked, JSON.stringify(t7));
+  check("7) Clube pobre NÃO consegue comprar jogador claramente inacessível (financeiro permanece 0):", t7.blocked, JSON.stringify(t7));
 
   // 8) clube rico continua tendo maior capacidade que clube pobre pelo
   // MESMO candidato borderline (rico >= pobre, nunca o contrário).
@@ -179,7 +181,7 @@ const { chromium } = require("playwright-core");
     delete CAREER.leagueSquads[poorId];
     return { finRich, finPoor, richHasMoreOrEqual: finRich >= finPoor };
   });
-  console.log("8) Clube rico continua com capacidade financeira >= clube pobre pro mesmo candidato:", t8.richHasMoreOrEqual, JSON.stringify(t8));
+  check("8) Clube rico continua com capacidade financeira >= clube pobre pro mesmo candidato:", t8.richHasMoreOrEqual, JSON.stringify(t8));
 
   // 9) financeiro não gera inflação no valuation — finFactor continua
   // limitado a [0.97, 1.02] (mesma fórmula da Fase 1.3, não tocada) e a
@@ -193,7 +195,7 @@ const { chromium } = require("playwright-core");
     const v = transferValuation(p, buyerId, CAREER.clubId);
     return { base, v, withinLimits: v >= base * 0.70 && v <= base * 1.50 };
   });
-  console.log("9) transferValuation continua dentro de [70%,150%] do valor base com o financeiroScore novo (sem inflação):", t9.withinLimits, JSON.stringify(t9));
+  check("9) transferValuation continua dentro de [70%,150%] do valor base com o financeiroScore novo (sem inflação):", t9.withinLimits, JSON.stringify(t9));
 
   // ---------- MULTI-DIVISÃO ----------
 
@@ -227,9 +229,9 @@ const { chromium } = require("playwright-core");
     const serieA = byDiv.brasileirao.filter(canBuySomething).length;
     return { serieBTotal: byDiv.serie_b.length, serieCTotal: byDiv.serie_c.length, serieATotal: byDiv.brasileirao.length, serieB, serieC, serieA };
   }, divisionInfo);
-  console.log("10) Série B consegue comprar jogador compatível com sua própria realidade financeira:", t10_12.serieB > 0, JSON.stringify(t10_12));
-  console.log("11) Série C consegue comprar jogador compatível com sua própria realidade financeira:", t10_12.serieC > 0);
-  console.log("12) Série A continua comprando jogador compatível com sua própria realidade financeira:", t10_12.serieA > 0);
+  check("10) Série B consegue comprar jogador compatível com sua própria realidade financeira:", t10_12.serieB > 0, JSON.stringify(t10_12));
+  check("11) Série C consegue comprar jogador compatível com sua própria realidade financeira:", t10_12.serieC > 0);
+  check("12) Série A continua comprando jogador compatível com sua própria realidade financeira:", t10_12.serieA > 0);
 
   // 13) existem transações POTENCIAIS entre divisões — testa a MESMA
   // lógica que simulateAiTransfers usa de verdade (candidatos = elenco
@@ -260,7 +262,7 @@ const { chromium } = require("playwright-core");
     });
     return { byDirection, anyCrossDivisionPossible: byDirection.some((d) => d.possiblePairs > 0) };
   }, divisionInfo);
-  console.log("13) Existem transações POTENCIAIS entre divisões diferentes (mesma lógica de candidatos do simulateAiTransfers real):", t13.anyCrossDivisionPossible, JSON.stringify(t13.byDirection));
+  check("13) Existem transações POTENCIAIS entre divisões diferentes (mesma lógica de candidatos do simulateAiTransfers real):", t13.anyCrossDivisionPossible, JSON.stringify(t13.byDirection));
 
   // 14) não aparecem combinações absurdas — o jogador mais CARO do
   // elenco real do Brasileirão nesta carreira continua inacessível pra
@@ -275,7 +277,7 @@ const { chromium } = require("playwright-core");
     const results = byDiv.serie_c.map((id) => ({ id, fin: financeiroScore(priciest, CAREER.leagueSquads[id], id) }));
     return { priciestValue: priciest ? priciest.value : null, priciestName: priciest ? priciest.name : null, results, noneCanAfford: results.every((r) => r.fin === 0) };
   }, divisionInfo);
-  console.log("14) O craque mais caro do Brasileirão real continua inacessível pra QUALQUER clube real de Série C (sem combinação absurda):", t14.noneCanAfford, JSON.stringify({ priciestValue: t14.priciestValue, priciestName: t14.priciestName, noneCanAfford: t14.noneCanAfford }));
+  check("14) O craque mais caro do Brasileirão real continua inacessível pra QUALQUER clube real de Série C (sem combinação absurda):", t14.noneCanAfford, JSON.stringify({ priciestValue: t14.priciestValue, priciestName: t14.priciestName, noneCanAfford: t14.noneCanAfford }));
 
   // ---------- TRANSFERSCORE ----------
 
@@ -286,7 +288,7 @@ const { chromium } = require("playwright-core");
     const scores = ids.map((id) => transferScore(p, id));
     return { scores, allWithin01: scores.every((s) => s >= 0 && s <= 1) };
   });
-  console.log("15) transferScore permanece em [0,1] pro elenco real:", t15.allWithin01, JSON.stringify(t15.scores.map((s) => Math.round(s * 100) / 100)));
+  check("15) transferScore permanece em [0,1] pro elenco real:", t15.allWithin01, JSON.stringify(t15.scores.map((s) => Math.round(s * 100) / 100)));
 
   // 16) pesos continuam 35/30/20/15 — reconstrói o score manualmente a
   // partir dos 4 componentes e confirma que bate com transferScore.
@@ -302,7 +304,7 @@ const { chromium } = require("playwright-core");
     const real = transferScore(p, clubId);
     return { manual: Math.round(manual * 1e6) / 1e6, real: Math.round(real * 1e6) / 1e6, matches: Math.abs(manual - real) < 1e-9 };
   });
-  console.log("16) Pesos continuam 35% necessidade + 30% adequação + 20% financeiro + 15% contexto (reconstrução manual bate com transferScore):", t16.matches, JSON.stringify(t16));
+  check("16) Pesos continuam 35% necessidade + 30% adequação + 20% financeiro + 15% contexto (reconstrução manual bate com transferScore):", t16.matches, JSON.stringify(t16));
 
   // 17) score passa a apresentar distribuição mais ampla que o máximo
   // observado na Fase 1.3.1 (0,5868) — amostra ampla real (500 pares
@@ -323,7 +325,7 @@ const { chromium } = require("playwright-core");
     }
     return { max, min, count, widerThanBaseline: max > 0.5868 };
   });
-  console.log("17) TransferScore real passa a ocupar faixa mais ampla que o teto observado na Fase 1.3.1 (0,5868):", t17.widerThanBaseline, JSON.stringify(t17));
+  check("17) TransferScore real passa a ocupar faixa mais ampla que o teto observado na Fase 1.3.1 (0,5868):", t17.widerThanBaseline, JSON.stringify(t17));
 
   // 18) faixas superiores de offerProbabilityFromScore (>=0.55) podem
   // ser exercitadas em condições plausíveis — construídas com os
@@ -344,7 +346,7 @@ const { chromium } = require("playwright-core");
     delete CAREER.leagueSquads[clubId];
     return { score, prob, reachedUpperBand: score >= 0.55 };
   });
-  console.log("18) Faixa superior de offerProbabilityFromScore (score>=0,55 -> prob>=18%) alcançável com componentes reais em cenário plausível:", t18.reachedUpperBand, JSON.stringify(t18));
+  check("18) Faixa superior de offerProbabilityFromScore (score>=0,55 -> prob>=18%) alcançável com componentes reais em cenário plausível:", t18.reachedUpperBand, JSON.stringify(t18));
 
   // ---------- INTEGRIDADE ----------
 
@@ -370,7 +372,7 @@ const { chromium } = require("playwright-core");
     }
     return { ok, results };
   });
-  console.log("22) findInterestedBuyer (fluxo de empréstimo) continua respondendo null ou clube válido em toda chamada:", t22.ok, JSON.stringify(t22));
+  check("22) findInterestedBuyer (fluxo de empréstimo) continua respondendo null ou clube válido em toda chamada:", t22.ok, JSON.stringify(t22));
 
   // 23) transferValuation continua determinística (mesmos inputs ->
   // mesmo resultado, sem RNG interno) mesmo com necessidadeScore/
@@ -383,7 +385,7 @@ const { chromium } = require("playwright-core");
     const v3 = transferValuation(p, clubId, CAREER.clubId);
     return { v1, v2, v3, allEqual: v1 === v2 && v2 === v3 };
   });
-  console.log("23) transferValuation continua determinística (mesmos inputs -> mesmo resultado):", t23.allEqual, JSON.stringify(t23));
+  check("23) transferValuation continua determinística (mesmos inputs -> mesmo resultado):", t23.allEqual, JSON.stringify(t23));
 
   await browser.close();
   console.log("OK");

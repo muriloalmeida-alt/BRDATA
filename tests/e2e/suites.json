@@ -39,9 +39,7 @@
     ]
   },
   "exclusive": {
-    "_doc": "Rodam SOZINHOS, depois de todos os outros terminarem: leem/escrevem server/data/careers.json do servidor de testes diretamente (via require de server/src/careerStore.js), o mesmo arquivo que o servidor em execução regrava a cada save dos outros testes — em paralelo, a leitura pegava o arquivo pela metade (falha intermitente observada: 'Unterminated string in JSON').",
-    "tests": [
-      "test_save_limit_001_careerstore.js"
-    ]
+    "_doc": "Testes que precisam rodar SOZINHOS, depois dos demais (estado compartilhado que não dá pra isolar). Vazio desde a Fase B: test_save_limit_001_careerstore.js, que lia/gravava o server/data/careers.json do repositório enquanto o servidor o regravava, passou a usar uma cópia do careerStore num diretório temporário próprio.",
+    "tests": []
   }
 }

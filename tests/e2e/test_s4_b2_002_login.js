@@ -10,6 +10,7 @@
 // só test_carreira_login_form.js (2 checks funcionais básicos,
 // continua existindo, sem sobreposição).
 const { chromium } = require("playwright-core");
+const { check } = require("./_check");
 
 (async () => {
   const browser = await chromium.launch({ executablePath: process.env.PW_CHROMIUM_PATH || undefined, headless: true, args: ["--host-resolver-rules=MAP fonts.googleapis.com 127.0.0.1,MAP fonts.gstatic.com 127.0.0.1"] });
@@ -48,7 +49,7 @@ const { chromium } = require("playwright-core");
   // --m3-surface-container é #211F1D = rgb(33,31,29); --m3-surface-
   // container-high é #2C2A27 = rgb(44,42,39); --m3-primary é #6DDB94 =
   // rgb(109,219,148); --m3-on-primary é #00391A = rgb(0,57,26).
-  console.log("1) Default: tela própria do Modo Técnico (não .auth-gate), tokens --m3-* aplicados:",
+  check("1) Default: tela própria do Modo Técnico (não .auth-gate), tokens --m3-* aplicados:",
     defaultState.visible && !defaultState.usesAuthGate &&
     defaultState.panelBg === "rgb(33, 31, 29)" && defaultState.inputBg === "rgb(44, 42, 39)" &&
     defaultState.btnBg === "rgb(109, 219, 148)" && defaultState.btnColor === "rgb(0, 57, 26)",
@@ -62,7 +63,7 @@ const { chromium } = require("playwright-core");
     const err = document.getElementById("ctLoginError");
     return { visible: err.style.display !== "none", text: err.textContent, color: getComputedStyle(err).color };
   });
-  console.log("2) Erro (campos vazios) com token --m3-error correto:",
+  check("2) Erro (campos vazios) com token --m3-error correto:",
     emptyErrorState.visible && emptyErrorState.color === "rgb(255, 84, 73)", JSON.stringify(emptyErrorState));
 
   // 3) Estado "erro" (credenciais erradas) — mesma mensagem inline,
@@ -76,7 +77,7 @@ const { chromium } = require("playwright-core");
     const btn = document.querySelector("#screenLoginRequired button[type=submit]");
     return { errorVisible: err.style.display !== "none", errorText: err.textContent, btnReenabled: !btn.disabled, btnLabel: btn.textContent };
   });
-  console.log("3) Erro (senha errada): mensagem aparece, botão reabilitado pra tentar de novo:",
+  check("3) Erro (senha errada): mensagem aparece, botão reabilitado pra tentar de novo:",
     wrongPassState.errorVisible && wrongPassState.btnReenabled && wrongPassState.btnLabel === "Entrar",
     JSON.stringify(wrongPassState));
 
@@ -97,7 +98,7 @@ const { chromium } = require("playwright-core");
     const btn = document.querySelector("#screenLoginRequired button[type=submit]");
     return { disabled: btn.disabled, label: btn.textContent };
   });
-  console.log("4) Carregamento: botão desabilitado com texto 'Entrando...' durante o login:",
+  check("4) Carregamento: botão desabilitado com texto 'Entrando...' durante o login:",
     loadingState.disabled && loadingState.label === "Entrando...", JSON.stringify(loadingState));
   await submitPromise;
 
@@ -107,7 +108,7 @@ const { chromium } = require("playwright-core");
   // desaparece).
   await page.waitForTimeout(600);
   const loggedIn = await page.evaluate(() => document.getElementById("screenLoginRequired").classList.contains("hidden"));
-  console.log("5) Sucesso: login válido faz a tela de login sumir (fluxo funcional intacto):", loggedIn);
+  check("5) Sucesso: login válido faz a tela de login sumir (fluxo funcional intacto):", loggedIn);
 
   await browser.close();
 })();

@@ -1,4 +1,6 @@
 const { chromium } = require("playwright-core");
+const { check } = require("./_check");
+const { skipOnboarding } = require("./_startup");
 (async () => {
   const browser = await chromium.launch({ executablePath: process.env.PW_CHROMIUM_PATH || undefined, headless: true, args: ["--host-resolver-rules=MAP fonts.googleapis.com 127.0.0.1,MAP fonts.gstatic.com 127.0.0.1"] });
   const page = await browser.newPage({ viewport: { width: 390, height: 900 } });
@@ -28,17 +30,17 @@ const { chromium } = require("playwright-core");
     selectedRow: document.querySelector(".m3-club-row.selected")?.querySelector(".m3-club-name")?.textContent,
     stillOnPicker: !document.getElementById("screenPicker").classList.contains("hidden"),
   }));
-  console.log("1) Selecionar NÃO inicia carreira (só marca):", beforeSelect.fabHidden && !afterSelect.fabHidden && afterSelect.stillOnPicker, JSON.stringify({ beforeSelect, afterSelect }));
+  check("1) Selecionar NÃO inicia carreira (só marca):", beforeSelect.fabHidden && !afterSelect.fabHidden && afterSelect.stillOnPicker, JSON.stringify({ beforeSelect, afterSelect }));
 
   await page.click("#btnConfirmClub");
-  await page.click("#btnOnboardSkip", { timeout: 2000 }).catch(() => {});
+  await skipOnboarding(page);
   await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
   await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
   await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
   await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
   await page.waitForTimeout(700);
   const afterConfirm = await page.evaluate(() => ({ gameVisible: !document.getElementById("screenGame").classList.contains("hidden") }));
-  console.log("2) Confirmar clube inicia a carreira de fato:", afterConfirm.gameVisible);
+  check("2) Confirmar clube inicia a carreira de fato:", afterConfirm.gameVisible);
 
   await page.click("#btnClaimDailyLogin", { timeout: 3000 }).catch(() => {});
   await page.waitForTimeout(300);
@@ -51,7 +53,7 @@ const { chromium } = require("playwright-core");
     baseCardVisible: !document.getElementById("squadBaseCard").classList.contains("hidden"),
     mainCardVisible: !document.getElementById("squadMainCard").classList.contains("hidden"),
   }));
-  console.log("3) Chips certos, os 2 cards visíveis em 'Todos':", chipsBefore.chips.length === 4 && chipsBefore.baseCardVisible && chipsBefore.mainCardVisible, JSON.stringify(chipsBefore));
+  check("3) Chips certos, os 2 cards visíveis em 'Todos':", chipsBefore.chips.length === 4 && chipsBefore.baseCardVisible && chipsBefore.mainCardVisible, JSON.stringify(chipsBefore));
 
   await page.click('#elencoFilterRow .m3-filter-chip[data-filter="base"]');
   await page.waitForTimeout(150);
@@ -60,7 +62,7 @@ const { chromium } = require("playwright-core");
     mainCardVisible: !document.getElementById("squadMainCard").classList.contains("hidden"),
     chipOn: document.querySelector('#elencoFilterRow .m3-filter-chip.on')?.dataset.filter,
   }));
-  console.log("4) Filtro 'Base' esconde o principal, mostra só a base:", afterBaseFilter.baseCardVisible && !afterBaseFilter.mainCardVisible && afterBaseFilter.chipOn === "base", JSON.stringify(afterBaseFilter));
+  check("4) Filtro 'Base' esconde o principal, mostra só a base:", afterBaseFilter.baseCardVisible && !afterBaseFilter.mainCardVisible && afterBaseFilter.chipOn === "base", JSON.stringify(afterBaseFilter));
 
   await page.click('#elencoFilterRow .m3-filter-chip[data-filter="titulares"]');
   await page.waitForTimeout(150);
@@ -68,7 +70,7 @@ const { chromium } = require("playwright-core");
     rows: document.querySelectorAll("#squadMainList [data-id]").length,
     baseCardVisible: !document.getElementById("squadBaseCard").classList.contains("hidden"),
   }));
-  console.log("5) Filtro 'Titulares' mostra só 11 (ou menos) e some com a base:", afterTitularesFilter.rows <= 11 && !afterTitularesFilter.baseCardVisible, JSON.stringify(afterTitularesFilter));
+  check("5) Filtro 'Titulares' mostra só 11 (ou menos) e some com a base:", afterTitularesFilter.rows <= 11 && !afterTitularesFilter.baseCardVisible, JSON.stringify(afterTitularesFilter));
 
   await page.click('#elencoFilterRow .m3-filter-chip[data-filter="todos"]');
   await page.waitForTimeout(150);
@@ -86,7 +88,7 @@ const { chromium } = require("playwright-core");
       firstFillWidth: rows[0]?.querySelector(".m3-attr-fill")?.style.width,
     };
   });
-  console.log("6) Perfil do jogador com 5 barras de atributo (Geral/Ataque/Defesa/Físico/Moral), sem blocos:", perfil.count === 5 && !perfil.hasOldBlocks && perfil.firstFillWidth, JSON.stringify(perfil));
+  check("6) Perfil do jogador com 5 barras de atributo (Geral/Ataque/Defesa/Físico/Moral), sem blocos:", perfil.count === 5 && !perfil.hasOldBlocks && perfil.firstFillWidth, JSON.stringify(perfil));
 
   await page.screenshot({ path: "m3_27_onboarding_selecionado.png" });
   await page.click("#detailClose");

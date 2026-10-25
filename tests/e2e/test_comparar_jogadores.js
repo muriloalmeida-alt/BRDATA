@@ -2,6 +2,8 @@
 // jogador abre um picker restrito à MESMA posição, resultado com
 // destaque de quem "ganha" cada atributo + verdict de custo-benefício.
 const { chromium } = require("playwright-core");
+const { check } = require("./_check");
+const { skipOnboarding } = require("./_startup");
 
 (async () => {
   const browser = await chromium.launch({ executablePath: process.env.PW_CHROMIUM_PATH || undefined, headless: true, args: ["--host-resolver-rules=MAP fonts.googleapis.com 127.0.0.1,MAP fonts.gstatic.com 127.0.0.1"] });
@@ -21,7 +23,7 @@ const { chromium } = require("playwright-core");
   await page.click(".m3-club-row");
   await page.waitForTimeout(150);
   await page.click("#btnConfirmClub");
-  await page.click("#btnOnboardSkip", { timeout: 2000 }).catch(() => {});
+  await skipOnboarding(page);
   await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
   await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
   await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
@@ -64,7 +66,7 @@ const { chromium } = require("playwright-core");
     const distinctSubpos = new Set(rows.map((r) => subPositionOf(CAREER.squad.find((p) => p.id === r.dataset.id))));
     return { open, pickVisible, resultHidden, rowCount: rows.length, noSelf, distinctSubpos: [...distinctSubpos] };
   }, basePlayer.id);
-  console.log("1) Comparar abre o passo 1 (picker) só com a mesma posição, sem o próprio jogador:",
+  check("1) Comparar abre o passo 1 (picker) só com a mesma posição, sem o próprio jogador:",
     check1.open && check1.pickVisible && check1.resultHidden && check1.rowCount > 0 && check1.noSelf && check1.distinctSubpos.length === 1,
     JSON.stringify(check1));
 
@@ -84,7 +86,7 @@ const { chromium } = require("playwright-core");
     const changeBtnVisible = !document.getElementById("btnCompareChangePlayer").classList.contains("hidden");
     return { pickHidden, resultVisible, labels, anyWin, verdict, changeBtnVisible, headerHasVs: header.includes("VS") };
   });
-  console.log("2) Escolher o 2º jogador mostra o resultado com 7 linhas, destaque de vencedor e verdict de custo-benefício:",
+  check("2) Escolher o 2º jogador mostra o resultado com 7 linhas, destaque de vencedor e verdict de custo-benefício:",
     check2.pickHidden && check2.resultVisible && check2.labels.length === 7 && check2.anyWin && check2.verdict.includes("custo-benefício") && check2.changeBtnVisible && check2.headerHasVs,
     JSON.stringify(check2));
 
@@ -95,7 +97,7 @@ const { chromium } = require("playwright-core");
     open: document.getElementById("compareOverlay").classList.contains("open"),
     pickVisible: !document.getElementById("comparePickStep").classList.contains("hidden"),
   }));
-  console.log("3) 'Trocar jogador' volta pro passo 1 sem fechar o modal:", check3.open && check3.pickVisible, JSON.stringify(check3));
+  check("3) 'Trocar jogador' volta pro passo 1 sem fechar o modal:", check3.open && check3.pickVisible, JSON.stringify(check3));
 
   await page.click("#comparePickList [data-id]");
   await page.waitForTimeout(200);
@@ -105,7 +107,7 @@ const { chromium } = require("playwright-core");
   await page.click("#compareClose");
   await page.waitForTimeout(150);
   const check4 = await page.evaluate(() => !document.getElementById("compareOverlay").classList.contains("open"));
-  console.log("4) Fechar (X) fecha o modal:", check4);
+  check("4) Fechar (X) fecha o modal:", check4);
 
   await browser.close();
 })().catch((e) => { console.error("FATAL:", e); process.exit(1); });

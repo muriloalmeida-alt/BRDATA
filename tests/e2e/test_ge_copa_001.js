@@ -8,6 +8,8 @@
 // tests/e2e/sim_ge_copa_001.js — este teste é sobre corretude
 // estrutural e integração, não estatística.
 const { chromium } = require("playwright-core");
+const { check } = require("./_check");
+const { skipOnboarding } = require("./_startup");
 
 async function newCareer(page, base, email) {
   await page.goto(base + "/", { waitUntil: "load" });
@@ -21,7 +23,7 @@ async function newCareer(page, base, email) {
   await page.click(".m3-club-row");
   await page.waitForTimeout(150);
   await page.click("#btnConfirmClub");
-  await page.click("#btnOnboardSkip", { timeout: 2000 }).catch(() => {});
+  await skipOnboarding(page);
   await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
   await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
   await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
@@ -51,7 +53,7 @@ async function newCareer(page, base, email) {
     && structure.prize.qf === 500000 && structure.prize.sf === 1500000 && structure.prize.final === 4000000
     && structure.prize.champion === 10000000 && structure.prize.runnerUp === 3000000;
   const roundsOk = structure.rounds.fase1.ida === 3 && structure.rounds.fase1.volta === 6 && structure.rounds.final.volta === 36;
-  console.log("1) Estrutura de fases/prêmios/calendário bate com o desenho aprovado (6 fases, 4 cabeças de chave, prêmios antigos preservados + 2 novos):",
+  check("1) Estrutura de fases/prêmios/calendário bate com o desenho aprovado (6 fases, 4 cabeças de chave, prêmios antigos preservados + 2 novos):",
     phasesOk && structure.seedCount === 4 && prizeOk && roundsOk, JSON.stringify(structure));
 
   // 2) Integridade de clubes por fase — fecha o chaveamento inteiro
@@ -77,7 +79,7 @@ async function newCareer(page, base, email) {
   });
   const sizesOk = integrity.phaseSizes.fase1 === 56 && integrity.phaseSizes.r32 === 32 && integrity.phaseSizes.r16 === 16
     && integrity.phaseSizes.qf === 8 && integrity.phaseSizes.sf === 4 && integrity.phaseSizes.final === 2;
-  console.log("2) Integridade do chaveamento inteiro (60 clubes únicos, tamanho certo em cada fase, fecha num campeão só):",
+  check("2) Integridade do chaveamento inteiro (60 clubes únicos, tamanho certo em cada fase, fecha num campeão só):",
     integrity.totalUniqueClubs === 60 && sizesOk && integrity.phaseFinal === "done" && !!integrity.champion, JSON.stringify(integrity));
 
   // 3) Fluxo ao vivo real: força o confronto do técnico na Fase 1 (ida)
@@ -103,7 +105,7 @@ async function newCareer(page, base, email) {
       pendingClearedAfter: !cup.pendingLiveLeg,
     };
   });
-  console.log("3) Confronto do técnico na Fase 1 (ida) vira ao vivo de verdade (reaproveita #liveMatchOverlay/resolveLiveChunk), decide e grava a perna:",
+  check("3) Confronto do técnico na Fase 1 (ida) vira ao vivo de verdade (reaproveita #liveMatchOverlay/resolveLiveChunk), decide e grava a perna:",
     liveIda.deferredBefore && liveIda.started && liveIda.overlayOpen && liveIda.isCup && liveIda.liveMatchGone && liveIda.leg1Filled && liveIda.pendingClearedAfter,
     JSON.stringify(liveIda));
 
@@ -119,7 +121,7 @@ async function newCareer(page, base, email) {
     CAREER.serieDPool = savedPool; // restaura pro resto do processo continuar normal
     return { expanded: cup.expanded, phase: cup.phase, hasSeeds: !!cup.seeds, totalClubsR16, hasFlatGh: cup.ties.r16.every((t) => "gh" in t) };
   });
-  console.log("4) Save sem sistema de divisões continua com a Copa LEGADA (16 clubes, jogo único, sem cabeça de chave):",
+  check("4) Save sem sistema de divisões continua com a Copa LEGADA (16 clubes, jogo único, sem cabeça de chave):",
     legacy.expanded === false && legacy.phase === "r16" && !legacy.hasSeeds && legacy.totalClubsR16 === 16 && legacy.hasFlatGh,
     JSON.stringify(legacy));
 

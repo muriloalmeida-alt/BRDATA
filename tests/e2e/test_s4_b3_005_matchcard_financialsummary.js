@@ -7,6 +7,8 @@
 // "Financeiro" real continua funcionando como sempre (FinancialSummary
 // não ganhou função própria, só contrato documentado).
 const { chromium } = require("playwright-core");
+const { check } = require("./_check");
+const { skipOnboarding } = require("./_startup");
 
 (async () => {
   const browser = await chromium.launch({ executablePath: process.env.PW_CHROMIUM_PATH || undefined, headless: true, args: ["--host-resolver-rules=MAP fonts.googleapis.com 127.0.0.1,MAP fonts.gstatic.com 127.0.0.1"] });
@@ -28,7 +30,7 @@ const { chromium } = require("playwright-core");
   await page.click(".m3-club-row");
   await page.waitForTimeout(150);
   await page.click("#btnConfirmClub");
-  await page.click("#btnOnboardSkip", { timeout: 2000 }).catch(() => {});
+  await skipOnboarding(page);
   await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
   await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
   await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
@@ -64,7 +66,7 @@ const { chromium } = require("playwright-core");
     host.remove();
     return result;
   });
-  console.log("1) MatchCard 'próxima': sem placar, mostra data/horário, sem tag de status, times clicáveis:",
+  check("1) MatchCard 'próxima': sem placar, mostra data/horário, sem tag de status, times clicáveis:",
     mc1.hasCard && mc1.dataStatus === "proxima" && !mc1.hasScore && mc1.whenText.includes("12/09") && mc1.whenText.includes("16:00")
     && !mc1.hasStatusTag && mc1.compText === "Série A" && mc1.homeOpenClub === "c1" && mc1.awayOpenClub === "c2"
     && mc1.names[0] === "Time Casa" && mc1.names[1] === "Time Fora",
@@ -84,7 +86,7 @@ const { chromium } = require("playwright-core");
     host.remove();
     return result;
   });
-  console.log("2) MatchCard 'encerrada': mostra o placar (2 x 1), sem tag de status:",
+  check("2) MatchCard 'encerrada': mostra o placar (2 x 1), sem tag de status:",
     (mc2.scoreText || "").replace(/\s+/g, " ").trim() === "2 x 1" && !mc2.hasStatusTag, JSON.stringify(mc2));
 
   // 3) Estados "adiada"/"cancelada"/"andamento" mostram tag de status
@@ -101,7 +103,7 @@ const { chromium } = require("playwright-core");
     };
     return { adiada: mk("adiada", "Adiada"), cancelada: mk("cancelada", "Cancelada"), andamento: mk("andamento", "Ao vivo") };
   });
-  console.log("3) Estados adiada/cancelada/andamento têm tag de status com variant certa (crimson/crimson/gold):",
+  check("3) Estados adiada/cancelada/andamento têm tag de status com variant certa (crimson/crimson/gold):",
     mc3.adiada.text === "Adiada" && mc3.adiada.cls.includes("crimson")
     && mc3.cancelada.text === "Cancelada" && mc3.cancelada.cls.includes("crimson")
     && mc3.andamento.text === "Ao vivo" && mc3.andamento.cls.includes("gold"),
@@ -112,7 +114,7 @@ const { chromium } = require("playwright-core");
     const args = { homeTeam: { name: "X" }, awayTeam: { name: "Y" }, status: "proxima" };
     return { equal: matchCardHTML(args) === matchCardHTML(args), touchesCareer: matchCardHTML.toString().includes("CAREER") };
   });
-  console.log("4) MatchCard é puro (mesma entrada -> mesma saída, sem tocar CAREER):",
+  check("4) MatchCard é puro (mesma entrada -> mesma saída, sem tocar CAREER):",
     mc4.equal && !mc4.touchesCareer, JSON.stringify(mc4));
 
   // ===================== FinancialSummary =====================
@@ -126,7 +128,7 @@ const { chromium } = require("playwright-core");
     kpiText: document.getElementById("financeKpis").textContent,
     wageCapLabel: document.getElementById("wageCapLabel").textContent,
   }));
-  console.log("5) Card 'Financeiro' (FinancialSummary, formalização retroativa) continua funcionando — saldo/indicadores presentes:",
+  check("5) Card 'Financeiro' (FinancialSummary, formalização retroativa) continua funcionando — saldo/indicadores presentes:",
     fin.cashText.includes("R$") && fin.kpiText.includes("Folha salarial") && fin.wageCapLabel.includes("Folha salarial"),
     JSON.stringify(fin));
 

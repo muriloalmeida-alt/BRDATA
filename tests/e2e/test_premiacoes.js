@@ -1,4 +1,6 @@
 const { chromium } = require("playwright-core");
+const { check } = require("./_check");
+const { skipOnboarding } = require("./_startup");
 
 async function newCareer(page, base, email) {
   await page.goto(base + "/", { waitUntil: "domcontentloaded" });
@@ -12,7 +14,7 @@ async function newCareer(page, base, email) {
   await page.click(".m3-club-row");
   await page.waitForTimeout(150);
   await page.click("#btnConfirmClub");
-  await page.click("#btnOnboardSkip", { timeout: 2000 }).catch(() => {});
+  await skipOnboarding(page);
   await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
   await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
   await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
@@ -91,13 +93,13 @@ async function putCareer(page, career) {
     };
   });
 
-  console.log("1) Campeão/vice corretos:", result.campeao === result.teamA, result.vice === result.teamB);
-  console.log("2) Artilheiro é o MEU jogador (desempate por menos jogos):", result.artilheiro && result.artilheiro.jogadorId === result.myPlayerId, "| gols:", result.artilheiro && result.artilheiro.valor);
-  console.log("3) Mais assistências é o MEU jogador:", result.assistencias && result.assistencias.jogadorId === result.myPlayerId);
-  console.log("4) Melhor do torneio é o MEU jogador:", result.melhorJogador && result.melhorJogador.jogadorId === result.myPlayerId);
-  console.log("5) Copa do Brasil disputada com campeão certo:", result.copaDoBrasil.disputou && result.copaDoBrasil.campeao === result.teamC);
-  console.log("6) Moral do jogador premiado subiu:", result.moraleAfter > result.moraleBefore, `(${result.moraleBefore} -> ${result.moraleAfter})`);
-  console.log("7) goalsSeason zerou na virada de temporada:", result.goalsSeasonReset === 0);
+  check("1) Campeão/vice corretos:", result.campeao === result.teamA, result.vice === result.teamB);
+  check("2) Artilheiro é o MEU jogador (desempate por menos jogos):", result.artilheiro && result.artilheiro.jogadorId === result.myPlayerId, "| gols:", result.artilheiro && result.artilheiro.valor);
+  check("3) Mais assistências é o MEU jogador:", result.assistencias && result.assistencias.jogadorId === result.myPlayerId);
+  check("4) Melhor do torneio é o MEU jogador:", result.melhorJogador && result.melhorJogador.jogadorId === result.myPlayerId);
+  check("5) Copa do Brasil disputada com campeão certo:", result.copaDoBrasil.disputou && result.copaDoBrasil.campeao === result.teamC);
+  check("6) Moral do jogador premiado subiu:", result.moraleAfter > result.moraleBefore, `(${result.moraleBefore} -> ${result.moraleAfter})`);
+  check("7) goalsSeason zerou na virada de temporada:", result.goalsSeasonReset === 0);
 
   // 8) Tela de premiações (menu ≡) mostra a temporada com destaque
   // dourado pro que é meu.
@@ -112,7 +114,7 @@ async function putCareer(page, career) {
   // agora é classe CSS (.mine / .champion / .ribbon), não mais style
   // inline — checa pelas classes novas em vez do seletor antigo.
   const hasGold = await page.evaluate(() => !!document.querySelector("#awardsList .champion, #awardsList .mine, #awardsList .ribbon"));
-  console.log("8) Tela de premiações mostra Campeão/Artilheiro/Copa do Brasil:", awardsText.includes("Campeão") && awardsText.includes("Artilheiro") && awardsText.includes("Copa do Brasil"), "| tem destaque dourado:", hasGold);
+  check("8) Tela de premiações mostra Campeão/Artilheiro/Copa do Brasil:", awardsText.includes("Campeão") && awardsText.includes("Artilheiro") && awardsText.includes("Copa do Brasil"), "| tem destaque dourado:", hasGold);
   await page.click("#awardsClose");
   await page.waitForTimeout(200);
 

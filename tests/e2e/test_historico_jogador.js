@@ -9,6 +9,8 @@
 // contadores da temporada nova, e a linha aparecendo no detalhe do
 // jogador.
 const { chromium } = require("playwright-core");
+const { check } = require("./_check");
+const { skipOnboarding } = require("./_startup");
 
 async function newCareer(page, base, email) {
   await page.goto(base + "/", { waitUntil: "load" });
@@ -22,7 +24,7 @@ async function newCareer(page, base, email) {
   await page.click(".m3-club-row");
   await page.waitForTimeout(150);
   await page.click("#btnConfirmClub");
-  await page.click("#btnOnboardSkip", { timeout: 2000 }).catch(() => {});
+  await skipOnboarding(page);
   await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
   await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
   await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
@@ -75,7 +77,7 @@ async function simulateWholeSeasonFast(page) {
   await page.click(`[data-id="${playerId}"]`);
   await page.waitForSelector("#detailOverlay.open");
   const beforeHasHistory = await page.evaluate(() => document.getElementById("detailBody").innerHTML.includes("Histórico por temporada"));
-  console.log("1) Sem histórico na 1ª temporada (nenhuma virada aconteceu ainda):", beforeHasHistory === false);
+  check("1) Sem histórico na 1ª temporada (nenhuma virada aconteceu ainda):", beforeHasHistory === false);
   await page.click("#detailClose");
   await page.waitForTimeout(200);
 
@@ -85,7 +87,7 @@ async function simulateWholeSeasonFast(page) {
     const p = CAREER.squad.find((x) => x.id === id);
     return p ? { apps: p.appsSeason || 0, goals: p.goalsSeason || 0, assists: p.assistsSeason || 0 } : null;
   }, playerId);
-  console.log("2) Depois da temporada inteira, appsSeason acumulou de verdade:", !!beforeSnapshot && beforeSnapshot.apps > 0, JSON.stringify(beforeSnapshot));
+  check("2) Depois da temporada inteira, appsSeason acumulou de verdade:", !!beforeSnapshot && beforeSnapshot.apps > 0, JSON.stringify(beforeSnapshot));
 
   // 3) Vira a temporada (advanceSeason real) -- snapshot deve capturar
   // EXATAMENTE os números de cima, e os contadores da temporada zeram
@@ -102,7 +104,7 @@ async function simulateWholeSeasonFast(page) {
     && afterAdvance.seasonHistory[0].goals === beforeSnapshot.goals
     && afterAdvance.seasonHistory[0].assists === beforeSnapshot.assists
     && afterAdvance.appsSeasonNow === 0 && afterAdvance.goalsSeasonNow === 0 && afterAdvance.assistsSeasonNow === 0;
-  console.log("3) Virada de temporada gravou o snapshot certo e zerou os contadores pra nova:",
+  check("3) Virada de temporada gravou o snapshot certo e zerou os contadores pra nova:",
     !stillOnSquad ? "jogador saiu por fim de contrato (não dá pra checar, pula)" : snapshotMatches,
     JSON.stringify({ stillOnSquad, afterAdvance }));
 
@@ -117,10 +119,10 @@ async function simulateWholeSeasonFast(page) {
       const rows = [...document.querySelectorAll("#detailBody .mt-mini-row")];
       return rows.length ? rows[0].textContent.replace(/\s+/g, " ").trim() : null;
     });
-    console.log("4) Detalhe do jogador mostra a linha de histórico da temporada que passou:", !!historyRowText, historyRowText);
+    check("4) Detalhe do jogador mostra a linha de histórico da temporada que passou:", !!historyRowText, historyRowText);
     await page.click("#detailClose");
   } else {
-    console.log("4) (pulado -- jogador saiu do elenco por fim de contrato antes de checar a UI)");
+    check("4) (pulado -- jogador saiu do elenco por fim de contrato antes de checar a UI)");
   }
 
   await browser.close();

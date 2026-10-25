@@ -11,6 +11,8 @@
 // alteradas — registradas como divergência em aberto no relatório —
 // então não são testadas aqui como "migradas".
 const { chromium } = require("playwright-core");
+const { check } = require("./_check");
+const { skipOnboarding } = require("./_startup");
 
 (async () => {
   const browser = await chromium.launch({ executablePath: process.env.PW_CHROMIUM_PATH || undefined, headless: true, args: ["--host-resolver-rules=MAP fonts.googleapis.com 127.0.0.1,MAP fonts.gstatic.com 127.0.0.1"] });
@@ -33,7 +35,7 @@ const { chromium } = require("playwright-core");
   await page.click(".m3-club-row");
   await page.waitForTimeout(150);
   await page.click("#btnConfirmClub");
-  await page.click("#btnOnboardSkip", { timeout: 2000 }).catch(() => {});
+  await skipOnboarding(page);
   await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
   await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
   await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
@@ -58,7 +60,7 @@ const { chromium } = require("playwright-core");
     return { overlayOpen, nameColor: b ? getComputedStyle(b).color : null, subColor: span ? getComputedStyle(span).color : null };
   });
   // --m3-on-surface:#E7E2DE = rgb(231,226,222); --m3-on-surface-variant:#CBC5BE = rgb(203,197,190).
-  console.log("1) Perfil abre e hero (nome/subtítulo) usa tokens --m3-on-surface/--m3-on-surface-variant:",
+  check("1) Perfil abre e hero (nome/subtítulo) usa tokens --m3-on-surface/--m3-on-surface-variant:",
     hero.overlayOpen && hero.nameColor === "rgb(231, 226, 222)" && hero.subColor === "rgb(203, 197, 190)", JSON.stringify(hero));
 
   // 2) Todas as seções esperadas continuam presentes: atributos,
@@ -75,7 +77,7 @@ const { chromium } = require("playwright-core");
       hasActions: body.querySelectorAll(".mt-action-list button").length > 0,
     };
   });
-  console.log("2) Seções da especificação continuam presentes (atributos/condição/relacionamento/salário/ações):",
+  check("2) Seções da especificação continuam presentes (atributos/condição/relacionamento/salário/ações):",
     Object.values(sections).every(Boolean), JSON.stringify(sections));
 
   // 3) Força o teto salarial pra estourar num jogador de base e
@@ -88,7 +90,7 @@ const { chromium } = require("playwright-core");
     const el = [...document.querySelectorAll("#detailBody .mt-info-line")].find((p) => p.textContent.includes("acima do teto"));
     return el ? getComputedStyle(el).color : null;
   });
-  console.log("3) Aviso de teto salarial estourado usa --m3-error (não mais --mt-crimson-400):",
+  check("3) Aviso de teto salarial estourado usa --m3-error (não mais --mt-crimson-400):",
     wageWarning === "rgb(255, 84, 73)", wageWarning);
 
   await page.screenshot({ path: "s4_b2_005_perfil_hero.png" }).catch(() => {});
@@ -101,7 +103,7 @@ const { chromium } = require("playwright-core");
     if (otherId) openDetail(otherId);
     return { reopened: document.getElementById("detailOverlay").classList.contains("open"), nameShown: document.querySelector("#detailBody .mt-player-hero-info b")?.textContent };
   });
-  console.log("4) Fechar e reabrir o Perfil de outro jogador continua funcionando:",
+  check("4) Fechar e reabrir o Perfil de outro jogador continua funcionando:",
     stillWorks.reopened && !!stillWorks.nameShown, JSON.stringify(stillWorks));
 
   await browser.close();

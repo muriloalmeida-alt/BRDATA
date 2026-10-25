@@ -1,4 +1,6 @@
 const { chromium } = require("playwright-core");
+const { check } = require("./_check");
+const { skipOnboarding } = require("./_startup");
 
 (async () => {
   const browser = await chromium.launch({
@@ -24,7 +26,7 @@ const { chromium } = require("playwright-core");
   await page.click(".m3-club-row");
   await page.waitForTimeout(150);
   await page.click("#btnConfirmClub");
-  await page.click("#btnOnboardSkip", { timeout: 2000 }).catch(() => {});
+  await skipOnboarding(page);
   await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
   await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
   await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
@@ -56,7 +58,7 @@ const { chromium } = require("playwright-core");
     const row = document.querySelector(`[data-id="${id}"]`);
     return row ? row.textContent.includes("Fim de contrato") : null;
   }, targetId);
-  console.log("1) Tag 'Fim de contrato' na lista do Elenco:", tagVisible);
+  check("1) Tag 'Fim de contrato' na lista do Elenco:", tagVisible);
 
   // 2) Abre detalhe -- aviso + botão Renovar aparecem
   await page.click(`[data-id="${targetId}"]`);
@@ -64,7 +66,7 @@ const { chromium } = require("playwright-core");
   await page.waitForTimeout(200);
   const detailHasWarning = await page.evaluate(() => document.getElementById("detailBody").textContent.includes("sai de graça"));
   const renewBtnExists = await page.evaluate(() => !!document.querySelector('[data-act="renew"]'));
-  console.log("2) Aviso no detalhe:", detailHasWarning, "| botão Renovar existe:", renewBtnExists);
+  check("2) Aviso no detalhe:", detailHasWarning, "| botão Renovar existe:", renewBtnExists);
 
   // 3) Abre sub-modal de renovação -- campos vêm prefilled
   await page.click('[data-act="renew"]');
@@ -75,7 +77,7 @@ const { chromium } = require("playwright-core");
     suggestedText: document.getElementById("renewSuggestedWage").textContent,
     durationValue: document.getElementById("renewDurationSelect").value,
   }));
-  console.log("3) Pré-preenchido:", prefill);
+  check("3) Pré-preenchido:", prefill);
 
   // 4) Recusa por salário abaixo do mínimo
   const wageBefore = await page.evaluate(async (id) => (await (await fetch("/api/career")).json()).career.squad.find((p) => p.id === id).wage, targetId);
@@ -85,7 +87,7 @@ const { chromium } = require("playwright-core");
   const toastLow = await page.evaluate(() => document.getElementById("toast").textContent);
   const renewOverlayClosedAfterLow = await page.evaluate(() => !document.getElementById("renewOverlay").classList.contains("open"));
   const wageAfterLow = await page.evaluate(async (id) => (await (await fetch("/api/career")).json()).career.squad.find((p) => p.id === id).wage, targetId);
-  console.log("4) Toast (salário baixo):", toastLow);
+  check("4) Toast (salário baixo):", toastLow);
   console.log("   Sub-modal fechou:", renewOverlayClosedAfterLow, "| salário mudou (deve ser false):", wageAfterLow !== wageBefore);
 
   // 5) O detalhe continua aberto por baixo (recusa só fecha o sub-modal
@@ -102,7 +104,7 @@ const { chromium } = require("playwright-core");
     const career = (await (await fetch("/api/career")).json()).career;
     return { contractUntil: career.squad.find((p) => p.id === id).contractUntil, wage: career.squad.find((p) => p.id === id).wage, seasonYear: career.seasonYear };
   }, targetId);
-  console.log("5) Toast (sucesso):", toastSuccess);
+  check("5) Toast (sucesso):", toastSuccess);
   console.log("   contractUntil depois:", after.contractUntil, "(deve ser seasonYear+2 =", after.seasonYear + 2, ") | salário:", after.wage);
 
   // 6) Tag "Fim de contrato" some da lista agora
@@ -111,7 +113,7 @@ const { chromium } = require("playwright-core");
     const row = document.querySelector(`[data-id="${id}"]`);
     return row ? !row.textContent.includes("Fim de contrato") : null;
   }, targetId);
-  console.log("6) Tag sumiu da lista (deve ser true):", tagGone);
+  check("6) Tag sumiu da lista (deve ser true):", tagGone);
 
   await browser.close();
 })().catch((e) => { console.error("FATAL:", e); process.exit(1); });

@@ -7,6 +7,8 @@
 // Ver searchScoutSuggestions/acceptScoutSuggestion/rejectScoutSuggestion
 // em carreira.js.
 const { chromium } = require("playwright-core");
+const { check } = require("./_check");
+const { skipOnboarding } = require("./_startup");
 
 (async () => {
   const browser = await chromium.launch({ executablePath: process.env.PW_CHROMIUM_PATH || undefined, headless: true, args: ["--host-resolver-rules=MAP fonts.googleapis.com 127.0.0.1,MAP fonts.gstatic.com 127.0.0.1"] });
@@ -26,7 +28,7 @@ const { chromium } = require("playwright-core");
   await page.click(".m3-club-row");
   await page.waitForTimeout(150);
   await page.click("#btnConfirmClub");
-  await page.click("#btnOnboardSkip", { timeout: 2000 }).catch(() => {});
+  await skipOnboarding(page);
   await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
   await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
   await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
@@ -54,7 +56,7 @@ const { chromium } = require("playwright-core");
     marketOpen: document.getElementById("scoutMarketOverlay").classList.contains("open"),
     suggestions: (CAREER.scoutSuggestions || []).length,
   }));
-  console.log("1) Sem olheiro contratado: sem indicação, e o botão leva pra contratar olheiro:",
+  check("1) Sem olheiro contratado: sem indicação, e o botão leva pra contratar olheiro:",
     check1.open && /Sem olheiro/.test(check1.hint) && check1.btn === "Contratar olheiro" && check1b.marketOpen && check1b.suggestions === 0, JSON.stringify({ ...check1, ...check1b }));
 
   // 2) Contrata o olheiro-chefe, manda em missão Profissional (longa)
@@ -91,7 +93,7 @@ const { chromium } = require("playwright-core");
       firstRowText: rows[0]?.textContent.replace(/\s+/g, " ").trim().slice(0, 160),
     };
   });
-  console.log("2) Missão Profissional do olheiro traz indicações com POSIÇÃO, faixa de potencial e relatório:",
+  check("2) Missão Profissional do olheiro traz indicações com POSIÇÃO, faixa de potencial e relatório:",
     typePreselected === "pro" && mission && mission.type === "pro" && mission.duration === "longa"
     && check2.suggestionCount > 0 && check2.allHaveReport && check2.noExactPotentialField
     && check2.rowCount === check2.suggestionCount && check2.firstRowHasPosChip, JSON.stringify({ typePreselected, mission, ...check2 }));
@@ -99,7 +101,7 @@ const { chromium } = require("playwright-core");
   // 3) Catálogo é só nacional (nada de internacional/sul-americano).
   const check3 = await page.evaluate(() => SCOUT_MARKET.every((c) => c.regionScope === "any" || c.regionScope.every((r) => REGION_LABEL[r]))
     && !SCOUT_MARKET.some((c) => /internacional|sul-americ/i.test(c.specialty)));
-  console.log("3) Catálogo de olheiros só nacional:", check3);
+  check("3) Catálogo de olheiros só nacional:", check3);
 
   // 4) "Recusar" tira SÓ aquele jogador da lista (a janela continua
   // aberta, só o item some).
@@ -112,7 +114,7 @@ const { chromium } = require("playwright-core");
     gone: !CAREER.scoutSuggestions.some((s) => s.id === firstId),
     countAfter: CAREER.scoutSuggestions.length,
   }), firstId);
-  console.log("4) 'Recusar' tira só aquele jogador da lista, sem fechar a tela:",
+  check("4) 'Recusar' tira só aquele jogador da lista, sem fechar a tela:",
     check4.stillOpen && check4.gone && check4.countAfter === countBefore4 - 1, JSON.stringify(check4));
 
   // 5) "Aceitar" abre a MESMA proposta real do Mercado (openOfferModal)
@@ -128,7 +130,7 @@ const { chromium } = require("playwright-core");
     offerCtxMatches: OFFER_CTX && String(OFFER_CTX.playerId) === String(playerId) && String(OFFER_CTX.clubId) === String(clubId),
     removedFromScoutList: !CAREER.scoutSuggestions.some((s) => s.id === id),
   }), { id: secondId, playerId: secondSuggestion.playerId, clubId: secondSuggestion.clubId });
-  console.log("5) 'Propor' abre a proposta real do jogador certo (sem comprar na hora), some da lista de olheiros:",
+  check("5) 'Propor' abre a proposta real do jogador certo (sem comprar na hora), some da lista de olheiros:",
     check5.scoutOverlayClosed && check5.offerOpen && check5.offerCtxMatches && check5.removedFromScoutList, JSON.stringify(check5));
   await page.evaluate(() => closeOfferModal()); // proposta virou diálogo M3 (sem #offerClose)
   await page.waitForTimeout(200);

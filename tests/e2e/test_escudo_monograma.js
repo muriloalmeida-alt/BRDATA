@@ -2,6 +2,8 @@
 // e o tratamento "Opção B" (escudo maior + halo) só no card "Próximo
 // jogo" da Central, sem regressão nas outras telas que usam crestImg().
 const { chromium } = require("playwright-core");
+const { check } = require("./_check");
+const { skipOnboarding } = require("./_startup");
 const { skipPreseason } = require("./_calendar_skip");
 
 (async () => {
@@ -22,7 +24,7 @@ const { skipPreseason } = require("./_calendar_skip");
   await page.click(".m3-club-row");
   await page.waitForTimeout(150);
   await page.click("#btnConfirmClub");
-  await page.click("#btnOnboardSkip", { timeout: 2000 }).catch(() => {});
+  await skipOnboarding(page);
   await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
   await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
   await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
@@ -45,7 +47,7 @@ const { skipPreseason } = require("./_calendar_skip");
       nameColor: getComputedStyle(name).color,
     };
   });
-  console.log("1) Escudo do 'Próximo jogo' em 72px:", central.crestSize === 72, central.crestSize);
+  check("1) Escudo do 'Próximo jogo' em 72px:", central.crestSize === 72, central.crestSize);
   console.log("   Monograma (sigla do clube) renderizado:", !!central.monoText, central.monoText);
   console.log("   Título/nome SEM tingimento do halo (cor normal ivory):", central.titleColor.includes("245") || central.titleColor.includes("232"), central.titleColor, central.nameColor);
 
@@ -62,7 +64,7 @@ const { skipPreseason } = require("./_calendar_skip");
     const glow = document.querySelector(".mt-tr .mt-nextmatch-glow");
     return { hasCrest: !!crest, hasMono: !!mono, hasGlow: !!glow, monoText: mono ? mono.textContent : null };
   });
-  console.log("2) Tabela: escudo com monograma (sem halo, tratamento exclusivo da Central):", tabela.hasCrest && tabela.hasMono && !tabela.hasGlow, JSON.stringify(tabela));
+  check("2) Tabela: escudo com monograma (sem halo, tratamento exclusivo da Central):", tabela.hasCrest && tabela.hasMono && !tabela.hasGlow, JSON.stringify(tabela));
 
   // 3) Escolha do clube (logout e reabrir o picker por uma carreira nova)
   // -- reaproveita o catálogo local, então também cai no fallback.
@@ -76,7 +78,7 @@ const { skipPreseason } = require("./_calendar_skip");
     const mono = card ? card.querySelector(".ct-crest-mono") : null;
     return { hasCard: !!card, monoText: mono ? mono.textContent : null };
   });
-  console.log("3) Escolha do clube: cards com monograma no escudo:", picker.hasCard && !!picker.monoText, picker.monoText);
+  check("3) Escolha do clube: cards com monograma no escudo:", picker.hasCard && !!picker.monoText, picker.monoText);
 
   await browser.close();
 })().catch((e) => { console.error("FATAL:", e); process.exit(1); });

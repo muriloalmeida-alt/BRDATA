@@ -1,5 +1,7 @@
 // Testa Fundação M3 + nav de 5 itens + Início/Clube (Bloco 1, parte 1).
 const { chromium } = require("playwright-core");
+const { check } = require("./_check");
+const { skipOnboarding } = require("./_startup");
 
 (async () => {
   const browser = await chromium.launch({ executablePath: process.env.PW_CHROMIUM_PATH || undefined, headless: true, args: ["--host-resolver-rules=MAP fonts.googleapis.com 127.0.0.1,MAP fonts.gstatic.com 127.0.0.1"] });
@@ -21,7 +23,7 @@ const { chromium } = require("playwright-core");
   await page.click(".m3-club-row");
   await page.waitForTimeout(150);
   await page.click("#btnConfirmClub");
-  await page.click("#btnOnboardSkip", { timeout: 2000 }).catch(() => {});
+  await skipOnboarding(page);
   await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
   await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
   await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
@@ -32,7 +34,7 @@ const { chromium } = require("playwright-core");
 
   // 1) Nav tem 5 itens + Menu, todos com data-panel certo.
   const navLabels = await page.evaluate(() => [...document.querySelectorAll(".m3-nav-item")].map((el) => el.textContent.trim()));
-  console.log("1) Nav com 5 itens + Menu:", JSON.stringify(navLabels), navLabels.length === 6 && navLabels[0] === "Início" && navLabels[4] === "Clube" && navLabels[5] === "Menu");
+  check("1) Nav com 5 itens + Menu:", JSON.stringify(navLabels), navLabels.length === 6 && navLabels[0] === "Início" && navLabels[4] === "Clube" && navLabels[5] === "Menu");
 
   // 2) Topbar mostra identidade do clube (nome + posição).
   const topbar = await page.evaluate(() => ({
@@ -40,7 +42,7 @@ const { chromium } = require("playwright-core");
     sub: document.getElementById("topbarClubSub").textContent,
     chip: document.getElementById("topbarPositionChip").textContent,
   }));
-  console.log("2) Topbar com identidade do clube:", topbar.name.length > 0 && /\dº lugar/.test(topbar.chip), JSON.stringify(topbar));
+  check("2) Topbar com identidade do clube:", topbar.name.length > 0 && /\dº lugar/.test(topbar.chip), JSON.stringify(topbar));
 
   // 3) Início (M3): hero card, FAB visível. AJUSTE (pedido do usuário:
   // "remover o card de situação do elenco") — #squadKpis (5 stat cards)
@@ -51,7 +53,7 @@ const { chromium } = require("playwright-core");
     fabText: document.getElementById("btnSimulate").textContent.trim(),
     fabVisible: getComputedStyle(document.getElementById("btnSimulate")).display !== "none",
   }));
-  console.log("3) Início: hero+FAB, sem o card 'Situação do elenco':", inicio.heroVisible && inicio.squadKpisRemoved && inicio.fabVisible, JSON.stringify(inicio));
+  check("3) Início: hero+FAB, sem o card 'Situação do elenco':", inicio.heroVisible && inicio.squadKpisRemoved && inicio.fabVisible, JSON.stringify(inicio));
 
   // 4) Clicar em "Clube" mostra financeiro/patrocínio (movidos da Central).
   await page.click('.m3-nav-item[data-panel="clube"]');
@@ -62,13 +64,13 @@ const { chromium } = require("playwright-core");
     hasSponsorBox: document.getElementById("sponsorshipBox").innerHTML.length > 0,
     caixaText: document.querySelector("#financeKpis .mt-fin-block .num")?.textContent,
   }));
-  console.log("4) Clube mostra financeiro/patrocínio (relocado da Central):", clube.panelActive && clube.hasFinanceKpis && clube.hasSponsorBox, JSON.stringify(clube));
+  check("4) Clube mostra financeiro/patrocínio (relocado da Central):", clube.panelActive && clube.hasFinanceKpis && clube.hasSponsorBox, JSON.stringify(clube));
 
   // 5) Mercado voltou pra nav direta (sem passar pelo Menu).
   await page.click('.m3-nav-item[data-panel="mercado"]');
   await page.waitForTimeout(200);
   const mercadoDirect = await page.evaluate(() => document.getElementById("panel-mercado").classList.contains("active"));
-  console.log("5) Mercado acessível direto pela nav:", mercadoDirect);
+  check("5) Mercado acessível direto pela nav:", mercadoDirect);
 
   // 6) Tabela/Treinos saíram da nav e foram pro Menu.
   await page.click("#btnBottomMenu");
@@ -78,13 +80,13 @@ const { chromium } = require("playwright-core");
   await page.click("#btnOpenTabela");
   await page.waitForTimeout(200);
   const tabelaViaMenu = await page.evaluate(() => document.getElementById("panel-tabela").classList.contains("active"));
-  console.log("6) Tabela/Treinos no Menu (Mercado saiu de lá), Tabela abre via Menu:", menuHasTabelaTreinos && tabelaViaMenu);
+  check("6) Tabela/Treinos no Menu (Mercado saiu de lá), Tabela abre via Menu:", menuHasTabelaTreinos && tabelaViaMenu);
 
   // 7) Central foi pra Início de novo, sem erro.
   await page.click('.m3-nav-item[data-panel="central"]');
   await page.waitForTimeout(200);
   const inicioActive = await page.evaluate(() => document.getElementById("panel-central").classList.contains("active"));
-  console.log("7) Voltar pra Início funciona:", inicioActive);
+  check("7) Voltar pra Início funciona:", inicioActive);
 
   await page.screenshot({ path: "m3_01_inicio.png" });
   await page.click('.m3-nav-item[data-panel="clube"]');

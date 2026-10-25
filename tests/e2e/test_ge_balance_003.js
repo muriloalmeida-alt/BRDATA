@@ -11,6 +11,8 @@
 // em tests/e2e/sim_ge_balance_003.js — este teste é sobre o motor de
 // verdade rodando dentro da UI, não sobre estatística agregada.
 const { chromium } = require("playwright-core");
+const { check } = require("./_check");
+const { skipOnboarding } = require("./_startup");
 
 async function newCareer(page, base, email) {
   await page.goto(base + "/", { waitUntil: "load" });
@@ -24,7 +26,7 @@ async function newCareer(page, base, email) {
   await page.click(".m3-club-row");
   await page.waitForTimeout(150);
   await page.click("#btnConfirmClub");
-  await page.click("#btnOnboardSkip", { timeout: 2000 }).catch(() => {});
+  await skipOnboarding(page);
   await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
   await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
   await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
@@ -63,7 +65,7 @@ async function newCareer(page, base, email) {
     }
     return { avgGoalsVsElite: goalsVsElite / N, avgGoalsVsWeak: goalsVsWeak / N };
   });
-  console.log("1) resolveCpuFixture REAL: Grêmio marca MENOS gols em média contra a defesa elite (Palmeiras, def=0.75) do que contra a defesa fraca (Cuiabá, def=1.32):",
+  check("1) resolveCpuFixture REAL: Grêmio marca MENOS gols em média contra a defesa elite (Palmeiras, def=0.75) do que contra a defesa fraca (Cuiabá, def=1.32):",
     check1.avgGoalsVsElite < check1.avgGoalsVsWeak, JSON.stringify(check1));
 
   // 2) suggestTactics (sugestão tática) usa a MESMA fórmula corrigida —
@@ -74,7 +76,7 @@ async function newCareer(page, base, email) {
     const s = suggestTactics();
     return { text: s.text, canApply: s.canApply };
   });
-  console.log("2) suggestTactics roda sem erro com a fórmula corrigida:", check2.skipped || (typeof check2.text === "string" && check2.text.length > 5), JSON.stringify(check2));
+  check("2) suggestTactics roda sem erro com a fórmula corrigida:", check2.skipped || (typeof check2.text === "string" && check2.text.length > 5), JSON.stringify(check2));
 
   await browser.close();
 })().catch((e) => { console.error("FATAL:", e); process.exit(1); });

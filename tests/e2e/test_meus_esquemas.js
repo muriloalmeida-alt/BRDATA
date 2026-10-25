@@ -1,6 +1,8 @@
 // Nova feature — Meus esquemas: biblioteca de esquemas táticos
 // completos (formação+titulares+banco+táticas juntos).
 const { chromium } = require("playwright-core");
+const { check } = require("./_check");
+const { skipOnboarding } = require("./_startup");
 
 (async () => {
   const browser = await chromium.launch({ executablePath: process.env.PW_CHROMIUM_PATH || undefined, headless: true, args: ["--host-resolver-rules=MAP fonts.googleapis.com 127.0.0.1,MAP fonts.gstatic.com 127.0.0.1"] });
@@ -20,7 +22,7 @@ const { chromium } = require("playwright-core");
   await page.click(".m3-club-row");
   await page.waitForTimeout(150);
   await page.click("#btnConfirmClub");
-  await page.click("#btnOnboardSkip", { timeout: 2000 }).catch(() => {});
+  await skipOnboarding(page);
   await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
   await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
   await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
@@ -40,7 +42,7 @@ const { chromium } = require("playwright-core");
     count: document.getElementById("schemesCountLabel").textContent,
     emptyMsg: document.getElementById("schemesList").textContent.includes("Nenhum esquema salvo"),
   }));
-  console.log("1) Abre vazio (nenhum esquema salvo ainda):", check1.open && check1.count.includes("0") && check1.emptyMsg, JSON.stringify(check1));
+  check("1) Abre vazio (nenhum esquema salvo ainda):", check1.open && check1.count.includes("0") && check1.emptyMsg, JSON.stringify(check1));
   await page.click("#schemesClose");
   await page.waitForTimeout(200);
 
@@ -74,7 +76,7 @@ const { chromium } = require("playwright-core");
       careerPressao: CAREER.lineup.tactics.pressao,
     };
   });
-  console.log("2) Salvar 'Retranca fora' aparece na lista, marcado ATIVO, com o esquema 5-3-2:",
+  check("2) Salvar 'Retranca fora' aparece na lista, marcado ATIVO, com o esquema 5-3-2:",
     check2.count.includes("1") && check2.name === "Retranca fora" && check2.icon === "5-3-2" && check2.isActive && check2.badge === "ATIVO"
     && check2.careerFormation === "5-3-2" && check2.careerPressao === 1, JSON.stringify(check2));
 
@@ -84,7 +86,7 @@ const { chromium } = require("playwright-core");
   await page.evaluate(() => document.querySelector('#formationChipRow [data-formation="4-3-3"]').click());
   await page.waitForTimeout(150);
   const activeAfterEdit = await page.evaluate(() => CAREER.activeSchemeId);
-  console.log("3) Trocar a formação depois de salvar desvincula (activeSchemeId volta a null):", activeAfterEdit === null, activeAfterEdit);
+  check("3) Trocar a formação depois de salvar desvincula (activeSchemeId volta a null):", activeAfterEdit === null, activeAfterEdit);
   await page.click("#btnBottomMenu");
   await page.waitForTimeout(150);
   await page.click("#topbarMenu .mt-topbar-menu-item.group[data-submenu='tatica']");
@@ -105,7 +107,7 @@ const { chromium } = require("playwright-core");
     pressao: CAREER.lineup.tactics.pressao,
     activeSchemeId: CAREER.activeSchemeId,
   }));
-  console.log("4) Clicar no esquema reaplica formação+tática por inteiro:", check4.formation === "5-3-2" && check4.pressao === 1 && !!check4.activeSchemeId, JSON.stringify(check4));
+  check("4) Clicar no esquema reaplica formação+tática por inteiro:", check4.formation === "5-3-2" && check4.pressao === 1 && !!check4.activeSchemeId, JSON.stringify(check4));
 
   await page.screenshot({ path: "screens/meus_esquemas.png" });
 
@@ -119,7 +121,7 @@ const { chromium } = require("playwright-core");
     emptyMsg: document.getElementById("schemesList").textContent.includes("Nenhum esquema salvo"),
     schemesArr: CAREER.tacticalSchemes.length,
   }));
-  console.log("5) Apagar o esquema volta ao estado vazio:", check5.count.includes("0") && check5.emptyMsg && check5.schemesArr === 0, JSON.stringify(check5));
+  check("5) Apagar o esquema volta ao estado vazio:", check5.count.includes("0") && check5.emptyMsg && check5.schemesArr === 0, JSON.stringify(check5));
 
   // 6) Limite de esquemas — força 8 esquemas e confere que o 9º é
   // recusado com um aviso, sem estourar o array.
@@ -141,7 +143,7 @@ const { chromium } = require("playwright-core");
     total: CAREER.tacticalSchemes.length,
     toastText: document.getElementById("toast")?.textContent || "",
   }));
-  console.log("6) Limite de 8 esquemas bloqueia o 9º com aviso:", check6.total === 8 && check6.toastText.toLowerCase().includes("limite"), JSON.stringify(check6));
+  check("6) Limite de 8 esquemas bloqueia o 9º com aviso:", check6.total === 8 && check6.toastText.toLowerCase().includes("limite"), JSON.stringify(check6));
 
   await browser.close();
 })().catch((e) => { console.error("FATAL:", e); process.exit(1); });
