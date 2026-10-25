@@ -321,7 +321,7 @@ GE-SCOUT-001 → GE-CALENDAR-001 (B1 → B2 → B3).
 
 GE-CALENDAR-001 — Calendário real jan–dez, pré-temporada e amistosos
 
-Status: B1 APROVADA e mesclada (merge `ed04331`, 25/10/2026, "Branches Aprovadas"); B2 e B3 PRONTAS PARA IMPLEMENTAÇÃO
+Status: B1 APROVADA e mesclada; B2 em REVISÃO DO PM NECESSÁRIA (branch `claude/ge-calendar-001-b2`); B3 PRONTA PARA IMPLEMENTAÇÃO
 Prioridade: P1 (Game Engine) · Etapa do loop: todo o loop (Calendar)
 
 Decisões do Murilo: semanas com 2 jogos; 3 amistosos na pré-temporada +
@@ -362,6 +362,37 @@ rodadas + Copa encaixadas sem conflito; janelas abrem/fecham nas datas;
 saldo anual de caixa equivalente ao atual (±10%) em simulação; volume
 de transferências CPU por temporada dentro de ±20% do atual; saves
 antigos carregam e viram a temporada sem erro.
+
+Relatório de implementação — B2: amistosos (Claude, 25/10/2026)
+
+* `buildFriendlySlots(calendário)`: 3 amistosos nas 3 últimas semanas da
+  pré-temporada (obrigatórios) e 2 nas 2 últimas de julho (opcionais),
+  cada um com 3 convites de clubes da mesma divisão ou de divisões
+  abaixo, sorteados de forma determinística por clube/ano/semana. Ficam
+  em `CAREER.calendar.friendlies`. Carreira que já tem calendário da B1
+  ganha os amistosos na próxima virada.
+* Início, na semana de amistoso: os 3 convites aparecem como chips
+  (clube + divisão) e o botão vira "Ir para o amistoso". Na pré, sem
+  escolha, vai o 1º convite. Em julho, sem aceitar um convite, o botão
+  continua "Avançar semana" e o amistoso não acontece.
+* Partida: o mesmo motor ao vivo (`friendlyContext`, mesmo caminho do
+  jogo de Copa), com substituições e tática. Ao terminar
+  (`finishFriendlyLive`): não mexe na tabela; gols, assistências e jogos
+  oficiais são desfeitos; cartão não conta e não gera suspensão; só
+  metade das lesões da partida se confirma (risco menor). A minutagem da
+  temporada conta para a evolução (GE-BALANCE-005). Rende 30% da
+  bilheteria de um jogo oficial ("Bilheteria de amistoso" no extrato).
+  Em seguida a semana fecha sozinha (treino, prazos, mês).
+* "Pular até o próximo jogo" abre mão dos amistosos das semanas
+  puladas (ficam marcados sem resultado).
+
+Testes: novo `tests/e2e/test_ge_calendar_001_b2.js` (passa) cobre
+convites e botão na semana certa; jogo contra o convite escolhido com
+resultado guardado; tabela, gols oficiais e cartões intactos;
+bilheteria e semana fechada sem avançar a rodada; pulo abrindo mão dos
+amistosos; e o opcional de julho. Regressão: calendário B1, Ao Vivo,
+Copa (3 scripts), temporada, save e treino — todos passam. Mobile
+conferido.
 
 Relatório de implementação — B1 (Claude, 25/10/2026)
 
