@@ -1,7 +1,7 @@
 # BRDATA — CHANGELOG
-**Gerado em:** 09/09/2026 (atualizado em 11/09/2026)
+**Gerado em:** 09/09/2026 (atualizado em 25/10/2026)
 **Cobertura:** 2026-08-14 até 2026-09-11 (251 commits em 18 dias, branch `main`)
-**Versão atual:** v9.0.0
+**Versão atual:** v9.1.0
 
 ## Metodologia
 
@@ -78,6 +78,18 @@ bump.
 ---
 
 ## Histórico completo (mais recente primeiro)
+
+### 2026-10-25 — v9.1.0  (1 commit de merge)
+
+> **Bump MINOR porque:** mudança completa de balanceamento do Player
+> Engine (GE-BALANCE-005, issue #38) — evolução de jogadores deixa de
+> inflar o elenco inteiro acima de 90.
+
+- `ed42a7b` — Merge GE-BALANCE-005: teto de ganho por temporada por idade/
+  minutagem (+6/+4/+2/0), freio de faixa alta (80+/88+), potencial que
+  cai a partir dos 30 (32 goleiro), potencial enviesado na base/olheiro,
+  evolução anual dos elencos CPU e linha explicativa no perfil do
+  jogador. Validação: `tests/e2e/sim_ge_balance_005.js`.
 
 ### 2026-09-11 — v9.0.0  (15 commits de merge)
 
