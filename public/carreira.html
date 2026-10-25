@@ -2321,6 +2321,11 @@
   .mt-market-toolbar{ display:flex; gap:8px; align-items:center; margin:4px 0 8px; }
   .mt-market-toolbar .mt-btn-ghost{ flex:0 0 auto; width:auto; margin:0; padding-left:18px; padding-right:18px; display:inline-flex; align-items:center; gap:6px; }
   .mt-market-toolbar .mt-select-box{ flex:1 1 auto; min-width:0; width:auto; margin:0; }
+  /* GE-CALENDAR-001 — card de fase do calendário (semana sem jogo) e
+     aviso de semana com 2 jogos. */
+  .mt-calendar-phase{ display:flex; flex-direction:column; gap:6px; text-align:left; width:100%; font-size:14px; color:var(--m3-on-surface); }
+  .mt-calendar-phase span{ color:var(--m3-on-surface-variant); font-size:13px; }
+  .mt-calendar-double{ width:100%; margin:10px 0 0; font-size:12px; color:var(--m3-on-surface-variant); text-align:center; }
   .mt-player-link{ cursor:pointer; text-decoration:underline; text-decoration-color:color-mix(in srgb, currentColor 40%, transparent); text-underline-offset:2px; }
   .mt-player-link:focus-visible{ outline:2px solid var(--m3-primary); outline-offset:2px; border-radius:2px; }
   .mt-mini-col{ flex:1; text-align:center; font-family:'Rajdhani', var(--font); font-weight:700; color:var(--mt-ivory-100); }
@@ -3159,6 +3164,9 @@
              .mt-action-bar (dentro de #centralActionBar) pra .m3-fab
              direto no botão (só 1 dos 2 fica visível por vez, igual
              antes). -->
+        <!-- GE-CALENDAR-001 — semana sem jogo: atalho pra pular direto até
+             a semana do próximo jogo (o FAB avança 1 semana). -->
+        <button class="mt-btn-ghost hidden" id="btnSkipToMatch" style="width:100%; margin-top:8px;">Pular até o próximo jogo</button>
         <button class="m3-fab" id="btnSimulate"><svg viewBox="0 0 24 24" fill="currentColor"><polygon points="6,4 20,12 6,20"/></svg>Ir para o jogo</button>
         <button class="m3-fab hidden" id="btnAdvanceSeason"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 21h8M12 17v4M7 4h10v4a5 5 0 0 1-10 0V4Z"/><path d="M7 5H4a1 1 0 0 0-1 1v1a4 4 0 0 0 4 4"/><path d="M17 5h3a1 1 0 0 1 1 1v1a4 4 0 0 1-4 4"/></svg>Próxima Temporada</button>
       </section>

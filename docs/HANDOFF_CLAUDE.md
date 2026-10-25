@@ -424,7 +424,7 @@ Testes:
 
 GE-CALENDAR-001 — Calendário real jan–dez, pré-temporada e amistosos
 
-Status: PRONTO PARA IMPLEMENTAÇÃO (entrega em 3 partes, B1 → B2 → B3)
+Status: B1 em REVISÃO DO PM NECESSÁRIA (branch `claude/ge-calendar-001-b1`, criada a partir de `claude/ge-scout-001`); B2 e B3 PRONTAS PARA IMPLEMENTAÇÃO depois da B1
 Prioridade: P1 (Game Engine) · Etapa do loop: todo o loop (Calendar)
 
 Decisões do Murilo: semanas com 2 jogos; 3 amistosos na pré-temporada +
@@ -465,6 +465,86 @@ rodadas + Copa encaixadas sem conflito; janelas abrem/fecham nas datas;
 saldo anual de caixa equivalente ao atual (±10%) em simulação; volume
 de transferências CPU por temporada dentro de ±20% do atual; saves
 antigos carregam e viram a temporada sem erro.
+
+Relatório de implementação — B1 (Claude, 25/10/2026)
+
+Desenho: uma **camada de calendário por cima do motor de rodadas**, que
+não foi reescrito (`simulateRound`, Ao Vivo, Copa e tabelas seguem
+iguais). A unidade de tempo passa a ser a semana:
+* `buildSeasonCalendar(ano)`: 52 semanas (segundas-feiras) com fase
+  por mês (jan férias, fev pré-temporada, jul pausa, demais temporada).
+  As 38 rodadas ocupam em ordem as semanas de temporada (de março a
+  junho, e de agosto a meados/fim de dezembro, conforme o ano). Semana
+  com rodada de Copa (`CUP_ROUNDS_EXPANDED`, 12 por ano) é semana de 2
+  jogos (Copa na quarta, Brasileirão no domingo), com aviso no Início.
+  Fica em `CAREER.calendar` (~2 KB).
+* Semana com jogo: o fluxo de sempre; no fim da rodada
+  (`finishRoundTail`) o calendário avança uma semana.
+* Semana sem jogo: `runCalendarOffWeek()` aplica treino (nas férias, só
+  descanso: condição volta a 100), recuperação, cura de lesão (1 semana
+  a menos de afastamento), obra do estádio, missões de olheiro, prazos
+  de propostas/anúncios, parcelas e, com janela aberta, a IA de mercado
+  e as propostas recebidas (em semanas alternadas, para manter o volume
+  anual parecido com o antigo).
+* Janela (`transferWindowStatus`): aberta em férias, pré-temporada e
+  julho; fechada para compra na temporada (venda continua liberada). Os
+  textos dizem "aberta até o fim de fevereiro" / "reabre em julho".
+* Finanças **mensais** (12×/ano, `applyCalendarMonthlyFinances`), cobradas
+  quando a semana vira o mês: folha, comissão, olheiros, patrocínio
+  (total da temporada / 12) e **Cota de TV**, a receita nova da
+  recalibração. A cota é fixada na criação do calendário para cobrir os
+  2,5 meses a mais de custo (12 em vez de 9,5), então o saldo anual fica
+  equivalente ao antigo por construção. Inflar a folha depois não
+  aumenta a cota (anti-exploit). Aparece no extrato como "📺 Cota de TV".
+* Treino 1× por semana (`calendarTurnKey`); na pré-temporada, o treino
+  físico rende +1 ponto por sessão (o teto da GE-BALANCE-005 continua
+  valendo).
+* Início: em semana sem jogo, o card mostra fase, semana, situação do
+  mercado e próximo jogo com data; o botão principal vira "Avançar
+  semana", mais "Pular até o próximo jogo". O topo mostra a data
+  ("06/fev · 1/38").
+
+Decisões tomadas na implementação (confirmar):
+1. **Carreira nova começa na pré-temporada** (fevereiro, janela aberta),
+   não em janeiro: férias só existem entre uma temporada e outra. No 1º
+   ano são cobrados 10 meses (março a dezembro), porque fevereiro conta
+   como já pago na largada.
+2. **Semanas de 2 jogos = semanas de Copa**: as 38 rodadas cabem nas
+   38–40 semanas de temporada, então não foi preciso pôr rodada do
+   Brasileirão no meio da semana. As 12 rodadas de Copa ficam como
+   semanas de 2 jogos.
+3. **Cota de TV** foi a forma escolhida de "recalibrar receitas" (é a
+   maior receita real dos clubes brasileiros).
+4. Carreira antiga continua no modelo de rodadas até a próxima virada
+   de temporada, quando ganha o calendário a partir de janeiro. Sem
+   migração no meio da temporada.
+
+Validação — novo `tests/e2e/test_ge_calendar_001.js` (passa):
+* Carreira nova: pré-temporada, janela aberta, "Avançar semana".
+* "Pular até o próximo jogo" (clique real) chega na rodada 1 em março,
+  com a janela fechada e o treino aplicado por semana.
+* **3 temporadas seguidas sem erro**, 38 rodadas cada. Meses de folha
+  cobrados: 10 / 12 / 12. A virada leva sempre para as férias de
+  janeiro do ano seguinte. Semanas sem jogo por temporada: 5 (1ª, a
+  partir de fevereiro) / 14 / 12.
+* IA de mercado: 5 / 8 / 6 execuções por temporada, contra 6 no modelo
+  antigo (rodadas 1–3 e 20–22). Média das temporadas completas = 7
+  (+17%, dentro de ±20%). Varia com o número de segundas-feiras em
+  jan/fev/jul.
+* Carreira sem calendário: janela por rodada e folha por rodada como
+  antes, e ganha o calendário na virada.
+
+Testes existentes: 28 testes criavam a carreira e clicavam em "Ir para
+o jogo" esperando a rodada 1 (agora caem na pré-temporada). Ganharam o
+helper `tests/e2e/_calendar_skip.js` (`skipPreseason(page)`), chamado
+logo antes do 1º "Ir para o jogo". A compra/empréstimo desses testes já
+acontecia antes desse ponto, com a janela da pré-temporada aberta.
+Todos passam. Em `test_coletiva_imprensa.js` o pulo foi colocado antes
+de forçar a goleada (as semanas no meio diluíam o efeito). Suíte
+completa (149 scripts): 22 falhas, todas pré-existentes. Nenhuma nova.
+
+Fora da B1 (próximas partes): amistosos (B2), tela de calendário por
+mês e aviso de rodízio mais elaborado (B3).
 
 ⸻
 

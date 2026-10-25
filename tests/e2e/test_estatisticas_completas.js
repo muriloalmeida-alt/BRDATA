@@ -2,6 +2,7 @@
 // informações possíveis sobre o meu time e as principais informações
 // do campeonato... sempre divididas em Histórico e Temporada Atual").
 const { chromium } = require("playwright-core");
+const { skipPreseason } = require("./_calendar_skip");
 
 (async () => {
   const browser = await chromium.launch({ executablePath: process.env.PW_CHROMIUM_PATH || undefined, headless: true, args: ["--host-resolver-rules=MAP fonts.googleapis.com 127.0.0.1,MAP fonts.gstatic.com 127.0.0.1"] });
@@ -104,6 +105,7 @@ const { chromium } = require("playwright-core");
     const fx = CAREER.schedule[CAREER.currentRound].find((f) => String(f.home) === String(CAREER.clubId) || String(f.away) === String(CAREER.clubId));
     return String(fx.home) === String(CAREER.clubId);
   });
+  await skipPreseason(page); // GE-CALENDAR-001: carreira nova começa na pré-temporada
   await page.click("#btnSimulate");
   await page.waitForSelector("#preMatchOverlay.open", { timeout: 5000 });
   await page.click("#btnPreMatchGo");

@@ -1,4 +1,5 @@
 const { chromium } = require("playwright-core");
+const { skipPreseason } = require("./_calendar_skip");
 
 async function newCareer(page, base, email) {
   await page.goto(base + "/", { waitUntil: "domcontentloaded" });
@@ -141,6 +142,10 @@ async function newCareer(page, base, email) {
   // 7) Fluxo real via UI: força uma goleada no PRÓPRIO jogo (derruba o
   // overall do adversário CPU) e confere que a coletiva aparece ENTRE
   // o modal "Seu jogo" e o de Resultados da rodada.
+  // GE-CALENDAR-001: carreira nova começa na pré-temporada — pula ANTES
+  // de forçar a goleada (as semanas de treino/mercado no meio diluíam o
+  // efeito).
+  await skipPreseason(page);
   const uiSetup = await page.evaluate(() => {
     const myId = CAREER.clubId;
     const fixtures = CAREER.schedule[CAREER.currentRound] || [];

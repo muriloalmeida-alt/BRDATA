@@ -3432,6 +3432,11 @@ async function advanceSeason() {
   // que abre a notificação depois do resumo da virada de temporada.
   maybeGenerateClubProposals();
 
+  // GE-CALENDAR-001 — toda temporada nova (inclusive a 1ª de uma carreira
+  // de antes do calendário) começa em janeiro, nas férias, com a folha
+  // de janeiro já cobrada (12 meses por ano, ver applyCalendarMonthlyFinances).
+  CAREER.calendar = buildSeasonCalendar(CAREER.seasonYear);
+  applyCalendarMonthlyFinances(0);
   // P0-IDS-001 — reposição de base/elenco e times vindos da Série D
   // reusam ids (`base_<clube>_<n>`, `gen_<clube>_<n>`) — garante ids
   // únicos de novo antes da temporada nova começar.
@@ -3873,7 +3878,7 @@ function pushTransferLog(text, round) {
    Configurações (ver CAREER.notificationSettings); "posicao" e
    "olheiro" não têm toggle no mockup — sempre entram. */
 const NOTIFICATION_MAX = 30;
-const NOTIFICATION_ICON = { lesao: "🩹", proposta: "💰", posicao: "🏆", olheiro: "🔭", loja: "🎁", partida: "📅" };
+const NOTIFICATION_ICON = { calendario: "🗓️", lesao: "🩹", proposta: "💰", posicao: "🏆", olheiro: "🔭", loja: "🎁", partida: "📅" };
 function pushNotification(type, text, opts = {}) {
   CAREER.notificationSettings = CAREER.notificationSettings || { partida: true, loja: false, lesao: true };
   const gate = opts.gateBy || null; // "partida" | "loja" | "lesao" | null (sem toggle correspondente)
@@ -3952,8 +3957,163 @@ function pushCashSnapshot(round) {
 // da janela (decisão do documento: "geralmente sim, só não comprar");
 // empréstimo não existe como mecânica nesse jogo, então a outra
 // pergunta em aberto do documento não se aplica aqui.
+/* ---------- GE-CALENDAR-001 (B1) — calendário real jan–dez ----------
+   Pedido do usuário: "o Campeonato deve ter um calendário real (janeiro
+   a dezembro) com 30 dias de férias + 30 dias de pré-temporada, 30 dias
+   em julho para descanso, treinos e contratações e jogos no restante
+   do período". Decisões do Murilo (docs/HANDOFF_CLAUDE.md): semanas com
+   2 jogos, salário mensal com receitas recalibradas.
+   Desenho: camada de calendário POR CIMA do motor de rodadas (que
+   continua igual) — a unidade de tempo vira a SEMANA (o treino já era
+   semanal). As 38 rodadas ocupam, em ordem, as semanas de março–junho
+   e agosto–dezembro; semana com rodada de Copa (CUP_ROUNDS_EXPANDED) é
+   semana de 2 jogos (Copa na quarta, Brasileirão no domingo). Semana
+   sem jogo (férias, pré-temporada, pausa de julho, sobras do
+   calendário) tem o próprio turno (runCalendarOffWeek). Carreira de
+   antes desta mudança continua no modelo de rodadas até a próxima
+   virada de temporada, quando ganha o calendário (ver advanceSeason). */
+const CALENDAR_PHASE_BY_MONTH = ["ferias", "pre", "temporada", "temporada", "temporada", "temporada", "pausa", "temporada", "temporada", "temporada", "temporada", "temporada"];
+const CALENDAR_PHASE_LABEL = { ferias: "Férias", pre: "Pré-temporada", temporada: "Temporada", pausa: "Pausa de julho" };
+const CALENDAR_WINDOW_PHASES = new Set(["ferias", "pre", "pausa"]);
+const MONTH_SHORT = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
+const MONTH_LONG = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
+// Salário era cobrado 1/4 do mês por rodada (38 rodadas ≈ 9,5 meses por
+// ano); o ano real cobra 12. Cota de TV (receita nova, a maior do
+// futebol brasileiro de verdade) cobre esses 2,5 meses a mais — fixada
+// na criação do calendário a partir dos custos daquele momento, então
+// inflar a folha depois NÃO aumenta a cota (sem exploit).
+const CALENDAR_EXTRA_MONTHS = 12 - 38 / 4;
+function buildSeasonCalendar(year) {
+  const jan1 = new Date(Date.UTC(year, 0, 1));
+  const firstMonday = new Date(jan1.getTime() + ((8 - jan1.getUTCDay()) % 7) * 86400000);
+  const cupRounds = new Set(Object.values(CUP_ROUNDS_EXPANDED).flatMap((leg) => [leg.ida, leg.volta]));
+  const weeks = [];
+  for (let d = firstMonday; d.getUTCFullYear() === year; d = new Date(d.getTime() + 7 * 86400000)) {
+    weeks.push({ d: `${String(d.getUTCMonth() + 1).padStart(2, "0")}-${String(d.getUTCDate()).padStart(2, "0")}`, p: CALENDAR_PHASE_BY_MONTH[d.getUTCMonth()], r: null });
+  }
+  let round = 1;
+  weeks.forEach((w) => {
+    if (w.p === "temporada" && round <= 38) {
+      w.r = round;
+      if (cupRounds.has(round)) w.c = 1; // semana de 2 jogos
+      round++;
+    }
+  });
+  const monthlyCosts = wageBillOf(CAREER.squad) + (CAREER.technicalStaff && CAREER.technicalStaff.hired ? technicalStaffMonthlyCost() : 0) + scoutsMonthlyCost();
+  return { year, idx: 0, weeks, tvMonthly: Math.round(monthlyCosts * CALENDAR_EXTRA_MONTHS / 12 / 1000) * 1000 };
+}
+function calendarOn() { return !!(CAREER && CAREER.calendar && Array.isArray(CAREER.calendar.weeks)); }
+function calendarWeek(i) { return calendarOn() ? CAREER.calendar.weeks[i == null ? CAREER.calendar.idx : i] || null : null; }
+function calendarWeekMonth(w) { return Number(w.d.slice(0, 2)) - 1; }
+function calendarDateLabel(w, plusDays = 0) {
+  const [m, d] = w.d.split("-").map(Number);
+  const dt = new Date(Date.UTC(CAREER.calendar.year, m - 1, d + plusDays));
+  return `${String(dt.getUTCDate()).padStart(2, "0")}/${MONTH_SHORT[dt.getUTCMonth()]}`;
+}
+// Chave do turno atual (semana no calendário, rodada no modelo antigo)
+// — usada por quem precisa de "1x por turno" (treino) ou de semente
+// única por turno (missão de olheiro).
+function calendarTurnKey() { return calendarOn() ? `${CAREER.calendar.year}w${CAREER.calendar.idx}` : String(CAREER.currentRound); }
+// Semana em que mora a próxima rodada a jogar (ou null se a temporada
+// já acabou).
+function calendarWeekIndexOfRound(round) {
+  return calendarOn() ? CAREER.calendar.weeks.findIndex((w) => w.r === round) : -1;
+}
+// Nunca deixa o calendário "na frente" da rodada a jogar (ex.: save
+// editado, rodada jogada por um caminho antigo) — volta pra semana dela.
+function syncCalendarToRound() {
+  if (!calendarOn() || CAREER.currentRound > 38) return;
+  const wi = calendarWeekIndexOfRound(CAREER.currentRound);
+  if (wi >= 0 && CAREER.calendar.idx > wi) CAREER.calendar.idx = wi;
+}
+// Finanças do mês (12x por ano): folha, comissão, olheiros, patrocínio
+// (total da temporada / 12) e cota de TV. Retorna os totais pro resumo.
+function applyCalendarMonthlyFinances(monthIdx) {
+  const round = CAREER.currentRound;
+  const month = MONTH_LONG[monthIdx];
+  const wagePaid = wageBillOf(CAREER.squad);
+  CAREER.finances.cash -= wagePaid;
+  if (wagePaid) pushLedger("salario", `Folha salarial de ${month}`, -wagePaid, round);
+  if (CAREER.technicalStaff && CAREER.technicalStaff.hired) {
+    const staffCost = technicalStaffMonthlyCost();
+    CAREER.finances.cash -= staffCost;
+    if (staffCost) pushLedger("salario", `Comissão Técnica (${month})`, -staffCost, round);
+  }
+  const scoutsCost = scoutsMonthlyCost();
+  if (scoutsCost) { CAREER.finances.cash -= scoutsCost; pushLedger("salario", `Olheiros (${month})`, -scoutsCost, round); }
+  const sponsorIncome = Math.round(sponsorshipSeasonTotal() / 12);
+  CAREER.finances.cash += sponsorIncome;
+  if (sponsorIncome) pushLedger("patrocinio", `Patrocínio de ${month}`, sponsorIncome, round);
+  const tv = CAREER.calendar.tvMonthly || 0;
+  CAREER.finances.cash += tv;
+  if (tv) pushLedger("tv", `Cota de TV de ${month}`, tv, round);
+  return { wagePaid, sponsorIncome: sponsorIncome + tv };
+}
+// Fecha o turno da semana atual e passa pra próxima: mês novo cobra/
+// recebe o mês; fase nova avisa (abre/fecha janela).
+function advanceCalendarWeek() {
+  const cal = CAREER.calendar;
+  const prev = calendarWeek();
+  if (cal.idx >= cal.weeks.length - 1) return { wagePaid: 0, sponsorIncome: 0 };
+  cal.idx += 1;
+  const cur = calendarWeek();
+  let money = { wagePaid: 0, sponsorIncome: 0 };
+  if (calendarWeekMonth(cur) !== calendarWeekMonth(prev)) money = applyCalendarMonthlyFinances(calendarWeekMonth(cur));
+  if (cur.p !== prev.p) {
+    const win = CALENDAR_WINDOW_PHASES.has(cur.p);
+    pushNotification("calendario", `${CALENDAR_PHASE_LABEL[cur.p]} — ${win ? "janela de transferências aberta" : "janela de transferências fechada (vender continua liberado)"}.`);
+  }
+  return money;
+}
+// Turno de uma semana SEM jogo seu: treino (exceto férias, que é
+// descanso), recuperação, cura de lesão, prazos de propostas/anúncios/
+// missões/obras e, com janela aberta, mercado da IA. IA de mercado e
+// propostas recebidas rodam em semanas alternadas: são ~12 semanas de
+// janela por ano contra 6 rodadas no modelo antigo — mantém o volume
+// anual de negócios parecido.
+function runCalendarOffWeek() {
+  const week = calendarWeek();
+  if (!week || week.r) return null;
+  const round = CAREER.currentRound;
+  if (week.p === "ferias") {
+    CAREER.squad.forEach((p) => { p.condition = 100; });
+  } else {
+    applyWeeklyTraining();
+    CAREER.squad.forEach((p) => { p.condition = clamp((p.condition == null ? 100 : p.condition) + 15, 0, 100); });
+  }
+  const healOneWeek = (p) => { if (p.status === "contundido" && p.outUntilRound != null && p.outUntilRound >= round) p.outUntilRound -= 1; };
+  CAREER.squad.forEach(healOneWeek);
+  Object.values(CAREER.leagueSquads || {}).forEach((sq) => sq.forEach(healOneWeek));
+  refreshAvailability(round);
+  tickStadiumUpgrade();
+  tickScoutMissions(round);
+  if (transferWindowStatus(round).open && CAREER.calendar.idx % 2 === 0) {
+    simulateAiTransfers(round);
+    maybeGenerateOffer(round);
+  }
+  resolvePendingOffersOutRound(round);
+  resolvePendingListingsRound();
+  const installmentsPaid = processPendingInstallments();
+  if (installmentsPaid) pushLedger("parcela", "Parcela de contratação", -installmentsPaid, round);
+  const installmentsReceived = processPendingReceivables();
+  if (installmentsReceived) pushLedger("transferencia", "Parcela de venda", installmentsReceived, round);
+  const money = advanceCalendarWeek();
+  return { phase: week.p, ...money, installmentsPaid, installmentsReceived };
+}
 const TRANSFER_WINDOWS = [[1, 3], [20, 22]];
 function transferWindowStatus(round) {
+  // GE-CALENDAR-001 — com calendário, a janela é a FASE do ano (férias,
+  // pré-temporada e pausa de julho), não mais um intervalo de rodadas.
+  if (calendarOn()) {
+    const weeks = CAREER.calendar.weeks, i = CAREER.calendar.idx;
+    if (CALENDAR_WINDOW_PHASES.has(weeks[i].p)) {
+      let j = i;
+      while (j + 1 < weeks.length && CALENDAR_WINDOW_PHASES.has(weeks[j + 1].p)) j++;
+      return { open: true, closesLabel: `até o fim de ${MONTH_LONG[calendarWeekMonth(weeks[j])]}` };
+    }
+    const k = weeks.findIndex((w, idx) => idx > i && CALENDAR_WINDOW_PHASES.has(w.p));
+    return { open: false, opensLabel: k >= 0 ? `reabre em ${MONTH_LONG[calendarWeekMonth(weeks[k])]}` : "reabre em janeiro" };
+  }
   for (const [open, close] of TRANSFER_WINDOWS) {
     if (round >= open && round <= close) return { open: true, closesAtRound: close };
   }
@@ -5390,6 +5550,10 @@ async function startCareer(clubId) {
       purchaseHistory: [],
     };
     ensureUniquePlayerIds(); // P0-IDS-001 — catálogos de divisões diferentes repetem ids
+    // GE-CALENDAR-001 — carreira nova começa na pré-temporada (fevereiro,
+    // janela aberta); férias só existem entre uma temporada e outra.
+    CAREER.calendar = buildSeasonCalendar(CAREER.seasonYear);
+    CAREER.calendar.idx = Math.max(0, CAREER.calendar.weeks.findIndex((w) => w.p === "pre"));
     TECHNICIAN_CARRY = null;
     // Nova feature (pedido do usuário: "reinicie o tema do
     // rebaixamento") — só carreira NOVA nasce com o sistema de acesso/
@@ -5729,7 +5893,9 @@ function trainingTargets(entry) {
 // já bate com CAREER.currentRound). Devolve um Map<playerId, ganho> só
 // pra feedback visual imediato na tela de Treinos (ver renderTreinos).
 function applyWeeklyTraining() {
-  if (CAREER.trainingAppliedForRound === CAREER.currentRound) return null;
+  // GE-CALENDAR-001 — 1x por TURNO (semana no calendário; rodada no
+  // modelo antigo), ver calendarTurnKey.
+  if (String(CAREER.trainingAppliedForRound) === calendarTurnKey()) return null;
   const gains = new Map();
   CAREER.trainingPlan.forEach((entry, i) => {
     if (i === TRAINING_GAME_DAY || !entry || !entry.foco) return;
@@ -5750,7 +5916,10 @@ function applyWeeklyTraining() {
     trainingTargets(entry).forEach((p) => {
       p.condition = clamp((p.condition == null ? 100 : p.condition) - fatigueCost, 0, 100);
       attrs.forEach((attr) => {
-        const attrGain = attrs.length > 1 ? Math.max(1, Math.round(baseGain / 2)) : baseGain;
+        // GE-CALENDAR-001 — pré-temporada: treino físico rende 1 ponto a
+        // mais por sessão (o teto da temporada, GE-BALANCE-005, segue valendo).
+        const preseasonBonus = attr === "phys" && calendarOn() && (calendarWeek() || {}).p === "pre" ? 1 : 0;
+        const attrGain = (attrs.length > 1 ? Math.max(1, Math.round(baseGain / 2)) : baseGain) + preseasonBonus;
         // Nova feature (pedido do usuário: "atributos precisam ser mais
         // reais... evolução menos agressiva") — ganho respeita o teto
         // de cada jogador (p.potential), com retorno decrescente perto
@@ -5805,7 +5974,7 @@ function applyWeeklyTraining() {
     p.fatigueHistory.push({ round: CAREER.currentRound, fadiga: Math.round(100 - cond) });
     if (p.fatigueHistory.length > FATIGUE_HISTORY_MAX) p.fatigueHistory.shift();
   });
-  CAREER.trainingAppliedForRound = CAREER.currentRound;
+  CAREER.trainingAppliedForRound = calendarTurnKey();
   // Retenção/Engajamento — "Treine 1 jogador" (objetivo diário) conta
   // a SEMANA aplicada como 1 evento (não 1 por jogador afetado, senão
   // uma semana de "misto" já bateria a meta sozinha de propósito).
@@ -6037,7 +6206,7 @@ function renderTreinos() {
   rosterList.innerHTML = groupedListHTML(roster, playerRow, "Sem jogadores.");
   rosterList.querySelectorAll("[data-id]").forEach((row) => row.addEventListener("click", () => openDetail(row.dataset.id)));
 
-  const already = CAREER.trainingAppliedForRound === CAREER.currentRound;
+  const already = String(CAREER.trainingAppliedForRound) === calendarTurnKey();
   document.getElementById("btnApplyTraining").disabled = already;
   document.getElementById("btnApplyTrainingLabel").textContent = already ? "Treino já aplicado nesta rodada" : "Aplicar treino da semana";
 }
@@ -8215,33 +8384,40 @@ function finishRoundTail(round, allResults, humanMatch, standingsBefore) {
   // 38 rodadas, então 1/4 da folha mensal por rodada) — o caixa vai
   // diminuindo de verdade ao longo da temporada mesmo antes de existir
   // mercado de transferências (fase seguinte) pra gastar nele.
-  const wagePaid = Math.round(wageBillOf(CAREER.squad) / 4);
-  CAREER.finances.cash -= wagePaid;
-  if (wagePaid) pushLedger("salario", "Folha salarial do elenco", -wagePaid, round);
-  // Nova feature — Comissão Técnica: mesmo ritmo de pagamento do
-  // elenco (1/4 do custo mensal por rodada), só quando contratada.
-  if (CAREER.technicalStaff && CAREER.technicalStaff.hired) {
-    const staffCost = Math.round(technicalStaffMonthlyCost() / 4);
-    CAREER.finances.cash -= staffCost;
-    if (staffCost) pushLedger("salario", "Custo da Comissão Técnica", -staffCost, round);
+  // GE-CALENDAR-001 — com calendário, salário/patrocínio/TV são MENSAIS
+  // (cobrados quando a semana vira o mês, ver advanceCalendarWeek, no fim
+  // deste turno); sem calendário (carreira antiga até a próxima virada),
+  // segue 1/4 do mês por rodada como sempre.
+  let wagePaid = 0, sponsorIncome = 0;
+  if (!calendarOn()) {
+    wagePaid = Math.round(wageBillOf(CAREER.squad) / 4);
+    CAREER.finances.cash -= wagePaid;
+    if (wagePaid) pushLedger("salario", "Folha salarial do elenco", -wagePaid, round);
+    // Nova feature — Comissão Técnica: mesmo ritmo de pagamento do
+    // elenco (1/4 do custo mensal por rodada), só quando contratada.
+    if (CAREER.technicalStaff && CAREER.technicalStaff.hired) {
+      const staffCost = Math.round(technicalStaffMonthlyCost() / 4);
+      CAREER.finances.cash -= staffCost;
+      if (staffCost) pushLedger("salario", "Custo da Comissão Técnica", -staffCost, round);
+    }
+    // Bloco 6 (mockups brtreinadorbloco6base.html/brtreinadorbloco6pendentes.html
+    // — "Base e Olheiros") — mesmo ritmo de sempre (1/4 do custo mensal por
+    // rodada) pro salário de cada olheiro contratado (ver
+    // hireScout/SCOUT_MARKET).
+    const scoutsCost = Math.round(scoutsMonthlyCost() / 4);
+    if (scoutsCost) {
+      CAREER.finances.cash -= scoutsCost;
+      pushLedger("salario", "Salário dos olheiros", -scoutsCost, round);
+    }
+    // FASE 4 (item 5) — patrocínio paga em parcelas ao longo da
+    // temporada (1/38 do valor anual por rodada), mesmo ritmo de
+    // "dinheiro chega aos poucos" que já existe pra ingresso (por
+    // partida em casa) e salário (por rodada) — em vez de um valor único
+    // na virada de temporada, que seria um pulo brusco de caixa.
+    sponsorIncome = Math.round(sponsorshipSeasonTotal() / 38);
+    CAREER.finances.cash += sponsorIncome;
+    if (sponsorIncome) pushLedger("patrocinio", "Parcela de patrocínio", sponsorIncome, round);
   }
-  // Bloco 6 (mockups brtreinadorbloco6base.html/brtreinadorbloco6pendentes.html
-  // — "Base e Olheiros") — mesmo ritmo de sempre (1/4 do custo mensal por
-  // rodada) pro salário de cada olheiro contratado (ver
-  // hireScout/SCOUT_MARKET).
-  const scoutsCost = Math.round(scoutsMonthlyCost() / 4);
-  if (scoutsCost) {
-    CAREER.finances.cash -= scoutsCost;
-    pushLedger("salario", "Salário dos olheiros", -scoutsCost, round);
-  }
-  // FASE 4 (item 5) — patrocínio paga em parcelas ao longo da
-  // temporada (1/38 do valor anual por rodada), mesmo ritmo de
-  // "dinheiro chega aos poucos" que já existe pra ingresso (por
-  // partida em casa) e salário (por rodada) — em vez de um valor único
-  // na virada de temporada, que seria um pulo brusco de caixa.
-  const sponsorIncome = Math.round(sponsorshipSeasonTotal() / 38);
-  CAREER.finances.cash += sponsorIncome;
-  if (sponsorIncome) pushLedger("patrocinio", "Parcela de patrocínio", sponsorIncome, round);
   // Nova feature (Bloco 3) — parcelas de contratações já FECHADAS
   // (ver finalizeIncomingPurchase) continuam descontando o caixa a
   // cada rodada MESMO fora da janela de contratações (é dívida já
@@ -8330,6 +8506,10 @@ function finishRoundTail(round, allResults, humanMatch, standingsBefore) {
   if (posBefore && posAfter && posBefore !== posAfter) {
     const verbo = posAfter < posBefore ? "subiu para" : "caiu para";
     pushNotification("posicao", `${CAREER.clubName} ${verbo} o ${posAfter}º lugar após a rodada.`);
+  }
+  if (calendarOn()) {
+    const money = advanceCalendarWeek();
+    wagePaid = money.wagePaid; sponsorIncome = money.sponsorIncome;
   }
   const nextFixture = (CAREER.schedule[nextRound] || []).find((m) => String(m.home) === String(CAREER.clubId) || String(m.away) === String(CAREER.clubId));
   if (nextFixture) {
@@ -9329,7 +9509,28 @@ function renderCentral() {
     btn.classList.remove("hidden");
     document.getElementById("btnAdvanceSeason").classList.add("hidden");
     const fx = (CAREER.schedule[round] || []).find((m) => String(m.home) === String(CAREER.clubId) || String(m.away) === String(CAREER.clubId));
-    if (fx) {
+    // GE-CALENDAR-001 — semana sem jogo (férias/pré-temporada/pausa):
+    // o botão principal avança a semana e o card mostra a fase.
+    const week = calendarWeek();
+    const offWeek = !!(week && !week.r);
+    btn.innerHTML = offWeek
+      ? `<svg viewBox="0 0 24 24" fill="currentColor"><polygon points="4,4 12,12 4,20"/><polygon points="12,4 20,12 12,20"/></svg>Avançar semana`
+      : `<svg viewBox="0 0 24 24" fill="currentColor"><polygon points="6,4 20,12 6,20"/></svg>Ir para o jogo`;
+    document.getElementById("btnSkipToMatch").classList.toggle("hidden", !offWeek);
+    if (calendarOn()) document.getElementById("roundPill").textContent = `${calendarDateLabel(week)} · ${Math.min(round, 38)}/38`;
+    if (offWeek) {
+      const phaseWeeks = CAREER.calendar.weeks.filter((w) => w.p === week.p && calendarWeekMonth(w) === calendarWeekMonth(week));
+      const nextWi = calendarWeekIndexOfRound(round);
+      const win = transferWindowStatus(round);
+      const nextOpp = fx ? teamById(String(fx.home) === String(CAREER.clubId) ? fx.away : fx.home) : null;
+      box.innerHTML = `<div class="mt-calendar-phase">
+          <b>${CALENDAR_PHASE_LABEL[week.p]} · semana ${phaseWeeks.indexOf(week) + 1} de ${phaseWeeks.length}</b>
+          <span>${week.p === "ferias" ? "Elenco de folga, recuperando." : "Treinos da semana valendo."} Mercado: ${win.open ? `aberto ${win.closesLabel}` : `fechado — ${win.opensLabel}`}.</span>
+          ${nextWi >= 0 ? `<span>Próximo jogo: rodada ${round} em ${calendarDateLabel(CAREER.calendar.weeks[nextWi], 6)}${nextOpp ? ` contra o ${escapeHtml(nextOpp.name)}` : ""}.</span>` : ""}
+        </div>`;
+      delete box.dataset.opponentId;
+      btn.disabled = false;
+    } else if (fx) {
       const home = teamById(fx.home), away = teamById(fx.away);
       // AJUSTE (Opção B do mockup confronto-escudo-opcoes.html) —
       // escudo maior (72px) com halo atrás na cor do clube (c1), só
@@ -9348,6 +9549,7 @@ function renderCentral() {
       // jogo vira clicável (ver wireStaticListeners/openH2H), abre o
       // retrospecto contra o adversário desta rodada.
       box.dataset.opponentId = String(fx.home) === String(CAREER.clubId) ? fx.away : fx.home;
+      if (week && week.c) box.insertAdjacentHTML("beforeend", `<p class="mt-calendar-double">Semana de 2 jogos: Copa do Brasil na quarta e Brasileirão no domingo — vale rodar o elenco.</p>`);
     } else {
       box.innerHTML = `<p class="ct-empty">Sem jogo do seu time nessa rodada (folga).</p>`;
       delete box.dataset.opponentId;
@@ -9589,7 +9791,7 @@ const EXTRATO_FILTERS = [
   { id: "patrocinio", label: "Patrocínio" },
   { id: "bilheteria", label: "Bilheteria" },
 ];
-const LEDGER_ICON = { salario: "👥", patrocinio: "🏦", parcela: "📄", bilheteria: "🎟️", transferencia: "💰", premiacao: "🏆", estadio: "🏗️", diretoria: "🏛️" };
+const LEDGER_ICON = { tv: "📺", salario: "👥", patrocinio: "🏦", parcela: "📄", bilheteria: "🎟️", transferencia: "💰", premiacao: "🏆", estadio: "🏗️", diretoria: "🏛️" };
 let EXTRATO_FILTER = "todos";
 function renderExtratoScreen() {
   document.getElementById("extratoFilterRow").innerHTML = EXTRATO_FILTERS.map((f) =>
@@ -10379,7 +10581,7 @@ function openPlayerCard(id, clubIdHint, nameHint) {
 // com os botões (o técnico entende POR QUE não dá agora).
 function externalPlayerActionsHTML(p, club) {
   const win = transferWindowStatus(CAREER.currentRound);
-  const closedReason = win.open ? "" : (win.opensAtRound ? `Janela fechada — reabre na rodada ${win.opensAtRound}.` : "Janela fechada — reabre na próxima temporada.");
+  const closedReason = win.open ? "" : (win.opensLabel ? `Janela fechada — ${win.opensLabel}.` : win.opensAtRound ? `Janela fechada — reabre na rodada ${win.opensAtRound}.` : "Janela fechada — reabre na próxima temporada.");
   const offerBtn = pendingOfferOutFor(p.id)
     ? `<button type="button" class="mt-btn-ghost" data-ext-act="viewoffer" style="width:100%;">Proposta enviada — ver em Minhas propostas</button>`
     : `<button type="button" class="mt-btn-primary-gold" data-ext-act="offer" style="width:100%;" ${win.open ? "" : "disabled"}>Fazer proposta</button>`;
@@ -11215,7 +11417,8 @@ function renderMarketSummaryCard() {
   const offers = (CAREER.pendingOffersOut || []).length;
   const scoutPicks = (CAREER.scoutSuggestions || []).length;
   const windowText = win.open
-    ? `Janela aberta até a rodada ${win.closesAtRound}.`
+    ? (win.closesLabel ? `Janela aberta ${win.closesLabel}.` : `Janela aberta até a rodada ${win.closesAtRound}.`)
+    : win.opensLabel ? `Janela fechada — ${win.opensLabel} (vender continua liberado).`
     : (win.opensAtRound ? `Janela fechada — reabre na rodada ${win.opensAtRound} (vender continua liberado).` : "Janela fechada até a próxima temporada (vender continua liberado).");
   document.getElementById("marketSummaryText").textContent = windowText;
   const setBadge = (id, n) => { const el = document.getElementById(id); el.classList.toggle("hidden", !n); el.textContent = String(n); };
@@ -11523,6 +11726,22 @@ function closeAdjustLineupModal() {
 // — fecha as duas modais (a que estiver aberta) e dispara a simulação
 // de sempre. commitLineupTactics() garante que táticas mudadas sem
 // clicar em "Salvar escalação e táticas" não se percam.
+// GE-CALENDAR-001 — avança 1 semana sem jogo, ou todas até a semana do
+// próximo jogo ("Pular até o próximo jogo"), e resume o que aconteceu.
+async function advanceCalendarFromUI(untilMatch) {
+  let weeks = 0, wage = 0, income = 0;
+  do {
+    const r = runCalendarOffWeek();
+    if (!r) break;
+    weeks++; wage += r.wagePaid; income += r.sponsorIncome;
+  } while (untilMatch && !(calendarWeek() || {}).r && weeks < 60);
+  if (!weeks) return;
+  await persistCareer();
+  renderAll();
+  const week = calendarWeek();
+  const money = wage || income ? [{ label: "Salários", value: -Math.round(wage / 1000) }, { label: "Receitas", value: Math.round(income / 1000) }] : null;
+  toast({ title: weeks > 1 ? `${weeks} semanas avançadas` : "Semana concluída", detail: week ? `${CALENDAR_PHASE_LABEL[week.p]} · semana de ${calendarDateLabel(week)}${money ? " (valores em R$ mil)" : ""}` : "", stats: money || undefined }, { type: "info" });
+}
 async function goToMatch() {
   closePreMatchConfirm();
   closeAdjustLineupModal();
@@ -13036,7 +13255,7 @@ function tickScoutMissions(round) {
     if (scout.mission.roundsLeft > 0) return;
     const { regionUf: region, type, group, duration } = scout.mission;
     scout.mission = null;
-    const rng = seededRngFromKey(`scoutfind:${scout.id}:${round}`);
+    const rng = seededRngFromKey(`scoutfind:${scout.id}:${calendarTurnKey()}`);
     const specialtyMatch = scout.regionScope !== "any" && scout.regionScope.includes(region);
     // GE-SCOUT-001 — Rede (não mais as estrelas) decide a chance de
     // achar; duração decide quantas tentativas. Missão de save antigo
@@ -13054,7 +13273,7 @@ function tickScoutMissions(round) {
       return;
     }
     const ages = type ? SCOUT_MISSION_TYPES[type].ages : [15, 20];
-    const found = Array.from({ length: hits }, (_, i) => generateScoutProspect(scout, region, round, i, { ages, group }));
+    const found = Array.from({ length: hits }, (_, i) => generateScoutProspect(scout, region, calendarTurnKey(), i, { ages, group }));
     if (found.length) {
       pushScoutProspects(found);
       pushTransferLog(`${scout.name} voltou da missão em ${REGION_LABEL[region]} com ${found.length} promissor${found.length > 1 ? "es" : ""}.`, round);
@@ -13666,7 +13885,9 @@ function renderMercado() {
   // extra (já dá pra perceber que vender continua liberado só de ver
   // o botão "Vender" normal ao lado do "Comprar" desabilitado).
   if (!mktWindow.open) {
-    windowBanner.innerHTML = mktWindow.opensAtRound
+    windowBanner.innerHTML = mktWindow.opensLabel
+      ? `🔒 <b>Janela de contratações encerrada</b> — ${mktWindow.opensLabel}`
+      : mktWindow.opensAtRound
       ? `🔒 <b>Janela de contratações encerrada</b> — Rodada ${mktWindow.opensAtRound}`
       : `🔒 <b>Janela de contratações encerrada</b> — próxima temporada`;
   }
@@ -14718,8 +14939,12 @@ function wireStaticListeners() {
   // forçadas de escalação, se houve) -> "Continuar" -> aba Tabela já
   // atualizada. Ver showMatchDetailModal/showRoundResultsModal.
   document.getElementById("btnSimulate").addEventListener("click", () => {
+    // GE-CALENDAR-001 — semana sem jogo: o botão avança a semana.
+    const week = calendarWeek();
+    if (week && !week.r && CAREER.currentRound <= 38) { advanceCalendarFromUI(false); return; }
     openPreMatchConfirm();
   });
+  document.getElementById("btnSkipToMatch").addEventListener("click", () => advanceCalendarFromUI(true));
   // AJUSTE — X só fecha a confirmação sem simular nada (mesmo padrão
   // de sempre: nenhum passo avança sozinho sem o usuário clicar no
   // botão de continuar/ir).
@@ -15657,6 +15882,9 @@ function migrateCareerDefaults() {
   ensureUniquePlayerIds();
   // GE-SCOUT-001 — olheiros já contratados viram nacionais com Avaliação/Rede.
   migrateScoutsToNational();
+  // GE-CALENDAR-001 — sem campo novo pra carreira antiga (ganha o
+  // calendário na próxima virada); com calendário, garante coerência.
+  syncCalendarToRound();
   evaluateAlwaysCheckableAchievements();
 }
 // AJUSTE (pedido do usuário: "acrescentar a Série B, C [ao Modo
