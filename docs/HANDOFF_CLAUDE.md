@@ -427,6 +427,164 @@ S4-B5-QA-001 (QA visual não toca no motor).
 
 ⸻
 
+Pacote "Mercado, calendário e olheiros" — pedido do Murilo em 25/10/2026
+
+Pedido (resumo): (1) Mercado escondido e com muito scroll; indicações
+dos olheiros escondidas; ao fazer proposta o jogo volta pra home;
+querer propor a qualquer jogador em qualquer tela clicando no nome.
+(2) Mercado curto; pré-temporada com amistosos; calendário real
+jan–dez com 30 dias de férias, 30 de pré-temporada, 30 de pausa em
+julho e jogos nos outros 9 meses. (3) Olheiros sul-americanos não
+fazem sentido num jogo nacional; melhorar olheiros. (4) Acessos
+rápidos devem abrir modal de confirmação em vez de aplicar direto.
+
+Diagnóstico (código atual):
+* Mercado (`#panel-mercado`): busca + 4 selects empilhados antes da
+  lista; "Indicações dos olheiros", "Minhas propostas", "Minhas
+  vendas" e "Histórico" são botões no FIM da tela, depois da lista.
+* `confirmOfferFromModal` chama `finishOperationAndGoHome()`.
+* `openPlayerCard` (jogador de outro clube) é "consulta apenas — pra
+  negociar, use o Mercado"; nomes clicáveis só em ~7 lugares.
+* Sem conceito de data: temporada = 38 rodadas; `TRANSFER_WINDOWS =
+  [[1, 3], [20, 22]]`; salário cobrado 1/4 do mês por rodada (≈9,5
+  meses/ano).
+* `SCOUT_MARKET`: 3 olheiros, um "Especialista em base internacional".
+  "Indicações dos olheiros" (Mercado) é sistema separado, não usa os
+  olheiros contratados.
+* Comissão Técnica no Início (`renderCommissionSummaryCard`): tocar no
+  ícone aplica a sugestão direto.
+
+Ordem de execução decidida: UX-COMISSAO-001 → UX-MERCADO-001 →
+GE-SCOUT-001 → GE-CALENDAR-001 (B1 → B2 → B3).
+
+⸻
+
+UX-COMISSAO-001 — Acessos rápidos da Comissão com confirmação
+
+Status: PRONTO PARA IMPLEMENTAÇÃO
+Prioridade: P4 (UX) · Etapa do loop: Market/Management
+
+Escopo: tocar num ícone da Comissão no Início abre um `openM3Dialog`
+com o texto completo da sugestão e as ações "Aplicar" (executa o
+`apply()` já existente de `COMMISSION_AREAS`), "Agora não" e "Ver na
+Comissão". Ícone sem sugestão continua desabilitado. Nada muda na tela
+cheia da Comissão.
+Aceite: nenhuma sugestão é aplicada sem confirmação; o texto é o mesmo
+da tela cheia; funciona no mobile; testes de Comissão continuam
+passando.
+
+⸻
+
+UX-MERCADO-001 — Mercado acessível e proposta de qualquer lugar
+
+Status: PRONTO PARA IMPLEMENTAÇÃO
+Prioridade: P4 (UX) · Etapa do loop: Market/Management
+
+Escopo:
+1. `openPlayerCard` (outro clube) ganha ações: Fazer proposta
+   (`openOfferModal`), Pedir empréstimo (fluxo de empréstimo existente)
+   e Comparar com meu elenco (Comparar jogadores existente). Janela
+   fechada → botão desabilitado com o motivo e a data de reabertura.
+2. Nome de jogador clicável (→ `openPlayerCard`) em todo lugar onde
+   aparece: notícias, lances/eventos de partida, artilharia,
+   premiações, indicações, histórico de negociações, elencos de outros
+   clubes.
+3. Enviar proposta mantém o usuário na tela de origem (remover o
+   `finishOperationAndGoHome` desse fluxo); toast com atalho "Ver
+   propostas".
+4. Mercado com abas no topo (Buscar · Indicações · Minhas propostas ·
+   Vendas · Histórico) com contadores; telas atuais reaproveitadas como
+   conteúdo das abas.
+5. Busca compacta: campo + linha de chips de filtro (posição,
+   divisão, nível, clube) abrindo bottom sheet M3; ordenação (valor,
+   overall, idade); botão "Propor" direto no TransferCard.
+6. Card "Mercado" no Início: status da janela, propostas pendentes,
+   indicações novas.
+Fora de escopo: regras de negociação/preço (não mudam).
+Aceite: proposta possível a partir de qualquer nome de jogador de outro
+clube; nenhuma volta forçada à home; indicações/propostas visíveis sem
+rolar a lista; testes de mercado/negociação continuam passando; mobile
+390px conferido.
+
+⸻
+
+GE-SCOUT-001 — Olheiros nacionais e unificados
+
+Status: PRONTO PARA IMPLEMENTAÇÃO
+Prioridade: P3 (Mundo) · Etapa do loop: Market/Management
+
+Decisão do Murilo: indicações do Mercado passam a vir dos olheiros
+contratados (unificar).
+
+Escopo:
+1. Catálogo só nacional (~8 olheiros): 1 especialista por região (5),
+   2 generalistas, 1 olheiro-chefe (caro). Atributos: estrelas,
+   Avaliação (precisão da faixa de potencial — alimenta
+   `scoutedPotentialRange`), Rede (chance de achar), Especialidade
+   (região e, opcionalmente, posição).
+2. Missão com foco: região; tipo (Sub-17 / Sub-20 para a base, ou
+   Profissional para o mercado); posição opcional; duração (curta/
+   média/longa — mais tempo, mais achados).
+3. Missão "Profissional" gera as indicações do Mercado (substitui a
+   busca automática atual com cooldown). Sem olheiro, sem indicações.
+4. Relatório por achado: faixa de potencial, pontos fortes/fracos,
+   recomendação ("contratar já" / "observar").
+5. Saves: olheiro "base internacional" contratado vira "Especialista
+   nacional" (mesmo custo/estrelas); indicações já existentes ficam.
+Anti-exploit: custo mensal escala com qualidade; nº de missões
+simultâneas = nº de olheiros.
+Aceite: nenhum texto/olheiro internacional; indicações dependem dos
+olheiros; olheiro melhor → faixa de potencial mais estreita e mais
+achados (medido por simulação); saves antigos carregam.
+
+⸻
+
+GE-CALENDAR-001 — Calendário real jan–dez, pré-temporada e amistosos
+
+Status: PRONTO PARA IMPLEMENTAÇÃO (entrega em 3 partes, B1 → B2 → B3)
+Prioridade: P1 (Game Engine) · Etapa do loop: todo o loop (Calendar)
+
+Decisões do Murilo: semanas com 2 jogos; 3 amistosos na pré-temporada +
+até 2 opcionais em julho; salário mensal (12×/ano) com receitas
+recalibradas pra manter o saldo anual equivalente.
+
+Modelo: unidade de tempo = semana (o treino já é semanal). Ano:
+* Jan (4 sem.) férias — sem jogos/treino, recuperação de condição e
+  moral, contratos vencem em 31/12, mercado ABERTO;
+* Fev (4 sem.) pré-temporada — treinos (ganho físico maior), 3
+  amistosos, mercado ABERTO;
+* Mar–Jun (~18 sem.) rodadas 1–19 + Copa, mercado fechado p/ compra;
+* Jul (4 sem.) pausa — descanso, treinos, até 2 amistosos, mercado
+  ABERTO;
+* Ago–Dez (~22 sem.) rodadas 20–38 + fases finais da Copa.
+Venda continua permitida fora da janela (regra atual).
+
+B1 — Motor de calendário: `CAREER.calendar` gerado na virada de
+temporada (semanas com data, fase e compromissos; ~10 semanas com jogo
+quarta + domingo); `transferWindowStatus` por data; "Avançar" vai ao
+próximo compromisso ("Avançar 1 semana" / "Ir para a pré-temporada" em
+semana sem jogo); prazos (lesão, proposta, missão, empréstimo) em
+semanas; IA de mercado CPU escalada por semana (sem explosão de
+transferências); finanças mensais + recalibração por simulação.
+B2 — Pré-temporada e amistosos: convites (3 clubes de divisão
+igual/inferior) com escolha; motor de partida reaproveitado (inclusive
+ao vivo); sem pontos, sem suspensão por cartão, lesão com risco
+menor, minutagem conta pra evolução (GE-BALANCE-005), bilheteria
+pequena.
+B3 — Calendário na UI: data no topo ("Dom 14/mar · 3ª rodada"), tela
+Calendário por mês, aviso de semana com 2 jogos (rodízio).
+
+Persistência: temporada em andamento termina no modelo atual; o
+calendário entra na próxima virada (`schemaVersion`/migração
+explícita). Impacto no save medido (limite ~768 KB).
+Aceite: ano completo simulado sem quebra (3 temporadas seguidas); 38
+rodadas + Copa encaixadas sem conflito; janelas abrem/fecham nas datas;
+saldo anual de caixa equivalente ao atual (±10%) em simulação; volume
+de transferências CPU por temporada dentro de ±20% do atual; saves
+antigos carregam e viram a temporada sem erro.
+
+⸻
+
 S4-AUDIT-BACKLOG-001 — Auditoria de prontidão das demandas #12 a #21
 
 Status: APROVADO
