@@ -165,7 +165,7 @@ paralelas independentes, como já registrado desde que começaram.
 
 GE-BALANCE-004 — Realismo de acesso/rebaixamento: força relativa à divisão
 
-Status: AGUARDANDO DECISÃO DO MURILO (especificação pronta — vira PRONTO PARA IMPLEMENTAÇÃO após o "ok" nas decisões abertas)
+Status: PRONTO PARA IMPLEMENTAÇÃO (decisões abertas respondidas pelo Murilo em 25/10/2026)
 Sprint: fora da S4 (frente paralela Game Engine, mesma série de GE-BALANCE-001/002/003)
 Prioridade: P1 (Game Engine — consistência/realismo)
 Etapa do loop (CLAUDE.md §11): virada de temporada (Standings → Board → Next Round), efeito em Match
@@ -280,11 +280,15 @@ Decisões abertas para o Murilo (valores propostos acima são o default)
 * D2 — Paraquedas do rebaixado dura 1 temporada ou 2?
 * D3 — Convergência anual de 30% para o desempenho real é um bom ritmo?
 
+Decisões do Murilo (25/10/2026): D1 — proposta padrão (promovido
+p20–45 / rebaixado p65–90, metas dos critérios 1–2 mantidas); D2 — 1
+temporada; D3 — 30%/temporada.
+
 ⸻
 
 GE-BALANCE-005 — Evolução de jogadores realista (fim da inflação de overall)
 
-Status: AGUARDANDO DECISÃO DO MURILO (especificação pronta — vira PRONTO PARA IMPLEMENTAÇÃO após o "ok" nas decisões abertas)
+Status: PRONTO PARA IMPLEMENTAÇÃO (decisões abertas respondidas pelo Murilo em 25/10/2026)
 Sprint: fora da S4 (frente paralela Game Engine)
 Prioridade: P1 (Game Engine / Player Engine)
 Etapa do loop (CLAUDE.md §11): Training + Player Evolution + virada de temporada
@@ -412,6 +416,10 @@ Decisões abertas para o Murilo
   fica para uma demanda separada?
 * D7 — Saves existentes já inflados: só aplicar daqui pra frente
   (proposto) ou fazer uma "correção" única de rebalanceamento?
+
+Decisões do Murilo (25/10/2026): D4 — +6/+4/+2/0; D5 — 30 linha /
+32 goleiro, −1 a −3/ano acelerando com a idade; D6 — entra nesta
+demanda; D7 — só daqui pra frente (sem correção retroativa).
 
 Ordem sugerida: GE-BALANCE-005 antes de GE-BALANCE-004 (é a queixa
 mais visível e não depende da outra); as duas antes ou em paralelo ao
