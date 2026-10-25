@@ -5,6 +5,7 @@
 // sequência) continua sem esse bônus — nenhuma regressão no fluxo Ao
 // Vivo de sempre (esse já é coberto por test_ao_vivo.js).
 const { chromium } = require("playwright-core");
+const { skipPreseason } = require("./_calendar_skip");
 
 async function newCareer(page, base, email) {
   await page.goto(base + "/", { waitUntil: "load" });
@@ -57,6 +58,7 @@ async function newCareer(page, base, email) {
   await page.evaluate(() => { CAREER.currentUnbeatenStreak = 0; });
   await page.click(".m3-nav-item[data-panel='central']");
   await page.waitForTimeout(300);
+  await skipPreseason(page); // GE-CALENDAR-001: carreira nova começa na pré-temporada
   await page.click("#btnSimulate");
   await page.waitForSelector("#preMatchOverlay.open", { timeout: 5000 });
   await page.click("#btnPreMatchGo");

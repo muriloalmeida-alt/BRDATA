@@ -1,7 +1,7 @@
 # BRDATA — CHANGELOG
-**Gerado em:** 09/09/2026 (atualizado em 11/09/2026)
+**Gerado em:** 09/09/2026 (atualizado em 25/10/2026)
 **Cobertura:** 2026-08-14 até 2026-09-11 (251 commits em 18 dias, branch `main`)
-**Versão atual:** v9.0.0
+**Versão atual:** v10.0.0
 
 ## Metodologia
 
@@ -78,6 +78,40 @@ bump.
 ---
 
 ## Histórico completo (mais recente primeiro)
+
+### 2026-10-25 (2) — v10.0.0  (1 commit de merge)
+
+> **Bump MAJOR porque:** muda o loop central do jogo — a carreira passa
+> a ter calendário real de janeiro a dezembro (semana como unidade de
+> tempo, férias, pré-temporada, pausa de julho, janela de transferências
+> por fase e finanças mensais com cota de TV). Junto, a correção P0 de
+> ids de jogador repetidos e os olheiros nacionais com missões com foco.
+
+- `ed04331` — Merge P0-IDS-001 (ids de jogador únicos no save inteiro),
+  GE-SCOUT-001 (olheiros nacionais, missão com tipo/posição/duração,
+  indicações do Mercado com relatório) e GE-CALENDAR-001 B1 (calendário
+  real jan–dez).
+
+### 2026-10-25 — v9.2.0  (3 commits de merge)
+
+> **Bump MINOR porque:** mudança completa de balanceamento do Player
+> Engine (GE-BALANCE-005, issue #38) — evolução de jogadores deixa de
+> inflar o elenco inteiro acima de 90 — e o Mercado reorganizado
+> (UX-MERCADO-001), com proposta a partir de qualquer nome de jogador.
+
+- `c1e4e37` — Merge UX-COMISSAO-001: acessos rápidos da Comissão abrem
+  diálogo de confirmação (Aplicar / Agora não / Ver na Comissão).
+- `4ed8938` — Merge UX-MERCADO-001 (PR #40): card de jogador de outro
+  clube com proposta/empréstimo/comparar, nomes clicáveis em lances e
+  premiações, operações de mercado sem voltar pra home, atalhos no topo
+  do Mercado, filtros em bottom sheet + ordenação, card Mercado no
+  Início.
+
+- `ed42a7b` — Merge GE-BALANCE-005: teto de ganho por temporada por idade/
+  minutagem (+6/+4/+2/0), freio de faixa alta (80+/88+), potencial que
+  cai a partir dos 30 (32 goleiro), potencial enviesado na base/olheiro,
+  evolução anual dos elencos CPU e linha explicativa no perfil do
+  jogador. Validação: `tests/e2e/sim_ge_balance_005.js`.
 
 ### 2026-09-11 — v9.0.0  (15 commits de merge)
 

@@ -2,6 +2,7 @@
 // e o tratamento "Opção B" (escudo maior + halo) só no card "Próximo
 // jogo" da Central, sem regressão nas outras telas que usam crestImg().
 const { chromium } = require("playwright-core");
+const { skipPreseason } = require("./_calendar_skip");
 
 (async () => {
   const browser = await chromium.launch({ executablePath: process.env.PW_CHROMIUM_PATH || undefined, headless: true, args: ["--host-resolver-rules=MAP fonts.googleapis.com 127.0.0.1,MAP fonts.gstatic.com 127.0.0.1"] });
@@ -31,6 +32,7 @@ const { chromium } = require("playwright-core");
 
   // 1) Central: escudo 72px, com monograma e halo, "Próximo jogo"/nome
   // do time com a cor normal (sem vazamento de tingimento do halo).
+  await skipPreseason(page); // GE-CALENDAR-001: carreira nova começa na pré-temporada (sem escudo de próximo jogo)
   const central = await page.evaluate(() => {
     const spot = document.querySelector(".mt-nextmatch-spot .ct-crest");
     const mono = document.querySelector(".mt-nextmatch-spot .ct-crest-mono");

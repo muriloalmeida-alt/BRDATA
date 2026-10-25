@@ -38,47 +38,68 @@ const { chromium } = require("playwright-core");
   await page.waitForTimeout(300);
   await page.evaluate(() => { CAREER.finances.wageCap = 999999999; CAREER.finances.cash = 999999999; });
 
-  // 1) Abre vazia, com o botão "Buscar indicações" disponível.
+  // GE-SCOUT-001 — indicações vêm de olheiro contratado em missão
+  // Profissional (não mais de uma busca automática com cooldown).
+  // 1) Sem olheiro: a tela explica e o botão leva pra contratar.
   await page.click("#btnOpenScoutSuggestions");
   await page.waitForTimeout(200);
   const check1 = await page.evaluate(() => ({
     open: document.getElementById("scoutSuggestionsOverlay").classList.contains("open"),
-    countLabel: document.getElementById("scoutSuggestionsCountLabel").textContent,
-    hasEmptyMsg: document.getElementById("scoutSuggestionsEmpty").classList.contains("hidden") === false,
-    searchDisabled: document.getElementById("btnScoutSearch").disabled,
+    hint: document.getElementById("scoutSuggestionsHint").textContent,
+    btn: document.getElementById("btnScoutSearch").textContent,
   }));
-  console.log("1) Tela abre vazia, com 'Buscar indicações' disponível:",
-    check1.open && check1.hasEmptyMsg && !check1.searchDisabled, JSON.stringify(check1));
-
-  // 2) Clicar em "Buscar indicações" traz jogadores de verdade, cada
-  // um com POSIÇÃO mostrada (chip .mt-pos-chip), clube e valor.
   await page.click("#btnScoutSearch");
   await page.waitForTimeout(300);
+  const check1b = await page.evaluate(() => ({
+    marketOpen: document.getElementById("scoutMarketOverlay").classList.contains("open"),
+    suggestions: (CAREER.scoutSuggestions || []).length,
+  }));
+  console.log("1) Sem olheiro contratado: sem indicação, e o botão leva pra contratar olheiro:",
+    check1.open && /Sem olheiro/.test(check1.hint) && check1.btn === "Contratar olheiro" && check1b.marketOpen && check1b.suggestions === 0, JSON.stringify({ ...check1, ...check1b }));
+
+  // 2) Contrata o olheiro-chefe, manda em missão Profissional (longa)
+  // pela própria tela de indicações e espera ele voltar.
+  await page.click('#scoutMarketList [data-hire="t_lacerda"]');
+  await page.waitForTimeout(200);
+  await page.evaluate(() => closeScoutMarketScreen());
+  await page.click("#btnOpenScoutSuggestions");
+  await page.waitForTimeout(200);
+  await page.click("#btnScoutSearch");
+  await page.waitForTimeout(300);
+  const typePreselected = await page.evaluate(() => MISSION_FORM.type);
+  await page.click("#missionScoutList [data-pickscout]");
+  await page.waitForTimeout(150);
+  await page.click('[data-mission-duration="longa"]');
+  await page.waitForTimeout(150);
+  await page.click("#missionRegionRow [data-mission-region]");
+  await page.waitForTimeout(150);
+  await page.click("#btnMissionStart");
+  await page.waitForTimeout(200);
+  const mission = await page.evaluate(() => (CAREER.scouts[0] || {}).mission);
+  await page.evaluate(() => { for (let r = 0; r < 6; r++) tickScoutMissions(CAREER.currentRound); });
+  await page.click("#btnOpenScoutSuggestions");
+  await page.waitForTimeout(200);
   const check2 = await page.evaluate(() => {
     const suggestions = CAREER.scoutSuggestions || [];
     const rows = [...document.querySelectorAll("#scoutSuggestionsList .mt-sponsor-proposal-row")];
     return {
       suggestionCount: suggestions.length,
-      allHavePotentialGap: suggestions.every((s) => s.potential - s.overall >= 5),
+      allHaveReport: suggestions.every((s) => s.report && s.report.recommendation && s.potLo != null && s.potHi >= s.potLo),
+      noExactPotentialField: suggestions.every((s) => s.potential === undefined),
       rowCount: rows.length,
       firstRowHasPosChip: !!rows[0]?.querySelector(".mt-pos-chip"),
-      firstRowPosText: rows[0]?.querySelector(".mt-pos-chip")?.textContent,
-      firstSuggestionSubpos: suggestions[0]?.subpos,
+      firstRowText: rows[0]?.textContent.replace(/\s+/g, " ").trim().slice(0, 160),
     };
   });
-  console.log("2) 'Buscar indicações' traz jogadores de verdade (espaço real de crescimento) com a POSIÇÃO mostrada:",
-    check2.suggestionCount > 0 && check2.allHavePotentialGap && check2.rowCount === check2.suggestionCount
-    && check2.firstRowHasPosChip && check2.firstRowPosText === check2.firstSuggestionSubpos, JSON.stringify(check2));
+  console.log("2) Missão Profissional do olheiro traz indicações com POSIÇÃO, faixa de potencial e relatório:",
+    typePreselected === "pro" && mission && mission.type === "pro" && mission.duration === "longa"
+    && check2.suggestionCount > 0 && check2.allHaveReport && check2.noExactPotentialField
+    && check2.rowCount === check2.suggestionCount && check2.firstRowHasPosChip, JSON.stringify({ typePreselected, mission, ...check2 }));
 
-  // 3) Cooldown: buscar de novo na MESMA rodada não traz nada a mais
-  // (botão fica desabilitado).
-  const countBefore3 = await page.evaluate(() => CAREER.scoutSuggestions.length);
-  const check3 = await page.evaluate(() => document.getElementById("btnScoutSearch").disabled);
-  await page.click("#btnScoutSearch").catch(() => {});
-  await page.waitForTimeout(200);
-  const countAfter3 = await page.evaluate(() => CAREER.scoutSuggestions.length);
-  console.log("3) Cooldown de 1x por rodada — botão desabilitado, buscar de novo não muda a lista:",
-    check3 && countAfter3 === countBefore3, JSON.stringify({ check3, countBefore3, countAfter3 }));
+  // 3) Catálogo é só nacional (nada de internacional/sul-americano).
+  const check3 = await page.evaluate(() => SCOUT_MARKET.every((c) => c.regionScope === "any" || c.regionScope.every((r) => REGION_LABEL[r]))
+    && !SCOUT_MARKET.some((c) => /internacional|sul-americ/i.test(c.specialty)));
+  console.log("3) Catálogo de olheiros só nacional:", check3);
 
   // 4) "Recusar" tira SÓ aquele jogador da lista (a janela continua
   // aberta, só o item some).
@@ -103,21 +124,14 @@ const { chromium } = require("playwright-core");
   await page.waitForTimeout(300);
   const check5 = await page.evaluate(({ id, playerId, clubId }) => ({
     scoutOverlayClosed: !document.getElementById("scoutSuggestionsOverlay").classList.contains("open"),
-    offerOpen: document.getElementById("offerOverlay").classList.contains("open"),
+    offerOpen: !!document.getElementById("btnOfferConfirm"),
     offerCtxMatches: OFFER_CTX && String(OFFER_CTX.playerId) === String(playerId) && String(OFFER_CTX.clubId) === String(clubId),
     removedFromScoutList: !CAREER.scoutSuggestions.some((s) => s.id === id),
   }), { id: secondId, playerId: secondSuggestion.playerId, clubId: secondSuggestion.clubId });
-  console.log("5) 'Aceitar' abre a proposta real do jogador certo (sem comprar na hora), some da lista de olheiros:",
+  console.log("5) 'Propor' abre a proposta real do jogador certo (sem comprar na hora), some da lista de olheiros:",
     check5.scoutOverlayClosed && check5.offerOpen && check5.offerCtxMatches && check5.removedFromScoutList, JSON.stringify(check5));
-  await page.click("#offerClose");
+  await page.evaluate(() => closeOfferModal()); // proposta virou diálogo M3 (sem #offerClose)
   await page.waitForTimeout(200);
-
-  // 6) Simular 1 rodada libera o cooldown de novo.
-  await page.evaluate(() => { CAREER.currentRound += 1; });
-  await page.click("#btnOpenScoutSuggestions");
-  await page.waitForTimeout(200);
-  const check6 = await page.evaluate(() => document.getElementById("btnScoutSearch").disabled);
-  console.log("6) Cooldown libera de novo numa rodada nova:", !check6, check6);
 
   await browser.close();
 })().catch((e) => { console.error("FATAL:", e); process.exit(1); });

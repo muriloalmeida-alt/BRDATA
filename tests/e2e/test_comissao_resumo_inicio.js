@@ -93,10 +93,27 @@ const { chromium } = require("playwright-core");
   console.log("3) Botão de Treinos clicável (has-suggestion) com o title certo (rodada 1 -> Pré-Temporada Física):",
     !trainingBtnInfo.disabled && trainingBtnInfo.hasSuggestion && trainingBtnInfo.title.includes("Pré-Temporada Física"), JSON.stringify(trainingBtnInfo));
   const trainingIdx = await page.evaluate(() => [...document.querySelectorAll("#commissionSummaryList .m3-commission-icon-btn")].findIndex((b) => b.title.includes("Treinos")));
+  // UX-COMISSAO-001 — clicar no ícone só ABRE a sugestão num diálogo;
+  // nada é aplicado antes de "Aplicar". "Agora não" fecha sem aplicar.
+  const schemeBefore = await page.evaluate(() => CAREER.trainingSchemeId);
   await page.click(`#commissionSummaryList .m3-commission-icon-btn:nth-child(${trainingIdx + 1})`);
   await page.waitForTimeout(300);
+  const dialogInfo = await page.evaluate(() => ({
+    text: document.querySelector(".m3-dialog-overlay .m3-dialog-body")?.textContent || "",
+    scheme: CAREER.trainingSchemeId,
+  }));
+  console.log("3a) Clicar no ícone abre diálogo com a sugestão completa e NÃO aplica nada ainda:",
+    dialogInfo.text.includes("Pré-Temporada Física") && dialogInfo.scheme === schemeBefore, JSON.stringify(dialogInfo));
+  await page.click('.m3-dialog-overlay [data-commission-act="later"]');
+  await page.waitForTimeout(200);
+  const afterLater = await page.evaluate(() => ({ open: !!document.querySelector(".m3-dialog-overlay"), scheme: CAREER.trainingSchemeId }));
+  console.log("3a2) 'Agora não' fecha o diálogo sem aplicar:", !afterLater.open && afterLater.scheme === schemeBefore, JSON.stringify(afterLater));
+  await page.click(`#commissionSummaryList .m3-commission-icon-btn:nth-child(${trainingIdx + 1})`);
+  await page.waitForTimeout(300);
+  await page.click('.m3-dialog-overlay [data-commission-act="apply"]');
+  await page.waitForTimeout(300);
   const afterApply = await page.evaluate(() => CAREER.trainingSchemeId);
-  console.log("3b) Clicar no botão aplica de verdade (trainingSchemeId vira 'pretemporada'):", afterApply === "pretemporada", afterApply);
+  console.log("3b) Confirmar \"Aplicar\" no diálogo aplica de verdade (trainingSchemeId vira 'pretemporada'):", afterApply === "pretemporada", afterApply);
 
   // 3c) Pedido do usuário: "ao clicar na caixa de mensagem deve
   // informar qual foi a sugestão aceita" — o toast mostra o texto real

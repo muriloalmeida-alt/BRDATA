@@ -166,6 +166,7 @@ paralelas independentes, como já registrado desde que começaram.
 GE-BALANCE-004 — Realismo de acesso/rebaixamento: força relativa à divisão
 
 Status: PRONTO PARA IMPLEMENTAÇÃO (decisões abertas respondidas pelo Murilo em 25/10/2026)
+Issue: https://github.com/muriloalmeida-alt/BRDATA/issues/39
 Sprint: fora da S4 (frente paralela Game Engine, mesma série de GE-BALANCE-001/002/003)
 Prioridade: P1 (Game Engine — consistência/realismo)
 Etapa do loop (CLAUDE.md §11): virada de temporada (Standings → Board → Next Round), efeito em Match
@@ -286,147 +287,6 @@ temporada; D3 — 30%/temporada.
 
 ⸻
 
-GE-BALANCE-005 — Evolução de jogadores realista (fim da inflação de overall)
-
-Status: PRONTO PARA IMPLEMENTAÇÃO (decisões abertas respondidas pelo Murilo em 25/10/2026)
-Sprint: fora da S4 (frente paralela Game Engine)
-Prioridade: P1 (Game Engine / Player Engine)
-Etapa do loop (CLAUDE.md §11): Training + Player Evolution + virada de temporada
-
-Pedido do usuário (25/10/2026)
-
-"Os jogadores evoluem demais e chega um momento que o time todo é acima
-de 90. Isso não é real. Precisa ter uma inteligência."
-
-Diagnóstico (inspeção do código atual)
-
-* **Treino satura o teto rápido demais.** `applyWeeklyTraining` com o
-  esquema padrão "Equilíbrio" tem 2 sessões técnicas moderadas/semana
-  (ganho possível 2 cada). `attributeTrainingGain` converte cada ponto
-  com chance `espaço/15` — com 10 pontos de espaço, ~67%. Na prática um
-  jogador chega ao `potential` em poucas semanas, não em anos.
-* **Veterano não declina de verdade.** Aos 30+, `derivePotentialForAdult`
-  fixa `potential = overall`, e `applyNaturalAgingEvolution` tira ~2–3
-  pontos/temporada — mas o treino da semana seguinte devolve tudo até o
-  mesmo teto, que nunca baixa. O resultado é um elenco que só sobe.
-* **Potencial nunca muda.** `p.potential` é fixado na criação e jamais
-  revisto com a idade.
-* **Base gera craques demais.** `buildBasePlayer` sorteia potencial
-  uniforme entre 42 e 90 (+ bônus de clube, até 92), e `renewHumanSquad`
-  repõe a base até 16 jovens **toda temporada**. Cerca de 10% de cada
-  safra tem teto 85+ — em 4–5 temporadas o clube acumula uma dúzia de
-  jogadores 85–92 só promovendo os melhores.
-* **Atributos não têm teto próprio.** `atk`/`def`/`phys` usam o mesmo
-  `potential` do overall como teto, e o overall é treinado direto, não
-  derivado dos atributos.
-* **O mundo CPU não acompanha.** `renewLeagueSquad` só envelhece e repõe
-  jogador; não há evolução dos elencos CPU. O elenco humano infla
-  enquanto o resto da liga fica parado, e o overall humano vira
-  incomparável com o da liga.
-
-Objetivo
-
-Curva de carreira plausível: jovem cresce ao longo de anos, pico entre
-~26 e 30, declínio real depois. Overall 90+ é raro (poucos jogadores
-na liga inteira), e um elenco inteiro acima de 85 não acontece sem
-investimento de mercado excepcional.
-
-Escopo (evoluir as funções existentes — CLAUDE.md §5, nada paralelo)
-
-1. **Ganho sazonal limitado por idade** — teto de ganho total (treino +
-   maturação) por temporada, por faixa etária (proposta: ≤21: +6;
-   22–25: +4; 26–29: +2; 30+: 0), contado em `attributeTrainingGain`/
-   `applyNaturalAgingEvolution`. Zera na virada de temporada.
-2. **Retorno decrescente mais forte** — a chance de converter cada ponto
-   cai mais rápido perto do teto e também em faixas altas absolutas
-   (proposta: acima de 80 o ganho fica ~2× mais difícil; acima de 88,
-   ~4×). É a regra do CLAUDE.md §17 ("quanto mais próximo do potencial,
-   menor o ganho marginal") aplicada de verdade.
-3. **Potencial dinâmico com a idade** — na virada de temporada, a partir
-   do pico (proposta: 30 linha / 32 goleiro), o `potential` desce junto
-   com a idade (proposta: −1 a −3/ano, acelerando com a idade). Treino
-   deixa de "recuperar" declínio de veterano; serve para frear a queda,
-   não para revertê-la.
-4. **Distribuição realista na base** — potencial da base com
-   distribuição enviesada (maioria 55–75; 85+ raro, proposta ≤2% por
-   safra; 90+ excepcional), escalada pelo nível do clube/divisão. Só
-   para jovens gerados daqui pra frente.
-5. **Minutagem importa** — quem não joga cresce bem menos (a maturação
-   natural já distingue titular/reserva; o treino passa a respeitar o
-   mesmo princípio no teto sazonal).
-6. **Evolução leve dos elencos CPU na virada de temporada** — aplicar a
-   mesma curva idade/potencial de forma agregada (uma vez por
-   temporada, sem treino semanal) para que a liga envelheça e revele
-   jovens como o clube humano. Custo de processamento e de save
-   controlado (sem campos novos por jogador além dos já existentes).
-7. **Explicabilidade** — o detalhe do jogador mostra quando ele bateu o
-   limite de evolução da temporada ou está em declínio por idade (texto
-   curto, usando os componentes existentes do perfil).
-
-Fora de escopo
-
-* Atributos detalhados novos (técnica, passe etc.).
-* Mudar a força de partida para depender do overall absoluto (ver
-  GE-BALANCE-004, fora de escopo).
-* Rebaixar retroativamente o overall de jogadores já inflados em saves
-  existentes (decisão D7 abaixo).
-
-Persistência / saves
-
-* Campo novo por jogador só para o contador de ganho da temporada
-  (proposta: `seasonGain`, número pequeno, default 0 — ausente = 0).
-  Impacto no save: ~10 bytes × ~60 jogadores humanos; CPU não precisa
-  do campo (evolução anual agregada).
-* Save antigo: potencial dinâmico e teto sazonal passam a valer na
-  próxima rodada/virada, sem corromper nada; jogadores já acima do
-  novo teto não perdem overall de imediato, só declinam
-  naturalmente com a idade.
-
-Anti-exploit (CLAUDE.md §29)
-
-* Farm de treino: limitado pelo teto sazonal.
-* "Comprar jovem promissor e treinar até 90": continua possível, mas
-  em anos, e com ≤2% de chance por safra/mercado de teto 85+.
-* Veterano eterno: impossível com potencial decrescente.
-
-Critérios de aceite (simulação de 10 temporadas, ≥200 carreiras, mesmo
-padrão de `tests/e2e/sim_*.js`, usando as funções reais)
-
-1. Média do top-11 humano sem mercado sobe no máximo ~+3 a +5 em 10
-   temporadas (hoje: medir e registrar o baseline no relatório).
-2. Após 10 temporadas, ≤2 jogadores com overall 90+ no elenco humano em
-   ≥95% das carreiras sem mercado; elenco inteiro ≥85 em 0% das
-   carreiras.
-3. Distribuição de overall da liga inteira (60 clubes) estável entre a
-   temporada 1 e a 10 (média ±2, percentil 99 ≤ 90).
-4. Jogador de 33+ perde overall em média, mesmo treinando intensamente.
-5. Jovem da base com teto 80+ leva em média 4+ temporadas para chegar a
-   ele.
-6. Testes existentes de treino (`test_bloco5_treino.js`) e de
-   renovação/contratos continuam passando; save antigo carrega e
-   avança sem erro.
-
-Decisões abertas para o Murilo
-
-* D4 — Tetos de ganho por temporada (+6/+4/+2/0 por faixa etária)
-  estão no ritmo que você imagina?
-* D5 — Idade de início do declínio do potencial (30 linha / 32
-  goleiro) e ritmo (−1 a −3/ano) ok?
-* D6 — Evolução anual dos elencos CPU (item 6) entra nesta demanda ou
-  fica para uma demanda separada?
-* D7 — Saves existentes já inflados: só aplicar daqui pra frente
-  (proposto) ou fazer uma "correção" única de rebalanceamento?
-
-Decisões do Murilo (25/10/2026): D4 — +6/+4/+2/0; D5 — 30 linha /
-32 goleiro, −1 a −3/ano acelerando com a idade; D6 — entra nesta
-demanda; D7 — só daqui pra frente (sem correção retroativa).
-
-Ordem sugerida: GE-BALANCE-005 antes de GE-BALANCE-004 (é a queixa
-mais visível e não depende da outra); as duas antes ou em paralelo ao
-S4-B5-QA-001 (QA visual não toca no motor).
-
-⸻
-
 Pacote "Mercado, calendário e olheiros" — pedido do Murilo em 25/10/2026
 
 Pedido (resumo): (1) Mercado escondido e com muito scroll; indicações
@@ -459,89 +319,9 @@ GE-SCOUT-001 → GE-CALENDAR-001 (B1 → B2 → B3).
 
 ⸻
 
-UX-COMISSAO-001 — Acessos rápidos da Comissão com confirmação
-
-Status: PRONTO PARA IMPLEMENTAÇÃO
-Prioridade: P4 (UX) · Etapa do loop: Market/Management
-
-Escopo: tocar num ícone da Comissão no Início abre um `openM3Dialog`
-com o texto completo da sugestão e as ações "Aplicar" (executa o
-`apply()` já existente de `COMMISSION_AREAS`), "Agora não" e "Ver na
-Comissão". Ícone sem sugestão continua desabilitado. Nada muda na tela
-cheia da Comissão.
-Aceite: nenhuma sugestão é aplicada sem confirmação; o texto é o mesmo
-da tela cheia; funciona no mobile; testes de Comissão continuam
-passando.
-
-⸻
-
-UX-MERCADO-001 — Mercado acessível e proposta de qualquer lugar
-
-Status: PRONTO PARA IMPLEMENTAÇÃO
-Prioridade: P4 (UX) · Etapa do loop: Market/Management
-
-Escopo:
-1. `openPlayerCard` (outro clube) ganha ações: Fazer proposta
-   (`openOfferModal`), Pedir empréstimo (fluxo de empréstimo existente)
-   e Comparar com meu elenco (Comparar jogadores existente). Janela
-   fechada → botão desabilitado com o motivo e a data de reabertura.
-2. Nome de jogador clicável (→ `openPlayerCard`) em todo lugar onde
-   aparece: notícias, lances/eventos de partida, artilharia,
-   premiações, indicações, histórico de negociações, elencos de outros
-   clubes.
-3. Enviar proposta mantém o usuário na tela de origem (remover o
-   `finishOperationAndGoHome` desse fluxo); toast com atalho "Ver
-   propostas".
-4. Mercado com abas no topo (Buscar · Indicações · Minhas propostas ·
-   Vendas · Histórico) com contadores; telas atuais reaproveitadas como
-   conteúdo das abas.
-5. Busca compacta: campo + linha de chips de filtro (posição,
-   divisão, nível, clube) abrindo bottom sheet M3; ordenação (valor,
-   overall, idade); botão "Propor" direto no TransferCard.
-6. Card "Mercado" no Início: status da janela, propostas pendentes,
-   indicações novas.
-Fora de escopo: regras de negociação/preço (não mudam).
-Aceite: proposta possível a partir de qualquer nome de jogador de outro
-clube; nenhuma volta forçada à home; indicações/propostas visíveis sem
-rolar a lista; testes de mercado/negociação continuam passando; mobile
-390px conferido.
-
-⸻
-
-GE-SCOUT-001 — Olheiros nacionais e unificados
-
-Status: PRONTO PARA IMPLEMENTAÇÃO
-Prioridade: P3 (Mundo) · Etapa do loop: Market/Management
-
-Decisão do Murilo: indicações do Mercado passam a vir dos olheiros
-contratados (unificar).
-
-Escopo:
-1. Catálogo só nacional (~8 olheiros): 1 especialista por região (5),
-   2 generalistas, 1 olheiro-chefe (caro). Atributos: estrelas,
-   Avaliação (precisão da faixa de potencial — alimenta
-   `scoutedPotentialRange`), Rede (chance de achar), Especialidade
-   (região e, opcionalmente, posição).
-2. Missão com foco: região; tipo (Sub-17 / Sub-20 para a base, ou
-   Profissional para o mercado); posição opcional; duração (curta/
-   média/longa — mais tempo, mais achados).
-3. Missão "Profissional" gera as indicações do Mercado (substitui a
-   busca automática atual com cooldown). Sem olheiro, sem indicações.
-4. Relatório por achado: faixa de potencial, pontos fortes/fracos,
-   recomendação ("contratar já" / "observar").
-5. Saves: olheiro "base internacional" contratado vira "Especialista
-   nacional" (mesmo custo/estrelas); indicações já existentes ficam.
-Anti-exploit: custo mensal escala com qualidade; nº de missões
-simultâneas = nº de olheiros.
-Aceite: nenhum texto/olheiro internacional; indicações dependem dos
-olheiros; olheiro melhor → faixa de potencial mais estreita e mais
-achados (medido por simulação); saves antigos carregam.
-
-⸻
-
 GE-CALENDAR-001 — Calendário real jan–dez, pré-temporada e amistosos
 
-Status: PRONTO PARA IMPLEMENTAÇÃO (entrega em 3 partes, B1 → B2 → B3)
+Status: B1 APROVADA e mesclada (merge `ed04331`, 25/10/2026, "Branches Aprovadas"); B2 e B3 PRONTAS PARA IMPLEMENTAÇÃO
 Prioridade: P1 (Game Engine) · Etapa do loop: todo o loop (Calendar)
 
 Decisões do Murilo: semanas com 2 jogos; 3 amistosos na pré-temporada +
@@ -582,6 +362,86 @@ rodadas + Copa encaixadas sem conflito; janelas abrem/fecham nas datas;
 saldo anual de caixa equivalente ao atual (±10%) em simulação; volume
 de transferências CPU por temporada dentro de ±20% do atual; saves
 antigos carregam e viram a temporada sem erro.
+
+Relatório de implementação — B1 (Claude, 25/10/2026)
+
+Desenho: uma **camada de calendário por cima do motor de rodadas**, que
+não foi reescrito (`simulateRound`, Ao Vivo, Copa e tabelas seguem
+iguais). A unidade de tempo passa a ser a semana:
+* `buildSeasonCalendar(ano)`: 52 semanas (segundas-feiras) com fase
+  por mês (jan férias, fev pré-temporada, jul pausa, demais temporada).
+  As 38 rodadas ocupam em ordem as semanas de temporada (de março a
+  junho, e de agosto a meados/fim de dezembro, conforme o ano). Semana
+  com rodada de Copa (`CUP_ROUNDS_EXPANDED`, 12 por ano) é semana de 2
+  jogos (Copa na quarta, Brasileirão no domingo), com aviso no Início.
+  Fica em `CAREER.calendar` (~2 KB).
+* Semana com jogo: o fluxo de sempre; no fim da rodada
+  (`finishRoundTail`) o calendário avança uma semana.
+* Semana sem jogo: `runCalendarOffWeek()` aplica treino (nas férias, só
+  descanso: condição volta a 100), recuperação, cura de lesão (1 semana
+  a menos de afastamento), obra do estádio, missões de olheiro, prazos
+  de propostas/anúncios, parcelas e, com janela aberta, a IA de mercado
+  e as propostas recebidas (em semanas alternadas, para manter o volume
+  anual parecido com o antigo).
+* Janela (`transferWindowStatus`): aberta em férias, pré-temporada e
+  julho; fechada para compra na temporada (venda continua liberada). Os
+  textos dizem "aberta até o fim de fevereiro" / "reabre em julho".
+* Finanças **mensais** (12×/ano, `applyCalendarMonthlyFinances`), cobradas
+  quando a semana vira o mês: folha, comissão, olheiros, patrocínio
+  (total da temporada / 12) e **Cota de TV**, a receita nova da
+  recalibração. A cota é fixada na criação do calendário para cobrir os
+  2,5 meses a mais de custo (12 em vez de 9,5), então o saldo anual fica
+  equivalente ao antigo por construção. Inflar a folha depois não
+  aumenta a cota (anti-exploit). Aparece no extrato como "📺 Cota de TV".
+* Treino 1× por semana (`calendarTurnKey`); na pré-temporada, o treino
+  físico rende +1 ponto por sessão (o teto da GE-BALANCE-005 continua
+  valendo).
+* Início: em semana sem jogo, o card mostra fase, semana, situação do
+  mercado e próximo jogo com data; o botão principal vira "Avançar
+  semana", mais "Pular até o próximo jogo". O topo mostra a data
+  ("06/fev · 1/38").
+
+Decisões tomadas na implementação (confirmar):
+1. **Carreira nova começa na pré-temporada** (fevereiro, janela aberta),
+   não em janeiro: férias só existem entre uma temporada e outra. No 1º
+   ano são cobrados 10 meses (março a dezembro), porque fevereiro conta
+   como já pago na largada.
+2. **Semanas de 2 jogos = semanas de Copa**: as 38 rodadas cabem nas
+   38–40 semanas de temporada, então não foi preciso pôr rodada do
+   Brasileirão no meio da semana. As 12 rodadas de Copa ficam como
+   semanas de 2 jogos.
+3. **Cota de TV** foi a forma escolhida de "recalibrar receitas" (é a
+   maior receita real dos clubes brasileiros).
+4. Carreira antiga continua no modelo de rodadas até a próxima virada
+   de temporada, quando ganha o calendário a partir de janeiro. Sem
+   migração no meio da temporada.
+
+Validação — novo `tests/e2e/test_ge_calendar_001.js` (passa):
+* Carreira nova: pré-temporada, janela aberta, "Avançar semana".
+* "Pular até o próximo jogo" (clique real) chega na rodada 1 em março,
+  com a janela fechada e o treino aplicado por semana.
+* **3 temporadas seguidas sem erro**, 38 rodadas cada. Meses de folha
+  cobrados: 10 / 12 / 12. A virada leva sempre para as férias de
+  janeiro do ano seguinte. Semanas sem jogo por temporada: 5 (1ª, a
+  partir de fevereiro) / 14 / 12.
+* IA de mercado: 5 / 8 / 6 execuções por temporada, contra 6 no modelo
+  antigo (rodadas 1–3 e 20–22). Média das temporadas completas = 7
+  (+17%, dentro de ±20%). Varia com o número de segundas-feiras em
+  jan/fev/jul.
+* Carreira sem calendário: janela por rodada e folha por rodada como
+  antes, e ganha o calendário na virada.
+
+Testes existentes: 28 testes criavam a carreira e clicavam em "Ir para
+o jogo" esperando a rodada 1 (agora caem na pré-temporada). Ganharam o
+helper `tests/e2e/_calendar_skip.js` (`skipPreseason(page)`), chamado
+logo antes do 1º "Ir para o jogo". A compra/empréstimo desses testes já
+acontecia antes desse ponto, com a janela da pré-temporada aberta.
+Todos passam. Em `test_coletiva_imprensa.js` o pulo foi colocado antes
+de forçar a goleada (as semanas no meio diluíam o efeito). Suíte
+completa (149 scripts): 22 falhas, todas pré-existentes. Nenhuma nova.
+
+Fora da B1 (próximas partes): amistosos (B2), tela de calendário por
+mês e aviso de rodízio mais elaborado (B3).
 
 ⸻
 
@@ -1422,3 +1282,74 @@ achado registrado pra uma possível demanda futura de recalibração)/
 
 **Merge do código:** autorizado pela aprovação formal do PM na issue
 #30, executado nesta sessão.
+
+GE-BALANCE-005 — Evolução de jogadores realista (fim da inflação de overall)	25/10/2026	merge de `claude/ge-balance-005-impl` em `main` (commit de código original `5949f4a`, merge `ed42a7b`)	docs/project/CHANGELOG.md (atualizado)
+
+APROVADO pelo Murilo em 25/10/2026, nesta conversa ("Faça o merge do
+que está pronto"). Teto de ganho por temporada por idade/minutagem,
+freio de faixa alta, potencial que cai a partir dos 30, base/olheiro
+com potencial enviesado e evolução anual dos elencos CPU. Validado por
+`tests/e2e/sim_ge_balance_005.js`: top-11 +13,8 → +4,3 em 10
+temporadas; jogadores 90+ por elenco 8,9 → 0,8. Relatório técnico
+completo em `git show 5949f4a:docs/HANDOFF_CLAUDE.md`. Pendências
+registradas lá: ids de base repetidos na reposição anual (P0, demanda
+própria a abrir) e potencial da base acima do nível de elenco de
+preenchimento.
+
+**Merge do código:** autorizado pela aprovação formal do Murilo,
+executado nesta sessão.
+
+UX-COMISSAO-001 — Acessos rápidos da Comissão com confirmação	25/10/2026	merge de `claude/ux-comissao-001` em `main` (commit de código original `c586cf5`, merge `c1e4e37`)	docs/project/CHANGELOG.md (atualizado)
+
+APROVADO pelo Murilo em 25/10/2026, nesta conversa ("Faça o merge da
+UX-Comissao-001"). O ícone da Comissão no Início abre um diálogo com a
+sugestão completa e os botões Aplicar / Agora não / Ver na Comissão.
+Relatório completo em `git show c586cf5:docs/HANDOFF_CLAUDE.md`.
+
+**Merge do código:** autorizado pela aprovação formal do Murilo,
+executado nesta sessão.
+
+UX-MERCADO-001 — Mercado acessível e proposta de qualquer lugar	25/10/2026	PR #40 (`claude/ux-mercado-001` → `main`, commit de código original `0f77c0c`, merge `4ed8938`)	docs/project/CHANGELOG.md (atualizado)
+
+APROVADO pelo Murilo em 25/10/2026: ele mesmo fez o merge do PR #40.
+Card de jogador de outro clube com proposta, empréstimo e comparar;
+nomes clicáveis em lances e premiações; operações de mercado não
+voltam pra home; atalhos no topo do Mercado; filtros em bottom sheet
+com ordenação; card Mercado no Início. Relatório completo e o achado
+de ids de jogador repetidos entre clubes em
+`git show 0f77c0c:docs/HANDOFF_CLAUDE.md`.
+
+**Merge do código:** feito pelo Murilo (PR #40).
+
+P0-IDS-001 — Ids de jogador únicos no save inteiro	25/10/2026	merge de `claude/ge-calendar-001-b1` (que contém `claude/p0-ids-unicos`, commit de código original `647c783`) em `main`, merge `ed04331`	docs/project/CHANGELOG.md (atualizado)
+
+APROVADO pelo Murilo em 25/10/2026 ("Branches Aprovadas").
+`ensureUniquePlayerIds()` ao criar a carreira, ao carregar o save e na
+virada de temporada; referências por (clube, jogador) atualizadas.
+Relatório em `git show 647c783:docs/HANDOFF_CLAUDE.md`.
+
+**Merge do código:** autorizado pela aprovação formal do Murilo,
+executado nesta sessão.
+
+GE-SCOUT-001 — Olheiros nacionais e unificados	25/10/2026	mesmo merge `ed04331` (commit de código original `1f3bb67`)	docs/project/CHANGELOG.md (atualizado)
+
+APROVADO pelo Murilo em 25/10/2026 ("Branches Aprovadas"). Catálogo
+nacional com Avaliação/Rede, missão com foco e indicações do Mercado
+vindas da missão Profissional, com relatório. Ponto deixado para
+decisão futura: o especialista regional acha um pouco mais que o
+olheiro-chefe na própria região (mantido como está). Relatório em
+`git show 1f3bb67:docs/HANDOFF_CLAUDE.md`.
+
+**Merge do código:** autorizado pela aprovação formal do Murilo,
+executado nesta sessão.
+
+GE-CALENDAR-001 (B1) — Calendário real jan–dez	25/10/2026	mesmo merge `ed04331` (commit de código original `fb21130`)	docs/project/CHANGELOG.md (atualizado)
+
+APROVADO pelo Murilo em 25/10/2026 ("Branches Aprovadas"), com as
+decisões da implementação: carreira nova começa na pré-temporada;
+semanas de 2 jogos = semanas de Copa; recalibração via Cota de TV.
+B2 (amistosos) e B3 (tela de calendário) seguem na seção vigente da
+demanda. Relatório em `git show fb21130:docs/HANDOFF_CLAUDE.md`.
+
+**Merge do código:** autorizado pela aprovação formal do Murilo,
+executado nesta sessão.

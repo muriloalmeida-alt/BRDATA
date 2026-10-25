@@ -2,6 +2,7 @@
 // ficam FORA de .ct-modal-body (não rolam com o conteúdo) — moram em
 // .ct-modal-footer, irmã fixa (flex-shrink:0) da .ct-modal-body.
 const { chromium } = require("playwright-core");
+const { skipPreseason } = require("./_calendar_skip");
 
 function checkFooter(page, overlayId, btnId) {
   return page.evaluate(({ overlayId, btnId }) => {
@@ -48,6 +49,7 @@ function checkFooter(page, overlayId, btnId) {
   // 1) Confirmar escalação — botões "Ir para o jogo"/"Ajustar escalação".
   await page.click(".m3-nav-item[data-panel='central']");
   await page.waitForTimeout(200);
+  await skipPreseason(page); // GE-CALENDAR-001: carreira nova começa na pré-temporada
   await page.click("#btnSimulate");
   await page.waitForSelector("#preMatchOverlay.open", { timeout: 5000 });
   const r1 = await checkFooter(page, "preMatchOverlay", "btnPreMatchGo");

@@ -1,4 +1,5 @@
 const { chromium } = require("playwright-core");
+const { skipPreseason } = require("./_calendar_skip");
 
 (async () => {
   const browser = await chromium.launch({
@@ -59,6 +60,7 @@ const { chromium } = require("playwright-core");
   // Simula uma rodada e reconfere estatísticas
   await page.click(".m3-nav-item[data-panel='central']");
   await page.waitForTimeout(300);
+  await skipPreseason(page); // GE-CALENDAR-001: carreira nova começa na pré-temporada
   await page.click("#btnSimulate");
   await page.waitForSelector("#preMatchOverlay.open", { timeout: 5000 });
   await page.click("#btnPreMatchGo");
