@@ -587,7 +587,7 @@ antigos carregam e viram a temporada sem erro.
 
 GAME-2048-001 — Minijogo "BRDATA 2048" (webview, estilo 2048)
 
-Status: PRONTO PARA IMPLEMENTAÇÃO (decisões abertas respondidas pelo Murilo em 25/10/2026)
+Status: REVISÃO DO PM NECESSÁRIA (implementado em 25/10/2026; relatório no fim desta seção)
 Prioridade: P5 (Retenção) · Fora do roadmap S1–S16 (frente paralela, não altera status de Sprint)
 Etapa do loop da carreira: nenhuma (v1 não toca em `CAREER`)
 Especificado em: 25/10/2026, a pedido do Murilo
@@ -723,6 +723,73 @@ Decisões (respondidas pelo Murilo em 25/10/2026)
 3. Desfazer: sem desfazer.
 4. Acesso: só a página `/2048.html` (WebView ou link direto), sem
    atalho no `index.html` nem na carreira.
+
+Relatório de implementação (Claude, 25/10/2026)
+
+O que foi feito: jogo completo conforme seções 1–3, com as 4 decisões
+acima. Código ainda NÃO commitado (aguarda aprovação, regra 13 do
+README_HANDOFF) — está só no ambiente de trabalho da sessão.
+
+Arquivos criados:
+* `public/2048.html` — página standalone (layout, estilos, diálogo);
+* `public/js/game2048/engine.js` — regras puras, PRNG com seed,
+  validação de save (`isValidState`), exporta para Node;
+* `public/js/game2048/ui.js` — render DOM, swipe/teclado, animações,
+  diálogos, `localStorage` (`brdata2048:v1`, `schemaVersion: 1`),
+  registro do service worker;
+* `public/css/m3-tokens.css` — tokens `--m3-*` extraídos de
+  `carreira.html`, sem mudar valores;
+* `tests/unit/test_game2048_engine.js` — 20 casos do motor;
+* `tests/e2e/test_game2048.js` — 25 checks no navegador.
+
+Arquivos alterados:
+* `public/carreira.html` — bloco `:root` de `--m3-*` removido do
+  `<style>` e trocado por `<link rel="stylesheet" href="css/m3-tokens.css">`;
+* `public/sw.js` — 4 arquivos novos no `APP_SHELL` (offline).
+
+Testes:
+* Unitários do motor: 20/20 (fusões de referência, jogada inválida,
+  derrota, vitória, determinismo por seed, distribuição 2/4 ≈ 90/10,
+  partida longa com invariantes, save corrompido).
+* E2E do jogo: 25/25 em 390×844 (swipe, toque curto ignorado, página
+  não rola, teclado setas/WASD, vitória e "continuar", derrota durante
+  a partida e ao reabrir, confirmação de novo jogo, reload preserva
+  partida e recorde, save corrompido, offline via service worker, sem
+  erro de console).
+* Extração de tokens: os 110 custom properties computados em
+  `carreira.html` e 4 screenshots (login, escolha de clube, Início com
+  paleta do clube, Central) idênticos pixel a pixel antes/depois.
+* Suíte E2E completa: 117/146 tanto ANTES (via `git stash`) quanto
+  DEPOIS — as mesmas 29 falhas pré-existentes, exceto uma troca:
+  `test_escalacao_avancada.js` falhou só no "depois" (overlay de
+  onboarding interceptando clique) e `test_botoes_rodape.js` só no
+  "antes"; ambos passam isolados com as mudanças (escalacao 2×) —
+  flake de concorrência, não regressão.
+* Contraste: todas as peças ≥ 5,4:1 (AA).
+
+Divergências / decisões de implementação para o PM avaliar:
+1. "Fundo navy" (seção 2) virou as superfícies neutras `--m3-surface*`:
+   são os tokens M3 vigentes (mesmo fundo da carreira hoje); os tons
+   navy (`--mt-*`) não são compartilhados e são do sistema anterior.
+2. Top app bar sem "voltar" e sem menu ⋮: pela decisão 4 não há
+   página de origem; ficou título + botão "Como jogar". "Novo jogo"
+   fica abaixo do tabuleiro e pede confirmação se a partida estiver
+   em andamento.
+3. Diálogo: `openM3Dialog` vive dentro do monólito `carreira.js` (não
+   dá para carregar sem a carreira), então o jogo usa `<dialog>` nativo
+   com o mesmo visual de `.m3-dialog`. Sugestão futura: extrair a
+   primitiva de overlay M3 para um módulo compartilhado.
+4. Paleta: os tokens M3 não têm 11 tons distintos; 128 e 1024 usam o
+   mesmo fundo (`--m3-secondary-container`), e o 1024 se diferencia
+   pelo contorno dourado.
+5. `window.__game2048` (gancho de teste para carregar tabuleiros)
+   fica exposto na página; não dá vantagem em nada, porque não há
+   prêmio nem ligação com a carreira.
+
+Riscos: baixos. Única mudança fora do jogo é a extração de tokens,
+validada por valor computado e por pixel.
+
+Recomendação: APROVADO, se as divergências 1–4 forem aceitas.
 
 ⸻
 
