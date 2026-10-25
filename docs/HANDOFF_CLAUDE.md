@@ -163,6 +163,262 @@ paralelas independentes, como já registrado desde que começaram.
 
 ⸻
 
+GE-BALANCE-004 — Realismo de acesso/rebaixamento: força relativa à divisão
+
+Status: AGUARDANDO DECISÃO DO MURILO (especificação pronta — vira PRONTO PARA IMPLEMENTAÇÃO após o "ok" nas decisões abertas)
+Sprint: fora da S4 (frente paralela Game Engine, mesma série de GE-BALANCE-001/002/003)
+Prioridade: P1 (Game Engine — consistência/realismo)
+Etapa do loop (CLAUDE.md §11): virada de temporada (Standings → Board → Next Round), efeito em Match
+
+Pedido do usuário (25/10/2026)
+
+"Times que sobem de uma divisão para outra não podem se destacar com
+tanta facilidade no ano seguinte. Assim como os times que caem não
+podem ir tão mal. Precisa de uma lógica que traga mais realismo."
+
+Diagnóstico (inspeção do código atual, `public/js/carreira.js`)
+
+* A força de partida dos clubes CPU é **só** `club.atk`/`club.def`
+  (`resolveCpuFixture`, `resolveLiveChunk`, `simulateCupLeg` etc.) —
+  o elenco do clube não entra no cálculo.
+* `applyPromotionRelegation` move o clube de divisão **com o mesmo
+  `atk`/`def`** (comentário explícito no código: "clube rebaixado
+  continua com o MESMO id/atk/def"). Nada reescala a força para a
+  divisão nova.
+* Em modo ao vivo, `calibrateStrengths` calcula `atk`/`def` **relativo à
+  média da própria liga** (`gp/j ÷ média da liga`). O líder da Série B
+  ganha um `atk` na mesma escala do líder da Série A — ao subir, chega
+  na A com força de candidato ao título. O simétrico vale para quem
+  cai: o lanterna da A chega na B com força de lanterna.
+* No Modo Exemplo (`data.js`), as escalas das divisões se sobrepõem
+  (topo da B ≈ meio da A: Athletico 1.55/0.85 vs. Fortaleza 1.55/0.92;
+  topo da C ≈ meio da B), mas também nada é ajustado na troca de
+  divisão.
+* O clube humano usa o mesmo `club.atk`/`club.def` como base
+  (`computeHumanStrength` multiplica por fatores relativos ao próprio
+  elenco), então herda o mesmo problema.
+* Times promovidos da Série D ganham elenco novo, mas a força segue a
+  do catálogo da D.
+
+Objetivo
+
+Clube que troca de divisão passa a ter força coerente com a divisão
+nova: promovido chega como time de meio/baixo da tabela (com chance
+real de brigar contra a queda), rebaixado chega como candidato ao
+acesso (sem ficar imune a uma 2ª queda). Mérito esportivo continua
+existindo — um promovido pode surpreender, só não como regra.
+
+Escopo
+
+1. **Escala de força por divisão** — derivar, para cada divisão, a
+   distribuição atual de `atk`/`def` (percentis) a partir de
+   `CAREER.divisionTeams`. Não criar tabela fixa paralela.
+2. **Reposicionamento na troca de divisão** (dentro de
+   `applyPromotionRelegation`, mesmo ponto onde a troca já acontece):
+   * promovido: `atk`/`def` reposicionados para uma faixa de percentil
+     baixa/média da divisão nova (proposta: percentil 20–45, ordenado
+     pela colocação no acesso — campeão da B no topo dessa faixa);
+   * rebaixado: reposicionado para a faixa alta da divisão nova
+     (proposta: percentil 65–90), com um "paraquedas" que decai
+     (proposta: ~1 temporada) — reflete elenco/receita maiores que a
+     média da divisão;
+   * mesma regra para clube humano e CPU (o humano só tem a base
+     `club.atk/def` ajustada — os multiplicadores do elenco/tática de
+     `computeHumanStrength` continuam iguais).
+3. **Convergência gradual** — nas temporadas seguintes, a força deixa
+   de ser congelada: puxa uma fração (proposta: 30%/temporada) em
+   direção ao desempenho real da temporada anterior (saldo de gols/
+   pontos dentro da divisão), para que um promovido que se firma
+   suba de nível ao longo dos anos e um rebaixado que não reage
+   continue caindo. Reaproveita a ideia de `calibrateStrengths` (gols
+   pró/contra vs. média da liga), em vez de fórmula nova.
+4. Compatibilidade com `GE-BALANCE-002` (reprieve de tradição) e com a
+   proteção do clube humano na Série C — ambos continuam intactos.
+5. Notícia de virada de temporada (`NewsCard`) explicando o contexto
+   quando o clube humano sobe/cai (CLAUDE.md §45 — explicabilidade),
+   ex.: "Recém-promovido, o elenco ainda está abaixo da média da Série
+   A — a diretoria espera permanência."
+
+Fora de escopo
+
+* Ligar a força de partida dos clubes CPU ao overall do elenco (mudança
+  estrutural do motor — registrada como risco/possível demanda futura).
+* Mudar quantos clubes sobem/descem (`RELEGATION_N` continua 4).
+* Recalibrar a meta da diretoria — só se o teste mostrar meta
+  incoerente com a nova força (aí reportar como divergência).
+
+Persistência / saves
+
+* `atk`/`def` já vivem em `CAREER.divisionTeams` (já persistidos) — o
+  reposicionamento grava ali mesmo.
+* Campo novo pequeno por clube só para o paraquedas/convergência
+  (proposta: `strengthMeta: { since, origin }`), com default ausente =
+  sem ajuste. Save antigo: nenhum ajuste retroativo; a regra passa a
+  valer na próxima virada de temporada. Impacto no tamanho do save:
+  desprezível (60 clubes × poucos bytes).
+
+Critérios de aceite (validados por simulação Monte Carlo, mesmo padrão
+de `tests/e2e/sim_ge_balance_00*.js`, ≥300 temporadas, Modo Exemplo e
+força estilo "ao vivo")
+
+1. Promovidos à Série A na 1ª temporada: posição média entre 11º e 16º;
+   ≤5% terminam no G4; 25–45% são rebaixados de novo.
+2. Rebaixados à Série B na 1ª temporada: posição média entre 4º e 9º;
+   30–50% voltam à A; ≤5% caem para a C.
+3. Mesma lógica medida entre B↔C.
+4. Clube humano promovido com o elenco que tinha: na média, não termina
+   no G4 da divisão nova (com elenco reforçado, pode).
+5. `sim_ge_balance_002.js` e `sim_ge_balance_003.js` continuam passando
+   (sem regressão de tradição nem do motor).
+6. Determinismo preservado (sorteios via `seededRngFromKey`).
+7. Save antigo carrega e avança temporada sem erro.
+
+Decisões abertas para o Murilo (valores propostos acima são o default)
+
+* D1 — Faixas de reposicionamento (promovido p20–45 / rebaixado p65–90)
+  e metas de realismo dos critérios 1–2 estão boas?
+* D2 — Paraquedas do rebaixado dura 1 temporada ou 2?
+* D3 — Convergência anual de 30% para o desempenho real é um bom ritmo?
+
+⸻
+
+GE-BALANCE-005 — Evolução de jogadores realista (fim da inflação de overall)
+
+Status: AGUARDANDO DECISÃO DO MURILO (especificação pronta — vira PRONTO PARA IMPLEMENTAÇÃO após o "ok" nas decisões abertas)
+Sprint: fora da S4 (frente paralela Game Engine)
+Prioridade: P1 (Game Engine / Player Engine)
+Etapa do loop (CLAUDE.md §11): Training + Player Evolution + virada de temporada
+
+Pedido do usuário (25/10/2026)
+
+"Os jogadores evoluem demais e chega um momento que o time todo é acima
+de 90. Isso não é real. Precisa ter uma inteligência."
+
+Diagnóstico (inspeção do código atual)
+
+* **Treino satura o teto rápido demais.** `applyWeeklyTraining` com o
+  esquema padrão "Equilíbrio" tem 2 sessões técnicas moderadas/semana
+  (ganho possível 2 cada). `attributeTrainingGain` converte cada ponto
+  com chance `espaço/15` — com 10 pontos de espaço, ~67%. Na prática um
+  jogador chega ao `potential` em poucas semanas, não em anos.
+* **Veterano não declina de verdade.** Aos 30+, `derivePotentialForAdult`
+  fixa `potential = overall`, e `applyNaturalAgingEvolution` tira ~2–3
+  pontos/temporada — mas o treino da semana seguinte devolve tudo até o
+  mesmo teto, que nunca baixa. O resultado é um elenco que só sobe.
+* **Potencial nunca muda.** `p.potential` é fixado na criação e jamais
+  revisto com a idade.
+* **Base gera craques demais.** `buildBasePlayer` sorteia potencial
+  uniforme entre 42 e 90 (+ bônus de clube, até 92), e `renewHumanSquad`
+  repõe a base até 16 jovens **toda temporada**. Cerca de 10% de cada
+  safra tem teto 85+ — em 4–5 temporadas o clube acumula uma dúzia de
+  jogadores 85–92 só promovendo os melhores.
+* **Atributos não têm teto próprio.** `atk`/`def`/`phys` usam o mesmo
+  `potential` do overall como teto, e o overall é treinado direto, não
+  derivado dos atributos.
+* **O mundo CPU não acompanha.** `renewLeagueSquad` só envelhece e repõe
+  jogador; não há evolução dos elencos CPU. O elenco humano infla
+  enquanto o resto da liga fica parado, e o overall humano vira
+  incomparável com o da liga.
+
+Objetivo
+
+Curva de carreira plausível: jovem cresce ao longo de anos, pico entre
+~26 e 30, declínio real depois. Overall 90+ é raro (poucos jogadores
+na liga inteira), e um elenco inteiro acima de 85 não acontece sem
+investimento de mercado excepcional.
+
+Escopo (evoluir as funções existentes — CLAUDE.md §5, nada paralelo)
+
+1. **Ganho sazonal limitado por idade** — teto de ganho total (treino +
+   maturação) por temporada, por faixa etária (proposta: ≤21: +6;
+   22–25: +4; 26–29: +2; 30+: 0), contado em `attributeTrainingGain`/
+   `applyNaturalAgingEvolution`. Zera na virada de temporada.
+2. **Retorno decrescente mais forte** — a chance de converter cada ponto
+   cai mais rápido perto do teto e também em faixas altas absolutas
+   (proposta: acima de 80 o ganho fica ~2× mais difícil; acima de 88,
+   ~4×). É a regra do CLAUDE.md §17 ("quanto mais próximo do potencial,
+   menor o ganho marginal") aplicada de verdade.
+3. **Potencial dinâmico com a idade** — na virada de temporada, a partir
+   do pico (proposta: 30 linha / 32 goleiro), o `potential` desce junto
+   com a idade (proposta: −1 a −3/ano, acelerando com a idade). Treino
+   deixa de "recuperar" declínio de veterano; serve para frear a queda,
+   não para revertê-la.
+4. **Distribuição realista na base** — potencial da base com
+   distribuição enviesada (maioria 55–75; 85+ raro, proposta ≤2% por
+   safra; 90+ excepcional), escalada pelo nível do clube/divisão. Só
+   para jovens gerados daqui pra frente.
+5. **Minutagem importa** — quem não joga cresce bem menos (a maturação
+   natural já distingue titular/reserva; o treino passa a respeitar o
+   mesmo princípio no teto sazonal).
+6. **Evolução leve dos elencos CPU na virada de temporada** — aplicar a
+   mesma curva idade/potencial de forma agregada (uma vez por
+   temporada, sem treino semanal) para que a liga envelheça e revele
+   jovens como o clube humano. Custo de processamento e de save
+   controlado (sem campos novos por jogador além dos já existentes).
+7. **Explicabilidade** — o detalhe do jogador mostra quando ele bateu o
+   limite de evolução da temporada ou está em declínio por idade (texto
+   curto, usando os componentes existentes do perfil).
+
+Fora de escopo
+
+* Atributos detalhados novos (técnica, passe etc.).
+* Mudar a força de partida para depender do overall absoluto (ver
+  GE-BALANCE-004, fora de escopo).
+* Rebaixar retroativamente o overall de jogadores já inflados em saves
+  existentes (decisão D7 abaixo).
+
+Persistência / saves
+
+* Campo novo por jogador só para o contador de ganho da temporada
+  (proposta: `seasonGain`, número pequeno, default 0 — ausente = 0).
+  Impacto no save: ~10 bytes × ~60 jogadores humanos; CPU não precisa
+  do campo (evolução anual agregada).
+* Save antigo: potencial dinâmico e teto sazonal passam a valer na
+  próxima rodada/virada, sem corromper nada; jogadores já acima do
+  novo teto não perdem overall de imediato, só declinam
+  naturalmente com a idade.
+
+Anti-exploit (CLAUDE.md §29)
+
+* Farm de treino: limitado pelo teto sazonal.
+* "Comprar jovem promissor e treinar até 90": continua possível, mas
+  em anos, e com ≤2% de chance por safra/mercado de teto 85+.
+* Veterano eterno: impossível com potencial decrescente.
+
+Critérios de aceite (simulação de 10 temporadas, ≥200 carreiras, mesmo
+padrão de `tests/e2e/sim_*.js`, usando as funções reais)
+
+1. Média do top-11 humano sem mercado sobe no máximo ~+3 a +5 em 10
+   temporadas (hoje: medir e registrar o baseline no relatório).
+2. Após 10 temporadas, ≤2 jogadores com overall 90+ no elenco humano em
+   ≥95% das carreiras sem mercado; elenco inteiro ≥85 em 0% das
+   carreiras.
+3. Distribuição de overall da liga inteira (60 clubes) estável entre a
+   temporada 1 e a 10 (média ±2, percentil 99 ≤ 90).
+4. Jogador de 33+ perde overall em média, mesmo treinando intensamente.
+5. Jovem da base com teto 80+ leva em média 4+ temporadas para chegar a
+   ele.
+6. Testes existentes de treino (`test_bloco5_treino.js`) e de
+   renovação/contratos continuam passando; save antigo carrega e
+   avança sem erro.
+
+Decisões abertas para o Murilo
+
+* D4 — Tetos de ganho por temporada (+6/+4/+2/0 por faixa etária)
+  estão no ritmo que você imagina?
+* D5 — Idade de início do declínio do potencial (30 linha / 32
+  goleiro) e ritmo (−1 a −3/ano) ok?
+* D6 — Evolução anual dos elencos CPU (item 6) entra nesta demanda ou
+  fica para uma demanda separada?
+* D7 — Saves existentes já inflados: só aplicar daqui pra frente
+  (proposto) ou fazer uma "correção" única de rebalanceamento?
+
+Ordem sugerida: GE-BALANCE-005 antes de GE-BALANCE-004 (é a queixa
+mais visível e não depende da outra); as duas antes ou em paralelo ao
+S4-B5-QA-001 (QA visual não toca no motor).
+
+⸻
+
 S4-AUDIT-BACKLOG-001 — Auditoria de prontidão das demandas #12 a #21
 
 Status: APROVADO
