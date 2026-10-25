@@ -585,6 +585,153 @@ antigos carregam e viram a temporada sem erro.
 
 ⸻
 
+GAME-2048-001 — Minijogo "Craque 2048" (webview, estilo 2048)
+
+Status: AGUARDANDO DECISÃO DO MURILO (4 decisões abertas no fim desta seção; recomendações já indicadas — confirmadas, vira PRONTO PARA IMPLEMENTAÇÃO)
+Prioridade: P5 (Retenção) · Fora do roadmap S1–S16 (frente paralela, não altera status de Sprint)
+Etapa do loop da carreira: nenhuma (v1 não toca em `CAREER`)
+Especificado em: 25/10/2026, a pedido do Murilo
+
+Objetivo
+
+Minijogo casual estilo 2048, jogável em navegador e embutível em
+WebView (Android/iOS), com identidade BRDATA. Serve de retenção (sessões
+curtas entre rodadas) sem interferir na economia/estado da carreira.
+
+1. Regras
+
+* Tabuleiro 4×4. Começa com 2 peças aleatórias.
+* Jogada = deslizar (swipe) ou setas/WASD. Todas as peças andam ao
+  máximo na direção.
+* Duas peças iguais que se encontram na direção da jogada fundem em uma
+  com o dobro do valor (2+2 → 4).
+* Cada peça funde no máximo 1 vez por jogada; a prioridade é da borda
+  para onde se desliza. Casos de referência (deslizando à esquerda):
+  `[2,2,2,2] → [4,4,_,_]`, `[2,2,2,_] → [4,2,_,_]`,
+  `[4,4,8,_] → [8,8,_,_]` (o 8 novo não funde com o 8 na mesma jogada).
+* Jogada só é válida se algo se mexer. Válida → nasce 1 peça numa casa
+  vazia aleatória: 2 (90%) ou 4 (10%). Inválida → nada nasce, feedback
+  de "tremida" no tabuleiro.
+* Pontuação: soma dos valores criados por fusão. Recorde salvo.
+* Vitória: chegar a 2048 → diálogo "Continuar jogando" / "Novo jogo"
+  (pode seguir até 4096+).
+* Derrota: sem casa vazia e sem par adjacente igual → diálogo de fim
+  com pontos, recorde e "Jogar de novo".
+* Determinismo (CLAUDE.md §12/§44): PRNG com seed (ex.: mulberry32),
+  seed guardada no estado — mesma seed + mesmas jogadas = mesma
+  partida (base para testes e reprodução de bug).
+* Tema (decisão aberta 1): cada valor tem rótulo de futebol além do
+  número — 2 Várzea · 4 Base · 8 Sub-20 · 16 Profissional · 32 Titular ·
+  64 Destaque · 128 Craque · 256 Seleção · 512 Ídolo · 1024 Lenda ·
+  2048 Bola de Ouro. Número sempre visível (leitura rápida).
+
+2. Layout (mobile-first, 390px como referência)
+
+```
+┌──────────────────────────────┐
+│ ←  Craque 2048          ⋮    │  top app bar M3 (voltar, menu: novo jogo/como jogar)
+├──────────────────────────────┤
+│ ┌──────────┐ ┌──────────┐    │
+│ │ PONTOS   │ │ RECORDE  │    │  2 cards de placar (fonte de display BRDATA)
+│ │  1.284   │ │  9.920   │    │
+│ └──────────┘ └──────────┘    │
+│ ┌──────────────────────────┐ │
+│ │ ┌──┐┌──┐┌──┐┌──┐         │ │
+│ │ │ 2││  ││ 8││  │         │ │  tabuleiro quadrado:
+│ │ └──┘└──┘└──┘└──┘         │ │  largura min(100vw − 32px, 480px),
+│ │  ... 4×4 ...             │ │  gap 8px, raio --m3-shape-md
+│ └──────────────────────────┘ │
+│   Deslize para mover as peças│  dica (some após 1ª jogada)
+│ [ Novo jogo ]                │  botão M3 (tonal)
+└──────────────────────────────┘
+```
+
+* Paleta: fundo navy; peças em progressão navy → azul → branco →
+  dourado (2048 = dourado cheio). Só tokens `--m3-*`/BRDATA DS, nada de
+  hex solto (CLAUDE.md §6.3).
+* Animações: deslize 100 ms (transform), nascimento (scale 0→1),
+  fusão (pop 1→1.12→1). `prefers-reduced-motion` desliga.
+* Desktop: mesma coluna centralizada (máx. 480px), setas do teclado.
+* Diálogos de vitória/derrota no padrão `openM3Dialog` (mesmo visual).
+* Acessibilidade: tabuleiro `role="grid"`, peças com `aria-label`
+  ("Craque, 128"), região `aria-live` anunciando pontos/fim de jogo,
+  alvos de toque ≥ 48dp, contraste AA nos números.
+* Safe areas (`viewport-fit=cover` + `env(safe-area-inset-*)`) para
+  WebView com notch.
+
+3. Tecnologia
+
+* Mesma stack do projeto: HTML + CSS + JavaScript puro, sem framework e
+  sem build. Servido pelo Node já existente (`server/server.js`) como
+  arquivo estático.
+* Renderização em DOM (16 casas + peças com `transform`), não canvas:
+  acessível, fácil de tematizar com tokens, desempenho de sobra.
+* Arquivos novos:
+  * `public/2048.html` — página standalone (abre direto em WebView);
+  * `public/js/game2048/engine.js` — regras puras, sem DOM
+    (`move(state, dir)`, `spawn`, `isGameOver`, PRNG com seed),
+    exportável em Node para teste;
+  * `public/js/game2048/ui.js` — render, input, animação, diálogos.
+* Input: Pointer Events com limiar de 24px e direção pelo eixo
+  dominante; `touch-action: none` só no tabuleiro (a página não rola
+  durante o swipe); teclado setas/WASD.
+* Persistência: `localStorage` (estado da partida em andamento +
+  recorde), com try/catch — sem backend na v1. `careerStore.js` e o
+  limite de ~768 KB do save não são tocados.
+* PWA/offline: incluir a página e os 2 JS no cache do `sw.js` (o jogo
+  funciona sem rede, importante em WebView).
+* Design System: os tokens `--m3-*` hoje vivem inline em
+  `carreira.html`. Para não duplicar (CLAUDE.md §6.3), extrair o bloco
+  `:root` de tokens para `public/css/m3-tokens.css`, linkado pelas duas
+  páginas — extração incremental (CLAUDE.md §40), sem mudar valores;
+  `carreira.html` precisa continuar idêntica visualmente (conferir por
+  screenshot antes/depois).
+* Testes: unitários Node do `engine.js` (todos os casos de fusão da
+  seção 1, jogada inválida não gera peça, game over, determinismo por
+  seed) + E2E Playwright em `tests/e2e` (swipe, teclado, vitória
+  forçada por estado, derrota, 390px sem scroll horizontal, recorde
+  persiste após reload).
+
+Fora de escopo (v1)
+
+Recompensa na carreira, ranking online, anúncios/monetização,
+multiplayer, tabuleiros 5×5/6×6, desfazer.
+
+Riscos / anti-exploit (CLAUDE.md §29)
+
+* v1 sem integração com a carreira → sem exploit econômico.
+* Se no futuro der recompensa (decisão aberta 2): recorde fica no
+  cliente e é trivialmente forjável via `localStorage`; qualquer
+  recompensa exigiria validação no servidor (replay da seed + lista de
+  jogadas, possível graças ao determinismo) e teto diário.
+* Extração de tokens pode quebrar visual da carreira → mitigado por
+  comparação de screenshot e suíte E2E existente.
+
+Critérios de aceite
+
+1. Os casos de fusão da seção 1 passam em teste unitário.
+2. Jogada inválida não gera peça; derrota detectada corretamente.
+3. Mesma seed + mesmas jogadas = mesmo tabuleiro final.
+4. Jogável por swipe em 390px e por teclado em desktop, sem scroll
+   horizontal nem rolagem da página durante o swipe.
+5. Partida em andamento e recorde sobrevivem a reload e a modo offline.
+6. Só tokens do DS; `carreira.html` sem diferença visual após extração.
+7. Suíte de testes existente continua passando.
+
+Decisões abertas (Murilo)
+
+1. Tema: rótulos de futebol + número (recomendado) ou só números?
+2. Integração com carreira: standalone sem recompensa (recomendado) ou
+   alguma recompensa (ex.: moral/cosmético)? Recompensa exige validação
+   no servidor — demanda própria.
+3. Desfazer: sem desfazer na v1 (recomendado, fiel ao 2048 original) ou
+   1 desfazer por partida?
+4. Acesso: página própria `/2048.html` com atalho no menu do `index.html`
+   (recomendado) ou também um atalho dentro da carreira?
+
+⸻
+
+
 S4-AUDIT-BACKLOG-001 — Auditoria de prontidão das demandas #12 a #21
 
 Status: APROVADO
