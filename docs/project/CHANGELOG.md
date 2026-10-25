@@ -1,7 +1,7 @@
 # BRDATA — CHANGELOG
 **Gerado em:** 09/09/2026 (atualizado em 25/10/2026)
 **Cobertura:** 2026-08-14 até 2026-09-11 (251 commits em 18 dias, branch `main`)
-**Versão atual:** v9.1.0
+**Versão atual:** v9.2.0
 
 ## Metodologia
 
@@ -79,11 +79,20 @@ bump.
 
 ## Histórico completo (mais recente primeiro)
 
-### 2026-10-25 — v9.1.0  (1 commit de merge)
+### 2026-10-25 — v9.2.0  (3 commits de merge)
 
 > **Bump MINOR porque:** mudança completa de balanceamento do Player
 > Engine (GE-BALANCE-005, issue #38) — evolução de jogadores deixa de
-> inflar o elenco inteiro acima de 90.
+> inflar o elenco inteiro acima de 90 — e o Mercado reorganizado
+> (UX-MERCADO-001), com proposta a partir de qualquer nome de jogador.
+
+- `c1e4e37` — Merge UX-COMISSAO-001: acessos rápidos da Comissão abrem
+  diálogo de confirmação (Aplicar / Agora não / Ver na Comissão).
+- `4ed8938` — Merge UX-MERCADO-001 (PR #40): card de jogador de outro
+  clube com proposta/empréstimo/comparar, nomes clicáveis em lances e
+  premiações, operações de mercado sem voltar pra home, atalhos no topo
+  do Mercado, filtros em bottom sheet + ordenação, card Mercado no
+  Início.
 
 - `ed42a7b` — Merge GE-BALANCE-005: teto de ganho por temporada por idade/
   minutagem (+6/+4/+2/0), freio de faixa alta (80+/88+), potencial que

@@ -319,140 +319,6 @@ GE-SCOUT-001 → GE-CALENDAR-001 (B1 → B2 → B3).
 
 ⸻
 
-UX-COMISSAO-001 — Acessos rápidos da Comissão com confirmação
-
-Status: REVISÃO DO PM NECESSÁRIA (implementação na branch `claude/ux-comissao-001`)
-Prioridade: P4 (UX) · Etapa do loop: Market/Management
-
-Escopo: tocar num ícone da Comissão no Início abre um `openM3Dialog`
-com o texto completo da sugestão e as ações "Aplicar" (executa o
-`apply()` já existente de `COMMISSION_AREAS`), "Agora não" e "Ver na
-Comissão". Ícone sem sugestão continua desabilitado. Nada muda na tela
-cheia da Comissão.
-Aceite: nenhuma sugestão é aplicada sem confirmação; o texto é o mesmo
-da tela cheia; funciona no mobile; testes de Comissão continuam
-passando.
-
-Relatório de implementação (Claude, 25/10/2026)
-
-* `renderCommissionSummaryCard`: o ícone agora só chama
-  `openCommissionSuggestionDialog(area, s)` (função nova), que abre um
-  `openM3Dialog` com o texto completo da sugestão e 3 ações: "Aplicar"
-  ("Fazer proposta" na área Mercado), "Agora não" e "Ver na Comissão"
-  (`openCommissionScreen`). O "Aplicar" executa o mesmo `apply()` e o
-  mesmo toast de antes. Nada mudou na tela cheia da Comissão.
-* Testes: `test_comissao_resumo_inicio.js` atualizado (o ícone abre o
-  diálogo sem aplicar; "Agora não" não aplica; "Aplicar" aplica) e
-  passa. `test_comissao_tecnica.js` passa.
-  `test_comissao_mercado_proposta.js` já falhava na `main` (procurava o
-  `#offerOverlay`, que foi trocado pelo diálogo M3 numa demanda
-  anterior). Atualizado para o diálogo atual mais a nova confirmação,
-  e agora passa.
-* Sem impacto em save, motor ou economia.
-
-⸻
-
-UX-MERCADO-001 — Mercado acessível e proposta de qualquer lugar
-
-Status: REVISÃO DO PM NECESSÁRIA (implementação na branch `claude/ux-mercado-001`)
-Prioridade: P4 (UX) · Etapa do loop: Market/Management
-
-Escopo:
-1. `openPlayerCard` (outro clube) ganha ações: Fazer proposta
-   (`openOfferModal`), Pedir empréstimo (fluxo de empréstimo existente)
-   e Comparar com meu elenco (Comparar jogadores existente). Janela
-   fechada → botão desabilitado com o motivo e a data de reabertura.
-2. Nome de jogador clicável (→ `openPlayerCard`) em todo lugar onde
-   aparece: notícias, lances/eventos de partida, artilharia,
-   premiações, indicações, histórico de negociações, elencos de outros
-   clubes.
-3. Enviar proposta mantém o usuário na tela de origem (remover o
-   `finishOperationAndGoHome` desse fluxo); toast com atalho "Ver
-   propostas".
-4. Mercado com abas no topo (Buscar · Indicações · Minhas propostas ·
-   Vendas · Histórico) com contadores; telas atuais reaproveitadas como
-   conteúdo das abas.
-5. Busca compacta: campo + linha de chips de filtro (posição,
-   divisão, nível, clube) abrindo bottom sheet M3; ordenação (valor,
-   overall, idade); botão "Propor" direto no TransferCard.
-6. Card "Mercado" no Início: status da janela, propostas pendentes,
-   indicações novas.
-Fora de escopo: regras de negociação/preço (não mudam).
-Aceite: proposta possível a partir de qualquer nome de jogador de outro
-clube; nenhuma volta forçada à home; indicações/propostas visíveis sem
-rolar a lista; testes de mercado/negociação continuam passando; mobile
-390px conferido.
-
-Relatório de implementação (Claude, 25/10/2026)
-
-O que foi feito:
-1. **Card de jogador de outro clube com ações** (`openPlayerCard` →
-   `externalPlayerActionsHTML`): Fazer proposta (`openOfferModal`),
-   Pedir empréstimo (`openLoanInModal`) e Comparar com meu elenco
-   (`openCompareWithExternal`, que generaliza o Comparar jogadores
-   existente com `COMPARE_EXTERNAL`). Com a janela fechada, os botões
-   ficam desabilitados e o card diz quando ela reabre. Se já existe
-   proposta por aquele jogador, aparece "ver em Minhas propostas". O
-   texto "consulta apenas" saiu.
-2. **Nome clicável**: tudo o que já era clicável (Mercado, artilharia,
-   elenco de outro clube, indicações) agora leva ao card com ações.
-   Também passaram a ser clicáveis os nomes nos lances da partida
-   (`matchEventsSummaryHTML`) e nas premiações, via `playerLinkHTML` com
-   um único listener delegado no documento. Os eventos de gol, cartão
-   e lesão passam a guardar `playerId`/`assistPlayerId` (só a rodada
-   atual e a anterior ficam no save, então o impacto é desprezível).
-   Evento de save antigo, sem id, continua como texto.
-3. **Proposta, empréstimo e colocar à venda não voltam mais pra home**
-   (`confirmOfferFromModal`, `confirmLoanFromModal`,
-   `confirmListFromModal` chamam `renderAll()` em vez de
-   `finishOperationAndGoHome`). O toast da proposta indica onde
-   acompanhar. Renovação, coletiva e aceitar/recusar proposta
-   recebida continuam como antes (pedido antigo, fora do escopo).
-4. **Atalhos no topo do Mercado**: Indicações · Minhas propostas ·
-   Minhas vendas · Histórico, numa barra rolável de chips com os
-   mesmos ids e contadores. Antes ficavam no fim da tela, depois da
-   lista. **Divergência pequena**: eles abrem as telas existentes, em
-   vez de virar abas com conteúdo embutido. O resultado ("visível sem
-   rolar") é o mesmo, sem duplicar 4 telas.
-5. **Busca compacta**: busca + botão "Filtros" (com contador) que abre
-   um bottom sheet M3, mais ordenação (Maior valor / Maior overall /
-   Mais jovens). Os `<select>` originais ficam escondidos como estado,
-   então `renderMercado` continua lendo deles. O botão de proposta por
-   ícone no card já existia e foi mantido.
-6. **Card "Mercado" no Início** (`renderMarketSummaryCard`): situação
-   da janela e atalhos Abrir Mercado / Indicações / Propostas, com
-   contadores.
-
-Testes:
-* Novo `tests/e2e/test_ux_mercado_001.js` (7 verificações, passa): card
-  no Início, atalhos acima da lista, filtro via sheet, ordenação por
-  idade, ações no card, proposta sem voltar pra home e lance clicável
-  abrindo o jogador certo.
-* Atualizados porque os filtros agora ficam escondidos:
-  `test_mercado_filtros_ampliados.js` e `test_mercado_multi_divisao.js`
-  (`selectOption` com `force`). Ambos passam.
-* Atualizados porque já falhavam na `main` com seletores antigos
-  (`#offerOverlay`/`#offerClose`, que viraram diálogo M3 numa demanda
-  anterior): `test_mercado2.js`, `test_mercado_multi_divisao.js`,
-  `test_s4_b3_002_mercado.js` e `test_indicacoes_olheiros.js`. Agora
-  passam.
-* Mobile 390px conferido por captura (Início, Mercado, sheet de
-  filtros e card do jogador).
-* Suíte e2e completa (146 scripts): 24 falhas, **todas já falhavam na
-  `main`**, nenhuma nova; 6 que falhavam na `main` passaram a passar.
-
-Achado pré-existente (não corrigido, recomendo P0 separado): **ids de
-jogador repetidos entre clubes**. Numa carreira multi-divisão, 640 ids
-aparecem em mais de um clube (ex.: `real_129` na Série A e na B),
-porque cada catálogo de competição numera os jogadores do zero.
-Qualquer busca só por id pode pegar o jogador errado. Neste trabalho
-mitiguei os pontos novos: o card desempata por clube e, sem clube, pelo
-nome. A correção de raiz (id único por competição + migração de save)
-deve entrar junto com a de ids da base repetidos, achada na
-GE-BALANCE-005.
-
-⸻
-
 GE-SCOUT-001 — Olheiros nacionais e unificados
 
 Status: PRONTO PARA IMPLEMENTAÇÃO
@@ -1175,3 +1041,25 @@ preenchimento.
 
 **Merge do código:** autorizado pela aprovação formal do Murilo,
 executado nesta sessão.
+
+UX-COMISSAO-001 — Acessos rápidos da Comissão com confirmação	25/10/2026	merge de `claude/ux-comissao-001` em `main` (commit de código original `c586cf5`, merge `c1e4e37`)	docs/project/CHANGELOG.md (atualizado)
+
+APROVADO pelo Murilo em 25/10/2026, nesta conversa ("Faça o merge da
+UX-Comissao-001"). O ícone da Comissão no Início abre um diálogo com a
+sugestão completa e os botões Aplicar / Agora não / Ver na Comissão.
+Relatório completo em `git show c586cf5:docs/HANDOFF_CLAUDE.md`.
+
+**Merge do código:** autorizado pela aprovação formal do Murilo,
+executado nesta sessão.
+
+UX-MERCADO-001 — Mercado acessível e proposta de qualquer lugar	25/10/2026	PR #40 (`claude/ux-mercado-001` → `main`, commit de código original `0f77c0c`, merge `4ed8938`)	docs/project/CHANGELOG.md (atualizado)
+
+APROVADO pelo Murilo em 25/10/2026: ele mesmo fez o merge do PR #40.
+Card de jogador de outro clube com proposta, empréstimo e comparar;
+nomes clicáveis em lances e premiações; operações de mercado não
+voltam pra home; atalhos no topo do Mercado; filtros em bottom sheet
+com ordenação; card Mercado no Início. Relatório completo e o achado
+de ids de jogador repetidos entre clubes em
+`git show 0f77c0c:docs/HANDOFF_CLAUDE.md`.
+
+**Merge do código:** feito pelo Murilo (PR #40).
