@@ -1,7 +1,7 @@
 # BRDATA — CHANGELOG
 **Gerado em:** 09/09/2026 (atualizado em 25/10/2026)
 **Cobertura:** 2026-08-14 até 2026-09-11 (251 commits em 18 dias, branch `main`)
-**Versão atual:** v10.1.0
+**Versão atual:** v10.2.0
 
 ## Metodologia
 
@@ -78,6 +78,22 @@ bump.
 ---
 
 ## Histórico completo (mais recente primeiro)
+
+### 2026-10-25 (4) — v10.2.0  (1 PR + 1 commit de merge)
+
+> **Bump MINOR porque:** adiciona conteúdo ao calendário já existente
+> (amistosos, tela Calendário) e rebalanceia acesso/rebaixamento, sem
+> mudar o loop central. O motor de testes é infraestrutura, sem efeito
+> no jogo.
+
+- `89f5131` — PR #42, motor de testes Fase A (código `d3ca67d`): runner
+  paralelo com concorrência proporcional às CPUs, servidor isolado,
+  rota rápida, cobertura JS e relatório `docs/MOTOR_TESTES_FASE_A.md`
+  (suíte completa 412 s → 305 s).
+- `c44dd4c` — Merge GE-CALENDAR-001 B2 (amistosos na pré-temporada e em
+  julho), B3 (tela Calendário, data no topo, aviso de rodízio) e
+  GE-BALANCE-004 (força relativa à divisão no acesso/rebaixamento,
+  issue #39).
 
 ### 2026-10-25 (3) — v10.1.0  (1 PR)
 
