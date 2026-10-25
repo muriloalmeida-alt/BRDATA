@@ -1,6 +1,6 @@
 # Suíte de regressão E2E (Modo Técnico)
 
-104 scripts Playwright independentes (`test_*.js`) que cobrem o Modo Técnico
+Scripts Playwright independentes (`test_*.js`; 149 em 25/10/2026) que cobrem o Modo Técnico
 de ponta a ponta — cada um cria sua própria conta/carreira contra um
 servidor local já rodando, então não há setup compartilhado nem ordem de
 execução obrigatória entre eles.
@@ -45,16 +45,51 @@ node test_mercado2.js
 ```
 
 Suíte inteira, em paralelo (recomendado — motivo: ver comentário no topo
-de `run_parallel.js`):
+de `run_parallel.js`). Comandos oficiais (`npm run ...` nesta pasta):
+
+| Comando | O que roda | Servidor |
+|---|---|---|
+| `npm test` (= `node run_parallel.js`) | suíte completa: todos os `test_*.js` + `tests/unit/test_*.js` | o que já estiver em `:8787` |
+| `npm run test:full` / `npm run test:ci` | suíte completa | **isolado**: o runner sobe um servidor próprio com `data/` vazio numa cópia temporária e derruba no fim (exige a porta 8787 livre) |
+| `npm run test:fast` | rota rápida (`suites.json` → `fast`): smoke de fluxos críticos + unitários. **Não substitui** a suíte completa antes de merge | isolado |
+| `npm run test:coverage` | suíte completa + cobertura JS do app (V8) → `_coverage_summary.json` | isolado |
+| `npm run test:unit` | só o teste unitário do motor do 2048 | — |
+| `npm run test:list` | lista o que rodaria, sem rodar | — |
+
+Por que o servidor isolado: o servidor de dev grava TODAS as contas
+criadas pelos testes no mesmo `server/data/careers.json`, que só cresce
+(~8,5 MB por execução da suíte); com o arquivo acumulado a suíte fica
+mais lenta e testes de tempo real passam a estourar timeout. O isolado
+começa sempre do zero e não toca `server/data/` do dev.
+
+Só um subconjunto (substring do nome do arquivo, vários separados por
+vírgula) e/ou ajustando concorrência/timeout:
 ```
-node run_parallel.js
+node run_parallel.js test_mercado,test_scout --concurrency=8 --timeout=60000
 ```
 
-Só um subconjunto (substring do nome do arquivo) e/ou ajustando
-concorrência/timeout:
-```
-node run_parallel.js test_mercado --concurrency=8 --timeout=60000
-```
+Outras opções: `--order=alpha` (ordem alfabética; o padrão roda os mais
+longos primeiro, pela duração da última execução), `--no-unit`.
+Concorrência padrão = 2,5 × CPUs (entre 2 e 12) — a suíte passa a maior
+parte do tempo esperando (timers do app, esperas fixas), não em CPU.
+
+Configuração em `suites.json` (nada lá pula teste):
+- `fast` — lista da rota rápida;
+- `long` — testes com timeout próprio (180 s), escolhidos pela duração
+  máxima medida (≥ 60 s);
+- `exclusive` — testes que rodam sozinhos, depois dos demais (leem o
+  `careers.json` do servidor direto do disco).
+
+Saídas (todas gitignored): `_last_parallel_run.json` (metadados da
+execução — commit, comando, concorrência, timeouts, retries — e o
+resultado de cada script), `_artifacts/<teste>.log` (stdout/stderr de
+cada teste que falhou) e `_artifacts/server.log` (servidor isolado),
+`_coverage/` + `_coverage_summary.json` (com `--coverage`).
+Não há retry automático: um teste que falha conta como falha.
+
+CI: o repositório ainda não tem pipeline (não existe `.github/workflows`);
+`npm run test:ci` é o comando pronto pra quando houver — servidor
+isolado, suíte completa, código de saída ≠ 0 se qualquer teste falhar.
 
 Cada script imprime um checklist numerado (`1) ... true/false`) e sai com
 código 0 (tudo passou) ou 1 (alguma asserção falhou/exceção). O runner

@@ -10,7 +10,7 @@
 // deixa a medição CONSERVADORA — o motor completo em jogo real tem ainda
 // mais fricção do que este modelo simplificado considera).
 const fs = require("fs");
-const dataJs = fs.readFileSync("/home/user/FitOS/public/js/data.js", "utf8");
+const dataJs = fs.readFileSync(require("path").join(__dirname, "..", "..", "public", "js", "data.js"), "utf8");
 const teamRe = /atk:\s*([\d.]+),\s*def:\s*([\d.]+)/g;
 const OPPONENTS = [];
 let m;

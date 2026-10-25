@@ -11,7 +11,7 @@
 // dominar de forma implausível nem um "pior time real" virar
 // artificialmente competitivo demais.
 const fs = require("fs");
-const dataJs = fs.readFileSync("/home/user/FitOS/public/js/data.js", "utf8");
+const dataJs = fs.readFileSync(require("path").join(__dirname, "..", "..", "public", "js", "data.js"), "utf8");
 
 // Extrai só o bloco DEMO_TEAMS (Brasileirão, 20 clubes) — mesmo
 // recorte que o motor real usa pra rodadas do campeonato principal.

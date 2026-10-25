@@ -18,12 +18,12 @@
 const fs = require("fs");
 const vm = require("vm");
 
-const dataJs = fs.readFileSync("/home/user/FitOS/public/js/data.js", "utf8");
+const dataJs = fs.readFileSync(require("path").join(__dirname, "..", "..", "public", "js", "data.js"), "utf8");
 const mulberryMatch = dataJs.match(/function mulberry32\(seed\) \{[\s\S]*?\n\}\n/);
 const seededMatch = dataJs.match(/function seededRngFromKey\(key\) \{[\s\S]*?\n\}\n/);
 if (!mulberryMatch || !seededMatch) throw new Error("Não achou mulberry32/seededRngFromKey em data.js — arquivo mudou?");
 
-const carreiraJs = fs.readFileSync("/home/user/FitOS/public/js/carreira.js", "utf8");
+const carreiraJs = fs.readFileSync(require("path").join(__dirname, "..", "..", "public", "js", "carreira.js"), "utf8");
 function extractFn(re, label) {
   const m = carreiraJs.match(re);
   if (!m) throw new Error(`Não achou ${label} em carreira.js — arquivo mudou?`);

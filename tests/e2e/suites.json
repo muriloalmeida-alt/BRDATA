@@ -1,0 +1,47 @@
+{
+  "_doc": "Configuração do runner (run_parallel.js). Nenhuma entrada aqui pula teste: 'fast' é um SUBCONJUNTO opcional pra feedback rápido (não substitui a suíte completa); 'long' só define timeout por classe; 'exclusive' só define que o teste roda SOZINHO, depois dos demais. Origem dos números: baseline de 25/10/2026 (3 execuções, concorrência 6) e medições em concorrência 8/10 — ver o relatório da Fase A do motor de testes.",
+  "fast": {
+    "_doc": "Smoke de fluxos críticos: boot/login, persistência/migração, motor de partida/Copa, treino, mercado, temporada/divisões, olheiros, diretoria, estatísticas + testes unitários. Todos passaram nas 3 execuções do baseline, mediana <= 20s.",
+    "tests": [
+      "test_s4_b2_001_loading.js",
+      "test_carreira_login_form.js",
+      "test_migration.js",
+      "test_save_limit_001.js",
+      "test_p0_ids_001.js",
+      "test_ao_vivo.js",
+      "test_ge_balance_003.js",
+      "test_ge_copa_001.js",
+      "test_cup_engine.js",
+      "test_bloco5_treino.js",
+      "test_mercado2.js",
+      "test_mercado_multi_divisao.js",
+      "test_season.js",
+      "test_rebaixamento.js",
+      "test_scout.js",
+      "test_board.js",
+      "test_s4_b4_006_estatisticas.js"
+    ],
+    "includeUnit": true
+  },
+  "long": {
+    "_doc": "Timeout por classe (critério objetivo: duração MÁXIMA medida >= 60s em alguma das 5 execuções de 25/10/2026 — baseline A/B/C na concorrência 6, e concorrências 8 e 10). Na concorrência 8, test_play_by_play_v2.js estourou o limite global de 90s; com o arquivo de dados acumulado, test_training_evolution.js também. O limite destes é timeoutMs; os demais seguem o --timeout (padrão 90s; o maior deles mediu 47.7s).",
+    "timeoutMs": 180000,
+    "tests": [
+      "test_play_by_play_v2.js",
+      "test_events.js",
+      "test_tickets.js",
+      "test_save.js",
+      "test_training_evolution.js",
+      "test_tickets_form.js",
+      "test_loan_advanced.js",
+      "test_noticias_fullscreen_fluxo.js",
+      "test_patrocinio.js"
+    ]
+  },
+  "exclusive": {
+    "_doc": "Rodam SOZINHOS, depois de todos os outros terminarem: leem/escrevem server/data/careers.json do servidor de testes diretamente (via require de server/src/careerStore.js), o mesmo arquivo que o servidor em execução regrava a cada save dos outros testes — em paralelo, a leitura pegava o arquivo pela metade (falha intermitente observada: 'Unterminated string in JSON').",
+    "tests": [
+      "test_save_limit_001_careerstore.js"
+    ]
+  }
+}

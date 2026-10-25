@@ -7,7 +7,7 @@
 // de clube (não pode filtrar) e o padrão de placeholder reportado
 // pelo usuário (deve filtrar).
 const fs = require("fs");
-const src = fs.readFileSync("/home/user/FitOS/server/src/providers/sportmonks.js", "utf8");
+const src = fs.readFileSync(require("path").join(__dirname, "..", "..", "server", "src", "providers", "sportmonks.js"), "utf8");
 const m = src.match(/const PLACEHOLDER_TEAM_NAME = (\/.*\/i);/);
 if (!m) { console.error("FATAL: não achou PLACEHOLDER_TEAM_NAME no arquivo fonte"); process.exit(1); }
 const PLACEHOLDER_TEAM_NAME = eval(m[1]); // regex literal extraída do próprio arquivo
