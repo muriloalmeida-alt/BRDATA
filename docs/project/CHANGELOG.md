@@ -1,7 +1,7 @@
 # BRDATA — CHANGELOG
 **Gerado em:** 09/09/2026 (atualizado em 25/10/2026)
 **Cobertura:** 2026-08-14 até 2026-09-11 (251 commits em 18 dias, branch `main`)
-**Versão atual:** v9.2.0
+**Versão atual:** v10.0.0
 
 ## Metodologia
 
@@ -78,6 +78,19 @@ bump.
 ---
 
 ## Histórico completo (mais recente primeiro)
+
+### 2026-10-25 (2) — v10.0.0  (1 commit de merge)
+
+> **Bump MAJOR porque:** muda o loop central do jogo — a carreira passa
+> a ter calendário real de janeiro a dezembro (semana como unidade de
+> tempo, férias, pré-temporada, pausa de julho, janela de transferências
+> por fase e finanças mensais com cota de TV). Junto, a correção P0 de
+> ids de jogador repetidos e os olheiros nacionais com missões com foco.
+
+- `ed04331` — Merge P0-IDS-001 (ids de jogador únicos no save inteiro),
+  GE-SCOUT-001 (olheiros nacionais, missão com tipo/posição/duração,
+  indicações do Mercado com relatório) e GE-CALENDAR-001 B1 (calendário
+  real jan–dez).
 
 ### 2026-10-25 — v9.2.0  (3 commits de merge)
 
