@@ -4,7 +4,13 @@
   "private": true,
   "description": "Suíte de regressão end-to-end (Playwright) do Modo Técnico — scripts independentes, sem test runner externo.",
   "scripts": {
-    "test": "node run_parallel.js"
+    "test": "node run_parallel.js",
+    "test:full": "node run_parallel.js --isolated-server",
+    "test:fast": "node run_parallel.js --suite=fast --isolated-server",
+    "test:ci": "node run_parallel.js --isolated-server",
+    "test:coverage": "node run_parallel.js --isolated-server --coverage",
+    "test:unit": "node ../unit/test_game2048_engine.js",
+    "test:list": "node run_parallel.js --list"
   },
   "devDependencies": {
     "playwright-core": "1.48.0"
