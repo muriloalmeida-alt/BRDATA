@@ -103,13 +103,13 @@ const { chromium } = require("playwright-core");
   await page.waitForTimeout(300);
   const check5 = await page.evaluate(({ id, playerId, clubId }) => ({
     scoutOverlayClosed: !document.getElementById("scoutSuggestionsOverlay").classList.contains("open"),
-    offerOpen: document.getElementById("offerOverlay").classList.contains("open"),
+    offerOpen: !!document.getElementById("btnOfferConfirm"),
     offerCtxMatches: OFFER_CTX && String(OFFER_CTX.playerId) === String(playerId) && String(OFFER_CTX.clubId) === String(clubId),
     removedFromScoutList: !CAREER.scoutSuggestions.some((s) => s.id === id),
   }), { id: secondId, playerId: secondSuggestion.playerId, clubId: secondSuggestion.clubId });
   console.log("5) 'Aceitar' abre a proposta real do jogador certo (sem comprar na hora), some da lista de olheiros:",
     check5.scoutOverlayClosed && check5.offerOpen && check5.offerCtxMatches && check5.removedFromScoutList, JSON.stringify(check5));
-  await page.click("#offerClose");
+  await page.evaluate(() => closeOfferModal()); // proposta virou diálogo M3 (sem #offerClose)
   await page.waitForTimeout(200);
 
   // 6) Simular 1 rodada libera o cooldown de novo.

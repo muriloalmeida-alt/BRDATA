@@ -64,18 +64,18 @@ const { chromium } = require("playwright-core");
 
   // 3) Trocar de filtro (posição) reseta a paginação de volta pro
   // início (não soma ao "carregado" anterior de um pool diferente).
-  await page.selectOption("#marketPosFilter", "F");
+  await page.selectOption("#marketPosFilter", "F", { force: true }); // UX-MERCADO-001: filtros ficam no estado escondido (ver openMarketFiltersSheet)
   await page.waitForTimeout(200);
   const afterPosFilter = await page.evaluate(() => document.querySelectorAll("#marketList .m3-op-card").length);
   console.log("3) Trocar filtro de posição reseta a paginação (<= 40 resultados de novo):", afterPosFilter <= 40);
-  await page.selectOption("#marketPosFilter", "");
+  await page.selectOption("#marketPosFilter", "", { force: true }); // UX-MERCADO-001: filtros ficam no estado escondido (ver openMarketFiltersSheet)
   await page.waitForTimeout(200);
 
   // 4) Filtro de clube específico: escolhe uma opção real da lista e
   // confirma que TODAS as linhas mostradas são desse clube.
   const clubValue = await page.evaluate(() => document.getElementById("marketClubFilter").options[1]?.value);
   const clubLabel = await page.evaluate(() => document.getElementById("marketClubFilter").options[1]?.textContent);
-  await page.selectOption("#marketClubFilter", clubValue);
+  await page.selectOption("#marketClubFilter", clubValue, { force: true }); // UX-MERCADO-001: filtros ficam no estado escondido (ver openMarketFiltersSheet)
   await page.waitForTimeout(200);
   const clubFilterOk = await page.evaluate((label) => {
     const rows = [...document.querySelectorAll("#marketList .m3-op-tags .m3-op-club")];
@@ -83,12 +83,12 @@ const { chromium } = require("playwright-core");
   }, clubLabel);
   const clubRowsCount = await page.evaluate(() => document.querySelectorAll("#marketList .m3-op-card").length);
   console.log(`4) Filtro de clube ("${clubLabel}") mostra só jogadores desse clube:`, clubFilterOk, "| linhas:", clubRowsCount);
-  await page.selectOption("#marketClubFilter", "");
+  await page.selectOption("#marketClubFilter", "", { force: true }); // UX-MERCADO-001: filtros ficam no estado escondido (ver openMarketFiltersSheet)
   await page.waitForTimeout(200);
 
   // 5) Filtro de nível mínimo (OVR 80+): confirma que nenhum badge de
   // OVR mostrado é menor que 80.
-  await page.selectOption("#marketOvrFilter", "80");
+  await page.selectOption("#marketOvrFilter", "80", { force: true }); // UX-MERCADO-001: filtros ficam no estado escondido (ver openMarketFiltersSheet)
   await page.waitForTimeout(200);
   const ovrFilterOk = await page.evaluate(() => {
     const badges = [...document.querySelectorAll("#marketList .mt-ovr-badge")].map((b) => Number(b.textContent.trim()));
@@ -96,7 +96,7 @@ const { chromium } = require("playwright-core");
   });
   const ovrRowsCount = await page.evaluate(() => document.querySelectorAll("#marketList .mt-ovr-badge").length);
   console.log("5) Filtro de nível mínimo (80+) — todos os badges são >= 80:", ovrFilterOk, "| linhas:", ovrRowsCount);
-  await page.selectOption("#marketOvrFilter", "");
+  await page.selectOption("#marketOvrFilter", "", { force: true }); // UX-MERCADO-001: filtros ficam no estado escondido (ver openMarketFiltersSheet)
   await page.waitForTimeout(200);
 
   // 6) Busca por nome ainda funciona normal (não quebrou com os

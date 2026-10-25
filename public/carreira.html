@@ -2309,6 +2309,20 @@
      (ver openPlayerCard/openClubRoster em carreira.js), sem precisar
      de uma regra de cursor dedicada em cada componente novo. */
   [data-openplayer], [data-openclub] { cursor:pointer; }
+  /* UX-MERCADO-001 — nome de jogador em texto corrido (lances,
+     premiações) vira link pro perfil (ver playerLinkHTML): sublinhado
+     discreto pra o técnico perceber que dá pra tocar. */
+  /* UX-MERCADO-001 — barra de atalhos do Mercado (abas roláveis) e
+     barra de busca compacta (Filtros + ordenação na mesma linha). */
+  .mt-market-shortcuts{ display:flex; gap:8px; overflow-x:auto; padding:2px 0 10px; scrollbar-width:none; }
+  .mt-market-shortcuts::-webkit-scrollbar{ display:none; }
+  .mt-market-shortcut{ flex:0 0 auto; display:inline-flex; align-items:center; gap:6px; min-height:40px; padding:0 14px; border-radius:var(--m3-shape-full); border:1px solid var(--m3-outline-variant); background:var(--m3-surface-container-low); color:var(--m3-on-surface); font:inherit; font-weight:600; white-space:nowrap; cursor:pointer; }
+  .mt-market-shortcut .mt-badge-gold{ margin:0; }
+  .mt-market-toolbar{ display:flex; gap:8px; align-items:center; margin:4px 0 8px; }
+  .mt-market-toolbar .mt-btn-ghost{ flex:0 0 auto; width:auto; margin:0; padding-left:18px; padding-right:18px; display:inline-flex; align-items:center; gap:6px; }
+  .mt-market-toolbar .mt-select-box{ flex:1 1 auto; min-width:0; width:auto; margin:0; }
+  .mt-player-link{ cursor:pointer; text-decoration:underline; text-decoration-color:color-mix(in srgb, currentColor 40%, transparent); text-underline-offset:2px; }
+  .mt-player-link:focus-visible{ outline:2px solid var(--m3-primary); outline-offset:2px; border-radius:2px; }
   .mt-mini-col{ flex:1; text-align:center; font-family:'Rajdhani', var(--font); font-weight:700; color:var(--mt-ivory-100); }
   .mt-mini-col.head{ color:var(--mt-ink-faint); font-weight:700; font-size:10px; }
   .mt-mini-col.name{ flex:1.6; text-align:left; font-weight:600; font-family:var(--font); color:var(--mt-ivory-50); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
@@ -3122,6 +3136,18 @@
           <div class="m3-card-title">🧑‍💼 Comissão Técnica</div>
           <div class="m3-commission-row" id="commissionSummaryList"></div>
         </div>
+        <!-- UX-MERCADO-001 — "o mercado está muito escondido": resumo no
+             Início (janela, propostas em andamento, indicações novas)
+             com atalhos diretos (ver renderMarketSummaryCard). -->
+        <div class="m3-card" id="marketSummaryCard">
+          <div class="m3-card-title">💰 Mercado</div>
+          <p class="mt-card-sub" id="marketSummaryText" style="margin:0 0 10px;"></p>
+          <div class="mt-market-shortcuts" style="padding-bottom:0;">
+            <button class="mt-market-shortcut" id="btnHomeOpenMarket">Abrir Mercado</button>
+            <button class="mt-market-shortcut" id="btnHomeScoutSuggestions">🔭 Indicações <span class="mt-badge-gold hidden" id="homeScoutBadge"></span></button>
+            <button class="mt-market-shortcut" id="btnHomeMyOffers">📈 Propostas <span class="mt-badge-gold hidden" id="homeOffersBadge"></span></button>
+          </div>
+        </div>
         <div class="m3-card" id="lastResultCard" style="display:none;">
           <div class="m3-card-title">Resultado da última rodada</div>
           <div id="lastResultBox"></div>
@@ -3571,6 +3597,17 @@
              quando aberta fica escondido de propósito (.hidden), sem
              poluir a tela com "janela aberta" o tempo todo. -->
         <p class="mt-badge-gold hidden" id="marketWindowBanner" style="display:flex; width:100%; box-sizing:border-box;"></p>
+        <!-- UX-MERCADO-001 — pedido do usuário: "as indicações de olheiros
+             estão escondidas... o mercado está muito escondido". Os 4
+             atalhos (antes empilhados no FIM da tela, depois da lista
+             inteira) sobem pro topo como uma barra de abas rolável, com
+             os mesmos ids/contadores de sempre (ver renderMercado). -->
+        <nav class="mt-market-shortcuts" aria-label="Seções do Mercado">
+          <button class="mt-market-shortcut" id="btnOpenScoutSuggestions">🔭 Indicações <span class="mt-badge-gold hidden" id="scoutSuggestionsBadge"></span></button>
+          <button class="mt-market-shortcut" id="btnOpenMyOffers">📈 Minhas propostas <span class="mt-badge-gold hidden" id="myOffersBadge"></span></button>
+          <button class="mt-market-shortcut" id="btnOpenMySales">🏷️ Minhas vendas <span class="mt-badge-gold hidden" id="mySalesBadge"></span></button>
+          <button class="mt-market-shortcut" id="btnOpenTransferHistory">🕘 Histórico <span class="mt-badge-gold hidden" id="transferHistoryBadge"></span></button>
+        </nav>
         <div class="mt-card">
           <div class="mt-card-head">
             <div class="mt-card-title">Mercado de jogadores</div>
@@ -3581,6 +3618,21 @@
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
             <input id="marketSearch" placeholder="Buscar por nome ou time...">
           </div>
+          <!-- UX-MERCADO-001 — os 4 filtros (antes empilhados antes da
+               lista, ~4 telas de scroll no mobile) saem da tela: viram um
+               botão "Filtros" que abre um bottom sheet M3 (ver
+               openMarketFiltersSheet). Os <select> originais continuam
+               aqui, escondidos, como fonte do estado dos filtros — nada
+               muda em renderMercado, que segue lendo deles. -->
+          <div class="mt-market-toolbar">
+            <button type="button" class="mt-btn-ghost" id="btnMarketFilters">Filtros <span class="mt-badge-gold hidden" id="marketFiltersCount"></span></button>
+            <select id="marketSort" class="mt-select-box" aria-label="Ordenar">
+              <option value="value">Maior valor</option>
+              <option value="overall">Maior overall</option>
+              <option value="age">Mais jovens</option>
+            </select>
+          </div>
+          <div id="marketFiltersStore" hidden>
           <select id="marketPosFilter" class="mt-select-box" style="margin-bottom:4px;">
             <option value="">Todas as posições</option>
             <option value="G">Goleiros</option>
@@ -3616,6 +3668,7 @@
             <option value="70">Bom (70+)</option>
             <option value="60">Regular (60+)</option>
           </select>
+          </div>
           <div id="marketList"></div>
           <p class="mt-card-sub" id="marketResultCount" style="margin-top:8px;"></p>
           <!-- Antes o Mercado travava numa lista de até 40/60 jogadores
@@ -3628,30 +3681,6 @@
           <div class="mt-card-title">Transferências recentes</div>
           <div id="transferFeed"></div>
         </div>
-        <!-- Nova feature (Bloco 3) — atalho pra "Minhas propostas" de
-             compra em andamento (ver openMyOffersScreen), mesmo espírito
-             do mockup (FAB "📈 Minhas propostas") — botão inline (não
-             flutuante) pra não empilhar em cima da nav fixa, mesmo
-             padrão de "Pedir mais orçamento à diretoria" no Clube. -->
-        <button class="mt-btn-ghost" id="btnOpenMyOffers" style="width:100%;">📈 Minhas propostas <span class="mt-badge-gold hidden" id="myOffersBadge" style="margin-left:6px;"></span></button>
-        <!-- Nova feature (Bloco 3, 3/4 — pedido do usuário, mockups
-             brtreinadorbloco3mercado.html/brtreinadorbloco3pendentes.html)
-             — "Colocar à venda": mesmo espírito de "Minhas propostas"
-             acima, só que do lado de quem vende (ver openMySalesScreen). -->
-        <button class="mt-btn-ghost" id="btnOpenMySales" style="width:100%; margin-top:8px;">🏷️ Minhas vendas <span class="mt-badge-gold hidden" id="mySalesBadge" style="margin-left:6px;"></span></button>
-        <!-- Nova feature (pedido do usuário: "mostrar a posição do
-             atleta e incluir um botão recusar sugestão") — "Indicações
-             dos olheiros": mesmo espírito de "Minhas vendas"/"Minhas
-             propostas" acima, só que pra jogadores de outros clubes
-             com espaço real de crescimento (ver openScoutSuggestionsScreen). -->
-        <button class="mt-btn-ghost" id="btnOpenScoutSuggestions" style="width:100%; margin-top:8px;">🔭 Indicações dos olheiros <span class="mt-badge-gold hidden" id="scoutSuggestionsBadge" style="margin-left:6px;"></span></button>
-        <!-- Nova feature (Bloco 3, 4/4 — pedido do usuário) — "Histórico
-             de negociações": mesmo espírito de "Minhas propostas"/
-             "Minhas vendas"/"Indicações dos olheiros" acima, só que
-             mostra TODO o histórico (CAREER.transferLog inteiro, ver
-             renderTransferHistoryScreen) — o card "Transferências
-             recentes" logo acima continua com só as mais novas. -->
-        <button class="mt-btn-ghost" id="btnOpenTransferHistory" style="width:100%; margin-top:8px;">🕘 Histórico de negociações <span class="mt-badge-gold hidden" id="transferHistoryBadge" style="margin-left:6px;"></span></button>
       </section>
 
       <!-- ---------- Retenção/Engajamento (BRDataRetencaoEspecificacao)
