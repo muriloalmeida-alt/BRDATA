@@ -11101,30 +11101,54 @@ function renderCommissionSummaryCard() {
         ${s.canApply ? "" : "disabled"} title="${escapeHtml(title)}" aria-label="${escapeHtml(title)}">${area.icon}</button>`;
   }).join("");
   document.getElementById("commissionSummaryList").querySelectorAll("[data-apply]").forEach((btn) => {
-    btn.addEventListener("click", async () => {
+    btn.addEventListener("click", () => {
       const area = COMMISSION_AREAS.find((a) => a.id === btn.dataset.apply);
       const s = area.fn();
       if (!s.canApply || !s.apply) return;
-      // AJUSTE (pedido do usuário: "ao clicar na caixa de mensagem deve
-      // informar qual foi a sugestão aceita") — s.text é lido ANTES de
-      // aplicar (depois de aceita, a sugestão pode nem existir mais
-      // pra essa área) e vai no corpo da mensagem, não só o nome da
-      // área — o técnico sabe exatamente o que acabou de aceitar.
-      const acceptedText = s.text;
-      await s.apply();
-      renderAll(); // já re-renderiza este card também (ver renderCentral)
-      // AJUSTE (pedido do usuário: "no Mercado deu certo mas precisa
-      // funcionar também na Comissão Técnica") — Mercado não aplica
-      // nada na hora: s.apply() só ABRE a proposta real (ver
-      // suggestMarket/openOfferModal), que já mostra o próprio toast
-      // quando o técnico confirma o valor em confirmOfferFromModal.
-      // Um toast de "aceita" aqui, antes de qualquer valor ser
-      // confirmado, seria enganoso — só as outras 3 áreas realmente
-      // aplicam de imediato e merecem esse aviso.
-      if (area.id !== "market") {
-        toast({ title: `Sugestão de ${area.label} aceita`, detail: acceptedText }, { type: "pos" });
-      }
+      openCommissionSuggestionDialog(area, s);
     });
+  });
+}
+// UX-COMISSAO-001 — pedido do usuário: "ao clicar nos acessos rápidos,
+// ao invés de aplicar direto é melhor que abra uma modal para que o
+// usuário decida se quer aplicar a mudança". O ícone agora só ABRE a
+// sugestão completa; aplicar é uma decisão explícita (mesmo apply() da
+// tela cheia da Comissão, nada duplicado).
+function openCommissionSuggestionDialog(area, s) {
+  const isMarket = area.id === "market";
+  const dialogId = openM3Dialog({
+    icon: area.icon,
+    title: `Sugestão da Comissão · ${area.label}`,
+    bodyHTML: `
+      <p class="mt-info-line" style="border-bottom:none;">${escapeHtml(s.text)}</p>
+      <button type="button" class="mt-btn-primary-gold" data-commission-act="apply" style="width:100%; margin-top:14px;">${isMarket ? "Fazer proposta" : "Aplicar"}</button>
+      <button type="button" class="mt-btn-ghost" data-commission-act="later" style="width:100%; margin-top:8px;">Agora não</button>
+      <button type="button" class="mt-btn-ghost" data-commission-act="screen" style="width:100%; margin-top:8px;">Ver na Comissão</button>`,
+  });
+  const root = document.getElementById(dialogId);
+  root.querySelector('[data-commission-act="later"]').addEventListener("click", () => closeM3Dialog(dialogId));
+  root.querySelector('[data-commission-act="screen"]').addEventListener("click", () => { closeM3Dialog(dialogId); openCommissionScreen(); });
+  root.querySelector('[data-commission-act="apply"]').addEventListener("click", async () => {
+    closeM3Dialog(dialogId);
+    // AJUSTE (pedido do usuário: "ao clicar na caixa de mensagem deve
+    // informar qual foi a sugestão aceita") — s.text é lido ANTES de
+    // aplicar (depois de aceita, a sugestão pode nem existir mais
+    // pra essa área) e vai no corpo da mensagem, não só o nome da
+    // área — o técnico sabe exatamente o que acabou de aceitar.
+    const acceptedText = s.text;
+    await s.apply();
+    renderAll(); // já re-renderiza este card também (ver renderCentral)
+    // AJUSTE (pedido do usuário: "no Mercado deu certo mas precisa
+    // funcionar também na Comissão Técnica") — Mercado não aplica
+    // nada na hora: s.apply() só ABRE a proposta real (ver
+    // suggestMarket/openOfferModal), que já mostra o próprio toast
+    // quando o técnico confirma o valor em confirmOfferFromModal.
+    // Um toast de "aceita" aqui, antes de qualquer valor ser
+    // confirmado, seria enganoso — só as outras 3 áreas realmente
+    // aplicam de imediato e merecem esse aviso.
+    if (area.id !== "market") {
+      toast({ title: `Sugestão de ${area.label} aceita`, detail: acceptedText }, { type: "pos" });
+    }
   });
 }
 function commissionAreaCardHTML(area) {

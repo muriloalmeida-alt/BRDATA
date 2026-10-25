@@ -74,12 +74,18 @@ const { chromium } = require("playwright-core");
 
   await page.click('#commissionSummaryList .m3-commission-icon-btn[title^="Mercado:"]');
   await page.waitForTimeout(300);
+  // UX-COMISSAO-001 — o ícone abre primeiro a sugestão num diálogo de
+  // confirmação; "Fazer proposta" é que abre a proposta real.
+  const confirmLabel = await page.evaluate(() => document.querySelector('.m3-dialog-overlay [data-commission-act="apply"]')?.textContent || "");
+  console.log("1b) Ícone abre a sugestão com 'Fazer proposta' (nada aberto/comprado ainda):", confirmLabel === "Fazer proposta" && !(await page.evaluate(() => OFFER_CTX)), confirmLabel);
+  await page.click('.m3-dialog-overlay [data-commission-act="apply"]');
+  await page.waitForTimeout(300);
 
   // 2) Clicar NÃO compra na hora -- abre a proposta real (offerOverlay),
   // pré-preenchida com o jogador/clube certos, sem tocar no caixa/elenco.
   const afterClick = await page.evaluate(() => ({
-    offerOpen: document.getElementById("offerOverlay").classList.contains("open"),
-    offerSub: document.getElementById("offerSub").textContent,
+    offerOpen: !!document.getElementById("btnOfferConfirm"),
+    offerSub: document.getElementById("btnOfferConfirm")?.closest(".m3-dialog")?.querySelector(".m3-dialog-sub")?.textContent || "",
     offerCtx: OFFER_CTX,
     cash: CAREER.finances.cash,
     squadCount: CAREER.squad.length,
@@ -98,7 +104,7 @@ const { chromium } = require("playwright-core");
   await page.click("#btnOfferConfirm");
   await page.waitForTimeout(300);
   const afterConfirm = await page.evaluate(() => ({
-    offerClosed: !document.getElementById("offerOverlay").classList.contains("open"),
+    offerClosed: !document.getElementById("btnOfferConfirm"),
     pendingCount: (CAREER.pendingOffersOut || []).length,
     toastTitle: document.querySelector("#toast .ct-toast-title")?.textContent || document.getElementById("toast").textContent,
   }));

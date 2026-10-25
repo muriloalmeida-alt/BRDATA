@@ -321,7 +321,7 @@ GE-SCOUT-001 → GE-CALENDAR-001 (B1 → B2 → B3).
 
 UX-COMISSAO-001 — Acessos rápidos da Comissão com confirmação
 
-Status: PRONTO PARA IMPLEMENTAÇÃO
+Status: REVISÃO DO PM NECESSÁRIA (implementação na branch `claude/ux-comissao-001`)
 Prioridade: P4 (UX) · Etapa do loop: Market/Management
 
 Escopo: tocar num ícone da Comissão no Início abre um `openM3Dialog`
@@ -332,6 +332,23 @@ cheia da Comissão.
 Aceite: nenhuma sugestão é aplicada sem confirmação; o texto é o mesmo
 da tela cheia; funciona no mobile; testes de Comissão continuam
 passando.
+
+Relatório de implementação (Claude, 25/10/2026)
+
+* `renderCommissionSummaryCard`: o ícone agora só chama
+  `openCommissionSuggestionDialog(area, s)` (função nova), que abre um
+  `openM3Dialog` com o texto completo da sugestão e 3 ações: "Aplicar"
+  ("Fazer proposta" na área Mercado), "Agora não" e "Ver na Comissão"
+  (`openCommissionScreen`). O "Aplicar" executa o mesmo `apply()` e o
+  mesmo toast de antes. Nada mudou na tela cheia da Comissão.
+* Testes: `test_comissao_resumo_inicio.js` atualizado (o ícone abre o
+  diálogo sem aplicar; "Agora não" não aplica; "Aplicar" aplica) e
+  passa. `test_comissao_tecnica.js` passa.
+  `test_comissao_mercado_proposta.js` já falhava na `main` (procurava o
+  `#offerOverlay`, que foi trocado pelo diálogo M3 numa demanda
+  anterior). Atualizado para o diálogo atual mais a nova confirmação,
+  e agora passa.
+* Sem impacto em save, motor ou economia.
 
 ⸻
 
