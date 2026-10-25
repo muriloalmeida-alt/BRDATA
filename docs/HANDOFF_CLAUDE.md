@@ -396,6 +396,49 @@ antigos carregam e viram a temporada sem erro.
 
 ⸻
 
+P0-IDS-001 — Ids de jogador únicos no save inteiro
+
+Status: REVISÃO DO PM NECESSÁRIA (implementação na branch `claude/p0-ids-unicos`)
+Prioridade: P0 (Confiabilidade)
+Origem: achados registrados em GE-BALANCE-005 e UX-MERCADO-001;
+priorizado pelo Claude antes de GE-SCOUT-001 ("siga para as demais
+implementações", 25/10/2026), porque mercado e olheiros dependem de
+achar o jogador certo pelo id.
+
+Problema: (1) numa carreira multi-divisão nova, 640 ids `real_<id>` se
+repetem entre clubes, porque cada catálogo de competição numera os
+jogadores do zero. (2) A reposição anual gera de novo
+`base_<clube>_0..`/`gen_<clube>_0..` enquanto os de anos anteriores
+ainda estão no elenco. Toda busca por id pode pegar o jogador errado
+(perfil, proposta, indicação, marcação individual).
+
+Solução: `ensureUniquePlayerIds()` é uma passada única e
+determinística, chamada ao criar a carreira, ao carregar o save (fim
+de `migrateCareerDefaults`) e na virada de temporada (fim de
+`advanceSeason`). A 1ª ocorrência de cada id mantém o id; o seu elenco
+e os jogadores que você emprestou têm prioridade (são os referenciados
+por escalação, treino e vendas). As ocorrências seguintes viram
+`<id>~2`, `<id>~3`... As referências por (clube, jogador) a jogador de
+outro clube são atualizadas junto: `pendingOffersOut`,
+`scoutSuggestions` e `manMarking.rivalPlayerId`. Sem campo novo e sem
+mudança de formato de save. O histórico de premiações guarda o id
+antigo, e o link de lá desempata pelo nome (UX-MERCADO-001).
+
+Testes: novo `tests/e2e/test_p0_ids_001.js` passa. Cobre carreira nova
+sem repetição; save com id repetido corrigido ao carregar, com a
+proposta pendente acompanhando o jogador certo do 2º clube; e
+reposição da base — o próprio teste reproduziu 3 ids repetidos gerados
+pela reposição, corrigidos pela passada. Regressão (18 scripts de save,
+migração, temporada, multi-divisão, rebaixamento, mercado,
+empréstimos, IA de transferências, indicações, marcação individual,
+olheiro e histórico do jogador): todos passam.
+
+Risco: um jogador de clube CPU pode mudar de id uma vez (só os
+repetidos). Qualquer referência a ele fora das 3 estruturas acima
+seria só histórica (premiações/log textual).
+
+⸻
+
 S4-AUDIT-BACKLOG-001 — Auditoria de prontidão das demandas #12 a #21
 
 Status: APROVADO

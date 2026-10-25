@@ -3432,6 +3432,10 @@ async function advanceSeason() {
   // que abre a notificação depois do resumo da virada de temporada.
   maybeGenerateClubProposals();
 
+  // P0-IDS-001 — reposição de base/elenco e times vindos da Série D
+  // reusam ids (`base_<clube>_<n>`, `gen_<clube>_<n>`) — garante ids
+  // únicos de novo antes da temporada nova começar.
+  ensureUniquePlayerIds();
   return { dismissed: false, finishedYear, finishedPos, finishedGoal, goalWasMet, newYear: CAREER.seasonYear, humanRenewal, newGoal: CAREER.boardGoal, promotionRelegation, wasCupChampion };
 }
 
@@ -3506,6 +3510,56 @@ async function buildLeagueSquads(humanClubId, teams = LEAGUE_TEAMS) {
   const others = teams.filter((t) => String(t.id) !== String(humanClubId));
   const entries = await Promise.all(others.map(async (club) => [String(club.id), await buildLeagueSquad(club)]));
   return Object.fromEntries(entries);
+}
+/* ---------- P0-IDS-001 — ids de jogador únicos no save inteiro ----------
+   Achado em GE-BALANCE-005/UX-MERCADO-001: (1) catálogos de divisões
+   diferentes numeram jogadores do zero, então `real_<id>` se repete
+   entre clubes (640 repetidos numa carreira multi-divisão nova); (2) a
+   reposição anual gera de novo `base_<clube>_0..`/`gen_<clube>_0..`
+   enquanto os de anos anteriores ainda estão no elenco. Toda busca só
+   por id (`find((p) => p.id === id)`) podia pegar o jogador errado.
+   Uma passada só, determinística, que roda ao carregar o save, ao criar
+   a carreira e na virada de temporada: a 1ª ocorrência de cada id
+   mantém o id (o SEU elenco e quem você emprestou têm prioridade — são
+   os ids referenciados por escalação, treino, vendas); as seguintes
+   viram `<id>~2`, `<id>~3`... e as referências por (clube, jogador)
+   são atualizadas junto. */
+function ensureUniquePlayerIds() {
+  if (!CAREER) return 0;
+  const used = new Set();
+  const renames = []; // { clubId, from, to }
+  const claim = (p, clubId) => {
+    if (!used.has(p.id)) { used.add(p.id); return; }
+    let n = 2;
+    while (used.has(`${p.id}~${n}`)) n++;
+    const to = `${p.id}~${n}`;
+    renames.push({ clubId: clubId == null ? null : String(clubId), from: p.id, to });
+    p.id = to;
+    used.add(to);
+  };
+  (CAREER.squad || []).forEach((p) => claim(p, null));
+  const squads = Object.entries(CAREER.leagueSquads || {}).sort(([a], [b]) => a.localeCompare(b));
+  // Emprestados por você continuam "seus" (voltam pro seu elenco) —
+  // reservam o id antes do resto do mundo.
+  squads.forEach(([clubId, sq]) => sq.forEach((p) => {
+    if (p.onLoanFromClubId && String(p.onLoanFromClubId) === String(CAREER.clubId)) claim(p, clubId);
+  }));
+  squads.forEach(([clubId, sq]) => sq.forEach((p) => {
+    if (!(p.onLoanFromClubId && String(p.onLoanFromClubId) === String(CAREER.clubId))) claim(p, clubId);
+  }));
+  // Referências por (clube, jogador) a jogador de OUTRO clube — só a
+  // ocorrência renomeada NAQUELE clube muda; jogador do seu elenco
+  // renomeado (2ª cópia de um id repetido) nunca era o referenciado.
+  const renamed = (clubId, id) => {
+    const r = renames.find((x) => x.clubId === String(clubId) && x.from === id);
+    return r ? r.to : id;
+  };
+  (CAREER.pendingOffersOut || []).forEach((o) => { o.playerId = renamed(o.clubId, o.playerId); });
+  (CAREER.scoutSuggestions || []).forEach((sg) => { sg.playerId = renamed(sg.clubId, sg.playerId); });
+  if (CAREER.manMarking && CAREER.manMarking.rivalPlayerId) {
+    CAREER.manMarking.rivalPlayerId = renamed(CAREER.manMarking.opponentId, CAREER.manMarking.rivalPlayerId);
+  }
+  return renames.length;
 }
 function leagueSquadFor(clubId) {
   return (CAREER.leagueSquads && CAREER.leagueSquads[String(clubId)]) || [];
@@ -5335,6 +5389,7 @@ async function startCareer(clubId) {
       // verdade (a Loja ainda não cobra nada — ver aviso em renderLoja).
       purchaseHistory: [],
     };
+    ensureUniquePlayerIds(); // P0-IDS-001 — catálogos de divisões diferentes repetem ids
     TECHNICIAN_CARRY = null;
     // Nova feature (pedido do usuário: "reinicie o tema do
     // rebaixamento") — só carreira NOVA nasce com o sistema de acesso/
@@ -15459,6 +15514,8 @@ function migrateCareerDefaults() {
   // temporada em andamento) — só carreira NOVA a partir de agora passa
   // por ele (ver startCareer/maybeOpenStartupWizard).
   if (CAREER.startupWizardSeen === undefined) CAREER.startupWizardSeen = true;
+  // P0-IDS-001 — saves de antes desta correção podem ter ids repetidos.
+  ensureUniquePlayerIds();
   evaluateAlwaysCheckableAchievements();
 }
 // AJUSTE (pedido do usuário: "acrescentar a Série B, C [ao Modo
