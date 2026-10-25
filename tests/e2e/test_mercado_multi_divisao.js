@@ -60,12 +60,12 @@ const { chromium } = require("playwright-core");
   console.log("3) Jogadores das 3 divisões aparecem no mercado (sem 'Time #xxx' quebrado):", !marketState.anyBroken && Object.keys(marketState.byComp).length === 3, JSON.stringify(marketState.byComp));
 
   // 4) Filtrar por Série C some com Série A/B da lista renderizada.
-  await page.selectOption("#marketCompFilter", "serie_c");
+  await page.selectOption("#marketCompFilter", "serie_c", { force: true }); // UX-MERCADO-001: filtros ficam no estado escondido (ver openMarketFiltersSheet)
   await page.waitForTimeout(200);
   const filteredClubs = await page.evaluate(() => [...document.querySelectorAll("#marketList .m3-op-tags")].map((el) => el.textContent));
   const onlySerieC = filteredClubs.length > 0 && filteredClubs.every((t) => t.includes("Série C"));
   console.log("4) Filtro 'Série C' só mostra jogadores dessa divisão:", onlySerieC, filteredClubs.length, "linhas");
-  await page.selectOption("#marketCompFilter", "");
+  await page.selectOption("#marketCompFilter", "", { force: true }); // UX-MERCADO-001: filtros ficam no estado escondido (ver openMarketFiltersSheet)
   await page.waitForTimeout(200);
 
   // 5) Compra um jogador de OUTRA divisão de verdade -- via clique real
@@ -75,7 +75,7 @@ const { chromium } = require("playwright-core");
   // na hora com RNG forçado, mesmo padrão de test_mercado2.js/
   // test_mercado_negociacao.js. Filtra por Série B primeiro pra
   // garantir que a 1ª linha visível é de fora.
-  await page.selectOption("#marketCompFilter", "serie_b");
+  await page.selectOption("#marketCompFilter", "serie_b", { force: true }); // UX-MERCADO-001: filtros ficam no estado escondido (ver openMarketFiltersSheet)
   await page.waitForTimeout(200);
   const before = await page.evaluate(() => ({ cash: CAREER.finances.cash, squadLen: CAREER.squad.length }));
   // Lista vem ordenada do mais caro pro mais barato (ver renderMercado)
@@ -86,7 +86,7 @@ const { chromium } = require("playwright-core");
   const targetClub = buyBtn ? await buyBtn.getAttribute("data-club") : null;
   if (buyBtn) {
     await buyBtn.click();
-    await page.waitForSelector("#offerOverlay.open", { timeout: 5000 });
+    await page.waitForSelector("#btnOfferConfirm", { timeout: 5000 }); // proposta virou diálogo M3 (S3-DS20-S4-PREP-001)
     await page.click("#btnOfferConfirm");
     await page.waitForTimeout(200);
     await page.evaluate(() => {
@@ -106,7 +106,7 @@ const { chromium } = require("playwright-core");
   // Início (Task #72) -- volta pro Mercado antes de continuar.
   await page.evaluate(() => switchToPanel("mercado"));
   await page.waitForTimeout(150);
-  await page.selectOption("#marketCompFilter", "");
+  await page.selectOption("#marketCompFilter", "", { force: true }); // UX-MERCADO-001: filtros ficam no estado escondido (ver openMarketFiltersSheet)
   await page.waitForTimeout(200);
 
   // 6) Simula algumas rodadas — negociação CPU x CPU (simulateAiTransfers)

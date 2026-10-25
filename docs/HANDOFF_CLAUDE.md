@@ -337,7 +337,7 @@ passando.
 
 UX-MERCADO-001 — Mercado acessível e proposta de qualquer lugar
 
-Status: PRONTO PARA IMPLEMENTAÇÃO
+Status: REVISÃO DO PM NECESSÁRIA (implementação na branch `claude/ux-mercado-001`)
 Prioridade: P4 (UX) · Etapa do loop: Market/Management
 
 Escopo:
@@ -365,6 +365,74 @@ Aceite: proposta possível a partir de qualquer nome de jogador de outro
 clube; nenhuma volta forçada à home; indicações/propostas visíveis sem
 rolar a lista; testes de mercado/negociação continuam passando; mobile
 390px conferido.
+
+Relatório de implementação (Claude, 25/10/2026)
+
+O que foi feito:
+1. **Card de jogador de outro clube com ações** (`openPlayerCard` →
+   `externalPlayerActionsHTML`): Fazer proposta (`openOfferModal`),
+   Pedir empréstimo (`openLoanInModal`) e Comparar com meu elenco
+   (`openCompareWithExternal`, que generaliza o Comparar jogadores
+   existente com `COMPARE_EXTERNAL`). Com a janela fechada, os botões
+   ficam desabilitados e o card diz quando ela reabre. Se já existe
+   proposta por aquele jogador, aparece "ver em Minhas propostas". O
+   texto "consulta apenas" saiu.
+2. **Nome clicável**: tudo o que já era clicável (Mercado, artilharia,
+   elenco de outro clube, indicações) agora leva ao card com ações.
+   Também passaram a ser clicáveis os nomes nos lances da partida
+   (`matchEventsSummaryHTML`) e nas premiações, via `playerLinkHTML` com
+   um único listener delegado no documento. Os eventos de gol, cartão
+   e lesão passam a guardar `playerId`/`assistPlayerId` (só a rodada
+   atual e a anterior ficam no save, então o impacto é desprezível).
+   Evento de save antigo, sem id, continua como texto.
+3. **Proposta, empréstimo e colocar à venda não voltam mais pra home**
+   (`confirmOfferFromModal`, `confirmLoanFromModal`,
+   `confirmListFromModal` chamam `renderAll()` em vez de
+   `finishOperationAndGoHome`). O toast da proposta indica onde
+   acompanhar. Renovação, coletiva e aceitar/recusar proposta
+   recebida continuam como antes (pedido antigo, fora do escopo).
+4. **Atalhos no topo do Mercado**: Indicações · Minhas propostas ·
+   Minhas vendas · Histórico, numa barra rolável de chips com os
+   mesmos ids e contadores. Antes ficavam no fim da tela, depois da
+   lista. **Divergência pequena**: eles abrem as telas existentes, em
+   vez de virar abas com conteúdo embutido. O resultado ("visível sem
+   rolar") é o mesmo, sem duplicar 4 telas.
+5. **Busca compacta**: busca + botão "Filtros" (com contador) que abre
+   um bottom sheet M3, mais ordenação (Maior valor / Maior overall /
+   Mais jovens). Os `<select>` originais ficam escondidos como estado,
+   então `renderMercado` continua lendo deles. O botão de proposta por
+   ícone no card já existia e foi mantido.
+6. **Card "Mercado" no Início** (`renderMarketSummaryCard`): situação
+   da janela e atalhos Abrir Mercado / Indicações / Propostas, com
+   contadores.
+
+Testes:
+* Novo `tests/e2e/test_ux_mercado_001.js` (7 verificações, passa): card
+  no Início, atalhos acima da lista, filtro via sheet, ordenação por
+  idade, ações no card, proposta sem voltar pra home e lance clicável
+  abrindo o jogador certo.
+* Atualizados porque os filtros agora ficam escondidos:
+  `test_mercado_filtros_ampliados.js` e `test_mercado_multi_divisao.js`
+  (`selectOption` com `force`). Ambos passam.
+* Atualizados porque já falhavam na `main` com seletores antigos
+  (`#offerOverlay`/`#offerClose`, que viraram diálogo M3 numa demanda
+  anterior): `test_mercado2.js`, `test_mercado_multi_divisao.js`,
+  `test_s4_b3_002_mercado.js` e `test_indicacoes_olheiros.js`. Agora
+  passam.
+* Mobile 390px conferido por captura (Início, Mercado, sheet de
+  filtros e card do jogador).
+* Suíte e2e completa (146 scripts): 24 falhas, **todas já falhavam na
+  `main`**, nenhuma nova; 6 que falhavam na `main` passaram a passar.
+
+Achado pré-existente (não corrigido, recomendo P0 separado): **ids de
+jogador repetidos entre clubes**. Numa carreira multi-divisão, 640 ids
+aparecem em mais de um clube (ex.: `real_129` na Série A e na B),
+porque cada catálogo de competição numera os jogadores do zero.
+Qualquer busca só por id pode pegar o jogador errado. Neste trabalho
+mitiguei os pontos novos: o card desempata por clube e, sem clube, pelo
+nome. A correção de raiz (id único por competição + migração de save)
+deve entrar junto com a de ids da base repetidos, achada na
+GE-BALANCE-005.
 
 ⸻
 

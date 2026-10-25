@@ -3209,7 +3209,7 @@ function awardStatTileHTML(icon, label, entry, unit) {
   const mine = entry && String(entry.clubeId) === String(CAREER.clubId);
   return `<div class="ct-award-stat${mine ? " mine" : ""}">
     <span class="icon">${icon}</span><span class="lbl">${label}</span>
-    <span class="nm">${entry ? escapeHtml(abbreviateName(entry.nome)) : "—"}</span>
+    <span class="nm">${entry ? playerLinkHTML(abbreviateName(entry.nome), entry.jogadorId, { fullName: entry.nome, clubId: entry.clubeId }) : "—"}</span>
     ${entry ? `<span class="sub">${escapeHtml(entry.clubeName)} · ${entry.valor} ${unit}</span>` : ""}
   </div>`;
 }
@@ -4693,7 +4693,9 @@ async function confirmLoanFromModal() {
   closeLoanModal();
   persistCareer();
   renderMercado(); renderElenco(); renderCentral();
-  finishOperationAndGoHome();
+  // UX-MERCADO-001 — operação de mercado não tira mais o técnico da tela
+  // em que ele estava (pedido: "ao fazer proposta volto pra home").
+  renderAll();
 }
 async function finalizeLoanOut(id, { returnRound, buyOption, buyer: passedBuyer } = {}) {
   const p = CAREER.squad.find((x) => x.id === id);
@@ -7197,7 +7199,7 @@ function attributeGoals(starters, goals, suppress) {
     // contado: sem assistência (pênalti não tem passe pra ninguém) e
     // com o comentário próprio (COMMENTARY_BANK.gol_penalti).
     const isPenalty = Math.random() < 0.08;
-    let assistName = null;
+    let assistName = null, assistId = null;
     // ~72% dos gols saem com assistência de um companheiro (nunca o
     // próprio artilheiro) — meio-campista pesa mais no sorteio, mas
     // qualquer titular pode ter dado o passe.
@@ -7208,9 +7210,12 @@ function attributeGoals(starters, goals, suppress) {
       assister.assistsCareer = (assister.assistsCareer || 0) + 1;
       assister.assistsSeason = (assister.assistsSeason || 0) + 1;
       assistName = assister.name;
+      assistId = assister.id;
     }
     if (isPenalty) events.push({ type: "penalty_awarded", player: scorer.name });
-    events.push({ type: "gol", player: scorer.name, assistPlayer: assistName, penalty: isPenalty });
+    // UX-MERCADO-001 — ids junto dos nomes pra o lance virar link pro
+    // perfil do jogador (ver playerLinkHTML/matchEventsSummaryHTML).
+    events.push({ type: "gol", player: scorer.name, playerId: scorer.id, assistPlayer: assistName, assistPlayerId: assistId, penalty: isPenalty });
   }
   return events;
 }
@@ -7239,11 +7244,11 @@ function applyMatchWearChunk(starters, round, chunkShare, appearedSet) {
     const roll = Math.random();
     if (roll < 0.012 * chunkShare) {
       p.status = "suspenso"; p.outUntilRound = round + 1; p.yellowCards = 0;
-      events.push({ type: "vermelho", player: p.name });
+      events.push({ type: "vermelho", player: p.name, playerId: p.id });
       redCardIds.push(p.id);
     } else if (roll < 0.11 * chunkShare) {
       p.yellowCards = (p.yellowCards || 0) + 1;
-      events.push({ type: "amarelo", player: p.name });
+      events.push({ type: "amarelo", player: p.name, playerId: p.id });
       if (p.yellowCards >= 3) {
         p.status = "suspenso"; p.outUntilRound = round + 1; p.yellowCards = 0;
         redCardIds.push(p.id);
@@ -7276,7 +7281,7 @@ function applyMatchWearChunk(starters, round, chunkShare, appearedSet) {
       // mecânica em si é de antes desta sessão), só era silenciosa: não
       // virava evento nenhum no feed ao vivo. Agora narrada como
       // qualquer outro evento (ver COMMENTARY_BANK.lesao).
-      events.push({ type: "lesao", player: p.name });
+      events.push({ type: "lesao", player: p.name, playerId: p.id });
     }
     p.condition = clamp((p.condition == null ? 100 : p.condition) - (15 + Math.random() * 15) * chunkShare, 25, 100);
   });
@@ -9391,6 +9396,7 @@ function renderCentral() {
   // substitui o antigo carrossel "Elenco em destaque" nesse lugar do
   // card (pedido do usuário).
   renderCommissionSummaryCard();
+  renderMarketSummaryCard();
 
   const lastCard = document.getElementById("lastResultCard");
   const last = CAREER.resultsByRound[round - 1];
@@ -9590,6 +9596,17 @@ const MATCH_EVENT_META = {
   amarelo: { label: "Cartão amarelo" },
   vermelho: { label: "Cartão vermelho" },
 };
+// UX-MERCADO-001 — nome de jogador clicável em qualquer tela: um único
+// listener delegado (ver wireStaticListeners, [data-playerlink]) abre
+// openPlayerCard — que cai em openDetail pro SEU jogador e no card com
+// "Fazer proposta" pro jogador de outro clube. Sem id (evento de save
+// antigo), continua texto puro.
+function playerLinkHTML(name, playerId, { fullName = null, clubId = null } = {}) {
+  const safe = escapeHtml(name);
+  if (!playerId) return safe;
+  const extra = `${fullName ? ` data-playername="${escapeHtml(fullName)}"` : ""}${clubId != null ? ` data-playerclub="${escapeHtml(String(clubId))}"` : ""}`;
+  return `<span class="mt-player-link" data-playerlink="${escapeHtml(String(playerId))}"${extra} role="button" tabindex="0">${safe}</span>`;
+}
 function matchEventsSummaryHTML(events) {
   if (!events || !events.length) return "";
   const rows = events.map((e) => {
@@ -9601,7 +9618,7 @@ function matchEventsSummaryHTML(events) {
     // Gol do adversário (ver simulateRound: time rival não tem elenco
     // individual, só teve "e.player" quando é ALGUÉM do seu time) —
     // credita ao time em vez de um nome de jogador que não existe.
-    const nm = e.player ? escapeHtml(abbreviateName(e.player)) : `Gol do ${escapeHtml(e.team)}`;
+    const nm = e.player ? playerLinkHTML(abbreviateName(e.player), e.playerId, { fullName: e.player }) : `Gol do ${escapeHtml(e.team)}`;
     // AJUSTE (refatoração completa, Tela 14) — ícone/cor por tipo
     // reaproveitando liveEventDot() (mesma função da linha do tempo Ao
     // Vivo, Tela 13b), no lugar do emoji + fundo chapado de antes.
@@ -9611,7 +9628,7 @@ function matchEventsSummaryHTML(events) {
     // attributeGoals) — some como uma linha discreta abaixo do nome
     // do artilheiro, em vez de uma linha própria na lista.
     const assistLine = e.type === "gol" && e.assistPlayer
-      ? `<span class="ct-event-assist">Assistência: ${escapeHtml(abbreviateName(e.assistPlayer))}</span>` : "";
+      ? `<span class="ct-event-assist">Assistência: ${playerLinkHTML(abbreviateName(e.assistPlayer), e.assistPlayerId, { fullName: e.assistPlayer })}</span>` : "";
     return `<div class="ct-event-row">
       <span class="ct-event-icon ${dot.cls}">${dot.svg}</span>
       <span class="ct-event-namewrap"><span class="nm">${nm}</span>${assistLine}</span>
@@ -10239,8 +10256,8 @@ function closeClubRoster() {
 // pra comprar/vender/escalar daqui — pra negociar de verdade, o
 // caminho continua sendo o Mercado). Jogador do SEU elenco cai direto
 // no openDetail() de sempre, com todas as ações normais.
-function openPlayerCard(id, clubIdHint) {
-  const mine = CAREER.squad.find((x) => x.id === id);
+function openPlayerCard(id, clubIdHint, nameHint) {
+  const mine = CAREER.squad.find((x) => x.id === id && (!nameHint || x.name === nameHint));
   if (mine) { openDetail(id); return; }
   let p = null, club = null;
   if (clubIdHint) {
@@ -10248,7 +10265,11 @@ function openPlayerCard(id, clubIdHint) {
     if (p) club = teamById(clubIdHint);
   }
   if (!p) {
-    const found = allMarketPlayers().find(({ p: cand }) => cand.id === id);
+    // UX-MERCADO-001 — ids de jogador podem se repetir entre clubes de
+    // divisões diferentes (catálogos numerados por competição — achado
+    // registrado no handoff); sem clube conhecido, o nome desempata.
+    const matches = allMarketPlayers().filter(({ p: cand, mine: isMine }) => cand.id === id && !isMine);
+    const found = matches.find(({ p: cand }) => cand.name === nameHint) || matches[0];
     if (found) { p = found.p; club = found.club; }
   }
   if (!p) return;
@@ -10260,7 +10281,7 @@ function openPlayerCard(id, clubIdHint) {
   // .ct-modal-overlay sem nenhuma alteração — troca isolada a este
   // fluxo específico (visualização somente-leitura de jogador de outro
   // clube), conforme o escopo da demanda.
-  openM3Dialog({
+  const dialogId = openM3Dialog({
     icon: subpos === "GOL" ? "🧤" : "⚽",
     title: "Perfil do jogador",
     subtitle: club ? club.name : "",
@@ -10280,8 +10301,39 @@ function openPlayerCard(id, clubIdHint) {
       </div>
       <p class="mt-info-line">Valor de mercado: ${fmtBRL(p.value)} · Salário: ${fmtBRL(p.wage)}/mês · Contrato até: ${p.contractUntil}</p>
       ${playerSeasonHistoryHTML(p)}
-      <p class="ct-empty" style="margin-top:8px;">Jogador de outro clube — consulta apenas. Pra negociar, use o Mercado.</p>`,
+      ${club ? externalPlayerActionsHTML(p, club) : ""}`,
   });
+  // UX-MERCADO-001 — pedido do usuário: "queria poder fazer proposta a
+  // qualquer jogador em qualquer tela ao clicar no nome dele". Este
+  // card é o destino de TODO nome clicável de jogador de outro clube
+  // (Mercado, artilharia, elenco de outro clube, lances, premiações,
+  // indicações), então as ações de negociação moram aqui — os mesmos
+  // fluxos do Mercado (openOfferModal/openLoanInModal), nada duplicado.
+  const root = document.getElementById(dialogId);
+  root.querySelectorAll("[data-ext-act]").forEach((btn) => btn.addEventListener("click", () => {
+    const act = btn.dataset.extAct;
+    closeM3Dialog(dialogId);
+    if (act === "offer") openOfferModal(club.id, p.id);
+    else if (act === "loan") openLoanInModal(club.id, p.id);
+    else if (act === "compare") openCompareWithExternal(p);
+    else if (act === "viewoffer") openMyOffersScreen();
+  }));
+}
+// Ações do card de jogador de outro clube — janela fechada desabilita
+// proposta/empréstimo com o motivo (e quando reabre), em vez de sumir
+// com os botões (o técnico entende POR QUE não dá agora).
+function externalPlayerActionsHTML(p, club) {
+  const win = transferWindowStatus(CAREER.currentRound);
+  const closedReason = win.open ? "" : (win.opensAtRound ? `Janela fechada — reabre na rodada ${win.opensAtRound}.` : "Janela fechada — reabre na próxima temporada.");
+  const offerBtn = pendingOfferOutFor(p.id)
+    ? `<button type="button" class="mt-btn-ghost" data-ext-act="viewoffer" style="width:100%;">Proposta enviada — ver em Minhas propostas</button>`
+    : `<button type="button" class="mt-btn-primary-gold" data-ext-act="offer" style="width:100%;" ${win.open ? "" : "disabled"}>Fazer proposta</button>`;
+  return `<div style="display:flex; flex-direction:column; gap:8px; margin-top:12px;">
+      ${offerBtn}
+      <button type="button" class="mt-btn-ghost" data-ext-act="loan" style="width:100%;" ${win.open ? "" : "disabled"}>Pedir empréstimo</button>
+      <button type="button" class="mt-btn-ghost" data-ext-act="compare" style="width:100%;">Comparar com meu elenco</button>
+      ${closedReason ? `<p class="mt-card-sub" style="margin:0;">${closedReason} Vender continua liberado.</p>` : ""}
+    </div>`;
 }
 function openDetail(id) {
   const p = CAREER.squad.find((x) => x.id === id);
@@ -10483,9 +10535,20 @@ async function handlePlayerAction(id, act) {
    filtro do picker (renderComparePickList) já garante isso, então
    renderCompareResult nunca precisa checar de novo. */
 let COMPARE_BASE_ID = null;
-function openComparePicker(baseId) {
+// UX-MERCADO-001 — "Comparar com meu elenco" a partir do card de
+// jogador de OUTRO clube: o jogador externo ocupa o lado A e o técnico
+// escolhe contra quem do próprio elenco (mesma posição) comparar.
+let COMPARE_EXTERNAL = null;
+function compareBasePlayer() {
+  return COMPARE_EXTERNAL || CAREER.squad.find((x) => x.id === COMPARE_BASE_ID);
+}
+function openCompareWithExternal(extPlayer) {
+  openComparePicker(null, extPlayer);
+}
+function openComparePicker(baseId, externalPlayer = null) {
   COMPARE_BASE_ID = baseId;
-  const base = CAREER.squad.find((x) => x.id === baseId);
+  COMPARE_EXTERNAL = externalPlayer;
+  const base = compareBasePlayer();
   if (!base) return;
   document.getElementById("compareSub").textContent = `Escolha um ${SUBPOS_LABEL[subPositionOf(base)] || "jogador"} pra comparar com ${abbreviateName(base.name)}`;
   document.getElementById("comparePickStep").classList.remove("hidden");
@@ -10495,7 +10558,7 @@ function openComparePicker(baseId) {
   document.getElementById("compareOverlay").classList.add("open");
 }
 function renderComparePickList() {
-  const base = CAREER.squad.find((x) => x.id === COMPARE_BASE_ID);
+  const base = compareBasePlayer();
   if (!base) return;
   const subpos = subPositionOf(base);
   // Sem trava de status (lesionado/suspenso não fica de fora) — a
@@ -10534,7 +10597,7 @@ function compareRowHTML(label, valA, valB, higherIsBetter, fmt) {
   </div>`;
 }
 function renderCompareResult(otherId) {
-  const a = CAREER.squad.find((x) => x.id === COMPARE_BASE_ID);
+  const a = compareBasePlayer();
   const b = CAREER.squad.find((x) => x.id === otherId);
   if (!a || !b) return;
   document.getElementById("compareSub").textContent = "";
@@ -11089,6 +11152,21 @@ const COMMISSION_AREAS = [
 // passo a mais. Um pontinho dourado (.has-suggestion) sinaliza "tem
 // sugestão nova pra aceitar" sem precisar de texto nenhum — botão sem
 // sugestão real (canApply:false) fica desabilitado, igual antes.
+// UX-MERCADO-001 — card "Mercado" no Início (ver #marketSummaryCard):
+// estado da janela + contadores que antes só existiam lá no fim da tela
+// do Mercado.
+function renderMarketSummaryCard() {
+  const win = transferWindowStatus(CAREER.currentRound);
+  const offers = (CAREER.pendingOffersOut || []).length;
+  const scoutPicks = (CAREER.scoutSuggestions || []).length;
+  const windowText = win.open
+    ? `Janela aberta até a rodada ${win.closesAtRound}.`
+    : (win.opensAtRound ? `Janela fechada — reabre na rodada ${win.opensAtRound} (vender continua liberado).` : "Janela fechada até a próxima temporada (vender continua liberado).");
+  document.getElementById("marketSummaryText").textContent = windowText;
+  const setBadge = (id, n) => { const el = document.getElementById(id); el.classList.toggle("hidden", !n); el.textContent = String(n); };
+  setBadge("homeScoutBadge", scoutPicks);
+  setBadge("homeOffersBadge", offers);
+}
 function renderCommissionSummaryCard() {
   const card = document.getElementById("commissionSummaryCard");
   const hired = CAREER.technicalStaff && CAREER.technicalStaff.hired;
@@ -11970,6 +12048,48 @@ function renderEstatisticas() {
 // vendo 300 jogadores do filtro ERRADO depois de trocar de posição.
 let MARKET_SHOW_COUNT = 40;
 function resetMarketPaging() { MARKET_SHOW_COUNT = 40; renderMercado(); }
+// UX-MERCADO-001 — filtros num bottom sheet M3. Os <select> escondidos
+// em #marketFiltersStore continuam sendo o estado (renderMercado lê
+// deles); o sheet mostra cópias e só grava de volta no "Aplicar".
+const MARKET_FILTER_IDS = ["marketPosFilter", "marketCompFilter", "marketClubFilter", "marketOvrFilter"];
+function marketFiltersSheetBodyHTML() {
+  const fields = MARKET_FILTER_IDS.map((id) => {
+    const src = document.getElementById(id);
+    if (src.classList.contains("hidden")) return ""; // divisão só existe em carreira "multi"
+    const options = [...src.options].map((o) => `<option value="${escapeHtml(o.value)}"${o.value === src.value ? " selected" : ""}>${escapeHtml(o.textContent)}</option>`).join("");
+    return `<select class="mt-select-box" data-filter-src="${id}" style="margin-bottom:8px;">${options}</select>`;
+  }).join("");
+  return `${fields}
+    <button type="button" class="mt-btn-primary-gold" data-filters-act="apply" style="width:100%; margin-top:8px;">Aplicar filtros</button>
+    <button type="button" class="mt-btn-ghost" data-filters-act="clear" style="width:100%; margin-top:8px;">Limpar filtros</button>`;
+}
+function openMarketFiltersSheet() {
+  const sheetId = openM3BottomSheet({ icon: "", title: "Filtros do Mercado", bodyHTML: marketFiltersSheetBodyHTML() });
+  const root = document.getElementById(sheetId);
+  const wire = () => {
+    // Trocar a divisão muda a lista de clubes possíveis — grava só a
+    // divisão, re-renderiza (renderMercado reconstrói as opções de
+    // clube) e redesenha o sheet com as opções novas.
+    const comp = root.querySelector('[data-filter-src="marketCompFilter"]');
+    if (comp) comp.addEventListener("change", () => {
+      root.querySelectorAll("[data-filter-src]").forEach((el) => { document.getElementById(el.dataset.filterSrc).value = el.value; });
+      renderMercado();
+      root.querySelector(".m3-bottom-sheet-body").innerHTML = marketFiltersSheetBodyHTML();
+      wire();
+    });
+    root.querySelector('[data-filters-act="apply"]').addEventListener("click", () => {
+      root.querySelectorAll("[data-filter-src]").forEach((el) => { document.getElementById(el.dataset.filterSrc).value = el.value; });
+      closeM3BottomSheet(sheetId);
+      resetMarketPaging();
+    });
+    root.querySelector('[data-filters-act="clear"]').addEventListener("click", () => {
+      MARKET_FILTER_IDS.forEach((id) => { document.getElementById(id).value = ""; });
+      closeM3BottomSheet(sheetId);
+      resetMarketPaging();
+    });
+  };
+  wire();
+}
 
 function allMarketPlayers() {
   const mine = CAREER.squad.filter((p) => p.origin === "principal")
@@ -12116,8 +12236,10 @@ function confirmOfferFromModal() {
   closeOfferModal();
   persistCareer();
   renderMercado();
-  toast(`Proposta de ${fmtBRL(value)} por ${abbreviateName(p.name)} enviada ao ${clubName} — aguardando resposta.`, { type: "info" });
-  finishOperationAndGoHome();
+  toast(`Proposta de ${fmtBRL(value)} por ${abbreviateName(p.name)} enviada ao ${clubName} — acompanhe em Mercado › Minhas propostas.`, { type: "info" });
+  // UX-MERCADO-001 — operação de mercado não tira mais o técnico da tela
+  // em que ele estava (pedido: "ao fazer proposta volto pra home").
+  renderAll();
 }
 // Aumenta o valor de uma proposta pendente OU aceita o valor que o
 // clube pediu numa contraproposta (mesmo campo, offerValue) — os dois
@@ -12497,7 +12619,9 @@ function confirmListFromModal() {
   persistCareer();
   renderMercado();
   toast({ title: "Jogador anunciado", detail: `${abbreviateName(p.name)} colocado à venda por ${fmtBRL(askingValue)} — acompanhe em Minhas vendas.` }, { type: "info" });
-  finishOperationAndGoHome();
+  // UX-MERCADO-001 — operação de mercado não tira mais o técnico da tela
+  // em que ele estava (pedido: "ao fazer proposta volto pra home").
+  renderAll();
 }
 // Recusa só ESSA proposta (o anúncio continua ativo, pode chegar outra
 // depois) — diferente de cancelar o anúncio inteiro (ver cancelListing).
@@ -13370,7 +13494,16 @@ function renderMercado() {
       p.name.toLowerCase().includes(search) || (club.name || "").toLowerCase().includes(search) || (club.short || "").toLowerCase().includes(search)
     );
   }
-  list.sort((a, b) => b.p.value - a.p.value);
+  // UX-MERCADO-001 — ordenação escolhida na barra de busca (antes era
+  // sempre por valor).
+  const sortBy = document.getElementById("marketSort").value;
+  if (sortBy === "overall") list.sort((a, b) => (b.p.overall - a.p.overall) || (b.p.value - a.p.value));
+  else if (sortBy === "age") list.sort((a, b) => (a.p.age - b.p.age) || (b.p.overall - a.p.overall));
+  else list.sort((a, b) => b.p.value - a.p.value);
+  const activeFilters = [posFilter, compFilter, clubFilter, ovrFilter].filter(Boolean).length;
+  const filtersCount = document.getElementById("marketFiltersCount");
+  filtersCount.classList.toggle("hidden", !activeFilters);
+  filtersCount.textContent = String(activeFilters);
   // AJUSTE (pedido do usuário: "a tela de mercado me impede de procurar
   // mais jogadores") — antes travava num teto fixo (40/60) sem jeito
   // de ver o resto do pool. Agora é paginação de verdade: MARKET_SHOW_COUNT
@@ -14247,6 +14380,19 @@ function populateSelect(id, options) {
   document.getElementById(id).innerHTML = options.map(([v, l]) => `<option value="${v}">${l}</option>`).join("");
 }
 function wireStaticListeners() {
+  // UX-MERCADO-001 — link de jogador delegado no documento inteiro (ver
+  // playerLinkHTML): funciona em qualquer tela/modal renderizado depois,
+  // sem precisar religar listener em cada render.
+  const openPlayerLink = (e) => {
+    const el = e.target.closest("[data-playerlink]");
+    if (!el) return;
+    e.stopPropagation();
+    openPlayerCard(el.dataset.playerlink, el.dataset.playerclub, el.dataset.playername);
+  };
+  document.addEventListener("click", openPlayerLink);
+  document.addEventListener("keydown", (e) => {
+    if ((e.key === "Enter" || e.key === " ") && e.target.closest("[data-playerlink]")) { e.preventDefault(); openPlayerLink(e); }
+  });
   // AJUSTE (pedido do usuário: "quero seguir pelo placar de LED... e
   // que feche ao clicar em cima") — listener único no próprio elemento
   // #toast (nunca recriado — toast() só troca innerHTML/className a
@@ -14544,7 +14690,7 @@ function wireStaticListeners() {
   document.getElementById("compareOverlay").addEventListener("click", (e) => { if (e.target.id === "compareOverlay") closeCompareScreen(); });
   // "Trocar jogador" (só visível no passo de resultado) volta pro
   // passo 1 sem fechar o modal nem perder o jogador de origem.
-  document.getElementById("btnCompareChangePlayer").addEventListener("click", () => openComparePicker(COMPARE_BASE_ID));
+  document.getElementById("btnCompareChangePlayer").addEventListener("click", () => openComparePicker(COMPARE_BASE_ID, COMPARE_EXTERNAL));
   document.getElementById("coachProfileOverlay").addEventListener("click", (e) => { if (e.target.id === "coachProfileOverlay") closeCoachProfileScreen(); });
   // FASE 4 (item 4) — notificação de proposta de outro clube: X e
   // clique fora só fecham (sem aceitar nem recusar), reabrível pelo
@@ -14811,6 +14957,11 @@ function wireStaticListeners() {
   document.getElementById("marketCompFilter").addEventListener("change", resetMarketPaging);
   document.getElementById("marketClubFilter").addEventListener("change", resetMarketPaging);
   document.getElementById("marketOvrFilter").addEventListener("change", resetMarketPaging);
+  document.getElementById("marketSort").addEventListener("change", resetMarketPaging);
+  document.getElementById("btnMarketFilters").addEventListener("click", openMarketFiltersSheet);
+  document.getElementById("btnHomeOpenMarket").addEventListener("click", () => switchToPanel("mercado"));
+  document.getElementById("btnHomeScoutSuggestions").addEventListener("click", openScoutSuggestionsScreen);
+  document.getElementById("btnHomeMyOffers").addEventListener("click", openMyOffersScreen);
   document.getElementById("btnMarketLoadMore").addEventListener("click", () => { MARKET_SHOW_COUNT += 60; renderMercado(); });
   // Pedido do usuário: "ao encerrar uma operação, voltar pra Início" —
   // só aqui, no card de proposta recebida DENTRO da aba Mercado (ação

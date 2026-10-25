@@ -105,7 +105,7 @@ const { chromium } = require("playwright-core");
     const playerId = buyBtn.dataset.buy;
     buyBtn.click();
     await new Promise((r) => setTimeout(r, 150));
-    const modalOpen = document.getElementById("offerOverlay").classList.contains("open");
+    const modalOpen = !!document.getElementById("btnOfferConfirm");
     document.getElementById("btnOfferConfirm").click();
     await new Promise((r) => setTimeout(r, 150));
     const card = [...document.querySelectorAll("#marketList .m3-op-card")].find((c) => c.dataset.id === playerId);

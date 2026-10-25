@@ -126,7 +126,7 @@ const { chromium } = require("playwright-core");
   const buyBtns = await page.$$("[data-buy]");
   const cheapestBuy = buyBtns[buyBtns.length - 1];
   await cheapestBuy.click();
-  await page.waitForSelector("#offerOverlay.open", { timeout: 5000 });
+  await page.waitForSelector("#btnOfferConfirm", { timeout: 5000 }); // proposta virou diálogo M3 (S3-DS20-S4-PREP-001)
   await page.click("#btnOfferConfirm");
   await page.waitForTimeout(200);
   await page.evaluate(async () => {
@@ -157,7 +157,7 @@ const { chromium } = require("playwright-core");
   await page.waitForTimeout(150);
 
   // Filtro por posição
-  await page.selectOption("#marketPosFilter", "G");
+  await page.selectOption("#marketPosFilter", "G", { force: true }); // UX-MERCADO-001: filtros ficam no estado escondido (ver openMarketFiltersSheet)
   await page.waitForTimeout(200);
   const rows = await page.$$eval(".m3-op-card", (els) => els.map((e) => e.querySelector(".mt-pos-chip").textContent));
   console.log("Filtro GOL - posições encontradas:", [...new Set(rows)]);
