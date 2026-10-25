@@ -585,9 +585,9 @@ antigos carregam e viram a temporada sem erro.
 
 ⸻
 
-GAME-2048-001 — Minijogo "Craque 2048" (webview, estilo 2048)
+GAME-2048-001 — Minijogo "BRDATA 2048" (webview, estilo 2048)
 
-Status: AGUARDANDO DECISÃO DO MURILO (4 decisões abertas no fim desta seção; recomendações já indicadas — confirmadas, vira PRONTO PARA IMPLEMENTAÇÃO)
+Status: PRONTO PARA IMPLEMENTAÇÃO (decisões abertas respondidas pelo Murilo em 25/10/2026)
 Prioridade: P5 (Retenção) · Fora do roadmap S1–S16 (frente paralela, não altera status de Sprint)
 Etapa do loop da carreira: nenhuma (v1 não toca em `CAREER`)
 Especificado em: 25/10/2026, a pedido do Murilo
@@ -620,16 +620,13 @@ curtas entre rodadas) sem interferir na economia/estado da carreira.
 * Determinismo (CLAUDE.md §12/§44): PRNG com seed (ex.: mulberry32),
   seed guardada no estado — mesma seed + mesmas jogadas = mesma
   partida (base para testes e reprodução de bug).
-* Tema (decisão aberta 1): cada valor tem rótulo de futebol além do
-  número — 2 Várzea · 4 Base · 8 Sub-20 · 16 Profissional · 32 Titular ·
-  64 Destaque · 128 Craque · 256 Seleção · 512 Ídolo · 1024 Lenda ·
-  2048 Bola de Ouro. Número sempre visível (leitura rápida).
+* Tema: só números (decisão 1), com as cores do BRDATA.
 
 2. Layout (mobile-first, 390px como referência)
 
 ```
 ┌──────────────────────────────┐
-│ ←  Craque 2048          ⋮    │  top app bar M3 (voltar, menu: novo jogo/como jogar)
+│ ←  BRDATA 2048          ⋮    │  top app bar M3 (voltar, menu: novo jogo/como jogar)
 ├──────────────────────────────┤
 │ ┌──────────┐ ┌──────────┐    │
 │ │ PONTOS   │ │ RECORDE  │    │  2 cards de placar (fonte de display BRDATA)
@@ -654,7 +651,7 @@ curtas entre rodadas) sem interferir na economia/estado da carreira.
 * Desktop: mesma coluna centralizada (máx. 480px), setas do teclado.
 * Diálogos de vitória/derrota no padrão `openM3Dialog` (mesmo visual).
 * Acessibilidade: tabuleiro `role="grid"`, peças com `aria-label`
-  ("Craque, 128"), região `aria-live` anunciando pontos/fim de jogo,
+  ("128"), região `aria-live` anunciando pontos/fim de jogo,
   alvos de toque ≥ 48dp, contraste AA nos números.
 * Safe areas (`viewport-fit=cover` + `env(safe-area-inset-*)`) para
   WebView com notch.
@@ -667,7 +664,8 @@ curtas entre rodadas) sem interferir na economia/estado da carreira.
 * Renderização em DOM (16 casas + peças com `transform`), não canvas:
   acessível, fácil de tematizar com tokens, desempenho de sobra.
 * Arquivos novos:
-  * `public/2048.html` — página standalone (abre direto em WebView);
+  * `public/2048.html` — página standalone (abre direto em WebView ou
+    por link direto; sem atalho no site — decisão 4);
   * `public/js/game2048/engine.js` — regras puras, sem DOM
     (`move(state, dir)`, `spawn`, `isGameOver`, PRNG com seed),
     exportável em Node para teste;
@@ -700,7 +698,7 @@ multiplayer, tabuleiros 5×5/6×6, desfazer.
 Riscos / anti-exploit (CLAUDE.md §29)
 
 * v1 sem integração com a carreira → sem exploit econômico.
-* Se no futuro der recompensa (decisão aberta 2): recorde fica no
+* Se no futuro der recompensa (fora da v1 por decisão 2): recorde fica no
   cliente e é trivialmente forjável via `localStorage`; qualquer
   recompensa exigiria validação no servidor (replay da seed + lista de
   jogadas, possível graças ao determinismo) e teto diário.
@@ -718,19 +716,15 @@ Critérios de aceite
 6. Só tokens do DS; `carreira.html` sem diferença visual após extração.
 7. Suíte de testes existente continua passando.
 
-Decisões abertas (Murilo)
+Decisões (respondidas pelo Murilo em 25/10/2026)
 
-1. Tema: rótulos de futebol + número (recomendado) ou só números?
-2. Integração com carreira: standalone sem recompensa (recomendado) ou
-   alguma recompensa (ex.: moral/cosmético)? Recompensa exige validação
-   no servidor — demanda própria.
-3. Desfazer: sem desfazer na v1 (recomendado, fiel ao 2048 original) ou
-   1 desfazer por partida?
-4. Acesso: página própria `/2048.html` com atalho no menu do `index.html`
-   (recomendado) ou também um atalho dentro da carreira?
+1. Tema: só números (sem rótulos de futebol).
+2. Carreira: standalone, sem recompensa — não toca em `CAREER`.
+3. Desfazer: sem desfazer.
+4. Acesso: só a página `/2048.html` (WebView ou link direto), sem
+   atalho no `index.html` nem na carreira.
 
 ⸻
-
 
 S4-AUDIT-BACKLOG-001 — Auditoria de prontidão das demandas #12 a #21
 
