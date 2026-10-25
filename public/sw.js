@@ -77,6 +77,13 @@ const APP_SHELL = [
   "/img/icons/favicon-32.png",
   "/img/icons/icon-maskable-192.png",
   "/img/icons/icon-maskable-512.png",
+  // BRDATA 2048 (GAME-2048-001) — página standalone para WebView; entra no
+  // app shell para funcionar offline desde a instalação. css/m3-tokens.css
+  // também é usado por carreira.html.
+  "/css/m3-tokens.css",
+  "/2048.html",
+  "/js/game2048/engine.js",
+  "/js/game2048/ui.js",
 ];
 
 self.addEventListener("install", (event) => {

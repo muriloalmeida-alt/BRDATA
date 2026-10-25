@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<!-- BRDATA 2048 (GAME-2048-001, ver docs/HANDOFF_CLAUDE.md) — minijogo
+     standalone, pensado para abrir direto numa WebView ou por link.
+     Sem atalho no site e sem ligação com a carreira (decisões 2 e 4). -->
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#161513">
+<meta name="robots" content="noindex">
+<title>BRDATA 2048</title>
+<link rel="icon" type="image/png" sizes="32x32" href="img/icons/favicon-32.png">
+<link rel="apple-touch-icon" href="img/icons/apple-touch-icon.png">
+<link rel="stylesheet" href="css/m3-tokens.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --font:'Inter', system-ui, sans-serif;
+    --g-gap:8px;
+    --g-board:min(calc(100vw - 32px), 480px);
+    --g-move-ms:100ms;
+  }
+  @media (prefers-reduced-motion: reduce){ :root{ --g-move-ms:0ms; } }
+  *{ box-sizing:border-box; }
+  html, body{ margin:0; height:100%; }
+  body{
+    background:var(--m3-surface); color:var(--m3-on-surface);
+    font-family:var(--font); -webkit-font-smoothing:antialiased;
+    -webkit-tap-highlight-color:transparent; touch-action:manipulation;
+    overflow-x:hidden;
+  }
+  .g-app{
+    width:100%; max-width:calc(480px + 32px); margin:0 auto; min-height:100%;
+    padding:max(env(safe-area-inset-top), 8px) max(env(safe-area-inset-right), 16px)
+            max(env(safe-area-inset-bottom), 16px) max(env(safe-area-inset-left), 16px);
+    display:flex; flex-direction:column; gap:16px;
+  }
+
+  /* Top app bar */
+  .g-topbar{ display:flex; align-items:center; gap:8px; min-height:56px; }
+  .g-title{ flex:1; margin:0; font-family:var(--m3-display); font-size:22px; font-weight:700; letter-spacing:.2px; }
+  .g-title b{ color:var(--m3-secondary); font-weight:700; }
+  .g-icon-btn{
+    width:48px; height:48px; border-radius:var(--m3-shape-full); border:none; cursor:pointer;
+    background:transparent; color:var(--m3-on-surface-variant);
+    display:inline-flex; align-items:center; justify-content:center;
+  }
+  .g-icon-btn:hover{ background:var(--m3-surface-container-high); }
+  .g-icon-btn:focus-visible, .g-btn:focus-visible, .g-board:focus-visible{ outline:2px solid var(--m3-secondary); outline-offset:2px; }
+  .g-icon-btn svg{ width:24px; height:24px; }
+
+  /* Placar */
+  .g-scores{ display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  .g-score{
+    background:var(--m3-surface-container); border:1px solid var(--m3-outline-variant);
+    border-radius:var(--m3-shape-md); padding:10px 14px; position:relative;
+  }
+  .g-score-label{ font-size:11px; font-weight:700; letter-spacing:.8px; text-transform:uppercase; color:var(--m3-on-surface-variant); }
+  .g-score-value{ font-family:var(--m3-display); font-size:26px; font-weight:700; line-height:1.15; font-variant-numeric:tabular-nums; }
+  .g-score--best .g-score-value{ color:var(--m3-secondary); }
+  .g-score-gain{
+    position:absolute; right:14px; top:8px; font-family:var(--m3-display); font-weight:700; font-size:15px;
+    color:var(--m3-primary); pointer-events:none; animation:gGain .6s ease-out forwards;
+  }
+  @keyframes gGain{ from{ opacity:1; transform:translateY(0); } to{ opacity:0; transform:translateY(-18px); } }
+
+  /* Tabuleiro */
+  .g-board{
+    position:relative; width:var(--g-board); aspect-ratio:1; align-self:center;
+    background:var(--m3-surface-container-low); border:1px solid var(--m3-outline-variant);
+    border-radius:var(--m3-shape-lg); padding:var(--g-gap);
+    touch-action:none; user-select:none; -webkit-user-select:none;
+  }
+  .g-board.shake{ animation:gShake .22s ease-in-out; }
+  @keyframes gShake{ 25%{ transform:translateX(-5px); } 75%{ transform:translateX(5px); } }
+  .g-grid{
+    width:100%; height:100%; display:grid; gap:var(--g-gap);
+    grid-template-columns:repeat(4, 1fr); grid-template-rows:repeat(4, 1fr);
+  }
+  .g-grid [role="row"]{ display:contents; }
+  .g-cell{ background:var(--m3-surface-container-high); border-radius:var(--m3-shape-md); }
+  .g-tiles{ position:absolute; inset:var(--g-gap); pointer-events:none; }
+  .g-tile{
+    position:absolute; left:0; top:0;
+    width:calc((100% - 3 * var(--g-gap)) / 4); height:calc((100% - 3 * var(--g-gap)) / 4);
+    transform:translate(calc(var(--c) * (100% + var(--g-gap))), calc(var(--r) * (100% + var(--g-gap))));
+    transition:transform var(--g-move-ms) ease-in-out;
+    will-change:transform;
+  }
+  .g-tile-inner{
+    width:100%; height:100%; border-radius:var(--m3-shape-md);
+    display:flex; align-items:center; justify-content:center;
+    font-family:var(--m3-display); font-weight:700; font-variant-numeric:tabular-nums;
+    font-size:calc(var(--g-board) * .11); line-height:1;
+  }
+  .g-tile[data-len="3"] .g-tile-inner{ font-size:calc(var(--g-board) * .09); }
+  .g-tile[data-len="4"] .g-tile-inner{ font-size:calc(var(--g-board) * .072); }
+  .g-tile[data-len="5"] .g-tile-inner{ font-size:calc(var(--g-board) * .058); }
+  .g-tile.is-new .g-tile-inner{ animation:gAppear .18s ease-out both; animation-delay:var(--g-move-ms); }
+  .g-tile.is-merged .g-tile-inner{ animation:gPop .18s ease-out both; }
+  @keyframes gAppear{ from{ transform:scale(0); } to{ transform:scale(1); } }
+  @keyframes gPop{ 0%{ transform:scale(1); } 50%{ transform:scale(1.12); } 100%{ transform:scale(1); } }
+  @media (prefers-reduced-motion: reduce){
+    .g-tile.is-new .g-tile-inner, .g-tile.is-merged .g-tile-inner, .g-board.shake, .g-score-gain{ animation:none; }
+  }
+  /* Progressão de cor: neutros → azul → verde → dourado (2048 = dourado cheio). Só tokens --m3-*. */
+  .v2 .g-tile-inner{ background:var(--m3-surface-container-highest); color:var(--m3-on-surface); }
+  .v4 .g-tile-inner{ background:var(--m3-outline-variant); color:var(--m3-on-surface); }
+  .v8 .g-tile-inner{ background:var(--m3-tertiary-container); color:var(--m3-on-tertiary-container); }
+  .v16 .g-tile-inner{ background:var(--m3-tertiary); color:var(--m3-on-tertiary); }
+  .v32 .g-tile-inner{ background:var(--m3-primary-container); color:var(--m3-on-primary-container); }
+  .v64 .g-tile-inner{ background:var(--m3-primary); color:var(--m3-on-primary); }
+  .v128 .g-tile-inner{ background:var(--m3-secondary-container); color:var(--m3-on-secondary-container); }
+  .v256 .g-tile-inner{ background:var(--m3-inverse-surface); color:var(--m3-inverse-on-surface); }
+  .v512 .g-tile-inner{ background:var(--m3-inverse-accent); color:var(--m3-inverse-on-surface); }
+  .v1024 .g-tile-inner{ background:var(--m3-secondary-container); color:var(--m3-secondary); box-shadow:inset 0 0 0 3px var(--m3-secondary); }
+  .v2048 .g-tile-inner, .vbig .g-tile-inner{ background:var(--m3-secondary); color:var(--m3-on-secondary); }
+  .v2048 .g-tile-inner{ box-shadow:0 0 18px 2px var(--m3-secondary); }
+
+  .g-hint{ margin:0; text-align:center; font-size:13px; color:var(--m3-on-surface-variant); min-height:18px; }
+  .g-actions{ display:flex; justify-content:center; }
+
+  /* Botões — mesmo desenho de .m3-btn-primary/.m3-btn-ghost (carreira.html) */
+  .g-btn{
+    min-height:48px; padding:0 24px; border-radius:var(--m3-shape-full); cursor:pointer;
+    display:inline-flex; align-items:center; justify-content:center; gap:8px;
+    font-family:var(--font); font-weight:700; font-size:14px;
+  }
+  .g-btn--tonal{ background:var(--m3-secondary-container); color:var(--m3-on-secondary-container); border:none; }
+  .g-btn--primary{ background:var(--m3-primary); color:var(--m3-on-primary); border:none; }
+  .g-btn--ghost{ background:var(--m3-surface-container); color:var(--m3-on-surface); border:1px solid var(--m3-outline-variant); }
+
+  /* Diálogo — mesmo desenho do .m3-dialog de carreira.html, em <dialog> nativo */
+  .g-dialog{
+    background:var(--m3-surface-container-high); color:var(--m3-on-surface);
+    border:1px solid var(--m3-outline-variant); border-radius:var(--m3-shape-lg);
+    width:calc(100% - 48px); max-width:420px; padding:0; box-shadow:0 12px 40px rgba(0,0,0,.5);
+  }
+  .g-dialog::backdrop{ background:rgba(0,0,0,.55); }
+  .g-dialog[open]{ animation:gSheetIn .22s cubic-bezier(.16,1,.3,1); }
+  @keyframes gSheetIn{ from{ opacity:0; transform:translateY(12px); } to{ opacity:1; transform:none; } }
+  @media (prefers-reduced-motion: reduce){ .g-dialog[open]{ animation:none; } }
+  .g-dialog-head{ padding:20px 20px 8px; }
+  .g-dialog-head h2{ margin:0; font-family:var(--m3-display); font-size:20px; font-weight:700; }
+  .g-dialog-body{ padding:0 20px 8px; font-size:14px; line-height:1.5; color:var(--m3-on-surface-variant); }
+  .g-dialog-body p{ margin:0 0 8px; }
+  .g-dialog-body strong{ color:var(--m3-on-surface); }
+  .g-dialog-actions{ display:flex; flex-direction:column; gap:8px; padding:12px 20px 20px; }
+  .g-dialog-actions .g-btn{ width:100%; }
+
+  .g-sr{ position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; }
+  noscript{ display:block; text-align:center; padding:24px; }
+</style>
+</head>
+<body>
+<main class="g-app">
+  <header class="g-topbar">
+    <h1 class="g-title">BRDATA <b>2048</b></h1>
+    <button type="button" class="g-icon-btn" id="btnHelp" aria-label="Como jogar">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9.5"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.4 2.3c-.6.3-1 .8-1 1.5v.4"/><circle cx="12" cy="17" r=".6" fill="currentColor"/></svg>
+    </button>
+  </header>
+
+  <section class="g-scores" aria-label="Placar">
+    <div class="g-score" id="scoreCard"><div class="g-score-label">Pontos</div><div class="g-score-value" id="score">0</div></div>
+    <div class="g-score g-score--best"><div class="g-score-label">Recorde</div><div class="g-score-value" id="best">0</div></div>
+  </section>
+
+  <div class="g-board" id="board" tabindex="0" aria-describedby="hint">
+    <div class="g-grid" id="grid" role="grid" aria-label="Tabuleiro 4 por 4"></div>
+    <div class="g-tiles" id="tiles" aria-hidden="true"></div>
+  </div>
+
+  <p class="g-hint" id="hint">Deslize para mover as peças. No teclado, use as setas ou WASD.</p>
+  <div class="g-actions"><button type="button" class="g-btn g-btn--tonal" id="btnNew">Novo jogo</button></div>
+  <div class="g-sr" id="live" aria-live="polite"></div>
+  <noscript>Ative o JavaScript para jogar.</noscript>
+</main>
+
+<dialog class="g-dialog" id="dialog" aria-labelledby="dialogTitle">
+  <div class="g-dialog-head"><h2 id="dialogTitle"></h2></div>
+  <div class="g-dialog-body" id="dialogBody"></div>
+  <div class="g-dialog-actions" id="dialogActions"></div>
+</dialog>
+
+<script src="js/game2048/engine.js"></script>
+<script src="js/game2048/ui.js"></script>
+</body>
+</html>
