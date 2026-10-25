@@ -1,6 +1,6 @@
 const { chromium } = require("playwright-core");
 const { check } = require("./_check");
-const { skipOnboarding } = require("./_startup");
+const { enterGame } = require("./_startup");
 
 async function forceStandings(page, { rank }) {
   // rank: "first" (bate qualquer meta) ou "last" (falha qualquer meta)
@@ -57,13 +57,7 @@ async function setStreak(page, n) {
   await page.click(".m3-club-row");
   await page.waitForTimeout(150);
   await page.click("#btnConfirmClub");
-  await skipOnboarding(page);
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnClaimDailyLogin", { timeout: 3000 }).catch(() => {});
-  await page.waitForTimeout(500);
+  await enterGame(page);
 
   // 1) Meta existe já na criação da carreira e aparece na Central
   const initial = await page.evaluate(async () => (await (await fetch("/api/career")).json()).career.boardGoal);
@@ -102,13 +96,7 @@ async function setStreak(page, n) {
   await page.click(".m3-club-row");
   await page.waitForTimeout(150);
   await page.click("#btnConfirmClub");
-  await skipOnboarding(page);
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnClaimDailyLogin", { timeout: 3000 }).catch(() => {});
-  await page.waitForTimeout(500);
+  await enterGame(page);
   await setStreak(page, 2);
   await forceStandings(page, { rank: "first" });
   await page.reload({ waitUntil: "load" });

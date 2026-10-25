@@ -10,7 +10,7 @@
 // usam pra funções puras (ex.: transferScore em
 // test_transfer_ai_offers.js), só que aqui a "função pura" desenha DOM.
 const { chromium } = require("playwright-core");
-const { skipOnboarding } = require("./_startup");
+const { enterGame } = require("./_startup");
 
 (async () => {
   const browser = await chromium.launch({ executablePath: process.env.PW_CHROMIUM_PATH || undefined, headless: true, args: ["--host-resolver-rules=MAP fonts.googleapis.com 127.0.0.1,MAP fonts.gstatic.com 127.0.0.1"] });
@@ -32,13 +32,7 @@ const { skipOnboarding } = require("./_startup");
   await page.click(".m3-club-row");
   await page.waitForTimeout(150);
   await page.click("#btnConfirmClub");
-  await skipOnboarding(page);
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnClaimDailyLogin", { timeout: 3000 }).catch(() => {});
-  await page.waitForTimeout(500);
+  await enterGame(page);
 
   const results = []; // { n, label, pass }
   function report(n, label, pass, extra) {

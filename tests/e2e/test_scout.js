@@ -1,6 +1,6 @@
 const { chromium } = require("playwright-core");
 const { check } = require("./_check");
-const { skipOnboarding } = require("./_startup");
+const { enterGame } = require("./_startup");
 
 (async () => {
   const browser = await chromium.launch({
@@ -24,13 +24,7 @@ const { skipOnboarding } = require("./_startup");
   await page.click(".m3-club-row");
   await page.waitForTimeout(150);
   await page.click("#btnConfirmClub");
-  await skipOnboarding(page);
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnClaimDailyLogin", { timeout: 3000 }).catch(() => {});
-  await page.waitForTimeout(500);
+  await enterGame(page);
 
   // 1) Determinismo + limites da faixa (rodado direto no client)
   const stats = await page.evaluate(() => {
@@ -47,7 +41,9 @@ const { skipOnboarding } = require("./_startup");
       };
     });
   });
-  check("1) Checks de", stats.length, "jogadores da base:");
+  // Fase B: as 4 condições abaixo eram só console.log (não reprovavam).
+  check(`1) Faixa de potencial dos ${stats.length} jogadores da base: determinística, lo >= overall, hi <= 99, lo <= hi:`,
+    stats.length > 0 && stats.every((s) => s.deterministico && s.loMaiorOuIgualOverall && s.hiMenorOuIgual99 && s.loMenorOuIgualHi));
   console.log("   Todos determinísticos:", stats.every((s) => s.deterministico));
   console.log("   Todos com lo >= overall:", stats.every((s) => s.loMaiorOuIgualOverall));
   console.log("   Todos com hi <= 99:", stats.every((s) => s.hiMenorOuIgual99));
@@ -72,7 +68,7 @@ const { skipOnboarding } = require("./_startup");
     const list = document.getElementById("squadBaseList");
     return list.querySelector(".m3-list-item").textContent;
   });
-  check("3) Texto da 1ª linha da base (deve conter 'pot.'):", baseRowText.trim());
+  check("3) Texto da 1ª linha da base (deve conter 'pot.'):", /pot\.|Potencial/.test(baseRowText), baseRowText.replace(/\s+/g, " ").trim());
 
   // 4) Aparece no detalhe do jogador
   const baseId = await page.evaluate(() => CAREER.squad.find((p) => p.origin === "base").id);

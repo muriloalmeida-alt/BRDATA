@@ -1,6 +1,6 @@
 const { chromium } = require("playwright-core");
 const { check } = require("./_check");
-const { skipOnboarding } = require("./_startup");
+const { enterGame } = require("./_startup");
 const { playNextMatchRound } = require("./_round");
 const { skipPreseason } = require("./_calendar_skip");
 (async () => {
@@ -22,14 +22,7 @@ const { skipPreseason } = require("./_calendar_skip");
   await page.click(".m3-club-row");
   await page.waitForTimeout(150);
   await page.click("#btnConfirmClub");
-  await skipOnboarding(page);
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.waitForTimeout(700);
-  await page.click("#btnClaimDailyLogin", { timeout: 3000 }).catch(() => {});
-  await page.waitForTimeout(300);
+  await enterGame(page);
 
   // GE-CALENDAR-001: carreira nova começa na pré-temporada (o card do
   // próximo jogo mostra o amistoso) — o H2H é do próximo jogo oficial.

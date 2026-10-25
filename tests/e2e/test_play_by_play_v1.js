@@ -4,7 +4,7 @@
 // "Seu jogo" e o botão "Rever lances".
 const { chromium } = require("playwright-core");
 const { check } = require("./_check");
-const { skipOnboarding } = require("./_startup");
+const { enterGame } = require("./_startup");
 const { skipPreseason } = require("./_calendar_skip");
 
 (async () => {
@@ -25,13 +25,7 @@ const { skipPreseason } = require("./_calendar_skip");
   await page.click(".m3-club-row");
   await page.waitForTimeout(150);
   await page.click("#btnConfirmClub");
-  await skipOnboarding(page);
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnClaimDailyLogin", { timeout: 3000 }).catch(() => {});
-  await page.waitForTimeout(500);
+  await enterGame(page);
 
   // 1) Iniciar partida ao vivo.
   await skipPreseason(page); // GE-CALENDAR-001: carreira nova começa na pré-temporada
@@ -88,7 +82,8 @@ const { skipPreseason } = require("./_calendar_skip");
     const withAssist = rows.find((r) => r.querySelector(".ct-event-assist"));
     return { totalRows: rows.length, hasAssistLine: !!withAssist, assistText: withAssist ? withAssist.querySelector(".ct-event-assist").textContent : null };
   });
-  check("7) Lista de eventos (gol/cartão) sem linha 'Assistência' separada — vira sub-linha do gol:", JSON.stringify(goalRow));
+  if (goalRow.hasAssistLine) check("7) Lista de eventos (gol/cartão) sem linha 'Assistência' separada — vira sub-linha do gol:", !!goalRow.assistText && goalRow.assistText.trim().length > 0, JSON.stringify(goalRow));
+  else check("7) (pulado -- nenhum gol assistido nesta partida pra conferir a sub-linha)");
 
   await browser.close();
 })().catch((e) => { console.error("FATAL:", e); process.exit(1); });

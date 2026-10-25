@@ -1,6 +1,6 @@
 const { chromium } = require("playwright-core");
 const { check } = require("./_check");
-const { skipOnboarding } = require("./_startup");
+const { enterGame } = require("./_startup");
 (async () => {
   const browser = await chromium.launch({ executablePath: process.env.PW_CHROMIUM_PATH || undefined, headless: true, args: ["--host-resolver-rules=MAP fonts.googleapis.com 127.0.0.1,MAP fonts.gstatic.com 127.0.0.1"] });
   const page = await browser.newPage({ viewport: { width: 390, height: 900 } });
@@ -33,12 +33,7 @@ const { skipOnboarding } = require("./_startup");
   check("1) Selecionar NÃO inicia carreira (só marca):", beforeSelect.fabHidden && !afterSelect.fabHidden && afterSelect.stillOnPicker, JSON.stringify({ beforeSelect, afterSelect }));
 
   await page.click("#btnConfirmClub");
-  await skipOnboarding(page);
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.waitForTimeout(700);
+  await enterGame(page, { claimDailyLogin: false });
   const afterConfirm = await page.evaluate(() => ({ gameVisible: !document.getElementById("screenGame").classList.contains("hidden") }));
   check("2) Confirmar clube inicia a carreira de fato:", afterConfirm.gameVisible);
 
@@ -88,7 +83,7 @@ const { skipOnboarding } = require("./_startup");
       firstFillWidth: rows[0]?.querySelector(".m3-attr-fill")?.style.width,
     };
   });
-  check("6) Perfil do jogador com 5 barras de atributo (Geral/Ataque/Defesa/Físico/Moral), sem blocos:", perfil.count === 5 && !perfil.hasOldBlocks && perfil.firstFillWidth, JSON.stringify(perfil));
+  check("6) Perfil do jogador com 5 barras de atributo (Geral/Ataque/Defesa/Físico/Moral), sem blocos:", perfil.count === 5 && !perfil.hasOldBlocks && !!perfil.firstFillWidth, JSON.stringify(perfil));
 
   await page.screenshot({ path: "m3_27_onboarding_selecionado.png" });
   await page.click("#detailClose");

@@ -15,7 +15,7 @@
 // do Checkout Pro (?status=approved na URL).
 const { chromium } = require("playwright-core");
 const { check } = require("./_check");
-const { skipOnboarding } = require("./_startup");
+const { enterGame } = require("./_startup");
 
 async function newCareer(page, base, email) {
   await page.goto(base + "/", { waitUntil: "load" });
@@ -29,13 +29,7 @@ async function newCareer(page, base, email) {
   await page.click(".m3-club-row");
   await page.waitForTimeout(150);
   await page.click("#btnConfirmClub");
-  await skipOnboarding(page);
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnClaimDailyLogin", { timeout: 3000 }).catch(() => {});
-  await page.waitForTimeout(500);
+  await enterGame(page);
 }
 async function openLoja(page) {
   await page.click("#btnBottomMenu");
@@ -112,11 +106,7 @@ async function openLojaBoosts(page) {
   await page2.click(".m3-club-row");
   await page2.waitForTimeout(150);
   await page2.click("#btnConfirmClub");
-  await skipOnboarding(page2);
-  await page2.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page2.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page2.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page2.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
+  await enterGame(page2, { claimDailyLogin: false });
   await page2.waitForSelector("#dailyLoginOverlay.open", { timeout: 6000 }).catch(() => {});
   await page2.click("#btnClaimDailyLogin", { timeout: 6000 }).catch(() => {});
   await page2.waitForSelector("#dailyLoginOverlay:not(.open)", { timeout: 6000 }).catch(() => {});

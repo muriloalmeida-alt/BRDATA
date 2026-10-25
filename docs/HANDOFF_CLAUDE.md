@@ -901,7 +901,8 @@ APROVADO pelo Murilo em 25/10/2026 ("Faça merge da Ge-balance-004"),
 com a decisão anterior "Sem convergência". Reposicionamento por degrau
 na virada de temporada (issue #39). Os 2 critérios que ficaram no
 limite (rebaixado volta em 50–52%; promovido à B cai de novo em
-45–48%) seguem registrados no relatório e entraram com o merge.
+45–48%) foram ACEITOS pelo Murilo em 25/10/2026, depois do merge ("Os
+critérios estão ok").
 Validação no merge: testes novos 4/4, rota rápida 18/18, suíte
 completa sem regressão (única falha fora da lista conhecida,
 `test_loan_advanced`, é o flake de onboarding sob carga descrito em

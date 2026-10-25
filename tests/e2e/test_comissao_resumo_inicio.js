@@ -4,7 +4,7 @@
 // Comissão Técnica direto no Início.
 const { chromium } = require("playwright-core");
 const { check } = require("./_check");
-const { skipOnboarding } = require("./_startup");
+const { enterGame } = require("./_startup");
 
 (async () => {
   const browser = await chromium.launch({ executablePath: process.env.PW_CHROMIUM_PATH || undefined, headless: true, args: ["--host-resolver-rules=MAP fonts.googleapis.com 127.0.0.1,MAP fonts.gstatic.com 127.0.0.1"] });
@@ -24,14 +24,7 @@ const { skipOnboarding } = require("./_startup");
   await page.click(".m3-club-row");
   await page.waitForTimeout(150);
   await page.click("#btnConfirmClub");
-  await skipOnboarding(page);
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.waitForTimeout(1500);
-  await page.click("#btnClaimDailyLogin").catch(() => {});
-  await page.waitForTimeout(200);
+  await enterGame(page);
 
   // 1) Sem comissão contratada, o card não aparece na Início.
   const check1 = await page.evaluate(() => document.getElementById("commissionSummaryCard").style.display === "none");
@@ -109,7 +102,7 @@ const { skipOnboarding } = require("./_startup");
   await page.click('.m3-dialog-overlay [data-commission-act="later"]');
   await page.waitForTimeout(200);
   const afterLater = await page.evaluate(() => ({ open: !!document.querySelector(".m3-dialog-overlay"), scheme: CAREER.trainingSchemeId }));
-  console.log("3a2) 'Agora não' fecha o diálogo sem aplicar:", !afterLater.open && afterLater.scheme === schemeBefore, JSON.stringify(afterLater));
+  check("3a2) 'Agora não' fecha o diálogo sem aplicar:", !afterLater.open && afterLater.scheme === schemeBefore, JSON.stringify(afterLater));
   await page.click(`#commissionSummaryList .m3-commission-icon-btn:nth-child(${trainingIdx + 1})`);
   await page.waitForTimeout(300);
   await page.click('.m3-dialog-overlay [data-commission-act="apply"]');

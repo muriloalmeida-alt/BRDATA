@@ -4,7 +4,7 @@
 // de verdade) enquanto ele ainda está visível.
 const { chromium } = require("playwright-core");
 const { check } = require("./_check");
-const { skipOnboarding } = require("./_startup");
+const { enterGame } = require("./_startup");
 const { skipPreseason } = require("./_calendar_skip");
 
 (async () => {
@@ -25,13 +25,7 @@ const { skipPreseason } = require("./_calendar_skip");
   await page.click(".m3-club-row");
   await page.waitForTimeout(150);
   await page.click("#btnConfirmClub");
-  await skipOnboarding(page);
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnClaimDailyLogin", { timeout: 3000 }).catch(() => {});
-  await page.waitForTimeout(500);
+  await enterGame(page);
 
   // Força a coletiva de imprensa a SEMPRE aparecer (oposto do hábito
   // usual nos outros testes) -- é justo essa tela sem rodapé fixo que
@@ -49,12 +43,29 @@ const { skipPreseason } = require("./_calendar_skip");
   await page.click(".m3-nav-item[data-panel='central']");
   await page.waitForTimeout(200);
   await skipPreseason(page); // GE-CALENDAR-001: carreira nova começa na pré-temporada
+  // ...e enfraquece o adversário da rodada (mesma técnica de
+  // test_coletiva_imprensa), pra vitória — e a coletiva — serem certas.
+  await page.evaluate(() => {
+    const fx = (CAREER.schedule[CAREER.currentRound] || []).find((m) => String(m.home) === String(CAREER.clubId) || String(m.away) === String(CAREER.clubId));
+    const oppId = String(fx.home) === String(CAREER.clubId) ? fx.away : fx.home;
+    (CAREER.leagueSquads[String(oppId)] || []).forEach((p) => { p.atk = 1; p.overall = 20; });
+  });
   await page.click("#btnSimulate");
   await page.waitForSelector("#preMatchOverlay.open", { timeout: 5000 });
   await page.click("#btnPreMatchGo");
   await page.waitForSelector("#liveMatchOverlay.open", { timeout: 5000 });
   await page.evaluate(() => skipLiveMatch());
   await page.waitForSelector("#matchDetailOverlay.open", { timeout: 5000 });
+  // Este teste é sobre o toast POR CIMA da coletiva (tela sem rodapé
+  // fixo), não sobre o gatilho dela (coberto por test_coletiva_imprensa).
+  // Se a partida não gerou gatilho (empate em casa não gera nenhum),
+  // dispara a mesma coletiva pós-jogo pelas funções do próprio jogo.
+  const pressFromMatch = await page.evaluate(() => {
+    if (PENDING_PRESS) return true;
+    firePressConference("01", CAREER.currentRound - 1, true);
+    return false;
+  });
+  console.log("   Coletiva gerada pela própria partida:", pressFromMatch);
   await page.click("#btnMatchDetailContinue");
   await page.waitForSelector("#pressOverlay.open", { timeout: 5000 });
 

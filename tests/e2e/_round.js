@@ -44,7 +44,19 @@ async function playRound(page, hooks = {}) {
   const screens = [];
   let friendly = false, matchWeek = false;
   const note = (id) => { if (screens[screens.length - 1] !== id) screens.push(id); };
-  const hook = async (name) => (hooks[name] ? hooks[name](page) : undefined);
+  // Cada gancho roda 1x por rodada (a mesma tela pode ser lida de novo
+  // no laço se o clique de seguir não passar de primeira, ver tap).
+  const hooked = new Map();
+  const hook = async (name) => {
+    if (!hooks[name]) return undefined;
+    if (!hooked.has(name)) hooked.set(name, await hooks[name](page));
+    return hooked.get(name);
+  };
+  // Clique curto: se algo cobrir o botão (toast por cima, a próxima tela
+  // abrindo um instante depois), em vez de ficar 30 s preso no mesmo
+  // clique, volta pro laço, relê o estado e trata a tela que estiver em
+  // cima. O limite total da rodada (STEP_LIMIT_MS) continua valendo.
+  const tap = (selector) => page.click(selector, { timeout: 2500 }).then(() => true, () => false);
   // Aciona o botão sem passar pelo teste de "ponteiro livre" do
   // Playwright: depois de cada semana um toast fica ~3,6 s POR CIMA do
   // botão (bug de produto registrado em docs/MOTOR_TESTES_FASE_B.md,
@@ -72,23 +84,23 @@ async function playRound(page, hooks = {}) {
       await page.evaluate(() => skipLiveMatch());
     } else if (top === "preMatchOverlay") {
       note("preMatchOverlay"); matchWeek = true;
-      await page.click("#btnPreMatchGo");
+      await tap("#btnPreMatchGo");
     } else if (top === "matchDetailOverlay") {
       note("matchDetailOverlay");
       if ((await hook("onMatchDetail")) === "stop") return { screens, stoppedAt: "matchDetailOverlay", friendly, matchWeek };
-      await page.click("#btnMatchDetailContinue");
+      await tap("#btnMatchDetailContinue");
     } else if (top === "pressOverlay") {
       note("pressOverlay");
       if ((await hook("onPress")) === "stop") return { screens, stoppedAt: "pressOverlay", friendly, matchWeek };
-      await page.click("#pressOptions [data-press]");
+      await tap("#pressOptions [data-press]");
     } else if (top === "newsOverlay") {
       note("newsOverlay");
       if ((await hook("onNews")) === "stop") return { screens, stoppedAt: "newsOverlay", friendly, matchWeek };
-      await page.click("#btnNewsContinue");
+      await tap("#btnNewsContinue");
     } else if (top === "roundResultsOverlay") {
       note("roundResultsOverlay");
       if ((await hook("onRoundResults")) === "stop") return { screens, stoppedAt: "roundResultsOverlay", friendly, matchWeek };
-      await page.click("#btnRoundResultsContinue");
+      await tap("#btnRoundResultsContinue");
     } else if (top === "playerOfferOverlay") {
       note("playerOfferOverlay");
       if ((await hook("onPlayerOffer")) === "stop") return { screens, stoppedAt: "playerOfferOverlay", friendly, matchWeek };
@@ -96,7 +108,7 @@ async function playRound(page, hooks = {}) {
     } else if (top === "tabelaModalOverlay") {
       note("tabelaModalOverlay");
       if ((await hook("onTabela")) === "stop") return { screens, stoppedAt: "tabelaModalOverlay", friendly, matchWeek };
-      await page.click("#btnTabelaModalCloseFooter");
+      await tap("#btnTabelaModalCloseFooter");
     } else if (top) {
       return { screens, stoppedAt: top, friendly, matchWeek }; // tela que este helper não conhece: o teste decide
     } else if (!st.live && !st.busy && (st.round !== start.round || st.week !== start.week)) {

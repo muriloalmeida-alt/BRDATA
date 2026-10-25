@@ -1,6 +1,6 @@
 const { chromium } = require("playwright-core");
 const { check } = require("./_check");
-const { skipOnboarding } = require("./_startup");
+const { enterGame } = require("./_startup");
 
 async function newCareer(page, base, email) {
   await page.goto(base + "/", { waitUntil: "load" });
@@ -14,13 +14,7 @@ async function newCareer(page, base, email) {
   await page.click(".m3-club-row");
   await page.waitForTimeout(150);
   await page.click("#btnConfirmClub");
-  await skipOnboarding(page);
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnClaimDailyLogin", { timeout: 3000 }).catch(() => {});
-  await page.waitForTimeout(500);
+  await enterGame(page);
 }
 async function getCareer(page) {
   return page.evaluate(async () => (await (await fetch("/api/career")).json()).career);
@@ -104,7 +98,7 @@ async function putCareer(page, career) {
   await page.waitForTimeout(200);
   const detailButtons = await page.evaluate(() => Array.from(document.querySelectorAll("#detailBody [data-act]")).map((b) => b.dataset.act));
   const detailText = await page.evaluate(() => document.getElementById("detailBody").textContent);
-  check("5) Botões no detalhe do emprestado (não deve ter sell/release/renew/promote/demote):", detailButtons);
+  check("5) Botões no detalhe do emprestado (não deve ter sell/release/renew/promote/demote):", !detailButtons.some((a) => ["sell", "release", "renew", "promote", "demote"].includes(a)), detailButtons);
   console.log("   Texto explicativo de empréstimo presente:", detailText.includes("Emprestado do"));
   await page.click("#detailClose");
   await page.waitForTimeout(200);

@@ -5,7 +5,7 @@
 // d) Resultados da rodada — seção de notícias (Rádio Data FM) removida
 // e) Tabela da carreira — mesmo layout de rodapé fixo, só com Fechar
 const { chromium } = require("playwright-core");
-const { skipOnboarding } = require("./_startup");
+const { enterGame } = require("./_startup");
 const { skipPreseason } = require("./_calendar_skip");
 
 (async () => {
@@ -26,13 +26,7 @@ const { skipPreseason } = require("./_calendar_skip");
   await page.click(".m3-club-row");
   await page.waitForTimeout(150);
   await page.click("#btnConfirmClub");
-  await skipOnboarding(page);
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnClaimDailyLogin", { timeout: 3000 }).catch(() => {});
-  await page.waitForTimeout(500);
+  await enterGame(page);
   // Zera a chance de coletiva de imprensa (mesmo hábito de sempre) pra
   // esse teste ser determinístico — o foco aqui é a sequência de
   // botões das modais, não a coletiva.

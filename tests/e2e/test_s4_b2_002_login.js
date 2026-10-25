@@ -87,19 +87,26 @@ const { check } = require("./_check");
   // durante o fetch (checado via interceptação de rede pra dar tempo
   // de capturar o estado intermediário, que normalmente passa rápido
   // demais pro teste pegar).
+  // A requisição fica PRESA até o estado intermediário ser lido (antes:
+  // atraso fixo de 400 ms e leitura 150 ms depois de iniciar o clique —
+  // sob carga o clique ainda não tinha sido disparado e a leitura pegava
+  // o botão de antes).
+  let releaseLogin;
+  const loginGate = new Promise((r) => { releaseLogin = r; });
   await page.route("**/api/auth/login", async (route) => {
-    await new Promise((r) => setTimeout(r, 400));
+    await loginGate;
     await route.continue();
   });
   await page.fill("#ctLoginPassword", "senha123");
   const submitPromise = page.click("#screenLoginRequired button[type=submit]");
-  await page.waitForTimeout(150);
+  await page.waitForFunction(() => document.querySelector("#screenLoginRequired button[type=submit]").disabled, null, { timeout: 5000 }).catch(() => {});
   const loadingState = await page.evaluate(() => {
     const btn = document.querySelector("#screenLoginRequired button[type=submit]");
     return { disabled: btn.disabled, label: btn.textContent };
   });
   check("4) Carregamento: botão desabilitado com texto 'Entrando...' durante o login:",
     loadingState.disabled && loadingState.label === "Entrando...", JSON.stringify(loadingState));
+  releaseLogin();
   await submitPromise;
 
   // 5) Estado "sucesso"/conclusão: login válido faz a tela de login

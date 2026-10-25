@@ -6,7 +6,7 @@
 //    rodada" e passou a aparecer no cartão-resumo da tela de Notícias.
 const { chromium } = require("playwright-core");
 const { check } = require("./_check");
-const { skipOnboarding } = require("./_startup");
+const { enterGame } = require("./_startup");
 const { playNextMatchRound } = require("./_round");
 const { skipPreseason } = require("./_calendar_skip");
 
@@ -28,13 +28,7 @@ const { skipPreseason } = require("./_calendar_skip");
   await page.click(".m3-club-row");
   await page.waitForTimeout(150);
   await page.click("#btnConfirmClub");
-  await skipOnboarding(page);
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnClaimDailyLogin", { timeout: 3000 }).catch(() => {});
-  await page.waitForTimeout(500);
+  await enterGame(page);
   await page.evaluate(() => {
     Object.keys(PRESS_CHANCE_BY_ID).forEach((k) => { PRESS_CHANCE_BY_ID[k] = 1e-12; }); // não 0: `|| 0.3` em determineMatchPressTrigger faria 0 virar 30%
     PRESS_ALWAYS_IDS.clear();

@@ -1,7 +1,7 @@
 // Testa Fundação M3 + nav de 5 itens + Início/Clube (Bloco 1, parte 1).
 const { chromium } = require("playwright-core");
 const { check } = require("./_check");
-const { skipOnboarding } = require("./_startup");
+const { enterGame } = require("./_startup");
 
 (async () => {
   const browser = await chromium.launch({ executablePath: process.env.PW_CHROMIUM_PATH || undefined, headless: true, args: ["--host-resolver-rules=MAP fonts.googleapis.com 127.0.0.1,MAP fonts.gstatic.com 127.0.0.1"] });
@@ -23,18 +23,11 @@ const { skipOnboarding } = require("./_startup");
   await page.click(".m3-club-row");
   await page.waitForTimeout(150);
   await page.click("#btnConfirmClub");
-  await skipOnboarding(page);
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.waitForTimeout(800);
-  await page.click("#btnClaimDailyLogin", { timeout: 3000 }).catch(() => {});
-  await page.waitForTimeout(300);
+  await enterGame(page);
 
   // 1) Nav tem 5 itens + Menu, todos com data-panel certo.
   const navLabels = await page.evaluate(() => [...document.querySelectorAll(".m3-nav-item")].map((el) => el.textContent.trim()));
-  check("1) Nav com 5 itens + Menu:", JSON.stringify(navLabels), navLabels.length === 6 && navLabels[0] === "Início" && navLabels[4] === "Clube" && navLabels[5] === "Menu");
+  check("1) Nav com 5 itens + Menu:", navLabels.length === 6 && navLabels[0] === "Início" && navLabels[4] === "Clube" && navLabels[5] === "Menu", JSON.stringify(navLabels));
 
   // 2) Topbar mostra identidade do clube (nome + posição).
   const topbar = await page.evaluate(() => ({

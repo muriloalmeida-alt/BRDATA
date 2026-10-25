@@ -19,8 +19,13 @@
 //  - --suite=fast (subconjunto de smoke, NÃO substitui a completa),
 //    --coverage (cobertura JS via _coverage_preload.js), metadados e
 //    logs de falha em _artifacts/.
+//  - Fase B: perfis de servidor (suites.json "serverProfiles") — com
+//    --isolated-server, testes que precisam de um servidor configurado
+//    de outro jeito (DATA_PROVIDER=frozen, conta com créditos criada
+//    antes do boot) ganham um servidor isolado próprio, depois dos demais.
 // Nada aqui pula teste, repete teste (sem retry) ou altera resultado: o
-// código de saída de cada script é o veredito, como sempre.
+// código de saída de cada script é o veredito, como sempre (desde a Fase
+// B ele reflete as verificações — ver _check.js).
 //
 // Uso:
 //   node run_parallel.js [filtro[,filtro2...]] [opções]

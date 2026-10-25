@@ -16,7 +16,7 @@
 // de resultados), não na estatística do chaveamento.
 const { chromium } = require("playwright-core");
 const { check } = require("./_check");
-const { skipOnboarding } = require("./_startup");
+const { enterGame } = require("./_startup");
 
 async function newCareer(page, base, email) {
   await page.goto(base + "/", { waitUntil: "load" });
@@ -30,13 +30,7 @@ async function newCareer(page, base, email) {
   await page.click(".m3-club-row");
   await page.waitForTimeout(150);
   await page.click("#btnConfirmClub");
-  await skipOnboarding(page);
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnClaimDailyLogin", { timeout: 3000 }).catch(() => {});
-  await page.waitForTimeout(500);
+  await enterGame(page);
 }
 async function getCareer(page) {
   return page.evaluate(async () => (await (await fetch("/api/career")).json()).career);
@@ -98,15 +92,18 @@ async function resolveOneRoundProgrammatic(page) {
     await resolveOneRoundProgrammatic(page);
   }
   career = await getCareer(page);
-  check("2) Depois da rodada 6 (volta da Fase 1), avançou pra r32 (se o técnico seguiu vivo) ou ficou eliminado — fase:", career.cup.phase, "| humanAlive:", career.cup.humanAlive);
+  check("2) Depois da rodada 6 (volta da Fase 1), avançou pra r32 (se o técnico seguiu vivo) ou ficou eliminado — fase:", career.cup.phase === "r32" || career.cup.humanAlive === false, "| fase:", career.cup.phase, "| humanAlive:", career.cup.humanAlive);
   console.log("   r32 tem 32 clubes (16 confrontos), se ainda ativo:", career.cup.phase === "r32" ? new Set(career.cup.ties.r32.flatMap((t) => [String(t.home), String(t.away)])).size === 32 : "N/A (eliminado)");
   // Se o confronto do técnico virou ao vivo em alguma dessas rodadas
   // (ver finishCupLegLive), a MESMA cadeia normal de pós-rodada já
   // abriu proposta/Tabela sozinha ao terminar — fecha antes de seguir,
   // mesmo tratamento que o técnico faria clicando no X.
+  // (proposta ANTES da Tabela: fechar a proposta segue o fluxo e abre a
+  // Tabela — ver closePlayerOfferModal; na ordem inversa a Tabela ficava
+  // aberta por cima do menu, falha intermitente da Fase B.)
   await page.evaluate(() => {
-    if (document.getElementById("tabelaModalOverlay").classList.contains("open")) closeTabelaModal();
     if (document.getElementById("playerOfferOverlay").classList.contains("open")) closePlayerOfferModal();
+    if (document.getElementById("tabelaModalOverlay").classList.contains("open")) closeTabelaModal();
   });
 
   // 3) Tab Tabela mostra o card de Copa com o rótulo certo da fase atual.
@@ -116,7 +113,7 @@ async function resolveOneRoundProgrammatic(page) {
   await page.click("#btnOpenTabela");
   await page.waitForTimeout(300);
   const cupStatusText = await page.evaluate(() => document.getElementById("cupStatusText").textContent);
-  check("3) Texto de status na aba Tabela:", cupStatusText);
+  check("3) Texto de status na aba Tabela:", !!cupStatusText && cupStatusText.trim().length > 0, cupStatusText);
   await page.evaluate(() => closeTabelaModal());
   await page.waitForTimeout(200);
 
@@ -137,7 +134,7 @@ async function resolveOneRoundProgrammatic(page) {
   await page.click("#btnOpenTabela");
   await page.waitForTimeout(300);
   const championText = await page.evaluate(() => document.getElementById("cupStatusText").innerHTML);
-  check("4) Texto de campeão:", championText);
+  check("4) Texto de campeão:", !!championText && championText.includes("Campeão"), championText);
 
   // 5) Força "não classificado" (cup.active=false) e confere o texto —
   // não acontece mais na prática pro formato expandido (todos os 60
@@ -154,7 +151,7 @@ async function resolveOneRoundProgrammatic(page) {
   await page.click("#btnOpenTabela");
   await page.waitForTimeout(300);
   const notQualifiedText = await page.evaluate(() => document.getElementById("cupStatusText").textContent);
-  check("5) Texto de não classificado:", notQualifiedText);
+  check("5) Texto de não classificado:", !!notQualifiedText && notQualifiedText.includes("não se classificou"), notQualifiedText);
 
   // 6) Migração: remove CAREER.cup, força rodada 20 (entre r16.volta=18
   // e qf.ida=21 no calendário expandido), recarrega — setupCup deve

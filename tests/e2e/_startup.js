@@ -39,4 +39,24 @@ async function skipStartupWizard(page) {
   return skipped;
 }
 
-module.exports = { skipOnboarding, skipStartupWizard };
+// Entrada completa numa carreira nova, pelo ESTADO da tela — a mesma
+// sequência que ~140 testes faziam com cliques "opcionais" de janela
+// fixa (tutorial 2 s, 4x assistente 4 s, login diário 3 s) + esperas
+// fixas de 500-1500 ms depois: tutorial -> assistente de início (abre
+// depois do POST do tutorial) -> login diário (coleta, se
+// claimDailyLogin) — e só devolve com a tela do jogo limpa.
+async function enterGame(page, { claimDailyLogin = true } = {}) {
+  await skipOnboarding(page);
+  await page.waitForSelector("#startupWizardOverlay.open", { timeout: 4000 }).catch(() => {});
+  await skipStartupWizard(page);
+  if (claimDailyLogin) {
+    const opened = await page.waitForSelector("#dailyLoginOverlay.open", { timeout: 3000 }).then(() => true, () => false);
+    if (opened) {
+      await page.click("#btnClaimDailyLogin");
+      await page.waitForFunction(() => !document.getElementById("dailyLoginOverlay").classList.contains("open"), null, { timeout: 5000 });
+    }
+  }
+  await page.waitForFunction(() => ![...document.querySelectorAll(".ct-modal-overlay.open")].some((e) => e.id !== "actionLoadingOverlay" && (e.id !== "dailyLoginOverlay")), null, { timeout: 5000 }).catch(() => {});
+}
+
+module.exports = { skipOnboarding, skipStartupWizard, enterGame };

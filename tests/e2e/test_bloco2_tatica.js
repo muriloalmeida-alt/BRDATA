@@ -2,7 +2,7 @@
 // formação, 4 eixos táticos reais em barra de 5 segmentos, FAB salvar.
 const { chromium } = require("playwright-core");
 const { check } = require("./_check");
-const { skipOnboarding } = require("./_startup");
+const { enterGame } = require("./_startup");
 const { skipPreseason } = require("./_calendar_skip");
 
 (async () => {
@@ -23,14 +23,7 @@ const { skipPreseason } = require("./_calendar_skip");
   await page.click(".m3-club-row");
   await page.waitForTimeout(150);
   await page.click("#btnConfirmClub");
-  await skipOnboarding(page);
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.waitForTimeout(1500);
-  await page.click("#btnClaimDailyLogin").catch(() => {});
-  await page.waitForTimeout(200);
+  await enterGame(page);
 
   await page.click(".m3-nav-item[data-panel='escalacao']");
   await page.waitForTimeout(300);

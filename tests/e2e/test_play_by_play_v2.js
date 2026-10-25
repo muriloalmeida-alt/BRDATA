@@ -4,7 +4,7 @@
 // número razoável de tentativas (são decorativos/probabilísticos).
 const { chromium } = require("playwright-core");
 const { check } = require("./_check");
-const { skipOnboarding } = require("./_startup");
+const { enterGame } = require("./_startup");
 const { skipPreseason } = require("./_calendar_skip");
 
 async function playOneMatch(page) {
@@ -39,13 +39,7 @@ async function playOneMatch(page) {
   await page.click(".m3-club-row");
   await page.waitForTimeout(150);
   await page.click("#btnConfirmClub");
-  await skipOnboarding(page);
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnClaimDailyLogin", { timeout: 3000 }).catch(() => {});
-  await page.waitForTimeout(500);
+  await enterGame(page);
 
   // 1) Barra de posse ao vivo aparece com valores plausíveis já no
   // início da partida (antes de qualquer tempo resolver -- 50/50).

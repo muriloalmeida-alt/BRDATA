@@ -1,5 +1,5 @@
 const { chromium } = require("playwright-core");
-const { skipOnboarding } = require("./_startup");
+const { enterGame } = require("./_startup");
 const { skipPreseason } = require("./_calendar_skip");
 
 (async () => {
@@ -30,12 +30,7 @@ const { skipPreseason } = require("./_calendar_skip");
   await page.click(".m3-club-row");
   await page.waitForTimeout(150);
   await page.click("#btnConfirmClub");
-  await skipOnboarding(page);
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnClaimDailyLogin", { timeout: 3000 }).catch(() => {});
+  await enterGame(page);
   await page.waitForSelector("#screenGame:not(.hidden)", { timeout: 30000 });
   const t1 = Date.now();
   console.log("Tempo pra criar carreira (buildSquad + buildLeagueSquads pros 20 times):", t1 - t0, "ms");

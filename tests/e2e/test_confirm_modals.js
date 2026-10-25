@@ -1,5 +1,5 @@
 const { chromium } = require("playwright-core");
-const { skipOnboarding } = require("./_startup");
+const { enterGame } = require("./_startup");
 const { check } = require("./_check");
 
 (async () => {
@@ -26,13 +26,7 @@ const { check } = require("./_check");
   await page.click(".m3-club-row");
   await page.waitForTimeout(150);
   await page.click("#btnConfirmClub");
-  await skipOnboarding(page);
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnClaimDailyLogin", { timeout: 3000 }).catch(() => {});
-  await page.waitForTimeout(500);
+  await enterGame(page);
 
   // Teste 1: vender jogador (via Mercado) -- desde o Bloco 3 ("Colocar
   // à venda"), vender não usa mais o confirmModal() genérico testado

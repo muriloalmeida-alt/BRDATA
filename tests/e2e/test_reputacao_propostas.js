@@ -1,6 +1,6 @@
 const { chromium } = require("playwright-core");
 const { check } = require("./_check");
-const { skipOnboarding, skipStartupWizard } = require("./_startup");
+const { skipOnboarding, skipStartupWizard, enterGame } = require("./_startup");
 
 async function newCareer(page, base, email) {
   await page.goto(base + "/", { waitUntil: "domcontentloaded" });
@@ -14,13 +14,7 @@ async function newCareer(page, base, email) {
   await page.click(".m3-club-row");
   await page.waitForTimeout(150);
   await page.click("#btnConfirmClub");
-  await skipOnboarding(page);
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnClaimDailyLogin", { timeout: 3000 }).catch(() => {});
-  await page.waitForTimeout(500);
+  await enterGame(page);
 }
 
 (async () => {
@@ -114,13 +108,7 @@ async function newCareer(page, base, email) {
   await page.click(".m3-club-row");
   await page.waitForTimeout(150);
   await page.click("#btnConfirmClub");
-  await skipOnboarding(page);
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnClaimDailyLogin", { timeout: 3000 }).catch(() => {});
-  await page.waitForTimeout(500);
+  await enterGame(page);
   const r4 = await page.evaluate(() => ({ reputation: CAREER.reputation, historyLen: (CAREER.clubHistory || []).length }));
   check("6) 'Reiniciar' não carrega reputação (nasce 50, sem currículo):", r4.reputation === 50 && r4.historyLen === 0);
 
@@ -200,13 +188,7 @@ async function newCareer(page, base, email) {
   await page.click("#clubGrid .m3-club-row");
   await page.waitForTimeout(150);
   await page.click("#btnConfirmClub");
-  await skipOnboarding(page);
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnClaimDailyLogin", { timeout: 3000 }).catch(() => {});
-  await page.waitForTimeout(800);
+  await enterGame(page);
   const finalState = await page.evaluate(() => ({ clubName: CAREER.clubName, historyLen: (CAREER.clubHistory || []).length, lastReason: (CAREER.clubHistory || [])[0] && CAREER.clubHistory[0].reason }));
   console.log("   Clube realmente trocou:", finalState.clubName === clubBefore.proposalClub);
   console.log("   Currículo ganhou entrada com reason='accepted_proposal':", finalState.historyLen >= 1 && finalState.lastReason === "accepted_proposal");
