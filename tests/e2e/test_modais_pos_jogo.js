@@ -37,7 +37,7 @@ const { skipPreseason } = require("./_calendar_skip");
   // esse teste ser determinístico — o foco aqui é a sequência de
   // botões das modais, não a coletiva.
   await page.evaluate(() => {
-    Object.keys(PRESS_CHANCE_BY_ID).forEach((k) => { PRESS_CHANCE_BY_ID[k] = 0; });
+    Object.keys(PRESS_CHANCE_BY_ID).forEach((k) => { PRESS_CHANCE_BY_ID[k] = 1e-12; }); // não 0: `|| 0.3` em determineMatchPressTrigger faria 0 virar 30%
     PRESS_ALWAYS_IDS.clear();
   });
   await page.click(".m3-nav-item[data-panel='central']");

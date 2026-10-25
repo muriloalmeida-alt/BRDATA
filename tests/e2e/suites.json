@@ -41,5 +41,35 @@
   "exclusive": {
     "_doc": "Testes que precisam rodar SOZINHOS, depois dos demais (estado compartilhado que não dá pra isolar). Vazio desde a Fase B: test_save_limit_001_careerstore.js, que lia/gravava o server/data/careers.json do repositório enquanto o servidor o regravava, passou a usar uma cópia do careerStore num diretório temporário próprio.",
     "tests": []
+  },
+  "serverProfiles": {
+    "_doc": "Testes que precisam de um servidor configurado de outro jeito. Com --isolated-server, cada perfil sobe um servidor isolado PRÓPRIO (dados vazios), depois de todos os outros testes, aplicando env (variáveis do servidor), preBoot (script rodado ANTES do boot com SERVER_DIR apontando pra cópia isolada) e testEnv (variáveis passadas ao teste). {email} vira um e-mail único por servidor. Sem --isolated-server esses testes rodam contra o servidor que estiver de pé, como antes (e falham se ele não estiver configurado assim). Antes da Fase B nenhum runner fazia isso e os 2 testes falhavam em toda execução.",
+    "frozen": {
+      "_doc": "Catálogo real congelado (server/frozen-catalog) em vez do Modo Exemplo.",
+      "env": {
+        "DATA_PROVIDER": "frozen"
+      },
+      "tests": [
+        "test_frozen_provider.js"
+      ]
+    },
+    "loja-creditos": {
+      "_doc": "Conta com Créditos BR concedidos via addCredits (mesma função do webhook do Mercado Pago) antes do servidor subir — ver _grant_test_credits.js.",
+      "preBoot": {
+        "script": "_grant_test_credits.js",
+        "args": [
+          "{email}",
+          "senha123",
+          "5000"
+        ]
+      },
+      "testEnv": {
+        "LOJA_TEST_EMAIL": "{email}",
+        "LOJA_TEST_CREDITS": "5000"
+      },
+      "tests": [
+        "test_loja_pagamento_real.js"
+      ]
+    }
   }
 }

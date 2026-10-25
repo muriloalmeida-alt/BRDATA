@@ -1,6 +1,7 @@
 const { chromium } = require("playwright-core");
 const { check } = require("./_check");
 const { skipOnboarding } = require("./_startup");
+const { skipPreseason } = require("./_calendar_skip");
 
 async function newCareer(page, base, email) {
   await page.goto(base + "/", { waitUntil: "domcontentloaded" });
@@ -36,6 +37,7 @@ async function newCareer(page, base, email) {
 
   const base = "http://localhost:8787";
   await newCareer(page, base, `batch${Date.now()}@teste.com`);
+  await skipPreseason(page); // GE-CALENDAR-001: carreira nova começa na pré-temporada
 
   // ---------- 4) Pausa no intervalo (45') ----------
   await page.click(".m3-nav-item[data-panel='central']");
@@ -113,6 +115,7 @@ async function newCareer(page, base, email) {
   await page.waitForSelector("#playerOfferOverlay.open", { timeout: 5000 });
   const offerModalState = await page.evaluate(() => ({
     text: document.getElementById("playerOfferText").textContent,
+    clubName: CAREER.pendingOffer && CAREER.pendingOffer.clubName,
     tabelaNotOpenYet: !document.getElementById("tabelaModalOverlay").classList.contains("open"),
   }));
   check("6) Proposta recebida abre modal de destaque com ação imediata:", offerModalState.text.length > 0 && offerModalState.tabelaNotOpenYet);
@@ -144,35 +147,12 @@ async function newCareer(page, base, email) {
   console.log("   Aceitar no modal resolve a proposta e segue pra Tabela:", acceptState.pendingCleared && acceptState.tabelaOpen);
   await page.click("#tabelaModalClose");
 
-  // ---------- 7) Confirmação de venda/empréstimo mostra o clube destino ----------
-  await page.click(".m3-nav-item[data-panel='elenco']");
-  await page.waitForTimeout(300);
-  const sellDestId = await page.evaluate(() => {
-    const p = CAREER.squad.filter((x) => x.origin === "principal")[2];
-    p.overall = 60; p.age = 27; // não recusa por destaque
-    return p.id;
-  });
-  await page.click(`[data-id="${sellDestId}"]`);
-  await page.waitForSelector("#detailOverlay.open");
-  await page.waitForTimeout(200);
-
-  // intercepta confirmModal via avaliação: dispara "sell" e checa o texto exposto no confirm modal
-  const sellConfirmText = await page.evaluate(async (id) => {
-    // como confirmModal usa uma Promise resolvida por clique, aqui só
-    // verificamos que o texto do modal de confirmação contém "pro "
-    // (nome do clube) antes de decidir clicar em cancelar.
-    return new Promise((resolve) => {
-      const orig = window.confirmModal;
-      window.confirmModal = async (text, label) => {
-        resolve(text);
-        return false; // cancela pra não mexer no estado
-      };
-      handlePlayerAction(id, "sell").finally(() => { window.confirmModal = orig; });
-      setTimeout(() => resolve(null), 2000);
-    });
-  }, sellDestId);
-  check("7) Confirmação de venda mostra o clube de destino:", !!sellConfirmText && / pro /.test(sellConfirmText));
-  await page.click("#detailClose").catch(() => {});
+  // ---------- 7) Venda mostra o clube destino ----------
+  // Bloco 3 ("Colocar à venda"): vender virou ANÚNCIO (openListModal, sem
+  // clube definido) — o clube de destino só existe quando chega uma
+  // proposta, e é o destaque da proposta (passo 6) que tem que nomeá-lo
+  // antes de o técnico aceitar.
+  check("7) Confirmação de venda mostra o clube de destino:", !!offerModalState.clubName && offerModalState.text.includes(offerModalState.clubName), JSON.stringify({ clube: offerModalState.clubName, texto: offerModalState.text.replace(/\s+/g, " ").trim() }));
 
   // Empréstimo: abrir o modal já mostra o clube destino no subtítulo
   await page.click(".m3-nav-item[data-panel='elenco']");

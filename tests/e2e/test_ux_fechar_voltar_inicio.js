@@ -44,6 +44,12 @@ const { skipOnboarding } = require("./_startup");
   async function anyOverlayOpen() {
     return page.evaluate(() => document.querySelectorAll(".ct-modal-overlay.open").length);
   }
+  async function screenState() {
+    return page.evaluate(() => ({
+      panel: document.querySelector(".ct-panel.active")?.id,
+      open: [...document.querySelectorAll(".ct-modal-overlay.open, .m3-dialog-overlay.open")].map((e) => e.id || e.className),
+    }));
+  }
 
   // 1) Comprar (enviar proposta) -> Início
   await goToPanel("mercado");
@@ -53,12 +59,18 @@ const { skipOnboarding } = require("./_startup");
   });
   await page.evaluate(({ clubId, playerId }) => openOfferModal(clubId, playerId), target);
   await page.waitForTimeout(100);
-  await page.click("#btnConfirmOffer, #btnSendOffer, [id*='ffer'][id*='onfirm'], [id*='ffer'][id*='end']").catch(() => {});
-  // fallback: chama a função direto se não achou o botão certo por id
-  const offerBtnFound = await page.evaluate(() => !!document.getElementById("offerOverlay").querySelector("button"));
-  await page.evaluate(() => { if (typeof confirmOfferFromModal === "function") confirmOfferFromModal(); });
+  // S4-B3-003: a proposta é um Dialog dinâmico (.m3-dialog-overlay) com
+  // o botão #btnOfferConfirm — clica nele de verdade (antes o teste
+  // adivinhava o id e chamava a função direto).
+  await page.waitForSelector(".m3-dialog-overlay.open #btnOfferConfirm", { timeout: 5000 });
+  await page.click("#btnOfferConfirm");
   await page.waitForTimeout(150);
-  check("1) Comprar (enviar proposta) fecha tudo e volta pra Início:", await activePanel() === "panel-central" && await anyOverlayOpen() === 0, { offerBtnFound });
+  const dialogsOpen = await page.evaluate(() => document.querySelectorAll(".m3-dialog-overlay.open").length);
+  // UX-MERCADO-001 (aprovado): operação de MERCADO não tira mais o
+  // técnico da tela em que ele estava — fecha tudo e FICA no Mercado
+  // (antes voltava pra Início, regra da Task #72 que segue valendo pros
+  // passos 4 em diante).
+  check("1) Comprar (enviar proposta) fecha tudo e fica no Mercado (UX-MERCADO-001):", await activePanel() === "panel-mercado" && await anyOverlayOpen() === 0 && dialogsOpen === 0, await screenState());
 
   // 2) Vender (colocar à venda) -> Início
   await goToPanel("elenco");
@@ -67,7 +79,7 @@ const { skipOnboarding } = require("./_startup");
   await page.waitForTimeout(100);
   await page.evaluate(() => confirmListFromModal());
   await page.waitForTimeout(150);
-  check("2) Vender (colocar à venda) fecha tudo e volta pra Início:", await activePanel() === "panel-central" && await anyOverlayOpen() === 0);
+  check("2) Vender (colocar à venda) fecha tudo e fica no Elenco (UX-MERCADO-001):", await activePanel() === "panel-elenco" && await anyOverlayOpen() === 0, await screenState());
 
   // 3) Emprestar -> Início (findInterestedBuyer é por sorteio -- tenta
   // algumas vezes com jogadores diferentes até achar um interessado,
@@ -87,7 +99,7 @@ const { skipOnboarding } = require("./_startup");
     await page.evaluate(async () => { await confirmLoanFromModal(); });
     await page.waitForTimeout(200);
   }
-  check("3) Emprestar fecha tudo e volta pra Início:", !loanOk || (await activePanel() === "panel-central" && await anyOverlayOpen() === 0), { loanOk });
+  check("3) Emprestar fecha tudo e fica no Elenco (UX-MERCADO-001):", loanOk && await activePanel() === "panel-elenco" && await anyOverlayOpen() === 0, { loanOk, ...(await screenState()) });
 
   // 4) Renovar contrato (sucesso) -> Início
   await goToPanel("elenco");

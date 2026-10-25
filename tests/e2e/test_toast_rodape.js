@@ -53,14 +53,17 @@ function toastVsChrome(page, chromeSelector) {
   await page.waitForTimeout(200);
   await page.click("#btnAutoLineup");
   await page.waitForTimeout(100);
-  const r1 = await toastVsChrome(page, ".mt-action-bar");
-  check("1) Escalação (auto-escalar) -- toast acima da barra de ação (gap >= 0):", r1.toastVisible && r1.gap >= 0, JSON.stringify(r1));
+  // Redesign M3 (Bloco 2): a barra de ação da Escalação virou o botão
+  // flutuante "Salvar escalação e táticas" (#btnSaveLineup, .m3-fab) —
+  // .mt-action-bar não existe mais nesta aba; a checagem é contra o FAB.
+  const r1 = await toastVsChrome(page, "#btnSaveLineup");
+  check("1) Escalação (auto-escalar) -- toast acima do botão flutuante de salvar (gap >= 0):", r1.toastVisible && r1.gap >= 0, JSON.stringify(r1));
 
   // 2) Salvar escalação e táticas -- mesma barra de ação.
   await page.click("#btnSaveLineup");
   await page.waitForTimeout(100);
-  const r2 = await toastVsChrome(page, ".mt-action-bar");
-  check("2) Escalação (salvar) -- toast acima da barra de ação:", r2.toastVisible && r2.gap >= 0, JSON.stringify(r2));
+  const r2 = await toastVsChrome(page, "#btnSaveLineup");
+  check("2) Escalação (salvar) -- toast acima do botão flutuante de salvar:", r2.toastVisible && r2.gap >= 0, JSON.stringify(r2));
 
   // 3) Aba SEM barra de ação (Elenco) -- toast deve subir acima da nav
   // mesmo sem action-bar (algum toast simples: usa o helper direto).

@@ -77,7 +77,7 @@ const { skipOnboarding } = require("./_startup");
     suggestedText: document.getElementById("renewSuggestedWage").textContent,
     durationValue: document.getElementById("renewDurationSelect").value,
   }));
-  check("3) Pré-preenchido:", prefill);
+  check("3) Pré-preenchido:", Number(prefill.wageValue) > 0 && !!prefill.durationValue && prefill.suggestedText.trim().length > 0, prefill);
 
   // 4) Recusa por salário abaixo do mínimo
   const wageBefore = await page.evaluate(async (id) => (await (await fetch("/api/career")).json()).career.squad.find((p) => p.id === id).wage, targetId);
@@ -87,8 +87,26 @@ const { skipOnboarding } = require("./_startup");
   const toastLow = await page.evaluate(() => document.getElementById("toast").textContent);
   const renewOverlayClosedAfterLow = await page.evaluate(() => !document.getElementById("renewOverlay").classList.contains("open"));
   const wageAfterLow = await page.evaluate(async (id) => (await (await fetch("/api/career")).json()).career.squad.find((p) => p.id === id).wage, targetId);
-  check("4) Toast (salário baixo):", toastLow);
+  check("4) Toast (salário baixo):", toastLow.includes("recusou") && renewOverlayClosedAfterLow && wageAfterLow === wageBefore, toastLow.replace(/\s+/g, " ").trim());
   console.log("   Sub-modal fechou:", renewOverlayClosedAfterLow, "| salário mudou (deve ser false):", wageAfterLow !== wageBefore);
+  // A recusa também dispara a coletiva de imprensa "19" (renovação
+  // recusada, ver proposeRenewal) POR CIMA do detalhe — responde antes
+  // de seguir (adicionada depois deste teste).
+  const pressAfterRefusal = await page.evaluate(() => document.getElementById("pressOverlay").classList.contains("open"));
+  if (pressAfterRefusal) {
+    await page.click("#pressOptions [data-press]");
+    await page.waitForTimeout(200);
+  }
+  console.log("   Coletiva após a recusa:", pressAfterRefusal, "| detalhe continua aberto:", await page.evaluate(() => document.getElementById("detailOverlay").classList.contains("open")));
+  // Responder a coletiva encerra a operação e volta pro Início
+  // (finishOperationAndGoHome) — reabre o detalhe do mesmo jogador.
+  if (!(await page.evaluate(() => document.getElementById("detailOverlay").classList.contains("open")))) {
+    await page.click(".m3-nav-item[data-panel='elenco']");
+    await page.waitForTimeout(300);
+    await page.click(`[data-id="${targetId}"]`);
+    await page.waitForSelector("#detailOverlay.open");
+    await page.waitForTimeout(200);
+  }
 
   // 5) O detalhe continua aberto por baixo (recusa só fecha o sub-modal
   // de renovação, ver proposeRenewal) -- propõe de novo com o valor
@@ -104,7 +122,7 @@ const { skipOnboarding } = require("./_startup");
     const career = (await (await fetch("/api/career")).json()).career;
     return { contractUntil: career.squad.find((p) => p.id === id).contractUntil, wage: career.squad.find((p) => p.id === id).wage, seasonYear: career.seasonYear };
   }, targetId);
-  check("5) Toast (sucesso):", toastSuccess);
+  check("5) Toast (sucesso):", toastSuccess.includes("renovou") && after.contractUntil === after.seasonYear + 2, toastSuccess.replace(/\s+/g, " ").trim());
   console.log("   contractUntil depois:", after.contractUntil, "(deve ser seasonYear+2 =", after.seasonYear + 2, ") | salário:", after.wage);
 
   // 6) Tag "Fim de contrato" some da lista agora

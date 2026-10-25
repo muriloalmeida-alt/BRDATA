@@ -101,12 +101,15 @@ async function putCareer(page, career) {
 
   // 6) Outros 4 pontos de ajuda também existem e funcionam (Categoria
   // de base, Instruções táticas, Tabela, Mercado).
+  // Fase B do motor de testes: separado por ponto de ajuda pra falha
+  // dizer QUAL sumiu (antes era um único booleano para os 4).
   const otherHelps = ["helpCategoriaBase", "helpInstrucoesTaticas", "helpTabelaCarreira", "helpMercado"];
-  const allExistHiddenByDefault = await page.evaluate((ids) => ids.every((id) => {
+  const helpState = await page.evaluate((ids) => Object.fromEntries(ids.map((id) => {
     const el = document.getElementById(id);
-    return el && el.hidden === true;
-  }), otherHelps);
-  check("6) Os outros 4 textos de ajuda existem e começam escondidos:", allExistHiddenByDefault);
+    return [id, el ? (el.hidden === true ? "escondido" : "visível") : "não existe"];
+  })), otherHelps);
+  const okIds = otherHelps.filter((id) => helpState[id] === "escondido");
+  check("6) Os outros 4 textos de ajuda existem e começam escondidos:", okIds.length === otherHelps.length, JSON.stringify(helpState));
 
   await browser.close();
 })().catch((e) => { console.error("FATAL:", e); process.exit(1); });

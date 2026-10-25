@@ -27,4 +27,16 @@ async function skipOnboarding(page) {
   return true;
 }
 
-module.exports = { skipOnboarding };
+// Assistente de início (carreira nova, ver maybeOpenStartupWizard): pula
+// etapa por etapa ENQUANTO ele estiver aberto (o nº de etapas não fica
+// fixo no teste). Devolve quantas etapas pulou.
+async function skipStartupWizard(page) {
+  let skipped = 0;
+  for (; skipped < 10 && await page.locator("#startupWizardOverlay.open").count(); skipped++) {
+    await page.click("#btnWizardSkip");
+    await page.waitForTimeout(100);
+  }
+  return skipped;
+}
+
+module.exports = { skipOnboarding, skipStartupWizard };

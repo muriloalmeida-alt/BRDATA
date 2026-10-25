@@ -135,7 +135,11 @@ const { skipPreseason } = require("./_calendar_skip");
       };
       window.__saveRng = () => localStorage.setItem("__rngSeq", JSON.stringify(seq));
     });
+    // Caixa e mês lidos ANTES da pré-temporada: a janela medida (semanas
+    // da pré-temporada + a rodada 1) cruza a virada de mês, quando a
+    // comissão é cobrada (GE-CALENDAR-001).
     const before = await page.evaluate(() => CAREER.finances.cash);
+    const monthBefore = await page.evaluate(() => calendarWeekMonth(calendarWeek()));
     await page.click(".m3-nav-item[data-panel='central']");
     await page.waitForTimeout(200);
     await skipPreseason(page); // GE-CALENDAR-001: carreira nova começa na pré-temporada
@@ -152,18 +156,24 @@ const { skipPreseason } = require("./_calendar_skip");
     // a tela pra próxima chamada.
     await page.waitForTimeout(500);
     const after = await page.evaluate(() => CAREER.finances.cash);
+    const monthAfter = await page.evaluate(() => calendarWeekMonth(calendarWeek()));
     await page.evaluate(() => window.__saveRng());
-    return after - before;
+    return { delta: after - before, monthChanged: monthAfter !== monthBefore };
   }
 
   await page.evaluate(() => localStorage.removeItem("__rngSeq"));
-  const deltaHired = await simulateOneRoundDeterministic(true);
-  const deltaNotHired = await simulateOneRoundDeterministic(false);
+  const hired = await simulateOneRoundDeterministic(true);
+  const notHired = await simulateOneRoundDeterministic(false);
+  const deltaHired = hired.delta, deltaNotHired = notHired.delta;
   const observedCommissionCost = deltaNotHired - deltaHired;
-  const expectedCommissionDeduction = Math.round(monthlyCost / 4);
-  check("6) Rodando a MESMA rodada (sorteio idêntico) com e sem comissão, a diferença de caixa bate com 1/4 do custo mensal:",
-    observedCommissionCost === expectedCommissionDeduction,
-    JSON.stringify({ deltaHired, deltaNotHired, observedCommissionCost, expectedCommissionDeduction }));
+  // GE-CALENDAR-001 (finanças mensais, 12x/ano): a comissão é cobrada
+  // inteira na virada do mês (applyCalendarMonthlyFinances), não mais
+  // 1/4 por rodada — a janela medida cruza uma virada de mês e tem que
+  // cobrar exatamente o custo mensal cheio.
+  const expectedCommissionDeduction = hired.monthChanged ? monthlyCost : 0;
+  check("6) Rodando a MESMA rodada (sorteio idêntico) com e sem comissão, a diferença de caixa bate com o custo cobrado no mês:",
+    hired.monthChanged && notHired.monthChanged && observedCommissionCost === expectedCommissionDeduction,
+    JSON.stringify({ deltaHired, deltaNotHired, observedCommissionCost, expectedCommissionDeduction, viradaDeMes: hired.monthChanged }));
 
   // Volta pra um estado limpo (Central, sem nenhum modal pós-jogo
   // aberto) pro resto do teste — a 2ª rodada determinística deixou

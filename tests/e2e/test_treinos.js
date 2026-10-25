@@ -138,6 +138,9 @@ const { skipOnboarding } = require("./_startup");
   // elenco, idempotente na mesma rodada (botão desabilita).
   const beforeApply = await page.evaluate(() => ({
     round: CAREER.currentRound,
+    // GE-CALENDAR-001: o treino aplicado é marcado pela chave da SEMANA
+    // do calendário (calendarTurnKey), não mais pelo número da rodada.
+    turnKey: typeof calendarTurnKey === "function" ? calendarTurnKey() : CAREER.currentRound,
     appliedFor: CAREER.trainingAppliedForRound,
     p0: { ...CAREER.squad[0] },
   }));
@@ -149,7 +152,7 @@ const { skipOnboarding } = require("./_startup");
     btnLabel: document.getElementById("btnApplyTrainingLabel").textContent,
     p0Condition: CAREER.squad[0].condition,
   }));
-  check("5) Aplicar treino marca a rodada como feita e desabilita o botão:", afterApply.appliedFor === beforeApply.round && afterApply.btnDisabled && afterApply.btnLabel.includes("já aplicado"), JSON.stringify({ beforeApply, afterApply }));
+  check("5) Aplicar treino marca a rodada como feita e desabilita o botão:", afterApply.appliedFor === beforeApply.turnKey && afterApply.btnDisabled && afterApply.btnLabel.includes("já aplicado"), JSON.stringify({ beforeApply, afterApply }));
 
   // "Aplicar treino" já fechou tudo e voltou pra Início (Task #72) --
   // volta pra Treinos antes de repetir o clique.

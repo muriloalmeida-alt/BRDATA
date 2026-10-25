@@ -1,6 +1,7 @@
 const { chromium } = require("playwright-core");
 const { check } = require("./_check");
 const { skipOnboarding } = require("./_startup");
+const { playNextMatchRound } = require("./_round");
 const { skipPreseason } = require("./_calendar_skip");
 
 async function newCareer(page, base, email) {
@@ -105,45 +106,21 @@ async function putCareer(page, career) {
   await page.click(".m3-nav-item[data-panel='central']");
   await page.waitForTimeout(200);
 
-  // 6) Receita de patrocínio soma no caixa a cada rodada simulada.
+  // 6) Receita de patrocínio entra no caixa e aparece na linha financeira
+  // da rodada, em Notícias (#newsFinanceRow). GE-CALENDAR-001: patrocínio
+  // e salários são lançados 1x por mês (virada do mês), e a linha só
+  // aparece na rodada em que houve lançamento — joga rodadas (fluxo atual,
+  // ver _round.js) até a 1ª com lançamento do mês.
   await skipPreseason(page); // GE-CALENDAR-001: carreira nova começa na pré-temporada
-  await page.click("#btnSimulate");
-  await page.waitForSelector("#preMatchOverlay.open", { timeout: 5000 });
-  await page.click("#btnPreMatchGo");
-  // AJUSTE (item 4, pedido do usuário: "o jogo deve pausar no
-  // intervalo (45) e aguardar que o técnico clique em prosseguir") —
-  // clica em "Prosseguir" se o jogo parar no intervalo antes de seguir
-  // esperando o resto do fluxo.
-  await page.waitForSelector("#liveMatchOverlay.open", { timeout: 5000 }).catch(() => {});
-  await page.waitForFunction(() => typeof LIVE_MATCH !== 'undefined' && LIVE_MATCH && (LIVE_MATCH.halftime || LIVE_MATCH.finished), { timeout: 15000 }).catch(() => {});
-  if (await page.evaluate(() => typeof LIVE_MATCH !== 'undefined' && LIVE_MATCH && LIVE_MATCH.halftime)) {
-    await page.click("#btnLiveContinueSecondHalf");
+  let financeText = "", rounds = 0;
+  for (; rounds < 8 && !financeText; rounds++) {
+    const r = await playNextMatchRound(page, {
+      onNews: async (p) => { financeText = await p.evaluate(() => document.getElementById("newsFinanceRow").textContent); },
+    });
+    if (r.stoppedAt === "playerOfferOverlay") await page.click("#btnPlayerOfferDecline");
+    else if (r.stoppedAt) throw new Error(`rodada parou numa tela inesperada: ${r.stoppedAt}`);
   }
-  await page.waitForSelector("#liveMatchOverlay.open", { timeout: 5000 });
-  await page.evaluate(() => skipLiveMatch());
-  await page.waitForSelector("#matchDetailOverlay.open", { timeout: 5000 });
-  await page.click("#btnMatchDetailContinue");
-  await page.waitForTimeout(300);
-  // FASE 4 (item 2) — coletiva de imprensa pode aparecer aqui antes
-  // dos Resultados da rodada (ver determineMatchPressTrigger).
-  if (await page.evaluate(() => document.getElementById("pressOverlay").classList.contains("open"))) {
-    await page.click("#pressOptions [data-press]");
-    await page.waitForTimeout(300);
-  }
-  await page.waitForSelector("#newsOverlay.open", { timeout: 5000 });
-  // A linha financeira da rodada (salários/patrocínio/caixa) mora em
-  // Notícias (#newsFinanceRow) desde uma mudança anterior desta sessão
-  // ("resumo financeiro movido pras Notícias") -- não mais em
-  // Resultados da rodada (pré-existente, sem relação com o checklist
-  // de UX desta etapa; o teste nunca foi atualizado).
-  const financeText = await page.evaluate(() => document.getElementById("newsFinanceRow").textContent);
-  check("6) Linha financeira da rodada menciona patrocínio:", financeText.includes("Patrocínio"));
-  await page.click("#btnNewsContinue");
-  await page.waitForTimeout(300);
-  await page.click("#btnRoundResultsContinue").catch(() => {});
-  await page.waitForTimeout(200);
-  await page.click("#tabelaModalClose").catch(() => {});
-  await page.waitForTimeout(200);
+  check("6) Linha financeira da rodada menciona patrocínio:", financeText.includes("Patrocínio"), { rodadasJogadas: rounds, linha: financeText.replace(/\s+/g, " ").trim() });
 
   await browser.close();
 })().catch((e) => { console.error("FATAL:", e); process.exit(1); });

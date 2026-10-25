@@ -55,18 +55,31 @@ const { skipOnboarding } = require("./_startup");
     CAREER.trainingPlan[1] = { foco: "tecnico", intensidade: "intensa", grupo: "principal" };
     CAREER.trainingPlan[2] = { foco: "tecnico", intensidade: "intensa", grupo: "principal" };
     CAREER.trainingPlan[3] = { foco: "tecnico", intensidade: "intensa", grupo: "principal" };
+    // GE-BALANCE-005 (issue #38): o ganho por atributo tem teto POR
+    // TEMPORADA (seasonGainCap: 6 pontos até 21 anos) — então a
+    // convergência pro potencial leva mais de uma temporada. Cada
+    // "temporada" aqui são 60 semanas de treino; entre elas o ganho da
+    // temporada zera (p.seasonGain = {}, como na virada de temporada).
     let maxSeen = p.overall;
     let everExceeded = false;
-    for (let i = 0; i < 60; i++) {
-      CAREER.trainingAppliedForRound = null; // bypassa a idempotência por rodada (não avançamos rodada de verdade aqui)
-      applyWeeklyTraining();
-      if (p.overall > p.potential) everExceeded = true;
-      maxSeen = Math.max(maxSeen, p.overall);
+    const perSeason = [];
+    p.seasonGain = {};
+    const firstSeasonCap = seasonGainCap(p, CAREER.currentRound - 1);
+    for (let season = 0; season < 4 && p.overall < p.potential; season++) {
+      p.seasonGain = {};
+      for (let i = 0; i < 60; i++) {
+        CAREER.trainingAppliedForRound = null; // bypassa a idempotência por rodada (não avançamos rodada de verdade aqui)
+        applyWeeklyTraining();
+        if (p.overall > p.potential) everExceeded = true;
+        maxSeen = Math.max(maxSeen, p.overall);
+      }
+      perSeason.push(p.overall);
     }
-    return { finalOverall: p.overall, potential: p.potential, everExceeded, reachedPotential: p.overall === p.potential };
+    return { finalOverall: p.overall, potential: p.potential, everExceeded, reachedPotential: p.overall === p.potential, perSeason, firstSeasonCap,
+      firstSeasonWithinCap: perSeason[0] <= 60 + firstSeasonCap };
   });
-  check("1) Jogador jovem (potencial 75) converge pro teto em 60 semanas de treino técnico intenso, sem NUNCA passar dele:",
-    !check1.everExceeded && check1.reachedPotential, JSON.stringify(check1));
+  check("1) Jogador jovem (potencial 75) converge pro teto com treino técnico intenso ao longo das temporadas (respeitando o teto de ganho por temporada), sem NUNCA passar dele:",
+    !check1.everExceeded && check1.reachedPotential && check1.firstSeasonWithinCap, JSON.stringify(check1));
 
   // 2) Jogador VETERANO (30+) nasce com potential === overall (sem
   // espaço) -- treino técnico intenso não move o overall dele NADA,
@@ -129,6 +142,9 @@ const { skipOnboarding } = require("./_startup");
   const check5 = await page.evaluate(() => {
     const p = CAREER.squad.find((x) => x.origin === "principal");
     p.age = 19; p.overall = 60; p.atk = 60; p.def = 60; p.phys = 60; p.potential = 65;
+    // Temporada nova pra este caso (o caso 1 consumiu o ganho da
+    // temporada deste mesmo jogador — teto por temporada do GE-BALANCE-005).
+    p.seasonGain = {};
     const orig = Math.random;
     Math.random = () => 0; // sempre "cresce" (roll < growChance, growChance > 0 pra jovem)
     for (let i = 0; i < 100; i++) applyNaturalAgingEvolution([]);

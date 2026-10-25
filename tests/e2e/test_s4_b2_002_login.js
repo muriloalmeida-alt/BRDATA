@@ -106,7 +106,9 @@ const { check } = require("./_check");
   // sumir e o boot seguir pro resto do app (mesmo padrão de transição
   // de S4-B2-001 — sem estado de sucesso próprio nesta tela, só
   // desaparece).
-  await page.waitForTimeout(600);
+  // Espera o ESTADO (tela de login escondida), até 10 s, em vez de 600 ms
+  // fixos — sob carga o boot pós-login passava disso.
+  await page.waitForFunction(() => document.getElementById("screenLoginRequired").classList.contains("hidden"), null, { timeout: 10000 }).catch(() => {});
   const loggedIn = await page.evaluate(() => document.getElementById("screenLoginRequired").classList.contains("hidden"));
   check("5) Sucesso: login válido faz a tela de login sumir (fluxo funcional intacto):", loggedIn);
 

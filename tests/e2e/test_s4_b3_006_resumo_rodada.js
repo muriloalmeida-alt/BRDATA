@@ -9,6 +9,7 @@
 const { chromium } = require("playwright-core");
 const { check } = require("./_check");
 const { skipOnboarding } = require("./_startup");
+const { skipPreseason } = require("./_calendar_skip");
 
 (async () => {
   const browser = await chromium.launch({ executablePath: process.env.PW_CHROMIUM_PATH || undefined, headless: true, args: ["--host-resolver-rules=MAP fonts.googleapis.com 127.0.0.1,MAP fonts.gstatic.com 127.0.0.1"] });
@@ -69,6 +70,7 @@ const { skipOnboarding } = require("./_startup");
   // 3) Jogar a rodada 1 de verdade -> "Resultados da rodada"
   // (showRoundResultsModal) usa MatchCard, 10 resultados com placar
   // real, próprio jogo destacado.
+  await skipPreseason(page); // GE-CALENDAR-001: carreira nova começa na pré-temporada
   await page.click("#btnSimulate");
   await page.waitForSelector("#preMatchOverlay.open", { timeout: 5000 });
   await page.click("#btnPreMatchGo");
@@ -105,10 +107,14 @@ const { skipOnboarding } = require("./_startup");
   // suíte pra estado difícil de alcançar via UI).
   const check4 = await page.evaluate(() => {
     const clubIds = Object.keys(CAREER.standings);
-    const html = cupRoundResultsHTML({
-      phase: "oitavas",
-      results: [{ home: CAREER.clubId, away: clubIds.find((id) => String(id) !== String(CAREER.clubId)), gh: 2, ga: 2, penalties: true }],
-    });
+    const away = clubIds.find((id) => String(id) !== String(CAREER.clubId));
+    // GE-COPA-001: carreira nova usa a Copa expandida (ida e volta,
+    // placar por perna em leg1/leg2, pênaltis só na volta); save antigo
+    // continua no formato de jogo único — monta o resultado sintético no
+    // formato que ESTA carreira usa.
+    const html = cupRoundResultsHTML(CAREER.cup && CAREER.cup.expanded
+      ? { phase: "r16", leg: 2, results: [{ home: CAREER.clubId, away, leg1: { gh: 1, ga: 1 }, leg2: { gh: 2, ga: 2 }, penalties: true }] }
+      : { phase: "r16", results: [{ home: CAREER.clubId, away, gh: 2, ga: 2, penalties: true }] });
     const wrap = document.createElement("div");
     wrap.innerHTML = html;
     const card = wrap.querySelector(".m3-match-card");

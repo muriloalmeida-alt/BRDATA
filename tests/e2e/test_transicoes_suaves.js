@@ -61,21 +61,24 @@ const { skipOnboarding } = require("./_startup");
   // (fundo + folha).
   const buyBtn = await page.$("[data-buy]");
   await buyBtn.click();
-  await page.waitForSelector("#offerOverlay.open", { timeout: 3000 });
+  // S4-B3-003: a proposta virou Dialog dinâmico (.m3-dialog-overlay >
+  // .m3-dialog), com as MESMAS animações (ctOverlayIn/ctSheetIn) —
+  // #offerOverlay estático não existe mais.
+  await page.waitForSelector(".m3-dialog-overlay.open", { timeout: 3000 });
   const anim3 = await page.evaluate(() => ({
-    overlay: getComputedStyle(document.getElementById("offerOverlay")).animationName,
-    sheet: getComputedStyle(document.querySelector("#offerOverlay .ct-modal")).animationName,
+    overlay: getComputedStyle(document.querySelector(".m3-dialog-overlay.open")).animationName,
+    sheet: getComputedStyle(document.querySelector(".m3-dialog-overlay.open .m3-dialog")).animationName,
   }));
   check("4) Abrir modal anima o fundo + a folha:", anim3.overlay === "ctOverlayIn" && anim3.sheet === "ctSheetIn", JSON.stringify(anim3));
   await page.waitForTimeout(300);
   const modalUsable = await page.evaluate(() => {
-    const ov = document.getElementById("offerOverlay");
-    return ov.classList.contains("open") && !!document.getElementById("offerValueInput").value;
+    const ov = document.querySelector(".m3-dialog-overlay.open");
+    return !!ov && !!document.getElementById("offerValueInput").value;
   });
   check("4b) Depois da animação a modal continua aberta e usável (campo preenchido):", modalUsable);
-  await page.click("#offerClose");
+  await page.keyboard.press("Escape");
   await page.waitForTimeout(200);
-  const closedInstant = await page.evaluate(() => !document.getElementById("offerOverlay").classList.contains("open"));
+  const closedInstant = await page.evaluate(() => !document.querySelector(".m3-dialog-overlay.open"));
   check("5) Fechar continua instantâneo (sem atraso nenhum):", closedInstant);
 
   // 6) Modal EM TELA CHEIA também anima (fundo + folha), mesmo

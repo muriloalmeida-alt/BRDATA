@@ -52,6 +52,18 @@ function checkFooter(page, overlayId, btnId) {
   await page.click(".m3-nav-item[data-panel='central']");
   await page.waitForTimeout(200);
   await skipPreseason(page); // GE-CALENDAR-001: carreira nova começa na pré-temporada
+  // A coletiva de imprensa é sorteada (PRESS_CHANCE_BY_ID) e, quando sai,
+  // entra ENTRE "Seu jogo" e Notícias — este teste é sobre os rodapés
+  // dessas telas (a coletiva tem os testes dela: test_coletiva_imprensa,
+  // test_toast_reposiciona), então desliga o sorteio: resultado
+  // determinístico em vez de falhar quando a coletiva aparece.
+  // (chance 1e-12 e não 0: determineMatchPressTrigger usa
+  // `PRESS_CHANCE_BY_ID[id] || 0.3`, então 0 vira 30% — ver relatório da
+  // Fase B do motor de testes.)
+  await page.evaluate(() => {
+    Object.keys(PRESS_CHANCE_BY_ID).forEach((k) => { PRESS_CHANCE_BY_ID[k] = 1e-12; });
+    PRESS_ALWAYS_IDS.clear();
+  });
   await page.click("#btnSimulate");
   await page.waitForSelector("#preMatchOverlay.open", { timeout: 5000 });
   const r1 = await checkFooter(page, "preMatchOverlay", "btnPreMatchGo");

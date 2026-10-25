@@ -1,5 +1,6 @@
 const { chromium } = require("playwright-core");
 const { skipOnboarding } = require("./_startup");
+const { check } = require("./_check");
 
 (async () => {
   const browser = await chromium.launch({
@@ -63,10 +64,16 @@ const { skipOnboarding } = require("./_startup");
   const buyBtns = await page.$$("[data-buy]");
   await buyBtns[buyBtns.length - 1].click();
   await page.waitForTimeout(300);
-  const offerSheetOpen = await page.evaluate(() => document.getElementById("offerOverlay").classList.contains("open"));
-  console.log("Comprar agora abre a sheet de proposta (não mais confirmModal):", offerSheetOpen);
-  await page.click("#offerClose");
+  // S4-B3-003: a proposta virou um Dialog dinâmico (.m3-dialog-overlay,
+  // ver test_s4_b3_003_negociacao.js) — #offerOverlay estático não existe mais.
+  const offerSheetOpen = await page.evaluate(() => {
+    const d = document.querySelector(".m3-dialog-overlay.open");
+    return !!d && d.querySelector(".m3-dialog-header h3")?.textContent === "Fazer proposta";
+  });
+  check("2) Comprar abre o diálogo de proposta (não mais confirmModal):", offerSheetOpen);
+  await page.keyboard.press("Escape");
   await page.waitForTimeout(300);
+  check("2b) Fechar o diálogo não envia proposta nenhuma:", await page.evaluate(() => !document.querySelector(".m3-dialog-overlay.open") && (CAREER.pendingOffersOut || []).length === 0));
 
   // Teste 3: Reiniciar (menu hambúrguer)
   await page.click("#btnBottomMenu");

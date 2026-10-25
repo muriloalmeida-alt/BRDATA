@@ -296,6 +296,21 @@ const { skipOnboarding } = require("./_startup");
   // dentro de um número razoável de tentativas; o que este teste
   // verifica é a INTEGRAÇÃO (fee == transferValuation recalculado),
   // não a frequência (já coberta em test_transfer_ai_offers.js).
+  // negotiateOffer tem um sorteio interno (sellerNegotiationDecision: na
+  // faixa 95-105% da reserva aceita com 85% de chance, senão contrapõe).
+  // Os casos 10/10c comparam a oferta GERADA com negotiateOffer
+  // RECALCULADO — com o RNG real, o recálculo podia dar outro desfecho e
+  // a comparação falhava por acaso (intermitente desde o baseline da Fase
+  // A). fixNegotiationRng() fixa o RNG só DENTRO de negotiateOffer (a
+  // geração e o recálculo passam a ter o mesmo desfecho); os outros
+  // sorteios da geração (chance de oferta, escolha do clube) seguem reais.
+  await page.evaluate(() => {
+    window.fixNegotiationRng = () => {
+      const real = negotiateOffer;
+      window.negotiateOffer = (...a) => { const r = Math.random; Math.random = () => 0.01; try { return real(...a); } finally { Math.random = r; } };
+      return () => { window.negotiateOffer = real; };
+    };
+  });
   const t10 = await page.evaluate(() => {
     function fabricateSquad(n, avgOverall, forwards) {
       const squad = [];
@@ -313,6 +328,7 @@ const { skipOnboarding } = require("./_startup");
       p.wage = cf.wage; p.value = cf.value; p.potential = 80;
     });
     Object.keys(CAREER.leagueSquads).forEach((id) => { CAREER.leagueSquads[id] = fabricateSquad(18, 66, 0); });
+    const restoreNegotiation = fixNegotiationRng();
     let found = null;
     for (let i = 0; i < 300 && !found; i++) {
       CAREER.pendingOffer = null;
@@ -336,6 +352,7 @@ const { skipOnboarding } = require("./_startup");
       const recomputed = recomputedDeal.outcome === "accepted" ? recomputedDeal.finalValue : null;
       result = { ok: true, fee: found.fee, recomputed, matches: found.fee === recomputed, base: player.value, withinLimits: found.fee >= Math.round(player.value * 0.70) && found.fee <= Math.round(player.value * 1.50) };
     }
+    restoreNegotiation();
     CAREER.pendingOffer = null;
     CAREER.squad = backupSquad;
     CAREER.leagueSquads = backupLeague;
@@ -391,6 +408,7 @@ const { skipOnboarding } = require("./_startup");
     CAREER.leagueSquads[sellerId] = [player, ...fabricateSquad(17, 60, 0)];
     Object.keys(CAREER.leagueSquads).filter((id) => id !== sellerId).forEach((id) => { CAREER.leagueSquads[id] = fabricateSquad(18, 66, 0); });
     const o = { playerId: player.id, playerName: player.name, clubId: sellerId, marketValue: player.value, offerValue: Math.round(player.value * 0.9), installments: 1, roundsLeft: 2, status: "pending", counterValue: null };
+    const restoreNegotiation = fixNegotiationRng();
     let found = null;
     for (let i = 0; i < 200 && !found; i++) {
       o.rivalOffer = null;
@@ -407,6 +425,7 @@ const { skipOnboarding } = require("./_startup");
       const recomputed = recomputedDeal.outcome === "accepted" ? recomputedDeal.finalValue : null;
       result = { ok: true, offerValue: found.offerValue, recomputed, matches: found.offerValue === recomputed, withinLimits: found.offerValue >= Math.round(o.marketValue * 0.70) && found.offerValue <= Math.round(o.marketValue * 1.50) };
     }
+    restoreNegotiation();
     CAREER.leagueSquads = backup;
     return result;
   });

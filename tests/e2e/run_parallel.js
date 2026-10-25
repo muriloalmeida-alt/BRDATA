@@ -42,7 +42,7 @@
 // Pré-requisitos: ver README.md desta pasta (playwright-core +
 // Chromium via PW_CHROMIUM_PATH; servidor local rodando, exceto com
 // --isolated-server).
-const { spawn, execSync } = require("child_process");
+const { spawn, execSync, execFileSync } = require("child_process");
 const fs = require("fs");
 const os = require("os");
 const path = require("path");
@@ -71,6 +71,13 @@ const includeUnit = !flag("no-unit");
 const suites = JSON.parse(fs.readFileSync(path.join(DIR, "suites.json"), "utf8"));
 const longSet = new Set(suites.long.tests);
 const exclusiveSet = new Set(suites.exclusive.tests);
+// Perfis de servidor (suites.json "serverProfiles"): testes que precisam
+// de um servidor configurado de outro jeito (variável de ambiente, conta
+// criada antes do boot). Com --isolated-server, cada perfil sobe o PRÓPRIO
+// servidor isolado (dados vazios) depois dos demais testes; sem ele, esses
+// testes rodam contra o servidor que estiver de pé, como sempre rodaram.
+const serverProfiles = Object.entries(suites.serverProfiles || {}).filter(([name]) => !name.startsWith("_"));
+const profileOf = new Map(serverProfiles.flatMap(([name, prof]) => prof.tests.map((t) => [t, name])));
 
 // ---------- seleção ----------
 let e2eFiles = fs.readdirSync(DIR).filter((f) => f.startsWith("test_") && f.endsWith(".js"));
@@ -107,12 +114,14 @@ try {
 const estimate = (j) => history[j.file] != null ? history[j.file] : (longSet.has(j.file) ? 60000 : 10000);
 if (orderMode === "alpha") jobs.sort((a, b) => a.file.localeCompare(b.file));
 else jobs.sort((a, b) => (estimate(b) - estimate(a)) || a.file.localeCompare(b.file));
-const parallelJobs = jobs.filter((j) => !exclusiveSet.has(j.file));
-const exclusiveJobs = jobs.filter((j) => exclusiveSet.has(j.file));
+const usesProfile = (j) => isolated && profileOf.has(j.file);
+const parallelJobs = jobs.filter((j) => !exclusiveSet.has(j.file) && !usesProfile(j));
+const exclusiveJobs = jobs.filter((j) => exclusiveSet.has(j.file) && !usesProfile(j));
+const profileJobs = serverProfiles.map(([name, prof]) => [name, prof, jobs.filter((j) => usesProfile(j) && profileOf.get(j.file) === name)]).filter(([, , list]) => list.length);
 const jobTimeout = (j) => (longSet.has(j.file) ? Math.max(timeoutMs, suites.long.timeoutMs) : timeoutMs);
 
 if (flag("list")) {
-  jobs.forEach((j) => console.log(`${j.file}${exclusiveSet.has(j.file) ? "  [exclusivo]" : ""}${longSet.has(j.file) ? `  [longo: ${jobTimeout(j)}ms]` : ""}`));
+  jobs.forEach((j) => console.log(`${j.file}${exclusiveSet.has(j.file) ? "  [exclusivo]" : ""}${longSet.has(j.file) ? `  [longo: ${jobTimeout(j)}ms]` : ""}${profileOf.has(j.file) ? `  [perfil de servidor: ${profileOf.get(j.file)}${isolated ? "" : " — só aplicado com --isolated-server"}]` : ""}`));
   console.log(`\n${jobs.length} teste(s) — suíte ${suiteName}${filters.length ? `, filtros ${filters.join(",")}` : ""}.`);
   process.exit(0);
 }
@@ -136,7 +145,19 @@ function httpOk(port) {
 // <__dirname>/../data, então copiar server.js + src/ dá um diretório de
 // dados próprio e vazio; o resto (public/, node_modules/, catálogo
 // congelado) entra por link, só leitura. Nenhum arquivo do produto muda.
-async function startIsolatedServer() {
+// {valor} nos campos de um perfil: gerados uma vez por servidor (ex.: um
+// e-mail único pra conta criada antes do boot).
+function expandProfile(prof) {
+  const vars = { email: `perfil${Date.now()}${Math.floor(Math.random() * 1000)}@teste.com` };
+  const sub = (v) => String(v).replace(/\{(\w+)\}/g, (m, k) => (k in vars ? vars[k] : m));
+  const mapObj = (o) => Object.fromEntries(Object.entries(o || {}).map(([k, v]) => [k, sub(v)]));
+  return {
+    env: mapObj(prof.env),
+    testEnv: mapObj(prof.testEnv),
+    preBoot: prof.preBoot ? { script: prof.preBoot.script, args: (prof.preBoot.args || []).map(sub) } : null,
+  };
+}
+async function startIsolatedServer(profile = null) {
   if (await portInUse(PORT)) {
     throw new Error(`--isolated-server: a porta ${PORT} já está em uso (pare o servidor de dev antes; os scripts usam essa porta fixa).`);
   }
@@ -152,9 +173,14 @@ async function startIsolatedServer() {
   }
   fs.symlinkSync(path.join(REPO, "public"), path.join(root, "public"));
   fs.mkdirSync(ARTIFACTS, { recursive: true });
-  const log = fs.openSync(path.join(ARTIFACTS, "server.log"), "w");
+  // Preparação do perfil ANTES do boot (o servidor lê data/ uma vez ao
+  // subir), sempre no data/ da cópia isolada (SERVER_DIR).
+  if (profile && profile.preBoot) {
+    execFileSync(process.execPath, [path.join(DIR, profile.preBoot.script), ...profile.preBoot.args], { cwd: DIR, env: { ...process.env, SERVER_DIR: srv }, stdio: ["ignore", "pipe", "inherit"] });
+  }
+  const log = fs.openSync(path.join(ARTIFACTS, profile ? `server-${profile.name}.log` : "server.log"), "w");
   const t0 = Date.now();
-  const proc = spawn(process.execPath, ["server.js"], { cwd: srv, env: { ...process.env, PORT: String(PORT) }, stdio: ["ignore", log, log] });
+  const proc = spawn(process.execPath, ["server.js"], { cwd: srv, env: { ...process.env, ...(profile ? profile.env : {}), PORT: String(PORT) }, stdio: ["ignore", log, log] });
   while (!(await httpOk(PORT))) {
     if (proc.exitCode != null) throw new Error(`servidor isolado saiu com código ${proc.exitCode} — ver _artifacts/server.log`);
     if (Date.now() - t0 > 30000) { proc.kill("SIGKILL"); throw new Error("servidor isolado não respondeu em 30s — ver _artifacts/server.log"); }
@@ -162,19 +188,21 @@ async function startIsolatedServer() {
   }
   return { proc, root, bootMs: Date.now() - t0 };
 }
-function stopIsolatedServer(s) {
+async function stopIsolatedServer(s) {
   if (!s) return;
   try { s.proc.kill("SIGTERM"); } catch (_) { /* já saiu */ }
+  // Espera o processo sair de fato (libera a porta pro próximo perfil).
+  if (s.proc.exitCode == null) await new Promise((r) => { s.proc.once("exit", r); setTimeout(r, 5000); });
   try { fs.rmSync(s.root, { recursive: true, force: true }); } catch (_) { /* tmp: o SO limpa */ }
 }
 
 // ---------- execução ----------
 const preload = path.join(DIR, "_coverage_preload.js");
-function runOne(job) {
+function runOne(job, extraEnv) {
   return new Promise((resolve) => {
     const startedAt = Date.now();
     const nodeArgs = coverage && job.kind === "e2e" ? ["-r", preload, job.path] : [job.path];
-    const child = spawn(process.execPath, nodeArgs, { cwd: job.cwd });
+    const child = spawn(process.execPath, nodeArgs, { cwd: job.cwd, env: { ...process.env, ...(extraEnv || {}) } });
     let out = "";
     child.stdout.on("data", (d) => { out += d; });
     child.stderr.on("data", (d) => { out += d; });
@@ -191,7 +219,7 @@ function report(r, done, total) {
   const tag = r.code === 0 ? "PASS" : r.timedOut ? "TIMEOUT" : `FAIL(${r.code})`;
   process.stdout.write(`[${done}/${total}] ${tag.padEnd(9)} ${r.file}  (${(r.ms / 1000).toFixed(1)}s)\n`);
 }
-async function runPool(list, conc, results, counter) {
+async function runPool(list, conc, results, counter, extraEnv) {
   const queue = [...list];
   await new Promise((resolveAll) => {
     let running = 0;
@@ -200,7 +228,7 @@ async function runPool(list, conc, results, counter) {
       while (running < conc && queue.length) {
         const job = queue.shift();
         running++;
-        runOne(job).then((r) => {
+        runOne(job, extraEnv).then((r) => {
           running--;
           counter.done++;
           results.push(r);
@@ -228,12 +256,13 @@ async function main() {
     command: `node run_parallel.js ${args.join(" ")}`.trim(), suite: suiteName, filters,
     concurrency, timeoutMs, longTimeoutMs: suites.long.timeoutMs, order: orderMode, isolatedServer: isolated,
     coverage, retries: 0, selected: jobs.length, exclusive: exclusiveJobs.map((j) => j.file),
+    serverProfiles: profileJobs.map(([name, , list]) => ({ name, tests: list.map((j) => j.file) })),
   };
   console.log(`Rodando ${jobs.length} script(s) [suíte ${suiteName}${filters.length ? `, filtros ${filters.join(",")}` : ""}] com concorrência ${concurrency} (timeout ${timeoutMs}ms; classe longa ${suites.long.timeoutMs}ms; exclusivos no fim: ${exclusiveJobs.length})${isolated ? " — servidor isolado" : ""}${coverage ? " — com cobertura" : ""}...\n`);
   if (coverage) fs.rmSync(path.join(DIR, "_coverage"), { recursive: true, force: true });
   fs.rmSync(ARTIFACTS, { recursive: true, force: true });
   let server = null;
-  const stop = () => { stopIsolatedServer(server); process.exit(130); };
+  const stop = async () => { await stopIsolatedServer(server); process.exit(130); };
   process.on("SIGINT", stop);
   process.on("SIGTERM", stop);
   if (isolated) {
@@ -247,8 +276,18 @@ async function main() {
   try {
     await runPool(parallelJobs, concurrency, results, counter);
     await runPool(exclusiveJobs, 1, results, counter);
+    // Perfis de servidor (só com --isolated-server): um servidor isolado
+    // novo por perfil, depois de todos os outros testes.
+    for (const [name, prof, list] of profileJobs) {
+      await stopIsolatedServer(server);
+      server = null;
+      const expanded = { name, ...expandProfile(prof) };
+      server = await startIsolatedServer(expanded);
+      console.log(`\nServidor isolado do perfil "${name}" de pé em ${server.bootMs}ms (${list.length} teste(s)).`);
+      await runPool(list, 1, results, counter, expanded.testEnv);
+    }
   } finally {
-    stopIsolatedServer(server);
+    await stopIsolatedServer(server);
   }
   const totalMs = Date.now() - t0;
   const fails = results.filter((r) => r.code !== 0).sort((a, b) => a.file.localeCompare(b.file));

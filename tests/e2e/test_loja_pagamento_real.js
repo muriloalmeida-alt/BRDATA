@@ -160,7 +160,9 @@ async function openLojaBoosts(page) {
     }, playerId);
     await page2.click(`.m3-op-actions [data-buy="${playerId}"]`).catch(() => {});
     await page2.waitForTimeout(300);
-    const offerOpen = await page2.evaluate(() => document.getElementById("offerOverlay").classList.contains("open"));
+    // S4-B3-003: a proposta é um Dialog dinâmico (.m3-dialog-overlay) —
+    // #offerOverlay estático não existe mais.
+    const offerOpen = await page2.evaluate(() => !!document.querySelector(".m3-dialog-overlay.open #offerValueInput"));
     if (offerOpen) {
       const prefillValue = await page2.evaluate(() => Number(document.getElementById("offerValueInput").value));
       discountApplied = { marketValue, prefillValue, expected: Math.round(marketValue * 0.85) };

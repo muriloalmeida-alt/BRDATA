@@ -39,6 +39,12 @@ const { skipPreseason } = require("./_calendar_skip");
   await page.evaluate(() => {
     Object.keys(PRESS_CHANCE_BY_ID).forEach((k) => { PRESS_CHANCE_BY_ID[k] = 1; });
   });
+  // Empate em casa não gera NENHUM gatilho de coletiva
+  // (determineMatchPressTrigger) — reforça o time pra vitória ser
+  // praticamente certa, como test_coletiva_imprensa faz pra goleada.
+  await page.evaluate(() => {
+    CAREER.squad.filter((p) => p.origin === "principal").forEach((p) => { p.atk = 99; p.overall = 95; });
+  });
 
   await page.click(".m3-nav-item[data-panel='central']");
   await page.waitForTimeout(200);

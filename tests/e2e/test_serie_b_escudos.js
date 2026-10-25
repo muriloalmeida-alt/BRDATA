@@ -4,6 +4,7 @@
 const { chromium } = require("playwright-core");
 const { check } = require("./_check");
 const { skipOnboarding } = require("./_startup");
+const { skipPreseason } = require("./_calendar_skip");
 
 const COM_ESCUDO = ["Goiás", "Avaí", "Criciúma", "Vila Nova", "Cuiabá", "Atlético Goianiense", "CRB", "Novorizontino", "Operário-PR", "Botafogo-SP", "Athletic Club"];
 const SEM_ESCUDO = ["Athletico Paranaense", "Coritiba", "Chapecoense", "Remo", "América Mineiro", "Amazonas", "Paysandu", "Volta Redonda", "Ferroviária"];
@@ -59,6 +60,9 @@ const SEM_ESCUDO = ["Athletico Paranaense", "Coritiba", "Chapecoense", "Remo", "
   await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
   await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
   await page.waitForTimeout(1500);
+  // GE-CALENDAR-001: carreira nova começa na pré-temporada (o card mostra
+  // o amistoso) — o escudo verificado é o do próximo jogo oficial.
+  await skipPreseason(page);
   const centralHasImg = await page.evaluate(() => {
     const nextMatch = document.querySelector(".m3-hero-match");
     return nextMatch ? !!nextMatch.querySelector("img") : null;

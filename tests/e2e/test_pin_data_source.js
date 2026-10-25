@@ -108,7 +108,9 @@ const { skipOnboarding } = require("./_startup");
   await page.reload({ waitUntil: "domcontentloaded" });
   await page.waitForTimeout(800);
   const afterReload = await page.evaluate(() => {
-    const nextMatch = document.querySelector(".mt-nextmatch");
+    // Redesign M3: o card "Próximo jogo" da Central é .m3-hero-match
+    // (.mt-nextmatch não existe mais).
+    const nextMatch = document.querySelector(".m3-hero-match");
     return { text: nextMatch ? nextMatch.textContent : null, hasQuebrado: nextMatch ? nextMatch.textContent.includes("Time #") : null };
   });
   check("4) Depois de recarregar de verdade (enterAfterAuth), Central não mostra 'Time #' quebrado:", afterReload.hasQuebrado === false, JSON.stringify(afterReload.text));

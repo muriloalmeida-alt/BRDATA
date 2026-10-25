@@ -109,8 +109,10 @@ async function newCareer(page, base, email) {
   check("3) Tabela do modal tem 20 linhas (times):", rowsMatch === 20);
 
   const meRow = await page.evaluate(() => {
+    // O clube escolhido é o 1º da lista (.m3-club-row) — compara com o
+    // nome da carreira em vez de supor qual é (a ordem da lista mudou).
     const tr = document.querySelector("#standingsTableModal .mt-tr.highlight");
-    return tr ? tr.textContent.includes("Flamengo") : false;
+    return tr ? tr.textContent.includes(CAREER.clubName) : false;
   });
   check("4) Linha do próprio clube aparece destacada:", meRow);
 

@@ -28,10 +28,6 @@
 // faz parar (devolve { stoppedAt: id }), nunca é fechada às cegas.
 // Devolve { screens, stoppedAt, friendly, matchWeek }.
 const STEP_LIMIT_MS = 60000;
-const KNOWN = [
-  "goalHighlightOverlay", "liveMatchOverlay", "preMatchOverlay", "matchDetailOverlay",
-  "pressOverlay", "newsOverlay", "roundResultsOverlay", "playerOfferOverlay", "tabelaModalOverlay",
-];
 
 async function readState(page) {
   return page.evaluate(() => ({
@@ -54,48 +50,62 @@ async function playRound(page, hooks = {}) {
   // botão (bug de produto registrado em docs/MOTOR_TESTES_FASE_B.md,
   // verificado por test_toast_rodape.js) e o clique esperaria ele sumir.
   // Estes testes não verificam o toque no botão — só o que vem depois.
-  await page.waitForFunction(() => !document.getElementById("btnSimulate").disabled, null, { timeout: 15000 });
+  // Começa só com a tela do jogo limpa (nenhuma tela por cima) — o
+  // clique abaixo não passa pelo teste de ponteiro, então não pode
+  // acontecer com alguma tela ainda aberta.
+  await page.waitForFunction(() => !document.getElementById("btnSimulate").disabled
+    && ![...document.querySelectorAll(".ct-modal-overlay.open")].some((e) => e.id !== "actionLoadingOverlay"), null, { timeout: 15000 });
   await page.evaluate(() => document.getElementById("btnSimulate").click());
   const t0 = Date.now();
+  let settledPolls = 0;
   while (Date.now() - t0 < STEP_LIMIT_MS) {
     const st = await readState(page);
-    const unknown = st.open.filter((id) => !KNOWN.includes(id) && id !== "actionLoadingOverlay");
-    const has = (id) => st.open.includes(id);
-    if (has("liveMatchOverlay") || has("goalHighlightOverlay")) {
+    const open = st.open.filter((id) => id !== "actionLoadingOverlay");
+    // Tela de CIMA = a última aberta na ordem do HTML (mesma convenção
+    // de empilhamento do app, ver toastBottomOffset em carreira.js); a
+    // partida ao vivo vem antes de tudo (é ela que gera as próximas).
+    const top = open.includes("liveMatchOverlay") || open.includes("goalHighlightOverlay") ? "liveMatchOverlay" : open[open.length - 1];
+    if (top) settledPolls = 0;
+    if (top === "liveMatchOverlay") {
       note("liveMatchOverlay");
       if (!matchWeek) friendly = await page.evaluate(() => !!(LIVE_MATCH && LIVE_MATCH.friendlyContext));
       await page.evaluate(() => skipLiveMatch());
-    } else if (has("preMatchOverlay")) {
+    } else if (top === "preMatchOverlay") {
       note("preMatchOverlay"); matchWeek = true;
       await page.click("#btnPreMatchGo");
-    } else if (has("matchDetailOverlay")) {
+    } else if (top === "matchDetailOverlay") {
       note("matchDetailOverlay");
       if ((await hook("onMatchDetail")) === "stop") return { screens, stoppedAt: "matchDetailOverlay", friendly, matchWeek };
       await page.click("#btnMatchDetailContinue");
-    } else if (has("pressOverlay")) {
+    } else if (top === "pressOverlay") {
       note("pressOverlay");
       if ((await hook("onPress")) === "stop") return { screens, stoppedAt: "pressOverlay", friendly, matchWeek };
       await page.click("#pressOptions [data-press]");
-    } else if (has("newsOverlay")) {
+    } else if (top === "newsOverlay") {
       note("newsOverlay");
       if ((await hook("onNews")) === "stop") return { screens, stoppedAt: "newsOverlay", friendly, matchWeek };
       await page.click("#btnNewsContinue");
-    } else if (has("roundResultsOverlay")) {
+    } else if (top === "roundResultsOverlay") {
       note("roundResultsOverlay");
       if ((await hook("onRoundResults")) === "stop") return { screens, stoppedAt: "roundResultsOverlay", friendly, matchWeek };
       await page.click("#btnRoundResultsContinue");
-    } else if (has("playerOfferOverlay")) {
+    } else if (top === "playerOfferOverlay") {
       note("playerOfferOverlay");
       if ((await hook("onPlayerOffer")) === "stop") return { screens, stoppedAt: "playerOfferOverlay", friendly, matchWeek };
       return { screens, stoppedAt: "playerOfferOverlay", friendly, matchWeek }; // decisão do teste: aceitar/recusar
-    } else if (has("tabelaModalOverlay")) {
+    } else if (top === "tabelaModalOverlay") {
       note("tabelaModalOverlay");
       if ((await hook("onTabela")) === "stop") return { screens, stoppedAt: "tabelaModalOverlay", friendly, matchWeek };
       await page.click("#btnTabelaModalCloseFooter");
-    } else if (unknown.length) {
-      return { screens, stoppedAt: unknown[unknown.length - 1], friendly, matchWeek };
+    } else if (top) {
+      return { screens, stoppedAt: top, friendly, matchWeek }; // tela que este helper não conhece: o teste decide
     } else if (!st.live && !st.busy && (st.round !== start.round || st.week !== start.week)) {
-      return { screens, stoppedAt: null, friendly, matchWeek };
+      // Rodada encerrada só com a tela limpa em 2 leituras seguidas (a
+      // próxima tela da sequência pode abrir um instante depois de a
+      // anterior fechar).
+      if (++settledPolls >= 2) return { screens, stoppedAt: null, friendly, matchWeek };
+      await page.waitForTimeout(150);
+      continue;
     }
     await page.waitForTimeout(50);
   }

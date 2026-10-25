@@ -159,6 +159,11 @@ async function newCareer(page, base, email) {
   });
   await page.click(".m3-nav-item[data-panel='central']");
   await page.waitForTimeout(300);
+  // A coletiva só sai com probabilidade (PRESS_CHANCE_BY_ID: 0,6 pra
+  // goleada) — o que este passo verifica é que a SITUAÇÃO dispara o
+  // gatilho na partida de verdade; a "moeda" de chance já é verificada
+  // nos passos 2-5. Chance 1 aqui deixa o resultado determinístico.
+  await page.evaluate(() => { Object.keys(PRESS_CHANCE_BY_ID).forEach((k) => { PRESS_CHANCE_BY_ID[k] = 1; }); });
   await page.click("#btnSimulate");
   await page.waitForSelector("#preMatchOverlay.open", { timeout: 5000 });
   await page.click("#btnPreMatchGo");

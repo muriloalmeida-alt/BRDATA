@@ -208,19 +208,22 @@ const { skipOnboarding } = require("./_startup");
   });
   const check7 = await page.evaluate((t) => {
     const p = leagueSquadFor(t.clubId).find((x) => x.id === t.playerId);
+    // Fase 1.4 do mercado: o vendedor CPU decide pela proporção sobre a
+    // RESERVA dele (calculateSellerReservationValue), não mais sobre o
+    // valor de mercado — [0.75, 0.95) da reserva é contraproposta,
+    // determinística (sellerNegotiationDecision). 85% da reserva cai no
+    // meio dessa faixa, sem depender de RNG.
+    const reservation = calculateSellerReservationValue(p, t.clubId, { baseValue: p.value });
     CAREER.pendingOffersOut.push({
       id: "test_offer_counter", playerId: p.id, playerName: p.name, clubId: t.clubId, clubName: teamById(t.clubId).name,
-      marketValue: p.value, offerValue: Math.round(p.value * 0.65), installments: 1, roundsLeft: 1, status: "pending", counterValue: null,
+      marketValue: p.value, offerValue: Math.round(reservation * 0.85), installments: 1, roundsLeft: 1, status: "pending", counterValue: null,
     });
-    const origRandom = Math.random;
-    Math.random = () => 0.49; // ratio 0.65 cai na faixa [0.6,0.8) -- 0.49 < 0.5 -> contraproposta
     resolvePendingOffersOutRound(CAREER.currentRound);
-    Math.random = origRandom;
     const o = CAREER.pendingOffersOut.find((x) => x.id === "test_offer_counter");
-    return { countered: o && o.status === "countered", counterValue: o?.counterValue, offerValue: o?.offerValue, marketValue: p.value };
+    return { countered: !!o && o.status === "countered", counterValue: o?.counterValue, offerValue: o?.offerValue, reservation, marketValue: p.value };
   }, target3);
-  check("7) Ratio no meio-termo (65%) com RNG na faixa certa vira contraproposta (não recusa nem aceita direto):",
-    check7.countered && check7.counterValue > check7.offerValue && check7.counterValue <= check7.marketValue, JSON.stringify(check7));
+  check("7) Proposta no meio-termo (85% da reserva do vendedor) vira contraproposta (não recusa nem aceita direto):",
+    check7.countered && check7.counterValue > check7.offerValue && check7.counterValue <= check7.reservation * 1.05, JSON.stringify(check7));
 
   // Responder a coletiva de imprensa da contratação polêmica (se
   // apareceu, ver comentário acima) também já fecha tudo e volta pra

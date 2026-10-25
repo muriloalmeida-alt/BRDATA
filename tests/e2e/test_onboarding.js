@@ -56,18 +56,31 @@ const { check } = require("./_check");
     slide2 !== initial.title && slide3 !== slide2 && slide4.title !== slide3 && slide4.nextLabel === "Começar",
     JSON.stringify({ s1: initial.title, s2: slide2, s3: slide3, s4: slide4.title }));
 
-  // 3) "Começar" no último slide fecha o tutorial E libera o login
-  // diário (fila: tutorial -> login diário).
+  // 3) "Começar" no último slide fecha o tutorial E segue a fila de telas
+  // de entrada: tutorial -> assistente de início (carreira nova, ver
+  // maybeOpenStartupWizard em carreira.js) -> login diário. Nunca duas
+  // sobrepostas.
   await page.click("#btnOnboardNext");
-  // Espera explícita pelo login diário (não um wait fixo) -- fechar o
-  // tutorial dispara um POST real (/api/account/onboarding-seen) antes
-  // de checkDailyLoginOnBoot rodar, tempo de rede variável.
-  await page.waitForSelector("#dailyLoginOverlay.open", { timeout: 5000 }).catch(() => {});
+  // Esperas explícitas pelo estado (não wait fixo) -- fechar o tutorial
+  // dispara um POST real (/api/account/onboarding-seen) antes da próxima
+  // tela da fila abrir, tempo de rede variável.
+  await page.waitForSelector("#startupWizardOverlay.open", { timeout: 5000 }).catch(() => {});
   const afterFinish = await page.evaluate(() => ({
     onboardOpen: document.getElementById("onboardingOverlay").classList.contains("open"),
+    wizardOpen: document.getElementById("startupWizardOverlay").classList.contains("open"),
     dailyLoginOpen: document.getElementById("dailyLoginOverlay").classList.contains("open"),
   }));
-  check("3) Tutorial fecha e login diário abre em seguida:", !afterFinish.onboardOpen && afterFinish.dailyLoginOpen, JSON.stringify(afterFinish));
+  check("3) Tutorial fecha e o assistente de início abre em seguida (sem o login diário por cima):", !afterFinish.onboardOpen && afterFinish.wizardOpen && !afterFinish.dailyLoginOpen, JSON.stringify(afterFinish));
+  for (let i = 0; i < 8 && await page.locator("#startupWizardOverlay.open").count(); i++) {
+    await page.click("#btnWizardSkip");
+    await page.waitForTimeout(150);
+  }
+  await page.waitForSelector("#dailyLoginOverlay.open", { timeout: 5000 }).catch(() => {});
+  const afterWizard = await page.evaluate(() => ({
+    wizardOpen: document.getElementById("startupWizardOverlay").classList.contains("open"),
+    dailyLoginOpen: document.getElementById("dailyLoginOverlay").classList.contains("open"),
+  }));
+  check("3b) Fechado o assistente, o login diário abre em seguida:", !afterWizard.wizardOpen && afterWizard.dailyLoginOpen, JSON.stringify(afterWizard));
 
   const meAfter = await page.evaluate(async () => (await (await fetch("/api/auth/me")).json()).user.onboardingSeen);
   check("4) Servidor confirma onboardingSeen:true:", meAfter === true);

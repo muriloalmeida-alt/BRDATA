@@ -9,9 +9,14 @@
 // (que mantém seu próprio Map em memória, carregado uma vez no boot), o
 // servidor precisa ser REINICIADO depois disso pra enxergar a conta nova
 // — feito pelo teste antes de logar com essa conta.
+//
+// SERVER_DIR (Fase B do motor de testes): diretório do servidor cujo data/
+// recebe a conta — o servidor isolado do runner (cópia temporária, ver
+// run_parallel.js --isolated-server); sem ele, o server/ do repositório.
 const path = require("path");
-const users = require(path.join(__dirname, "..", "..", "server", "src", "users.js"));
-const { flushAllSync } = require(path.join(__dirname, "..", "..", "server", "src", "debouncedPersist.js"));
+const SERVER_DIR = process.env.SERVER_DIR || path.join(__dirname, "..", "..", "server");
+const users = require(path.join(SERVER_DIR, "src", "users.js"));
+const { flushAllSync } = require(path.join(SERVER_DIR, "src", "debouncedPersist.js"));
 
 (async () => {
   const email = process.argv[2];

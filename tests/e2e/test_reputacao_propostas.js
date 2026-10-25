@@ -1,6 +1,6 @@
 const { chromium } = require("playwright-core");
 const { check } = require("./_check");
-const { skipOnboarding } = require("./_startup");
+const { skipOnboarding, skipStartupWizard } = require("./_startup");
 
 async function newCareer(page, base, email) {
   await page.goto(base + "/", { waitUntil: "domcontentloaded" });
@@ -96,6 +96,10 @@ async function newCareer(page, base, email) {
   }, otherClub);
   check("5) Reputação sobrevive à troca de clube (35):", r3.reputation === 35, "| currículo com 1 entrada anterior:", r3.historyLen === 1);
   console.log("   TECHNICIAN_CARRY consumido/limpo:", r3.carryCleared, "| clube realmente trocou:", r3.clubId === otherClub);
+  // startCareer() abre o assistente de início da carreira nova (por cima
+  // do menu) — fecha antes de usar a interface de novo.
+  await page.waitForTimeout(300);
+  await skipStartupWizard(page);
 
   // 6) "Reiniciar" (via UI de verdade) NÃO carrega reputação -- nasce
   // limpo de novo (50, sem currículo).

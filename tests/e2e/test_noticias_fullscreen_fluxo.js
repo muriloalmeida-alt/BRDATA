@@ -42,7 +42,7 @@ async function newCareer(page, base, email) {
   // determinístico (ver PRESS_CHANCE_BY_ID) — o foco aqui é o fluxo
   // Notícias -> Resultados, não a coletiva (já testada à parte).
   await page.evaluate(() => {
-    Object.keys(PRESS_CHANCE_BY_ID).forEach((k) => { PRESS_CHANCE_BY_ID[k] = 0; });
+    Object.keys(PRESS_CHANCE_BY_ID).forEach((k) => { PRESS_CHANCE_BY_ID[k] = 1e-12; }); // não 0: `|| 0.3` em determineMatchPressTrigger faria 0 virar 30%
     PRESS_ALWAYS_IDS.clear();
     // Força um jogador contundido e outro suspenso pra testar a seção
     // "Notícias do seu time".
