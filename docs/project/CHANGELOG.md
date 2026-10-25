@@ -1,7 +1,7 @@
 # BRDATA — CHANGELOG
 **Gerado em:** 09/09/2026 (atualizado em 25/10/2026)
 **Cobertura:** 2026-08-14 até 2026-09-11 (251 commits em 18 dias, branch `main`)
-**Versão atual:** v10.0.0
+**Versão atual:** v10.1.0
 
 ## Metodologia
 
@@ -78,6 +78,14 @@ bump.
 ---
 
 ## Histórico completo (mais recente primeiro)
+
+### 2026-10-25 (3) — v10.1.0  (1 PR)
+
+- PR de `claude/game-2048-spec` (código original `a113f6a`) —
+  GAME-2048-001: minijogo BRDATA 2048 em `/2048.html` (página standalone
+  para WebView, regras com seed, save em `localStorage`, offline via
+  service worker) + tokens `--m3-*` extraídos de `carreira.html` para
+  `public/css/m3-tokens.css`.
 
 ### 2026-10-25 (2) — v10.0.0  (1 commit de merge)
 

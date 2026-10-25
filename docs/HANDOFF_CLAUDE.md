@@ -1145,3 +1145,21 @@ demanda. Relatório em `git show fb21130:docs/HANDOFF_CLAUDE.md`.
 
 **Merge do código:** autorizado pela aprovação formal do Murilo,
 executado nesta sessão.
+
+GAME-2048-001 — Minijogo "BRDATA 2048" (webview, estilo 2048)	25/10/2026	PR de `claude/game-2048-spec` para `main` (commit de código original `a113f6a`)	docs/project/CHANGELOG.md (atualizado)
+
+APROVADO pelo Murilo em 25/10/2026, diretamente nesta conversa
+("Aprovado"), aceitando as 5 divergências do relatório: fundo nas
+superfícies neutras `--m3-surface*`, sem "voltar"/menu (só "Como
+jogar"), `<dialog>` nativo com o visual de `.m3-dialog`, 128 e 1024 no
+mesmo fundo (1024 com contorno dourado) e gancho `window.__game2048`.
+Página `/2048.html` standalone (só números, sem ligação com a
+carreira, sem desfazer, sem atalho no site); tokens `--m3-*` extraídos
+para `public/css/m3-tokens.css`. Testes: motor 20/20, E2E 25/25, suíte
+E2E sem regressão (mesmas falhas pré-existentes antes/depois). Após
+trazer o `main` (`7c253e8`) para o branch, tokens e screenshots da
+carreira conferidos de novo (idênticos, exceto a animação do aviso de
+recompensa). Especificação + relatório em
+`git show a113f6a:docs/HANDOFF_CLAUDE.md`.
+
+**Merge do código:** autorizado pela aprovação formal do Murilo, via PR.
