@@ -166,6 +166,7 @@ paralelas independentes, como já registrado desde que começaram.
 GE-BALANCE-004 — Realismo de acesso/rebaixamento: força relativa à divisão
 
 Status: PRONTO PARA IMPLEMENTAÇÃO (decisões abertas respondidas pelo Murilo em 25/10/2026)
+Issue: https://github.com/muriloalmeida-alt/BRDATA/issues/39
 Sprint: fora da S4 (frente paralela Game Engine, mesma série de GE-BALANCE-001/002/003)
 Prioridade: P1 (Game Engine — consistência/realismo)
 Etapa do loop (CLAUDE.md §11): virada de temporada (Standings → Board → Next Round), efeito em Match
@@ -288,7 +289,8 @@ temporada; D3 — 30%/temporada.
 
 GE-BALANCE-005 — Evolução de jogadores realista (fim da inflação de overall)
 
-Status: PRONTO PARA IMPLEMENTAÇÃO (decisões abertas respondidas pelo Murilo em 25/10/2026)
+Status: REVISÃO DO PM NECESSÁRIA (implementação na branch `claude/ge-balance-005-impl`)
+Issue: https://github.com/muriloalmeida-alt/BRDATA/issues/38
 Sprint: fora da S4 (frente paralela Game Engine)
 Prioridade: P1 (Game Engine / Player Engine)
 Etapa do loop (CLAUDE.md §11): Training + Player Evolution + virada de temporada
@@ -420,6 +422,108 @@ Decisões abertas para o Murilo
 Decisões do Murilo (25/10/2026): D4 — +6/+4/+2/0; D5 — 30 linha /
 32 goleiro, −1 a −3/ano acelerando com a idade; D6 — entra nesta
 demanda; D7 — só daqui pra frente (sem correção retroativa).
+
+Relatório de implementação (Claude, 25/10/2026)
+
+O que foi feito (`public/js/carreira.js`, evoluindo as funções
+existentes — nada paralelo):
+
+* Bloco novo de regras logo depois de `attributeTrainingGain`:
+  `SEASON_GAIN_CAP_BY_AGE`/`seasonGainBaseCap` (D4: +6/+4/+2/0),
+  `playTimeGainFactor`/`seasonGainCap`/`seasonGainRoom`/
+  `recordSeasonGain` (teto sazonal com minutagem — quem não joga tem
+  metade do teto; nas 5 primeiras rodadas ninguém é punido),
+  `highBandGainFactor` (ganho 2× mais difícil acima de 80 e 4× acima
+  de 88), `potentialDeclineFor` (D5: −1 aos 30–31, −2 aos 32–33, −3
+  aos 34+; goleiro 2 anos depois), `youthPotentialRoll` (potencial
+  enviesado da base) e `applyCpuAnnualEvolution` (D6).
+* `applyWeeklyTraining` e `applyNaturalAgingEvolution`: todo ganho
+  respeita o teto da temporada (`p.seasonGain`) e o freio da faixa
+  alta. Veterano 30+ não recupera mais no treino o que perdeu com a
+  idade.
+* `renewHumanSquad`: zera `seasonGain` e aplica a queda do potencial
+  na virada de temporada.
+* `renewLeagueSquad`: evolução anual agregada dos jogadores CPU (idade e
+  minutagem da temporada que terminou), queda do potencial e limpeza de
+  `seasonGain` (caso de jogador vendido pelo humano).
+* `buildBasePlayer` e `generateScoutProspect`: potencial via
+  `youthPotentialRoll` (antes era uniforme entre 42–92 e 45–96). O bônus
+  de 5 estrelas do olheiro foi de +8 para +6.
+* `derivePotentialForAdult`: a margem de crescimento também sofre o
+  freio da faixa alta (um jogador de 82 aos 19 anos chegava a ter teto
+  ~100). Afeta só jogadores criados a partir de agora.
+* UI (`openDetail` → `seasonEvolutionLineHTML`): uma linha
+  `mt-info-line` no perfil do jogador — "Evolução na temporada: +X de
+  até +Y no geral", "Limite de evolução da temporada atingido…" ou
+  "Fase de declínio por idade…", com aviso quando a pouca minutagem
+  reduz o limite. Conferida no mobile (390px).
+
+Persistência: único campo novo é `p.seasonGain` (até 4 números por
+jogador do elenco humano, ~2 KB no save inteiro). Ausente vale 0, e é
+apagado na virada. Sem migração: saves antigos passam a seguir as
+regras novas a partir da rodada seguinte, ninguém perde overall de uma
+vez (D7). Sem mudança de `schemaVersion`.
+
+Validação — `tests/e2e/sim_ge_balance_005.js` (novo; extrai o código
+real de produção por regex e roda num `vm`, comparando `origin/main`
+com o checkout atual). 200 carreiras × 10 temporadas, sem mercado (o
+treinador renova contratos, promove a base aos 19 e aposenta aos 35),
+esquema de treino padrão "Equilíbrio" e elenco montado por
+`buildRealPlayer` (caminho normal do jogo):
+
+| Métrica | Antes | Depois | Critério |
+|---|---|---|---|
+| Top-11 médio (início 77,1 → T10) | 90,9 (+13,8) | 81,4 (+4,3) | +3 a +5 ✅ |
+| Jogadores 90+ por elenco no fim | 8,9 | 0,8 | — |
+| Carreiras com ≤2 jogadores 90+ | 0% | 98% | ≥95% ✅ |
+| Top-11 inteiro ≥85 | 100% | 0% | 0% ✅ |
+| Jogador 33+: variação de overall/temporada | −0,07 | −4,2 | perde em média ✅ |
+| Base teto 80+: temporadas até o teto | 1,1 | ≥5,2 | 4+ ✅ |
+| Liga CPU (59 clubes): média / p99 de overall | 55,0→55,8 / 69→70 | 55,0→55,8 / 69→70 | estável ✅ |
+
+Testes de regressão: suíte e2e completa (`run_parallel.js`, 145
+scripts). 115 passam; 29 falham **igualmente na `main`** (mesma
+lista rodada contra o `carreira.js` da `origin/main`: loja/
+pagamento, tickets, push, mercado, empréstimos etc. — pré-existentes,
+sem relação com esta demanda); 1 (`test_noticias_fullscreen_fluxo.js`)
+falhou só sob concorrência e passou 2× isolado. Todos os testes ligados
+à demanda passam: `test_bloco5_treino`, `test_treinos`,
+`test_training_evolution`, `test_evolucao_atributos`,
+`test_s4_b2_004_treino`, `test_s4_b2_005_perfil`, `test_season`,
+`test_scout`, `test_migration`, `test_save2`, `test_save_limit_001`,
+`test_morale_season`, `test_multi_divisao`, `test_rebaixamento`,
+`test_gerado`, `test_historico_jogador`.
+
+Gaps, divergências e riscos
+
+1. **Elenco de preenchimento (`buildGeneratedProPlayer`)**: no cenário
+   em que o elenco inteiro é gerado (só acontece quando o fornecedor de
+   dados falha), o top-11 ainda sobe +13 em 10 temporadas (antes:
+   +28). Motivo: o potencial médio da base (~65) fica acima do nível
+   desse elenco gerado (~60), então a base o "ultrapassa". No caminho
+   normal (elenco real) não acontece. Correção possível depois: atrelar
+   o potencial da base ao nível do elenco profissional, não só ao
+   `club.atk`.
+2. **Evolução CPU pouco visível no agregado**: os jogadores gerados para
+   a CPU têm contrato de 1 a 4 anos e são substituídos ao vencer
+   (`renewLeagueSquad`, comportamento existente). Por isso a média da
+   liga fica estável antes e depois. A evolução CPU vale por jogador
+   enquanto ele fica no clube (jovem cresce, veterano cai), mas a
+   renovação de contrato da CPU continua sendo uma "troca de elenco".
+3. **Achado pré-existente, fora do escopo (não corrigido)**:
+   `renewHumanSquad` repõe a base com `buildBasePlayer(club, i, rng)`,
+   que gera ids `base_<clube>_<i>` a partir de 0 toda temporada. Esses
+   ids podem repetir os de jovens que ainda estão no elenco (ex.: dois
+   `base_fla_0`), e `openDetail`/`find` passam a achar o jogador errado.
+   Recomendo uma demanda P0 separada (os ids precisam incluir a
+   temporada).
+4. A força de partida não usa o overall absoluto (ver GE-BALANCE-004,
+   fora de escopo). Por isso esta demanda corrige o realismo dos
+   números do elenco, não o resultado das partidas diretamente.
+
+Recomendação: APROVAR. Os critérios do cenário normal foram atingidos
+com folga, a mudança é localizada, o save é compatível e não há
+regressão nos testes. Os itens 1 e 3 viram demandas próprias.
 
 Ordem sugerida: GE-BALANCE-005 antes de GE-BALANCE-004 (é a queixa
 mais visível e não depende da outra); as duas antes ou em paralelo ao

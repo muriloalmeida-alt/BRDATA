@@ -1314,6 +1314,9 @@ function derivePotentialForAdult(overall, age, rng) {
   else if (age <= 26) room = 1 + rng() * 5;   // 1-6
   else if (age <= 29) room = rng() * 3;       // 0-3
   else room = 0;                               // 30+: sem mais espaço de crescimento por treino
+  // GE-BALANCE-005 (issue #38) — quem já nasce em faixa alta tem menos
+  // espaço (um 82 de 19 anos com teto 100 enchia o elenco de 90+).
+  room *= highBandGainFactor(overall);
   return Math.round(clamp(overall + room, overall, 99));
 }
 // Ganho de um atributo no treino (ver applyWeeklyTraining) respeitando
@@ -1330,10 +1333,111 @@ function attributeTrainingGain(currentValue, ceiling, baseGain) {
   if (room <= 0) return 0;
   let gained = 0;
   for (let i = 0; i < baseGain; i++) {
-    const chance = clamp(room / 15, 0.05, 1);
+    // GE-BALANCE-005 (issue #38) — além da distância até o teto, a
+    // faixa ABSOLUTA do atributo também freia (ver highBandGainFactor).
+    const chance = clamp(room / 15, 0.05, 1) * highBandGainFactor(currentValue + gained);
     if (Math.random() < chance) gained++;
   }
   return Math.min(gained, room);
+}
+
+/* ---------- GE-BALANCE-005 (issue #38) — evolução realista ----------
+   Pedido do usuário: "os jogadores evoluem demais e chega um momento
+   que o time todo é acima de 90". Diagnóstico (ver
+   docs/HANDOFF_CLAUDE.md): o treino semanal saturava o teto em poucas
+   semanas, o veterano recuperava no treino todo declínio de idade
+   (teto fixo pra sempre), a base sorteava potencial uniforme 42-92 e o
+   mundo CPU não evoluía. Decisões do Murilo (D4-D7): teto de ganho por
+   TEMPORADA por faixa etária (+6/+4/+2/0), potencial que cai a partir
+   dos 30 (32 goleiro) em -1 a -3/ano, evolução anual dos elencos CPU,
+   e nada retroativo em save antigo (p.seasonGain ausente = 0).
+   As regras abaixo (até applyCpuAnnualEvolution) não leem CAREER de
+   propósito — tests/e2e/sim_ge_balance_005.js as extrai por regex e
+   roda tal e qual. */
+// [idade máxima da faixa, ganho máximo na temporada] — 30+ não ganha
+// nada (só declina, ver applyNaturalAgingEvolution/potentialDeclineFor).
+const SEASON_GAIN_CAP_BY_AGE = [[21, 6], [25, 4], [29, 2]];
+function seasonGainBaseCap(age) {
+  const band = SEASON_GAIN_CAP_BY_AGE.find(([maxAge]) => age <= maxAge);
+  return band ? band[1] : 0;
+}
+// Minutagem importa (escopo item 5): quem joga pelo menos metade das
+// rodadas já disputadas usa o teto cheio; quem não joga nunca, metade
+// dele. Começo de temporada (< 6 rodadas) não pune ninguém — amostra
+// pequena demais pra dizer quem é reserva.
+function playTimeGainFactor(appsSeason, roundsSoFar) {
+  if (roundsSoFar < 6) return 1;
+  const share = (appsSeason || 0) / roundsSoFar;
+  return 0.5 + 0.5 * clamp(share / 0.5, 0, 1);
+}
+function seasonGainCap(p, roundsSoFar) {
+  return Math.round(seasonGainBaseCap(p.age) * playTimeGainFactor(p.appsSeason, roundsSoFar));
+}
+// Quanto ainda dá pra ganhar NESTE atributo nesta temporada (treino +
+// maturação somados, ver recordSeasonGain).
+function seasonGainRoom(p, attr, roundsSoFar) {
+  const used = (p.seasonGain && p.seasonGain[attr]) || 0;
+  return Math.max(0, seasonGainCap(p, roundsSoFar) - used);
+}
+function recordSeasonGain(p, attr, gain) {
+  if (!gain) return;
+  p.seasonGain = p.seasonGain || {};
+  p.seasonGain[attr] = (p.seasonGain[attr] || 0) + gain;
+}
+// Retorno decrescente pela faixa ABSOLUTA (CLAUDE.md §17): acima de 80
+// cada ponto é 2x mais difícil, acima de 88, 4x — 90+ vira raridade.
+function highBandGainFactor(value) {
+  return value >= 88 ? 0.25 : value >= 80 ? 0.5 : 1;
+}
+// Queda anual do potencial a partir do pico (D5): -1 aos 30-31, -2 aos
+// 32-33, -3 dos 34 em diante (goleiro, 2 anos depois). Determinístico.
+function potentialDeclineFor(age, group) {
+  const declineAge = group === "G" ? 32 : 30;
+  if (age < declineAge) return 0;
+  return Math.min(3, 1 + Math.floor((age - declineAge) / 2));
+}
+// Potencial de jovem (base/olheiro) com distribuição enviesada (escopo
+// item 4): ~75% entre 55 e 75, 85+ em ~1-2,5% (conforme o clube), 90+
+// excepcional. `bonus` = nível do clube/olheiro.
+function youthPotentialRoll(rng, bonus) {
+  return Math.round(clamp(48 + rng() * 22 + Math.pow(rng(), 8) * 22 + bonus, 35, 94));
+}
+// Evolução ANUAL agregada de jogador CPU (D6) — roda 1x na virada de
+// temporada (ver renewLeagueSquad), com a idade e a minutagem da
+// temporada que acabou: mesma curva do clube humano (teto sazonal por
+// idade, banda alta, teto de potencial; declínio na mesma taxa média
+// de applyNaturalAgingEvolution), sem treino semanal nem campo novo.
+function applyCpuAnnualEvolution(p, rng) {
+  const declineAge = p.group === "G" ? 32 : 30;
+  let delta = 0;
+  if (p.age >= declineAge) {
+    const expected = (0.05 + (p.age - declineAge) * 0.01) * 38;
+    delta = -Math.round(expected * (0.6 + rng() * 0.8));
+  } else {
+    const room = (p.potential != null ? p.potential : 99) - p.overall;
+    if (room > 0) {
+      const cap = seasonGainBaseCap(p.age) * playTimeGainFactor(p.appsSeason, 38);
+      delta = Math.min(room, Math.round(cap * (0.5 + rng() * 0.5) * highBandGainFactor(p.overall)));
+    }
+  }
+  if (!delta) return;
+  ["overall", "atk", "def", "phys"].forEach((attr) => { p[attr] = clamp(p[attr] + delta, 20, 99); });
+}
+// Explicabilidade (escopo item 7, CLAUDE.md §45) — por que o jogador
+// parou de evoluir. Só pro SEU elenco (o teto sazonal é do treino dele).
+function seasonEvolutionLineHTML(p) {
+  if (!CAREER.squad.includes(p)) return "";
+  if (seasonGainBaseCap(p.age) === 0) {
+    return `<p class="mt-info-line">Fase de declínio por idade — o treino não recupera mais o nível perdido, só a experiência em campo segura a queda.</p>`;
+  }
+  const roundsSoFar = CAREER.currentRound - 1;
+  const cap = seasonGainCap(p, roundsSoFar);
+  const used = (p.seasonGain && p.seasonGain.overall) || 0;
+  const benchNote = cap < seasonGainBaseCap(p.age) ? " Com pouca minutagem, o limite fica menor." : "";
+  if (used >= cap) {
+    return `<p class="mt-info-line">Limite de evolução da temporada atingido (+${used} no geral) — volta a evoluir na próxima temporada.${benchNote}</p>`;
+  }
+  return `<p class="mt-info-line">Evolução na temporada: +${used} de até +${cap} no geral.${benchNote}</p>`;
 }
 // Backfill pra saves de ANTES desta mudança — jogador adulto nunca
 // tinha esse campo. Seed determinística por jogador (mesmo padrão de
@@ -1394,7 +1498,9 @@ function buildBasePlayer(club, idx, rng) {
   // Só afeta jogadores gerados daqui pra frente — saves antigos mantêm
   // a idade já salva.
   const age = 15 + Math.floor(rng() * 6);
-  const potential = Math.round(clamp(42 + rng() * 48 + (club.atk - 1) * 10, 35, 92));
+  // GE-BALANCE-005 (issue #38) — era uniforme 42-92 (~10% de cada safra
+  // com teto 85+); agora enviesado, ver youthPotentialRoll.
+  const potential = youthPotentialRoll(rng, (club.atk - 1) * 6);
   const overall = Math.round(clamp(potential * (0.42 + rng() * 0.28), 26, 60));
   const atk = clamp(overall + (group === "F" ? 5 : group === "M" ? 2 : -8) + Math.round(rng() * 6 - 3), 18, 78);
   const def = clamp(overall + (group === "D" || group === "G" ? 5 : -8) + Math.round(rng() * 6 - 3), 18, 78);
@@ -2972,7 +3078,16 @@ function renewLeagueSquad(club, squad) {
   // SEM snapshot de seasonHistory aqui — time CPU o técnico não
   // gerencia, não faz sentido guardar histórico individual (ver
   // renewHumanSquad, único lugar que snapshota de verdade).
-  squad.forEach((p) => { p.age += 1; p.status = "ok"; p.outUntilRound = null; p.injurySeverity = null; p.yellowCards = 0; p.goalsSeason = 0; p.assistsSeason = 0; p.appsSeason = 0; });
+  // GE-BALANCE-005 (issue #38) — evolução anual agregada (idade/
+  // minutagem da temporada que ACABOU, por isso antes do age += 1 e do
+  // reset de appsSeason) + queda do potencial já com a idade nova.
+  const evoRng = seededRngFromKey(`cpu-evo:${club.id}:${CAREER.seasonYear}`);
+  squad.forEach((p) => {
+    applyCpuAnnualEvolution(p, evoRng);
+    p.age += 1; p.status = "ok"; p.outUntilRound = null; p.injurySeverity = null; p.yellowCards = 0; p.goalsSeason = 0; p.assistsSeason = 0; p.appsSeason = 0;
+    delete p.seasonGain; // jogador vendido pelo humano chega com o contador da temporada dele
+    if (p.potential != null) p.potential = clamp(p.potential - potentialDeclineFor(p.age, p.group), 20, 99);
+  });
   const kept = squad.filter((p) => p.contractUntil >= CAREER.seasonYear);
   const rng = seededRngFromKey(`renew-league:${club.id}:${CAREER.seasonYear}`);
   // AJUSTE (pedido do usuário: "o mercado deve trazer jogadores das 3
@@ -2998,7 +3113,13 @@ function renewHumanSquad() {
   // roda pra todo mundo AINDA no elenco (inclusive quem sai duas
   // linhas abaixo por fim de contrato — a temporada que passou com
   // esse clube conta pro histórico dele mesmo saindo agora).
-  CAREER.squad.forEach((p) => { snapshotPlayerSeasonHistory(p, CAREER.clubName); p.age += 1; p.status = "ok"; p.outUntilRound = null; p.injurySeverity = null; p.yellowCards = 0; p.goalsSeason = 0; p.assistsSeason = 0; p.appsSeason = 0; });
+  // GE-BALANCE-005 (issue #38) — teto de ganho da temporada zera
+  // (seasonGain) e o potencial começa a cair a partir do pico.
+  CAREER.squad.forEach((p) => {
+    snapshotPlayerSeasonHistory(p, CAREER.clubName); p.age += 1; p.status = "ok"; p.outUntilRound = null; p.injurySeverity = null; p.yellowCards = 0; p.goalsSeason = 0; p.assistsSeason = 0; p.appsSeason = 0;
+    delete p.seasonGain;
+    if (p.potential != null) p.potential = clamp(p.potential - potentialDeclineFor(p.age, p.group), 20, 99);
+  });
   const leavingNames = [];
   CAREER.squad = CAREER.squad.filter((p) => {
     if (p.contractUntil < CAREER.seasonYear) { leavingNames.push(p.name); return false; }
@@ -5359,7 +5480,13 @@ function applyNaturalAgingEvolution(playedThisRound) {
     const ceiling = p.potential != null ? p.potential : 99;
     ["overall", "atk", "def", "phys"].forEach((attr) => {
       const roll = Math.random();
-      if (roll < growChance) { if (p[attr] < ceiling) { p[attr] = clamp(p[attr] + 1, 20, ceiling); trend[attr] += 1; } }
+      // GE-BALANCE-005 (issue #38) — maturação também conta pro teto da
+      // temporada (seasonGainRoom) e sofre o mesmo freio de faixa alta.
+      if (roll < growChance * highBandGainFactor(p[attr])) {
+        if (p[attr] < ceiling && seasonGainRoom(p, attr, CAREER.currentRound - 1) > 0) {
+          p[attr] = clamp(p[attr] + 1, 20, ceiling); trend[attr] += 1; recordSeasonGain(p, attr, 1);
+        }
+      }
       else if (roll > 1 - declineChance) { p[attr] = clamp(p[attr] - 1, 20, 99); trend[attr] -= 1; }
     });
     // Acumula até o jogador ser aberto no detalhe de novo (ver
@@ -5574,9 +5701,14 @@ function applyWeeklyTraining() {
         // (o esforço aconteceu), mas o ganho de verdade pode vir menor
         // que attrGain, ou zero, se o jogador já estiver perto/no teto.
         const ceiling = p.potential != null ? p.potential : 99;
-        const gain = attributeTrainingGain(p[attr], ceiling, attrGain);
+        // GE-BALANCE-005 (issue #38) — e o teto de ganho da TEMPORADA
+        // por idade/minutagem (ver seasonGainRoom): veterano 30+ não
+        // recupera mais no treino o que perdeu com a idade.
+        const seasonRoom = seasonGainRoom(p, attr, CAREER.currentRound - 1);
+        const gain = seasonRoom > 0 ? attributeTrainingGain(p[attr], ceiling, Math.min(attrGain, seasonRoom)) : 0;
         if (gain > 0) {
           p[attr] = clamp(p[attr] + gain, 20, ceiling);
+          recordSeasonGain(p, attr, gain);
           const trend = p.attrTrend || { overall: 0, atk: 0, def: 0, phys: 0 };
           trend[attr] += gain;
           p.attrTrend = trend;
@@ -10215,6 +10347,7 @@ function openDetail(id) {
       ${attrBarHTML("Moral", morale, moraleVariant, "")}
     </div>
     ${potRange ? `<p class="mt-badge-gold" style="display:flex;">🔭 Avaliação do olheiro: potencial entre ${potRange.lo} e ${potRange.hi}.</p>` : ""}
+    ${seasonEvolutionLineHTML(p)}
     ${mtConditionBarHTML(p.condition)}
     <p class="mt-info-line">Condição: ${conditionRating(p.condition)}/5 (${CONDITION_RATING_LABEL[conditionRating(p.condition)]}) · Jogos: ${p.apps || 0} · Gols na carreira: ${p.goalsCareer || 0} · Cartões amarelos (ciclo atual): ${p.yellowCards || 0}</p>
     ${playerSeasonHistoryHTML(p)}
@@ -12604,8 +12737,10 @@ function generateScoutProspect(scout, region, round, idx) {
   const rng = seededRngFromKey(`scoutprospect:${scout.id}:${round}:${idx}`);
   const group = BASE_COMPOSITION[Math.floor(rng() * BASE_COMPOSITION.length)];
   const age = 15 + Math.floor(rng() * 6);
-  const starBoost = (scout.stars - 3) * 4;
-  const potential = Math.round(clamp(45 + rng() * 42 + starBoost, 40, 96));
+  const starBoost = (scout.stars - 3) * 3;
+  // GE-BALANCE-005 (issue #38) — mesma distribuição enviesada da base
+  // (ver youthPotentialRoll); olheiro melhor puxa a curva pra cima.
+  const potential = youthPotentialRoll(rng, starBoost);
   const overall = Math.round(clamp(potential * (0.35 + rng() * 0.25), 22, 55));
   const atk = clamp(overall + (group === "F" ? 5 : group === "M" ? 2 : -8) + Math.round(rng() * 6 - 3), 15, 78);
   const def = clamp(overall + (group === "D" || group === "G" ? 5 : -8) + Math.round(rng() * 6 - 3), 15, 78);
