@@ -2,6 +2,7 @@
 // (não só o seu), aberta a qualquer momento pelo Menu, com 2 estados de
 // verdade (Atual = não jogada ainda, Anterior = com placar real).
 const { chromium } = require("playwright-core");
+const { skipPreseason } = require("./_calendar_skip");
 
 (async () => {
   const browser = await chromium.launch({ executablePath: process.env.PW_CHROMIUM_PATH || undefined, headless: true, args: ["--host-resolver-rules=MAP fonts.googleapis.com 127.0.0.1,MAP fonts.gstatic.com 127.0.0.1"] });
@@ -58,6 +59,7 @@ const { chromium } = require("playwright-core");
   //    com placares reais (>=1 gol total esperado entre 10 jogos).
   await page.click(".m3-nav-item[data-panel='central']");
   await page.waitForTimeout(200);
+  await skipPreseason(page); // GE-CALENDAR-001: carreira nova começa na pré-temporada
   await page.click("#btnSimulate");
   await page.waitForSelector("#preMatchOverlay.open", { timeout: 5000 });
   await page.click("#btnPreMatchGo");

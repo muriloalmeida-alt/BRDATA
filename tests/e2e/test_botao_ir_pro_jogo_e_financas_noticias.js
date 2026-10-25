@@ -5,6 +5,7 @@
 // 2) Info de salários pagos/patrocínio/caixa saiu de "Resultados da
 //    rodada" e passou a aparecer no cartão-resumo da tela de Notícias.
 const { chromium } = require("playwright-core");
+const { skipPreseason } = require("./_calendar_skip");
 
 (async () => {
   const browser = await chromium.launch({ executablePath: process.env.PW_CHROMIUM_PATH || undefined, headless: true, args: ["--host-resolver-rules=MAP fonts.googleapis.com 127.0.0.1,MAP fonts.gstatic.com 127.0.0.1"] });
@@ -53,6 +54,7 @@ const { chromium } = require("playwright-core");
   console.log("   Tem a classe .mt-btn-primary-gold (mesmo estilo dos outros 'Ir para o jogo'), sem a verde antiga:", btn1.hasGoldClass && !btn1.hasGreenClass);
 
   // 2) Fluxo completo até Notícias — confere a linha financeira lá.
+  await skipPreseason(page); // GE-CALENDAR-001: carreira nova começa na pré-temporada
   await page.click("#btnSimulate");
   await page.waitForSelector("#preMatchOverlay.open", { timeout: 5000 });
   await page.click("#btnPreMatchGo");

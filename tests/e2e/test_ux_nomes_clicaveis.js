@@ -76,11 +76,16 @@ const { chromium } = require("playwright-core");
   await page.waitForTimeout(150);
   const marketPlayerName = await detailOpenWithName();
   console.log("1a) Mercado: nome do jogador de outro clube abre Perfil (somente leitura):", !!marketPlayerName, marketPlayerName);
-  const readOnlyNote = await page.evaluate(() => {
+  // UX-MERCADO-001 — o perfil de jogador de outro clube deixou de ser
+  // "consulta apenas": tem Fazer proposta / Pedir empréstimo / Comparar
+  // (nenhuma ação de gestão do SEU elenco, como vender/dispensar).
+  const externalActions = await page.evaluate(() => {
     const dialog = document.querySelector(".m3-dialog-overlay.open");
-    return dialog ? dialog.textContent.includes("consulta apenas") : document.getElementById("detailBody").textContent.includes("consulta apenas");
+    if (!dialog) return null;
+    return { acts: [...dialog.querySelectorAll("[data-ext-act]")].map((b) => b.dataset.extAct), noManagement: !dialog.querySelector('[data-act="sell"],[data-act="release"]') };
   });
-  console.log("1b) Perfil somente-leitura mostra aviso 'consulta apenas' (sem ações de gestão):", readOnlyNote);
+  console.log("1b) Perfil de jogador de outro clube tem ações de negociação (sem ações de gestão):",
+    !!externalActions && externalActions.acts.includes("offer") && externalActions.noManagement, JSON.stringify(externalActions));
   await closeAll();
 
   // 2) Mercado: nome do clube abre o elenco do clube
@@ -142,7 +147,14 @@ const { chromium } = require("playwright-core");
   // 5) Indicações dos olheiros
   await goToPanel("mercado");
   await page.waitForTimeout(150);
-  await page.evaluate(() => searchScoutSuggestions());
+  // GE-SCOUT-001 — indicação vem de olheiro em missão Profissional
+  // (não mais de busca automática): contrata o olheiro-chefe, manda em
+  // missão longa e espera ele voltar.
+  await page.evaluate(() => {
+    hireScout("t_lacerda");
+    startScoutMission(CAREER.scouts[0].id, scoutAllowedRegions(CAREER.scouts[0])[0], { type: "pro", duration: "longa" });
+    for (let r = 0; r < 6; r++) tickScoutMissions(CAREER.currentRound);
+  });
   await page.waitForTimeout(200);
   const hasScoutSuggestions = await page.evaluate(() => (CAREER.scoutSuggestions || []).length > 0);
   if (hasScoutSuggestions) {

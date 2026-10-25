@@ -3,8 +3,10 @@
 // até achar cada tipo pelo menos uma vez, ou desiste depois de um
 // número razoável de tentativas (são decorativos/probabilísticos).
 const { chromium } = require("playwright-core");
+const { skipPreseason } = require("./_calendar_skip");
 
 async function playOneMatch(page) {
+  await skipPreseason(page); // GE-CALENDAR-001: carreira nova começa na pré-temporada
   await page.click("#btnSimulate");
   await page.waitForSelector("#preMatchOverlay.open", { timeout: 5000 });
   await page.click("#btnPreMatchGo");
@@ -45,6 +47,7 @@ async function playOneMatch(page) {
 
   // 1) Barra de posse ao vivo aparece com valores plausíveis já no
   // início da partida (antes de qualquer tempo resolver -- 50/50).
+  await skipPreseason(page); // GE-CALENDAR-001: carreira nova começa na pré-temporada
   await page.click("#btnSimulate");
   await page.waitForSelector("#preMatchOverlay.open", { timeout: 5000 });
   await page.click("#btnPreMatchGo");

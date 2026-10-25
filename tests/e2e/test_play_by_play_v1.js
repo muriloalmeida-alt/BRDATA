@@ -3,6 +3,7 @@
 // destaque de gol em tela cheia, estatísticas agregadas na tela
 // "Seu jogo" e o botão "Rever lances".
 const { chromium } = require("playwright-core");
+const { skipPreseason } = require("./_calendar_skip");
 
 (async () => {
   const browser = await chromium.launch({ executablePath: process.env.PW_CHROMIUM_PATH || undefined, headless: true, args: ["--host-resolver-rules=MAP fonts.googleapis.com 127.0.0.1,MAP fonts.gstatic.com 127.0.0.1"] });
@@ -31,6 +32,7 @@ const { chromium } = require("playwright-core");
   await page.waitForTimeout(500);
 
   // 1) Iniciar partida ao vivo.
+  await skipPreseason(page); // GE-CALENDAR-001: carreira nova começa na pré-temporada
   await page.click("#btnSimulate");
   await page.waitForSelector("#preMatchOverlay.open", { timeout: 5000 });
   await page.click("#btnPreMatchGo");

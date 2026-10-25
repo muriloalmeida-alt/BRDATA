@@ -1,6 +1,7 @@
 // Bloco 2 (brtreinadorbloco2tatica.html): campo hero sem card, chips de
 // formação, 4 eixos táticos reais em barra de 5 segmentos, FAB salvar.
 const { chromium } = require("playwright-core");
+const { skipPreseason } = require("./_calendar_skip");
 
 (async () => {
   const browser = await chromium.launch({ executablePath: process.env.PW_CHROMIUM_PATH || undefined, headless: true, args: ["--host-resolver-rules=MAP fonts.googleapis.com 127.0.0.1,MAP fonts.gstatic.com 127.0.0.1"] });
@@ -104,6 +105,7 @@ const { chromium } = require("playwright-core");
   // mais os 3 <select> antigos) — simula uma rodada e abre a modal.
   await page.click(".m3-nav-item[data-panel='central']");
   await page.waitForTimeout(200);
+  await skipPreseason(page); // GE-CALENDAR-001: carreira nova começa na pré-temporada
   await page.click("#btnSimulate");
   await page.waitForSelector("#preMatchOverlay.open", { timeout: 5000 });
   await page.click("#btnPreMatchGo");

@@ -1,4 +1,5 @@
 const { chromium } = require("playwright-core");
+const { skipPreseason } = require("./_calendar_skip");
 (async () => {
   const browser = await chromium.launch({ executablePath: process.env.PW_CHROMIUM_PATH || undefined, headless: true, args: ["--host-resolver-rules=MAP fonts.googleapis.com 127.0.0.1,MAP fonts.gstatic.com 127.0.0.1"] });
   const page = await browser.newPage({ viewport: { width: 390, height: 900 } });
@@ -27,6 +28,7 @@ const { chromium } = require("playwright-core");
   await page.click("#btnClaimDailyLogin", { timeout: 3000 }).catch(() => {});
   await page.waitForTimeout(300);
 
+  await skipPreseason(page); // GE-CALENDAR-001: carreira nova começa na pré-temporada
   const opponentId = await page.evaluate(() => document.getElementById("nextMatchBox").dataset.opponentId);
   console.log("Adversário da rodada 1:", opponentId);
 

@@ -321,7 +321,7 @@ GE-SCOUT-001 → GE-CALENDAR-001 (B1 → B2 → B3).
 
 GE-SCOUT-001 — Olheiros nacionais e unificados
 
-Status: PRONTO PARA IMPLEMENTAÇÃO
+Status: REVISÃO DO PM NECESSÁRIA (implementação na branch `claude/ge-scout-001`, criada a partir de `claude/p0-ids-unicos`)
 Prioridade: P3 (Mundo) · Etapa do loop: Market/Management
 
 Decisão do Murilo: indicações do Mercado passam a vir dos olheiros
@@ -348,11 +348,83 @@ Aceite: nenhum texto/olheiro internacional; indicações dependem dos
 olheiros; olheiro melhor → faixa de potencial mais estreita e mais
 achados (medido por simulação); saves antigos carregam.
 
+Relatório de implementação (Claude, 25/10/2026)
+
+O que foi feito (`public/js/carreira.js` + `public/carreira.html`):
+1. **Catálogo nacional** (`SCOUT_MARKET`, 8 olheiros): Norte, Nordeste,
+   Centro-Oeste, Sudeste, Sul, "Generalista · Sul e Sudeste",
+   "Generalista nacional" e "Olheiro-chefe nacional". Cada olheiro tem
+   **Avaliação** e **Rede** (1–5); estrelas = média das duas. Nenhum
+   texto internacional ou sul-americano restou.
+2. **Missão com foco** (`startScoutMission` + folha "Nova missão"):
+   tipo (Sub-17 / Sub-20 para a base, Profissional para o Mercado),
+   posição opcional, duração (Curta 2 / Média 4 / Longa 6 rodadas, com
+   1/2/3 tentativas) e região. Só parte no botão "Enviar olheiro", com
+   resumo do que esperar. A Rede decide a chance de cada tentativa.
+3. **Indicações unificadas** (decisão do Murilo): a missão
+   Profissional gera as indicações do Mercado (`scoutMarketFinds`). O
+   olheiro avalia jogadores da região e posição pedidas pela leitura
+   dele (Avaliação baixa erra mais) e prioriza quem reforça seu titular
+   mais fraco ou tem espaço de crescimento. A busca automática com
+   cooldown deixou de existir: sem olheiro, a tela explica e o botão
+   leva a contratar; com olheiro, "Enviar olheiro ao mercado" abre a
+   missão já como Profissional.
+4. **Relatório** (`scoutReport`, `scoutPotentialRange`): faixa de
+   potencial (5 de Avaliação → ±1–2; 3 → ±5–6), ponto forte, ponto a
+   evoluir e recomendação ("Reforço imediato" / "Aposta de futuro" /
+   "Observar" no Mercado; "Promover já" / "Acompanhar" / "Baixa
+   projeção" na base). O potencial exato deixou de aparecer: antes a
+   indicação mostrava "potencial X" e a ficha do jovem também.
+5. **Saves**: `migrateScoutsToNational()` (em `migrateCareerDefaults`)
+   alinha os olheiros já contratados ao catálogo, mantendo custo e
+   estrelas — o "base internacional" vira "Olheiro-chefe nacional".
+   Missão de save antigo (sem tipo) termina como antes (2 tentativas,
+   jovem de 15–20 anos). Indicação antiga sem relatório aparece sem os
+   campos novos.
+
+Validação — `tests/e2e/sim_ge_scout_001.js` (código real via `vm`):
+
+| Olheiro | Avaliação/Rede | Largura média da faixa | Achados por missão (curta / média / longa) |
+|---|---|---|---|
+| T. Lacerda (chefe nacional) | 5/5 | 3,0 | 0,75 / 1,50 / 2,25 |
+| P. Andrade (Nordeste) | 4/4 | 7,0 | 0,82 / 1,64 / 2,46 |
+| F. Quintana (Sudeste) | 4/3 | 7,0 | 0,74 / 1,48 / 2,22 |
+| R. Moura / G. Weber (Norte / Sul) | 3/4 | 11,0 | 0,82 / 1,64 / 2,46 |
+| L. Bastos / C. Nascimento | 3/3 | 11,0 | 0,74 / 1,48 / 2,22 |
+| A. Lima (generalista nacional) | 3/3 | 11,0 | 0,59 / 1,18 / 1,77 |
+
+A faixa estreita conforme a Avaliação e os achados crescem com a Rede
+(✅). **Ponto para o Murilo decidir:** dentro da própria região, um
+especialista acha um pouco mais que o olheiro-chefe, por causa do bônus
+de especialidade (+0,15) que o código já tinha. O chefe compensa com a
+melhor avaliação e com cobertura nacional. Se preferir que o chefe
+também ache mais, basta dar a ele parte do bônus.
+
+Testes:
+* `test_indicacoes_olheiros.js` reescrito para o fluxo novo (sem
+  olheiro → contratar; missão Profissional gera indicações com posição,
+  faixa e relatório, sem potencial exato; catálogo só nacional;
+  Recusar/Propor). Passa.
+* `test_assistente_inicio.js`: compara com `SCOUT_MARKET.length` (era 3
+  fixo). Passa.
+* `test_ux_nomes_clicaveis.js`: estava desatualizado pela
+  UX-MERCADO-001, que já está na `main` (esperava "consulta apenas") e
+  pela busca automática. Atualizado e passa.
+* Regressão de olheiro, base, onboarding, mercado, save, migração e
+  temporada: todos passam. Mobile conferido (folha de missão e
+  indicações).
+* Suíte completa (148 scripts): 23 falhas, todas pré-existentes. A
+  única diferença em relação à rodada anterior foi
+  `test_save_limit_001_careerstore.js`, que lê o `careers.json` do
+  servidor enquanto outros testes paralelos escrevem nele (arquivo lido
+  pela metade); isolado, passa 6/6. `test_botoes_rodape.js` e
+  `test_comissao_mercado_proposta.js` passaram a passar.
+
 ⸻
 
 GE-CALENDAR-001 — Calendário real jan–dez, pré-temporada e amistosos
 
-Status: PRONTO PARA IMPLEMENTAÇÃO (entrega em 3 partes, B1 → B2 → B3)
+Status: B1 em REVISÃO DO PM NECESSÁRIA (branch `claude/ge-calendar-001-b1`, criada a partir de `claude/ge-scout-001`); B2 e B3 PRONTAS PARA IMPLEMENTAÇÃO depois da B1
 Prioridade: P1 (Game Engine) · Etapa do loop: todo o loop (Calendar)
 
 Decisões do Murilo: semanas com 2 jogos; 3 amistosos na pré-temporada +
@@ -393,6 +465,129 @@ rodadas + Copa encaixadas sem conflito; janelas abrem/fecham nas datas;
 saldo anual de caixa equivalente ao atual (±10%) em simulação; volume
 de transferências CPU por temporada dentro de ±20% do atual; saves
 antigos carregam e viram a temporada sem erro.
+
+Relatório de implementação — B1 (Claude, 25/10/2026)
+
+Desenho: uma **camada de calendário por cima do motor de rodadas**, que
+não foi reescrito (`simulateRound`, Ao Vivo, Copa e tabelas seguem
+iguais). A unidade de tempo passa a ser a semana:
+* `buildSeasonCalendar(ano)`: 52 semanas (segundas-feiras) com fase
+  por mês (jan férias, fev pré-temporada, jul pausa, demais temporada).
+  As 38 rodadas ocupam em ordem as semanas de temporada (de março a
+  junho, e de agosto a meados/fim de dezembro, conforme o ano). Semana
+  com rodada de Copa (`CUP_ROUNDS_EXPANDED`, 12 por ano) é semana de 2
+  jogos (Copa na quarta, Brasileirão no domingo), com aviso no Início.
+  Fica em `CAREER.calendar` (~2 KB).
+* Semana com jogo: o fluxo de sempre; no fim da rodada
+  (`finishRoundTail`) o calendário avança uma semana.
+* Semana sem jogo: `runCalendarOffWeek()` aplica treino (nas férias, só
+  descanso: condição volta a 100), recuperação, cura de lesão (1 semana
+  a menos de afastamento), obra do estádio, missões de olheiro, prazos
+  de propostas/anúncios, parcelas e, com janela aberta, a IA de mercado
+  e as propostas recebidas (em semanas alternadas, para manter o volume
+  anual parecido com o antigo).
+* Janela (`transferWindowStatus`): aberta em férias, pré-temporada e
+  julho; fechada para compra na temporada (venda continua liberada). Os
+  textos dizem "aberta até o fim de fevereiro" / "reabre em julho".
+* Finanças **mensais** (12×/ano, `applyCalendarMonthlyFinances`), cobradas
+  quando a semana vira o mês: folha, comissão, olheiros, patrocínio
+  (total da temporada / 12) e **Cota de TV**, a receita nova da
+  recalibração. A cota é fixada na criação do calendário para cobrir os
+  2,5 meses a mais de custo (12 em vez de 9,5), então o saldo anual fica
+  equivalente ao antigo por construção. Inflar a folha depois não
+  aumenta a cota (anti-exploit). Aparece no extrato como "📺 Cota de TV".
+* Treino 1× por semana (`calendarTurnKey`); na pré-temporada, o treino
+  físico rende +1 ponto por sessão (o teto da GE-BALANCE-005 continua
+  valendo).
+* Início: em semana sem jogo, o card mostra fase, semana, situação do
+  mercado e próximo jogo com data; o botão principal vira "Avançar
+  semana", mais "Pular até o próximo jogo". O topo mostra a data
+  ("06/fev · 1/38").
+
+Decisões tomadas na implementação (confirmar):
+1. **Carreira nova começa na pré-temporada** (fevereiro, janela aberta),
+   não em janeiro: férias só existem entre uma temporada e outra. No 1º
+   ano são cobrados 10 meses (março a dezembro), porque fevereiro conta
+   como já pago na largada.
+2. **Semanas de 2 jogos = semanas de Copa**: as 38 rodadas cabem nas
+   38–40 semanas de temporada, então não foi preciso pôr rodada do
+   Brasileirão no meio da semana. As 12 rodadas de Copa ficam como
+   semanas de 2 jogos.
+3. **Cota de TV** foi a forma escolhida de "recalibrar receitas" (é a
+   maior receita real dos clubes brasileiros).
+4. Carreira antiga continua no modelo de rodadas até a próxima virada
+   de temporada, quando ganha o calendário a partir de janeiro. Sem
+   migração no meio da temporada.
+
+Validação — novo `tests/e2e/test_ge_calendar_001.js` (passa):
+* Carreira nova: pré-temporada, janela aberta, "Avançar semana".
+* "Pular até o próximo jogo" (clique real) chega na rodada 1 em março,
+  com a janela fechada e o treino aplicado por semana.
+* **3 temporadas seguidas sem erro**, 38 rodadas cada. Meses de folha
+  cobrados: 10 / 12 / 12. A virada leva sempre para as férias de
+  janeiro do ano seguinte. Semanas sem jogo por temporada: 5 (1ª, a
+  partir de fevereiro) / 14 / 12.
+* IA de mercado: 5 / 8 / 6 execuções por temporada, contra 6 no modelo
+  antigo (rodadas 1–3 e 20–22). Média das temporadas completas = 7
+  (+17%, dentro de ±20%). Varia com o número de segundas-feiras em
+  jan/fev/jul.
+* Carreira sem calendário: janela por rodada e folha por rodada como
+  antes, e ganha o calendário na virada.
+
+Testes existentes: 28 testes criavam a carreira e clicavam em "Ir para
+o jogo" esperando a rodada 1 (agora caem na pré-temporada). Ganharam o
+helper `tests/e2e/_calendar_skip.js` (`skipPreseason(page)`), chamado
+logo antes do 1º "Ir para o jogo". A compra/empréstimo desses testes já
+acontecia antes desse ponto, com a janela da pré-temporada aberta.
+Todos passam. Em `test_coletiva_imprensa.js` o pulo foi colocado antes
+de forçar a goleada (as semanas no meio diluíam o efeito). Suíte
+completa (149 scripts): 22 falhas, todas pré-existentes. Nenhuma nova.
+
+Fora da B1 (próximas partes): amistosos (B2), tela de calendário por
+mês e aviso de rodízio mais elaborado (B3).
+
+⸻
+
+P0-IDS-001 — Ids de jogador únicos no save inteiro
+
+Status: REVISÃO DO PM NECESSÁRIA (implementação na branch `claude/p0-ids-unicos`)
+Prioridade: P0 (Confiabilidade)
+Origem: achados registrados em GE-BALANCE-005 e UX-MERCADO-001;
+priorizado pelo Claude antes de GE-SCOUT-001 ("siga para as demais
+implementações", 25/10/2026), porque mercado e olheiros dependem de
+achar o jogador certo pelo id.
+
+Problema: (1) numa carreira multi-divisão nova, 640 ids `real_<id>` se
+repetem entre clubes, porque cada catálogo de competição numera os
+jogadores do zero. (2) A reposição anual gera de novo
+`base_<clube>_0..`/`gen_<clube>_0..` enquanto os de anos anteriores
+ainda estão no elenco. Toda busca por id pode pegar o jogador errado
+(perfil, proposta, indicação, marcação individual).
+
+Solução: `ensureUniquePlayerIds()` é uma passada única e
+determinística, chamada ao criar a carreira, ao carregar o save (fim
+de `migrateCareerDefaults`) e na virada de temporada (fim de
+`advanceSeason`). A 1ª ocorrência de cada id mantém o id; o seu elenco
+e os jogadores que você emprestou têm prioridade (são os referenciados
+por escalação, treino e vendas). As ocorrências seguintes viram
+`<id>~2`, `<id>~3`... As referências por (clube, jogador) a jogador de
+outro clube são atualizadas junto: `pendingOffersOut`,
+`scoutSuggestions` e `manMarking.rivalPlayerId`. Sem campo novo e sem
+mudança de formato de save. O histórico de premiações guarda o id
+antigo, e o link de lá desempata pelo nome (UX-MERCADO-001).
+
+Testes: novo `tests/e2e/test_p0_ids_001.js` passa. Cobre carreira nova
+sem repetição; save com id repetido corrigido ao carregar, com a
+proposta pendente acompanhando o jogador certo do 2º clube; e
+reposição da base — o próprio teste reproduziu 3 ids repetidos gerados
+pela reposição, corrigidos pela passada. Regressão (18 scripts de save,
+migração, temporada, multi-divisão, rebaixamento, mercado,
+empréstimos, IA de transferências, indicações, marcação individual,
+olheiro e histórico do jogador): todos passam.
+
+Risco: um jogador de clube CPU pode mudar de id uma vez (só os
+repetidos). Qualquer referência a ele fora das 3 estruturas acima
+seria só histórica (premiações/log textual).
 
 ⸻
 

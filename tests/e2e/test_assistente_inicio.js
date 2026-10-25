@@ -91,9 +91,10 @@ async function pickClub(page, base) {
     title: document.getElementById("wizardStepTitle").textContent,
     sub: document.getElementById("wizardStepSub").textContent,
     scoutRows: document.querySelectorAll("#wizardScoutList .m3-list-item").length,
+    marketSize: SCOUT_MARKET.length, // GE-SCOUT-001: catálogo nacional com 8 olheiros
     scoutsBefore: (CAREER.scouts || []).length,
   }));
-  console.log("6) Passo 3 é Olheiros com a lista real do SCOUT_MARKET:", step3Before.title === "Contrate olheiros" && step3Before.sub === "Passo 3 de 4" && step3Before.scoutRows === 3 && step3Before.scoutsBefore === 0, JSON.stringify(step3Before));
+  console.log("6) Passo 3 é Olheiros com a lista real do SCOUT_MARKET:", step3Before.title === "Contrate olheiros" && step3Before.sub === "Passo 3 de 4" && step3Before.scoutRows === step3Before.marketSize && step3Before.scoutsBefore === 0, JSON.stringify(step3Before));
   await page.click("#wizardScoutList [data-hire]");
   await page.waitForTimeout(150);
   const step3After = await page.evaluate(() => (CAREER.scouts || []).length);

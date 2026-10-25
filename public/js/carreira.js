@@ -3432,6 +3432,15 @@ async function advanceSeason() {
   // que abre a notificação depois do resumo da virada de temporada.
   maybeGenerateClubProposals();
 
+  // GE-CALENDAR-001 — toda temporada nova (inclusive a 1ª de uma carreira
+  // de antes do calendário) começa em janeiro, nas férias, com a folha
+  // de janeiro já cobrada (12 meses por ano, ver applyCalendarMonthlyFinances).
+  CAREER.calendar = buildSeasonCalendar(CAREER.seasonYear);
+  applyCalendarMonthlyFinances(0);
+  // P0-IDS-001 — reposição de base/elenco e times vindos da Série D
+  // reusam ids (`base_<clube>_<n>`, `gen_<clube>_<n>`) — garante ids
+  // únicos de novo antes da temporada nova começar.
+  ensureUniquePlayerIds();
   return { dismissed: false, finishedYear, finishedPos, finishedGoal, goalWasMet, newYear: CAREER.seasonYear, humanRenewal, newGoal: CAREER.boardGoal, promotionRelegation, wasCupChampion };
 }
 
@@ -3506,6 +3515,56 @@ async function buildLeagueSquads(humanClubId, teams = LEAGUE_TEAMS) {
   const others = teams.filter((t) => String(t.id) !== String(humanClubId));
   const entries = await Promise.all(others.map(async (club) => [String(club.id), await buildLeagueSquad(club)]));
   return Object.fromEntries(entries);
+}
+/* ---------- P0-IDS-001 — ids de jogador únicos no save inteiro ----------
+   Achado em GE-BALANCE-005/UX-MERCADO-001: (1) catálogos de divisões
+   diferentes numeram jogadores do zero, então `real_<id>` se repete
+   entre clubes (640 repetidos numa carreira multi-divisão nova); (2) a
+   reposição anual gera de novo `base_<clube>_0..`/`gen_<clube>_0..`
+   enquanto os de anos anteriores ainda estão no elenco. Toda busca só
+   por id (`find((p) => p.id === id)`) podia pegar o jogador errado.
+   Uma passada só, determinística, que roda ao carregar o save, ao criar
+   a carreira e na virada de temporada: a 1ª ocorrência de cada id
+   mantém o id (o SEU elenco e quem você emprestou têm prioridade — são
+   os ids referenciados por escalação, treino, vendas); as seguintes
+   viram `<id>~2`, `<id>~3`... e as referências por (clube, jogador)
+   são atualizadas junto. */
+function ensureUniquePlayerIds() {
+  if (!CAREER) return 0;
+  const used = new Set();
+  const renames = []; // { clubId, from, to }
+  const claim = (p, clubId) => {
+    if (!used.has(p.id)) { used.add(p.id); return; }
+    let n = 2;
+    while (used.has(`${p.id}~${n}`)) n++;
+    const to = `${p.id}~${n}`;
+    renames.push({ clubId: clubId == null ? null : String(clubId), from: p.id, to });
+    p.id = to;
+    used.add(to);
+  };
+  (CAREER.squad || []).forEach((p) => claim(p, null));
+  const squads = Object.entries(CAREER.leagueSquads || {}).sort(([a], [b]) => a.localeCompare(b));
+  // Emprestados por você continuam "seus" (voltam pro seu elenco) —
+  // reservam o id antes do resto do mundo.
+  squads.forEach(([clubId, sq]) => sq.forEach((p) => {
+    if (p.onLoanFromClubId && String(p.onLoanFromClubId) === String(CAREER.clubId)) claim(p, clubId);
+  }));
+  squads.forEach(([clubId, sq]) => sq.forEach((p) => {
+    if (!(p.onLoanFromClubId && String(p.onLoanFromClubId) === String(CAREER.clubId))) claim(p, clubId);
+  }));
+  // Referências por (clube, jogador) a jogador de OUTRO clube — só a
+  // ocorrência renomeada NAQUELE clube muda; jogador do seu elenco
+  // renomeado (2ª cópia de um id repetido) nunca era o referenciado.
+  const renamed = (clubId, id) => {
+    const r = renames.find((x) => x.clubId === String(clubId) && x.from === id);
+    return r ? r.to : id;
+  };
+  (CAREER.pendingOffersOut || []).forEach((o) => { o.playerId = renamed(o.clubId, o.playerId); });
+  (CAREER.scoutSuggestions || []).forEach((sg) => { sg.playerId = renamed(sg.clubId, sg.playerId); });
+  if (CAREER.manMarking && CAREER.manMarking.rivalPlayerId) {
+    CAREER.manMarking.rivalPlayerId = renamed(CAREER.manMarking.opponentId, CAREER.manMarking.rivalPlayerId);
+  }
+  return renames.length;
 }
 function leagueSquadFor(clubId) {
   return (CAREER.leagueSquads && CAREER.leagueSquads[String(clubId)]) || [];
@@ -3819,7 +3878,7 @@ function pushTransferLog(text, round) {
    Configurações (ver CAREER.notificationSettings); "posicao" e
    "olheiro" não têm toggle no mockup — sempre entram. */
 const NOTIFICATION_MAX = 30;
-const NOTIFICATION_ICON = { lesao: "🩹", proposta: "💰", posicao: "🏆", olheiro: "🔭", loja: "🎁", partida: "📅" };
+const NOTIFICATION_ICON = { calendario: "🗓️", lesao: "🩹", proposta: "💰", posicao: "🏆", olheiro: "🔭", loja: "🎁", partida: "📅" };
 function pushNotification(type, text, opts = {}) {
   CAREER.notificationSettings = CAREER.notificationSettings || { partida: true, loja: false, lesao: true };
   const gate = opts.gateBy || null; // "partida" | "loja" | "lesao" | null (sem toggle correspondente)
@@ -3898,8 +3957,163 @@ function pushCashSnapshot(round) {
 // da janela (decisão do documento: "geralmente sim, só não comprar");
 // empréstimo não existe como mecânica nesse jogo, então a outra
 // pergunta em aberto do documento não se aplica aqui.
+/* ---------- GE-CALENDAR-001 (B1) — calendário real jan–dez ----------
+   Pedido do usuário: "o Campeonato deve ter um calendário real (janeiro
+   a dezembro) com 30 dias de férias + 30 dias de pré-temporada, 30 dias
+   em julho para descanso, treinos e contratações e jogos no restante
+   do período". Decisões do Murilo (docs/HANDOFF_CLAUDE.md): semanas com
+   2 jogos, salário mensal com receitas recalibradas.
+   Desenho: camada de calendário POR CIMA do motor de rodadas (que
+   continua igual) — a unidade de tempo vira a SEMANA (o treino já era
+   semanal). As 38 rodadas ocupam, em ordem, as semanas de março–junho
+   e agosto–dezembro; semana com rodada de Copa (CUP_ROUNDS_EXPANDED) é
+   semana de 2 jogos (Copa na quarta, Brasileirão no domingo). Semana
+   sem jogo (férias, pré-temporada, pausa de julho, sobras do
+   calendário) tem o próprio turno (runCalendarOffWeek). Carreira de
+   antes desta mudança continua no modelo de rodadas até a próxima
+   virada de temporada, quando ganha o calendário (ver advanceSeason). */
+const CALENDAR_PHASE_BY_MONTH = ["ferias", "pre", "temporada", "temporada", "temporada", "temporada", "pausa", "temporada", "temporada", "temporada", "temporada", "temporada"];
+const CALENDAR_PHASE_LABEL = { ferias: "Férias", pre: "Pré-temporada", temporada: "Temporada", pausa: "Pausa de julho" };
+const CALENDAR_WINDOW_PHASES = new Set(["ferias", "pre", "pausa"]);
+const MONTH_SHORT = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
+const MONTH_LONG = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
+// Salário era cobrado 1/4 do mês por rodada (38 rodadas ≈ 9,5 meses por
+// ano); o ano real cobra 12. Cota de TV (receita nova, a maior do
+// futebol brasileiro de verdade) cobre esses 2,5 meses a mais — fixada
+// na criação do calendário a partir dos custos daquele momento, então
+// inflar a folha depois NÃO aumenta a cota (sem exploit).
+const CALENDAR_EXTRA_MONTHS = 12 - 38 / 4;
+function buildSeasonCalendar(year) {
+  const jan1 = new Date(Date.UTC(year, 0, 1));
+  const firstMonday = new Date(jan1.getTime() + ((8 - jan1.getUTCDay()) % 7) * 86400000);
+  const cupRounds = new Set(Object.values(CUP_ROUNDS_EXPANDED).flatMap((leg) => [leg.ida, leg.volta]));
+  const weeks = [];
+  for (let d = firstMonday; d.getUTCFullYear() === year; d = new Date(d.getTime() + 7 * 86400000)) {
+    weeks.push({ d: `${String(d.getUTCMonth() + 1).padStart(2, "0")}-${String(d.getUTCDate()).padStart(2, "0")}`, p: CALENDAR_PHASE_BY_MONTH[d.getUTCMonth()], r: null });
+  }
+  let round = 1;
+  weeks.forEach((w) => {
+    if (w.p === "temporada" && round <= 38) {
+      w.r = round;
+      if (cupRounds.has(round)) w.c = 1; // semana de 2 jogos
+      round++;
+    }
+  });
+  const monthlyCosts = wageBillOf(CAREER.squad) + (CAREER.technicalStaff && CAREER.technicalStaff.hired ? technicalStaffMonthlyCost() : 0) + scoutsMonthlyCost();
+  return { year, idx: 0, weeks, tvMonthly: Math.round(monthlyCosts * CALENDAR_EXTRA_MONTHS / 12 / 1000) * 1000 };
+}
+function calendarOn() { return !!(CAREER && CAREER.calendar && Array.isArray(CAREER.calendar.weeks)); }
+function calendarWeek(i) { return calendarOn() ? CAREER.calendar.weeks[i == null ? CAREER.calendar.idx : i] || null : null; }
+function calendarWeekMonth(w) { return Number(w.d.slice(0, 2)) - 1; }
+function calendarDateLabel(w, plusDays = 0) {
+  const [m, d] = w.d.split("-").map(Number);
+  const dt = new Date(Date.UTC(CAREER.calendar.year, m - 1, d + plusDays));
+  return `${String(dt.getUTCDate()).padStart(2, "0")}/${MONTH_SHORT[dt.getUTCMonth()]}`;
+}
+// Chave do turno atual (semana no calendário, rodada no modelo antigo)
+// — usada por quem precisa de "1x por turno" (treino) ou de semente
+// única por turno (missão de olheiro).
+function calendarTurnKey() { return calendarOn() ? `${CAREER.calendar.year}w${CAREER.calendar.idx}` : String(CAREER.currentRound); }
+// Semana em que mora a próxima rodada a jogar (ou null se a temporada
+// já acabou).
+function calendarWeekIndexOfRound(round) {
+  return calendarOn() ? CAREER.calendar.weeks.findIndex((w) => w.r === round) : -1;
+}
+// Nunca deixa o calendário "na frente" da rodada a jogar (ex.: save
+// editado, rodada jogada por um caminho antigo) — volta pra semana dela.
+function syncCalendarToRound() {
+  if (!calendarOn() || CAREER.currentRound > 38) return;
+  const wi = calendarWeekIndexOfRound(CAREER.currentRound);
+  if (wi >= 0 && CAREER.calendar.idx > wi) CAREER.calendar.idx = wi;
+}
+// Finanças do mês (12x por ano): folha, comissão, olheiros, patrocínio
+// (total da temporada / 12) e cota de TV. Retorna os totais pro resumo.
+function applyCalendarMonthlyFinances(monthIdx) {
+  const round = CAREER.currentRound;
+  const month = MONTH_LONG[monthIdx];
+  const wagePaid = wageBillOf(CAREER.squad);
+  CAREER.finances.cash -= wagePaid;
+  if (wagePaid) pushLedger("salario", `Folha salarial de ${month}`, -wagePaid, round);
+  if (CAREER.technicalStaff && CAREER.technicalStaff.hired) {
+    const staffCost = technicalStaffMonthlyCost();
+    CAREER.finances.cash -= staffCost;
+    if (staffCost) pushLedger("salario", `Comissão Técnica (${month})`, -staffCost, round);
+  }
+  const scoutsCost = scoutsMonthlyCost();
+  if (scoutsCost) { CAREER.finances.cash -= scoutsCost; pushLedger("salario", `Olheiros (${month})`, -scoutsCost, round); }
+  const sponsorIncome = Math.round(sponsorshipSeasonTotal() / 12);
+  CAREER.finances.cash += sponsorIncome;
+  if (sponsorIncome) pushLedger("patrocinio", `Patrocínio de ${month}`, sponsorIncome, round);
+  const tv = CAREER.calendar.tvMonthly || 0;
+  CAREER.finances.cash += tv;
+  if (tv) pushLedger("tv", `Cota de TV de ${month}`, tv, round);
+  return { wagePaid, sponsorIncome: sponsorIncome + tv };
+}
+// Fecha o turno da semana atual e passa pra próxima: mês novo cobra/
+// recebe o mês; fase nova avisa (abre/fecha janela).
+function advanceCalendarWeek() {
+  const cal = CAREER.calendar;
+  const prev = calendarWeek();
+  if (cal.idx >= cal.weeks.length - 1) return { wagePaid: 0, sponsorIncome: 0 };
+  cal.idx += 1;
+  const cur = calendarWeek();
+  let money = { wagePaid: 0, sponsorIncome: 0 };
+  if (calendarWeekMonth(cur) !== calendarWeekMonth(prev)) money = applyCalendarMonthlyFinances(calendarWeekMonth(cur));
+  if (cur.p !== prev.p) {
+    const win = CALENDAR_WINDOW_PHASES.has(cur.p);
+    pushNotification("calendario", `${CALENDAR_PHASE_LABEL[cur.p]} — ${win ? "janela de transferências aberta" : "janela de transferências fechada (vender continua liberado)"}.`);
+  }
+  return money;
+}
+// Turno de uma semana SEM jogo seu: treino (exceto férias, que é
+// descanso), recuperação, cura de lesão, prazos de propostas/anúncios/
+// missões/obras e, com janela aberta, mercado da IA. IA de mercado e
+// propostas recebidas rodam em semanas alternadas: são ~12 semanas de
+// janela por ano contra 6 rodadas no modelo antigo — mantém o volume
+// anual de negócios parecido.
+function runCalendarOffWeek() {
+  const week = calendarWeek();
+  if (!week || week.r) return null;
+  const round = CAREER.currentRound;
+  if (week.p === "ferias") {
+    CAREER.squad.forEach((p) => { p.condition = 100; });
+  } else {
+    applyWeeklyTraining();
+    CAREER.squad.forEach((p) => { p.condition = clamp((p.condition == null ? 100 : p.condition) + 15, 0, 100); });
+  }
+  const healOneWeek = (p) => { if (p.status === "contundido" && p.outUntilRound != null && p.outUntilRound >= round) p.outUntilRound -= 1; };
+  CAREER.squad.forEach(healOneWeek);
+  Object.values(CAREER.leagueSquads || {}).forEach((sq) => sq.forEach(healOneWeek));
+  refreshAvailability(round);
+  tickStadiumUpgrade();
+  tickScoutMissions(round);
+  if (transferWindowStatus(round).open && CAREER.calendar.idx % 2 === 0) {
+    simulateAiTransfers(round);
+    maybeGenerateOffer(round);
+  }
+  resolvePendingOffersOutRound(round);
+  resolvePendingListingsRound();
+  const installmentsPaid = processPendingInstallments();
+  if (installmentsPaid) pushLedger("parcela", "Parcela de contratação", -installmentsPaid, round);
+  const installmentsReceived = processPendingReceivables();
+  if (installmentsReceived) pushLedger("transferencia", "Parcela de venda", installmentsReceived, round);
+  const money = advanceCalendarWeek();
+  return { phase: week.p, ...money, installmentsPaid, installmentsReceived };
+}
 const TRANSFER_WINDOWS = [[1, 3], [20, 22]];
 function transferWindowStatus(round) {
+  // GE-CALENDAR-001 — com calendário, a janela é a FASE do ano (férias,
+  // pré-temporada e pausa de julho), não mais um intervalo de rodadas.
+  if (calendarOn()) {
+    const weeks = CAREER.calendar.weeks, i = CAREER.calendar.idx;
+    if (CALENDAR_WINDOW_PHASES.has(weeks[i].p)) {
+      let j = i;
+      while (j + 1 < weeks.length && CALENDAR_WINDOW_PHASES.has(weeks[j + 1].p)) j++;
+      return { open: true, closesLabel: `até o fim de ${MONTH_LONG[calendarWeekMonth(weeks[j])]}` };
+    }
+    const k = weeks.findIndex((w, idx) => idx > i && CALENDAR_WINDOW_PHASES.has(w.p));
+    return { open: false, opensLabel: k >= 0 ? `reabre em ${MONTH_LONG[calendarWeekMonth(weeks[k])]}` : "reabre em janeiro" };
+  }
   for (const [open, close] of TRANSFER_WINDOWS) {
     if (round >= open && round <= close) return { open: true, closesAtRound: close };
   }
@@ -5335,6 +5549,11 @@ async function startCareer(clubId) {
       // verdade (a Loja ainda não cobra nada — ver aviso em renderLoja).
       purchaseHistory: [],
     };
+    ensureUniquePlayerIds(); // P0-IDS-001 — catálogos de divisões diferentes repetem ids
+    // GE-CALENDAR-001 — carreira nova começa na pré-temporada (fevereiro,
+    // janela aberta); férias só existem entre uma temporada e outra.
+    CAREER.calendar = buildSeasonCalendar(CAREER.seasonYear);
+    CAREER.calendar.idx = Math.max(0, CAREER.calendar.weeks.findIndex((w) => w.p === "pre"));
     TECHNICIAN_CARRY = null;
     // Nova feature (pedido do usuário: "reinicie o tema do
     // rebaixamento") — só carreira NOVA nasce com o sistema de acesso/
@@ -5674,7 +5893,9 @@ function trainingTargets(entry) {
 // já bate com CAREER.currentRound). Devolve um Map<playerId, ganho> só
 // pra feedback visual imediato na tela de Treinos (ver renderTreinos).
 function applyWeeklyTraining() {
-  if (CAREER.trainingAppliedForRound === CAREER.currentRound) return null;
+  // GE-CALENDAR-001 — 1x por TURNO (semana no calendário; rodada no
+  // modelo antigo), ver calendarTurnKey.
+  if (String(CAREER.trainingAppliedForRound) === calendarTurnKey()) return null;
   const gains = new Map();
   CAREER.trainingPlan.forEach((entry, i) => {
     if (i === TRAINING_GAME_DAY || !entry || !entry.foco) return;
@@ -5695,7 +5916,10 @@ function applyWeeklyTraining() {
     trainingTargets(entry).forEach((p) => {
       p.condition = clamp((p.condition == null ? 100 : p.condition) - fatigueCost, 0, 100);
       attrs.forEach((attr) => {
-        const attrGain = attrs.length > 1 ? Math.max(1, Math.round(baseGain / 2)) : baseGain;
+        // GE-CALENDAR-001 — pré-temporada: treino físico rende 1 ponto a
+        // mais por sessão (o teto da temporada, GE-BALANCE-005, segue valendo).
+        const preseasonBonus = attr === "phys" && calendarOn() && (calendarWeek() || {}).p === "pre" ? 1 : 0;
+        const attrGain = (attrs.length > 1 ? Math.max(1, Math.round(baseGain / 2)) : baseGain) + preseasonBonus;
         // Nova feature (pedido do usuário: "atributos precisam ser mais
         // reais... evolução menos agressiva") — ganho respeita o teto
         // de cada jogador (p.potential), com retorno decrescente perto
@@ -5750,7 +5974,7 @@ function applyWeeklyTraining() {
     p.fatigueHistory.push({ round: CAREER.currentRound, fadiga: Math.round(100 - cond) });
     if (p.fatigueHistory.length > FATIGUE_HISTORY_MAX) p.fatigueHistory.shift();
   });
-  CAREER.trainingAppliedForRound = CAREER.currentRound;
+  CAREER.trainingAppliedForRound = calendarTurnKey();
   // Retenção/Engajamento — "Treine 1 jogador" (objetivo diário) conta
   // a SEMANA aplicada como 1 evento (não 1 por jogador afetado, senão
   // uma semana de "misto" já bateria a meta sozinha de propósito).
@@ -5982,7 +6206,7 @@ function renderTreinos() {
   rosterList.innerHTML = groupedListHTML(roster, playerRow, "Sem jogadores.");
   rosterList.querySelectorAll("[data-id]").forEach((row) => row.addEventListener("click", () => openDetail(row.dataset.id)));
 
-  const already = CAREER.trainingAppliedForRound === CAREER.currentRound;
+  const already = String(CAREER.trainingAppliedForRound) === calendarTurnKey();
   document.getElementById("btnApplyTraining").disabled = already;
   document.getElementById("btnApplyTrainingLabel").textContent = already ? "Treino já aplicado nesta rodada" : "Aplicar treino da semana";
 }
@@ -8160,33 +8384,40 @@ function finishRoundTail(round, allResults, humanMatch, standingsBefore) {
   // 38 rodadas, então 1/4 da folha mensal por rodada) — o caixa vai
   // diminuindo de verdade ao longo da temporada mesmo antes de existir
   // mercado de transferências (fase seguinte) pra gastar nele.
-  const wagePaid = Math.round(wageBillOf(CAREER.squad) / 4);
-  CAREER.finances.cash -= wagePaid;
-  if (wagePaid) pushLedger("salario", "Folha salarial do elenco", -wagePaid, round);
-  // Nova feature — Comissão Técnica: mesmo ritmo de pagamento do
-  // elenco (1/4 do custo mensal por rodada), só quando contratada.
-  if (CAREER.technicalStaff && CAREER.technicalStaff.hired) {
-    const staffCost = Math.round(technicalStaffMonthlyCost() / 4);
-    CAREER.finances.cash -= staffCost;
-    if (staffCost) pushLedger("salario", "Custo da Comissão Técnica", -staffCost, round);
+  // GE-CALENDAR-001 — com calendário, salário/patrocínio/TV são MENSAIS
+  // (cobrados quando a semana vira o mês, ver advanceCalendarWeek, no fim
+  // deste turno); sem calendário (carreira antiga até a próxima virada),
+  // segue 1/4 do mês por rodada como sempre.
+  let wagePaid = 0, sponsorIncome = 0;
+  if (!calendarOn()) {
+    wagePaid = Math.round(wageBillOf(CAREER.squad) / 4);
+    CAREER.finances.cash -= wagePaid;
+    if (wagePaid) pushLedger("salario", "Folha salarial do elenco", -wagePaid, round);
+    // Nova feature — Comissão Técnica: mesmo ritmo de pagamento do
+    // elenco (1/4 do custo mensal por rodada), só quando contratada.
+    if (CAREER.technicalStaff && CAREER.technicalStaff.hired) {
+      const staffCost = Math.round(technicalStaffMonthlyCost() / 4);
+      CAREER.finances.cash -= staffCost;
+      if (staffCost) pushLedger("salario", "Custo da Comissão Técnica", -staffCost, round);
+    }
+    // Bloco 6 (mockups brtreinadorbloco6base.html/brtreinadorbloco6pendentes.html
+    // — "Base e Olheiros") — mesmo ritmo de sempre (1/4 do custo mensal por
+    // rodada) pro salário de cada olheiro contratado (ver
+    // hireScout/SCOUT_MARKET).
+    const scoutsCost = Math.round(scoutsMonthlyCost() / 4);
+    if (scoutsCost) {
+      CAREER.finances.cash -= scoutsCost;
+      pushLedger("salario", "Salário dos olheiros", -scoutsCost, round);
+    }
+    // FASE 4 (item 5) — patrocínio paga em parcelas ao longo da
+    // temporada (1/38 do valor anual por rodada), mesmo ritmo de
+    // "dinheiro chega aos poucos" que já existe pra ingresso (por
+    // partida em casa) e salário (por rodada) — em vez de um valor único
+    // na virada de temporada, que seria um pulo brusco de caixa.
+    sponsorIncome = Math.round(sponsorshipSeasonTotal() / 38);
+    CAREER.finances.cash += sponsorIncome;
+    if (sponsorIncome) pushLedger("patrocinio", "Parcela de patrocínio", sponsorIncome, round);
   }
-  // Bloco 6 (mockups brtreinadorbloco6base.html/brtreinadorbloco6pendentes.html
-  // — "Base e Olheiros") — mesmo ritmo de sempre (1/4 do custo mensal por
-  // rodada) pro salário de cada olheiro contratado (ver
-  // hireScout/SCOUT_MARKET).
-  const scoutsCost = Math.round(scoutsMonthlyCost() / 4);
-  if (scoutsCost) {
-    CAREER.finances.cash -= scoutsCost;
-    pushLedger("salario", "Salário dos olheiros", -scoutsCost, round);
-  }
-  // FASE 4 (item 5) — patrocínio paga em parcelas ao longo da
-  // temporada (1/38 do valor anual por rodada), mesmo ritmo de
-  // "dinheiro chega aos poucos" que já existe pra ingresso (por
-  // partida em casa) e salário (por rodada) — em vez de um valor único
-  // na virada de temporada, que seria um pulo brusco de caixa.
-  const sponsorIncome = Math.round(sponsorshipSeasonTotal() / 38);
-  CAREER.finances.cash += sponsorIncome;
-  if (sponsorIncome) pushLedger("patrocinio", "Parcela de patrocínio", sponsorIncome, round);
   // Nova feature (Bloco 3) — parcelas de contratações já FECHADAS
   // (ver finalizeIncomingPurchase) continuam descontando o caixa a
   // cada rodada MESMO fora da janela de contratações (é dívida já
@@ -8275,6 +8506,10 @@ function finishRoundTail(round, allResults, humanMatch, standingsBefore) {
   if (posBefore && posAfter && posBefore !== posAfter) {
     const verbo = posAfter < posBefore ? "subiu para" : "caiu para";
     pushNotification("posicao", `${CAREER.clubName} ${verbo} o ${posAfter}º lugar após a rodada.`);
+  }
+  if (calendarOn()) {
+    const money = advanceCalendarWeek();
+    wagePaid = money.wagePaid; sponsorIncome = money.sponsorIncome;
   }
   const nextFixture = (CAREER.schedule[nextRound] || []).find((m) => String(m.home) === String(CAREER.clubId) || String(m.away) === String(CAREER.clubId));
   if (nextFixture) {
@@ -9274,7 +9509,28 @@ function renderCentral() {
     btn.classList.remove("hidden");
     document.getElementById("btnAdvanceSeason").classList.add("hidden");
     const fx = (CAREER.schedule[round] || []).find((m) => String(m.home) === String(CAREER.clubId) || String(m.away) === String(CAREER.clubId));
-    if (fx) {
+    // GE-CALENDAR-001 — semana sem jogo (férias/pré-temporada/pausa):
+    // o botão principal avança a semana e o card mostra a fase.
+    const week = calendarWeek();
+    const offWeek = !!(week && !week.r);
+    btn.innerHTML = offWeek
+      ? `<svg viewBox="0 0 24 24" fill="currentColor"><polygon points="4,4 12,12 4,20"/><polygon points="12,4 20,12 12,20"/></svg>Avançar semana`
+      : `<svg viewBox="0 0 24 24" fill="currentColor"><polygon points="6,4 20,12 6,20"/></svg>Ir para o jogo`;
+    document.getElementById("btnSkipToMatch").classList.toggle("hidden", !offWeek);
+    if (calendarOn()) document.getElementById("roundPill").textContent = `${calendarDateLabel(week)} · ${Math.min(round, 38)}/38`;
+    if (offWeek) {
+      const phaseWeeks = CAREER.calendar.weeks.filter((w) => w.p === week.p && calendarWeekMonth(w) === calendarWeekMonth(week));
+      const nextWi = calendarWeekIndexOfRound(round);
+      const win = transferWindowStatus(round);
+      const nextOpp = fx ? teamById(String(fx.home) === String(CAREER.clubId) ? fx.away : fx.home) : null;
+      box.innerHTML = `<div class="mt-calendar-phase">
+          <b>${CALENDAR_PHASE_LABEL[week.p]} · semana ${phaseWeeks.indexOf(week) + 1} de ${phaseWeeks.length}</b>
+          <span>${week.p === "ferias" ? "Elenco de folga, recuperando." : "Treinos da semana valendo."} Mercado: ${win.open ? `aberto ${win.closesLabel}` : `fechado — ${win.opensLabel}`}.</span>
+          ${nextWi >= 0 ? `<span>Próximo jogo: rodada ${round} em ${calendarDateLabel(CAREER.calendar.weeks[nextWi], 6)}${nextOpp ? ` contra o ${escapeHtml(nextOpp.name)}` : ""}.</span>` : ""}
+        </div>`;
+      delete box.dataset.opponentId;
+      btn.disabled = false;
+    } else if (fx) {
       const home = teamById(fx.home), away = teamById(fx.away);
       // AJUSTE (Opção B do mockup confronto-escudo-opcoes.html) —
       // escudo maior (72px) com halo atrás na cor do clube (c1), só
@@ -9293,6 +9549,7 @@ function renderCentral() {
       // jogo vira clicável (ver wireStaticListeners/openH2H), abre o
       // retrospecto contra o adversário desta rodada.
       box.dataset.opponentId = String(fx.home) === String(CAREER.clubId) ? fx.away : fx.home;
+      if (week && week.c) box.insertAdjacentHTML("beforeend", `<p class="mt-calendar-double">Semana de 2 jogos: Copa do Brasil na quarta e Brasileirão no domingo — vale rodar o elenco.</p>`);
     } else {
       box.innerHTML = `<p class="ct-empty">Sem jogo do seu time nessa rodada (folga).</p>`;
       delete box.dataset.opponentId;
@@ -9534,7 +9791,7 @@ const EXTRATO_FILTERS = [
   { id: "patrocinio", label: "Patrocínio" },
   { id: "bilheteria", label: "Bilheteria" },
 ];
-const LEDGER_ICON = { salario: "👥", patrocinio: "🏦", parcela: "📄", bilheteria: "🎟️", transferencia: "💰", premiacao: "🏆", estadio: "🏗️", diretoria: "🏛️" };
+const LEDGER_ICON = { tv: "📺", salario: "👥", patrocinio: "🏦", parcela: "📄", bilheteria: "🎟️", transferencia: "💰", premiacao: "🏆", estadio: "🏗️", diretoria: "🏛️" };
 let EXTRATO_FILTER = "todos";
 function renderExtratoScreen() {
   document.getElementById("extratoFilterRow").innerHTML = EXTRATO_FILTERS.map((f) =>
@@ -10324,7 +10581,7 @@ function openPlayerCard(id, clubIdHint, nameHint) {
 // com os botões (o técnico entende POR QUE não dá agora).
 function externalPlayerActionsHTML(p, club) {
   const win = transferWindowStatus(CAREER.currentRound);
-  const closedReason = win.open ? "" : (win.opensAtRound ? `Janela fechada — reabre na rodada ${win.opensAtRound}.` : "Janela fechada — reabre na próxima temporada.");
+  const closedReason = win.open ? "" : (win.opensLabel ? `Janela fechada — ${win.opensLabel}.` : win.opensAtRound ? `Janela fechada — reabre na rodada ${win.opensAtRound}.` : "Janela fechada — reabre na próxima temporada.");
   const offerBtn = pendingOfferOutFor(p.id)
     ? `<button type="button" class="mt-btn-ghost" data-ext-act="viewoffer" style="width:100%;">Proposta enviada — ver em Minhas propostas</button>`
     : `<button type="button" class="mt-btn-primary-gold" data-ext-act="offer" style="width:100%;" ${win.open ? "" : "disabled"}>Fazer proposta</button>`;
@@ -11160,7 +11417,8 @@ function renderMarketSummaryCard() {
   const offers = (CAREER.pendingOffersOut || []).length;
   const scoutPicks = (CAREER.scoutSuggestions || []).length;
   const windowText = win.open
-    ? `Janela aberta até a rodada ${win.closesAtRound}.`
+    ? (win.closesLabel ? `Janela aberta ${win.closesLabel}.` : `Janela aberta até a rodada ${win.closesAtRound}.`)
+    : win.opensLabel ? `Janela fechada — ${win.opensLabel} (vender continua liberado).`
     : (win.opensAtRound ? `Janela fechada — reabre na rodada ${win.opensAtRound} (vender continua liberado).` : "Janela fechada até a próxima temporada (vender continua liberado).");
   document.getElementById("marketSummaryText").textContent = windowText;
   const setBadge = (id, n) => { const el = document.getElementById(id); el.classList.toggle("hidden", !n); el.textContent = String(n); };
@@ -11468,6 +11726,22 @@ function closeAdjustLineupModal() {
 // — fecha as duas modais (a que estiver aberta) e dispara a simulação
 // de sempre. commitLineupTactics() garante que táticas mudadas sem
 // clicar em "Salvar escalação e táticas" não se percam.
+// GE-CALENDAR-001 — avança 1 semana sem jogo, ou todas até a semana do
+// próximo jogo ("Pular até o próximo jogo"), e resume o que aconteceu.
+async function advanceCalendarFromUI(untilMatch) {
+  let weeks = 0, wage = 0, income = 0;
+  do {
+    const r = runCalendarOffWeek();
+    if (!r) break;
+    weeks++; wage += r.wagePaid; income += r.sponsorIncome;
+  } while (untilMatch && !(calendarWeek() || {}).r && weeks < 60);
+  if (!weeks) return;
+  await persistCareer();
+  renderAll();
+  const week = calendarWeek();
+  const money = wage || income ? [{ label: "Salários", value: -Math.round(wage / 1000) }, { label: "Receitas", value: Math.round(income / 1000) }] : null;
+  toast({ title: weeks > 1 ? `${weeks} semanas avançadas` : "Semana concluída", detail: week ? `${CALENDAR_PHASE_LABEL[week.p]} · semana de ${calendarDateLabel(week)}${money ? " (valores em R$ mil)" : ""}` : "", stats: money || undefined }, { type: "info" });
+}
 async function goToMatch() {
   closePreMatchConfirm();
   closeAdjustLineupModal();
@@ -12809,11 +13083,38 @@ function starsHTML(n) {
 // STADIUM_UPGRADES, Bloco 4: preço/atributo fixos no código, sem
 // geração procedural nem mercado que "refresca"). regionScope "any" =
 // pode ir pra qualquer região que a liga tiver.
+// GE-SCOUT-001 — pedido do usuário: "não faz sentido ter olheiros
+// sul-americanos se o jogo é nacional. Melhorar os olheiros seria
+// interessante também." Catálogo só NACIONAL: 1 especialista por região,
+// 2 generalistas e 1 olheiro-chefe. Cada um tem 2 qualidades:
+// Avaliação (quão estreita/certeira é a faixa de potencial que ele
+// reporta, ver scoutPotentialRange) e Rede (chance de achar alguém
+// numa missão, ver tickScoutMissions). `stars` = média das duas (é o
+// que aparece em estrelas e o que o resto do jogo já usava).
 const SCOUT_MARKET = [
-  { id: "p_andrade", name: "P. Andrade", specialty: "Especialista em Nordeste", regionScope: ["nordeste"], stars: 4, monthlyCost: 8000 },
-  { id: "t_lacerda", name: "T. Lacerda", specialty: "Especialista em base internacional", regionScope: "any", stars: 5, monthlyCost: 22000 },
-  { id: "c_nascimento", name: "C. Nascimento", specialty: "Generalista · Sul e Sudeste", regionScope: ["sul", "sudeste"], stars: 3, monthlyCost: 5000 },
-];
+  { id: "r_moura", name: "R. Moura", specialty: "Especialista em Norte", regionScope: ["norte"], evaluation: 3, network: 4, monthlyCost: 6000 },
+  { id: "p_andrade", name: "P. Andrade", specialty: "Especialista em Nordeste", regionScope: ["nordeste"], evaluation: 4, network: 4, monthlyCost: 8000 },
+  { id: "l_bastos", name: "L. Bastos", specialty: "Especialista em Centro-Oeste", regionScope: ["centro-oeste"], evaluation: 3, network: 3, monthlyCost: 5000 },
+  { id: "f_quintana", name: "F. Quintana", specialty: "Especialista em Sudeste", regionScope: ["sudeste"], evaluation: 4, network: 3, monthlyCost: 9000 },
+  { id: "g_weber", name: "G. Weber", specialty: "Especialista em Sul", regionScope: ["sul"], evaluation: 3, network: 4, monthlyCost: 6000 },
+  { id: "c_nascimento", name: "C. Nascimento", specialty: "Generalista · Sul e Sudeste", regionScope: ["sul", "sudeste"], evaluation: 3, network: 3, monthlyCost: 5000 },
+  { id: "a_lima", name: "A. Lima", specialty: "Generalista nacional", regionScope: "any", evaluation: 3, network: 3, monthlyCost: 10000 },
+  // id mantido de propósito: era o "especialista em base internacional"
+  // — quem já tinha contratado continua com ele, agora nacional (ver
+  // migrateScoutsToNational).
+  { id: "t_lacerda", name: "T. Lacerda", specialty: "Olheiro-chefe nacional", regionScope: "any", evaluation: 5, network: 5, monthlyCost: 22000 },
+].map((c) => ({ ...c, stars: Math.round((c.evaluation + c.network) / 2) }));
+// Olheiro contratado antes do GE-SCOUT-001 não tinha Avaliação/Rede e
+// podia ser o "internacional" — alinha ao catálogo nacional mantendo
+// custo e estrelas que ele já tinha (nada muda no caixa do técnico).
+function migrateScoutsToNational() {
+  (CAREER.scouts || []).forEach((sc) => {
+    const cand = SCOUT_MARKET.find((c) => c.id === sc.marketId);
+    if (cand) { sc.specialty = cand.specialty; sc.regionScope = cand.regionScope; }
+    if (sc.evaluation == null) sc.evaluation = cand ? cand.evaluation : (sc.stars || 3);
+    if (sc.network == null) sc.network = cand ? cand.network : (sc.stars || 3);
+  });
+}
 function scoutAllowedRegions(scout) {
   return scout.regionScope === "any" ? scoutingAvailableRegions() : scout.regionScope;
 }
@@ -12827,7 +13128,7 @@ function hireScout(marketId) {
   CAREER.scouts = CAREER.scouts || [];
   CAREER.scouts.push({
     id: `scout_${cand.id}`, marketId: cand.id, name: cand.name, specialty: cand.specialty,
-    regionScope: cand.regionScope, stars: cand.stars, monthlyCost: cand.monthlyCost, mission: null,
+    regionScope: cand.regionScope, stars: cand.stars, evaluation: cand.evaluation, network: cand.network, monthlyCost: cand.monthlyCost, mission: null,
   });
   persistCareer();
   renderScoutMarketScreen();
@@ -12853,17 +13154,51 @@ async function fireScout(scoutId) {
 
 // Duração da missão: faixa curta (3 a 7 rodadas), seed por olheiro +
 // rodada de início pra não repetir sempre o mesmo número.
-function startScoutMission(scoutId, region) {
+// GE-SCOUT-001 — missão com foco: tipo (Sub-17/Sub-20 trazem jovens pra
+// base; Profissional traz indicações pro Mercado), posição opcional e
+// duração (mais tempo, mais tentativas de achar alguém).
+const SCOUT_MISSION_TYPES = {
+  sub17: { label: "Sub-17", ages: [15, 17] },
+  sub20: { label: "Sub-20", ages: [18, 20] },
+  pro: { label: "Profissional (Mercado)" },
+};
+const SCOUT_MISSION_DURATIONS = {
+  curta: { label: "Curta", rounds: 2, rolls: 1 },
+  media: { label: "Média", rounds: 4, rolls: 2 },
+  longa: { label: "Longa", rounds: 6, rolls: 3 },
+};
+const SCOUT_GROUP_LABEL = { G: "Goleiro", D: "Defensor", M: "Meio-campo", F: "Atacante" };
+function startScoutMission(scoutId, region, { type = "sub17", group = null, duration = "media" } = {}) {
   const scout = (CAREER.scouts || []).find((s) => s.id === scoutId);
   if (!scout) return;
   if (scout.mission) { toast("Esse olheiro já está em missão.", { type: "warn" }); return; }
   if (!scoutAllowedRegions(scout).includes(region)) { toast("Esse olheiro não atua nessa região.", { type: "warn" }); return; }
-  const rng = seededRngFromKey(`scoutmission:${scoutId}:${CAREER.currentRound}`);
-  const roundsNeeded = 3 + Math.floor(rng() * 5);
-  scout.mission = { regionUf: region, roundsLeft: roundsNeeded, roundsTotal: roundsNeeded };
+  const dur = SCOUT_MISSION_DURATIONS[duration] || SCOUT_MISSION_DURATIONS.media;
+  scout.mission = { regionUf: region, roundsLeft: dur.rounds, roundsTotal: dur.rounds, type, group, duration };
   persistCareer();
   renderScoutingScreen();
-  toast(`${scout.name} partiu em missão pelo ${REGION_LABEL[region]} — retorna em ${roundsNeeded} rodada${roundsNeeded === 1 ? "" : "s"}.`, { type: "pos" });
+  const focus = [SCOUT_MISSION_TYPES[type].label, group ? SCOUT_GROUP_LABEL[group] : null].filter(Boolean).join(" · ");
+  toast(`${scout.name} partiu em missão pelo ${REGION_LABEL[region]} (${focus}) — retorna em ${dur.rounds} rodadas.`, { type: "pos" });
+}
+// Faixa de potencial reportada: quanto melhor a Avaliação do olheiro,
+// mais estreita (5 → ±1-2; 1 → ±9-10). O potencial REAL nunca aparece.
+function scoutPotentialRange(potential, overall, evaluation, rng) {
+  const fuzz = 1 + (5 - clamp(evaluation || 3, 1, 5)) * 2 + Math.floor(rng() * 2);
+  const lo = clamp(potential - fuzz, overall, 99);
+  return { lo, hi: clamp(potential + fuzz, lo, 99) };
+}
+// Relatório do olheiro (escopo item 4): ponto forte/fraco pelos
+// atributos e uma recomendação objetiva.
+function scoutReport(p, range, mode, weakestStarterOverall) {
+  const attrs = [["ataque", p.atk], ["defesa", p.def], ["físico", p.phys]].sort((a, b) => b[1] - a[1]);
+  let recommendation;
+  if (mode === "pro") {
+    recommendation = weakestStarterOverall != null && p.overall > weakestStarterOverall ? "Reforço imediato"
+      : (range.hi - p.overall >= 8 && p.age <= 23) ? "Aposta de futuro" : "Observar";
+  } else {
+    recommendation = range.hi >= 78 ? "Promover já" : range.hi >= 70 ? "Acompanhar" : "Baixa projeção";
+  }
+  return { strength: attrs[0][0], weakness: attrs[2][0], recommendation };
 }
 const SCOUT_PROSPECTS_MAX = 12;
 const SCOUT_NOTE_POOL = [
@@ -12881,10 +13216,11 @@ const SCOUT_NOTE_POOL = [
 // não tem esses 3 atributos como stats separados, são aproximações
 // sobre o trio que já existe (mesmo espírito "ilustrativo" de outras
 // fórmulas deste arquivo).
-function generateScoutProspect(scout, region, round, idx) {
+function generateScoutProspect(scout, region, round, idx, { ages = [15, 20], group: focusGroup = null } = {}) {
   const rng = seededRngFromKey(`scoutprospect:${scout.id}:${round}:${idx}`);
-  const group = BASE_COMPOSITION[Math.floor(rng() * BASE_COMPOSITION.length)];
-  const age = 15 + Math.floor(rng() * 6);
+  const rolledGroup = BASE_COMPOSITION[Math.floor(rng() * BASE_COMPOSITION.length)];
+  const group = focusGroup || rolledGroup;
+  const age = ages[0] + Math.floor(rng() * (ages[1] - ages[0] + 1));
   const starBoost = (scout.stars - 3) * 3;
   // GE-BALANCE-005 (issue #38) — mesma distribuição enviesada da base
   // (ver youthPotentialRoll); olheiro melhor puxa a curva pra cima.
@@ -12896,12 +13232,15 @@ function generateScoutProspect(scout, region, round, idx) {
   const first = DEMO_FIRST_NAMES[Math.floor(rng() * DEMO_FIRST_NAMES.length)];
   const last = DEMO_LAST_NAMES[Math.floor(rng() * DEMO_LAST_NAMES.length)];
   const note = SCOUT_NOTE_POOL[Math.floor(rng() * SCOUT_NOTE_POOL.length)];
-  return {
+  const potRange = scoutPotentialRange(potential, overall, scout.evaluation, rng);
+  const prospect = {
     id: `prospect_${scout.id}_${round}_${idx}`, name: `${first} ${last}`,
     group, age, overall, atk, def, phys, potential,
     ...computeContractFields(overall, age, potential, rng),
-    foundRegion: region, scoutName: scout.name, scoutNote: note,
+    foundRegion: region, scoutName: scout.name, scoutNote: note, potRange,
   };
+  prospect.report = scoutReport(prospect, potRange, "base");
+  return prospect;
 }
 function pushScoutProspects(list) {
   CAREER.scoutMissionProspects = list.concat(CAREER.scoutMissionProspects || []);
@@ -12914,15 +13253,27 @@ function tickScoutMissions(round) {
     if (!scout.mission) return;
     scout.mission.roundsLeft -= 1;
     if (scout.mission.roundsLeft > 0) return;
-    const region = scout.mission.regionUf;
+    const { regionUf: region, type, group, duration } = scout.mission;
     scout.mission = null;
-    const rng = seededRngFromKey(`scoutfind:${scout.id}:${round}`);
+    const rng = seededRngFromKey(`scoutfind:${scout.id}:${calendarTurnKey()}`);
     const specialtyMatch = scout.regionScope !== "any" && scout.regionScope.includes(region);
-    const chance = clamp(0.35 + scout.stars * 0.08 + (specialtyMatch ? 0.15 : 0), 0.2, 0.9);
-    const found = [];
-    for (let i = 0; i < 2; i++) {
-      if (rng() < chance) found.push(generateScoutProspect(scout, region, round, i));
+    // GE-SCOUT-001 — Rede (não mais as estrelas) decide a chance de
+    // achar; duração decide quantas tentativas. Missão de save antigo
+    // (sem type) continua do jeito de sempre: 2 tentativas, base 15-20.
+    const network = scout.network != null ? scout.network : scout.stars;
+    const chance = clamp(0.35 + network * 0.08 + (specialtyMatch ? 0.15 : 0), 0.2, 0.9);
+    const rolls = type ? (SCOUT_MISSION_DURATIONS[duration] || SCOUT_MISSION_DURATIONS.media).rolls : 2;
+    let hits = 0;
+    for (let i = 0; i < rolls; i++) if (rng() < chance) hits++;
+    if (type === "pro") {
+      const added = scoutMarketFinds(scout, region, group, hits, rng);
+      pushTransferLog(added
+        ? `${scout.name} voltou da missão em ${REGION_LABEL[region]} com ${added} indicação${added > 1 ? "ões" : ""} pro Mercado.`
+        : `${scout.name} voltou da missão em ${REGION_LABEL[region]} sem nenhuma indicação dessa vez.`, round);
+      return;
     }
+    const ages = type ? SCOUT_MISSION_TYPES[type].ages : [15, 20];
+    const found = Array.from({ length: hits }, (_, i) => generateScoutProspect(scout, region, calendarTurnKey(), i, { ages, group }));
     if (found.length) {
       pushScoutProspects(found);
       pushTransferLog(`${scout.name} voltou da missão em ${REGION_LABEL[region]} com ${found.length} promissor${found.length > 1 ? "es" : ""}.`, round);
@@ -12931,9 +13282,47 @@ function tickScoutMissions(round) {
     }
   });
 }
-// Diferente de "promote" em handlePlayerAction (que só sobe origin de
-// "base" pra "principal" de alguém já no elenco) — aqui o jogador ainda
-// nem existe em CAREER.squad, é um promissor solto na lista de achados.
+// GE-SCOUT-001 — missão Profissional: as "Indicações dos olheiros" do
+// Mercado passam a vir daqui (antes eram um sorteio sem olheiro nenhum).
+// O olheiro avalia jogadores de outros clubes da região/posição pedida
+// e indica os melhores pela leitura DELE — Avaliação baixa erra mais
+// (ruído maior na nota), e a faixa de potencial reportada é mais larga.
+function scoutMarketFinds(scout, region, group, hits, rng) {
+  if (!hits) return 0;
+  const listed = new Set((CAREER.scoutSuggestions || []).map((sg) => `${sg.clubId}|${sg.playerId}`));
+  const evaluation = scout.evaluation != null ? scout.evaluation : scout.stars;
+  const regionOf = (club) => UF_TO_REGION[club.uf];
+  let pool = allMarketPlayers().filter(({ p, club, mine }) => !mine && !listed.has(`${club.id}|${p.id}`) && !pendingOfferOutFor(p.id)
+    && (!group || p.group === group));
+  const inRegion = pool.filter(({ club }) => regionOf(club) === region);
+  if (inRegion.length) pool = inRegion; // sem UF no dado do fornecedor, olha o país todo
+  const weakestBySubpos = {};
+  CAREER.lineup.starters.map((id) => CAREER.squad.find((p) => p.id === id)).filter(Boolean).forEach((p) => {
+    const sp = subPositionOf(p);
+    weakestBySubpos[sp] = Math.min(weakestBySubpos[sp] ?? 99, p.overall);
+  });
+  const noise = (6 - evaluation) * 3;
+  const scored = pool.map((e) => {
+    const sp = subPositionOf(e.p);
+    const upgrade = weakestBySubpos[sp] != null ? e.p.overall - weakestBySubpos[sp] : 0;
+    const growth = (e.p.potential != null ? e.p.potential : e.p.overall) - e.p.overall;
+    return { ...e, read: upgrade * 1.2 + growth + (rng() * 2 - 1) * noise };
+  }).sort((a, b) => b.read - a.read).slice(0, hits);
+  CAREER.scoutSuggestions = CAREER.scoutSuggestions || [];
+  scored.forEach(({ p, club }) => {
+    const range = scoutPotentialRange(p.potential != null ? p.potential : p.overall, p.overall, evaluation, rng);
+    const report = scoutReport(p, range, "pro", weakestBySubpos[subPositionOf(p)]);
+    CAREER.scoutSuggestions.unshift({
+      id: `scout_${scout.id}_${CAREER.currentRound}_${p.id}`,
+      playerId: p.id, playerName: p.name, clubId: String(club.id), clubName: club.name,
+      subpos: subPositionOf(p), overall: p.overall, age: p.age, value: p.value,
+      potLo: range.lo, potHi: range.hi, report, scoutName: scout.name, foundRegion: region,
+    });
+    pushNotification("olheiro", `${scout.name} indicou ${abbreviateName(p.name)} (${club.name}) — ${report.recommendation.toLowerCase()}.`);
+  });
+  if (CAREER.scoutSuggestions.length > SCOUT_MAX_SUGGESTIONS) CAREER.scoutSuggestions.length = SCOUT_MAX_SUGGESTIONS;
+  return scored.length;
+}
 function recruitProspectToBase(id) {
   const idx = (CAREER.scoutMissionProspects || []).findIndex((p) => p.id === id);
   if (idx === -1) return;
@@ -13003,7 +13392,7 @@ function renderScoutingScreen() {
           <div class="m3-li-name">${escapeHtml(abbreviateName(p.name))}</div>
           <div class="m3-li-meta"><span class="m3-mini-chip">${subPositionOf(p)}</span><span class="m3-mini-chip">${p.age} anos</span></div>
         </div>
-        <div class="m3-potential-badge">${starsHTML(Math.ceil(p.potential / 20))}</div>
+        <div class="m3-potential-badge">${starsHTML(Math.ceil(((p.potRange ? p.potRange.hi : p.potential)) / 20))}</div>
       </div>`).join("")
     : `<p class="m3-empty">Nenhum promissor encontrado ainda${SCOUTING_REGION_FILTER !== "todas" ? " nessa região" : ""}.</p>`;
   document.querySelectorAll("#scoutingProspectList [data-prospect]").forEach((row) => {
@@ -13019,7 +13408,10 @@ function closeScoutingScreen() {
 }
 
 let MISSION_PICKED_SCOUT = null;
-function openMissionSheet() {
+// GE-SCOUT-001 — formulário da missão: tipo, posição (opcional),
+// duração e região; só parte no "Enviar olheiro".
+let MISSION_FORM = { type: "sub17", group: null, duration: "media", region: null };
+function openMissionSheet({ type = "sub17" } = {}) {
   if (!(CAREER.scouts || []).length) {
     toast("Contrate um olheiro no mercado antes de mandar em missão.", { type: "warn" });
     return;
@@ -13029,11 +13421,15 @@ function openMissionSheet() {
     return;
   }
   MISSION_PICKED_SCOUT = null;
+  MISSION_FORM = { type, group: null, duration: "media", region: null };
   renderMissionSheet();
   document.getElementById("scoutMissionSheet").classList.add("open");
 }
 function closeMissionSheet() {
   document.getElementById("scoutMissionSheet").classList.remove("open");
+}
+function missionChipsHTML(field, options, current) {
+  return options.map(([value, label]) => `<button type="button" class="m3-filter-chip${current === value ? " on" : ""}" data-mission-${field}="${value === null ? "" : value}">${label}</button>`).join("");
 }
 function renderMissionSheet() {
   const idle = (CAREER.scouts || []).filter((s) => !s.mission);
@@ -13042,20 +13438,40 @@ function renderMissionSheet() {
       <div class="m3-li-avatar">${initials(s.name)}</div>
       <div class="m3-li-body">
         <div class="m3-li-name">${escapeHtml(s.name)}</div>
-        <div class="m3-li-meta"><span class="m3-mini-chip">${escapeHtml(s.specialty)}</span></div>
+        <div class="m3-li-meta"><span class="m3-mini-chip">${escapeHtml(s.specialty)}</span><span class="m3-mini-chip">Avaliação ${s.evaluation ?? s.stars}/5 · Rede ${s.network ?? s.stars}/5</span></div>
       </div>
     </div>`).join("");
   document.querySelectorAll("#missionScoutList [data-pickscout]").forEach((row) => {
-    row.addEventListener("click", () => { MISSION_PICKED_SCOUT = row.dataset.pickscout; renderMissionSheet(); });
+    row.addEventListener("click", () => { MISSION_PICKED_SCOUT = row.dataset.pickscout; MISSION_FORM.region = null; renderMissionSheet(); });
   });
-  const regionRow = document.getElementById("missionRegionRow");
+  const form = document.getElementById("missionFocusForm");
   const picked = idle.find((s) => s.id === MISSION_PICKED_SCOUT);
-  if (!picked) { regionRow.innerHTML = ""; return; }
-  regionRow.innerHTML = scoutAllowedRegions(picked).map((r) =>
-    `<button class="m3-filter-chip" data-startregion="${r}">${REGION_LABEL[r]}</button>`).join("");
-  regionRow.querySelectorAll("[data-startregion]").forEach((btn) => {
-    btn.addEventListener("click", () => { startScoutMission(picked.id, btn.dataset.startregion); closeMissionSheet(); });
+  if (!picked) { form.classList.add("hidden"); return; }
+  form.classList.remove("hidden");
+  const regions = scoutAllowedRegions(picked);
+  if (!regions.includes(MISSION_FORM.region)) MISSION_FORM.region = regions.length === 1 ? regions[0] : null;
+  document.getElementById("missionTypeRow").innerHTML = missionChipsHTML("type", Object.entries(SCOUT_MISSION_TYPES).map(([k, v]) => [k, v.label]), MISSION_FORM.type);
+  document.getElementById("missionGroupRow").innerHTML = missionChipsHTML("group", [[null, "Qualquer posição"], ...Object.entries(SCOUT_GROUP_LABEL)], MISSION_FORM.group);
+  document.getElementById("missionDurationRow").innerHTML = missionChipsHTML("duration", Object.entries(SCOUT_MISSION_DURATIONS).map(([k, v]) => [k, `${v.label} · ${v.rounds} rodadas`]), MISSION_FORM.duration);
+  document.getElementById("missionRegionRow").innerHTML = missionChipsHTML("region", regions.map((r) => [r, REGION_LABEL[r]]), MISSION_FORM.region);
+  const dur = SCOUT_MISSION_DURATIONS[MISSION_FORM.duration];
+  document.getElementById("missionSummary").textContent = MISSION_FORM.region
+    ? `${picked.name} volta em ${dur.rounds} rodadas com até ${dur.rolls} ${MISSION_FORM.type === "pro" ? "indicação(ões) pro Mercado" : "jovem(ns) pra base"}.`
+    : "Escolha a região.";
+  const btn = document.getElementById("btnMissionStart");
+  btn.disabled = !MISSION_FORM.region;
+  form.querySelectorAll("[data-mission-type],[data-mission-group],[data-mission-duration],[data-mission-region]").forEach((chip) => {
+    chip.addEventListener("click", () => {
+      const field = ["type", "group", "duration", "region"].find((f) => chip.hasAttribute(`data-mission-${f}`));
+      const value = chip.getAttribute(`data-mission-${field}`);
+      MISSION_FORM[field] = value === "" ? null : value;
+      renderMissionSheet();
+    });
   });
+  btn.onclick = () => {
+    startScoutMission(picked.id, MISSION_FORM.region, { type: MISSION_FORM.type, group: MISSION_FORM.group, duration: MISSION_FORM.duration });
+    closeMissionSheet();
+  };
 }
 
 let PROSPECT_SHEET_ID = null;
@@ -13066,14 +13482,24 @@ function openProspectSheet(id) {
   document.getElementById("prospectSheetAvatar").textContent = initials(p.name);
   document.getElementById("prospectSheetName").textContent = p.name;
   document.getElementById("prospectSheetSub").textContent = `${SUBPOS_LABEL[subPositionOf(p)]} · ${p.age} anos · achado no ${REGION_LABEL[p.foundRegion]}`;
-  const attrs = [["Técnica", p.atk], ["Físico", p.phys], ["Visão de jogo", p.def], ["Potencial", p.potential]];
+  // GE-SCOUT-001 — o olheiro reporta uma FAIXA de potencial (largura
+  // depende da Avaliação dele); promissor de save antigo usa a mesma
+  // estimativa de olheiro da base (scoutedPotentialRange).
+  const range = p.potRange || scoutedPotentialRange(p) || { lo: p.potential, hi: p.potential };
+  const attrs = [["Técnica", p.atk], ["Físico", p.phys], ["Visão de jogo", p.def]];
   document.getElementById("prospectSheetAttrs").innerHTML = attrs.map(([label, val]) => `
     <div class="m3-attr-row">
       <div class="m3-attr-label">${label}</div>
-      <div class="m3-attr-bar"><div class="m3-attr-fill${label === "Potencial" ? " gold" : ""}" style="width:${val}%"></div></div>
+      <div class="m3-attr-bar"><div class="m3-attr-fill" style="width:${val}%"></div></div>
       <div class="m3-attr-num">${val}</div>
-    </div>`).join("");
-  document.getElementById("prospectSheetNote").textContent = `"${p.scoutNote}" — ${p.scoutName}`;
+    </div>`).join("") + `
+    <div class="m3-attr-row">
+      <div class="m3-attr-label">Potencial</div>
+      <div class="m3-attr-bar"><div class="m3-attr-fill gold" style="width:${range.hi}%"></div></div>
+      <div class="m3-attr-num">${range.lo === range.hi ? range.lo : `${range.lo}–${range.hi}`}</div>
+    </div>`;
+  const rep = p.report ? ` Recomendação: ${p.report.recommendation} (forte em ${p.report.strength}, precisa evoluir em ${p.report.weakness}).` : "";
+  document.getElementById("prospectSheetNote").textContent = `"${p.scoutNote}" — ${p.scoutName}.${rep}`;
   document.getElementById("scoutProspectSheet").classList.add("open");
 }
 function closeProspectSheet() {
@@ -13089,7 +13515,7 @@ function renderScoutMarketScreen() {
       <div class="m3-li-avatar">${initials(c.name)}</div>
       <div class="m3-li-body">
         <div class="m3-li-name">${escapeHtml(c.name)}</div>
-        <div class="m3-li-meta"><span class="m3-mini-chip">${escapeHtml(c.specialty)}</span></div>
+        <div class="m3-li-meta"><span class="m3-mini-chip">${escapeHtml(c.specialty)}</span><span class="m3-mini-chip">Avaliação ${c.evaluation}/5 · Rede ${c.network}/5</span></div>
         <div class="m3-recruit-stars">${starsHTML(c.stars)}</div>
       </div>
       ${hired ? `<span class="m3-mini-chip">Contratado</span>` : `<button class="m3-upgrade-buy" data-hire="${c.id}">${fmtBRLShort(c.monthlyCost)}/mês</button>`}
@@ -13154,42 +13580,21 @@ function closeBaseCategoriesScreen() {
    spam de clique). Cada indicação fica na lista até o técnico decidir:
    "Aceitar" abre a MESMA proposta real do Mercado (ver openOfferModal),
    "Recusar" só tira da lista, sem afetar nada mais. */
-const SCOUT_MAX_SUGGESTIONS = 6; // teto da lista, pra não virar bagunça
+const SCOUT_MAX_SUGGESTIONS = 8; // teto da lista (mais novas primeiro), pra não virar bagunça
 const SCOUT_MIN_POTENTIAL_GAP = 5; // espaço mínimo (potencial - overall) pra contar como "joia"
 const SCOUT_PICK_PER_SEARCH = 2; // no máximo 2 indicações novas por busca
+// GE-SCOUT-001 (decisão do Murilo: unificar) — não existe mais busca
+// automática "do nada": indicação vem de olheiro contratado em missão
+// Profissional (ver scoutMarketFinds). O botão leva direto pra isso.
 function searchScoutSuggestions() {
-  if (CAREER.lastScoutSearchRound === CAREER.currentRound) {
-    toast("Os olheiros já trouxeram indicações nesta rodada — volte na próxima.", { type: "warn" });
+  if (!(CAREER.scouts || []).length) {
+    toast("Contrate um olheiro pra receber indicações do Mercado.", { type: "warn" });
+    closeScoutSuggestionsScreen();
+    openScoutMarketScreen();
     return;
   }
-  CAREER.lastScoutSearchRound = CAREER.currentRound;
-  const alreadyListed = new Set((CAREER.scoutSuggestions || []).map((s) => String(s.playerId)));
-  const slotsLeft = Math.max(0, SCOUT_MAX_SUGGESTIONS - (CAREER.scoutSuggestions || []).length);
-  const candidates = allMarketPlayers()
-    .filter(({ p, mine }) => !mine && !alreadyListed.has(String(p.id)) && !pendingOfferOutFor(p.id)
-      && p.potential != null && (p.potential - p.overall) >= SCOUT_MIN_POTENTIAL_GAP)
-    .sort(() => Math.random() - 0.5)
-    .slice(0, Math.min(SCOUT_PICK_PER_SEARCH, slotsLeft));
-  if (!candidates.length) {
-    toast("Os olheiros não encontraram nenhuma joia nova dessa vez — tente de novo mais pra frente.", { type: "info" });
-    persistCareer();
-    renderScoutSuggestionsScreen();
-    return;
-  }
-  CAREER.scoutSuggestions = CAREER.scoutSuggestions || [];
-  candidates.forEach(({ p, club }) => {
-    CAREER.scoutSuggestions.push({
-      id: `scout_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
-      playerId: p.id, playerName: p.name, clubId: String(club.id), clubName: club.name,
-      subpos: subPositionOf(p), overall: p.overall, potential: p.potential, value: p.value,
-    });
-    // Central de notificações (Bloco 8 pendentes) — "olheiro" não tem
-    // toggle no mockup, sempre entra no feed.
-    pushNotification("olheiro", `Os olheiros encontraram um novo promissor: ${abbreviateName(p.name)} (${club.name}).`);
-  });
-  persistCareer();
-  renderScoutSuggestionsScreen();
-  toast({ title: "Novas indicações!", detail: `Os olheiros encontraram ${candidates.length} jogador${candidates.length > 1 ? "es" : ""} com potencial de sobra.` }, { type: "pos" });
+  closeScoutSuggestionsScreen();
+  openMissionSheet({ type: "pro" });
 }
 function rejectScoutSuggestion(id) {
   CAREER.scoutSuggestions = (CAREER.scoutSuggestions || []).filter((s) => s.id !== id);
@@ -13210,14 +13615,19 @@ function acceptScoutSuggestion(id) {
   openOfferModal(s.clubId, s.playerId);
 }
 function scoutSuggestionRowHTML(s) {
+  // Indicação de antes do GE-SCOUT-001 não tem relatório — mostra só o
+  // que tinha (sem expor potencial exato, que o olheiro não "sabe").
+  const pot = s.potLo != null ? `potencial ${s.potLo === s.potHi ? s.potLo : `${s.potLo}–${s.potHi}`}` : "";
+  const report = s.report ? `<div class="mt-sponsor-proposal-detail"><b>${escapeHtml(s.report.recommendation)}</b> · forte em ${escapeHtml(s.report.strength)}, precisa evoluir em ${escapeHtml(s.report.weakness)}${s.scoutName ? ` · ${escapeHtml(s.scoutName)}` : ""}</div>` : "";
   return `<div class="mt-sponsor-proposal-row">
     <div data-openplayer="${s.playerId}" data-club="${escapeHtml(String(s.clubId))}">
       <div class="mt-sponsor-proposal-name">${escapeHtml(abbreviateName(s.playerName))} <span class="mt-pos-chip ${SUBPOS_DIVCLASS[s.subpos]}">${s.subpos}</span></div>
-      <div class="mt-sponsor-proposal-detail">${escapeHtml(s.clubName)} · overall ${s.overall} (potencial ${s.potential}) · ${fmtBRL(s.value)}</div>
+      <div class="mt-sponsor-proposal-detail">${escapeHtml(s.clubName)} · overall ${s.overall}${s.age ? ` · ${s.age} anos` : ""}${pot ? ` · ${pot}` : ""} · ${fmtBRL(s.value)}</div>
+      ${report}
     </div>
     <div style="display:flex; gap:6px; flex-shrink:0;">
       <button class="mt-btn-ghost" data-rejectscout="${s.id}" style="padding:9px 12px;">Recusar</button>
-      <button class="mt-btn-sign" data-acceptscout="${s.id}">Aceitar</button>
+      <button class="mt-btn-sign" data-acceptscout="${s.id}">Propor</button>
     </div>
   </div>`;
 }
@@ -13235,10 +13645,13 @@ function renderScoutSuggestionsScreen() {
   document.getElementById("scoutSuggestionsList").querySelectorAll("[data-openplayer]").forEach((el) => {
     el.addEventListener("click", () => openPlayerCard(el.dataset.openplayer, el.dataset.club));
   });
-  const btnSearch = document.getElementById("btnScoutSearch");
-  const onCooldown = CAREER.lastScoutSearchRound === CAREER.currentRound;
-  btnSearch.disabled = onCooldown;
-  btnSearch.title = onCooldown ? "Os olheiros já trouxeram indicações nesta rodada — volte na próxima." : "";
+  const scouts = CAREER.scouts || [];
+  const inProMission = scouts.filter((sc) => sc.mission && sc.mission.type === "pro").length;
+  document.getElementById("btnScoutSearch").textContent = scouts.length ? "Enviar olheiro ao mercado" : "Contratar olheiro";
+  document.getElementById("scoutSuggestionsHint").textContent = !scouts.length
+    ? "Indicações vêm dos seus olheiros. Sem olheiro contratado, não há indicações."
+    : inProMission ? `${inProMission} olheiro${inProMission > 1 ? "s" : ""} em missão no mercado agora — as indicações chegam quando voltarem.`
+      : "Mande um olheiro numa missão Profissional pra receber indicações com relatório.";
   const badge = document.getElementById("scoutSuggestionsBadge");
   badge.classList.toggle("hidden", list.length === 0);
   if (list.length) badge.textContent = String(list.length);
@@ -13472,7 +13885,9 @@ function renderMercado() {
   // extra (já dá pra perceber que vender continua liberado só de ver
   // o botão "Vender" normal ao lado do "Comprar" desabilitado).
   if (!mktWindow.open) {
-    windowBanner.innerHTML = mktWindow.opensAtRound
+    windowBanner.innerHTML = mktWindow.opensLabel
+      ? `🔒 <b>Janela de contratações encerrada</b> — ${mktWindow.opensLabel}`
+      : mktWindow.opensAtRound
       ? `🔒 <b>Janela de contratações encerrada</b> — Rodada ${mktWindow.opensAtRound}`
       : `🔒 <b>Janela de contratações encerrada</b> — próxima temporada`;
   }
@@ -14524,8 +14939,12 @@ function wireStaticListeners() {
   // forçadas de escalação, se houve) -> "Continuar" -> aba Tabela já
   // atualizada. Ver showMatchDetailModal/showRoundResultsModal.
   document.getElementById("btnSimulate").addEventListener("click", () => {
+    // GE-CALENDAR-001 — semana sem jogo: o botão avança a semana.
+    const week = calendarWeek();
+    if (week && !week.r && CAREER.currentRound <= 38) { advanceCalendarFromUI(false); return; }
     openPreMatchConfirm();
   });
+  document.getElementById("btnSkipToMatch").addEventListener("click", () => advanceCalendarFromUI(true));
   // AJUSTE — X só fecha a confirmação sem simular nada (mesmo padrão
   // de sempre: nenhum passo avança sozinho sem o usuário clicar no
   // botão de continuar/ir).
@@ -14873,7 +15292,7 @@ function wireStaticListeners() {
   });
   document.getElementById("scoutingClose").addEventListener("click", closeScoutingScreen);
   document.getElementById("scoutingOverlay").addEventListener("click", (e) => { if (e.target.id === "scoutingOverlay") closeScoutingScreen(); });
-  document.getElementById("btnNewMission").addEventListener("click", openMissionSheet);
+  document.getElementById("btnNewMission").addEventListener("click", () => openMissionSheet());
   document.getElementById("scoutMissionClose").addEventListener("click", closeMissionSheet);
   document.getElementById("scoutMissionSheet").addEventListener("click", (e) => { if (e.target.id === "scoutMissionSheet") closeMissionSheet(); });
   document.getElementById("btnOpenScoutMarket").addEventListener("click", openScoutMarketScreen);
@@ -15459,6 +15878,13 @@ function migrateCareerDefaults() {
   // temporada em andamento) — só carreira NOVA a partir de agora passa
   // por ele (ver startCareer/maybeOpenStartupWizard).
   if (CAREER.startupWizardSeen === undefined) CAREER.startupWizardSeen = true;
+  // P0-IDS-001 — saves de antes desta correção podem ter ids repetidos.
+  ensureUniquePlayerIds();
+  // GE-SCOUT-001 — olheiros já contratados viram nacionais com Avaliação/Rede.
+  migrateScoutsToNational();
+  // GE-CALENDAR-001 — sem campo novo pra carreira antiga (ganha o
+  // calendário na próxima virada); com calendário, garante coerência.
+  syncCalendarToRound();
   evaluateAlwaysCheckableAchievements();
 }
 // AJUSTE (pedido do usuário: "acrescentar a Série B, C [ao Modo
