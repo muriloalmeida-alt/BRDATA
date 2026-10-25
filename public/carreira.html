@@ -4219,9 +4219,12 @@
       <button class="ct-modal-close" id="scoutSuggestionsClose">✕</button>
     </div>
     <div class="ct-modal-body">
-      <button class="mt-btn-primary-gold" id="btnScoutSearch" style="width:100%; margin-bottom:12px;">Buscar indicações</button>
+      <!-- GE-SCOUT-001 — indicações vêm de olheiro em missão Profissional
+           (não mais de uma busca automática). -->
+      <p class="mt-card-sub" id="scoutSuggestionsHint" style="margin:0 0 10px;"></p>
+      <button class="mt-btn-primary-gold" id="btnScoutSearch" style="width:100%; margin-bottom:12px;">Enviar olheiro ao mercado</button>
       <div id="scoutSuggestionsList"></div>
-      <p class="ct-empty hidden" id="scoutSuggestionsEmpty">Nenhuma indicação ainda — clique em "Buscar indicações".</p>
+      <p class="ct-empty hidden" id="scoutSuggestionsEmpty">Nenhuma indicação ainda.</p>
     </div>
     <div class="ct-modal-footer">
       <button class="mt-btn-ghost" id="btnScoutSuggestionsCloseFooter"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>Fechar</button>
@@ -5085,12 +5088,25 @@
   <div class="ct-modal">
     <div class="ct-modal-header">
       <span class="ct-modal-icon">🧭</span>
-      <div class="ct-modal-header-text"><h3>Nova missão</h3><div class="ct-modal-sub">Escolha o olheiro e a região</div></div>
+      <div class="ct-modal-header-text"><h3>Nova missão</h3><div class="ct-modal-sub">Escolha o olheiro e o foco da missão</div></div>
       <button class="ct-modal-close" id="scoutMissionClose">✕</button>
     </div>
     <div class="ct-modal-body">
       <div id="missionScoutList"></div>
-      <div class="m3-filter-row" id="missionRegionRow" style="margin-top:10px;"></div>
+      <!-- GE-SCOUT-001 — foco da missão (tipo, posição, duração, região),
+           ver renderMissionSheet/MISSION_FORM em carreira.js. -->
+      <div id="missionFocusForm" class="hidden">
+        <p class="mt-card-sub" style="margin:12px 0 6px;">Tipo de missão</p>
+        <div class="m3-filter-row" id="missionTypeRow"></div>
+        <p class="mt-card-sub" style="margin:0 0 6px;">Posição</p>
+        <div class="m3-filter-row" id="missionGroupRow"></div>
+        <p class="mt-card-sub" style="margin:0 0 6px;">Duração</p>
+        <div class="m3-filter-row" id="missionDurationRow"></div>
+        <p class="mt-card-sub" style="margin:0 0 6px;">Região</p>
+        <div class="m3-filter-row" id="missionRegionRow"></div>
+        <p class="mt-card-sub" id="missionSummary" style="margin:4px 0 10px;"></p>
+        <button type="button" class="mt-btn-primary-gold" id="btnMissionStart" style="width:100%;">Enviar olheiro</button>
+      </div>
     </div>
   </div>
 </div>

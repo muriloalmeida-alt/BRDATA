@@ -321,7 +321,7 @@ GE-SCOUT-001 → GE-CALENDAR-001 (B1 → B2 → B3).
 
 GE-SCOUT-001 — Olheiros nacionais e unificados
 
-Status: PRONTO PARA IMPLEMENTAÇÃO
+Status: REVISÃO DO PM NECESSÁRIA (implementação na branch `claude/ge-scout-001`, criada a partir de `claude/p0-ids-unicos`)
 Prioridade: P3 (Mundo) · Etapa do loop: Market/Management
 
 Decisão do Murilo: indicações do Mercado passam a vir dos olheiros
@@ -347,6 +347,78 @@ simultâneas = nº de olheiros.
 Aceite: nenhum texto/olheiro internacional; indicações dependem dos
 olheiros; olheiro melhor → faixa de potencial mais estreita e mais
 achados (medido por simulação); saves antigos carregam.
+
+Relatório de implementação (Claude, 25/10/2026)
+
+O que foi feito (`public/js/carreira.js` + `public/carreira.html`):
+1. **Catálogo nacional** (`SCOUT_MARKET`, 8 olheiros): Norte, Nordeste,
+   Centro-Oeste, Sudeste, Sul, "Generalista · Sul e Sudeste",
+   "Generalista nacional" e "Olheiro-chefe nacional". Cada olheiro tem
+   **Avaliação** e **Rede** (1–5); estrelas = média das duas. Nenhum
+   texto internacional ou sul-americano restou.
+2. **Missão com foco** (`startScoutMission` + folha "Nova missão"):
+   tipo (Sub-17 / Sub-20 para a base, Profissional para o Mercado),
+   posição opcional, duração (Curta 2 / Média 4 / Longa 6 rodadas, com
+   1/2/3 tentativas) e região. Só parte no botão "Enviar olheiro", com
+   resumo do que esperar. A Rede decide a chance de cada tentativa.
+3. **Indicações unificadas** (decisão do Murilo): a missão
+   Profissional gera as indicações do Mercado (`scoutMarketFinds`). O
+   olheiro avalia jogadores da região e posição pedidas pela leitura
+   dele (Avaliação baixa erra mais) e prioriza quem reforça seu titular
+   mais fraco ou tem espaço de crescimento. A busca automática com
+   cooldown deixou de existir: sem olheiro, a tela explica e o botão
+   leva a contratar; com olheiro, "Enviar olheiro ao mercado" abre a
+   missão já como Profissional.
+4. **Relatório** (`scoutReport`, `scoutPotentialRange`): faixa de
+   potencial (5 de Avaliação → ±1–2; 3 → ±5–6), ponto forte, ponto a
+   evoluir e recomendação ("Reforço imediato" / "Aposta de futuro" /
+   "Observar" no Mercado; "Promover já" / "Acompanhar" / "Baixa
+   projeção" na base). O potencial exato deixou de aparecer: antes a
+   indicação mostrava "potencial X" e a ficha do jovem também.
+5. **Saves**: `migrateScoutsToNational()` (em `migrateCareerDefaults`)
+   alinha os olheiros já contratados ao catálogo, mantendo custo e
+   estrelas — o "base internacional" vira "Olheiro-chefe nacional".
+   Missão de save antigo (sem tipo) termina como antes (2 tentativas,
+   jovem de 15–20 anos). Indicação antiga sem relatório aparece sem os
+   campos novos.
+
+Validação — `tests/e2e/sim_ge_scout_001.js` (código real via `vm`):
+
+| Olheiro | Avaliação/Rede | Largura média da faixa | Achados por missão (curta / média / longa) |
+|---|---|---|---|
+| T. Lacerda (chefe nacional) | 5/5 | 3,0 | 0,75 / 1,50 / 2,25 |
+| P. Andrade (Nordeste) | 4/4 | 7,0 | 0,82 / 1,64 / 2,46 |
+| F. Quintana (Sudeste) | 4/3 | 7,0 | 0,74 / 1,48 / 2,22 |
+| R. Moura / G. Weber (Norte / Sul) | 3/4 | 11,0 | 0,82 / 1,64 / 2,46 |
+| L. Bastos / C. Nascimento | 3/3 | 11,0 | 0,74 / 1,48 / 2,22 |
+| A. Lima (generalista nacional) | 3/3 | 11,0 | 0,59 / 1,18 / 1,77 |
+
+A faixa estreita conforme a Avaliação e os achados crescem com a Rede
+(✅). **Ponto para o Murilo decidir:** dentro da própria região, um
+especialista acha um pouco mais que o olheiro-chefe, por causa do bônus
+de especialidade (+0,15) que o código já tinha. O chefe compensa com a
+melhor avaliação e com cobertura nacional. Se preferir que o chefe
+também ache mais, basta dar a ele parte do bônus.
+
+Testes:
+* `test_indicacoes_olheiros.js` reescrito para o fluxo novo (sem
+  olheiro → contratar; missão Profissional gera indicações com posição,
+  faixa e relatório, sem potencial exato; catálogo só nacional;
+  Recusar/Propor). Passa.
+* `test_assistente_inicio.js`: compara com `SCOUT_MARKET.length` (era 3
+  fixo). Passa.
+* `test_ux_nomes_clicaveis.js`: estava desatualizado pela
+  UX-MERCADO-001, que já está na `main` (esperava "consulta apenas") e
+  pela busca automática. Atualizado e passa.
+* Regressão de olheiro, base, onboarding, mercado, save, migração e
+  temporada: todos passam. Mobile conferido (folha de missão e
+  indicações).
+* Suíte completa (148 scripts): 23 falhas, todas pré-existentes. A
+  única diferença em relação à rodada anterior foi
+  `test_save_limit_001_careerstore.js`, que lê o `careers.json` do
+  servidor enquanto outros testes paralelos escrevem nele (arquivo lido
+  pela metade); isolado, passa 6/6. `test_botoes_rodape.js` e
+  `test_comissao_mercado_proposta.js` passaram a passar.
 
 ⸻
 
