@@ -138,7 +138,7 @@
      (decisão do Murilo; ver applyClubPalette em carreira.js). */
   :root{
     --m3-primary:#B4E64B; --m3-on-primary:#13200A;
-    --m3-primary-container:#2A3B10; --m3-on-primary-container:#D9F5A0;
+    --m3-primary-container:#1D3324; --m3-on-primary-container:#D9F5A0;
     --m3-tertiary:#6CC6E8; --m3-on-tertiary:#00344A;
     --m3-tertiary-container:#0E3A52; --m3-on-tertiary-container:#C6ECFA;
     --m3-surface-dim:#050B15; --m3-surface:#08111E; --m3-surface-bright:#22324A;
@@ -179,7 +179,7 @@
      porque clip-path corta outline) garante leitura em cima de
      QUALQUER gradiente de cor (mesmo os times com c2 quase branco). */
   .ct-crest-mono{
-    font-family:'Bebas Neue', var(--font); color:#fff; letter-spacing:.5px; line-height:1;
+    font-family:var(--m3-display); color:#fff; letter-spacing:.5px; line-height:1;
     text-shadow:-1px 0 rgba(0,0,0,.55), 1px 0 rgba(0,0,0,.55), 0 -1px rgba(0,0,0,.55), 0 1px rgba(0,0,0,.55);
   }
   /* AJUSTE (pedido do usuário: "a [toast] que traz as mensagens no
@@ -512,7 +512,7 @@
      o espaço do flex apertava. flex-shrink:0 garante que o placar
      nunca é o item espremido — os escudos (.side, largura fixa) cedem
      antes. */
-  .ct-next-match .vs{ font-family:'Bebas Neue', var(--font); color:var(--mt-ink-faint); font-size:16px; white-space:nowrap; flex-shrink:0; }
+  .ct-next-match .vs{ font-family:var(--m3-display); color:var(--mt-ink-faint); font-size:16px; white-space:nowrap; flex-shrink:0; }
   /* AJUSTE (pedido do usuário: "o diamante abaixo da logo está tirando
      o peso que os times representam... valorize mais a marca dos
      clubes", card "Próximo jogo" da Central) — mockup de comparação
@@ -678,7 +678,7 @@
   .ct-award-season{ border:1px solid var(--mt-navy-600); clip-path:polygon(0 0, calc(100% - 18px) 0, 100% 18px, 100% 100%, 0 100%); padding:16px 18px; margin-bottom:16px; background:linear-gradient(160deg, var(--mt-navy-700), var(--mt-navy-800) 65%); }
   .ct-award-season.champion{ border-color:var(--mt-gold-600); box-shadow:0 0 0 1px var(--mt-gold-600) inset; }
   .ct-award-season .yr{ display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:12px; }
-  .ct-award-season .yr h2{ margin:0; font-family:'Bebas Neue', var(--font); font-size:18px; letter-spacing:.5px; color:var(--mt-ivory-50); font-weight:700; }
+  .ct-award-season .yr h2{ margin:0; font-family:var(--m3-display); font-size:18px; letter-spacing:.5px; color:var(--mt-ivory-50); font-weight:700; }
   .ct-award-season .yr .ribbon{ font-family:'Rajdhani', var(--font); font-size:10.5px; font-weight:700; color:#2A1D02; background:linear-gradient(180deg, var(--mt-gold-300), var(--mt-gold-600)); padding:3px 9px; border-radius:100px; text-transform:uppercase; letter-spacing:.4px; white-space:nowrap; }
   .ct-award-podium{ display:flex; gap:10px; margin-bottom:12px; }
   .ct-award-podium .slot{ flex:1; min-width:0; display:flex; align-items:center; gap:8px; background:var(--mt-navy-900); border-radius:8px; padding:9px 10px; border:1px solid var(--mt-navy-600); }
@@ -720,7 +720,7 @@
      aqui — é só a fonte secundária padrão da BRDATA DS, usada em ~65
      seletores por todo o app, não algo específico desta tela. */
   .mt-news-masthead{ text-align:center; padding:0 0 14px; border-bottom:2px solid var(--m3-secondary); margin-bottom:16px; }
-  .mt-news-masthead .brand{ font-family:'Bebas Neue', var(--font); font-size:22px; letter-spacing:1px; color:var(--m3-on-surface); }
+  .mt-news-masthead .brand{ font-family:var(--m3-display); font-size:22px; letter-spacing:1px; color:var(--m3-on-surface); }
   .mt-news-masthead .tagline{ font-family:'Rajdhani', var(--font); font-size:11px; font-weight:600; color:var(--m3-on-surface-variant); text-transform:uppercase; letter-spacing:1.5px; margin-top:4px; }
   .mt-news-sectitle{ display:flex; align-items:center; gap:10px; margin:20px 0 12px; }
   .mt-news-sectitle span{ font-family:'Rajdhani', var(--font); font-size:11px; font-weight:700; color:var(--m3-on-surface-variant); text-transform:uppercase; letter-spacing:1px; white-space:nowrap; }
@@ -743,7 +743,7 @@
      Destaque "mine" (rgba dourada) preservado — mesmo tom já usado em
      Conquistas pra destacar o próprio clube. */
   .m3-news-kicker{ font-family:'Rajdhani', var(--font); font-size:10.5px; font-weight:700; color:var(--m3-secondary); text-transform:uppercase; letter-spacing:1px; margin-bottom:6px; }
-  .m3-news-headline{ font-family:'Bebas Neue', var(--font); font-size:21px; line-height:1.15; letter-spacing:.3px; color:var(--m3-on-surface); }
+  .m3-news-headline{ font-family:var(--m3-display); font-size:21px; line-height:1.15; letter-spacing:.3px; color:var(--m3-on-surface); }
   .m3-news-feature-meta{ font-family:'Rajdhani', var(--font); font-size:11px; color:var(--m3-on-surface-variant); margin-top:6px; }
   .m3-news-rule{ height:1px; background:linear-gradient(90deg, var(--m3-secondary), transparent); margin:16px 0; }
   .m3-news-brief{ display:flex; gap:11px; padding:11px 0; border-bottom:1px solid var(--m3-outline-variant); }
@@ -1299,7 +1299,7 @@
      compensar não ter mais moldura ao redor. */
   .mt-crest-mini{ width:34px; height:34px; flex-shrink:0; display:flex; align-items:center; justify-content:center; }
   .mt-crest-mini img{ height:100%; width:100%; object-fit:contain; }
-  .mt-brand-mini .t{ font-family:'Bebas Neue', var(--font); font-size:21px; letter-spacing:2px; color:var(--mt-ivory-50); }
+  .mt-brand-mini .t{ font-family:var(--m3-display); font-size:21px; letter-spacing:2px; color:var(--mt-ivory-50); }
   .mt-brand-mini .t span{ color:var(--mt-gold-400); }
   .mt-icon-btn{
     color:var(--mt-ivory-100); width:42px; height:42px;
@@ -1321,7 +1321,7 @@
     display:flex; align-items:center; justify-content:center;
   }
   .mt-intro-crest img{ height:32px; width:32px; object-fit:contain; }
-  .mt-intro h1{ font-family:'Bebas Neue', var(--font); font-size:24px; letter-spacing:.5px; margin:0 0 10px; line-height:1.15; color:var(--mt-ivory-50); }
+  .mt-intro h1{ font-family:var(--m3-display); font-size:24px; letter-spacing:.5px; margin:0 0 10px; line-height:1.15; color:var(--mt-ivory-50); }
   .mt-intro p{ font-size:13px; color:var(--mt-ink-muted); line-height:1.55; margin:0 auto; max-width:480px; }
   .mt-picker-banner{
     text-align:center; max-width:480px; margin:0 auto 20px; padding:10px 14px;
@@ -1358,7 +1358,7 @@
   .mt-competition-card:active{ filter:brightness(1.08); }
   .mt-competition-flag{ font-size:26px; flex-shrink:0; }
   .mt-competition-body{ flex:1; min-width:0; }
-  .mt-competition-title{ font-family:'Bebas Neue', var(--font); font-size:18px; letter-spacing:.3px; color:var(--mt-ivory-50); }
+  .mt-competition-title{ font-family:var(--m3-display); font-size:18px; letter-spacing:.3px; color:var(--mt-ivory-50); }
   .mt-competition-sub{ font-size:12px; color:var(--mt-ink-muted); margin-top:2px; }
   .mt-competition-chevron{ flex-shrink:0; width:18px; height:18px; color:var(--mt-ink-faint); }
 
@@ -1557,13 +1557,13 @@
   .mt-rank-row{ display:flex; align-items:center; gap:12px; padding:11px 4px; border-bottom:1px solid var(--mt-navy-700); }
   .mt-rank-row:last-child{ border-bottom:none; }
   .mt-rank-row.me{ color:var(--m3-primary); }
-  .mt-rank-num{ font-family:'Bebas Neue', var(--font); font-size:19px; color:var(--mt-ink-faint); width:28px; flex-shrink:0; }
+  .mt-rank-num{ font-family:var(--m3-display); font-size:19px; color:var(--mt-ink-faint); width:28px; flex-shrink:0; }
   .mt-rank-num.top3{ color:var(--m3-primary); }
   .mt-rank-info{ flex:1; min-width:0; }
   .mt-rank-name{ font-size:13px; font-weight:600; color:var(--mt-ivory-50); }
   .mt-rank-you{ font-family:var(--font); font-weight:700; font-size:9px; letter-spacing:.3px; color:var(--m3-primary); }
   .mt-rank-club{ font-family:'Rajdhani', var(--font); font-size:11px; color:var(--mt-ink-faint); }
-  .mt-rank-score{ font-family:'Bebas Neue', var(--font); font-size:17px; color:var(--mt-ivory-50); flex-shrink:0; }
+  .mt-rank-score{ font-family:var(--m3-display); font-size:17px; color:var(--mt-ivory-50); flex-shrink:0; }
   .mt-rank-updated{ text-align:center; font-family:'Rajdhani', var(--font); font-weight:600; font-size:11px; color:var(--mt-ink-faint); margin:10px 0 0; }
   /* Campo de texto simples (não é <select>, não usa .mt-select-box de
      propósito -- aquela classe embute a setinha de dropdown via
@@ -1589,7 +1589,7 @@
   .mt-day-cell-login.today .dnum{ color:var(--m3-on-primary); }
   .mt-reward-showcase{ text-align:center; padding:18px 0 20px; border-top:1px solid var(--mt-navy-600); border-bottom:1px solid var(--mt-navy-600); margin-bottom:18px; }
   .mt-reward-icon{ width:58px; height:58px; border-radius:50%; background:var(--m3-primary-container); border:2px solid var(--m3-primary); margin:0 auto 10px; display:flex; align-items:center; justify-content:center; font-size:24px; }
-  .mt-reward-value{ font-family:'Bebas Neue', var(--font); font-size:22px; color:var(--mt-ivory-50); }
+  .mt-reward-value{ font-family:var(--m3-display); font-size:22px; color:var(--mt-ivory-50); }
   .mt-reward-label{ font-family:'Rajdhani', var(--font); font-size:11px; font-weight:700; letter-spacing:.5px; color:var(--mt-ink-faint); margin-top:2px; }
   .mt-streak-warning{ text-align:center; font-size:11px; color:var(--mt-ink-faint); line-height:1.4; margin:12px 0 0; }
 
@@ -1618,7 +1618,7 @@
      escopado só a essas 2 (não mexe no .ct-modal-overlay base). */
   .mt-player-hero{ display:flex; align-items:center; gap:14px; padding:16px 4px 4px; }
   .mt-ovr-badge.sz-lg{ width:56px; height:56px; font-size:21px; }
-  .mt-player-hero-info b{ display:block; font-size:19px; font-family:'Bebas Neue', var(--font); letter-spacing:.4px; color:var(--m3-on-surface); }
+  .mt-player-hero-info b{ display:block; font-size:19px; font-family:var(--m3-display); letter-spacing:.4px; color:var(--m3-on-surface); }
   .mt-player-hero-info span{ font-family:'Rajdhani', var(--font); font-size:12.5px; color:var(--m3-on-surface-variant); font-weight:600; }
 
   .mt-attr-grid{ display:grid; grid-template-columns:1fr 1fr; gap:10px; margin:18px 0; }
@@ -1652,7 +1652,7 @@
      de propósito (BRDATA Extension, mesmo critério de estádio/placar
      já usado em Onboarding/Tática — aqui é um confronto "VS" estilo
      card de luta, não texto comum). */
-  .m3-compare-player b{ font-size:13px; font-family:'Bebas Neue', var(--font); letter-spacing:.3px; color:var(--m3-on-surface); text-align:center; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%; }
+  .m3-compare-player b{ font-size:13px; font-family:var(--m3-display); letter-spacing:.3px; color:var(--m3-on-surface); text-align:center; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%; }
   .m3-compare-vs{ font-family:var(--m3-display); font-size:12px; font-weight:700; color:var(--m3-on-surface-variant); flex-shrink:0; }
   .m3-compare-row{ display:grid; grid-template-columns:1fr auto 1fr; align-items:center; gap:10px; padding:9px 0; border-bottom:1px solid var(--m3-outline-variant); }
   .m3-compare-row:last-child{ border-bottom:none; }
@@ -1810,7 +1810,7 @@
   }
   .mt-onboard-icon svg{ width:44px; height:44px; }
   /* S4-B4-001 (issue #31) — título/texto/skip migrados pra --m3-on-surface(-variant), mesmo mapeamento semântico usado no resto da migração (título/texto principal vs. secundário) */
-  .mt-onboard-title{ font-family:'Bebas Neue', var(--font); font-size:26px; letter-spacing:.4px; color:var(--m3-on-surface); margin:0 0 12px; }
+  .mt-onboard-title{ font-family:var(--m3-display); font-size:26px; letter-spacing:.4px; color:var(--m3-on-surface); margin:0 0 12px; }
   .mt-onboard-text{ font-size:14.5px; line-height:1.65; color:var(--m3-on-surface-variant); max-width:300px; margin:0; }
   .mt-onboard-dots{ display:flex; gap:6px; align-self:center; margin-bottom:2px; }
   .mt-onboard-dot{ width:7px; height:7px; border-radius:50%; background:var(--m3-outline-variant); transition:width .2s, border-radius .2s; }
@@ -1863,7 +1863,7 @@
   .mt-live-tag{ display:flex; align-items:center; gap:9px; }
   .mt-live-dot{ width:9px; height:9px; border-radius:50%; background:var(--mt-crimson-500); box-shadow:0 0 8px rgba(214,69,69,.8); animation:mtLivePulse 1.4s infinite; }
   @keyframes mtLivePulse{ 0%,100%{ opacity:1; } 50%{ opacity:.35; } }
-  .mt-live-title{ font-family:'Bebas Neue', var(--font); font-size:18px; letter-spacing:1px; color:var(--mt-ivory-50); }
+  .mt-live-title{ font-family:var(--m3-display); font-size:18px; letter-spacing:1px; color:var(--mt-ivory-50); }
   .mt-live-minute{ font-family:var(--m3-display); font-weight:700; font-size:12px; color:var(--m3-primary); letter-spacing:.2px; }
   .mt-live-close{ width:34px; height:34px; border-radius:8px; display:flex; align-items:center; justify-content:center; background:var(--mt-navy-800); border:1px solid var(--mt-navy-600); color:var(--mt-ink-muted); flex-shrink:0; cursor:pointer; }
   .mt-live-close svg{ width:16px; height:16px; }
@@ -2054,10 +2054,10 @@
   .mt-goal-tag{ font-family:var(--m3-display); font-size:24px; letter-spacing:4px; color:var(--m3-primary); }
   .mt-goal-crest{ margin-top:8px; }
   .mt-goal-crest .ct-crest{ box-shadow:inset 0 0 0 3px var(--m3-primary), 0 0 44px rgba(255,255,255,.2); }
-  .mt-goal-scorer{ font-family:'Bebas Neue', var(--font); font-size:40px; color:#fff; letter-spacing:.5px; text-wrap:balance; }
+  .mt-goal-scorer{ font-family:var(--m3-display); font-size:40px; color:#fff; letter-spacing:.5px; text-wrap:balance; }
   .mt-goal-assist{ font-family:var(--font); font-weight:700; font-size:12px; letter-spacing:.3px; color:var(--m3-primary); text-transform:uppercase; }
   .mt-goal-score{ margin-top:10px; padding-top:14px; border-top:1px solid rgba(232,184,75,.25); }
-  .mt-goal-score .vs{ font-family:'Bebas Neue', var(--font); font-size:30px; color:var(--mt-ivory-50); }
+  .mt-goal-score .vs{ font-family:var(--m3-display); font-size:30px; color:var(--mt-ivory-50); }
 
   /* ================= Tela 6 — Escalação =================
      AJUSTE (refatoração completa, ver 06-escalacao-restyled.html do
@@ -2382,7 +2382,7 @@
   .mt-pkg-card.featured{ border-color:var(--m3-primary); background:var(--m3-primary-container); }
   .mt-pkg-best{ position:absolute; top:-8px; right:12px; background:var(--m3-primary); color:var(--m3-on-primary); font-family:var(--font); font-weight:700; font-size:9px; letter-spacing:.3px; padding:3px 8px; border-radius:999px; }
   .mt-pkg-icon{ width:48px; height:48px; border-radius:12px; flex-shrink:0; display:flex; flex-direction:column; align-items:center; justify-content:center; line-height:1.1; }
-  .mt-pkg-icon .n{ font-family:'Bebas Neue', var(--font); font-size:17px; }
+  .mt-pkg-icon .n{ font-family:var(--m3-display); font-size:17px; }
   .mt-pkg-icon .u{ font-size:7px; font-weight:700; letter-spacing:.4px; opacity:.85; }
   .mt-pkg-icon.tier-bronze{ background:radial-gradient(circle at 35% 30%, #D2A870, #8B6B3D 75%); color:#2E2007; }
   .mt-pkg-icon.tier-prata{ background:radial-gradient(circle at 35% 30%, #EAEDF2, #9AA3B2 75%); color:#1C2430; }
@@ -2730,6 +2730,59 @@
   /* ---- botões genéricos M3 (pílula) ---- */
   .m3-btn-primary{ width:100%; display:flex; align-items:center; justify-content:center; gap:8px; background:var(--m3-primary); color:var(--m3-on-primary); border:none; border-radius:var(--m3-shape-full); padding:13px; font-family:var(--font); font-weight:700; font-size:13px; cursor:pointer; }
   .m3-btn-ghost{ width:100%; display:flex; align-items:center; justify-content:center; gap:8px; background:var(--m3-surface-container); color:var(--m3-on-surface); border:1px solid var(--m3-outline-variant); border-radius:var(--m3-shape-full); padding:13px; font-family:var(--font); font-weight:700; font-size:13px; cursor:pointer; }
+
+  /* ================= Redesign — Bloco 1 (Entrada) =================
+     Referência visual aprovada (10/2026), telas 01–05: splash com marca
+     e "luz de estádio" em gradiente (sem foto — o projeto não tem esse
+     ativo), login com a marca BRDATA / MODO CARREIRA, competição e clube
+     como listas contínuas com divisores (no lugar de cartões soltos). */
+  #screenLoading{
+    background:
+      radial-gradient(120% 55% at 50% -8%, rgba(180,230,75,.16), transparent 60%),
+      radial-gradient(90% 45% at 50% 108%, rgba(108,198,232,.10), transparent 65%),
+      var(--m3-surface-dim);
+    gap:10px;
+  }
+  #screenLoading .mt-splash-crest{ width:92px; height:92px; border-radius:26px; background:transparent; border:none; }
+  #screenLoading .mt-splash-crest img{ width:76px; height:76px; }
+  .mt-splash-brand, .mt-brand-name{
+    font-family:var(--m3-display); font-weight:700; font-size:30px; letter-spacing:2px; line-height:1;
+    color:var(--m3-on-surface); text-align:center;
+  }
+  .mt-splash-brand small, .mt-brand-name small{
+    display:block; margin-top:6px; font-size:11px; letter-spacing:4px; font-weight:600; color:var(--m3-secondary);
+  }
+  .mt-splash-tagline{ font-size:13px; color:var(--m3-on-surface-variant); margin:4px 0 14px; text-align:center; }
+  .mt-splash-tagline b{ color:var(--m3-primary); font-weight:700; }
+  #screenLoginRequired .mt-panel{ background:transparent; padding:8px 4px 0; }
+  #screenLoginRequired .mt-panel h1{ font-size:22px; }
+
+  .mt-intro h1{ font-family:var(--m3-display); font-weight:700; font-size:22px; letter-spacing:0; color:var(--m3-on-surface); }
+  .mt-competition-list, .m3-club-grid{
+    gap:0; background:var(--m3-surface-container); border:1px solid var(--m3-outline-variant);
+    border-radius:var(--m3-shape-lg); overflow:hidden;
+  }
+  .mt-competition-card{
+    background:transparent; border:none; border-bottom:1px solid var(--m3-outline-variant);
+    clip-path:none; padding:15px 16px;
+  }
+  .mt-competition-card:last-child, .m3-club-row:last-child{ border-bottom:none; }
+  .mt-competition-card:hover, .m3-club-row:hover{ background:var(--m3-surface-container-high); }
+  .mt-competition-card:focus-visible, .m3-club-row:focus-visible{ outline:2px solid var(--m3-primary); outline-offset:-2px; }
+  .mt-competition-title{ font-family:var(--m3-display); font-weight:700; font-size:15px; letter-spacing:0; color:var(--m3-on-surface); }
+  .mt-competition-sub{ color:var(--m3-on-surface-variant); }
+  .mt-competition-chevron{ color:var(--m3-primary); }
+  .m3-club-row{ border-radius:0; border:none; border-bottom:1px solid var(--m3-outline-variant); background:transparent; padding:12px 16px; }
+  .m3-club-crest{ border-radius:50%; background:var(--m3-surface-container-highest); }
+  .m3-club-row.selected{ border-color:var(--m3-outline-variant); box-shadow:inset 3px 0 0 var(--m3-primary); }
+  .mt-onboard-title{ font-family:var(--m3-display); font-weight:700; font-size:24px; letter-spacing:0; line-height:1.2; }
+
+  /* ================= Redesign — Bloco 5 (estados) =================
+     Movimento reduzido (F15 da matriz): várias animações já tinham sua
+     própria regra; esta cobre todas as da carreira de uma vez. */
+  @media (prefers-reduced-motion: reduce){
+    *, *::before, *::after{ animation-duration:.01ms !important; animation-iteration-count:1 !important; transition-duration:.01ms !important; scroll-behavior:auto !important; }
+  }
 </style>
 </head>
 <body>
@@ -2739,6 +2792,8 @@
   <!-- ================= Loading ================= -->
   <div class="ct-full" id="screenLoading">
     <div class="mt-splash-crest"><img src="img/brand-icon.png" alt=""></div>
+    <div class="mt-splash-brand">BRDATA<small>MODO CARREIRA</small></div>
+    <div class="mt-splash-tagline">Mais que um jogo. Sua <b>carreira</b>. Suas decisões.</div>
     <div class="ct-spinner"></div>
     <p>Carregando o Modo Técnico...</p>
   </div>
@@ -2778,11 +2833,11 @@
       <div class="mt-login-content">
         <div class="mt-brand">
           <div class="mt-crest"><img src="img/logo.png" alt="BR Data"></div>
-          <div class="mt-brand-name">DATA <span>TREINADOR</span></div>
+          <div class="mt-brand-name">BRDATA<small>MODO CARREIRA</small></div>
         </div>
 
         <div class="mt-panel">
-          <h1>Entrar</h1>
+          <h1>Bem-vindo de volta!</h1>
           <p class="mt-sub">Faça login pra acessar o Modo Técnico — o progresso da sua carreira fica salvo na sua conta BR Data.</p>
 
           <form id="ctLoginForm">

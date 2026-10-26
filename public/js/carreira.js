@@ -343,7 +343,7 @@ function contrastRatio(hexA, hexB) {
 // do "Verde de Campo"; mesmos valores do bloco :root do redesign em
 // carreira.html.
 const M3_DEFAULT_PALETTE = {
-  primary: "#B4E64B", onPrimary: "#13200A", primaryContainer: "#2A3B10", onPrimaryContainer: "#D9F5A0",
+  primary: "#B4E64B", onPrimary: "#13200A", primaryContainer: "#1D3324", onPrimaryContainer: "#D9F5A0",
   secondary: "#E3C16C", onSecondary: "#3F2E00", secondaryContainer: "#5A4400", onSecondaryContainer: "#FFDF9D",
   tertiary: "#6CC6E8", onTertiary: "#00344A", tertiaryContainer: "#0E3A52", onTertiaryContainer: "#C6ECFA",
 };
@@ -683,7 +683,8 @@ function m3SkeletonHTML({ lines = 3, avatar = false } = {}) {
 // confiável que tentar re-executar boot() no meio de um estado de
 // erro desconhecido.
 function splashLoadingHTML(text) {
-  return `<div class="mt-splash-crest"><img src="img/brand-icon.png" alt=""></div><div class="ct-spinner"></div><p>${escapeHtml(text)}</p>`;
+  // Redesign (bloco 1, referência visual) — marca + slogan da splash.
+  return `<div class="mt-splash-crest"><img src="img/brand-icon.png" alt=""></div><div class="mt-splash-brand">BRDATA<small>MODO CARREIRA</small></div><div class="mt-splash-tagline">Mais que um jogo. Sua <b>carreira</b>. Suas decisões.</div><div class="ct-spinner"></div><p>${escapeHtml(text)}</p>`;
 }
 function splashErrorHTML(detail) {
   return `<div class="mt-error-screen">
