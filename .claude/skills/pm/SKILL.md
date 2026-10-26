@@ -57,8 +57,8 @@ priorização, manutenção de `docs/`) é absorvido.
     ESTADO pra tudo que é assíncrono (boot/reload, rede, partida ao vivo,
     telas em fila — helpers `_*.js`); pausa curta fixa (≤ 300 ms) depois
     de clique é aceitável — trocá-las em massa por espera de estado deixou
-    a suíte 19% mais LENTA numa máquina de 4 CPUs (medido na Fase C do
-    motor de testes);
+    a suíte ~5% mais LENTA e menos estável numa máquina de 4 CPUs (medido
+    em pares na Fase C do motor de testes, `docs/MOTOR_TESTES_FASE_C.md`);
 * reportar arquivos alterados/criados/removidos.
 
 Não misture os dois na mesma resposta sem deixar claro qual chapéu está
