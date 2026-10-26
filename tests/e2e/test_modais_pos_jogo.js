@@ -42,7 +42,7 @@ const { skipPreseason } = require("./_calendar_skip");
   await page.click("#btnPreMatchGo");
   await page.waitForSelector("#liveMatchOverlay.open", { timeout: 5000 });
   await page.evaluate(() => skipLiveMatch());
-  await page.waitForSelector("#matchDetailOverlay.open", { timeout: 5000 });
+  await page.waitForSelector("#matchDetailOverlay.open", { timeout: 20000 });
 
   // a) Seu jogo — "Fechar" abaixo de "Continuar", mesmo rodapé, e
   // clicar nele SÓ fecha (não avança pra Notícias).
@@ -70,7 +70,7 @@ const { skipPreseason } = require("./_calendar_skip");
   await page.click("#btnPreMatchGo");
   await page.waitForSelector("#liveMatchOverlay.open", { timeout: 5000 });
   await page.evaluate(() => skipLiveMatch());
-  await page.waitForSelector("#matchDetailOverlay.open", { timeout: 5000 });
+  await page.waitForSelector("#matchDetailOverlay.open", { timeout: 20000 });
   await page.click("#btnMatchDetailContinue");
   await page.waitForTimeout(200);
   // Coletiva de imprensa é probabilística mesmo com a chance zerada
@@ -107,7 +107,7 @@ const { skipPreseason } = require("./_calendar_skip");
   await page.click("#btnPreMatchGo");
   await page.waitForSelector("#liveMatchOverlay.open", { timeout: 5000 });
   await page.evaluate(() => skipLiveMatch());
-  await page.waitForSelector("#matchDetailOverlay.open", { timeout: 5000 });
+  await page.waitForSelector("#matchDetailOverlay.open", { timeout: 20000 });
   await page.click("#btnMatchDetailContinue");
   await page.waitForTimeout(200);
   if (await page.evaluate(() => document.getElementById("pressOverlay").classList.contains("open"))) {

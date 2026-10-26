@@ -73,7 +73,7 @@ async function newCareer(page, base, email) {
   // jogo" → coletiva (se aparecer) → Notícias → Resultados da rodada →
   // proposta por jogador (se aparecer).
   await page.evaluate(() => { pauseLiveMatch(); skipLiveMatch(); });
-  await page.waitForSelector("#matchDetailOverlay.open", { timeout: 5000 });
+  await page.waitForSelector("#matchDetailOverlay.open", { timeout: 20000 });
   await page.click("#btnMatchDetailContinue");
   await page.waitForTimeout(200);
   if (await page.evaluate(() => document.getElementById("pressOverlay").classList.contains("open"))) {

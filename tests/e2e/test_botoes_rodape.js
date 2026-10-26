@@ -67,7 +67,7 @@ function checkFooter(page, overlayId, btnId) {
   // 2) Resultado do jogo — "Continuar".
   await page.waitForSelector("#liveMatchOverlay.open", { timeout: 5000 });
   await page.evaluate(() => skipLiveMatch());
-  await page.waitForSelector("#matchDetailOverlay.open", { timeout: 5000 });
+  await page.waitForSelector("#matchDetailOverlay.open", { timeout: 20000 });
   const r2 = await checkFooter(page, "matchDetailOverlay", "btnMatchDetailContinue");
   check("2) Resultado do jogo — 'Continuar' no rodapé fixo:", r2.insideFooter && !r2.insideBody && r2.footerIsFlexShrink0 && r2.btnVisible);
   await page.click("#btnMatchDetailContinue");

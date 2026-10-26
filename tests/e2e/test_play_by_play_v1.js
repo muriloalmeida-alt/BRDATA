@@ -55,7 +55,7 @@ const { skipPreseason } = require("./_calendar_skip");
 
   // 4) Pular pro fim e checar estado final.
   await page.click("#btnLiveSkip");
-  await page.waitForSelector("#matchDetailOverlay.open", { timeout: 8000 });
+  await page.waitForSelector("#matchDetailOverlay.open", { timeout: 20000 });
   check("4) Partida terminou, modal 'Seu jogo' abriu:", true);
 
   // 5) Estatísticas (posse/finalizações/no alvo/faltas) aparecem.

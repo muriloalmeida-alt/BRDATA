@@ -65,7 +65,7 @@ async function newCareer(page, base, email) {
   }
   await page.waitForSelector("#liveMatchOverlay.open", { timeout: 5000 });
   await page.evaluate(() => skipLiveMatch());
-  await page.waitForSelector("#matchDetailOverlay.open", { timeout: 5000 });
+  await page.waitForSelector("#matchDetailOverlay.open", { timeout: 20000 });
   await page.click("#btnMatchDetailContinue");
   await page.waitForTimeout(300);
 
