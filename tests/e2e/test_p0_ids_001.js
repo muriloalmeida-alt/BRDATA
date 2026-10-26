@@ -5,7 +5,7 @@
 // com repetição corrigido ao carregar (proposta pendente acompanha o
 // jogador certo) e reposição de base na virada sem repetir id.
 const { chromium } = require("playwright-core");
-const { skipOnboarding } = require("./_startup");
+const { skipOnboarding, waitForBoot } = require("./_startup");
 
 (async () => {
   const browser = await chromium.launch({ executablePath: process.env.PW_CHROMIUM_PATH || undefined, headless: true, args: ["--host-resolver-rules=MAP fonts.googleapis.com 127.0.0.1,MAP fonts.gstatic.com 127.0.0.1"] });
@@ -49,7 +49,7 @@ const { skipOnboarding } = require("./_startup");
     return { clubA, clubB, dupId: a.id, bName: b.name, put: r.status };
   });
   await page.reload({ waitUntil: "domcontentloaded" });
-  await page.waitForTimeout(2500);
+  await waitForBoot(page);
   const afterLoad = await page.evaluate(({ clubB, bName }) => {
     const o = (CAREER.pendingOffersOut || []).find((x) => x.id === "offerout_test");
     const target = o && leagueSquadFor(clubB).find((p) => p.id === o.playerId);

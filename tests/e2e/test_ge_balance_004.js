@@ -71,7 +71,9 @@ const { skipOnboarding } = require("./_startup");
   await page.evaluate(() => persistCareer());
   await page.waitForTimeout(2500);
   await page.reload({ waitUntil: "domcontentloaded" });
-  await page.waitForTimeout(3000);
+  // Espera a carreira recarregar do save (estado), até 15 s — antes 3 s
+  // fixos, curto sob carga (CAREER ainda null).
+  await page.waitForFunction(() => typeof CAREER !== "undefined" && CAREER && CAREER.divisionTeams, null, { timeout: 15000 }).catch(() => {});
   const reloaded = await page.evaluate((saved) => {
     const promotedNow = CAREER.divisionTeams.brasileirao.filter((t) => saved.includes(t.atk));
     return promotedNow.length;

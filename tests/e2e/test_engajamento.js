@@ -189,7 +189,9 @@ const { enterGame } = require("./_startup");
   await page.waitForTimeout(150);
   await page.click("#topbarMenu .mt-topbar-menu-item.group[data-submenu='progresso']");
   await page.click("#btnOpenRanking");
-  await page.waitForTimeout(500);
+  // Espera o ranking chegar do servidor (código de amigo + card próprio),
+  // até 10 s — antes 500 ms fixos, curto sob carga.
+  await page.waitForFunction(() => document.getElementById("rankingFriendCode").textContent.length === 6 && !document.getElementById("rankingMyCard").hidden, null, { timeout: 10000 }).catch(() => {});
   const rankState = await page.evaluate(() => ({
     panelActive: document.getElementById("panel-ranking").classList.contains("active"),
     friendCode: document.getElementById("rankingFriendCode").textContent,
@@ -201,7 +203,7 @@ const { enterGame } = require("./_startup");
 
   // Trocar pra Global.
   await page.click('#rankingScopeToggle .mt-scope-btn[data-scope="global"]');
-  await page.waitForTimeout(300);
+  await page.waitForFunction(() => document.getElementById("rankingList").innerHTML.includes("Murilo Melo"), null, { timeout: 10000 }).catch(() => {});
   const globalState = await page.evaluate(() => document.getElementById("rankingList").innerHTML.includes("Murilo Melo"));
   check("10) Escopo Global também mostra a própria entrada:", globalState);
 

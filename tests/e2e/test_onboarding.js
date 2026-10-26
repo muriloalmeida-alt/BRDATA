@@ -4,6 +4,7 @@
 // reaparece (nem em conta nova retomando, nem depois de "Reiniciar"),
 // e libera o modal de login diário só depois de fechado.
 const { chromium } = require("playwright-core");
+const { waitForBoot } = require("./_startup");
 const { check } = require("./_check");
 
 (async () => {
@@ -94,7 +95,7 @@ const { check } = require("./_check");
 
   // 6) Reload da página (mesma sessão) NÃO reabre o tutorial de novo.
   await page.reload({ waitUntil: "domcontentloaded" });
-  await page.waitForTimeout(1000);
+  await waitForBoot(page);
   const afterReload = await page.evaluate(() => document.getElementById("onboardingOverlay").classList.contains("open"));
   check("6) Depois de recarregar a página, o tutorial NÃO reaparece:", !afterReload);
 

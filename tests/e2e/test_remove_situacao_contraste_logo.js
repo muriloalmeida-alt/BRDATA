@@ -3,7 +3,7 @@
 // clara "gelo" em vez de transparente).
 const { chromium } = require("playwright-core");
 const { check } = require("./_check");
-const { enterGame } = require("./_startup");
+const { enterGame, waitForBoot } = require("./_startup");
 
 (async () => {
   const browser = await chromium.launch({ executablePath: process.env.PW_CHROMIUM_PATH || undefined, headless: true, args: ["--host-resolver-rules=MAP fonts.googleapis.com 127.0.0.1,MAP fonts.gstatic.com 127.0.0.1"] });
@@ -90,7 +90,7 @@ const { enterGame } = require("./_startup");
   //    claro (varre a lista inteira).
   await page.evaluate(async () => { await fetch("/api/career", { method: "DELETE" }); });
   await page.reload({ waitUntil: "domcontentloaded" });
-  await page.waitForTimeout(500);
+  await waitForBoot(page);
   await page.click('.mt-competition-card[data-competition="serie_b"]');
   await page.waitForTimeout(300);
   const pickerCheck = await page.evaluate(() => {

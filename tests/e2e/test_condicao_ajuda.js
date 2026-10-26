@@ -1,6 +1,6 @@
 const { chromium } = require("playwright-core");
 const { check } = require("./_check");
-const { enterGame } = require("./_startup");
+const { enterGame, waitForBoot } = require("./_startup");
 
 async function newCareer(page, base, email) {
   await page.goto(base + "/", { waitUntil: "domcontentloaded" });
@@ -76,7 +76,7 @@ async function putCareer(page, career) {
   p.status = "contundido"; p.injurySeverity = "grave"; p.outUntilRound = career.currentRound; p.condition = 100;
   await putCareer(page, career);
   await page.reload({ waitUntil: "domcontentloaded" });
-  await page.waitForTimeout(800);
+  await waitForBoot(page);
   await page.evaluate(() => { refreshAvailability(CAREER.currentRound + 1); });
   const afterReturn = await page.evaluate((id) => CAREER.squad.find((x) => x.id === id), p.id);
   check("4) Retorno de lesão GRAVE baixa condição pro teto (45), mesmo tendo 100 antes:", afterReturn.status === "ok" && afterReturn.condition === 45);

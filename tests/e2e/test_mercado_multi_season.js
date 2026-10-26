@@ -3,7 +3,7 @@
 // piso menor (12, MIN_LEAGUE_SQUAD_OTHER_DIVISION).
 const { chromium } = require("playwright-core");
 const { check } = require("./_check");
-const { enterGame } = require("./_startup");
+const { enterGame, waitForBoot } = require("./_startup");
 (async () => {
   const browser = await chromium.launch({ executablePath: process.env.PW_CHROMIUM_PATH || undefined, headless: true });
   const page = await browser.newPage({ viewport: { width: 390, height: 900 } });
@@ -36,7 +36,7 @@ const { enterGame } = require("./_startup");
     await fetch("/api/career", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(CAREER) });
   });
   await page.reload({ waitUntil: "domcontentloaded" });
-  await page.waitForTimeout(1200);
+  await waitForBoot(page);
   await page.click("#btnAdvanceSeason");
   await page.waitForTimeout(300);
   await page.click("#confirmOkBtn");

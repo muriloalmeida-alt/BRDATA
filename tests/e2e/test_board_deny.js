@@ -1,5 +1,5 @@
 const { chromium } = require("playwright-core");
-const { enterGame } = require("./_startup");
+const { enterGame, waitForBoot } = require("./_startup");
 
 (async () => {
   const browser = await chromium.launch({
@@ -44,7 +44,7 @@ const { enterGame } = require("./_startup");
     await fetch("/api/career", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data.career) });
   });
   await page.reload({ waitUntil: "load" });
-  await page.waitForTimeout(800);
+  await waitForBoot(page);
 
   const results = [];
   for (let i = 0; i < 5; i++) {
@@ -56,7 +56,7 @@ const { enterGame } = require("./_startup");
       return true;
     });
     await page.reload({ waitUntil: "load" });
-    await page.waitForTimeout(500);
+    await waitForBoot(page);
     await page.click(".m3-nav-item[data-panel='clube']"); await page.waitForTimeout(200); await page.click("#btnAskBoard");
     await page.waitForTimeout(300);
     const decision = await page.evaluate(async () => (await (await fetch("/api/career")).json()).career.boardDecision);

@@ -1,5 +1,5 @@
 const { chromium } = require("playwright-core");
-const { enterGame } = require("./_startup");
+const { enterGame, waitForBoot } = require("./_startup");
 
 (async () => {
   const browser = await chromium.launch({
@@ -40,7 +40,7 @@ const { enterGame } = require("./_startup");
   console.log("Jovem escolhido:", youngId);
   if (youngId) {
     await page.reload({ waitUntil: "load" });
-    await page.waitForTimeout(800);
+    await waitForBoot(page);
     await page.click(".m3-nav-item[data-panel='elenco']");
     await page.waitForTimeout(300);
     await page.click(`[data-id="${youngId}"]`);
@@ -70,7 +70,7 @@ const { enterGame } = require("./_startup");
   });
   console.log("Alvo do caso B:", targetB);
   await page.reload({ waitUntil: "load" });
-  await page.waitForTimeout(800);
+  await waitForBoot(page);
   await page.click(".m3-nav-item[data-panel='elenco']");
   await page.waitForTimeout(300);
   await page.click(`[data-id="${targetB.id}"]`);

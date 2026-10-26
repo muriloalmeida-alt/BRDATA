@@ -1,5 +1,5 @@
 const { chromium } = require("playwright-core");
-const { enterGame } = require("./_startup");
+const { enterGame, waitForBoot } = require("./_startup");
 
 (async () => {
   const browser = await chromium.launch({
@@ -36,7 +36,7 @@ const { enterGame } = require("./_startup");
   console.log("Teto forçado:", JSON.stringify(result));
 
   await page.reload({ waitUntil: "load" });
-  await page.waitForTimeout(1000);
+  await waitForBoot(page);
   await page.click(".m3-nav-item[data-panel='elenco']");
   await page.waitForTimeout(300);
   const baseRow = await page.$("#squadBaseList [data-id]");

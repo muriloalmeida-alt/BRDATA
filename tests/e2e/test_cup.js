@@ -16,7 +16,7 @@
 // de resultados), não na estatística do chaveamento.
 const { chromium } = require("playwright-core");
 const { check } = require("./_check");
-const { enterGame } = require("./_startup");
+const { enterGame, waitForBoot } = require("./_startup");
 
 async function newCareer(page, base, email) {
   await page.goto(base + "/", { waitUntil: "load" });
@@ -56,7 +56,7 @@ async function resolveOneRoundProgrammatic(page) {
       pauseLiveMatch();
       skipLiveMatch();
       let waited = 0;
-      while (LIVE_MATCH && waited < 100) { await new Promise((r) => setTimeout(r, 20)); waited++; }
+      while (LIVE_MATCH && waited < 750) { await new Promise((r) => setTimeout(r, 20)); waited++; } // até 15 s (antes 2 s: sob carga a perna ao vivo não terminava a tempo)
     }
     return CAREER.currentRound;
   });
@@ -91,7 +91,9 @@ async function resolveOneRoundProgrammatic(page) {
   while (await page.evaluate(() => CAREER.currentRound) <= 6) {
     await resolveOneRoundProgrammatic(page);
   }
-  career = await getCareer(page);
+  // Estado do CLIENTE (CAREER), não do servidor: o save é gravado com
+  // debounce (800 ms) e logo depois de jogar ainda podia estar defasado.
+  career = await page.evaluate(() => JSON.parse(JSON.stringify(CAREER)));
   check("2) Depois da rodada 6 (volta da Fase 1), avançou pra r32 (se o técnico seguiu vivo) ou ficou eliminado — fase:", career.cup.phase === "r32" || career.cup.humanAlive === false, "| fase:", career.cup.phase, "| humanAlive:", career.cup.humanAlive);
   console.log("   r32 tem 32 clubes (16 confrontos), se ainda ativo:", career.cup.phase === "r32" ? new Set(career.cup.ties.r32.flatMap((t) => [String(t.home), String(t.away)])).size === 32 : "N/A (eliminado)");
   // Se o confronto do técnico virou ao vivo em alguma dessas rodadas
@@ -127,7 +129,7 @@ async function resolveOneRoundProgrammatic(page) {
   career.cup.humanAlive = true;
   await putCareer(page, career);
   await page.reload({ waitUntil: "load" });
-  await page.waitForTimeout(800);
+  await waitForBoot(page);
   await page.click("#btnBottomMenu");
   await page.waitForTimeout(150);
   await page.click("#topbarMenu .mt-topbar-menu-item.group[data-submenu='competicao']");
@@ -144,7 +146,7 @@ async function resolveOneRoundProgrammatic(page) {
   career.cup.active = false;
   await putCareer(page, career);
   await page.reload({ waitUntil: "load" });
-  await page.waitForTimeout(800);
+  await waitForBoot(page);
   await page.click("#btnBottomMenu");
   await page.waitForTimeout(150);
   await page.click("#topbarMenu .mt-topbar-menu-item.group[data-submenu='competicao']");
@@ -161,7 +163,7 @@ async function resolveOneRoundProgrammatic(page) {
   career.currentRound = 20;
   await putCareer(page, career);
   await page.reload({ waitUntil: "load" });
-  await page.waitForTimeout(800);
+  await waitForBoot(page);
   career = await getCareer(page);
   check("6) Migração com rodada 20 -- cup existe:", !!career.cup, "| expanded:", career.cup.expanded, "| fase (deve ser 'qf', já fechadas fase1/r32/r16 por trás):", career.cup.phase);
 

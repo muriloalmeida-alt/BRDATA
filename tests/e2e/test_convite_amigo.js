@@ -10,7 +10,7 @@
 // tinha carreira salva).
 const { chromium } = require("playwright-core");
 const { check } = require("./_check");
-const { enterGame } = require("./_startup");
+const { enterGame, waitForBoot } = require("./_startup");
 
 async function signupAndLogin(page, base, email, name) {
   await page.goto(base + "/", { waitUntil: "load" });
@@ -87,7 +87,7 @@ async function newCareer(page, base) {
     await fetch("/api/auth/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, password: "senha123" }) });
   }, { email: emailB });
   await pageB.reload({ waitUntil: "load" });
-  await pageB.waitForTimeout(1000);
+  await waitForBoot(pageB);
   const bState = await pageB.evaluate(() => ({ friends: (ME && ME.friends) || [], onScreenPicker: !document.getElementById("screenCompetitionPicker").classList.contains("hidden") }));
   check("4) Depois de logar, o convite pendente vira amizade de verdade automaticamente:", bState.friends.length === 1, JSON.stringify(bState));
 
@@ -102,7 +102,7 @@ async function newCareer(page, base) {
   await newCareer(pageB, base);
   await pageB.evaluate(async () => { await fetch("/api/auth/logout", { method: "POST" }); });
   await pageB.reload({ waitUntil: "load" });
-  await pageB.waitForTimeout(300);
+  await waitForBoot(pageB);
   await pageB.fill("#ctLoginEmail", emailB);
   await pageB.fill("#ctLoginPassword", "senha123");
   await pageB.click("#ctLoginForm button[type=submit]");

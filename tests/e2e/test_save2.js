@@ -1,5 +1,5 @@
 const { chromium } = require("playwright-core");
-const { enterGame } = require("./_startup");
+const { enterGame, waitForBoot } = require("./_startup");
 
 (async () => {
   const browser = await chromium.launch({
@@ -51,7 +51,7 @@ const { enterGame } = require("./_startup");
 
   // Recarrega a página (simula fechar/reabrir o navegador) e confere se persistiu
   await page.reload({ waitUntil: "load" });
-  await page.waitForTimeout(1000);
+  await waitForBoot(page);
   const formationAfterReload = await page.evaluate(() => document.getElementById("formationSelect")?.value);
   console.log("FORMATION AFTER RELOAD:", formationAfterReload);
   await page.screenshot({ path: "save-test-after-reload.png" });

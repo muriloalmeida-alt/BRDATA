@@ -59,4 +59,20 @@ async function enterGame(page, { claimDailyLogin = true } = {}) {
   await page.waitForFunction(() => ![...document.querySelectorAll(".ct-modal-overlay.open")].some((e) => e.id !== "actionLoadingOverlay" && (e.id !== "dailyLoginOverlay")), null, { timeout: 5000 }).catch(() => {});
 }
 
-module.exports = { skipOnboarding, skipStartupWizard, enterGame };
+// Depois de page.reload(): espera o boot do app terminar (tela de
+// carregamento escondida e alguma tela de destino visível — jogo, escolha
+// de competição/clube ou login) e, na tela do jogo, a carreira carregada.
+// Substitui o `waitForTimeout(800)` (e afins) fixo depois do reload, que
+// sob carga às vezes não bastava (CAREER ainda null). Limite 15 s; se não
+// chegar, segue — o passo seguinte do teste é que acusa, com o erro dele.
+async function waitForBoot(page) {
+  await page.waitForFunction(() => {
+    const loading = document.getElementById("screenLoading");
+    if (loading && !loading.classList.contains("hidden")) return false;
+    const visible = (id) => { const el = document.getElementById(id); return !!el && !el.classList.contains("hidden"); };
+    if (visible("screenGame")) return typeof CAREER !== "undefined" && !!CAREER;
+    return ["screenCompetitionPicker", "screenPicker", "screenLoginRequired"].some(visible);
+  }, null, { timeout: 15000 }).catch(() => {});
+}
+
+module.exports = { skipOnboarding, skipStartupWizard, enterGame, waitForBoot };

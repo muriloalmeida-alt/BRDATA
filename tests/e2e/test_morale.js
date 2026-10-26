@@ -1,6 +1,6 @@
 const { chromium } = require("playwright-core");
 const { check } = require("./_check");
-const { enterGame } = require("./_startup");
+const { enterGame, waitForBoot } = require("./_startup");
 const { skipPreseason } = require("./_calendar_skip");
 const { playRound, playNextMatchRound } = require("./_round");
 
@@ -91,7 +91,7 @@ async function putCareer(page, career) {
   p1.contractUntil = career.seasonYear;
   await putCareer(page, career);
   await page.reload({ waitUntil: "load" });
-  await page.waitForTimeout(800);
+  await waitForBoot(page);
   await page.click(".m3-nav-item[data-panel='elenco']");
   await page.waitForTimeout(300);
   await page.click(`[data-id="${p1.id}"]`);
@@ -114,7 +114,7 @@ async function putCareer(page, career) {
   p2.contractUntil = career.seasonYear;
   await putCareer(page, career);
   await page.reload({ waitUntil: "load" });
-  await page.waitForTimeout(800);
+  await waitForBoot(page);
   await page.click(".m3-nav-item[data-panel='elenco']");
   await page.waitForTimeout(300);
   await page.click(`[data-id="${p2.id}"]`);

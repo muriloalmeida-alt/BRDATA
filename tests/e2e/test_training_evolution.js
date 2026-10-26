@@ -1,6 +1,6 @@
 const { chromium } = require("playwright-core");
 const { check } = require("./_check");
-const { enterGame } = require("./_startup");
+const { enterGame, waitForBoot } = require("./_startup");
 const { skipPreseason } = require("./_calendar_skip");
 
 async function newCareer(page, base, email) {
@@ -90,7 +90,7 @@ async function simulateOneRound(page) {
     career.lineup.starters[0] = primePlayer.id;
     await putCareer(page, career);
     await page.reload({ waitUntil: "load" });
-    await page.waitForTimeout(800);
+    await waitForBoot(page);
   }
   const starterId = primePlayer.id;
   const starter = primePlayer;

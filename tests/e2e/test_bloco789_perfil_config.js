@@ -2,7 +2,7 @@
 // notificações, Histórico de compras, Central de ajuda, Sistema (splash/erro).
 const { chromium } = require("playwright-core");
 const { check } = require("./_check");
-const { enterGame } = require("./_startup");
+const { enterGame, waitForBoot } = require("./_startup");
 
 (async () => {
   const browser = await chromium.launch({ executablePath: process.env.PW_CHROMIUM_PATH || undefined, headless: true, args: ["--host-resolver-rules=MAP fonts.googleapis.com 127.0.0.1,MAP fonts.gstatic.com 127.0.0.1"] });
@@ -73,7 +73,7 @@ const { enterGame } = require("./_startup");
   check("4) Salvar nome persiste no servidor (ME.name) e fecha:", afterSave.meName === "Murilo Editado" && afterSave.closed, JSON.stringify(afterSave));
   // confirma persistência real via reload
   await page.reload({ waitUntil: "domcontentloaded" });
-  await page.waitForTimeout(600);
+  await waitForBoot(page);
   const afterReload = await page.evaluate(() => ME && ME.name);
   check("5) Nome sobrevive a reload (endpoint gravou no servidor):", afterReload === "Murilo Editado", afterReload);
 

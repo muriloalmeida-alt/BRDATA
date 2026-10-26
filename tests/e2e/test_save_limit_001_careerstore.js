@@ -48,8 +48,15 @@ function randomIncompressible(bytes) {
   // 2) Arquivo em disco realmente guarda o envelope comprimido (__gz),
   // não o objeto cru — persist() é debounced (800ms, ver
   // debouncedPersist.js), espera a janela passar antes de checar.
-  await new Promise((r) => setTimeout(r, 900));
-  const onDisk = JSON.parse(fs.readFileSync(DATA_FILE, "utf8"));
+  // Espera o arquivo ficar legível com o save (estado), até 10 s — antes
+  // 900 ms fixos: sob carga a leitura pegava o arquivo ainda sendo escrito
+  // ("Unexpected end of JSON input").
+  let onDisk = null;
+  for (const t0 = Date.now(); Date.now() - t0 < 10000;) {
+    await new Promise((r) => setTimeout(r, 100));
+    try { onDisk = JSON.parse(fs.readFileSync(DATA_FILE, "utf8")); if (onDisk.u1) break; } catch (_) { /* ainda escrevendo */ }
+  }
+  onDisk = onDisk || {};
   check("2) Arquivo em disco guarda { __gz } comprimido, não o JSON cru:", !!onDisk.u1 && !!onDisk.u1.__gz && typeof onDisk.u1.__gz === "string");
 
   // 3) Migração transparente: save ANTIGO (pré-compressão, objeto cru

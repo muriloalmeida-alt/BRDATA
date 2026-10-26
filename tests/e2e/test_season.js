@@ -1,5 +1,5 @@
 const { chromium } = require("playwright-core");
-const { enterGame } = require("./_startup");
+const { enterGame, waitForBoot } = require("./_startup");
 
 (async () => {
   const browser = await chromium.launch({
@@ -43,7 +43,7 @@ const { enterGame } = require("./_startup");
   console.log("Antes de avançar:", JSON.stringify(before));
 
   await page.reload({ waitUntil: "load" });
-  await page.waitForTimeout(800);
+  await waitForBoot(page);
   await page.screenshot({ path: "season-1-ended.png" });
 
   const btnVisible = await page.evaluate(() => !document.getElementById("btnAdvanceSeason").classList.contains("hidden"));

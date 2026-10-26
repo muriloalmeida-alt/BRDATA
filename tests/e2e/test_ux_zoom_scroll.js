@@ -1,6 +1,6 @@
 const { chromium } = require("playwright-core");
 const { check } = require("./_check");
-const { enterGame } = require("./_startup");
+const { enterGame, waitForBoot } = require("./_startup");
 (async () => {
   const browser = await chromium.launch({ executablePath: process.env.PW_CHROMIUM_PATH || undefined, headless: true, args: ["--host-resolver-rules=MAP fonts.googleapis.com 127.0.0.1,MAP fonts.gstatic.com 127.0.0.1"] });
   const page = await browser.newPage({ viewport: { width: 390, height: 700 } });
@@ -28,7 +28,7 @@ const { enterGame } = require("./_startup");
     await fetch("/api/auth/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, password: "senha123" }) });
   }, { email });
   await page.reload({ waitUntil: "domcontentloaded" });
-  await page.waitForTimeout(400);
+  await waitForBoot(page);
   await page.click('.mt-competition-card[data-competition="brasileirao"]');
   await page.waitForTimeout(200);
   await page.click(".m3-club-row");

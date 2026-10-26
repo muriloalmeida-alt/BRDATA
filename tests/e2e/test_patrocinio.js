@@ -1,6 +1,6 @@
 const { chromium } = require("playwright-core");
 const { check } = require("./_check");
-const { enterGame } = require("./_startup");
+const { enterGame, waitForBoot } = require("./_startup");
 const { playNextMatchRound } = require("./_round");
 const { skipPreseason } = require("./_calendar_skip");
 
@@ -59,7 +59,7 @@ async function putCareer(page, career) {
   career.currentRound = 39; // temporada terminada, pronta pra avançar
   await putCareer(page, career);
   await page.reload({ waitUntil: "domcontentloaded" });
-  await page.waitForTimeout(800);
+  await waitForBoot(page);
   await page.click(".m3-nav-item[data-panel='central']");
   await page.waitForTimeout(300);
   await page.click("#btnAdvanceSeason");

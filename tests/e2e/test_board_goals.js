@@ -1,6 +1,6 @@
 const { chromium } = require("playwright-core");
 const { check } = require("./_check");
-const { enterGame } = require("./_startup");
+const { enterGame, waitForBoot } = require("./_startup");
 
 async function forceStandings(page, { rank }) {
   // rank: "first" (bate qualquer meta) ou "last" (falha qualquer meta)
@@ -69,7 +69,7 @@ async function setStreak(page, n) {
   await setStreak(page, 2);
   await forceStandings(page, { rank: "last" });
   await page.reload({ waitUntil: "load" });
-  await page.waitForTimeout(800);
+  await waitForBoot(page);
   await page.click("#btnAdvanceSeason");
   await page.waitForTimeout(200);
   await page.click("#confirmOkBtn");
@@ -100,7 +100,7 @@ async function setStreak(page, n) {
   await setStreak(page, 2);
   await forceStandings(page, { rank: "first" });
   await page.reload({ waitUntil: "load" });
-  await page.waitForTimeout(800);
+  await waitForBoot(page);
   await page.click("#btnAdvanceSeason");
   await page.waitForTimeout(200);
   await page.click("#confirmOkBtn");

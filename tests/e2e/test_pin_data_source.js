@@ -5,7 +5,7 @@
 // silenciosamente e quebrar os ids já gravados no calendário/elenco.
 const { chromium } = require("playwright-core");
 const { check } = require("./_check");
-const { enterGame } = require("./_startup");
+const { enterGame, waitForBoot } = require("./_startup");
 
 (async () => {
   const browser = await chromium.launch({ executablePath: process.env.PW_CHROMIUM_PATH || undefined, headless: true, args: ["--host-resolver-rules=MAP fonts.googleapis.com 127.0.0.1,MAP fonts.gstatic.com 127.0.0.1"] });
@@ -100,7 +100,7 @@ const { enterGame } = require("./_startup");
   // 4) Fluxo real de verdade: recarregar a página (enterAfterAuth) não
   // quebra nada -- clube/central continuam mostrando nomes certos.
   await page.reload({ waitUntil: "domcontentloaded" });
-  await page.waitForTimeout(800);
+  await waitForBoot(page);
   const afterReload = await page.evaluate(() => {
     // Redesign M3: o card "Próximo jogo" da Central é .m3-hero-match
     // (.mt-nextmatch não existe mais).

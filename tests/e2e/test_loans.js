@@ -1,6 +1,6 @@
 const { chromium } = require("playwright-core");
 const { check } = require("./_check");
-const { enterGame } = require("./_startup");
+const { enterGame, waitForBoot } = require("./_startup");
 
 async function newCareer(page, base, email) {
   await page.goto(base + "/", { waitUntil: "load" });
@@ -112,7 +112,7 @@ async function putCareer(page, career) {
   career.currentRound = 39;
   await putCareer(page, career);
   await page.reload({ waitUntil: "load" });
-  await page.waitForTimeout(800);
+  await waitForBoot(page);
   await page.click("#btnAdvanceSeason");
   await page.waitForTimeout(200);
   await page.click("#confirmOkBtn");

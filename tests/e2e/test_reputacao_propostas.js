@@ -1,6 +1,6 @@
 const { chromium } = require("playwright-core");
 const { check } = require("./_check");
-const { skipOnboarding, skipStartupWizard, enterGame } = require("./_startup");
+const { enterGame } = require("./_startup");
 
 async function newCareer(page, base, email) {
   await page.goto(base + "/", { waitUntil: "domcontentloaded" });
@@ -92,8 +92,9 @@ async function newCareer(page, base, email) {
   console.log("   TECHNICIAN_CARRY consumido/limpo:", r3.carryCleared, "| clube realmente trocou:", r3.clubId === otherClub);
   // startCareer() abre o assistente de início da carreira nova (por cima
   // do menu) — fecha antes de usar a interface de novo.
-  await page.waitForTimeout(300);
-  await skipStartupWizard(page);
+  // (assistente e, em seguida, o login diário — enterGame atravessa a
+  // fila inteira pelo estado.)
+  await enterGame(page);
 
   // 6) "Reiniciar" (via UI de verdade) NÃO carrega reputação -- nasce
   // limpo de novo (50, sem currículo).

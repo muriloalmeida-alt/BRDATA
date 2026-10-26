@@ -1,5 +1,5 @@
 const { chromium } = require("playwright-core");
-const { enterGame } = require("./_startup");
+const { enterGame, waitForBoot } = require("./_startup");
 
 (async () => {
   const browser = await chromium.launch({
@@ -47,7 +47,7 @@ const { enterGame } = require("./_startup");
   });
 
   await page.reload({ waitUntil: "load" });
-  await page.waitForTimeout(1500);
+  await waitForBoot(page);
   const bodyText = await page.evaluate(() => document.body.innerText.slice(0, 400));
   console.log("BODY (save pré-Fase2 inteiro):", bodyText);
   await page.screenshot({ path: "migration-fixed.png" });

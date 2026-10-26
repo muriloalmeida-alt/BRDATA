@@ -3,7 +3,7 @@
 // adicional sobre os 4 eixos gerais de Tática).
 const { chromium } = require("playwright-core");
 const { check } = require("./_check");
-const { enterGame } = require("./_startup");
+const { enterGame, waitForBoot } = require("./_startup");
 
 (async () => {
   const browser = await chromium.launch({ executablePath: process.env.PW_CHROMIUM_PATH || undefined, headless: true, args: ["--host-resolver-rules=MAP fonts.googleapis.com 127.0.0.1,MAP fonts.gstatic.com 127.0.0.1"] });
@@ -91,7 +91,7 @@ const { enterGame } = require("./_startup");
     return true;
   });
   await page.reload({ waitUntil: "domcontentloaded" });
-  await page.waitForTimeout(800);
+  await waitForBoot(page);
   const check5 = await page.evaluate(() => {
     const st = CAREER.lineup.sectorTactics;
     const allSectorsPresent = ["defesa", "meio", "ataque"].every((s) => st[s] && Object.keys(st[s]).length === 5);

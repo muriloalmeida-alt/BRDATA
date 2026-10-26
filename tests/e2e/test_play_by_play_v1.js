@@ -46,7 +46,9 @@ const { skipPreseason } = require("./_calendar_skip");
 
   // 3) Espera alguns tempos passarem (2x = ~450ms por tempo) e checa
   // se chance_perdida/defesa já apareceram no feed (evento novo).
-  await page.waitForTimeout(2500);
+  // Espera o ESTADO (tipo novo no feed), até 15 s — antes 2,5 s fixos,
+  // que sob carga cobriam menos tempos de jogo e às vezes só gol/cartão.
+  await page.waitForFunction(() => LIVE_MATCH && LIVE_MATCH.events.some((e) => e.type === "chance_perdida" || e.type === "defesa"), null, { timeout: 15000 }).catch(() => {});
   const feedTypes = await page.evaluate(() => LIVE_MATCH ? [...new Set(LIVE_MATCH.events.map((e) => e.type))] : []);
   check("3) Feed já tem tipos de evento variados (chance_perdida ou defesa presentes):",
     feedTypes.includes("chance_perdida") || feedTypes.includes("defesa"), JSON.stringify(feedTypes));

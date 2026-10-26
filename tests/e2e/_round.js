@@ -65,8 +65,19 @@ async function playRound(page, hooks = {}) {
   // Começa só com a tela do jogo limpa (nenhuma tela por cima) — o
   // clique abaixo não passa pelo teste de ponteiro, então não pode
   // acontecer com alguma tela ainda aberta.
-  await page.waitForFunction(() => !document.getElementById("btnSimulate").disabled
-    && ![...document.querySelectorAll(".ct-modal-overlay.open")].some((e) => e.id !== "actionLoadingOverlay"), null, { timeout: 15000 });
+  // A Tabela é a última tela da rodada anterior e também reabre quando o
+  // teste fecha/recusa a proposta em destaque (closePlayerOfferModal
+  // segue o fluxo pra ela) — se sobrou aberta, fecha antes de começar.
+  for (let i = 0; i < 10 && await page.locator("#tabelaModalOverlay.open").count(); i++) {
+    await page.click("#btnTabelaModalCloseFooter", { timeout: 2500 }).catch(() => {});
+    await page.waitForTimeout(100);
+  }
+  const clean = await page.waitForFunction(() => !document.getElementById("btnSimulate").disabled
+    && ![...document.querySelectorAll(".ct-modal-overlay.open")].some((e) => e.id !== "actionLoadingOverlay"), null, { timeout: 15000 }).then(() => true, () => false);
+  if (!clean) {
+    const st = await readState(page);
+    throw new Error(`playRound: tela do jogo não ficou limpa pra começar a rodada (abertas: ${st.open.join(", ") || "nenhuma"}; botão ocupado: ${st.busy})`);
+  }
   await page.evaluate(() => document.getElementById("btnSimulate").click());
   const t0 = Date.now();
   let settledPolls = 0;

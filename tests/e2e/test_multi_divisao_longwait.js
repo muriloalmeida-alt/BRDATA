@@ -3,7 +3,7 @@
 // persistido, e reabertura (reload) carregando a divisão certa.
 const { chromium } = require("playwright-core");
 const { check } = require("./_check");
-const { enterGame } = require("./_startup");
+const { enterGame, waitForBoot } = require("./_startup");
 
 (async () => {
   const browser = await chromium.launch({ executablePath: process.env.PW_CHROMIUM_PATH || undefined, headless: true, args: ["--host-resolver-rules=MAP fonts.googleapis.com 127.0.0.1,MAP fonts.gstatic.com 127.0.0.1"] });
@@ -51,7 +51,7 @@ const { enterGame } = require("./_startup");
   // Série B, sem passar pelo seletor de novo, e sem misturar times de
   // outra divisão.
   await page.reload({ waitUntil: "domcontentloaded" });
-  await page.waitForTimeout(600);
+  await waitForBoot(page);
   const afterReload = await page.evaluate(() => ({
     gameVisible: !document.getElementById("screenGame").classList.contains("hidden"),
     competitionId: CURRENT_COMPETITION_ID,

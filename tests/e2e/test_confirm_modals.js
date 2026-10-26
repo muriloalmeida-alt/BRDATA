@@ -1,5 +1,5 @@
 const { chromium } = require("playwright-core");
-const { enterGame } = require("./_startup");
+const { enterGame, waitForBoot } = require("./_startup");
 const { check } = require("./_check");
 
 (async () => {
@@ -88,7 +88,7 @@ const { check } = require("./_check");
     await fetch("/api/career", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data.career) });
   });
   await page.reload({ waitUntil: "load" });
-  await page.waitForTimeout(800);
+  await waitForBoot(page);
   await page.click("#btnAdvanceSeason");
   await page.waitForTimeout(300);
   const confirmTextSeason = await page.evaluate(() => document.getElementById("confirmText").textContent);

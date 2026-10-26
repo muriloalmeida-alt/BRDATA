@@ -3,7 +3,7 @@
 // do campeonato... sempre divididas em Histórico e Temporada Atual").
 const { chromium } = require("playwright-core");
 const { check } = require("./_check");
-const { enterGame } = require("./_startup");
+const { enterGame, waitForBoot } = require("./_startup");
 const { skipPreseason } = require("./_calendar_skip");
 
 (async () => {
@@ -196,7 +196,7 @@ const { skipPreseason } = require("./_calendar_skip");
     await fetch("/api/career", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data.career) });
   });
   await page.reload({ waitUntil: "domcontentloaded" });
-  await page.waitForTimeout(800);
+  await waitForBoot(page);
   await page.click(".m3-nav-item[data-panel='central']");
   await page.waitForTimeout(200);
   await page.click("#btnAdvanceSeason");

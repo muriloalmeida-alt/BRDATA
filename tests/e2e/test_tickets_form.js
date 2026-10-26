@@ -1,5 +1,5 @@
 const { chromium } = require("playwright-core");
-const { enterGame } = require("./_startup");
+const { enterGame, waitForBoot } = require("./_startup");
 const { check } = require("./_check");
 const { playNextMatchRound } = require("./_round");
 
@@ -35,7 +35,7 @@ const { playNextMatchRound } = require("./_round");
     await fetch("/api/career", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data.career) });
   });
   await page.reload({ waitUntil: "load" });
-  await page.waitForTimeout(800);
+  await waitForBoot(page);
 
   await page.click(".m3-nav-item[data-panel='central']");
   await page.waitForTimeout(300);

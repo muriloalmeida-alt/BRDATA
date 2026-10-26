@@ -1,6 +1,6 @@
 const { chromium } = require("playwright-core");
 const { check } = require("./_check");
-const { enterGame } = require("./_startup");
+const { enterGame, waitForBoot } = require("./_startup");
 
 (async () => {
   const browser = await chromium.launch({
@@ -77,7 +77,7 @@ const { enterGame } = require("./_startup");
     return p.id;
   });
   await page.reload({ waitUntil: "load" });
-  await page.waitForTimeout(800);
+  await waitForBoot(page);
   await page.click(".m3-nav-item[data-panel='elenco']");
   await page.waitForTimeout(300);
   // Linha do jogador na LISTA do Elenco (#squadMainList) — o 1º
@@ -112,7 +112,7 @@ const { enterGame } = require("./_startup");
     await fetch("/api/career", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data.career) });
   });
   await page.reload({ waitUntil: "load" });
-  await page.waitForTimeout(800);
+  await waitForBoot(page);
   await page.click("#btnAdvanceSeason");
   await page.waitForTimeout(200);
   await page.click("#confirmOkBtn");

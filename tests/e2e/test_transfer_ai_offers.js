@@ -155,7 +155,7 @@ const { enterGame } = require("./_startup");
   // (o RNG é real, não mockado) — o que importa é demonstrar a
   // TENDÊNCIA: score claramente maior e MUITO mais ofertas geradas.
   const trendOk = statResult.scoreNeedy > statResult.scoreServed + 0.3 && statResult.offersNeedy > statResult.offersServed * 2;
-  console.log(`2/3/4/5) Clube carente+compatível (score médio ${statResult.scoreNeedy.toFixed(2)}) gera MUITO mais ofertas (${statResult.offersNeedy}/${N_TRIALS}) que clube bem servido+incompatível (score médio ${statResult.scoreServed.toFixed(2)}, ${statResult.offersServed}/${N_TRIALS}):`, trendOk, JSON.stringify(statResult));
+  check(`2/3/4/5) Clube carente+compatível (score médio ${statResult.scoreNeedy.toFixed(2)}) gera MUITO mais ofertas (${statResult.offersNeedy}/${N_TRIALS}) que clube bem servido+incompatível (score médio ${statResult.scoreServed.toFixed(2)}, ${statResult.offersServed}/${N_TRIALS}):`, trendOk, JSON.stringify(statResult));
 
   // ---------- TESTE 6 — Jogador listado pode receber oferta de clubes
   // elegíveis (maybeSpawnListingOffer, cenário favorável: mercado

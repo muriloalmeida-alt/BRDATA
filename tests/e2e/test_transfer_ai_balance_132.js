@@ -349,7 +349,7 @@ const { enterGame } = require("./_startup");
   // desta fase (nenhuma chave nova adicionada por esta correção).
   const schemaAfter = await page.evaluate(() => Object.keys(CAREER).sort());
   const newKeys = schemaAfter.filter((k) => !schemaBefore.includes(k));
-  console.log("19/20/21) Nenhuma chave nova em CAREER (sem schema/persistência nova) além de transferLog (só usado neste teste, array já suportado por pushTransferLog original):",
+  check("19/20/21) Nenhuma chave nova em CAREER (sem schema/persistência nova) além de transferLog (só usado neste teste, array já suportado por pushTransferLog original):",
     newKeys.filter((k) => k !== "transferLog").length === 0, JSON.stringify(newKeys));
 
   // 22) fluxo de empréstimo continua intacto — findInterestedBuyer
