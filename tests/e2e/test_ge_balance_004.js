@@ -59,6 +59,7 @@ const { skipOnboarding } = require("./_startup");
       promotedZ: promoted.map((t) => +zOf(t, sA).toFixed(2)),
       relegatedZ: relegated.map((t) => +zOf(t, sB).toFixed(2)),
       savedAtk: promoted.map((t) => t.atk),
+      saved: promoted.map((t) => ({ id: String(t.id), atk: t.atk, def: t.def })),
     };
   });
   check("1) Promovidos à A são os 4 primeiros da B:", res.top4Match, res);
@@ -74,10 +75,12 @@ const { skipOnboarding } = require("./_startup");
   // Espera a carreira recarregar do save (estado), até 15 s — antes 3 s
   // fixos, curto sob carga (CAREER ainda null).
   await page.waitForFunction(() => typeof CAREER !== "undefined" && CAREER && CAREER.divisionTeams, null, { timeout: 15000 }).catch(() => {});
+  // Compara por clube (id + atk + def): comparar só o valor de atk dava 5
+  // quando outro clube da Série A tinha, por acaso, o mesmo atk (CI, run 19).
   const reloaded = await page.evaluate((saved) => {
-    const promotedNow = CAREER.divisionTeams.brasileirao.filter((t) => saved.includes(t.atk));
-    return promotedNow.length;
-  }, res.savedAtk);
+    const A = CAREER.divisionTeams.brasileirao;
+    return saved.filter((s) => A.some((t) => String(t.id) === s.id && t.atk === s.atk && t.def === s.def)).length;
+  }, res.saved);
   check("4) Força reposicionada persiste no save (recarregado):", reloaded === 4, reloaded);
 
   await browser.close();
