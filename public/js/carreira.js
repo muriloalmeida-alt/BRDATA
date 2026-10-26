@@ -683,7 +683,8 @@ function m3SkeletonHTML({ lines = 3, avatar = false } = {}) {
 // confiável que tentar re-executar boot() no meio de um estado de
 // erro desconhecido.
 function splashLoadingHTML(text) {
-  return `<div class="mt-splash-crest"><img src="img/brand-icon.png" alt=""></div><div class="ct-spinner"></div><p>${escapeHtml(text)}</p>`;
+  // Redesign (bloco 1, referência visual) — marca + slogan da splash.
+  return `<div class="mt-splash-crest"><img src="img/brand-icon.png" alt=""></div><div class="mt-splash-brand">BRDATA<small>MODO CARREIRA</small></div><div class="mt-splash-tagline">Mais que um jogo. Sua <b>carreira</b>. Suas decisões.</div><div class="ct-spinner"></div><p>${escapeHtml(text)}</p>`;
 }
 function splashErrorHTML(detail) {
   return `<div class="mt-error-screen">

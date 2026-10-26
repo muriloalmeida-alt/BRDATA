@@ -2730,6 +2730,52 @@
   /* ---- botões genéricos M3 (pílula) ---- */
   .m3-btn-primary{ width:100%; display:flex; align-items:center; justify-content:center; gap:8px; background:var(--m3-primary); color:var(--m3-on-primary); border:none; border-radius:var(--m3-shape-full); padding:13px; font-family:var(--font); font-weight:700; font-size:13px; cursor:pointer; }
   .m3-btn-ghost{ width:100%; display:flex; align-items:center; justify-content:center; gap:8px; background:var(--m3-surface-container); color:var(--m3-on-surface); border:1px solid var(--m3-outline-variant); border-radius:var(--m3-shape-full); padding:13px; font-family:var(--font); font-weight:700; font-size:13px; cursor:pointer; }
+
+  /* ================= Redesign — Bloco 1 (Entrada) =================
+     Referência visual aprovada (10/2026), telas 01–05: splash com marca
+     e "luz de estádio" em gradiente (sem foto — o projeto não tem esse
+     ativo), login com a marca BRDATA / MODO CARREIRA, competição e clube
+     como listas contínuas com divisores (no lugar de cartões soltos). */
+  #screenLoading{
+    background:
+      radial-gradient(120% 55% at 50% -8%, rgba(180,230,75,.16), transparent 60%),
+      radial-gradient(90% 45% at 50% 108%, rgba(108,198,232,.10), transparent 65%),
+      var(--m3-surface-dim);
+    gap:10px;
+  }
+  #screenLoading .mt-splash-crest{ width:92px; height:92px; border-radius:26px; background:transparent; border:none; }
+  #screenLoading .mt-splash-crest img{ width:76px; height:76px; }
+  .mt-splash-brand, .mt-brand-name{
+    font-family:var(--m3-display); font-weight:700; font-size:30px; letter-spacing:2px; line-height:1;
+    color:var(--m3-on-surface); text-align:center;
+  }
+  .mt-splash-brand small, .mt-brand-name small{
+    display:block; margin-top:6px; font-size:11px; letter-spacing:4px; font-weight:600; color:var(--m3-secondary);
+  }
+  .mt-splash-tagline{ font-size:13px; color:var(--m3-on-surface-variant); margin:4px 0 14px; text-align:center; }
+  .mt-splash-tagline b{ color:var(--m3-primary); font-weight:700; }
+  #screenLoginRequired .mt-panel{ background:transparent; padding:8px 4px 0; }
+  #screenLoginRequired .mt-panel h1{ font-size:22px; }
+
+  .mt-intro h1{ font-family:var(--m3-display); font-weight:700; font-size:22px; letter-spacing:0; color:var(--m3-on-surface); }
+  .mt-competition-list, .m3-club-grid{
+    gap:0; background:var(--m3-surface-container); border:1px solid var(--m3-outline-variant);
+    border-radius:var(--m3-shape-lg); overflow:hidden;
+  }
+  .mt-competition-card{
+    background:transparent; border:none; border-bottom:1px solid var(--m3-outline-variant);
+    clip-path:none; padding:15px 16px;
+  }
+  .mt-competition-card:last-child, .m3-club-row:last-child{ border-bottom:none; }
+  .mt-competition-card:hover, .m3-club-row:hover{ background:var(--m3-surface-container-high); }
+  .mt-competition-card:focus-visible, .m3-club-row:focus-visible{ outline:2px solid var(--m3-primary); outline-offset:-2px; }
+  .mt-competition-title{ font-family:var(--m3-display); font-weight:700; font-size:15px; letter-spacing:0; color:var(--m3-on-surface); }
+  .mt-competition-sub{ color:var(--m3-on-surface-variant); }
+  .mt-competition-chevron{ color:var(--m3-primary); }
+  .m3-club-row{ border-radius:0; border:none; border-bottom:1px solid var(--m3-outline-variant); background:transparent; padding:12px 16px; }
+  .m3-club-crest{ border-radius:50%; background:var(--m3-surface-container-highest); }
+  .m3-club-row.selected{ border-color:var(--m3-outline-variant); box-shadow:inset 3px 0 0 var(--m3-primary); }
+  .mt-onboard-title{ font-family:var(--m3-display); font-weight:700; font-size:24px; letter-spacing:0; line-height:1.2; }
 </style>
 </head>
 <body>
@@ -2739,6 +2785,8 @@
   <!-- ================= Loading ================= -->
   <div class="ct-full" id="screenLoading">
     <div class="mt-splash-crest"><img src="img/brand-icon.png" alt=""></div>
+    <div class="mt-splash-brand">BRDATA<small>MODO CARREIRA</small></div>
+    <div class="mt-splash-tagline">Mais que um jogo. Sua <b>carreira</b>. Suas decisões.</div>
     <div class="ct-spinner"></div>
     <p>Carregando o Modo Técnico...</p>
   </div>
@@ -2778,11 +2826,11 @@
       <div class="mt-login-content">
         <div class="mt-brand">
           <div class="mt-crest"><img src="img/logo.png" alt="BR Data"></div>
-          <div class="mt-brand-name">DATA <span>TREINADOR</span></div>
+          <div class="mt-brand-name">BRDATA<small>MODO CARREIRA</small></div>
         </div>
 
         <div class="mt-panel">
-          <h1>Entrar</h1>
+          <h1>Bem-vindo de volta!</h1>
           <p class="mt-sub">Faça login pra acessar o Modo Técnico — o progresso da sua carreira fica salvo na sua conta BR Data.</p>
 
           <form id="ctLoginForm">
