@@ -343,7 +343,7 @@ function contrastRatio(hexA, hexB) {
 // do "Verde de Campo"; mesmos valores do bloco :root do redesign em
 // carreira.html.
 const M3_DEFAULT_PALETTE = {
-  primary: "#B4E64B", onPrimary: "#13200A", primaryContainer: "#2A3B10", onPrimaryContainer: "#D9F5A0",
+  primary: "#B4E64B", onPrimary: "#13200A", primaryContainer: "#1D3324", onPrimaryContainer: "#D9F5A0",
   secondary: "#E3C16C", onSecondary: "#3F2E00", secondaryContainer: "#5A4400", onSecondaryContainer: "#FFDF9D",
   tertiary: "#6CC6E8", onTertiary: "#00344A", tertiaryContainer: "#0E3A52", onTertiaryContainer: "#C6ECFA",
 };
