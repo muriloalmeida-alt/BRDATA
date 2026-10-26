@@ -78,8 +78,13 @@ async function putCareer(page, career) {
   await page.click(`[data-loanin="${otherEntry.id}"]`);
   await page.waitForSelector("#loanOverlay.open");
   await page.click("#btnLoanConfirm");
-  await page.waitForTimeout(300);
-  career = await getCareer(page);
+  // Espera o save chegar ao servidor (estado), até 10 s — antes 300 ms
+  // fixos e leitura do servidor, curto no CI.
+  for (const t0 = Date.now(); Date.now() - t0 < 10000;) {
+    career = await getCareer(page);
+    if (career.squad.some((p) => p.id === otherEntry.id)) break;
+    await page.waitForTimeout(200);
+  }
   const loanedInPlayer = career.squad.find((p) => p.id === otherEntry.id);
   check("3) Jogador emprestado IN entrou no elenco:", !!loanedInPlayer, "| origin:", loanedInPlayer && loanedInPlayer.origin, "| salário reduzido pra metade:", loanedInPlayer && loanedInPlayer.wage === Math.round((otherEntry.wage * 0.5) / 100) * 100, "| loanOriginalWage guardado:", loanedInPlayer && loanedInPlayer.loanOriginalWage === otherEntry.wage);
 

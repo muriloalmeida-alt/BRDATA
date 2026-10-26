@@ -41,7 +41,9 @@ async function pickClub(page, base) {
   // depois dele fechar (Pular) o assistente de início aparece.
   await newAccount(page, base, `wizard${Date.now()}@teste.com`);
   await pickClub(page, base);
-  await page.waitForTimeout(600);
+  // Espera a tela do jogo (estado) — o tutorial abre no mesmo instante;
+  // antes 600 ms fixos, curto no CI (criar a carreira demora mais).
+  await page.waitForFunction(() => { const g = document.getElementById("screenGame"); return !!g && !g.classList.contains("hidden"); }, null, { timeout: 20000 }).catch(() => {});
   const onboardOpen = await page.evaluate(() => document.getElementById("onboardingOverlay").classList.contains("open"));
   const wizardOpenBefore = await page.evaluate(() => document.getElementById("startupWizardOverlay").classList.contains("open"));
   check("1) Tutorial de navegação abre primeiro (assistente ainda não, sobrepostos nunca):", onboardOpen && !wizardOpenBefore);

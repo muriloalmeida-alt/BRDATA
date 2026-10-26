@@ -30,7 +30,9 @@ const { check } = require("./_check");
   await page.click(".m3-club-row");
   await page.waitForTimeout(150);
   await page.click("#btnConfirmClub");
-  await page.waitForTimeout(700);
+  // Espera a tela do jogo (estado) — o tutorial abre no mesmo instante;
+  // antes 700 ms fixos, curto no CI (criar a carreira demora mais).
+  await page.waitForFunction(() => { const g = document.getElementById("screenGame"); return !!g && !g.classList.contains("hidden"); }, null, { timeout: 20000 }).catch(() => {});
 
   // 1) Tutorial abre sozinho na 1ª carreira, ANTES do login diário.
   const initial = await page.evaluate(() => ({

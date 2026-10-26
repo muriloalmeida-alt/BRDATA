@@ -37,7 +37,9 @@ const { enterGame } = require("./_startup");
 
   const cashBefore = await page.evaluate(() => CAREER.finances.cash);
   await page.click("#btnClaimDailyLogin");
-  await page.waitForTimeout(300);
+  // A coleta vai ao servidor antes de aplicar — espera o estado (modal
+  // fechada e sequência 1), até 10 s; antes 300 ms fixos, curto no CI.
+  await page.waitForFunction(() => !document.getElementById("dailyLoginOverlay").classList.contains("open") && ME.dailyLogin && ME.dailyLogin.currentStreakDay === 1, null, { timeout: 10000 }).catch(() => {});
   const afterClaim = await page.evaluate(() => ({
     modalClosed: !document.getElementById("dailyLoginOverlay").classList.contains("open"),
     cashAfter: CAREER.finances.cash,
