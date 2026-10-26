@@ -115,8 +115,8 @@ const { check } = require("./_check");
   await page.click(".m3-club-row");
   await page.waitForTimeout(150);
   await page.click("#btnConfirmClub");
-  await page.waitForTimeout(700);
-  const openedForSkip = await page.evaluate(() => document.getElementById("onboardingOverlay").classList.contains("open"));
+  // Espera o tutorial abrir (criar a carreira passou de 700 ms no CI).
+  const openedForSkip = await page.waitForSelector("#onboardingOverlay.open", { timeout: 20000 }).then(() => true, () => false);
   await page.click("#btnOnboardSkip");
   await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
   await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
