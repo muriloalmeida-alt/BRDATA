@@ -14,7 +14,7 @@ async function playOneMatch(page) {
   await page.click("#btnPreMatchGo");
   await page.waitForSelector("#liveMatchOverlay.open", { timeout: 5000 });
   await page.click("#btnLiveSkip");
-  await page.waitForSelector("#matchDetailOverlay.open", { timeout: 8000 });
+  await page.waitForSelector("#matchDetailOverlay.open", { timeout: 20000 }); // pular pro fim simula o resto da partida: sob carga da suíte passou de 8 s
   const allEvents = await page.evaluate(() => (typeof PENDING_ROUND_SUMMARY !== "undefined" && PENDING_ROUND_SUMMARY && PENDING_ROUND_SUMMARY.humanMatch && PENDING_ROUND_SUMMARY.humanMatch.allEvents) || []);
   await page.click("#btnMatchDetailCloseFooter");
   await page.waitForTimeout(150);
@@ -61,7 +61,7 @@ async function playOneMatch(page) {
   const sumOk = parseInt(possAfter.mine) + parseInt(possAfter.opp) === 100;
   check("2) Barra de posse atualiza depois de alguns tempos (soma 100%):", sumOk, JSON.stringify(possAfter));
   await page.click("#btnLiveSkip");
-  await page.waitForSelector("#matchDetailOverlay.open", { timeout: 8000 });
+  await page.waitForSelector("#matchDetailOverlay.open", { timeout: 20000 }); // pular pro fim simula o resto da partida: sob carga da suíte passou de 8 s
   await page.click("#btnMatchDetailCloseFooter");
   await page.waitForTimeout(200);
 

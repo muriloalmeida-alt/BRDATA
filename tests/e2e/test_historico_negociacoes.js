@@ -71,19 +71,34 @@ const { enterGame } = require("./_startup");
   await page.evaluate(() => switchToPanel("mercado"));
   await page.waitForTimeout(150);
 
-  const listBtn = await page.$("[data-list]");
-  await listBtn.click();
+  // Anuncia o jogador mais barato do elenco: o 1º da lista costuma ser o
+  // recém-comprado (R$ 50M+), acima do caixa de qualquer clube CPU —
+  // ninguém paga esse valor de mercado (recusa legítima, buyerHardCap).
+  const cheapest = await page.evaluate(() => {
+    const p = CAREER.squad.filter((x) => x.origin === "principal").sort((a, b) => a.value - b.value)[0];
+    return { id: p.id, name: p.name };
+  });
+  await page.fill("#marketSearch", cheapest.name);
+  await page.waitForTimeout(200);
+  await page.click(`[data-list="${cheapest.id}"]`);
   await page.waitForSelector("#listOverlay.open", { timeout: 5000 });
   await page.click("#btnListConfirm");
   await page.waitForTimeout(200);
-  await page.evaluate(() => {
-    const orig = Math.random;
-    Math.random = () => 0.01;
-    (CAREER.pendingListings || []).forEach(maybeSpawnListingOffer);
-    Math.random = orig;
+  // Rodadas de exposição do anúncio até chegar proposta (sorteio normal).
+  // Antes forçava Math.random = 0.01, o que sempre escolhe o MESMO clube
+  // — e ele pode não ter caixa pra esse jogador (buyerHardCap), recusa
+  // legítima. 200 rodadas: só fica sem proposta se o anúncio nunca vende
+  // (o bug P2 de docs/MOTOR_TESTES_FASE_B.md).
+  const spawn = await page.evaluate(() => {
     const listing = CAREER.pendingListings[0];
-    const offer = listing.offers[0];
-    acceptListingOffer(listing.id, offer.id);
+    let rounds = 0;
+    while (!listing.offers.length && rounds < 200) { rounds++; maybeSpawnListingOffer(listing); }
+    return { rounds, offers: listing.offers.length };
+  });
+  check("2a) Anúncio recebe proposta em rodadas de exposição normais:", spawn.offers > 0, JSON.stringify(spawn));
+  await page.evaluate(() => {
+    const listing = CAREER.pendingListings[0];
+    acceptListingOffer(listing.id, listing.offers[0].id);
   });
   await page.waitForTimeout(200);
   if (await page.evaluate(() => document.getElementById("pressOverlay").classList.contains("open"))) {
