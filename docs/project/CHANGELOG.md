@@ -1,7 +1,7 @@
 # BRDATA — CHANGELOG
-**Gerado em:** 09/09/2026 (atualizado em 25/10/2026)
+**Gerado em:** 09/09/2026 (atualizado em 26/10/2026)
 **Cobertura:** 2026-08-14 até 2026-09-11 (251 commits em 18 dias, branch `main`)
-**Versão atual:** v10.2.0
+**Versão atual:** v11.0.0
 
 ## Metodologia
 
@@ -78,6 +78,30 @@ bump.
 ---
 
 ## Histórico completo (mais recente primeiro)
+
+### 2026-10-26 — v11.0.0  (7 PRs + 1 em revisão)
+
+> **Bump MAJOR porque:** redesign completo do design system da carreira
+> pela referência visual aprovada (paleta navy + verde-lima, bottom
+> sheets, tipografia do DS, blocos 1–5 — PRs #47/#48) e fechamento da
+> Sprint S4 — Redesign Mobile (S4-B5-QA-001).
+
+- `7794c4a` — PR #43, motor de testes Fases B e C + CI no GitHub Actions
+  (rota rápida + suíte completa em 4 máquinas).
+- `c25f26f` — PR #44, correções P1 (toast sobre o botão flutuante), P2
+  (anúncio de venda nunca recebia proposta; trava anti-exploit de 1,3×
+  o valor) e P3 ("?" das instruções de jogo).
+- `980bf71`, `2b1ec38` — PRs #45/#46, esperas de estado e diagnóstico de
+  testes intermitentes no CI.
+- `7a50c74` — PR #47, fundação do redesign: paleta navy + lima (lima fixo
+  pra todo clube, só tema escuro), diálogos e seletor como bottom sheets.
+- `e27a36f` — PR #48, redesign blocos 1–5 (entrada, clube/elenco,
+  tática/treino, partidas, estados; `docs/REDESIGN_BLOCOS.md`).
+- `4b539c7` — PR #49, confirmação destrutiva em vermelho; aceite do
+  redesign registrado.
+- S4-B5-QA-001 (branch `claude/s4-b5-qa-001`): auditoria transversal da
+  S4 + correções mecânicas de acessibilidade (nome nos X das modais,
+  toque de 44px, toggles `role="switch"`, contraste do botão destrutivo).
 
 ### 2026-10-25 (4) — v10.2.0  (1 PR + 1 commit de merge)
 
