@@ -130,6 +130,25 @@
        calculando certo, sem precisar caçar cada um. */
     --mt-navh:var(--m3-navh);
   }
+  /* ===== Redesign — paleta da referência visual aprovada (pacote
+     "Implementação Visual", 10/2026): navy quase preto + verde-lima de
+     ação, ciano discreto pra dado secundário, dourado da marca. Só na
+     carreira (sobrepõe css/m3-tokens.css, que é compartilhado com o
+     2048). Lima fixo pra todo clube — a cor do clube fica no escudo
+     (decisão do Murilo; ver applyClubPalette em carreira.js). */
+  :root{
+    --m3-primary:#B4E64B; --m3-on-primary:#13200A;
+    --m3-primary-container:#2A3B10; --m3-on-primary-container:#D9F5A0;
+    --m3-tertiary:#6CC6E8; --m3-on-tertiary:#00344A;
+    --m3-tertiary-container:#0E3A52; --m3-on-tertiary-container:#C6ECFA;
+    --m3-surface-dim:#050B15; --m3-surface:#08111E; --m3-surface-bright:#22324A;
+    --m3-surface-container-lowest:#040A13; --m3-surface-container-low:#0B1626;
+    --m3-surface-container:#0E1B2D; --m3-surface-container-high:#132338;
+    --m3-surface-container-highest:#1A2D45;
+    --m3-on-surface:#E8EEF6; --m3-on-surface-variant:#9FB0C6;
+    --m3-outline:#5B6E86; --m3-outline-variant:#1F3550;
+    --bg-app:#060D18;
+  }
   /* ===== Tokens do Redesign M3 (--m3-*) — movidos sem alteração para
      css/m3-tokens.css (linkado no <head>), compartilhados com 2048.html.
      applyClubPalette() em carreira.js continua sobrescrevendo os papéis

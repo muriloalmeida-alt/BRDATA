@@ -59,7 +59,7 @@ const { enterGame } = require("./_startup");
   });
   check("2) Card individual: badge/nome/clube clicável/chip posição/detalhe/tokens m3:",
     !!firstCard && firstCard.hasBadge && firstCard.hasName && firstCard.hasClub && !!firstCard.openPlayerAttr
-    && !!firstCard.openClubAttr && firstCard.hasPosChip && firstCard.hasDetail && firstCard.cardBg === "rgb(44, 42, 39)",
+    && !!firstCard.openClubAttr && firstCard.hasPosChip && firstCard.hasDetail && firstCard.cardBg === "rgb(19, 35, 56)",
     JSON.stringify(firstCard));
 
   // 3) Clicar no nome do jogador abre o Perfil somente-leitura

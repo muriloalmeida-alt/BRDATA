@@ -66,11 +66,11 @@ const { enterGame } = require("./_startup");
   });
   // --m3-on-surface:#E7E2DE = rgb(231,226,222); --m3-surface-container-high:#2C2A27 = rgb(44,42,39).
   check("1) TransferCard: card/nome/clube/posição/status/detalhe/ação renderizam certo (tokens --m3-*):",
-    tc.hasCard && tc.dataId === "p1" && tc.nameText === "Jogador Um" && tc.nameColor === "rgb(231, 226, 222)"
+    tc.hasCard && tc.dataId === "p1" && tc.nameText === "Jogador Um" && tc.nameColor === "rgb(232, 238, 246)"
     && (tc.detailText || "").includes("Salário") && (tc.detailText || "").includes("Valor")
     && tc.statusText === "Disponível" && tc.statusClass.includes("gold")
     && tc.infoOpenPlayer === "p1" && tc.infoOpenClub === "c1" && tc.clubOpenClub === "c1"
-    && tc.hasAction && tc.cardBg === "rgb(44, 42, 39)",
+    && tc.hasAction && tc.cardBg === "rgb(19, 35, 56)",
     JSON.stringify(tc));
 
   // 2) TransferCard: sem overall/position (badge/chip omitidos) e com

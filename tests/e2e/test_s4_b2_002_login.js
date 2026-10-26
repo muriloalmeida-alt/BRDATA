@@ -47,13 +47,14 @@ const { check } = require("./_check");
       btnColor: getComputedStyle(btn).color,
     };
   });
-  // --m3-surface-container é #211F1D = rgb(33,31,29); --m3-surface-
-  // container-high é #2C2A27 = rgb(44,42,39); --m3-primary é #6DDB94 =
-  // rgb(109,219,148); --m3-on-primary é #00391A = rgb(0,57,26).
+  // Paleta do redesign (carreira.html): --m3-surface-container é #0E1B2D
+  // = rgb(14,27,45); --m3-surface-container-high é #132338 = rgb(19,35,56);
+  // --m3-primary é #B4E64B = rgb(180,230,75); --m3-on-primary é #13200A =
+  // rgb(19,32,10).
   check("1) Default: tela própria do Modo Técnico (não .auth-gate), tokens --m3-* aplicados:",
     defaultState.visible && !defaultState.usesAuthGate &&
-    defaultState.panelBg === "rgb(33, 31, 29)" && defaultState.inputBg === "rgb(44, 42, 39)" &&
-    defaultState.btnBg === "rgb(109, 219, 148)" && defaultState.btnColor === "rgb(0, 57, 26)",
+    defaultState.panelBg === "rgb(14, 27, 45)" && defaultState.inputBg === "rgb(19, 35, 56)" &&
+    defaultState.btnBg === "rgb(180, 230, 75)" && defaultState.btnColor === "rgb(19, 32, 10)",
     JSON.stringify(defaultState));
 
   // 2) Estado "erro": campos vazios mostram mensagem inline com o

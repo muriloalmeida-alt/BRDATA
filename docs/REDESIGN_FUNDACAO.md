@@ -42,3 +42,23 @@ Sem mudança de JS, regra de negócio, persistência, ativos ou IDs.
 
 - Imagem de referência (para composição/cores das telas — etapa 2 do plano).
 - Matriz A–G completa, por tela — próximas entregas, por bloco.
+
+## 5. Paleta da referência visual (2ª etapa da fundação)
+
+Com a imagem de referência e as decisões do Murilo (lima fixo pra todo
+clube; carreira só no tema escuro):
+
+- Novo bloco `:root` em `public/carreira.html` (sobrepõe
+  `css/m3-tokens.css` só na carreira — o arquivo é compartilhado com o
+  2048): navy quase preto (`--m3-surface*`, `--bg-app`), ação em
+  verde-lima (`--m3-primary` `#B4E64B`), ciano discreto
+  (`--m3-tertiary`), bordas azul-escuras (`--m3-outline-variant`),
+  dourado da marca mantido (`--m3-secondary`).
+- `M3_DEFAULT_PALETTE` (carreira.js) com os mesmos valores;
+  `applyClubPalette()` passa a aplicar sempre essa paleta (a cor do clube
+  fica no escudo). `deriveClubPalette` continua no código, sem uso na UI.
+- `applyStoredTheme()` fixa `data-theme="dark"` na carreira.
+- Testes: 7 testes comparavam cor contra o valor fixo antigo de um token
+  (`rgb(...)`); trocados pelo valor novo do MESMO token
+  (`test_s4_b2_001/002/004/005`, `test_s4_b3_001/002`). Suíte: 148/153
+  na rodada completa + os 5 corrigidos passando.

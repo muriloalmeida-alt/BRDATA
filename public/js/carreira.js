@@ -339,10 +339,13 @@ function contrastRatio(hexA, hexB) {
 // tela sem clube "dono" (login, escolha de clube/campeonato, telas de
 // sistema) e como fallback de acessibilidade quando a cor derivada de
 // um clube não atinge contraste mínimo.
+// Redesign (referência visual aprovada, 10/2026) — lima/ciano no lugar
+// do "Verde de Campo"; mesmos valores do bloco :root do redesign em
+// carreira.html.
 const M3_DEFAULT_PALETTE = {
-  primary: "#6DDB94", onPrimary: "#00391A", primaryContainer: "#005226", onPrimaryContainer: "#89F8AF",
+  primary: "#B4E64B", onPrimary: "#13200A", primaryContainer: "#2A3B10", onPrimaryContainer: "#D9F5A0",
   secondary: "#E3C16C", onSecondary: "#3F2E00", secondaryContainer: "#5A4400", onSecondaryContainer: "#FFDF9D",
-  tertiary: "#9ECAFF", onTertiary: "#00325B", tertiaryContainer: "#00497F", onTertiaryContainer: "#D2E4FF",
+  tertiary: "#6CC6E8", onTertiary: "#00344A", tertiaryContainer: "#0E3A52", onTertiaryContainer: "#C6ECFA",
 };
 function deriveClubPalette(seedHex) {
   const rgb = hexToRgb(seedHex);
@@ -400,9 +403,11 @@ function applyM3Palette(palette) {
 // jogador (teamById(CAREER.clubId)). Telas sem carreira ativa (login,
 // escolha de clube/campeonato, telas de sistema) nunca chamam isso —
 // ficam nos valores literais do tema padrão já escritos no <style>.
-function applyClubPalette(club) {
-  const derived = club && club.c1 ? deriveClubPalette(club.c1) : null;
-  applyM3Palette(derived || M3_DEFAULT_PALETTE);
+// Redesign (decisão do Murilo, 10/2026): destaque lima FIXO pra todo
+// clube, como na referência visual — a cor do clube fica só no escudo.
+// deriveClubPalette continua existindo (e testado), só não pinta mais a UI.
+function applyClubPalette() {
+  applyM3Palette(M3_DEFAULT_PALETTE);
 }
 // Chamado ao sair de uma carreira ativa (Reiniciar, Escolher outro
 // clube, logout) -- devolve as superfícies dinâmicas pro tema padrão
@@ -708,7 +713,9 @@ function show(name) {
   if (name !== "screenGame") resetToDefaultM3Palette();
 }
 function applyStoredTheme() {
-  try { document.documentElement.setAttribute("data-theme", localStorage.getItem("brdata_theme") || "light"); } catch {}
+  // Redesign: a carreira é só tema escuro (decisão do Murilo, 10/2026) —
+  // a preferência de tema do site principal não vale aqui.
+  document.documentElement.setAttribute("data-theme", "dark");
 }
 
 /* ---------- Times ativos (ao vivo com o mesmo fornecedor do BR Data, ou modo Exemplo) ---------- */
