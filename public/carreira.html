@@ -2787,6 +2787,7 @@
   .ct-modal-close:focus-visible{ outline:2px solid var(--m3-primary); outline-offset:-6px; }
   .ct-help-btn{ position:relative; }
   .ct-help-btn::after{ content:""; position:absolute; inset:-12px; }
+  .ct-modal:focus{ outline:none; } /* foco programático no diálogo (initModalA11y) — o anel fica nos controles */
   .mt-icon-btn{ width:44px; height:44px; }
 
   /* ================= Redesign — Bloco 5 (estados) =================
@@ -4602,7 +4603,7 @@
      carreira.js), botões secundários (.mt-btn-secondary, novo) +
      "Pular pro fim" reaproveitando .mt-btn-primary-gold (Tela 5). -->
 <div class="ct-modal-overlay ct-modal-fullscreen" id="liveMatchOverlay">
-  <div class="ct-modal">
+  <div class="ct-modal" aria-label="Partida ao vivo">
     <div class="mt-live-topbar">
       <div class="mt-live-tag">
         <span class="mt-live-dot"></span>
