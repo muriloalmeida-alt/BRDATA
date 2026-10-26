@@ -62,7 +62,27 @@ rede, partida ao vivo, telas em fila — Fase B). Regra registrada na skill
 - Falhas restantes: as mesmas 4 de produto da Fase B (§5 de
   `docs/MOTOR_TESTES_FASE_B.md`), aguardando decisão.
 
-## 5. Prompt para GPT — Revisão e aprovação
+## 5. CI (GitHub Actions)
+
+`.github/workflows/testes.yml` roda a cada push em `main`/`claude/**` e em
+PR: **Rota rápida** (1 máquina) + **Suíte completa** em 4 máquinas
+(`--shard=I/4`), cada uma com servidor isolado. Sem retry e sem pular
+teste; o resumo de cada job lista a linha completa de cada verificação que
+falhou. Execução 5 (commit 9f0f038): rota rápida 18/18 em ~30 s; partes da
+suíte em 58–97 s de teste (+ ~20 s de preparo com cache) — **153 testes em
+~2 min de relógio**. Falhas: só as 4 de produto conhecidas (P1
+`test_toast_rodape`, P2 `test_colocar_a_venda` e
+`test_historico_negociacoes`, P3 `test_condicao_ajuda`) — por isso a suíte
+completa fica vermelha até a decisão sobre elas.
+
+Ajustes para o CI (Chromium 130 + máquinas mais lentas expuseram esperas
+curtas demais / um caminho não coberto): `test_onboarding`,
+`test_assistente_inicio` (espera a tela do jogo), `test_engajamento`
+(espera o login diário fechar), `test_loans` (espera o servidor gravar o
+empréstimo), `test_ge_balance_001` (com proposta recebida, fechar a
+proposta reabre a Tabela — reproduzido localmente forçando a proposta).
+
+## 6. Prompt para GPT — Revisão e aprovação
 
 Revise `docs/MOTOR_TESTES_FASE_C.md` (branch `claude/motor-testes-fase-c`).
 Confira: (1) se `--shard` cobre a suíte inteira sem repetir e se a divisão
