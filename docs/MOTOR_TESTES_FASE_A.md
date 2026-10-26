@@ -208,7 +208,7 @@ O exit code 1 da suíte completa é esperado: existem falhas pré-existentes (§
 | AT-08 | **APROVADO** | Ver o detalhe abaixo da tabela. |
 | AT-09 | **APROVADO** | Ver o detalhe abaixo da tabela. |
 | AT-10 | **APROVADO** | Triagem na §6: preexistentes, intermitentes, ambientais e a manifestação nova sob carga. |
-| AT-11 | **NÃO VERIFICADO** | Não existe workflow de CI no repositório (sem `.github/`). Não foi criado, porque está fora da autorização (sem alterações remotas) e inventar um pipeline não foi pedido. Execução local e `npm run test:ci` estão documentadas e coerentes. |
+| AT-11 | **APROVADO** (atualizado em 26/10/2026) | Na Fase A não existia CI (sem `.github/`). Criado depois, a pedido do Murilo ("Crie o CI"): `.github/workflows/testes.yml` — rota rápida + suíte completa em 4 máquinas, sem retry/skip. Execução totalmente verde: run 12 (`40357853693`, commit `7dc6da3`, branch `claude/correcoes-p1-p3`). Detalhes em `docs/MOTOR_TESTES_FASE_C.md` §5. |
 | AT-12 | **APROVADO** | `git status` só tem `tests/e2e/*` e este relatório. Nenhuma mudança em `public/`, `server/`, telas, estilos, navegação ou regras de negócio. |
 | AT-13 | **APROVADO** | Ver o detalhe abaixo da tabela. |
 | AT-14 | **APROVADO** | Este documento, com limitações e riscos nas §6 e §8. |

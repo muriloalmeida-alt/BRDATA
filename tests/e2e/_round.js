@@ -70,10 +70,10 @@ async function playRound(page, hooks = {}) {
   // cima. O limite total da rodada (STEP_LIMIT_MS) continua valendo.
   const tap = (selector) => page.click(selector, { timeout: 2500 }).then(() => true, () => false);
   // Aciona o botão sem passar pelo teste de "ponteiro livre" do
-  // Playwright: depois de cada semana um toast fica ~3,6 s POR CIMA do
-  // botão (bug de produto registrado em docs/MOTOR_TESTES_FASE_B.md,
-  // verificado por test_toast_rodape.js) e o clique esperaria ele sumir.
-  // Estes testes não verificam o toque no botão — só o que vem depois.
+  // Playwright: o toast de fim de semana ficava ~3,6 s POR CIMA do
+  // botão (P1 de docs/MOTOR_TESTES_FASE_B.md, corrigido; coberto por
+  // test_toast_rodape.js). Estes testes não verificam o toque no botão,
+  // só o que vem depois.
   // Começa só com a tela do jogo limpa (nenhuma tela por cima) — o
   // clique abaixo não passa pelo teste de ponteiro, então não pode
   // acontecer com alguma tela ainda aberta.

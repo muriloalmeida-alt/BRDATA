@@ -493,6 +493,13 @@ function toastBottomOffset() {
   // barra de ação full-width — esta checagem continua necessária.
   const actionBar = [...document.querySelectorAll(".mt-action-bar")].find(isRendered);
   if (actionBar) offset += actionBar.getBoundingClientRect().height;
+  // P1 (motor de testes, Fase B) — o botão flutuante (.m3-fab: "Ir para
+  // o jogo", "Salvar escalação"...) fica acima da nav e o toast (largura
+  // de tela cheia, por cima de tudo) o cobria. Sobe o toast até acima do
+  // FAB visível da aba atual.
+  for (const fab of document.querySelectorAll(".m3-fab")) {
+    if (isRendered(fab)) offset = Math.max(offset, window.innerHeight - fab.getBoundingClientRect().top + 8);
+  }
   return offset;
 }
 // AJUSTE (pedido do usuário: "a mensagem de reputação e moral do
@@ -4592,6 +4599,13 @@ function squadForClub(clubId) {
 // o vendedor também careceria desse jogador, não duplicando
 // adequação/financeiro/contexto, que são sinais do COMPRADOR).
 function calculateSellerReservationValue(player, sellingClubId, context = {}) {
+  // P2 (motor de testes, Fase B) — num anúncio seu (maybeSpawnListingOffer)
+  // a reserva é o preço que VOCÊ pediu, sem os fatores de resistência
+  // abaixo: quem anunciou já decidiu vender por esse valor. Antes a
+  // titularidade (+15%) e a necessidade (até +15%) subiam a reserva acima
+  // do próprio pedido e nenhum comprador chegava lá — titular anunciado
+  // nunca recebia proposta.
+  if (context.sellerAsking != null) return Math.round(context.sellerAsking / 1000) * 1000;
   const base = context.baseValue != null ? context.baseValue : player.value;
 
   let titularityFactor = 1;
@@ -4712,10 +4726,10 @@ function negotiateOffer(player, buyingClubId, sellingClubId, context = {}) {
     if (sellerDecision.action === "reject") return { outcome: "rejected", finalValue: null, initialOffer, reservation, rounds };
     const buyerDecision = buyerNegotiationDecision(sellerDecision.value, initialOffer, player, buyingClubId, context);
     if (buyerDecision.action === "accept") return { outcome: "accepted", finalValue: sellerDecision.value, initialOffer, reservation, rounds };
-    if (buyerDecision.action === "walk" || buyerDecision.value <= currentOffer) return { outcome: "walked", finalValue: null, initialOffer, reservation, rounds };
+    if (buyerDecision.action === "walk" || buyerDecision.value <= currentOffer) return { outcome: "walked", finalValue: null, lastOffer: currentOffer, initialOffer, reservation, rounds };
     currentOffer = buyerDecision.value; // "raise" com progresso real -> próxima rodada
   }
-  return { outcome: "walked", finalValue: null, initialOffer, reservation, rounds }; // esgotou o limite -> encerra, nunca loop infinito
+  return { outcome: "walked", finalValue: null, lastOffer: currentOffer, initialOffer, reservation, rounds }; // esgotou o limite -> encerra, nunca loop infinito
 }
 
 function findInterestedBuyer(excludeId, player) {
@@ -13057,6 +13071,7 @@ function processPendingInstallments() {
    em vez de saindo (pendingInstallments). */
 const LISTING_OFFER_CHANCE_PER_ROUND = 0.4;
 const LISTING_MAX_OFFERS = 3;
+const LISTING_BUYER_ANCHOR_CAP = 1.3; // âncora do comprador num anúncio: no máximo 1,3x o valor de mercado (ver maybeSpawnListingOffer)
 function listingFor(playerId) {
   return (CAREER.pendingListings || []).find((l) => String(l.playerId) === String(playerId));
 }
@@ -13085,6 +13100,9 @@ function listingFor(playerId) {
 // já visível, maior o prêmio (até +10%, ver transferValuation). Vendedor
 // é sempre você aqui, então o ajuste de titularidade usa
 // CAREER.lineup.starters de verdade.
+// P2 (motor de testes, Fase B) — "puxando pra cima" agora vai só até
+// LISTING_BUYER_ANCHOR_CAP x o valor de mercado, e num anúncio a reserva
+// é o próprio pedido (sem o ajuste de titularidade acima).
 function maybeSpawnListingOffer(listing) {
   if (listing.offers.length >= LISTING_MAX_OFFERS) return;
   if (Math.random() >= LISTING_OFFER_CHANCE_PER_ROUND) return;
@@ -13111,10 +13129,25 @@ function maybeSpawnListingOffer(listing) {
   // context.baseValue tanto pra transferValuation (valor inicial, já
   // era assim) quanto pra calculateSellerReservationValue (reserva
   // também ancorada no anúncio, não em player.value).
-  const dealCtx = { baseValue: listing.askingValue, competitorCount: listing.offers.length };
+  // P2 (motor de testes, Fase B) — a reserva continua sendo o pedido
+  // (sellerAsking), mas a âncora do COMPRADOR tem teto de
+  // LISTING_BUYER_ANCHOR_CAP x o valor de mercado: sem ele, anunciar um
+  // jogador por 10x o valor gerava proposta de ~10x (medido: 30% das
+  // negociações fechavam assim). Pedido muito acima do mercado agora
+  // simplesmente não atrai comprador.
+  const buyerAnchor = Math.min(listing.askingValue, Math.round(p.value * LISTING_BUYER_ANCHOR_CAP));
+  const dealCtx = { baseValue: buyerAnchor, sellerAsking: listing.askingValue, competitorCount: listing.offers.length };
   const deal = negotiateOffer(p, club.id, CAREER.clubId, dealCtx);
-  if (deal.outcome !== "accepted") return;
-  const value = Math.max(1000, deal.finalValue);
+  // P2 — num anúncio quem decide é o técnico (Minhas vendas): se a
+  // negociação interna parou sem acordo, o último lance do comprador
+  // ainda vira proposta quando não está "muito abaixo" do pedido (mesmo
+  // corte de 75% de sellerNegotiationDecision). Sem isso, jogador com
+  // contrato acabando (transferValuation desconta até 15%) anunciado pelo
+  // valor de mercado nunca recebia proposta nenhuma.
+  let dealValue = deal.outcome === "accepted" ? deal.finalValue : null;
+  if (deal.outcome === "walked" && deal.lastOffer >= listing.askingValue * 0.75) dealValue = deal.lastOffer;
+  if (dealValue == null) return;
+  const value = Math.max(1000, dealValue);
   const installments = Math.random() < 0.6 ? 1 : Math.random() < 0.7 ? 2 : 3; // clube CPU às vezes parcela também
   listing.offers.unshift({
     id: `listingoffer_${Date.now()}_${Math.floor(Math.random() * 1000)}`,

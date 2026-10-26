@@ -75,6 +75,11 @@ suíte em 58–97 s de teste (+ ~20 s de preparo com cache) — **153 testes em
 `test_historico_negociacoes`, P3 `test_condicao_ajuda`) — por isso a suíte
 completa fica vermelha até a decisão sobre elas.
 
+**Atualização (26/10/2026):** P1, P2 e P3 corrigidos no jogo
+(`docs/MOTOR_TESTES_FASE_B.md` §5.1). Run 12 (`40357853693`, commit
+`7dc6da3`): rota rápida e as 4 partes da suíte completa verdes — com isso
+o AT-11 (CI) passa a APROVADO.
+
 Ajustes para o CI (Chromium 130 + máquinas mais lentas expuseram esperas
 curtas demais / um caminho não coberto): `test_onboarding`,
 `test_assistente_inicio` (espera a tela do jogo), `test_engajamento`

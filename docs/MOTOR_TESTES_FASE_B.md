@@ -121,6 +121,60 @@ test_coletiva_imprensa 3/3. Intermitentes nas execuções completas: §6.
 | P4 | — (latente) | `PRESS_CHANCE_BY_ID[id] \|\| 0.3`: chance 0 vira 30% | `carreira.js:8317` | Trocar `\|\|` por `??` (sem efeito na config atual) |
 | O1 | — (observação) | "Aceitar proposta recebida" ainda volta pro Início, ao contrário de comprar/anunciar/emprestar (UX-MERCADO-001) | test_ux_fechar_voltar_inicio (7) | Confirmar se é intencional |
 
+### 5.1 Correções (26/10/2026, pedido do Murilo: "Corrija P1, P2 e P3 no jogo")
+
+Branch `claude/correcoes-p1-p3`.
+
+- **P1 — corrigido.** `toastBottomOffset()` sobe o toast acima do
+  `.m3-fab` visível da aba (`test_toast_rodape` passa).
+- **P3 — corrigido.** "?" de volta no card **Instruções de jogo** (o card
+  antigo "Instruções táticas" virou esse, com 4 eixos), com texto novo
+  sobre a troca ataque × defesa dos eixos (`test_condicao_ajuda` passa).
+- **P2 — corrigido, com trava anti-exploit.** No anúncio, a reserva é o
+  preço pedido (sem titularidade/necessidade). Medindo, apareceu um exploit
+  que já existia: anunciar por 10× o valor gerava proposta de ~10× (30% das
+  negociações fechavam; com só a reserva corrigida, 58%). Por isso a âncora
+  do comprador no anúncio ficou limitada a 1,3× o valor de mercado
+  (`LISTING_BUYER_ANCHOR_CAP`).
+
+  Negociação de um clube por jogador anunciado (24 jogadores × clubes com
+  caixa, 3 tentativas):
+
+  | Pedido | Antes: titulares com comprador | Depois | Antes: valor médio / máx (× mercado) | Depois |
+  |---|---|---|---|---|
+  | 1× | 6/11 | 11/11 | 1,06 / 1,25 | 1,03 / 1,25 |
+  | 1,3× | 5/11 | 11/11 | 1,37 / 1,62 | 1,35 / 1,62 |
+  | 2× | 5/11 | 0/11 | 2,11 / 2,5 | sem venda |
+  | 10× | 4/11 | 0/11 | 10,67 / 12,49 | sem venda |
+
+  Na medição apareceu um 2º motivo de anúncio sem proposta: jogador com
+  contrato acabando recebe oferta inicial até 15% abaixo do valor
+  (`transferValuation`), a negociação interna parava sem acordo e o
+  técnico nunca via o lance. Agora, num anúncio, o último lance do
+  comprador vira proposta quando chega a ≥ 75% do pedido (mesmo corte de
+  "muito abaixo" de `sellerNegotiationDecision`) — o técnico decide em
+  Minhas vendas, como previa o desenho original do anúncio (propostas de
+  55–110% do pedido).
+
+  Pelo caminho real do jogo (`maybeSpawnListingOffer`, 150 simulações de
+  uma temporada por jogador, 24 jogadores):
+
+  | Pedido | 1ª proposta (rodadas, média) | Sem proposta na temporada | Jogadores que nunca recebem | Valor médio / máx (× mercado) |
+  |---|---:|---:|---|---|
+  | 1× | 14,6 | 21,8% | 0/24 | 1,00 / 1,12 |
+  | 1,3× | 14,7 | 19,7% | 0/24 | 1,30 / 1,46 |
+  | 2× | — | 100% | 24/24 | — |
+  | 10× | — | 100% | 24/24 | — |
+
+  O ritmo (≈ 15 rodadas até a 1ª proposta) é o da exposição já existente
+  (40% por rodada × interesse do clube) — não alterado.
+  `test_historico_negociacoes` passou a simular rodadas de exposição
+  normais (até 200) em vez de forçar `Math.random = 0.01` (que sempre
+  escolhia o mesmo clube) e a anunciar o jogador mais barato.
+- **Observação (não alterada):** jogador com valor de mercado acima do
+  caixa de qualquer clube CPU (ex.: R$ 56,8M contra no máximo R$ 32M de
+  caixa na Série A) não vende pelo valor de mercado — só pedindo menos.
+
 ## 6. Medições
 
 Mesma máquina (4 CPUs), `--isolated-server` (dados vazios a cada
@@ -161,7 +215,7 @@ Intermitentes observados nas execuções completas finais: nenhum nas 3 execuç�
 | AT-08 | APROVADO COM RESSALVA | Intermitentes medidos e tratados (§4, §6); sob concorrência 10 ainda podem aparecer casos novos de espera fixa (308 s estáticos restantes; 2 residuais vistos só sob cobertura, §6) |
 | AT-09 | APROVADO | §6, mesma máquina/condições |
 | AT-10 | APROVADO | §3 (desatualizado), §4 (determinismo), §5 (produto), ambiental: nenhum restante |
-| AT-11 | NÃO VERIFICADO | Sem CI no repositório (igual à Fase A) |
+| AT-11 | APROVADO (atualizado em 26/10/2026) | CI criado na Fase C; run 12 (`40357853693`) totalmente verde — ver `docs/MOTOR_TESTES_FASE_A.md` §7 |
 | AT-12 | APROVADO | `git diff c81e97d -- public server` vazio |
 | AT-13 | APROVADO | Sem deploy/Railway; `server/data` do dev restaurado e não mais tocado pela suíte |
 | AT-14 | APROVADO | Este documento |

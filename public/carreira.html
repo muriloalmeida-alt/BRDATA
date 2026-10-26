@@ -3318,7 +3318,12 @@
         <div class="mt-card" id="escalacaoTacticsBlock">
           <div class="mt-card-head">
             <div class="mt-card-title">Instruções de jogo</div>
+            <button class="ct-help-btn" data-help="helpInstrucoesTaticas" aria-label="Ajuda">?</button>
           </div>
+          <!-- P3 (motor de testes, Fase B) — "?" de volta neste card: os
+               4 eixos de 1 a 5 têm troca ataque x defesa que a tela não
+               explica sozinha (ver TACTIC_AXIS_DELTA em carreira.js). -->
+          <p class="mt-card-sub ct-help-text" id="helpInstrucoesTaticas" hidden>Cada eixo vai de 1 a 5. Quanto mais à direita (mais direto, mais pressão, linha adiantada, bola longa), mais o time ataca e mais expõe a defesa; à esquerda, o contrário. Vale pro seu próximo jogo e dá pra mudar durante a partida. Ajuste fino em Menu › Tática avançada › Instruções por setor.</p>
           <div id="tacticAxisRows"></div>
         </div>
         <!-- Botão salvar vira FAB (era barra de ação full-width, ver
