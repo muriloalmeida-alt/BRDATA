@@ -18,6 +18,12 @@ let seq = 0;
 function keepEntry(e) {
   return /^http:\/\/localhost:\d+\/.+\.js(\?|$)/.test(e.url);
 }
+const lost = [];
+process.on("exit", () => {
+  if (!lost.length) return;
+  fs.mkdirSync(OUT_DIR, { recursive: true });
+  fs.writeFileSync(path.join(OUT_DIR, `${testName}-${process.pid}-perdida.lost`), JSON.stringify({ test: testName, errors: lost }));
+});
 function writeEntries(entries) {
   if (!entries.length) return;
   fs.mkdirSync(OUT_DIR, { recursive: true });
@@ -26,7 +32,14 @@ function writeEntries(entries) {
   const slim = entries.filter(keepEntry).map((e) => ({ url: e.url.replace(/\?.*$/, ""), sourceLength: (e.source || "").length, functions: e.functions }));
   fs.writeFileSync(file, JSON.stringify({ test: testName, entries: slim }));
 }
+// browser.newPage() do Playwright chama por dentro o newContext() que este
+// módulo também envolve — sem este controle a MESMA página era
+// instrumentada 2x (a 2ª partida falhava e a parada dela também), e a
+// coleta do teste às vezes se perdia.
+const instrumented = new WeakSet();
 function instrumentPage(page, bucket) {
+  if (instrumented.has(page)) return;
+  instrumented.add(page);
   const started = page.coverage.startJSCoverage({ resetOnNavigation: false, reportAnonymousScripts: false }).catch(() => {});
   bucket.push({ page, started });
 }
@@ -34,7 +47,11 @@ async function collect(bucket) {
   const all = [];
   for (const { page, started } of bucket) {
     await started;
-    try { all.push(...(await page.coverage.stopJSCoverage())); } catch (_) { /* página já fechada: nada a coletar */ }
+    try { all.push(...(await page.coverage.stopJSCoverage())); } catch (e) {
+      // Coleta perdida (página já fechada/trocando de documento): avisa em
+      // vez de sumir em silêncio — o relatório conta essas perdas.
+      lost.push(String(e && e.message || e).split("\n")[0]);
+    }
   }
   bucket.length = 0;
   writeEntries(all);

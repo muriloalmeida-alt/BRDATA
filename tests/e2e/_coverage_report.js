@@ -15,6 +15,10 @@ const path = require("path");
 const DIR = process.argv[2] || path.join(__dirname, "_coverage");
 const OUT = process.argv[3] || path.join(__dirname, "_coverage_summary.json");
 const files = fs.existsSync(DIR) ? fs.readdirSync(DIR).filter((f) => f.endsWith(".json")) : [];
+// Coletas perdidas (ver _coverage_preload.js): entram no resumo pra
+// ninguém comparar cobertura sem saber que faltou um teste.
+const lostFiles = fs.existsSync(DIR) ? fs.readdirSync(DIR).filter((f) => f.endsWith(".lost")) : [];
+const lostTests = [...new Set(lostFiles.map((f) => JSON.parse(fs.readFileSync(path.join(DIR, f), "utf8")).test))].sort();
 if (!files.length) { console.error(`Nenhum arquivo de cobertura em ${DIR}.`); process.exit(1); }
 
 // url -> Map(chaveDaFunção -> { name, covered, tests:Set })
@@ -64,7 +68,7 @@ for (const [url, fns] of [...byUrl.entries()].sort()) {
     coveredFunctions: [...fns.entries()].filter(([, r]) => r.covered).map(([k, r]) => `${r.name}@${k}`).sort(),
   };
 }
-summary.__total = { bytes: totB, bytesCovered: totBC, bytesPct: totB ? +(100 * totBC / totB).toFixed(2) : 0, functions: totF, covered: totC, pct: totF ? +(100 * totC / totF).toFixed(2) : 0, files: files.length };
+summary.__total = { bytes: totB, bytesCovered: totBC, bytesPct: totB ? +(100 * totBC / totB).toFixed(2) : 0, functions: totF, covered: totC, pct: totF ? +(100 * totC / totF).toFixed(2) : 0, files: files.length, lostCollections: lostTests };
 fs.writeFileSync(OUT, JSON.stringify(summary, null, 2));
 console.log("Cobertura JS do app (união de todos os testes) — bytes executados | funções:");
 for (const [url, s] of Object.entries(summary)) {
@@ -73,3 +77,4 @@ for (const [url, s] of Object.entries(summary)) {
 }
 const t = summary.__total;
 console.log(`  ${"TOTAL".padEnd(36)} bytes ${t.bytesPct.toFixed(2).padStart(6)}%  | funções ${String(t.covered).padStart(5)}/${String(t.functions).padEnd(5)} ${t.pct.toFixed(2)}%  (${files.length} coletas)`);
+if (lostTests.length) console.log(`  ATENÇÃO: coleta perdida em ${lostTests.length} teste(s): ${lostTests.join(", ")}`);

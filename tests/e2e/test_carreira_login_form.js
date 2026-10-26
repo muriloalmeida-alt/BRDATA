@@ -1,4 +1,5 @@
 const { chromium } = require("playwright-core");
+const { waitForBoot } = require("./_startup");
 const { check } = require("./_check");
 (async () => {
   const browser = await chromium.launch({
@@ -20,7 +21,7 @@ const { check } = require("./_check");
   }, { email });
 
   await page.goto(base + "/carreira.html", { waitUntil: "load" });
-  await page.waitForTimeout(500);
+  await waitForBoot(page); // fim do boot (estado) em vez de 500 ms fixos
   const loginVisible = await page.evaluate(() => !document.getElementById("screenLoginRequired").classList.contains("hidden"));
   check("1) Tela de login aparece:", loginVisible);
   await page.fill("#ctLoginEmail", email);

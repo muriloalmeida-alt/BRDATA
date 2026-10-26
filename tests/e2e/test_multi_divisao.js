@@ -18,7 +18,8 @@ const { enterGame, waitForBoot } = require("./_startup");
     await fetch("/api/auth/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, password: "senha123" }) });
   }, { email });
   await page.goto(base + "/carreira.html", { waitUntil: "domcontentloaded" });
-  await page.waitForTimeout(400);
+  // Espera o seletor com os cards (estado), até 10 s — antes 400 ms fixos.
+  await page.waitForFunction(() => document.querySelectorAll(".mt-competition-card").length >= 3, null, { timeout: 10000 }).catch(() => {});
 
   // 1) Seletor de campeonato aparece primeiro (carreira nova).
   const pickerVisible = await page.evaluate(() => !document.getElementById("screenCompetitionPicker").classList.contains("hidden"));

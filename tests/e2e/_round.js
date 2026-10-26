@@ -122,7 +122,11 @@ async function playRound(page, hooks = {}) {
       await tap("#btnTabelaModalCloseFooter");
     } else if (top) {
       return { screens, stoppedAt: top, friendly, matchWeek }; // tela que este helper não conhece: o teste decide
-    } else if (!st.live && !st.busy && (st.round !== start.round || st.week !== start.week)) {
+    } else if (!st.live && !st.busy && (st.round !== start.round || st.week !== start.week)
+      // Semana de jogo oficial só termina depois do detalhe "Seu jogo": entre
+      // o pré-jogo fechar e a partida ao vivo abrir há um instante sem
+      // tela nenhuma, que não pode ser lido como "rodada encerrada".
+      && (!matchWeek || screens.includes("matchDetailOverlay"))) {
       // Rodada encerrada só com a tela limpa em 2 leituras seguidas (a
       // próxima tela da sequência pode abrir um instante depois de a
       // anterior fechar).

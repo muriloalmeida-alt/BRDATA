@@ -10,6 +10,7 @@
 // só test_carreira_login_form.js (2 checks funcionais básicos,
 // continua existindo, sem sobreposição).
 const { chromium } = require("playwright-core");
+const { waitForBoot } = require("./_startup");
 const { check } = require("./_check");
 
 (async () => {
@@ -27,7 +28,7 @@ const { check } = require("./_check");
     await fetch("/api/auth/logout", { method: "POST" }).catch(() => {});
   }, { email });
   await page.goto(base + "/carreira.html", { waitUntil: "load" });
-  await page.waitForTimeout(500);
+  await waitForBoot(page); // fim do boot (estado) em vez de 500 ms fixos
 
   // 1) Estado "default": tela visível, com os tokens --m3-* corretos
   // (painel/campo/botão) — não .auth-gate (confirma que são telas
