@@ -84,7 +84,7 @@ Saídas (todas gitignored): `_last_parallel_run.json` (metadados da
 execução — commit, comando, concorrência, timeouts, retries — e o
 resultado de cada script), `_artifacts/<teste>.log` (stdout/stderr de
 cada teste que falhou) e `_artifacts/server.log` (servidor isolado),
-`_coverage/` + `_coverage_summary.json` (com `--coverage`).
+`_coverage/` + `_coverage_summary.json` (com `--coverage`; `__total.lostCollections` lista testes cuja coleta de cobertura se perdeu — compare cobertura só quando estiver vazio).
 Não há retry automático: um teste que falha conta como falha.
 
 CI: o repositório ainda não tem pipeline (não existe `.github/workflows`);
@@ -120,6 +120,9 @@ reprovava). Desde então toda verificação numerada passa por `check()`
   `onMatchDetail`/`onPress`/`onNews`/`onRoundResults`/`onPlayerOffer`/
   `onTabela` leem cada tela; devolver `"stop"` para ali. Tela desconhecida
   faz parar (`stoppedAt`), nunca é fechada às cegas.
+- `_startup.js` → `waitForBoot(page)`: depois de `page.reload()`/abrir a
+  carreira, espera o fim do boot (e o `CAREER` carregado na tela do jogo)
+  — use no lugar de `waitForTimeout` fixo.
 - `_calendar_skip.js` — `skipPreseason(page)`: pula as semanas sem jogo
   da pré-temporada (carreira nova começa nela, GE-CALENDAR-001).
 - `_grant_test_credits.js` — preparação do perfil de servidor
