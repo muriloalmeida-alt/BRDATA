@@ -2393,11 +2393,11 @@ function renderSettingsScreen() {
     ${settingsToggleRowHTML("lesao", "🩹", "Alertas de lesão", settings.lesao)}
     <div class="m3-card-title">Notificações push</div>
     <p class="mt-card-sub" style="margin:-4px 0 8px;">${pushOk ? "Um lembrete se você estiver perto de perder sua sequência de login diário — mesmo com o app fechado." : "Seu navegador não suporta notificações push."}</p>
-    <div class="mt-setting-row"><div class="mt-setting-icon">🔔</div><div class="mt-setting-label">Ativar notificações push</div><button type="button" class="mt-setting-toggle${pushOn ? " on" : ""}" id="settingsPushToggleBtn" ${pushOk ? "" : "disabled"}><span class="mt-setting-toggle-dot"></span></button></div>
+    <div class="mt-setting-row"><div class="mt-setting-icon">🔔</div><div class="mt-setting-label">Ativar notificações push</div><button type="button" class="mt-setting-toggle${pushOn ? " on" : ""}" id="settingsPushToggleBtn" role="switch" aria-checked="${pushOn}" aria-label="Ativar notificações push" ${pushOk ? "" : "disabled"}><span class="mt-setting-toggle-dot"></span></button></div>
     <div class="mt-setting-row${pushOn ? "" : " hidden"}" id="settingsRowPushTest"><div class="mt-setting-icon">🧪</div><div class="mt-setting-label">Enviar notificação de teste</div><span class="mt-setting-chev">›</span></div>
     <div class="m3-card-title">Áudio</div>
     <p class="mt-card-sub" style="margin:-4px 0 8px;">Apito de início/fim de jogo, som de gol e torcida ambiente durante a partida ao vivo.</p>
-    <div class="mt-setting-row"><div class="mt-setting-icon">🔊</div><div class="mt-setting-label">Efeitos sonoros</div><button type="button" class="mt-setting-toggle${SFX_ENABLED ? " on" : ""}" id="settingsSfxToggleBtn"><span class="mt-setting-toggle-dot"></span></button></div>
+    <div class="mt-setting-row"><div class="mt-setting-icon">🔊</div><div class="mt-setting-label">Efeitos sonoros</div><button type="button" class="mt-setting-toggle${SFX_ENABLED ? " on" : ""}" id="settingsSfxToggleBtn" role="switch" aria-checked="${!!SFX_ENABLED}" aria-label="Efeitos sonoros"><span class="mt-setting-toggle-dot"></span></button></div>
     <div class="m3-card-title">Conta</div>
     <div class="mt-setting-row" id="settingsRowEditProfile"><div class="mt-setting-icon">✎</div><div class="mt-setting-label">Editar perfil</div><span class="mt-setting-chev">›</span></div>
     <div class="mt-setting-row" id="settingsRowPurchaseHistory"><div class="mt-setting-icon">🧾</div><div class="mt-setting-label">Histórico de compras</div><span class="mt-setting-chev">›</span></div>
@@ -2445,7 +2445,7 @@ function renderSettingsScreen() {
   updateNotificationBadge();
 }
 function settingsToggleRowHTML(key, icon, label, on) {
-  return `<div class="mt-setting-row" data-toggle-key="${key}"><div class="mt-setting-icon">${icon}</div><div class="mt-setting-label">${escapeHtml(label)}</div><button type="button" class="mt-setting-toggle${on ? " on" : ""}"><span class="mt-setting-toggle-dot"></span></button></div>`;
+  return `<div class="mt-setting-row" data-toggle-key="${key}"><div class="mt-setting-icon">${icon}</div><div class="mt-setting-label">${escapeHtml(label)}</div><button type="button" class="mt-setting-toggle${on ? " on" : ""}" role="switch" aria-checked="${!!on}" aria-label="${escapeHtml(label)}"><span class="mt-setting-toggle-dot"></span></button></div>`;
 }
 function openSettingsScreen() {
   renderSettingsScreen();

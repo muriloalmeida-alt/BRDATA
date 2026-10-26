@@ -148,6 +148,7 @@
     --m3-on-surface:#E8EEF6; --m3-on-surface-variant:#9FB0C6;
     --m3-outline:#5B6E86; --m3-outline-variant:#1F3550;
     --bg-app:#060D18;
+    --m3-on-error:#410002; /* 5,4:1 sobre --m3-error (era #690002, 4,1:1 — abaixo do AA) */
   }
   /* ===== Tokens do Redesign M3 (--m3-*) — movidos sem alteração para
      css/m3-tokens.css (linkado no <head>), compartilhados com 2048.html.
@@ -2778,6 +2779,16 @@
   .m3-club-row.selected{ border-color:var(--m3-outline-variant); box-shadow:inset 3px 0 0 var(--m3-primary); }
   .mt-onboard-title{ font-family:var(--m3-display); font-weight:700; font-size:24px; letter-spacing:0; line-height:1.2; }
 
+  /* ================= S4-B5-QA-001 — área de toque (≥ 44px) =================
+     Correções mecânicas da auditoria: o X das modais (26px), o "?" de
+     ajuda e o botão de ícone do topo ficavam abaixo de 44px. O visual não
+     muda — só a área clicável cresce (margem negativa / pseudo-elemento). */
+  .ct-modal-close{ width:44px; height:44px; margin:-9px -9px -9px 0; border-radius:50%; }
+  .ct-modal-close:focus-visible{ outline:2px solid var(--m3-primary); outline-offset:-6px; }
+  .ct-help-btn{ position:relative; }
+  .ct-help-btn::after{ content:""; position:absolute; inset:-12px; }
+  .mt-icon-btn{ width:44px; height:44px; }
+
   /* ================= Redesign — Bloco 5 (estados) =================
      Movimento reduzido (F15 da matriz): várias animações já tinham sua
      própria regra; esta cobre todas as da carreira de uma vez. */
@@ -3966,7 +3977,7 @@
     <div class="ct-modal-header">
       <span class="ct-modal-icon" id="achievementDetailIcon" style="font-size:19px;"></span>
       <div class="ct-modal-header-text"><h3 id="achievementDetailTitle"></h3></div>
-      <button class="ct-modal-close" id="achievementDetailClose">✕</button>
+      <button class="ct-modal-close" aria-label="Fechar" id="achievementDetailClose">✕</button>
     </div>
     <div class="ct-modal-body">
       <p class="ct-sub" id="achievementDetailDesc"></p>
@@ -3982,7 +3993,7 @@
     <div class="ct-modal-header">
       <span class="ct-modal-icon">🔄</span>
       <div class="ct-modal-header-text"><h3 id="pickerTitle">Escolher jogador</h3></div>
-      <button class="ct-modal-close" id="pickerClose">✕</button>
+      <button class="ct-modal-close" aria-label="Fechar" id="pickerClose">✕</button>
     </div>
     <div class="ct-modal-body">
       <!-- AJUSTE (refatoração completa, Tela 7 — ver 07-trocar-jogador-
@@ -4007,7 +4018,7 @@
         <h3 id="detailName"></h3>
         <div class="ct-modal-sub" id="detailSub"></div>
       </div>
-      <button class="ct-modal-close" id="detailClose">✕</button>
+      <button class="ct-modal-close" aria-label="Fechar" id="detailClose">✕</button>
     </div>
     <div class="ct-modal-body" id="detailBody"></div>
   </div>
@@ -4028,7 +4039,7 @@
         <h3>Renovar contrato</h3>
         <div class="ct-modal-sub" id="renewSub"></div>
       </div>
-      <button class="ct-modal-close" id="renewClose">✕</button>
+      <button class="ct-modal-close" aria-label="Fechar" id="renewClose">✕</button>
     </div>
     <div class="ct-modal-body">
       <p class="ct-sub" id="renewCurrentInfo"></p>
@@ -4066,7 +4077,7 @@
         <h3>Conversa individual</h3>
         <div class="ct-modal-sub" id="talkSub"></div>
       </div>
-      <button class="ct-modal-close" id="talkClose">✕</button>
+      <button class="ct-modal-close" aria-label="Fechar" id="talkClose">✕</button>
     </div>
     <div class="ct-modal-body">
       <p class="ct-sub" id="talkContext" style="margin-bottom:14px;"></p>
@@ -4099,7 +4110,7 @@
         <h3>Coletiva de imprensa</h3>
         <div class="ct-modal-sub">Um jornalista pede sua palavra</div>
       </div>
-      <button class="ct-modal-close" id="pressClose">✕</button>
+      <button class="ct-modal-close" aria-label="Fechar" id="pressClose">✕</button>
     </div>
     <div class="ct-modal-body">
       <p class="ct-sub" id="pressQuestion" style="font-weight:700; color:var(--mt-ivory-50); margin-bottom:14px;"></p>
@@ -4133,7 +4144,7 @@
         <h3>Minhas propostas</h3>
         <div class="ct-modal-sub" id="myOffersCountLabel"></div>
       </div>
-      <button class="ct-modal-close" id="myOffersClose">✕</button>
+      <button class="ct-modal-close" aria-label="Fechar" id="myOffersClose">✕</button>
     </div>
     <div class="ct-modal-body">
       <div class="mt-card">
@@ -4167,7 +4178,7 @@
         <h3>Contratos</h3>
         <div class="ct-modal-sub" id="contratosCountLabel"></div>
       </div>
-      <button class="ct-modal-close" id="contratosClose">✕</button>
+      <button class="ct-modal-close" aria-label="Fechar" id="contratosClose">✕</button>
     </div>
     <div class="ct-modal-body">
       <div class="mt-seg-group" id="contratosFilterRow">
@@ -4193,7 +4204,7 @@
         <h3>Comparar propostas</h3>
         <div class="ct-modal-sub" id="offerCompareSub"></div>
       </div>
-      <button class="ct-modal-close" id="offerCompareClose">✕</button>
+      <button class="ct-modal-close" aria-label="Fechar" id="offerCompareClose">✕</button>
     </div>
     <div class="ct-modal-body">
       <div class="mt-card" id="offerCompareCard"></div>
@@ -4223,7 +4234,7 @@
         <h3>Colocar à venda</h3>
         <div class="ct-modal-sub" id="listSub"></div>
       </div>
-      <button class="ct-modal-close" id="listClose">✕</button>
+      <button class="ct-modal-close" aria-label="Fechar" id="listClose">✕</button>
     </div>
     <div class="ct-modal-body">
       <div class="ct-field" style="margin-bottom:12px;">
@@ -4250,7 +4261,7 @@
         <h3>Minhas vendas</h3>
         <div class="ct-modal-sub" id="mySalesCountLabel"></div>
       </div>
-      <button class="ct-modal-close" id="mySalesClose">✕</button>
+      <button class="ct-modal-close" aria-label="Fechar" id="mySalesClose">✕</button>
     </div>
     <div class="ct-modal-body">
       <div id="mySalesList"></div>
@@ -4277,7 +4288,7 @@
         <h3>Indicações dos olheiros</h3>
         <div class="ct-modal-sub" id="scoutSuggestionsCountLabel"></div>
       </div>
-      <button class="ct-modal-close" id="scoutSuggestionsClose">✕</button>
+      <button class="ct-modal-close" aria-label="Fechar" id="scoutSuggestionsClose">✕</button>
     </div>
     <div class="ct-modal-body">
       <!-- GE-SCOUT-001 — indicações vêm de olheiro em missão Profissional
@@ -4309,7 +4320,7 @@
         <h3>Calendário</h3>
         <div class="ct-modal-sub" id="calendarSub"></div>
       </div>
-      <button class="ct-modal-close" id="calendarClose">✕</button>
+      <button class="ct-modal-close" aria-label="Fechar" id="calendarClose">✕</button>
     </div>
     <div class="ct-modal-body">
       <div id="calendarList"></div>
@@ -4328,7 +4339,7 @@
         <h3>Histórico de negociações</h3>
         <div class="ct-modal-sub" id="transferHistoryCountLabel"></div>
       </div>
-      <button class="ct-modal-close" id="transferHistoryClose">✕</button>
+      <button class="ct-modal-close" aria-label="Fechar" id="transferHistoryClose">✕</button>
     </div>
     <div class="ct-modal-body">
       <div id="transferHistoryList"></div>
@@ -4354,7 +4365,7 @@
         <h3>Histórico de fadiga</h3>
         <div class="ct-modal-sub">Fadiga semanal e lesões do período</div>
       </div>
-      <button class="ct-modal-close" id="fatigueHistoryClose">✕</button>
+      <button class="ct-modal-close" aria-label="Fechar" id="fatigueHistoryClose">✕</button>
     </div>
     <div class="ct-modal-body">
       <p class="ct-empty hidden" id="fatigueHistoryEmpty">Sem jogadores no elenco.</p>
@@ -4388,7 +4399,7 @@
         <h3 id="loanTitle">Empréstimo</h3>
         <div class="ct-modal-sub" id="loanSub"></div>
       </div>
-      <button class="ct-modal-close" id="loanClose">✕</button>
+      <button class="ct-modal-close" aria-label="Fechar" id="loanClose">✕</button>
     </div>
     <div class="ct-modal-body">
       <div class="ct-field" style="margin-bottom:12px;">
@@ -4439,7 +4450,7 @@
     <div class="ct-modal-header">
       <span class="ct-modal-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg></span>
       <div class="ct-modal-header-text"><h3 id="sponsorProposalsTitle">Propostas de patrocínio</h3></div>
-      <button class="ct-modal-close" id="sponsorProposalsClose">✕</button>
+      <button class="ct-modal-close" aria-label="Fechar" id="sponsorProposalsClose">✕</button>
     </div>
     <div class="ct-modal-body" id="sponsorProposalsList"></div>
   </div>
@@ -4457,7 +4468,7 @@
         <h3 id="stadiumScreenName">Estádio</h3>
         <div class="ct-modal-sub">Capacidade e melhorias</div>
       </div>
-      <button class="ct-modal-close" id="stadiumClose">✕</button>
+      <button class="ct-modal-close" aria-label="Fechar" id="stadiumClose">✕</button>
     </div>
     <div class="ct-modal-body">
       <div class="m3-hero-card" style="text-align:center;">
@@ -4482,7 +4493,7 @@
       <div class="ct-modal-header-text">
         <h3>Metas da diretoria</h3>
       </div>
-      <button class="ct-modal-close" id="boardGoalsClose">✕</button>
+      <button class="ct-modal-close" aria-label="Fechar" id="boardGoalsClose">✕</button>
     </div>
     <div class="ct-modal-body">
       <div class="m3-hero-card">
@@ -4509,7 +4520,7 @@
       <div class="ct-modal-header-text">
         <h3>Extrato financeiro</h3>
       </div>
-      <button class="ct-modal-close" id="extratoClose">✕</button>
+      <button class="ct-modal-close" aria-label="Fechar" id="extratoClose">✕</button>
     </div>
     <div class="ct-modal-body">
       <div class="m3-filter-row" id="extratoFilterRow"></div>
@@ -4535,7 +4546,7 @@
         <h3>Confirmar compra</h3>
         <div class="ct-modal-sub" id="purchaseConfirmTitle"></div>
       </div>
-      <button class="ct-modal-close" id="purchaseConfirmClose">✕</button>
+      <button class="ct-modal-close" aria-label="Fechar" id="purchaseConfirmClose">✕</button>
     </div>
     <div class="ct-modal-body">
       <div class="mt-purchase-summary">
@@ -4691,7 +4702,7 @@
     <div class="ct-modal-header">
       <span class="ct-modal-icon">🔄</span>
       <div class="ct-modal-header-text"><h3>Substituição</h3></div>
-      <button class="ct-modal-close" id="liveSubClose">✕</button>
+      <button class="ct-modal-close" aria-label="Fechar" id="liveSubClose">✕</button>
     </div>
     <div class="ct-modal-body">
       <div class="ct-field" style="margin-bottom:12px;"><label>Sai</label><select id="liveSubOutSelect"></select></div>
@@ -4712,7 +4723,7 @@
     <div class="ct-modal-header">
       <span class="ct-modal-icon">⚙️</span>
       <div class="ct-modal-header-text"><h3>Ajustar tática</h3></div>
-      <button class="ct-modal-close" id="liveTacticsClose">✕</button>
+      <button class="ct-modal-close" aria-label="Fechar" id="liveTacticsClose">✕</button>
     </div>
     <div class="ct-modal-body">
       <div class="ct-tactics">
@@ -4761,7 +4772,7 @@
         <h3>Confirmar escalação</h3>
         <div class="ct-modal-sub">Rodada <span id="preMatchRound"></span></div>
       </div>
-      <button class="ct-modal-close" id="preMatchClose">✕</button>
+      <button class="ct-modal-close" aria-label="Fechar" id="preMatchClose">✕</button>
     </div>
     <div class="ct-modal-body">
       <div class="mt-card">
@@ -4802,7 +4813,7 @@
     <div class="ct-modal-header mt-fullheader">
       <span class="ct-modal-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></span>
       <div class="ct-modal-header-text"><h3>Ajustar escalação</h3></div>
-      <button class="ct-modal-close" id="adjustLineupClose">✕</button>
+      <button class="ct-modal-close" aria-label="Fechar" id="adjustLineupClose">✕</button>
     </div>
     <div class="ct-modal-body" id="adjustLineupBody"></div>
     <div class="ct-modal-footer">
@@ -4832,7 +4843,7 @@
         <h3>Seu jogo</h3>
         <div class="ct-modal-sub">Rodada <span id="matchDetailRound"></span></div>
       </div>
-      <button class="ct-modal-close" id="matchDetailClose">✕</button>
+      <button class="ct-modal-close" aria-label="Fechar" id="matchDetailClose">✕</button>
     </div>
     <div class="ct-modal-body">
       <div class="mt-card mt-matchdetail-score">
@@ -4873,7 +4884,7 @@
     <div class="ct-modal-header">
       <span class="ct-modal-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5,3 19,12 5,21"/></svg></span>
       <div class="ct-modal-header-text"><h3>Rever lances</h3></div>
-      <button class="ct-modal-close" id="matchReplayClose">✕</button>
+      <button class="ct-modal-close" aria-label="Fechar" id="matchReplayClose">✕</button>
     </div>
     <div class="ct-modal-body">
       <div id="matchReplayFeed" class="mt-live-timeline"></div>
@@ -4913,7 +4924,7 @@
         <h3>Resultados da rodada</h3>
         <div class="ct-modal-sub">Rodada <span id="roundResultsRound"></span></div>
       </div>
-      <button class="ct-modal-close" id="roundResultsClose">✕</button>
+      <button class="ct-modal-close" aria-label="Fechar" id="roundResultsClose">✕</button>
     </div>
     <div class="ct-modal-body">
       <div class="mt-card">
@@ -4954,7 +4965,7 @@
         <h3>Resumo da rodada</h3>
         <div class="ct-modal-sub" id="rodadaRoundLabel"></div>
       </div>
-      <button class="ct-modal-close" id="rodadaClose">✕</button>
+      <button class="ct-modal-close" aria-label="Fechar" id="rodadaClose">✕</button>
     </div>
     <div class="ct-modal-body">
       <div class="m3-filter-row" id="rodadaTabRow">
@@ -4987,7 +4998,7 @@
         <h3>Meus esquemas</h3>
         <div class="ct-modal-sub" id="schemesCountLabel"></div>
       </div>
-      <button class="ct-modal-close" id="schemesClose">✕</button>
+      <button class="ct-modal-close" aria-label="Fechar" id="schemesClose">✕</button>
     </div>
     <div class="ct-modal-body">
       <div class="mt-card">
@@ -5012,7 +5023,7 @@
         <h3>Novo esquema</h3>
         <div class="ct-modal-sub">Salva a formação, titulares, banco e táticas de agora</div>
       </div>
-      <button class="ct-modal-close" id="newSchemeClose">✕</button>
+      <button class="ct-modal-close" aria-label="Fechar" id="newSchemeClose">✕</button>
     </div>
     <div class="ct-modal-body">
       <!-- S4-B4-002 (issue #32) — antes o input ficava direto no
@@ -5047,7 +5058,7 @@
         <h3>Marcação individual</h3>
         <div class="ct-modal-sub" id="markingOppLabel"></div>
       </div>
-      <button class="ct-modal-close" id="markingClose">✕</button>
+      <button class="ct-modal-close" aria-label="Fechar" id="markingClose">✕</button>
     </div>
     <div class="ct-modal-body">
       <div id="markingEmpty" class="hidden"><p class="ct-empty">Sem jogo marcado agora (folga ou fim de temporada) — volte aqui quando tiver um próximo confronto.</p></div>
@@ -5085,7 +5096,7 @@
         <h3>Instruções por setor</h3>
         <div class="ct-modal-sub">Ajuste fino sobre as instruções gerais da Tática</div>
       </div>
-      <button class="ct-modal-close" id="sectorClose">✕</button>
+      <button class="ct-modal-close" aria-label="Fechar" id="sectorClose">✕</button>
     </div>
     <div class="ct-modal-body">
       <div class="m3-sector-tabs" id="sectorTabs">
@@ -5117,7 +5128,7 @@
         <h3>Comissão Técnica</h3>
         <div class="ct-modal-sub">Sugestões pra garantir o melhor time em campo</div>
       </div>
-      <button class="ct-modal-close" id="commissionClose">✕</button>
+      <button class="ct-modal-close" aria-label="Fechar" id="commissionClose">✕</button>
     </div>
     <div class="ct-modal-body">
       <div id="commissionNotHiredState" class="hidden">
@@ -5152,7 +5163,7 @@
         <div class="ct-modal-sub">Prospecção e relatório de olheiro</div>
       </div>
       <button class="ct-modal-close" id="btnOpenScoutMarket" title="Contratar olheiro" aria-label="Contratar olheiro">🗺️</button>
-      <button class="ct-modal-close" id="scoutingClose">✕</button>
+      <button class="ct-modal-close" aria-label="Fechar" id="scoutingClose">✕</button>
     </div>
     <div class="ct-modal-body">
       <div class="m3-filter-row" id="scoutingRegionRow"></div>
@@ -5173,7 +5184,7 @@
     <div class="ct-modal-header">
       <span class="ct-modal-icon">🧭</span>
       <div class="ct-modal-header-text"><h3>Nova missão</h3><div class="ct-modal-sub">Escolha o olheiro e o foco da missão</div></div>
-      <button class="ct-modal-close" id="scoutMissionClose">✕</button>
+      <button class="ct-modal-close" aria-label="Fechar" id="scoutMissionClose">✕</button>
     </div>
     <div class="ct-modal-body">
       <div id="missionScoutList"></div>
@@ -5203,7 +5214,7 @@
     <div class="ct-modal-header">
       <span class="ct-modal-icon" id="prospectSheetAvatar"></span>
       <div class="ct-modal-header-text"><h3 id="prospectSheetName"></h3><div class="ct-modal-sub" id="prospectSheetSub"></div></div>
-      <button class="ct-modal-close" id="prospectSheetClose">✕</button>
+      <button class="ct-modal-close" aria-label="Fechar" id="prospectSheetClose">✕</button>
     </div>
     <div class="ct-modal-body">
       <div id="prospectSheetAttrs"></div>
@@ -5223,7 +5234,7 @@
     <div class="ct-modal-header mt-fullheader">
       <span class="ct-modal-icon">🔎</span>
       <div class="ct-modal-header-text"><h3>Contratar olheiro</h3><div class="ct-modal-sub">Disponíveis no mercado</div></div>
-      <button class="ct-modal-close" id="scoutMarketClose">✕</button>
+      <button class="ct-modal-close" aria-label="Fechar" id="scoutMarketClose">✕</button>
     </div>
     <div class="ct-modal-body">
       <div id="scoutMarketList"></div>
@@ -5240,7 +5251,7 @@
     <div class="ct-modal-header mt-fullheader">
       <span class="ct-modal-icon">📋</span>
       <div class="ct-modal-header-text"><h3>Categorias de base</h3></div>
-      <button class="ct-modal-close" id="baseCategoriesClose">✕</button>
+      <button class="ct-modal-close" aria-label="Fechar" id="baseCategoriesClose">✕</button>
     </div>
     <div class="ct-modal-body">
       <div class="m3-filter-row" id="baseCatTabs"></div>
@@ -5291,7 +5302,7 @@
     <div class="ct-modal-header mt-fullheader">
       <span class="ct-modal-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="1.5"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="9" y1="10" x2="9" y2="20"/></svg></span>
       <div class="ct-modal-header-text"><h3>Tabela da carreira</h3></div>
-      <button class="ct-modal-close" id="tabelaModalClose">✕</button>
+      <button class="ct-modal-close" aria-label="Fechar" id="tabelaModalClose">✕</button>
     </div>
     <div class="ct-modal-body">
       <div class="mt-card">
@@ -5335,7 +5346,7 @@
         <h3>Premiações</h3>
         <div class="ct-modal-sub">Histórico de cada temporada encerrada</div>
       </div>
-      <button class="ct-modal-close" id="awardsClose">✕</button>
+      <button class="ct-modal-close" aria-label="Fechar" id="awardsClose">✕</button>
     </div>
     <div class="ct-modal-body">
       <div class="ct-awards-hero" id="awardsHero"></div>
@@ -5378,7 +5389,7 @@
         <h3>Notícias</h3>
         <div class="ct-modal-sub">Cobertura da temporada, rodada a rodada</div>
       </div>
-      <button class="ct-modal-close" id="newsClose">✕</button>
+      <button class="ct-modal-close" aria-label="Fechar" id="newsClose">✕</button>
     </div>
     <div class="ct-modal-body">
       <div class="mt-news-masthead">
@@ -5433,7 +5444,7 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
         <span class="mt-bell-badge hidden" id="settingsBellBadge">0</span>
       </button>
-      <button class="ct-modal-close" id="settingsClose">✕</button>
+      <button class="ct-modal-close" aria-label="Fechar" id="settingsClose">✕</button>
     </div>
     <div class="ct-modal-body" id="settingsBody"></div>
   </div>
@@ -5449,7 +5460,7 @@
     <div class="ct-modal-header mt-fullheader">
       <span class="ct-modal-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a8 8 0 0 1 16 0v1"/></svg></span>
       <div class="ct-modal-header-text"><h3>Editar perfil</h3></div>
-      <button class="ct-modal-close" id="editProfileClose">✕</button>
+      <button class="ct-modal-close" aria-label="Fechar" id="editProfileClose">✕</button>
     </div>
     <div class="ct-modal-body">
       <div class="mt-avatar-picker"><div class="mt-big-avatar" id="editProfileAvatar"></div></div>
@@ -5489,7 +5500,7 @@
         <h3>Histórico de compras</h3>
         <div class="ct-modal-sub">Uso real de itens e recompensas — a Loja ainda não cobra nada</div>
       </div>
-      <button class="ct-modal-close" id="purchaseHistoryClose">✕</button>
+      <button class="ct-modal-close" aria-label="Fechar" id="purchaseHistoryClose">✕</button>
     </div>
     <div class="ct-modal-body" id="purchaseHistoryBody"></div>
   </div>
@@ -5504,7 +5515,7 @@
     <div class="ct-modal-header mt-fullheader">
       <span class="ct-modal-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></span>
       <div class="ct-modal-header-text"><h3>Central de ajuda</h3></div>
-      <button class="ct-modal-close" id="helpCenterClose">✕</button>
+      <button class="ct-modal-close" aria-label="Fechar" id="helpCenterClose">✕</button>
     </div>
     <div class="ct-modal-body">
       <div class="mt-help-search">🔎 Buscar dúvida ou palavra-chave</div>
@@ -5538,7 +5549,7 @@
     <div class="ct-modal-header">
       <span class="ct-modal-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></span>
       <div class="ct-modal-header-text"><h3>Notificações</h3></div>
-      <button class="ct-modal-close" id="notificationsSheetClose">✕</button>
+      <button class="ct-modal-close" aria-label="Fechar" id="notificationsSheetClose">✕</button>
     </div>
     <div class="ct-modal-body" id="notificationsSheetBody"></div>
   </div>
@@ -5561,7 +5572,7 @@
         <h3 id="clubRosterName"></h3>
         <div class="ct-modal-sub" id="clubRosterSub"></div>
       </div>
-      <button class="ct-modal-close" id="clubRosterClose">✕</button>
+      <button class="ct-modal-close" aria-label="Fechar" id="clubRosterClose">✕</button>
     </div>
     <div class="ct-modal-body" id="clubRosterBody"></div>
   </div>
@@ -5583,7 +5594,7 @@
         <h3>Perfil do Técnico</h3>
         <div class="ct-modal-sub">Reputação e currículo de carreira</div>
       </div>
-      <button class="ct-modal-close" id="coachProfileClose">✕</button>
+      <button class="ct-modal-close" aria-label="Fechar" id="coachProfileClose">✕</button>
     </div>
     <div class="ct-modal-body" id="coachProfileBody"></div>
   </div>
@@ -5602,7 +5613,7 @@
       <div class="ct-modal-header-text">
         <h3>Histórico de confrontos</h3>
       </div>
-      <button class="ct-modal-close" id="h2hClose">✕</button>
+      <button class="ct-modal-close" aria-label="Fechar" id="h2hClose">✕</button>
     </div>
     <div class="ct-modal-body">
       <div class="m3-h2h-hero">
@@ -5632,7 +5643,7 @@
         <h3>Comparar jogadores</h3>
         <div class="ct-modal-sub" id="compareSub"></div>
       </div>
-      <button class="ct-modal-close" id="compareClose">✕</button>
+      <button class="ct-modal-close" aria-label="Fechar" id="compareClose">✕</button>
     </div>
     <div class="ct-modal-body">
       <!-- Passo 1 — escolher o 2º jogador (mesma posição do jogador de
@@ -5672,7 +5683,7 @@
         <h3>Proposta de outro clube</h3>
         <div class="ct-modal-sub">Sua reputação chamou atenção</div>
       </div>
-      <button class="ct-modal-close" id="clubProposalClose">✕</button>
+      <button class="ct-modal-close" aria-label="Fechar" id="clubProposalClose">✕</button>
     </div>
     <div class="ct-modal-body">
       <p class="ct-sub" id="clubProposalText" style="margin-bottom:16px;"></p>
@@ -5709,7 +5720,7 @@
         <h3>Proposta por um jogador</h3>
         <div class="ct-modal-sub">Decida agora ou resolva depois na aba Mercado</div>
       </div>
-      <button class="ct-modal-close" id="playerOfferClose">✕</button>
+      <button class="ct-modal-close" aria-label="Fechar" id="playerOfferClose">✕</button>
     </div>
     <div class="ct-modal-body">
       <p class="ct-sub" id="playerOfferText" style="margin-bottom:16px;"></p>
@@ -5743,7 +5754,7 @@
         <h3 id="seasonModalTitle">Nova temporada!</h3>
         <div class="ct-modal-sub" id="seasonModalSub"></div>
       </div>
-      <button class="ct-modal-close" id="seasonModalClose">✕</button>
+      <button class="ct-modal-close" aria-label="Fechar" id="seasonModalClose">✕</button>
     </div>
     <div class="ct-modal-body">
       <p class="ct-sub" id="seasonSummaryText"></p>
@@ -5784,7 +5795,7 @@
         <h3>Fim de carreira</h3>
         <div class="ct-modal-sub" id="dismissalClub"></div>
       </div>
-      <button class="ct-modal-close" id="dismissalModalClose">✕</button>
+      <button class="ct-modal-close" aria-label="Fechar" id="dismissalModalClose">✕</button>
     </div>
     <div class="ct-modal-body">
       <p class="ct-sub" id="dismissalText"></p>

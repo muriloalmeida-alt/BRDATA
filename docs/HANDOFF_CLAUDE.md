@@ -11,7 +11,7 @@ Demandas vigentes
 
 S4-B5-QA-001 — Batch 5: QA Visual/UX transversal — fecha a S4
 
-Status: PRONTO PARA IMPLEMENTAÇÃO
+Status: REVISÃO DO PM NECESSÁRIA
 Sprint: S4 — Redesign Mobile
 Fase: Batch 5 (QA Visual/UX) — última etapa, fecha a Sprint por inteiro
 Prioridade: P1
@@ -161,6 +161,50 @@ da S4 (`GE-BALANCE-*`, `GE-COPA-001`, `SAVE-LIMIT-001`) depende do
 fechamento formal da S4 pra continuar evoluindo — são frentes
 paralelas independentes, como já registrado desde que começaram.
 
+
+**Relatório técnico (Claude, 26/10/2026)** — branch `claude/s4-b5-qa-001`,
+sobre `main` 4b539c7 (já com o redesign da referência visual, PRs #47–#49).
+Medição: varredura do código (fora de comentários) + script Playwright em
+360×780 em 6 painéis, 5 telas e o menu (`docs` não guardam o script; ele
+fica no scratchpad da sessão).
+
+| Eixo | Veredito | Evidência |
+|---|---|---|
+| Layout | APROVADO | 0 px de rolagem horizontal em todos os 12 contextos medidos a 360px; hierarquia/CTA lima conferidos por captura nos blocos 1–5 (`docs/REDESIGN_BLOCOS.md`) |
+| Componentes | APROVADO COM RESSALVA | tokens `--m3-*` com a paleta nova; sheets/diálogos no mesmo padrão (fundação); `LeagueTable` segue sem componente formal (a Tabela já não é `<table>` — 0 ocorrências —, é lista `.mt-tr`); 11 regras CSS ainda com `var(--brd-*)` |
+| Interação | APROVADO COM RESSALVA | corrigido aqui: X das modais 26→44px, "?" de ajuda e `.mt-icon-btn` (42→44); continuam < 44px: chips de filtro, segmentos (`.mt-seg-btn`), itens do menu e botões de atalho da Início — aumentá-los muda a densidade das telas (decisão de PM) |
+| Acessibilidade | APROVADO COM RESSALVA | contraste AA em todos os pares principais (texto 16,2:1; secundário 7,2–7,8:1; botão lima 11,6:1; erro 6,0:1; borda 3,6:1); corrigido aqui: botão destrutivo (`--m3-on-error` 4,1→5,4:1), nome acessível nos 57 X das modais e `role="switch"`/`aria-checked`/rótulo nos toggles de Configurações — 0 botões sem nome nos 12 contextos; ARIA geral continua baixa: 39 `aria-*` e 2 `role` pra ~300 botões, 0 `role="dialog"` nas 63 modais fixas |
+| Produto | APROVADO | redesign só de apresentação (diff em `public/` = CSS/markup + paleta/tema/`confirmModal`); suíte completa 152/153 nesta branch (falha: `test_noticias_fullscreen_fluxo`, intermitente já listado) |
+
+**Gaps conhecidos — estado atual**
+
+| Gap | Hoje | Classe | Proposta |
+|---|---|---|---|
+| Emoji como ícone | 267 fora de comentários (121 HTML + 146 JS), ~igual aos 262 originais | P2 | demanda própria (troca por ícones SVG do DS) |
+| ARIA baixa | ver Acessibilidade; modais sem `role="dialog"`/foco preso (só as dinâmicas `m3-*` têm) | P1 | demanda própria: `role="dialog"` + `aria-labelledby` + foco nas 63 modais |
+| `LeagueTable` | lista `.mt-tr`, sem componente formal | P2 | demanda própria (fora de escopo aqui) |
+| `.icon-btn` < 48dp | `.mt-icon-btn` 44px (corrigido); chips/segmentos/menu < 44px | P1 | decidir densidade (PM) |
+| Rajdhani/Bebas | Bebas eliminada (redesign); Rajdhani em 66 usos como extensão BRDATA | — | manter como extensão decidida |
+| Setas ▲/▼ do Perfil | 4 usos em JS; 15 `var(--brd-*)` (11 CSS + 4 JS) sem par `--m3-*` | P2 | migrar junto com a limpeza de `--brd-*` |
+
+**Falhas de teste pré-existentes — consolidado** (10 suítes completas
+locais hoje + CI): `test_tabela_modal` e
+`test_intervalo_noticias_proposta_destino` **não falharam mais**;
+intermitentes de carga ainda vistos 1× cada: `test_cup`,
+`test_noticias_fullscreen_fluxo`, `test_h2h` (também no CI — a Tabela abre
+atrasada, causa não identificada), `test_resumo_rodada`,
+`test_serie_b_escudos`, `test_save`/`test_comissao_tecnica` (só no CI, com
+diagnóstico já no código); `test_regressao_gate` falhou 1× por rede do
+ambiente. Proposta: uma demanda própria de dívida técnica pros
+intermitentes (não resolvidos aqui).
+
+**Arquivos alterados nesta demanda:** `public/carreira.html` (aria-label
+nos X, áreas de toque, `--m3-on-error`), `public/js/carreira.js` (toggles
+com `role="switch"`), este handoff.
+
+Recomendação: aprovar o fechamento da S4 com os gaps P1/P2 acima virando
+demandas próprias (ARIA de modais, densidade de toque, emoji, LeagueTable,
+`--brd-*`, intermitentes).
 ⸻
 
 S4-AUDIT-BACKLOG-001 — Auditoria de prontidão das demandas #12 a #21
