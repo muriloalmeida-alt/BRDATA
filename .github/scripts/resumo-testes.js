@@ -14,9 +14,16 @@ const linhas = [`### ${titulo}`, "",
 if (falhas.length) {
   linhas.push("| Teste | Resultado | Verificações que falharam / erro |", "|---|---|---|");
   for (const r of falhas) {
-    const checks = r.out.split("\n").filter((l) => l.startsWith("  - ")).map((l) => l.slice(4).trim());
+    // Linha COMPLETA de cada verificação que falhou (com os valores
+    // impressos), não só o rótulo — os artefatos nem sempre dá pra baixar.
+    const linhasOut = r.out.split("\n");
+    const checks = linhasOut.filter((l) => l.startsWith("  - ")).map((l) => {
+      const rot = l.slice(4).trim();
+      const cheia = linhasOut.find((x) => x.startsWith(rot));
+      return (cheia || rot).trim().slice(0, 300);
+    });
     const erro = (r.out.match(/(FATAL:[^\n]*|Error:[^\n]*)/) || [])[1] || "";
-    const motivo = (checks.length ? checks.join("<br>") : erro).replace(/\|/g, "\\|").slice(0, 400);
+    const motivo = (checks.length ? checks.join("<br>") : erro).replace(/\|/g, "\\|").slice(0, 1200);
     linhas.push(`| \`${r.file}\` | ${r.timedOut ? `TIMEOUT ${r.timeoutMs / 1000}s` : `FAIL(${r.code})`} | ${motivo} |`);
   }
   linhas.push("", "Log completo de cada falha: artefato do job (`_artifacts/<teste>.log`).");
