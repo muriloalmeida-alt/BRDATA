@@ -1,7 +1,7 @@
 const { chromium } = require("playwright-core");
 const { enterGame } = require("./_startup");
 const { check } = require("./_check");
-const { playNextMatchRound } = require("./_round");
+const { playNextMatchRound, closeLeftoverTabela } = require("./_round");
 
 (async () => {
   const browser = await chromium.launch({
@@ -44,7 +44,7 @@ const { playNextMatchRound } = require("./_round");
         }
       },
     });
-    if (r.stoppedAt === "playerOfferOverlay") await page.click("#btnPlayerOfferDecline");
+    if (r.stoppedAt === "playerOfferOverlay") { await page.click("#btnPlayerOfferDecline"); await closeLeftoverTabela(page); }
     else if (r.stoppedAt) throw new Error(`jogo ${i + 1} parou numa tela inesperada: ${r.stoppedAt}`);
     await page.click(".m3-nav-item[data-panel='central']").catch(() => {});
   }

@@ -30,7 +30,9 @@
 // Uso:
 //   node run_parallel.js [filtro[,filtro2...]] [opções]
 // Opções:
-//   --concurrency=N     processos simultâneos (padrão: 2,5 × CPUs, entre 2 e 12)
+//   --concurrency=N     processos simultâneos (padrão: 2,5 × CPUs, entre 2 e 32)
+//   --shard=I/N         roda só a parte I de N (várias máquinas dividindo a
+//                       suíte; a divisão é a mesma em qualquer máquina)
 //   --timeout=MS        timeout por script (padrão 90000; a classe "long" usa o do suites.json)
 //   --suite=fast        só a rota rápida do suites.json (+ testes unitários)
 //   --isolated-server   sobe e derruba um servidor próprio, com dados vazios, na porta 8787
@@ -65,7 +67,9 @@ const opt = (name) => { const a = args.find((x) => x.startsWith(`--${name}=`)); 
 const flag = (name) => args.includes(`--${name}`);
 const filters = (args.find((a) => !a.startsWith("--")) || "").split(",").map((s) => s.trim()).filter(Boolean);
 const cpus = os.cpus().length;
-const concurrency = Number(opt("concurrency")) || Math.min(12, Math.max(2, Math.round(cpus * 2.5)));
+// Teto 32 (antes 12): numa máquina maior a suíte escala sozinha, sem
+// precisar passar --concurrency (2,5 × CPUs: 4 CPUs -> 10, 8 -> 20, 16 -> 32).
+const concurrency = Number(opt("concurrency")) || Math.min(32, Math.max(2, Math.round(cpus * 2.5)));
 const timeoutMs = Number(opt("timeout")) || 90000;
 const suiteName = opt("suite") || "full";
 const orderMode = opt("order") || "longest";
@@ -101,10 +105,31 @@ if (filters.length) {
   e2eFiles = e2eFiles.filter(hit);
   unitFiles = unitFiles.filter(hit);
 }
-const jobs = [
+// --shard=I/N: divide os testes em N partes de duração estimada parecida
+// (o mais longo vai pra parte mais leve, em ordem fixa). Só usa dados
+// versionados (suites.json: classe "long" e "durationsMs"), nunca o
+// _last_parallel_run.json local — senão máquinas diferentes dividiriam
+// diferente e algum teste ficaria sem rodar ou rodaria 2x.
+const shardArg = opt("shard");
+let shard = null;
+if (shardArg) {
+  const m = /^(\d+)\/(\d+)$/.exec(shardArg);
+  if (!m || Number(m[1]) < 1 || Number(m[1]) > Number(m[2])) { console.error(`--shard inválido: ${shardArg} (use I/N, ex.: 1/2)`); process.exit(2); }
+  shard = { index: Number(m[1]), total: Number(m[2]) };
+}
+let jobs = [
   ...e2eFiles.map((f) => ({ file: f, kind: "e2e", path: path.join(DIR, f), cwd: DIR })),
   ...unitFiles.map((f) => ({ file: `unit/${f}`, kind: "unit", path: path.join(UNIT_DIR, f), cwd: UNIT_DIR })),
 ];
+let shardTotalJobs = jobs.length;
+if (shard) {
+  const known = Object.fromEntries(Object.entries(suites.durationsMs || {}).filter(([k]) => !k.startsWith("_")));
+  const est = (j) => known[j.file] != null ? known[j.file] : (new Set(suites.long.tests).has(j.file) ? 60000 : 10000);
+  const ordered = [...jobs].sort((a, b) => (est(b) - est(a)) || a.file.localeCompare(b.file));
+  const bins = Array.from({ length: shard.total }, () => ({ ms: 0, jobs: [] }));
+  ordered.forEach((j) => { const bin = bins.reduce((lo, b, i) => (b.ms < bins[lo].ms ? i : lo), 0); bins[bin].ms += est(j); bins[bin].jobs.push(j); });
+  jobs = bins[shard.index - 1].jobs;
+}
 if (!jobs.length) {
   console.error("Nenhum teste selecionado" + (filters.length ? ` pelos filtros "${filters.join(",")}"` : "") + ".");
   process.exit(1);
@@ -261,9 +286,10 @@ async function main() {
     command: `node run_parallel.js ${args.join(" ")}`.trim(), suite: suiteName, filters,
     concurrency, timeoutMs, longTimeoutMs: suites.long.timeoutMs, order: orderMode, isolatedServer: isolated,
     coverage, retries: 0, selected: jobs.length, exclusive: exclusiveJobs.map((j) => j.file),
+    shard: shard ? { ...shard, ofTotal: shardTotalJobs } : null,
     serverProfiles: profileJobs.map(([name, , list]) => ({ name, tests: list.map((j) => j.file) })),
   };
-  console.log(`Rodando ${jobs.length} script(s) [suíte ${suiteName}${filters.length ? `, filtros ${filters.join(",")}` : ""}] com concorrência ${concurrency} (timeout ${timeoutMs}ms; classe longa ${suites.long.timeoutMs}ms; exclusivos no fim: ${exclusiveJobs.length})${isolated ? " — servidor isolado" : ""}${coverage ? " — com cobertura" : ""}...\n`);
+  console.log(`Rodando ${jobs.length} script(s) [suíte ${suiteName}${filters.length ? `, filtros ${filters.join(",")}` : ""}${shard ? `, parte ${shard.index}/${shard.total} de ${shardTotalJobs}` : ""}] com concorrência ${concurrency} (timeout ${timeoutMs}ms; classe longa ${suites.long.timeoutMs}ms; exclusivos no fim: ${exclusiveJobs.length})${isolated ? " — servidor isolado" : ""}${coverage ? " — com cobertura" : ""}...\n`);
   if (coverage) fs.rmSync(path.join(DIR, "_coverage"), { recursive: true, force: true });
   fs.rmSync(ARTIFACTS, { recursive: true, force: true });
   let server = null;

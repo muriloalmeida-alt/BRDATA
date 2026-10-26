@@ -39,6 +39,18 @@ async function readState(page) {
   }));
 }
 
+// A Tabela é a última tela da rodada e também reabre quando o teste
+// fecha/recusa a proposta em destaque (closePlayerOfferModal segue o fluxo
+// pra ela). Fecha se tiver sobrado aberta — usado antes de cada rodada e
+// pelos testes depois de tratar a proposta da última rodada.
+async function closeLeftoverTabela(page) {
+  await page.waitForTimeout(150); // a Tabela abre logo depois de a proposta fechar
+  for (let i = 0; i < 10 && await page.locator("#tabelaModalOverlay.open").count(); i++) {
+    await page.click("#btnTabelaModalCloseFooter", { timeout: 2500 }).catch(() => {});
+    await page.waitForTimeout(100);
+  }
+}
+
 async function playRound(page, hooks = {}) {
   const start = await readState(page);
   const screens = [];
@@ -65,13 +77,7 @@ async function playRound(page, hooks = {}) {
   // Começa só com a tela do jogo limpa (nenhuma tela por cima) — o
   // clique abaixo não passa pelo teste de ponteiro, então não pode
   // acontecer com alguma tela ainda aberta.
-  // A Tabela é a última tela da rodada anterior e também reabre quando o
-  // teste fecha/recusa a proposta em destaque (closePlayerOfferModal
-  // segue o fluxo pra ela) — se sobrou aberta, fecha antes de começar.
-  for (let i = 0; i < 10 && await page.locator("#tabelaModalOverlay.open").count(); i++) {
-    await page.click("#btnTabelaModalCloseFooter", { timeout: 2500 }).catch(() => {});
-    await page.waitForTimeout(100);
-  }
+  await closeLeftoverTabela(page);
   const clean = await page.waitForFunction(() => !document.getElementById("btnSimulate").disabled
     && ![...document.querySelectorAll(".ct-modal-overlay.open")].some((e) => e.id !== "actionLoadingOverlay"), null, { timeout: 15000 }).then(() => true, () => false);
   if (!clean) {
@@ -150,4 +156,4 @@ async function playNextMatchRound(page, hooks = {}) {
   throw new Error("playNextMatchRound: nenhuma semana de jogo oficial em 30 semanas");
 }
 
-module.exports = { playRound, playNextMatchRound };
+module.exports = { playRound, playNextMatchRound, closeLeftoverTabela };

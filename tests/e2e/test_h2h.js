@@ -1,7 +1,7 @@
 const { chromium } = require("playwright-core");
 const { check } = require("./_check");
 const { enterGame } = require("./_startup");
-const { playNextMatchRound } = require("./_round");
+const { playNextMatchRound, closeLeftoverTabela } = require("./_round");
 const { skipPreseason } = require("./_calendar_skip");
 (async () => {
   const browser = await chromium.launch({ executablePath: process.env.PW_CHROMIUM_PATH || undefined, headless: true, args: ["--host-resolver-rules=MAP fonts.googleapis.com 127.0.0.1,MAP fonts.gstatic.com 127.0.0.1"] });
@@ -45,7 +45,7 @@ const { skipPreseason } = require("./_calendar_skip");
   // _round.js), confere que matchLog registra.
   for (let i = 0; i < 3; i++) {
     const r = await playNextMatchRound(page);
-    if (r.stoppedAt === "playerOfferOverlay") await page.click("#playerOfferClose");
+    if (r.stoppedAt === "playerOfferOverlay") { await page.click("#playerOfferClose"); await closeLeftoverTabela(page); }
     else if (r.stoppedAt) throw new Error(`rodada ${i + 1} parou numa tela inesperada: ${r.stoppedAt}`);
     await page.waitForTimeout(200);
   }

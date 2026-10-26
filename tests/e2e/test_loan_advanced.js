@@ -1,6 +1,6 @@
 const { chromium } = require("playwright-core");
 const { check } = require("./_check");
-const { playNextMatchRound } = require("./_round");
+const { playNextMatchRound, closeLeftoverTabela } = require("./_round");
 const { enterGame, waitForBoot } = require("./_startup");
 
 async function newCareer(page, base, email) {
@@ -108,7 +108,7 @@ async function putCareer(page, career) {
   await page.click(".m3-nav-item[data-panel='central']");
   await page.waitForTimeout(200);
   const offerStop = await playNextMatchRound(page);
-  if (offerStop.stoppedAt === "playerOfferOverlay") await page.click("#btnPlayerOfferDecline");
+  if (offerStop.stoppedAt === "playerOfferOverlay") { await page.click("#btnPlayerOfferDecline"); await closeLeftoverTabela(page); }
   await page.waitForTimeout(1200); // persistência debounced (800 ms)
   career = await getCareer(page);
   console.log("   Rodada depois de jogar:", career.currentRound, "(cláusula vence na", loanedOutFound.returnRound + ")");

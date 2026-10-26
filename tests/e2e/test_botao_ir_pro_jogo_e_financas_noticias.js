@@ -7,7 +7,7 @@
 const { chromium } = require("playwright-core");
 const { check } = require("./_check");
 const { enterGame } = require("./_startup");
-const { playNextMatchRound } = require("./_round");
+const { playNextMatchRound, closeLeftoverTabela } = require("./_round");
 const { skipPreseason } = require("./_calendar_skip");
 
 (async () => {
@@ -67,7 +67,7 @@ const { skipPreseason } = require("./_calendar_skip");
         }));
       },
     });
-    if (r.stoppedAt === "playerOfferOverlay") await page.click("#btnPlayerOfferDecline");
+    if (r.stoppedAt === "playerOfferOverlay") { await page.click("#btnPlayerOfferDecline"); await closeLeftoverTabela(page); }
     else if (r.stoppedAt) throw new Error(`rodada parou numa tela inesperada: ${r.stoppedAt}`);
   }
   check("2) Notícias mostra a linha financeira (salários pagos):", newsFinance.includes("Salários pagos"), { rodadasJogadas: rounds });

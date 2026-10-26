@@ -68,10 +68,24 @@ vírgula) e/ou ajustando concorrência/timeout:
 node run_parallel.js test_mercado,test_scout --concurrency=8 --timeout=60000
 ```
 
+Várias máquinas (CI em paralelo, por exemplo): `--shard=I/N` roda só a
+parte I de N — `node run_parallel.js --isolated-server --shard=1/2` numa
+máquina e `--shard=2/2` na outra cobrem a suíte inteira, sem repetir
+teste. A divisão usa as durações medidas versionadas em `suites.json`
+(`durationsMs`), então é a mesma em qualquer máquina; atualize essa
+tabela quando a suíte mudar muito.
+
+Máquina maior: a concorrência padrão (2,5 × CPUs) vai até 32 processos,
+então a suíte escala sozinha. Nesta suíte o limite é CPU (≈ 76–88% de uso
+com 10 processos em 4 CPUs), então mais núcleos reduzem o tempo quase na
+mesma proporção; as pausas fixas curtas dos testes não são o gargalo
+(trocá-las por espera de estado deixou a suíte mais lenta em 4 CPUs).
+
 Outras opções: `--order=alpha` (ordem alfabética; o padrão roda os mais
 longos primeiro, pela duração da última execução), `--no-unit`.
-Concorrência padrão = 2,5 × CPUs (entre 2 e 12) — a suíte passa a maior
-parte do tempo esperando (timers do app, esperas fixas), não em CPU.
+Concorrência padrão = 2,5 × CPUs (entre 2 e 32) — em 4 CPUs isso dá 10
+processos e ~76% de CPU: o paralelismo já ocupa a máquina (ver "Máquina
+maior" acima).
 
 Configuração em `suites.json` (nada lá pula teste):
 - `fast` — lista da rota rápida;

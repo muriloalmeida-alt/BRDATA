@@ -46,7 +46,19 @@ priorização, manutenção de `docs/`) é absorvido.
   alterar → testar → revisar);
 * implementar a mudança mínima necessária, preservando comportamento e
   reaproveitando o que já existe;
-* rodar os testes/validações aplicáveis;
+* rodar os testes/validações aplicáveis, nesta ordem (comandos em
+  `tests/e2e/`, ver `tests/e2e/README.md`):
+  - **durante o desenvolvimento**, a cada mudança: `npm run test:fast`
+    (rota rápida, ~25 s: fluxos críticos + unitários) **e** os testes da
+    área tocada (`node run_parallel.js <filtro> --isolated-server`);
+  - **antes de reportar/pedir merge**: `npm run test:full` (suíte
+    completa) — a rota rápida nunca substitui a completa;
+  - teste novo ou alterado usa `check()` pras verificações e espera pelo
+    ESTADO pra tudo que é assíncrono (boot/reload, rede, partida ao vivo,
+    telas em fila — helpers `_*.js`); pausa curta fixa (≤ 300 ms) depois
+    de clique é aceitável — trocá-las em massa por espera de estado deixou
+    a suíte 19% mais LENTA numa máquina de 4 CPUs (medido na Fase C do
+    motor de testes);
 * reportar arquivos alterados/criados/removidos.
 
 Não misture os dois na mesma resposta sem deixar claro qual chapéu está

@@ -1,7 +1,7 @@
 const { chromium } = require("playwright-core");
 const { check } = require("./_check");
 const { enterGame, waitForBoot } = require("./_startup");
-const { playNextMatchRound } = require("./_round");
+const { playNextMatchRound, closeLeftoverTabela } = require("./_round");
 const { skipPreseason } = require("./_calendar_skip");
 
 async function newCareer(page, base, email) {
@@ -111,7 +111,7 @@ async function putCareer(page, career) {
     const r = await playNextMatchRound(page, {
       onNews: async (p) => { financeText = await p.evaluate(() => document.getElementById("newsFinanceRow").textContent); },
     });
-    if (r.stoppedAt === "playerOfferOverlay") await page.click("#btnPlayerOfferDecline");
+    if (r.stoppedAt === "playerOfferOverlay") { await page.click("#btnPlayerOfferDecline"); await closeLeftoverTabela(page); }
     else if (r.stoppedAt) throw new Error(`rodada parou numa tela inesperada: ${r.stoppedAt}`);
   }
   check("6) Linha financeira da rodada menciona patrocínio:", financeText.includes("Patrocínio"), { rodadasJogadas: rounds, linha: financeText.replace(/\s+/g, " ").trim() });

@@ -72,7 +72,9 @@ const { check } = require("./_check");
   await page.fill("#ctLoginEmail", email);
   await page.fill("#ctLoginPassword", "senhaerrada");
   await page.click("#screenLoginRequired button[type=submit]");
-  await page.waitForTimeout(600);
+  // Espera a resposta do login recusado (estado: botão volta a "Entrar"),
+  // até 10 s — antes 600 ms fixos, curto sob carga.
+  await page.waitForFunction(() => { const b = document.querySelector("#screenLoginRequired button[type=submit]"); return !b.disabled && b.textContent === "Entrar"; }, null, { timeout: 10000 }).catch(() => {});
   const wrongPassState = await page.evaluate(() => {
     const err = document.getElementById("ctLoginError");
     const btn = document.querySelector("#screenLoginRequired button[type=submit]");
