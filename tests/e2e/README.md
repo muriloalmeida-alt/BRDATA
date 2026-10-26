@@ -101,9 +101,16 @@ cada teste que falhou) e `_artifacts/server.log` (servidor isolado),
 `_coverage/` + `_coverage_summary.json` (com `--coverage`; `__total.lostCollections` lista testes cuja coleta de cobertura se perdeu — compare cobertura só quando estiver vazio).
 Não há retry automático: um teste que falha conta como falha.
 
-CI: o repositório ainda não tem pipeline (não existe `.github/workflows`);
-`npm run test:ci` é o comando pronto pra quando houver — servidor
-isolado, suíte completa, código de saída ≠ 0 se qualquer teste falhar.
+CI: `.github/workflows/testes.yml` (GitHub Actions), em todo push na
+`main` e nas branches `claude/**`, em pull request e sob demanda:
+- **Rota rápida** — um job, primeiro sinal em poucos minutos;
+- **Suíte completa** — 4 máquinas em paralelo (`--shard=1/4` … `4/4`),
+  cada uma com servidor isolado;
+- resumo de cada job na página do run (testes e verificações que
+  falharam) e logs de falha como artefato (`_artifacts/`, 14 dias).
+A preparação (Node 22, `npm ci`, Chromium da versão do playwright-core,
+com cache) está em `.github/actions/preparar-testes`. Sem retry e sem
+lista de "falhas aceitas": teste que falha deixa o CI vermelho.
 
 Cada script imprime um checklist numerado (`1) ... true/false`) e sai com
 código 0 (tudo passou) ou 1 (alguma verificação falhou/exceção). O runner

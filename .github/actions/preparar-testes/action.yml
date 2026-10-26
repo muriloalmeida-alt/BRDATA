@@ -1,0 +1,41 @@
+name: Preparar testes
+description: Node, dependências do servidor e da suíte e-2-e, e o Chromium do playwright-core (com cache).
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-node@v4
+      with:
+        node-version: 22
+        cache: npm
+        cache-dependency-path: |
+          server/package-lock.json
+          tests/e2e/package-lock.json
+    - name: Dependências do servidor
+      shell: bash
+      working-directory: server
+      run: npm ci
+    - name: Dependências da suíte
+      shell: bash
+      working-directory: tests/e2e
+      run: npm ci
+    - name: Versão do playwright-core
+      id: pw
+      shell: bash
+      working-directory: tests/e2e
+      run: echo "versao=$(node -p "require('playwright-core/package.json').version")" >> "$GITHUB_OUTPUT"
+    - name: Cache do Chromium
+      id: cache-pw
+      uses: actions/cache@v4
+      with:
+        path: ${{ env.PLAYWRIGHT_BROWSERS_PATH }}
+        key: pw-chromium-${{ runner.os }}-${{ steps.pw.outputs.versao }}
+    - name: Instalar Chromium
+      if: steps.cache-pw.outputs.cache-hit != 'true'
+      shell: bash
+      working-directory: tests/e2e
+      run: npx playwright-core install --with-deps chromium
+    - name: Dependências de sistema do Chromium (cache reaproveitado)
+      if: steps.cache-pw.outputs.cache-hit == 'true'
+      shell: bash
+      working-directory: tests/e2e
+      run: npx playwright-core install-deps chromium
