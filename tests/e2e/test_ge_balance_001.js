@@ -8,6 +8,7 @@ const { chromium } = require("playwright-core");
 const { check } = require("./_check");
 const { enterGame } = require("./_startup");
 const { skipPreseason } = require("./_calendar_skip");
+const { closeLeftoverTabela } = require("./_round");
 
 async function newCareer(page, base, email) {
   await page.goto(base + "/", { waitUntil: "load" });
@@ -85,14 +86,13 @@ async function newCareer(page, base, email) {
   await page.waitForTimeout(300);
   // Depois de "Continuar", o jogo abre OU a proposta por jogador (se
   // houver uma pendente) OU a Tabela (ver btnRoundResultsContinue em
-  // carreira.js) — nunca os 2 juntos, então fecha o que tiver aberto.
+  // carreira.js) — nunca os 2 juntos. Fechar a proposta abre a Tabela
+  // em seguida (closePlayerOfferModal), então a Tabela é fechada depois
+  // nos 2 casos.
   if (await page.waitForSelector("#playerOfferOverlay.open", { timeout: 1200 }).then(() => true).catch(() => false)) {
     await page.click("#playerOfferClose");
-    await page.waitForTimeout(200);
-  } else if (await page.evaluate(() => document.getElementById("tabelaModalOverlay").classList.contains("open"))) {
-    await page.evaluate(() => closeTabelaModal());
-    await page.waitForTimeout(200);
   }
+  await closeLeftoverTabela(page);
 
   // 3) Forçando uma sequência de invencibilidade longa (>=12) ANTES de
   // simular a próxima rodada, o aviso pré-partida aparece — efeito
