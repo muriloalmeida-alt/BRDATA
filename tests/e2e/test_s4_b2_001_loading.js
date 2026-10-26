@@ -35,11 +35,11 @@ const { check } = require("./_check");
       spinnerBorderTopColor: spinnerCs?.borderTopColor,
     };
   });
-  // --m3-surface-dim (tema padrão "Verde de Campo") é #100F0E = rgb(16,15,14);
-  // --m3-primary é #6DDB94 = rgb(109,219,148).
+  // Paleta do redesign (carreira.html): --m3-surface-dim é #050B15 =
+  // rgb(5,11,21); --m3-primary é #B4E64B = rgb(180,230,75).
   check("1) Estado 'carregamento' com tokens --m3-* aplicados (bg/spinner):",
     loadingState.hasCrest && loadingState.hasText &&
-    loadingState.bgColor === "rgb(16, 15, 14)" && loadingState.spinnerBorderTopColor === "rgb(109, 219, 148)",
+    loadingState.bgColor === "rgb(5, 11, 21)" && loadingState.spinnerBorderTopColor === "rgb(180, 230, 75)",
     JSON.stringify(loadingState));
 
   // 2) Regra morta "#screenLoading h1" removida (nenhum dos 3 estados
@@ -76,9 +76,9 @@ const { check } = require("./_check");
   // rgb(231,226,222); --m3-on-surface-variant é #CBC5BE = rgb(203,197,190).
   check("3) Estado 'erro' com tokens --m3-* corretos (ícone/título/subtítulo/detalhe) e botão de retry:",
     errorState.iconColor === "rgb(255, 84, 73)" &&
-    errorState.titleColor === "rgb(231, 226, 222)" &&
-    errorState.subColor === "rgb(203, 197, 190)" &&
-    errorState.detailColor === "rgb(203, 197, 190)" &&
+    errorState.titleColor === "rgb(232, 238, 246)" &&
+    errorState.subColor === "rgb(159, 176, 198)" &&
+    errorState.detailColor === "rgb(159, 176, 198)" &&
     errorState.detailText.includes("Erro de teste") &&
     errorState.hasRetryButton && errorState.retryButtonText === "Tentar novamente",
     JSON.stringify(errorState));

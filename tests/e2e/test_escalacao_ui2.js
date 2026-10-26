@@ -93,16 +93,20 @@ async function newCareer(page, base, email) {
   });
   check("5) autoLineup(includeBase=false) com só jogadores de base NÃO preenche nada:", withBaseBlocked === 0);
 
-  // 6) Modais "grandes" viram tela cheia (classe + ocupam quase todo o viewport).
+  // 6) Seletor de jogador é bottom sheet (redesign, regra global: seletores
+  // abrem ancorados embaixo, nunca centralizados nem em tela cheia) — antes
+  // este item exigia tela cheia, pedido anterior substituído pelo pacote
+  // "Implementação Visual".
   await page.click(`.mt-pos-slot[data-index="0"]`);
   await page.waitForSelector("#pickerOverlay.open");
   await page.waitForTimeout(200);
   const pickerFull = await page.evaluate(() => {
     const modal = document.querySelector("#pickerOverlay .ct-modal");
     const rect = modal.getBoundingClientRect();
-    return { hasClass: document.getElementById("pickerOverlay").classList.contains("ct-modal-fullscreen"), w: rect.width, h: rect.height, vw: window.innerWidth, vh: window.innerHeight };
+    return { hasClass: document.getElementById("pickerOverlay").classList.contains("ct-modal-fullscreen"), w: rect.width, bottom: rect.bottom, top: rect.top, vw: window.innerWidth, vh: window.innerHeight };
   });
-  check("6) pickerOverlay tem classe fullscreen:", pickerFull.hasClass, "| ocupa (quase) toda a largura:", pickerFull.w >= pickerFull.vw - 2, "| ocupa (quase) toda a altura:", pickerFull.h >= pickerFull.vh - 2);
+  check("6) pickerOverlay é bottom sheet (sem tela cheia, ancorado embaixo, largura cheia no celular):",
+    !pickerFull.hasClass && Math.abs(pickerFull.bottom - pickerFull.vh) <= 2 && pickerFull.top > 0 && pickerFull.w >= pickerFull.vw - 2, JSON.stringify(pickerFull));
   await page.click("#pickerClose");
   await page.waitForTimeout(200);
 
