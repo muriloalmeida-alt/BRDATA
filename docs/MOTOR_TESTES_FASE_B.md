@@ -215,7 +215,7 @@ Intermitentes observados nas execuções completas finais: nenhum nas 3 execuç�
 | AT-08 | APROVADO COM RESSALVA | Intermitentes medidos e tratados (§4, §6); sob concorrência 10 ainda podem aparecer casos novos de espera fixa (308 s estáticos restantes; 2 residuais vistos só sob cobertura, §6) |
 | AT-09 | APROVADO | §6, mesma máquina/condições |
 | AT-10 | APROVADO | §3 (desatualizado), §4 (determinismo), §5 (produto), ambiental: nenhum restante |
-| AT-11 | NÃO VERIFICADO | Sem CI no repositório (igual à Fase A) |
+| AT-11 | APROVADO (atualizado em 26/10/2026) | CI criado na Fase C; run 12 (`40357853693`) totalmente verde — ver `docs/MOTOR_TESTES_FASE_A.md` §7 |
 | AT-12 | APROVADO | `git diff c81e97d -- public server` vazio |
 | AT-13 | APROVADO | Sem deploy/Railway; `server/data` do dev restaurado e não mais tocado pela suíte |
 | AT-14 | APROVADO | Este documento |
