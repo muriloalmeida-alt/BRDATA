@@ -9,204 +9,6 @@ divergências, aprovação) — elas não são repetidas aqui.
 
 Demandas vigentes
 
-S4-B5-QA-001 — Batch 5: QA Visual/UX transversal — fecha a S4
-
-Status: REVISÃO DO PM NECESSÁRIA
-Sprint: S4 — Redesign Mobile
-Fase: Batch 5 (QA Visual/UX) — última etapa, fecha a Sprint por inteiro
-Prioridade: P1
-Issue: https://github.com/muriloalmeida-alt/FitOS/issues/37
-
-Objetivo
-
-Revisão transversal do redesign inteiro — as 18 telas migradas (Batch
-2 + Batch 3 + Batch 4) e os 5 componentes formalizados (PlayerCard,
-MatchCard, TransferCard, ContractCard, NewsCard) — conforme
-`docs/sprints/S3/S3_S4_MATRIZ_TELAS_MOBILE.md` (Batch 5 — QA Visual/
-UX, §35 Critérios gerais de aceite). Não é uma tela nova nem um
-componente novo: é a auditoria que confirma que o conjunto migrado
-tela por tela também funciona como um TODO coerente, e fecha
-formalmente a Sprint S4 — Redesign Mobile.
-
-Contexto
-
-Cada demanda de migração (S4-B2-*, S4-B3-*, S4-B4-*) validou sua
-própria tela isoladamente — nenhuma validou consistência CRUZADA entre
-telas, nem os eixos transversais que só aparecem quando se olha o
-app inteiro (densidade de toque, ordem de leitura, uso de emoji como
-ícone em vez de asset, ARIA). A matriz original já previa esta etapa
-como item separado, com critérios de aceite próprios (§35): Layout,
-Componentes, Interação, Acessibilidade, Produto.
-
-Gaps já conhecidos e registrados ao longo da Sprint, que esta
-auditoria deve confirmar/reavaliar com evidência (não presumir que
-continuam do jeito que foram registrados — o app mudou muito desde
-então):
-
-* uso de emoji como ícone de interface (262 ocorrências na contagem
-  original da S3.2.7) — nunca tratado como projeto isolado, conforme
-  decidido; confirmar estado atual;
-* densidade de ARIA geral baixa (achado original da S3.2.7);
-* `LeagueTable` — único dos 6 BRDATA Product Patterns do CLAUDE.md §7
-  ainda sem componente formal (segue tabela HTML tradicional,
-  confirmado em `S4_REQUISITOS_VIGENTES.md` §3);
-* `.icon-btn` abaixo de 48dp (área de toque);
-* divergências já decididas mas que precisam ser conferidas como
-  aplicadas de forma CONSISTENTE em todo o app, não só na tela que as
-  originou: tipografia Rajdhani/Bebas Neue como BRDATA Extension
-  (decidido em `S4-B2-003`, também usado em `S4-B2-004`/`S4-B4-004`/
-  `S4-B4-005`) e verde do gramado como BRDATA Extension;
-* setas de tendência (▲/▼) do Perfil do jogador, registradas como
-  divergência aberta em `S4-B2-005` (token `--brd-*` sem equivalente
-  `--m3-*` estabelecido) — nunca resolvida;
-* falhas de teste pré-existentes já confirmadas (via `git stash`, não
-  regressão de nenhuma demanda) em múltiplos relatórios ao longo da
-  Sprint — `test_cup.js`, `test_tabela_modal.js`, 2 checks de
-  `test_intervalo_noticias_proposta_destino.js`, 1 flake em
-  `test_noticias_fullscreen_fluxo.js` — consolidar essa lista aqui,
-  confirmar quais ainda procedem, e decidir (registrar decisão, não
-  resolver sozinho se for grande) o que entra nesta demanda vs. vira
-  demanda própria de dívida técnica.
-
-Escopo
-
-Chapéu implementador deve, para o conjunto das 18 telas + 5
-componentes:
-
-1. Layout: confirmar ausência de zoom horizontal, conteúdo cortado,
-   hierarquia clara, CTAs identificáveis — em telas reais, mobile-
-   first, não só nas que tiveram teste E2E dedicado.
-2. Componentes: confirmar reuso real dos 5 componentes formalizados
-   (nenhuma duplicação nova introduzida durante a Sprint), uso de
-   tokens `--m3-*` consistente, estados (vazio/erro/carregando)
-   tratados onde aplicável, ausência de padrão paralelo sem
-   justificativa registrada.
-3. Interação: áreas de toque adequadas (confirmar `.icon-btn` com
-   evidência, não presunção), feedback presente, navegação
-   consistente entre as 18 telas, ações críticas claras.
-4. Acessibilidade: contraste adequado, labels quando necessário,
-   informação não dependente só de cor, ordem de leitura lógica —
-   medir a densidade real de ARIA (não só repetir o número da S3.2.7
-   original, esse número está desatualizado).
-5. Produto: confirmar que nenhuma funcionalidade existente foi
-   removida e nenhuma regra de negócio alterada em nenhuma das 28
-   demandas anteriores desta rodada — auditoria de regressão
-   consolidada, não uma nova rodada de testes do zero.
-6. Consolidar a lista de falhas de teste pré-existentes (item de
-   Contexto acima) com evidência atualizada — quais ainda procedem,
-   quais já não existem mais.
-7. Para cada gap confirmado (emoji, ARIA, LeagueTable, `.icon-btn`,
-   setas de tendência): registrar com evidência real, classificar
-   P1/P2, e decidir (com o PM, não sozinho, se a correção for grande)
-   o que é corrigido nesta própria demanda (pequeno, mecânico) vs. o
-   que vira demanda própria depois da S4 encerrar.
-8. Retornar relatório técnico nesta mesma seção, com o veredito de
-   cada eixo (Layout/Componentes/Interação/Acessibilidade/Produto) e
-   a lista consolidada de gaps + falhas de teste, status `REVISÃO DO
-   PM NECESSÁRIA`.
-
-Fora de escopo
-
-* criar o componente `LeagueTable` (é um achado desta auditoria, não
-  o trabalho dela — vira demanda própria se o PM priorizar);
-* resolver a densidade de ARIA num único esforço monolítico, se a
-  auditoria confirmar que ainda é baixa (mesmo critério: registrar,
-  não resolver tudo de uma vez sem escopo definido);
-* qualquer mudança de regra de negócio;
-* Batch 6 ou qualquer trabalho fora do escopo original da S4 —
-  Redesign Mobile (ex.: `GE-BALANCE-*`, `GE-COPA-001`, `SAVE-LIMIT-001`
-  já são frentes próprias, fora da S4, não deste QA).
-
-Dependências
-
-* As 18 telas migradas + 5 componentes formalizados (Batches 2, 3 e
-  4 — todos aprovados e mesclados).
-* `docs/sprints/S3/S3_S4_MATRIZ_TELAS_MOBILE.md` (Batch 5, §35
-  Critérios gerais de aceite).
-* `docs/sprints/S4/S4_REQUISITOS_VIGENTES.md`.
-
-Requisitos
-
-Mesma sequência obrigatória: inspecionar → localizar → entender →
-planejar → alterar (só o pequeno/mecânico, registrado) → testar →
-revisar. Mesmo rigor de evidência de toda a Sprint — nenhum veredito
-sem grep/leitura de código/teste confirmando.
-
-Critérios de aceite
-
-Os mesmos do §35 da matriz original: Layout, Componentes, Interação,
-Acessibilidade e Produto todos com veredito registrado e evidência;
-lista consolidada de gaps conhecidos revisada com estado atual; lista
-de falhas de teste pré-existentes consolidada; nenhuma regressão
-funcional encontrada nas 28 demandas anteriores.
-
-Validações
-
-O PM deverá validar: cobertura dos 5 eixos, qualidade da evidência,
-classificação de gaps (P1/P2) e a decisão sobre o que é corrigido
-aqui vs. vira demanda própria.
-
-Riscos
-
-* baixo — é auditoria transversal, mudança de código só se for
-  pequena/mecânica e explicitamente registrada como tal.
-
-Observações
-
-**Com esta demanda concluída e aprovada, a Sprint S4 — Redesign
-Mobile está formalmente encerrada** — fundação (`S3-DS20-S4-PREP-001`/
-`002`), Batch 2 (8 telas), Batch 3 (5 itens), Batch 4 (6 telas) e
-Batch 5 (esta), todos aprovados. Por fim: nenhuma das demandas fora
-da S4 (`GE-BALANCE-*`, `GE-COPA-001`, `SAVE-LIMIT-001`) depende do
-fechamento formal da S4 pra continuar evoluindo — são frentes
-paralelas independentes, como já registrado desde que começaram.
-
-
-**Relatório técnico (Claude, 26/10/2026)** — branch `claude/s4-b5-qa-001`,
-sobre `main` 4b539c7 (já com o redesign da referência visual, PRs #47–#49).
-Medição: varredura do código (fora de comentários) + script Playwright em
-360×780 em 6 painéis, 5 telas e o menu (`docs` não guardam o script; ele
-fica no scratchpad da sessão).
-
-| Eixo | Veredito | Evidência |
-|---|---|---|
-| Layout | APROVADO | 0 px de rolagem horizontal em todos os 12 contextos medidos a 360px; hierarquia/CTA lima conferidos por captura nos blocos 1–5 (`docs/REDESIGN_BLOCOS.md`) |
-| Componentes | APROVADO COM RESSALVA | tokens `--m3-*` com a paleta nova; sheets/diálogos no mesmo padrão (fundação); `LeagueTable` segue sem componente formal (a Tabela já não é `<table>` — 0 ocorrências —, é lista `.mt-tr`); 11 regras CSS ainda com `var(--brd-*)` |
-| Interação | APROVADO COM RESSALVA | corrigido aqui: X das modais 26→44px, "?" de ajuda e `.mt-icon-btn` (42→44); continuam < 44px: chips de filtro, segmentos (`.mt-seg-btn`), itens do menu e botões de atalho da Início — aumentá-los muda a densidade das telas (decisão de PM) |
-| Acessibilidade | APROVADO COM RESSALVA | contraste AA em todos os pares principais (texto 16,2:1; secundário 7,2–7,8:1; botão lima 11,6:1; erro 6,0:1; borda 3,6:1); corrigido aqui: botão destrutivo (`--m3-on-error` 4,1→5,4:1), nome acessível nos 57 X das modais e `role="switch"`/`aria-checked`/rótulo nos toggles de Configurações — 0 botões sem nome nos 12 contextos; ARIA geral continua baixa: 39 `aria-*` e 2 `role` pra ~300 botões, 0 `role="dialog"` nas 63 modais fixas |
-| Produto | APROVADO | redesign só de apresentação (diff em `public/` = CSS/markup + paleta/tema/`confirmModal`); suíte completa 152/153 nesta branch (falha: `test_noticias_fullscreen_fluxo`, intermitente já listado) |
-
-**Gaps conhecidos — estado atual**
-
-| Gap | Hoje | Classe | Proposta |
-|---|---|---|---|
-| Emoji como ícone | 267 fora de comentários (121 HTML + 146 JS), ~igual aos 262 originais | P2 | demanda própria (troca por ícones SVG do DS) |
-| ARIA baixa | ver Acessibilidade; modais sem `role="dialog"`/foco preso (só as dinâmicas `m3-*` têm) | P1 | demanda própria: `role="dialog"` + `aria-labelledby` + foco nas 63 modais |
-| `LeagueTable` | lista `.mt-tr`, sem componente formal | P2 | demanda própria (fora de escopo aqui) |
-| `.icon-btn` < 48dp | `.mt-icon-btn` 44px (corrigido); chips/segmentos/menu < 44px | P1 | decidir densidade (PM) |
-| Rajdhani/Bebas | Bebas eliminada (redesign); Rajdhani em 66 usos como extensão BRDATA | — | manter como extensão decidida |
-| Setas ▲/▼ do Perfil | 4 usos em JS; 15 `var(--brd-*)` (11 CSS + 4 JS) sem par `--m3-*` | P2 | migrar junto com a limpeza de `--brd-*` |
-
-**Falhas de teste pré-existentes — consolidado** (10 suítes completas
-locais hoje + CI): `test_tabela_modal` e
-`test_intervalo_noticias_proposta_destino` **não falharam mais**;
-intermitentes de carga ainda vistos 1× cada: `test_cup`,
-`test_noticias_fullscreen_fluxo`, `test_h2h` (também no CI — a Tabela abre
-atrasada, causa não identificada), `test_resumo_rodada`,
-`test_serie_b_escudos`, `test_save`/`test_comissao_tecnica` (só no CI, com
-diagnóstico já no código); `test_regressao_gate` falhou 1× por rede do
-ambiente. Proposta: uma demanda própria de dívida técnica pros
-intermitentes (não resolvidos aqui).
-
-**Arquivos alterados nesta demanda:** `public/carreira.html` (aria-label
-nos X, áreas de toque, `--m3-on-error`), `public/js/carreira.js` (toggles
-com `role="switch"`), este handoff.
-
-Recomendação: aprovar o fechamento da S4 com os gaps P1/P2 acima virando
-demandas próprias (ARIA de modais, densidade de toque, emoji, LeagueTable,
-`--brd-*`, intermitentes).
-⸻
-
 S4-AUDIT-BACKLOG-001 — Auditoria de prontidão das demandas #12 a #21
 
 Status: APROVADO
@@ -434,6 +236,209 @@ manualmente em cada merge, sem perda de conteúdo.
 Histórico
 
 Demanda	Data	Commit	Changelog
+S4-B5-QA-001 — Batch 5: QA Visual/UX transversal (fecha a S4)	26/10/2026	branch `claude/s4-b5-qa-001` (`09a967b`)	docs/project/CHANGELOG.md (v11.0.0)
+
+S4-B5-QA-001 — Batch 5: QA Visual/UX transversal — fecha a S4
+
+Status: APROVADO
+Sprint: S4 — Redesign Mobile
+Fase: Batch 5 (QA Visual/UX) — última etapa, fecha a Sprint por inteiro
+Prioridade: P1
+Issue: https://github.com/muriloalmeida-alt/FitOS/issues/37
+
+Objetivo
+
+Revisão transversal do redesign inteiro — as 18 telas migradas (Batch
+2 + Batch 3 + Batch 4) e os 5 componentes formalizados (PlayerCard,
+MatchCard, TransferCard, ContractCard, NewsCard) — conforme
+`docs/sprints/S3/S3_S4_MATRIZ_TELAS_MOBILE.md` (Batch 5 — QA Visual/
+UX, §35 Critérios gerais de aceite). Não é uma tela nova nem um
+componente novo: é a auditoria que confirma que o conjunto migrado
+tela por tela também funciona como um TODO coerente, e fecha
+formalmente a Sprint S4 — Redesign Mobile.
+
+Contexto
+
+Cada demanda de migração (S4-B2-*, S4-B3-*, S4-B4-*) validou sua
+própria tela isoladamente — nenhuma validou consistência CRUZADA entre
+telas, nem os eixos transversais que só aparecem quando se olha o
+app inteiro (densidade de toque, ordem de leitura, uso de emoji como
+ícone em vez de asset, ARIA). A matriz original já previa esta etapa
+como item separado, com critérios de aceite próprios (§35): Layout,
+Componentes, Interação, Acessibilidade, Produto.
+
+Gaps já conhecidos e registrados ao longo da Sprint, que esta
+auditoria deve confirmar/reavaliar com evidência (não presumir que
+continuam do jeito que foram registrados — o app mudou muito desde
+então):
+
+* uso de emoji como ícone de interface (262 ocorrências na contagem
+  original da S3.2.7) — nunca tratado como projeto isolado, conforme
+  decidido; confirmar estado atual;
+* densidade de ARIA geral baixa (achado original da S3.2.7);
+* `LeagueTable` — único dos 6 BRDATA Product Patterns do CLAUDE.md §7
+  ainda sem componente formal (segue tabela HTML tradicional,
+  confirmado em `S4_REQUISITOS_VIGENTES.md` §3);
+* `.icon-btn` abaixo de 48dp (área de toque);
+* divergências já decididas mas que precisam ser conferidas como
+  aplicadas de forma CONSISTENTE em todo o app, não só na tela que as
+  originou: tipografia Rajdhani/Bebas Neue como BRDATA Extension
+  (decidido em `S4-B2-003`, também usado em `S4-B2-004`/`S4-B4-004`/
+  `S4-B4-005`) e verde do gramado como BRDATA Extension;
+* setas de tendência (▲/▼) do Perfil do jogador, registradas como
+  divergência aberta em `S4-B2-005` (token `--brd-*` sem equivalente
+  `--m3-*` estabelecido) — nunca resolvida;
+* falhas de teste pré-existentes já confirmadas (via `git stash`, não
+  regressão de nenhuma demanda) em múltiplos relatórios ao longo da
+  Sprint — `test_cup.js`, `test_tabela_modal.js`, 2 checks de
+  `test_intervalo_noticias_proposta_destino.js`, 1 flake em
+  `test_noticias_fullscreen_fluxo.js` — consolidar essa lista aqui,
+  confirmar quais ainda procedem, e decidir (registrar decisão, não
+  resolver sozinho se for grande) o que entra nesta demanda vs. vira
+  demanda própria de dívida técnica.
+
+Escopo
+
+Chapéu implementador deve, para o conjunto das 18 telas + 5
+componentes:
+
+1. Layout: confirmar ausência de zoom horizontal, conteúdo cortado,
+   hierarquia clara, CTAs identificáveis — em telas reais, mobile-
+   first, não só nas que tiveram teste E2E dedicado.
+2. Componentes: confirmar reuso real dos 5 componentes formalizados
+   (nenhuma duplicação nova introduzida durante a Sprint), uso de
+   tokens `--m3-*` consistente, estados (vazio/erro/carregando)
+   tratados onde aplicável, ausência de padrão paralelo sem
+   justificativa registrada.
+3. Interação: áreas de toque adequadas (confirmar `.icon-btn` com
+   evidência, não presunção), feedback presente, navegação
+   consistente entre as 18 telas, ações críticas claras.
+4. Acessibilidade: contraste adequado, labels quando necessário,
+   informação não dependente só de cor, ordem de leitura lógica —
+   medir a densidade real de ARIA (não só repetir o número da S3.2.7
+   original, esse número está desatualizado).
+5. Produto: confirmar que nenhuma funcionalidade existente foi
+   removida e nenhuma regra de negócio alterada em nenhuma das 28
+   demandas anteriores desta rodada — auditoria de regressão
+   consolidada, não uma nova rodada de testes do zero.
+6. Consolidar a lista de falhas de teste pré-existentes (item de
+   Contexto acima) com evidência atualizada — quais ainda procedem,
+   quais já não existem mais.
+7. Para cada gap confirmado (emoji, ARIA, LeagueTable, `.icon-btn`,
+   setas de tendência): registrar com evidência real, classificar
+   P1/P2, e decidir (com o PM, não sozinho, se a correção for grande)
+   o que é corrigido nesta própria demanda (pequeno, mecânico) vs. o
+   que vira demanda própria depois da S4 encerrar.
+8. Retornar relatório técnico nesta mesma seção, com o veredito de
+   cada eixo (Layout/Componentes/Interação/Acessibilidade/Produto) e
+   a lista consolidada de gaps + falhas de teste, status `REVISÃO DO
+   PM NECESSÁRIA`.
+
+Fora de escopo
+
+* criar o componente `LeagueTable` (é um achado desta auditoria, não
+  o trabalho dela — vira demanda própria se o PM priorizar);
+* resolver a densidade de ARIA num único esforço monolítico, se a
+  auditoria confirmar que ainda é baixa (mesmo critério: registrar,
+  não resolver tudo de uma vez sem escopo definido);
+* qualquer mudança de regra de negócio;
+* Batch 6 ou qualquer trabalho fora do escopo original da S4 —
+  Redesign Mobile (ex.: `GE-BALANCE-*`, `GE-COPA-001`, `SAVE-LIMIT-001`
+  já são frentes próprias, fora da S4, não deste QA).
+
+Dependências
+
+* As 18 telas migradas + 5 componentes formalizados (Batches 2, 3 e
+  4 — todos aprovados e mesclados).
+* `docs/sprints/S3/S3_S4_MATRIZ_TELAS_MOBILE.md` (Batch 5, §35
+  Critérios gerais de aceite).
+* `docs/sprints/S4/S4_REQUISITOS_VIGENTES.md`.
+
+Requisitos
+
+Mesma sequência obrigatória: inspecionar → localizar → entender →
+planejar → alterar (só o pequeno/mecânico, registrado) → testar →
+revisar. Mesmo rigor de evidência de toda a Sprint — nenhum veredito
+sem grep/leitura de código/teste confirmando.
+
+Critérios de aceite
+
+Os mesmos do §35 da matriz original: Layout, Componentes, Interação,
+Acessibilidade e Produto todos com veredito registrado e evidência;
+lista consolidada de gaps conhecidos revisada com estado atual; lista
+de falhas de teste pré-existentes consolidada; nenhuma regressão
+funcional encontrada nas 28 demandas anteriores.
+
+Validações
+
+O PM deverá validar: cobertura dos 5 eixos, qualidade da evidência,
+classificação de gaps (P1/P2) e a decisão sobre o que é corrigido
+aqui vs. vira demanda própria.
+
+Riscos
+
+* baixo — é auditoria transversal, mudança de código só se for
+  pequena/mecânica e explicitamente registrada como tal.
+
+Observações
+
+**Com esta demanda concluída e aprovada, a Sprint S4 — Redesign
+Mobile está formalmente encerrada** — fundação (`S3-DS20-S4-PREP-001`/
+`002`), Batch 2 (8 telas), Batch 3 (5 itens), Batch 4 (6 telas) e
+Batch 5 (esta), todos aprovados. Por fim: nenhuma das demandas fora
+da S4 (`GE-BALANCE-*`, `GE-COPA-001`, `SAVE-LIMIT-001`) depende do
+fechamento formal da S4 pra continuar evoluindo — são frentes
+paralelas independentes, como já registrado desde que começaram.
+
+
+**Relatório técnico (Claude, 26/10/2026)** — branch `claude/s4-b5-qa-001`,
+sobre `main` 4b539c7 (já com o redesign da referência visual, PRs #47–#49).
+Medição: varredura do código (fora de comentários) + script Playwright em
+360×780 em 6 painéis, 5 telas e o menu (`docs` não guardam o script; ele
+fica no scratchpad da sessão).
+
+| Eixo | Veredito | Evidência |
+|---|---|---|
+| Layout | APROVADO | 0 px de rolagem horizontal em todos os 12 contextos medidos a 360px; hierarquia/CTA lima conferidos por captura nos blocos 1–5 (`docs/REDESIGN_BLOCOS.md`) |
+| Componentes | APROVADO COM RESSALVA | tokens `--m3-*` com a paleta nova; sheets/diálogos no mesmo padrão (fundação); `LeagueTable` segue sem componente formal (a Tabela já não é `<table>` — 0 ocorrências —, é lista `.mt-tr`); 11 regras CSS ainda com `var(--brd-*)` |
+| Interação | APROVADO COM RESSALVA | corrigido aqui: X das modais 26→44px, "?" de ajuda e `.mt-icon-btn` (42→44); continuam < 44px: chips de filtro, segmentos (`.mt-seg-btn`), itens do menu e botões de atalho da Início — aumentá-los muda a densidade das telas (decisão de PM) |
+| Acessibilidade | APROVADO COM RESSALVA | contraste AA em todos os pares principais (texto 16,2:1; secundário 7,2–7,8:1; botão lima 11,6:1; erro 6,0:1; borda 3,6:1); corrigido aqui: botão destrutivo (`--m3-on-error` 4,1→5,4:1), nome acessível nos 57 X das modais e `role="switch"`/`aria-checked`/rótulo nos toggles de Configurações — 0 botões sem nome nos 12 contextos; ARIA geral continua baixa: 39 `aria-*` e 2 `role` pra ~300 botões, 0 `role="dialog"` nas 63 modais fixas |
+| Produto | APROVADO | redesign só de apresentação (diff em `public/` = CSS/markup + paleta/tema/`confirmModal`); suíte completa 152/153 nesta branch (falha: `test_noticias_fullscreen_fluxo`, intermitente já listado) |
+
+**Gaps conhecidos — estado atual**
+
+| Gap | Hoje | Classe | Proposta |
+|---|---|---|---|
+| Emoji como ícone | 267 fora de comentários (121 HTML + 146 JS), ~igual aos 262 originais | P2 | demanda própria (troca por ícones SVG do DS) |
+| ARIA baixa | ver Acessibilidade; modais sem `role="dialog"`/foco preso (só as dinâmicas `m3-*` têm) | P1 | demanda própria: `role="dialog"` + `aria-labelledby` + foco nas 63 modais |
+| `LeagueTable` | lista `.mt-tr`, sem componente formal | P2 | demanda própria (fora de escopo aqui) |
+| `.icon-btn` < 48dp | `.mt-icon-btn` 44px (corrigido); chips/segmentos/menu < 44px | P1 | decidir densidade (PM) |
+| Rajdhani/Bebas | Bebas eliminada (redesign); Rajdhani em 66 usos como extensão BRDATA | — | manter como extensão decidida |
+| Setas ▲/▼ do Perfil | 4 usos em JS; 15 `var(--brd-*)` (11 CSS + 4 JS) sem par `--m3-*` | P2 | migrar junto com a limpeza de `--brd-*` |
+
+**Falhas de teste pré-existentes — consolidado** (10 suítes completas
+locais hoje + CI): `test_tabela_modal` e
+`test_intervalo_noticias_proposta_destino` **não falharam mais**;
+intermitentes de carga ainda vistos 1× cada: `test_cup`,
+`test_noticias_fullscreen_fluxo`, `test_h2h` (também no CI — a Tabela abre
+atrasada, causa não identificada), `test_resumo_rodada`,
+`test_serie_b_escudos`, `test_save`/`test_comissao_tecnica` (só no CI, com
+diagnóstico já no código); `test_regressao_gate` falhou 1× por rede do
+ambiente. Proposta: uma demanda própria de dívida técnica pros
+intermitentes (não resolvidos aqui).
+
+**Arquivos alterados nesta demanda:** `public/carreira.html` (aria-label
+nos X, áreas de toque, `--m3-on-error`), `public/js/carreira.js` (toggles
+com `role="switch"`), este handoff.
+
+Recomendação: aprovar o fechamento da S4 com os gaps P1/P2 acima virando
+demandas próprias (ARIA de modais, densidade de toque, emoji, LeagueTable,
+`--brd-*`, intermitentes).
+
+APROVADO pelo Murilo em 26/10/2026, diretamente na conversa ("Aprovado"). **Sprint S4 — Redesign Mobile formalmente encerrada.** Gaps P1/P2 acima viram demandas próprias quando priorizados.
+
+⸻
+
 S3-DS20-S4-READINESS-001 — S3.2.7 Readiness Review	11/09/2026	sem commit de código — demanda de auditoria/decisão; nota de fechamento registrada no commit `9ac51bf`	docs/project/CHANGELOG.md (a atualizar)
 
 APROVADO pelo Murilo em 11/09/2026, diretamente nesta conversa
