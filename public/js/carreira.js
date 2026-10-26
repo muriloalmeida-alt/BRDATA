@@ -659,6 +659,67 @@ function openM3Dialog(opts) { return m3OpenOverlay("dialog", opts); }
 function closeM3Dialog(id) { closeM3Overlay(id); }
 function openM3BottomSheet(opts) { return m3OpenOverlay("sheet", opts); }
 function closeM3BottomSheet(id) { closeM3Overlay(id); }
+
+// Acessibilidade das modais (P1 da S4-B5-QA-001): as .ct-modal-overlay
+// fixas abrem/fecham trocando a classe "open" em dezenas de lugares —
+// em vez de mexer em cada um, um observador por overlay dá a elas o
+// mesmo comportamento das m3-* acima: papel de diálogo com o título
+// ligado, foco levado pra dentro ao abrir, Tab preso na modal de cima e
+// foco devolvido a quem abriu ao fechar. Esc NÃO fecha: cada modal tem
+// fechamento com efeito próprio (ex.: o X da partida ao vivo encerra o
+// jogo), então fechar continua sendo só pelos botões dela.
+const CT_MODAL_LAST_FOCUS = new Map(); // overlay -> elemento focado antes de abrir
+function ctTopOpenModal() {
+  const open = [...document.querySelectorAll(".ct-modal-overlay.open")];
+  return open[open.length - 1] || null; // última no HTML = a de cima (mesma convenção do app)
+}
+function initModalA11y() {
+  document.querySelectorAll(".ct-modal-overlay").forEach((overlay, i) => {
+    const card = overlay.querySelector(".ct-modal");
+    if (!card) return;
+    card.setAttribute("role", "dialog");
+    card.setAttribute("aria-modal", "true");
+    card.setAttribute("tabindex", "-1");
+    // Religa o título a cada abertura: algumas modais redesenham o
+    // cabeçalho (ex.: passos do onboarding) e o id ligado no boot some.
+    const linkTitle = () => {
+      const title = card.querySelector("h3, h2, .ct-modal-title");
+      if (!title) return;
+      if (!title.id) title.id = `${overlay.id || `ctModal${i}`}Title`;
+      card.setAttribute("aria-labelledby", title.id);
+    };
+    linkTitle();
+    new MutationObserver(() => {
+      const isOpen = overlay.classList.contains("open");
+      if (isOpen && !CT_MODAL_LAST_FOCUS.has(overlay)) {
+        linkTitle();
+        CT_MODAL_LAST_FOCUS.set(overlay, document.activeElement);
+        // Só move o foco se quem abriu já não focou algo dentro (ex.:
+        // campo de busca); foca o próprio diálogo, não um campo, pra não
+        // abrir o teclado do celular sozinho.
+        requestAnimationFrame(() => {
+          if (overlay.classList.contains("open") && !card.contains(document.activeElement)) card.focus({ preventScroll: true });
+        });
+      } else if (!isOpen && CT_MODAL_LAST_FOCUS.has(overlay)) {
+        const prev = CT_MODAL_LAST_FOCUS.get(overlay);
+        CT_MODAL_LAST_FOCUS.delete(overlay);
+        if (prev && prev !== document.body && document.body.contains(prev) && isRendered(prev)) prev.focus({ preventScroll: true });
+      }
+    }).observe(overlay, { attributes: true, attributeFilter: ["class"] });
+  });
+  document.addEventListener("keydown", (e) => {
+    if (e.key !== "Tab" || m3OpenOverlays.length) return; // diálogos m3-* já prendem o próprio Tab
+    const top = ctTopOpenModal();
+    const card = top && top.querySelector(".ct-modal");
+    if (!card) return;
+    const items = m3FocusableIn(card);
+    if (!items.length) { e.preventDefault(); card.focus(); return; }
+    const first = items[0], last = items[items.length - 1];
+    if (!card.contains(document.activeElement)) { e.preventDefault(); (e.shiftKey ? last : first).focus(); }
+    else if (e.shiftKey && (document.activeElement === first || document.activeElement === card)) { e.preventDefault(); last.focus(); }
+    else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+  });
+}
 // Primitiva de loading estrutural (S3_2_COMPONENTES_E_CONTRATOS.md §18).
 // Retorna HTML puro (não gerencia estado) — quem chama decide quando
 // trocar pelo conteúdo real, mesmo padrão de qualquer outra *HTML()
@@ -16297,6 +16358,7 @@ async function boot() {
   capturePendingInviteFromUrl();
   applyStoredTheme();
   wireStaticListeners();
+  initModalA11y();
   wireModalScrollResetObserver();
   try {
     const me = await fetchJSON("/api/auth/me").catch(() => ({ authenticated: false }));
