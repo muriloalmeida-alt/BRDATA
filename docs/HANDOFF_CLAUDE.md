@@ -69,7 +69,9 @@ Testes
 * Ajustado: `test_save_limit_001_careerstore.js` (await nas chamadas
   agora assíncronas; força modo arquivo).
 * `npm run test:fast`: 18/18 PASS (modo arquivo).
-* `npm run test:full`: em andamento (atualizo aqui ao terminar).
+* `npm run test:full`: 155/155 PASS no modo arquivo e 155/155 PASS com
+  DATABASE_URL apontando pra um Postgres 16 local (141 carreiras gravadas:
+  83MB de JSON bruto viraram 6,5MB comprimidos no banco).
 
 Riscos / pendências
 
