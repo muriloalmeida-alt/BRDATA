@@ -1,4 +1,5 @@
 const { chromium } = require("playwright-core");
+const { enterGame, waitForBoot } = require("./_startup");
 
 (async () => {
   const browser = await chromium.launch({
@@ -36,13 +37,7 @@ const { chromium } = require("playwright-core");
   await page.click(".m3-club-row");
   await page.waitForTimeout(150);
   await page.click("#btnConfirmClub");
-  await page.click("#btnOnboardSkip", { timeout: 2000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnClaimDailyLogin", { timeout: 3000 }).catch(() => {});
-  await page.waitForTimeout(500);
+  await enterGame(page);
 
   // Vai pra escalação, muda formação, clica em Salvar
   await page.click(".m3-nav-item[data-panel='escalacao']");
@@ -56,7 +51,7 @@ const { chromium } = require("playwright-core");
 
   // Recarrega a página (simula fechar/reabrir o navegador) e confere se persistiu
   await page.reload({ waitUntil: "load" });
-  await page.waitForTimeout(1000);
+  await waitForBoot(page);
   const formationAfterReload = await page.evaluate(() => document.getElementById("formationSelect")?.value);
   console.log("FORMATION AFTER RELOAD:", formationAfterReload);
   await page.screenshot({ path: "save-test-after-reload.png" });

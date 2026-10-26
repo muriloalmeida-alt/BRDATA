@@ -3,6 +3,8 @@
 // (chamadas de verdade, não reimplementadas) + offerProbabilityFromScore,
 // no contexto do app real (via page.evaluate).
 const { chromium } = require("playwright-core");
+const { check } = require("./_check");
+const { enterGame } = require("./_startup");
 
 (async () => {
   const browser = await chromium.launch({ executablePath: process.env.PW_CHROMIUM_PATH || undefined, headless: true, args: ["--host-resolver-rules=MAP fonts.googleapis.com 127.0.0.1,MAP fonts.gstatic.com 127.0.0.1"] });
@@ -23,13 +25,7 @@ const { chromium } = require("playwright-core");
   await page.click(".m3-club-row");
   await page.waitForTimeout(150);
   await page.click("#btnConfirmClub");
-  await page.click("#btnOnboardSkip", { timeout: 2000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnClaimDailyLogin", { timeout: 3000 }).catch(() => {});
-  await page.waitForTimeout(500);
+  await enterGame(page);
 
   // ---------- Preparação: garante janela de transferências aberta
   // (rodadas 1-3) e ao menos 20 jogadores principais — o que a
@@ -51,7 +47,7 @@ const { chromium } = require("playwright-core");
     if (score < 0.90) return p === 0.40;
     return p === 0.55;
   });
-  console.log("0) offerProbabilityFromScore bate com a tabela exata da especificação:", probOk, JSON.stringify(probTable));
+  check("0) offerProbabilityFromScore bate com a tabela exata da especificação:", probOk, JSON.stringify(probTable));
 
   // ---------- TESTE 1 — Restrição financeira: jogador absurdamente
   // caro (overall 99) -> NENHUM clube do mercado consegue pagar ->
@@ -78,7 +74,7 @@ const { chromium } = require("playwright-core");
     CAREER.pendingOffer = null;
     return { offers };
   });
-  console.log("1) Restrição financeira — jogador overall 99, ninguém pode pagar -> 0 ofertas em 60 tentativas:", teste1.offers === 0, JSON.stringify(teste1));
+  check("1) Restrição financeira — jogador overall 99, ninguém pode pagar -> 0 ofertas em 60 tentativas:", teste1.offers === 0, JSON.stringify(teste1));
 
   // ---------- TESTE 2/3/4/5 combinados (estatístico) — clube carente
   // e compatível (score alto, ~0.92 esperado) vs. clube bem servido e
@@ -159,7 +155,7 @@ const { chromium } = require("playwright-core");
   // (o RNG é real, não mockado) — o que importa é demonstrar a
   // TENDÊNCIA: score claramente maior e MUITO mais ofertas geradas.
   const trendOk = statResult.scoreNeedy > statResult.scoreServed + 0.3 && statResult.offersNeedy > statResult.offersServed * 2;
-  console.log(`2/3/4/5) Clube carente+compatível (score médio ${statResult.scoreNeedy.toFixed(2)}) gera MUITO mais ofertas (${statResult.offersNeedy}/${N_TRIALS}) que clube bem servido+incompatível (score médio ${statResult.scoreServed.toFixed(2)}, ${statResult.offersServed}/${N_TRIALS}):`, trendOk, JSON.stringify(statResult));
+  check(`2/3/4/5) Clube carente+compatível (score médio ${statResult.scoreNeedy.toFixed(2)}) gera MUITO mais ofertas (${statResult.offersNeedy}/${N_TRIALS}) que clube bem servido+incompatível (score médio ${statResult.scoreServed.toFixed(2)}, ${statResult.offersServed}/${N_TRIALS}):`, trendOk, JSON.stringify(statResult));
 
   // ---------- TESTE 6 — Jogador listado pode receber oferta de clubes
   // elegíveis (maybeSpawnListingOffer, cenário favorável: mercado
@@ -190,7 +186,7 @@ const { chromium } = require("playwright-core");
     CAREER.leagueSquads = backupLeague;
     return { gotOffer, sampleOffer: listing.offers[0] || null };
   });
-  console.log("6) Jogador listado recebe oferta de clube elegível (cenário favorável, até 60 tentativas):", teste6.gotOffer, JSON.stringify(teste6));
+  check("6) Jogador listado recebe oferta de clube elegível (cenário favorável, até 60 tentativas):", teste6.gotOffer, JSON.stringify(teste6));
 
   // ---------- TESTE 7 — Integridade: nenhum elenco ultrapassa limites,
   // nenhuma corrupção de estado depois de uma simulação prolongada
@@ -211,7 +207,7 @@ const { chromium } = require("playwright-core");
     return { bad, principalCount, pendingOfferShape: CAREER.pendingOffer ? Object.keys(CAREER.pendingOffer).sort() : null };
   });
   const shapeOk = !teste7.pendingOfferShape || JSON.stringify(teste7.pendingOfferShape) === JSON.stringify(["clubId", "clubName", "fee", "playerId", "playerName", "round"].sort());
-  console.log("7) Integridade — nenhum elenco fora dos limites, formato da oferta preservado, elenco principal intacto:",
+  check("7) Integridade — nenhum elenco fora dos limites, formato da oferta preservado, elenco principal intacto:",
     teste7.bad.length === 0 && teste7.principalCount >= 15 && shapeOk, JSON.stringify(teste7));
 
   await browser.close();

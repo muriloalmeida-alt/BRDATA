@@ -4,6 +4,8 @@
 // recentes). Ver openTransferHistoryScreen/renderTransferHistoryScreen
 // em carreira.js.
 const { chromium } = require("playwright-core");
+const { check } = require("./_check");
+const { enterGame } = require("./_startup");
 
 (async () => {
   const browser = await chromium.launch({ executablePath: process.env.PW_CHROMIUM_PATH || undefined, headless: true, args: ["--host-resolver-rules=MAP fonts.googleapis.com 127.0.0.1,MAP fonts.gstatic.com 127.0.0.1"] });
@@ -23,14 +25,7 @@ const { chromium } = require("playwright-core");
   await page.click(".m3-club-row");
   await page.waitForTimeout(150);
   await page.click("#btnConfirmClub");
-  await page.click("#btnOnboardSkip", { timeout: 2000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.waitForTimeout(3000);
-  await page.click("#btnClaimDailyLogin").catch(() => {});
-  await page.waitForTimeout(200);
+  await enterGame(page);
   await page.click(".m3-nav-item[data-panel='mercado']");
   await page.waitForTimeout(300);
   await page.evaluate(() => { CAREER.finances.wageCap = 999999999; CAREER.finances.cash = 999999999; });
@@ -43,7 +38,7 @@ const { chromium } = require("playwright-core");
     countLabel: document.getElementById("transferHistoryCountLabel").textContent,
     hasEmptyMsg: !document.getElementById("transferHistoryEmpty").classList.contains("hidden"),
   }));
-  console.log("1) Abre vazio, sem nenhuma negociação ainda:",
+  check("1) Abre vazio, sem nenhuma negociação ainda:",
     check1.open && check1.hasEmptyMsg && check1.countLabel === "Nenhuma negociação ainda", JSON.stringify(check1));
   await page.click("#transferHistoryClose");
   await page.waitForTimeout(150);
@@ -115,7 +110,7 @@ const { chromium } = require("playwright-core");
       countLabel: document.getElementById("transferHistoryCountLabel").textContent,
     };
   });
-  console.log("2) Compra e venda de verdade aparecem na timeline, com ícone certo (buy/sell):",
+  check("2) Compra e venda de verdade aparecem na timeline, com ícone certo (buy/sell):",
     check2.count >= 2 && check2.hasBuyDot && check2.hasSellDot, JSON.stringify(check2));
 
   const badgeInfo = await page.evaluate(() => ({
@@ -123,14 +118,14 @@ const { chromium } = require("playwright-core");
     logLength: (CAREER.transferLog || []).length,
     feedRows: document.querySelectorAll("#transferFeed .ct-transfer-feed-item").length,
   }));
-  console.log("3) Badge do botão bate com o tamanho real do log, card compacto mostra só até 5:",
+  check("3) Badge do botão bate com o tamanho real do log, card compacto mostra só até 5:",
     Number(badgeInfo.badge) === badgeInfo.logLength && badgeInfo.feedRows <= 5, JSON.stringify(badgeInfo));
 
   // 4) Fechar (rodapé) fecha a tela sem efeito colateral.
   await page.click("#btnTransferHistoryCloseFooter");
   await page.waitForTimeout(150);
   const check4 = await page.evaluate(() => !document.getElementById("transferHistoryOverlay").classList.contains("open"));
-  console.log("4) 'Fechar' no rodapé fecha a tela:", check4);
+  check("4) 'Fechar' no rodapé fecha a tela:", check4);
 
   await browser.close();
 })().catch((e) => { console.error("FATAL:", e); process.exit(1); });

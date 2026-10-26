@@ -1,4 +1,6 @@
 const { chromium } = require("playwright-core");
+const { check } = require("./_check");
+const { enterGame } = require("./_startup");
 const { skipPreseason } = require("./_calendar_skip");
 
 async function newCareer(page, base, email) {
@@ -13,13 +15,7 @@ async function newCareer(page, base, email) {
   await page.click(".m3-club-row");
   await page.waitForTimeout(150);
   await page.click("#btnConfirmClub");
-  await page.click("#btnOnboardSkip", { timeout: 2000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnClaimDailyLogin", { timeout: 3000 }).catch(() => {});
-  await page.waitForTimeout(500);
+  await enterGame(page);
 }
 
 (async () => {
@@ -126,13 +122,13 @@ async function newCareer(page, base, email) {
     return out;
   });
 
-  console.log("1) Líder detectado:", results.lider);
-  console.log("2) Zebra detectada:", results.zebra, "| Goleada detectada:", results.goleada);
-  console.log("3) Empate defendido detectado:", results.empateDefendido);
-  console.log("4) Jejum quebrado (7 jogos) detectado:", results.jejum);
-  console.log("5) Lanterna reage detectado:", results.lanterna);
-  console.log("6) Manchete do meu clube vem primeiro mesmo sendo tipo menos prioritário:", results.prioridadeMinhaPrimeiro);
-  console.log("7) Fallback genérico quando nada dispara:", results.generico);
+  check("1) Líder detectado:", results.lider);
+  check("2) Zebra detectada:", results.zebra, "| Goleada detectada:", results.goleada);
+  check("3) Empate defendido detectado:", results.empateDefendido);
+  check("4) Jejum quebrado (7 jogos) detectado:", results.jejum);
+  check("5) Lanterna reage detectado:", results.lanterna);
+  check("6) Manchete do meu clube vem primeiro mesmo sendo tipo menos prioritário:", results.prioridadeMinhaPrimeiro);
+  check("7) Fallback genérico quando nada dispara:", results.generico);
 
   // 8) Fluxo real via UI -- modal de resultados mostra o bloco de
   // notícias (pelo menos o fallback genérico, nunca vazio).
@@ -168,7 +164,7 @@ async function newCareer(page, base, email) {
   // cobertura completa já mora na tela de Notícias, que abre antes
   // dela no mesmo fluxo); o teste agora confirma a AUSÊNCIA da seção.
   const hasNewsSection = await page.evaluate(() => !!document.getElementById("roundResultsNews"));
-  console.log("8) Modal de resultados NÃO mostra mais o bloco de notícias (Rádio Data FM, removido):", !hasNewsSection);
+  check("8) Modal de resultados NÃO mostra mais o bloco de notícias (Rádio Data FM, removido):", !hasNewsSection);
 
   await browser.close();
 })().catch((e) => { console.error("FATAL:", e); process.exit(1); });

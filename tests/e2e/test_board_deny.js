@@ -1,4 +1,5 @@
 const { chromium } = require("playwright-core");
+const { enterGame, waitForBoot } = require("./_startup");
 
 (async () => {
   const browser = await chromium.launch({
@@ -22,13 +23,7 @@ const { chromium } = require("playwright-core");
   await page.click(".m3-club-row");
   await page.waitForTimeout(150);
   await page.click("#btnConfirmClub");
-  await page.click("#btnOnboardSkip", { timeout: 2000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnClaimDailyLogin", { timeout: 3000 }).catch(() => {});
-  await page.waitForTimeout(500);
+  await enterGame(page);
 
   // Força posição no meio da tabela (10º de 20) direto via API, testando
   // a negativa da diretoria sem precisar simular rodadas de verdade —
@@ -49,7 +44,7 @@ const { chromium } = require("playwright-core");
     await fetch("/api/career", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data.career) });
   });
   await page.reload({ waitUntil: "load" });
-  await page.waitForTimeout(800);
+  await waitForBoot(page);
 
   const results = [];
   for (let i = 0; i < 5; i++) {
@@ -61,7 +56,7 @@ const { chromium } = require("playwright-core");
       return true;
     });
     await page.reload({ waitUntil: "load" });
-    await page.waitForTimeout(500);
+    await waitForBoot(page);
     await page.click(".m3-nav-item[data-panel='clube']"); await page.waitForTimeout(200); await page.click("#btnAskBoard");
     await page.waitForTimeout(300);
     const decision = await page.evaluate(async () => (await (await fetch("/api/career")).json()).career.boardDecision);

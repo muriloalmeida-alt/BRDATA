@@ -2,6 +2,8 @@
 // outra divisão até o piso maior (16) por engano -- deve continuar no
 // piso menor (12, MIN_LEAGUE_SQUAD_OTHER_DIVISION).
 const { chromium } = require("playwright-core");
+const { check } = require("./_check");
+const { enterGame, waitForBoot } = require("./_startup");
 (async () => {
   const browser = await chromium.launch({ executablePath: process.env.PW_CHROMIUM_PATH || undefined, headless: true });
   const page = await browser.newPage({ viewport: { width: 390, height: 900 } });
@@ -19,13 +21,7 @@ const { chromium } = require("playwright-core");
   await page.click(".m3-club-row");
   await page.waitForTimeout(150);
   await page.click("#btnConfirmClub");
-  await page.click("#btnOnboardSkip", { timeout: 2000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnClaimDailyLogin", { timeout: 3000 }).catch(() => {});
-  await page.waitForTimeout(1200);
+  await enterGame(page);
 
   // Força elenco de um time de fora bem pequeno (abaixo do piso) e
   // avança temporada -- confere que reenche só até 12, não 16.
@@ -40,13 +36,13 @@ const { chromium } = require("playwright-core");
     await fetch("/api/career", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(CAREER) });
   });
   await page.reload({ waitUntil: "domcontentloaded" });
-  await page.waitForTimeout(1200);
+  await waitForBoot(page);
   await page.click("#btnAdvanceSeason");
   await page.waitForTimeout(300);
   await page.click("#confirmOkBtn");
   await page.waitForTimeout(600);
   const after = await page.evaluate((otherId) => ({ sizeAfter: CAREER.leagueSquads[otherId].length }), before.otherId);
-  console.log("1) Elenco de time de fora reenchido até o piso MENOR (12), não o de sempre (16):", after.sizeAfter === 12, JSON.stringify({ before, after }));
+  check("1) Elenco de time de fora reenchido até o piso MENOR (12), não o de sempre (16):", after.sizeAfter === 12, JSON.stringify({ before, after }));
 
   await browser.close();
 })().catch((e) => { console.error("FATAL:", e); process.exit(1); });

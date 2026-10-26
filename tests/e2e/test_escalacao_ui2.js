@@ -1,4 +1,6 @@
 const { chromium } = require("playwright-core");
+const { check } = require("./_check");
+const { enterGame } = require("./_startup");
 const { skipPreseason } = require("./_calendar_skip");
 
 async function newCareer(page, base, email) {
@@ -13,13 +15,7 @@ async function newCareer(page, base, email) {
   await page.click(".m3-club-row");
   await page.waitForTimeout(150);
   await page.click("#btnConfirmClub");
-  await page.click("#btnOnboardSkip", { timeout: 2000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnClaimDailyLogin", { timeout: 3000 }).catch(() => {});
-  await page.waitForTimeout(500);
+  await enterGame(page);
 }
 
 (async () => {
@@ -54,7 +50,7 @@ async function newCareer(page, base, email) {
       sameRow: Math.abs(btnRect.top - toggleRect.top) < 40,
     };
   });
-  console.log("1) Botão é só ícone (sem texto, com SVG):", btnInfo.text === "" && btnInfo.hasSvgIcon, "| classe mt-btn-swap:", btnInfo.hasIconClass, "| mesma linha do toggle, dentro de .m3-lineup-tools:", btnInfo.insideLineupTools && btnInfo.sameRow);
+  check("1) Botão é só ícone (sem texto, com SVG):", btnInfo.text === "" && btnInfo.hasSvgIcon, "| classe mt-btn-swap:", btnInfo.hasIconClass, "| mesma linha do toggle, dentro de .m3-lineup-tools:", btnInfo.insideLineupTools && btnInfo.sameRow);
 
   // 2) Toggle "incluir base" existe, discreto, e desligado por padrão.
   // AJUSTE (redesign, Tela 6) — fonte do texto agora mora no <span
@@ -64,7 +60,7 @@ async function newCareer(page, base, email) {
     const txt = cb.closest("label").querySelector(".txt");
     return { exists: !!cb, checkedByDefault: cb.checked, fontSize: getComputedStyle(txt).fontSize };
   });
-  console.log("2) Toggle 'incluir base' existe:", toggleInfo.exists, "| desligado por padrão:", !toggleInfo.checkedByDefault, "| discreto (fonte pequena):", parseFloat(toggleInfo.fontSize) <= 13);
+  check("2) Toggle 'incluir base' existe:", toggleInfo.exists, "| desligado por padrão:", !toggleInfo.checkedByDefault, "| discreto (fonte pequena):", parseFloat(toggleInfo.fontSize) <= 13);
 
   // 3) Com o toggle OFF, escalar automaticamente não deve escalar
   // ninguém da base (verifica sorteando um squad on-the-fly com
@@ -77,7 +73,7 @@ async function newCareer(page, base, email) {
     const p = CAREER.squad.find((x) => x.id === id);
     return !p || p.origin !== "base";
   }));
-  console.log("3) Toggle OFF -- nenhum titular escalado é da base:", noBaseStarters);
+  check("3) Toggle OFF -- nenhum titular escalado é da base:", noBaseStarters);
 
   // 4) Com o toggle ON, e um squad hipotético onde só existem
   // jogadores de base "ok", a escalação automática DEVE aceitar base
@@ -88,14 +84,14 @@ async function newCareer(page, base, email) {
     const result = autoLineup(onlyBase, CAREER.lineup.formation, true);
     return result.starters.filter(Boolean).length;
   });
-  console.log("4) autoLineup(includeBase=true) com só jogadores de base preenche titulares:", withBaseAllowed);
+  check("4) autoLineup(includeBase=true) com só jogadores de base preenche titulares:", withBaseAllowed === 11, withBaseAllowed);
   const withBaseBlocked = await page.evaluate(() => {
     const onlyBase = CAREER.squad.filter((p) => p.origin === "base").slice(0, 11);
     if (onlyBase.length < 11) return "elenco de base insuficiente pra esse teste";
     const result = autoLineup(onlyBase, CAREER.lineup.formation, false);
     return result.starters.filter(Boolean).length;
   });
-  console.log("5) autoLineup(includeBase=false) com só jogadores de base NÃO preenche nada:", withBaseBlocked === 0);
+  check("5) autoLineup(includeBase=false) com só jogadores de base NÃO preenche nada:", withBaseBlocked === 0);
 
   // 6) Modais "grandes" viram tela cheia (classe + ocupam quase todo o viewport).
   await page.click(`.mt-pos-slot[data-index="0"]`);
@@ -106,7 +102,7 @@ async function newCareer(page, base, email) {
     const rect = modal.getBoundingClientRect();
     return { hasClass: document.getElementById("pickerOverlay").classList.contains("ct-modal-fullscreen"), w: rect.width, h: rect.height, vw: window.innerWidth, vh: window.innerHeight };
   });
-  console.log("6) pickerOverlay tem classe fullscreen:", pickerFull.hasClass, "| ocupa (quase) toda a largura:", pickerFull.w >= pickerFull.vw - 2, "| ocupa (quase) toda a altura:", pickerFull.h >= pickerFull.vh - 2);
+  check("6) pickerOverlay tem classe fullscreen:", pickerFull.hasClass, "| ocupa (quase) toda a largura:", pickerFull.w >= pickerFull.vw - 2, "| ocupa (quase) toda a altura:", pickerFull.h >= pickerFull.vh - 2);
   await page.click("#pickerClose");
   await page.waitForTimeout(200);
 
@@ -131,7 +127,7 @@ async function newCareer(page, base, email) {
     const rect = modal.getBoundingClientRect();
     return { hasFullClass: document.getElementById("listOverlay").classList.contains("ct-modal-fullscreen"), w: rect.width, vw: window.innerWidth };
   });
-  console.log("7) listOverlay (anúncio de venda) NÃO é fullscreen (é bottom sheet de largura cheia):", !confirmSmall.hasFullClass, JSON.stringify(confirmSmall));
+  check("7) listOverlay (anúncio de venda) NÃO é fullscreen (é bottom sheet de largura cheia):", !confirmSmall.hasFullClass, JSON.stringify(confirmSmall));
   await page.click("#listClose");
   await page.waitForTimeout(200);
 
@@ -147,7 +143,7 @@ async function newCareer(page, base, email) {
   const liveHasClose = await page.evaluate(() => !!document.getElementById("liveMatchClose"));
   await page.click("#liveMatchClose");
   await page.waitForSelector("#matchDetailOverlay.open", { timeout: 5000 });
-  console.log("8) liveMatchOverlay tem X:", liveHasClose, "| clicar no X termina a partida e mostra o resultado:", true);
+  check("8) liveMatchOverlay tem X:", liveHasClose, "| clicar no X termina a partida e mostra o resultado:", true);
   await page.click("#btnMatchDetailContinue");
   await page.waitForTimeout(300);
   // Coletiva de imprensa pode aparecer aqui antes de Notícias (mesmo

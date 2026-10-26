@@ -3,6 +3,8 @@
 // específico, nível mínimo) + a paginação real ("Carregar mais") no
 // lugar do teto fixo de 40/60 que existia antes.
 const { chromium } = require("playwright-core");
+const { check } = require("./_check");
+const { enterGame } = require("./_startup");
 
 (async () => {
   const browser = await chromium.launch({
@@ -27,14 +29,7 @@ const { chromium } = require("playwright-core");
   await page.click(".m3-club-row");
   await page.waitForTimeout(150);
   await page.click("#btnConfirmClub");
-  await page.click("#btnOnboardSkip", { timeout: 2000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.waitForTimeout(700);
-  await page.click("#btnClaimDailyLogin", { timeout: 3000 }).catch(() => {});
-  await page.waitForTimeout(300);
+  await enterGame(page);
 
   // Abre o Mercado (via nav direta, ver Fundação M3).
   await page.click(".m3-nav-item[data-panel='mercado']");
@@ -48,7 +43,7 @@ const { chromium } = require("playwright-core");
     loadMoreHidden: document.getElementById("btnMarketLoadMore").classList.contains("hidden"),
     clubOptions: document.getElementById("marketClubFilter").options.length,
   }));
-  console.log("1) Lista inicial com 40 jogadores:", initial.rows === 40, "| contador:", JSON.stringify(initial.countText));
+  check("1) Lista inicial com 40 jogadores:", initial.rows === 40, "| contador:", JSON.stringify(initial.countText));
   console.log("   'Carregar mais' visível (pool > 40):", !initial.loadMoreHidden);
   console.log("   Filtro de clube populado (>1 opção, incluindo 'Todos'):", initial.clubOptions > 1, "| total opções:", initial.clubOptions);
 
@@ -60,14 +55,14 @@ const { chromium } = require("playwright-core");
     rows: document.querySelectorAll("#marketList .m3-op-card").length,
     countText: document.getElementById("marketResultCount").textContent,
   }));
-  console.log("2) Depois de 'Carregar mais', lista cresce (100 ou o total, o que for menor):", afterMore.rows > initial.rows, "| contador:", JSON.stringify(afterMore.countText));
+  check("2) Depois de 'Carregar mais', lista cresce (100 ou o total, o que for menor):", afterMore.rows > initial.rows, "| contador:", JSON.stringify(afterMore.countText));
 
   // 3) Trocar de filtro (posição) reseta a paginação de volta pro
   // início (não soma ao "carregado" anterior de um pool diferente).
   await page.selectOption("#marketPosFilter", "F", { force: true }); // UX-MERCADO-001: filtros ficam no estado escondido (ver openMarketFiltersSheet)
   await page.waitForTimeout(200);
   const afterPosFilter = await page.evaluate(() => document.querySelectorAll("#marketList .m3-op-card").length);
-  console.log("3) Trocar filtro de posição reseta a paginação (<= 40 resultados de novo):", afterPosFilter <= 40);
+  check("3) Trocar filtro de posição reseta a paginação (<= 40 resultados de novo):", afterPosFilter <= 40);
   await page.selectOption("#marketPosFilter", "", { force: true }); // UX-MERCADO-001: filtros ficam no estado escondido (ver openMarketFiltersSheet)
   await page.waitForTimeout(200);
 
@@ -82,7 +77,7 @@ const { chromium } = require("playwright-core");
     return rows.length > 0 && rows.every((el) => el.textContent.trim() === label.trim() || label.includes(el.textContent.trim()) || el.textContent.trim().length > 0);
   }, clubLabel);
   const clubRowsCount = await page.evaluate(() => document.querySelectorAll("#marketList .m3-op-card").length);
-  console.log(`4) Filtro de clube ("${clubLabel}") mostra só jogadores desse clube:`, clubFilterOk, "| linhas:", clubRowsCount);
+  check(`4) Filtro de clube ("${clubLabel}") mostra só jogadores desse clube:`, clubFilterOk, "| linhas:", clubRowsCount);
   await page.selectOption("#marketClubFilter", "", { force: true }); // UX-MERCADO-001: filtros ficam no estado escondido (ver openMarketFiltersSheet)
   await page.waitForTimeout(200);
 
@@ -95,7 +90,7 @@ const { chromium } = require("playwright-core");
     return badges.length >= 0 && badges.every((n) => n >= 80);
   });
   const ovrRowsCount = await page.evaluate(() => document.querySelectorAll("#marketList .mt-ovr-badge").length);
-  console.log("5) Filtro de nível mínimo (80+) — todos os badges são >= 80:", ovrFilterOk, "| linhas:", ovrRowsCount);
+  check("5) Filtro de nível mínimo (80+) — todos os badges são >= 80:", ovrFilterOk, "| linhas:", ovrRowsCount);
   await page.selectOption("#marketOvrFilter", "", { force: true }); // UX-MERCADO-001: filtros ficam no estado escondido (ver openMarketFiltersSheet)
   await page.waitForTimeout(200);
 
@@ -104,7 +99,7 @@ const { chromium } = require("playwright-core");
   await page.fill("#marketSearch", "a");
   await page.waitForTimeout(250);
   const searchRows = await page.evaluate(() => document.querySelectorAll("#marketList .m3-op-card").length);
-  console.log("6) Busca por nome continua funcionando (tem resultado):", searchRows > 0);
+  check("6) Busca por nome continua funcionando (tem resultado):", searchRows > 0);
   await page.fill("#marketSearch", "");
   await page.waitForTimeout(200);
 
@@ -113,7 +108,7 @@ const { chromium } = require("playwright-core");
   // o wiring dos botões da lista).
   const buyBtn = await page.$("[data-buy]");
   const buyBtnExists = !!buyBtn;
-  console.log("7) Botão de propor compra ainda presente/funcional na lista:", buyBtnExists);
+  check("7) Botão de propor compra ainda presente/funcional na lista:", buyBtnExists);
 
   await browser.close();
   console.log("OK");

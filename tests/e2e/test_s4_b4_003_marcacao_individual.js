@@ -15,6 +15,8 @@
 // simulação) — cobertura de regressão fica com
 // tests/e2e/test_marcacao_individual.js (pré-existente).
 const { chromium } = require("playwright-core");
+const { check } = require("./_check");
+const { enterGame } = require("./_startup");
 
 (async () => {
   const browser = await chromium.launch({ executablePath: process.env.PW_CHROMIUM_PATH || undefined, headless: true, args: ["--host-resolver-rules=MAP fonts.googleapis.com 127.0.0.1,MAP fonts.gstatic.com 127.0.0.1"] });
@@ -35,14 +37,7 @@ const { chromium } = require("playwright-core");
   await page.click(".m3-club-row");
   await page.waitForTimeout(150);
   await page.click("#btnConfirmClub");
-  await page.click("#btnOnboardSkip", { timeout: 2000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.waitForTimeout(1000);
-  await page.click("#btnClaimDailyLogin").catch(() => {});
-  await page.waitForTimeout(200);
+  await enterGame(page);
 
   await page.click("#btnBottomMenu");
   await page.waitForTimeout(150);
@@ -71,7 +66,7 @@ const { chromium } = require("playwright-core");
   const nameOk = tokens.nameColor === hexToRgb(tokens.onSurface);
   const statusOk = tokens.statusColor === hexToRgb(tokens.onSurfaceVariant);
   const borderOk = tokens.borderColor === hexToRgb(tokens.outlineVariant);
-  console.log("1) Linha não selecionada migrada (nome --m3-on-surface, meta --m3-on-surface-variant, borda --m3-outline-variant):",
+  check("1) Linha não selecionada migrada (nome --m3-on-surface, meta --m3-on-surface-variant, borda --m3-outline-variant):",
     nameOk && statusOk && borderOk, JSON.stringify({ ...tokens, nameOk, statusOk, borderOk }));
 
   // 2) Selecionar os 2 e aplicar — o estado "selecionado" PRÉ-EXISTENTE
@@ -96,7 +91,7 @@ const { chromium } = require("playwright-core");
     };
   }, ids);
   const selNameOk = selectedTokens.nameColor === hexToRgb(selectedTokens.onPrimaryContainer);
-  console.log("2) Estado 'selecionado' pré-existente intacto (nome vira --m3-on-primary-container, sem regressão do override escopado):",
+  check("2) Estado 'selecionado' pré-existente intacto (nome vira --m3-on-primary-container, sem regressão do override escopado):",
     selectedTokens.isSelected && selNameOk && selectedTokens.borderColor === "rgba(0, 0, 0, 0)", JSON.stringify({ ...selectedTokens, selNameOk }));
 
   // 3) Aplicar a marcação e confirmar que a designação ativa
@@ -109,7 +104,7 @@ const { chromium } = require("playwright-core");
     return { onSurface: root.getPropertyValue("--m3-on-surface").trim(), boldColor: b ? getComputedStyle(b).color : null };
   });
   const boldOk = activeTokens.boldColor === hexToRgb(activeTokens.onSurface);
-  console.log("3) Nomes em negrito da designação ativa migrados pra --m3-on-surface:", boldOk, JSON.stringify({ ...activeTokens, boldOk }));
+  check("3) Nomes em negrito da designação ativa migrados pra --m3-on-surface:", boldOk, JSON.stringify({ ...activeTokens, boldOk }));
 
   await browser.close();
 })().catch((e) => { console.error("FATAL:", e); process.exit(1); });

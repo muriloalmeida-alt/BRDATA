@@ -1,4 +1,7 @@
 const { chromium } = require("playwright-core");
+const { check } = require("./_check");
+const { enterGame, waitForBoot } = require("./_startup");
+const { playNextMatchRound, closeLeftoverTabela } = require("./_round");
 const { skipPreseason } = require("./_calendar_skip");
 
 async function newCareer(page, base, email) {
@@ -13,13 +16,7 @@ async function newCareer(page, base, email) {
   await page.click(".m3-club-row");
   await page.waitForTimeout(150);
   await page.click("#btnConfirmClub");
-  await page.click("#btnOnboardSkip", { timeout: 2000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnClaimDailyLogin", { timeout: 3000 }).catch(() => {});
-  await page.waitForTimeout(500);
+  await enterGame(page);
 }
 async function getCareer(page) {
   return page.evaluate(async () => (await (await fetch("/api/career")).json()).career);
@@ -46,14 +43,14 @@ async function putCareer(page, career) {
 
   // 1) Carreira nova já nasce com os 2 contratos de patrocínio.
   let career = await getCareer(page);
-  console.log("1) Nasce com contrato master:", !!career.sponsorship.master, "| material:", !!career.sponsorship.material);
+  check("1) Nasce com contrato master:", !!career.sponsorship.master, "| material:", !!career.sponsorship.material);
   console.log("   Valores plausíveis:", career.sponsorship.master.valorTemporada > 0, career.sponsorship.material.valorTemporada > 0);
 
   // 2) Card "Patrocínios" aparece na Central com os 2 contratos.
   await page.click(".m3-nav-item[data-panel='central']");
   await page.waitForTimeout(300);
   const boxText = await page.evaluate(() => document.getElementById("sponsorshipBox").textContent);
-  console.log("2) Card mostra Patrocinador Master e Material Esportivo:", boxText.includes("Patrocinador Master") && boxText.includes("Material Esportivo"));
+  check("2) Card mostra Patrocinador Master e Material Esportivo:", boxText.includes("Patrocinador Master") && boxText.includes("Material Esportivo"));
 
   // 3) Contrato vence (temporadasRestantes chega a 0) -- vira propostas
   // pendentes e o botão "Ver propostas" aparece.
@@ -62,7 +59,7 @@ async function putCareer(page, career) {
   career.currentRound = 39; // temporada terminada, pronta pra avançar
   await putCareer(page, career);
   await page.reload({ waitUntil: "domcontentloaded" });
-  await page.waitForTimeout(800);
+  await waitForBoot(page);
   await page.click(".m3-nav-item[data-panel='central']");
   await page.waitForTimeout(300);
   await page.click("#btnAdvanceSeason");
@@ -70,7 +67,7 @@ async function putCareer(page, career) {
   await page.click("#confirmOkBtn");
   await page.waitForTimeout(500);
   career = await getCareer(page);
-  console.log("3) Contrato master venceu (null) e virou propostas pendentes:", career.sponsorship.master === null, "| 3 propostas:", (career.sponsorProposals.master || []).length === 3);
+  check("3) Contrato master venceu (null) e virou propostas pendentes:", career.sponsorship.master === null, "| 3 propostas:", (career.sponsorProposals.master || []).length === 3);
   console.log("   Material (tinha mais tempo) continua igual:", !!career.sponsorship.material);
 
   // Fecha o modal de nova temporada pra poder navegar.
@@ -85,7 +82,7 @@ async function putCareer(page, career) {
   // 4) Botão "Ver propostas" aparece só pro master (vencido).
   const hasBtnMaster = await page.evaluate(() => !!document.querySelector('[data-sponsor-choose="master"]'));
   const hasBtnMaterial = await page.evaluate(() => !!document.querySelector('[data-sponsor-choose="material"]'));
-  console.log("4) Botão 'Ver propostas' só aparece pro master:", hasBtnMaster && !hasBtnMaterial);
+  check("4) Botão 'Ver propostas' só aparece pro master:", hasBtnMaster && !hasBtnMaterial);
 
   // 5) Abre o modal, assina uma proposta, confere que o contrato é
   // atualizado e o caixa cresce nas rodadas seguintes.
@@ -97,51 +94,27 @@ async function putCareer(page, career) {
   await page.click('[data-sponsor-sign="0"]');
   await page.waitForTimeout(300);
   career = await getCareer(page);
-  console.log("5) Modal mostrou 3 propostas:", proposalRows === 3, "| contrato master assinado (não é mais null):", !!career.sponsorship.master);
+  check("5) Modal mostrou 3 propostas:", proposalRows === 3, "| contrato master assinado (não é mais null):", !!career.sponsorship.master);
 
   // "Ir para o jogo" mora na aba Início -- volta pra lá antes de continuar.
   await page.click(".m3-nav-item[data-panel='central']");
   await page.waitForTimeout(200);
 
-  // 6) Receita de patrocínio soma no caixa a cada rodada simulada.
+  // 6) Receita de patrocínio entra no caixa e aparece na linha financeira
+  // da rodada, em Notícias (#newsFinanceRow). GE-CALENDAR-001: patrocínio
+  // e salários são lançados 1x por mês (virada do mês), e a linha só
+  // aparece na rodada em que houve lançamento — joga rodadas (fluxo atual,
+  // ver _round.js) até a 1ª com lançamento do mês.
   await skipPreseason(page); // GE-CALENDAR-001: carreira nova começa na pré-temporada
-  await page.click("#btnSimulate");
-  await page.waitForSelector("#preMatchOverlay.open", { timeout: 5000 });
-  await page.click("#btnPreMatchGo");
-  // AJUSTE (item 4, pedido do usuário: "o jogo deve pausar no
-  // intervalo (45) e aguardar que o técnico clique em prosseguir") —
-  // clica em "Prosseguir" se o jogo parar no intervalo antes de seguir
-  // esperando o resto do fluxo.
-  await page.waitForSelector("#liveMatchOverlay.open", { timeout: 5000 }).catch(() => {});
-  await page.waitForFunction(() => typeof LIVE_MATCH !== 'undefined' && LIVE_MATCH && (LIVE_MATCH.halftime || LIVE_MATCH.finished), { timeout: 15000 }).catch(() => {});
-  if (await page.evaluate(() => typeof LIVE_MATCH !== 'undefined' && LIVE_MATCH && LIVE_MATCH.halftime)) {
-    await page.click("#btnLiveContinueSecondHalf");
+  let financeText = "", rounds = 0;
+  for (; rounds < 8 && !financeText; rounds++) {
+    const r = await playNextMatchRound(page, {
+      onNews: async (p) => { financeText = await p.evaluate(() => document.getElementById("newsFinanceRow").textContent); },
+    });
+    if (r.stoppedAt === "playerOfferOverlay") { await page.click("#btnPlayerOfferDecline"); await closeLeftoverTabela(page); }
+    else if (r.stoppedAt) throw new Error(`rodada parou numa tela inesperada: ${r.stoppedAt}`);
   }
-  await page.waitForSelector("#liveMatchOverlay.open", { timeout: 5000 });
-  await page.evaluate(() => skipLiveMatch());
-  await page.waitForSelector("#matchDetailOverlay.open", { timeout: 5000 });
-  await page.click("#btnMatchDetailContinue");
-  await page.waitForTimeout(300);
-  // FASE 4 (item 2) — coletiva de imprensa pode aparecer aqui antes
-  // dos Resultados da rodada (ver determineMatchPressTrigger).
-  if (await page.evaluate(() => document.getElementById("pressOverlay").classList.contains("open"))) {
-    await page.click("#pressOptions [data-press]");
-    await page.waitForTimeout(300);
-  }
-  await page.waitForSelector("#newsOverlay.open", { timeout: 5000 });
-  // A linha financeira da rodada (salários/patrocínio/caixa) mora em
-  // Notícias (#newsFinanceRow) desde uma mudança anterior desta sessão
-  // ("resumo financeiro movido pras Notícias") -- não mais em
-  // Resultados da rodada (pré-existente, sem relação com o checklist
-  // de UX desta etapa; o teste nunca foi atualizado).
-  const financeText = await page.evaluate(() => document.getElementById("newsFinanceRow").textContent);
-  console.log("6) Linha financeira da rodada menciona patrocínio:", financeText.includes("Patrocínio"));
-  await page.click("#btnNewsContinue");
-  await page.waitForTimeout(300);
-  await page.click("#btnRoundResultsContinue").catch(() => {});
-  await page.waitForTimeout(200);
-  await page.click("#tabelaModalClose").catch(() => {});
-  await page.waitForTimeout(200);
+  check("6) Linha financeira da rodada menciona patrocínio:", financeText.includes("Patrocínio"), { rodadasJogadas: rounds, linha: financeText.replace(/\s+/g, " ").trim() });
 
   await browser.close();
 })().catch((e) => { console.error("FATAL:", e); process.exit(1); });

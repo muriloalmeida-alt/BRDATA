@@ -3,6 +3,8 @@
 // Ver initDivisionSystem/resolveOtherDivisionsRound/
 // applyPromotionRelegation em carreira.js.
 const { chromium } = require("playwright-core");
+const { check } = require("./_check");
+const { enterGame } = require("./_startup");
 
 (async () => {
   const browser = await chromium.launch({ executablePath: process.env.PW_CHROMIUM_PATH || undefined, headless: true, args: ["--host-resolver-rules=MAP fonts.googleapis.com 127.0.0.1,MAP fonts.gstatic.com 127.0.0.1"] });
@@ -22,14 +24,7 @@ const { chromium } = require("playwright-core");
   await page.click(".m3-club-row");
   await page.waitForTimeout(150);
   await page.click("#btnConfirmClub");
-  await page.click("#btnOnboardSkip", { timeout: 2000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.waitForTimeout(3000);
-  await page.click("#btnClaimDailyLogin").catch(() => {});
-  await page.waitForTimeout(200);
+  await enterGame(page);
 
   // 1) Carreira nova nasce com o sistema ativado: divisionTeams (3 x 20
   // times), serieDPool (20 times) e otherDivisions (as 2 que não são a
@@ -44,7 +39,7 @@ const { chromium } = require("playwright-core");
     otherHasSchedule: Object.values(CAREER.otherDivisions).every((d) => Object.keys(d.schedule).length === 38),
     otherHasZeroedStandings: Object.values(CAREER.otherDivisions).every((d) => Object.values(d.standings).every((r) => r.j === 0)),
   }));
-  console.log("1) Carreira nova nasce com o sistema ativado (3x20 + pool de 20 + 2 outras divisões zeradas):",
+  check("1) Carreira nova nasce com o sistema ativado (3x20 + pool de 20 + 2 outras divisões zeradas):",
     check1.hasDivisionTeams && check1.countA === 20 && check1.countB === 20 && check1.countC === 20 && check1.dPoolCount === 20
     && JSON.stringify(check1.otherDivisionIds) === JSON.stringify(["serie_b", "serie_c"]) && check1.otherHasSchedule && check1.otherHasZeroedStandings,
     JSON.stringify(check1));
@@ -57,7 +52,7 @@ const { chromium } = require("playwright-core");
     resolveOtherDivisionsRound(1);
     return Object.fromEntries(Object.entries(CAREER.otherDivisions).map(([id, d]) => [id, Object.values(d.standings).some((r) => r.j > 0)]));
   });
-  console.log("2) resolveOtherDivisionsRound avança as 2 outras divisões (não só a sua):",
+  check("2) resolveOtherDivisionsRound avança as 2 outras divisões (não só a sua):",
     Object.values(check2).every(Boolean), JSON.stringify(check2));
 
   // 3) Tela Tabela mostra o seletor de divisão (só em carreira com o
@@ -84,7 +79,7 @@ const { chromium } = require("playwright-core");
     const bTeamNames = CAREER.divisionTeams.serie_b.map((t) => t.name);
     return { rowCount: rows.length, allFromB: namesShown.every((n) => bTeamNames.includes(n)), legendTop: document.getElementById("tabelaLegendTop").textContent, midHidden: document.getElementById("tabelaLegendMidWrap").hidden };
   });
-  console.log("3) Seletor de divisão aparece na Tabela e trocar pra Série B mostra os times certos (sem G6/Libertadores):",
+  check("3) Seletor de divisão aparece na Tabela e trocar pra Série B mostra os times certos (sem G6/Libertadores):",
     check3a.visible && JSON.stringify(check3a.buttons) === JSON.stringify(["brasileirao", "serie_b", "serie_c"])
     && check3b.rowCount === 20 && check3b.allFromB && check3b.legendTop === "Acesso" && check3b.midHidden,
     JSON.stringify({ check3a, check3b }));
@@ -133,7 +128,7 @@ const { chromium } = require("playwright-core");
       squadsGoneForRelegatedC: pr.relegatedC.every((t) => CAREER.leagueSquads[String(t.id)] === undefined),
     };
   });
-  console.log("4) Cascata: nosso clube (último na Série A) desce pra Série B, contagens de 20 mantidas, elenco da Série D promovida existe, elenco da Série C rebaixada removido:",
+  check("4) Cascata: nosso clube (último na Série A) desce pra Série B, contagens de 20 mantidas, elenco da Série D promovida existe, elenco da Série C rebaixada removido:",
     check4.divisionChanged && check4.newCompId === "serie_b" && check4.myIdInB && check4.relegatedAIncludesMe && check4.countsStillOk
     && check4.promotedBWereInB && check4.relegatedAWereInA && check4.dPoolPromotedWereInPool && check4.squadsExistForPromotedD && check4.squadsGoneForRelegatedC,
     JSON.stringify(check4));
@@ -168,7 +163,7 @@ const { chromium } = require("playwright-core");
       compIdUnchanged: CURRENT_COMPETITION_ID === "serie_c",
     };
   });
-  console.log("5) Exceção da Série D: nosso clube nunca desce pra D mesmo em último na Série C (outro time desce no lugar, zona continua com 4):",
+  check("5) Exceção da Série D: nosso clube nunca desce pra D mesmo em último na Série C (outro time desce no lugar, zona continua com 4):",
     !check5.myIdInRelegatedC && check5.myIdStillInC && check5.relegatedCCount === 4 && check5.compIdUnchanged,
     JSON.stringify(check5));
 

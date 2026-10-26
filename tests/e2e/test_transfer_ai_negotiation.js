@@ -8,6 +8,8 @@
 // são tocados nesta fase — vários testes abaixo confirmam isso, não
 // testam mudança neles.
 const { chromium } = require("playwright-core");
+const { check } = require("./_check");
+const { enterGame } = require("./_startup");
 
 (async () => {
   const browser = await chromium.launch({ executablePath: process.env.PW_CHROMIUM_PATH || undefined, headless: true, args: ["--host-resolver-rules=MAP fonts.googleapis.com 127.0.0.1,MAP fonts.gstatic.com 127.0.0.1"] });
@@ -28,13 +30,7 @@ const { chromium } = require("playwright-core");
   await page.click(".m3-club-row");
   await page.waitForTimeout(150);
   await page.click("#btnConfirmClub");
-  await page.click("#btnOnboardSkip", { timeout: 2000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnClaimDailyLogin", { timeout: 3000 }).catch(() => {});
-  await page.waitForTimeout(500);
+  await enterGame(page);
 
   const schemaBefore = await page.evaluate(() => Object.keys(CAREER).sort());
 
@@ -60,18 +56,18 @@ const { chromium } = require("playwright-core");
     const d = sellerNegotiationDecision(600000, 1000000); // ratio 0.6 < 0.75
     return d;
   });
-  console.log("1) Oferta muito abaixo da reserva -> reject:", s1.action === "reject", JSON.stringify(s1));
+  check("1) Oferta muito abaixo da reserva -> reject:", s1.action === "reject", JSON.stringify(s1));
 
   // 2) oferta próxima da reserva -> counter.
   const s2 = await page.evaluate(() => sellerNegotiationDecision(880000, 1000000)); // ratio 0.88
-  console.log("2) Oferta próxima da reserva -> counter (contraproposta > oferta):", s2.action === "counter" && s2.value > 880000, JSON.stringify(s2));
+  check("2) Oferta próxima da reserva -> counter (contraproposta > oferta):", s2.action === "counter" && s2.value > 880000, JSON.stringify(s2));
 
   // 3) oferta na/acima da reserva -> accept (rng fixo em 0 força o ramo de aceite direto na faixa de incerteza).
   const s3 = await page.evaluate(() => ({
     naReserva: sellerNegotiationDecision(1000000, 1000000, () => 0),
     acima: sellerNegotiationDecision(1200000, 1000000),
   }));
-  console.log("3) Oferta na reserva (rng favorável) e claramente acima da reserva -> accept:",
+  check("3) Oferta na reserva (rng favorável) e claramente acima da reserva -> accept:",
     s3.naReserva.action === "accept" && s3.acima.action === "accept", JSON.stringify(s3));
 
   // 4) titularidade aumenta resistência (reserva de titular > reserva de reserva, mesmo jogador/valor base).
@@ -86,7 +82,7 @@ const { chromium } = require("playwright-core");
     const resReserva = calculateSellerReservationValue(player, CAREER.clubId);
     return { resTitular, resReserva, base: player.value };
   });
-  console.log("4) Titularidade real aumenta o preço de reserva (mesmo jogador/valor base):", s4.resTitular > s4.resReserva, JSON.stringify(s4));
+  check("4) Titularidade real aumenta o preço de reserva (mesmo jogador/valor base):", s4.resTitular > s4.resReserva, JSON.stringify(s4));
 
   // 5) jogador reserva (banco) é mais negociável — reserva de banco fica
   // mais perto do valor-base (fator neutro) que a de um titular.
@@ -96,7 +92,7 @@ const { chromium } = require("playwright-core");
     const resReserva = calculateSellerReservationValue(player, CAREER.clubId); // CAREER.lineup.starters já vazio do teste 4
     return { resReserva, base: player.value, maisNegociavel: resReserva <= player.value * 1.05 };
   });
-  console.log("5) Jogador reserva (não titular) tem reserva mais perto do valor-base (mais negociável):", s5.maisNegociavel, JSON.stringify(s5));
+  check("5) Jogador reserva (não titular) tem reserva mais perto do valor-base (mais negociável):", s5.maisNegociavel, JSON.stringify(s5));
 
   // 6) vendedor com necessidade alta (carece daquele perfil no próprio
   // elenco) resiste mais — reserva de um clube CARENTE naquele grupo >
@@ -113,7 +109,7 @@ const { chromium } = require("playwright-core");
     delete CAREER.leagueSquads[clubServidoId];
     return { resCarente, resServido };
   });
-  console.log("6) Vendedor com necessidade alta pelo próprio perfil resiste mais (reserva maior):", s6.resCarente > s6.resServido, JSON.stringify(s6));
+  check("6) Vendedor com necessidade alta pelo próprio perfil resiste mais (reserva maior):", s6.resCarente > s6.resServido, JSON.stringify(s6));
 
   // =========================================================
   // BUYER (7-12)
@@ -143,7 +139,7 @@ const { chromium } = require("playwright-core");
     const decHigh = buyerNegotiationDecision(counterValue, cf.value, playerHigh, clubId);
     return { scoreLow, scoreHigh, decLow, decHigh };
   }, BUYER_CLUB);
-  console.log("7/8) Score baixo tem tolerância <= score alto pra mesma contraproposta (score baixo mais restritivo ou igual):",
+  check("7/8) Score baixo tem tolerância <= score alto pra mesma contraproposta (score baixo mais restritivo ou igual):",
     b78.scoreLow < b78.scoreHigh, JSON.stringify(b78));
 
   // 9) necessidade alta -> maior tolerância (via transferScore, que já
@@ -165,7 +161,7 @@ const { chromium } = require("playwright-core");
     delete CAREER.leagueSquads[servidoId];
     return { necLow, necHigh, scoreLow, scoreHigh };
   });
-  console.log("9) Necessidade mais alta produz transferScore mais alto (e portanto mais tolerância via buyerNegotiationDecision):",
+  check("9) Necessidade mais alta produz transferScore mais alto (e portanto mais tolerância via buyerNegotiationDecision):",
     b9.necHigh > b9.necLow && b9.scoreHigh > b9.scoreLow, JSON.stringify(b9));
 
   // 10) financeiro impede contraproposta impossível -> walk.
@@ -177,7 +173,7 @@ const { chromium } = require("playwright-core");
     const dec = buyerNegotiationDecision(impossibleCounter, cf.value, player, clubId);
     return { dec, cash: budget.cash };
   }, BUYER_CLUB);
-  console.log("10) Contraproposta muito acima da capacidade financeira real -> comprador desiste (walk):", b10.dec.action === "walk", JSON.stringify(b10));
+  check("10) Contraproposta muito acima da capacidade financeira real -> comprador desiste (walk):", b10.dec.action === "walk", JSON.stringify(b10));
 
   // 11) comprador aceita contraproposta razoável (dentro da tolerância e
   // da capacidade) — clube fabricado carente (mesmo recipe do Cenário
@@ -195,7 +191,7 @@ const { chromium } = require("playwright-core");
     delete CAREER.leagueSquads[carenteId];
     return { score, reasonableCounter, dec };
   });
-  console.log("11) Comprador aceita contraproposta razoável (+5% sobre a oferta inicial):", b11.dec.action === "accept", JSON.stringify(b11));
+  check("11) Comprador aceita contraproposta razoável (+5% sobre a oferta inicial):", b11.dec.action === "accept", JSON.stringify(b11));
 
   // 12) comprador desiste de contraproposta excessiva (dentro da
   // capacidade financeira, mas muito além de qualquer tolerância de score).
@@ -206,7 +202,7 @@ const { chromium } = require("playwright-core");
     const dec = buyerNegotiationDecision(excessiveCounter, cf.value, player, clubId);
     return { dec, excessiveCounter };
   }, BUYER_CLUB);
-  console.log("12) Comprador NÃO aceita direto uma contraproposta excessiva (+40%) — aceita só até seu teto, nunca o valor pedido inteiro:",
+  check("12) Comprador NÃO aceita direto uma contraproposta excessiva (+40%) — aceita só até seu teto, nunca o valor pedido inteiro:",
     b12.dec.action !== "accept" || b12.dec.value < b12.excessiveCounter, JSON.stringify(b12));
 
   // =========================================================
@@ -221,7 +217,7 @@ const { chromium } = require("playwright-core");
     const results = cases.map(([offer, reservation]) => ({ offer, reservation, counter: calculateCounterOffer(offer, reservation) }));
     return { results, allGreater: results.every((r) => r.counter > r.offer) };
   });
-  console.log("13) calculateCounterOffer sempre produz um valor > oferta atual, em qualquer combinação:", c13.allGreater, JSON.stringify(c13.results));
+  check("13) calculateCounterOffer sempre produz um valor > oferta atual, em qualquer combinação:", c13.allGreater, JSON.stringify(c13.results));
 
   // 14) contraproposta permanece dentro dos limites (nunca > reserva*1.05).
   const c14 = await page.evaluate(() => {
@@ -229,7 +225,7 @@ const { chromium } = require("playwright-core");
     const results = cases.map(([offer, reservation]) => ({ offer, reservation, counter: calculateCounterOffer(offer, reservation), cap: reservation * 1.05 }));
     return { results, allWithin: results.every((r) => r.counter <= r.cap + 1000) }; // +1000 de folga de arredondamento
   });
-  console.log("14) calculateCounterOffer nunca ultrapassa reserva*1,05 (limitada, item 14):", c14.allWithin, JSON.stringify(c14.results));
+  check("14) calculateCounterOffer nunca ultrapassa reserva*1,05 (limitada, item 14):", c14.allWithin, JSON.stringify(c14.results));
 
   // 15) negociação termina após o máximo de rodadas — cenário
   // adversarial (vendedor sempre conta, comprador tem fôlego pra subir
@@ -244,7 +240,7 @@ const { chromium } = require("playwright-core");
     const deal = negotiateOffer(player, clubId, CAREER.clubId, { baseValue: cf.value * 3 }); // baseValue MUITO acima do que o comprador toparia, reserva também sobe junto
     return { deal, respectsCap: deal.rounds <= MAX_NEGOTIATION_ROUNDS };
   }, BUYER_CLUB);
-  console.log("15) Negociação nunca ultrapassa MAX_NEGOTIATION_ROUNDS (3) rodadas, mesmo em cenário adversarial:", c15.respectsCap, JSON.stringify(c15.deal));
+  check("15) Negociação nunca ultrapassa MAX_NEGOTIATION_ROUNDS (3) rodadas, mesmo em cenário adversarial:", c15.respectsCap, JSON.stringify(c15.deal));
 
   // 16) nunca existe loop infinito — roda negotiateOffer 200x com
   // parâmetros aleatórios extremos e confirma que TODAS retornam
@@ -263,7 +259,7 @@ const { chromium } = require("playwright-core");
     }
     return { allTerminated, maxRounds: Math.max(...rounds), minRounds: Math.min(...rounds) };
   }, BUYER_CLUB);
-  console.log("16) 200 negociações com parâmetros extremos/aleatórios — todas terminam, nunca loop infinito:", c16.allTerminated, JSON.stringify(c16));
+  check("16) 200 negociações com parâmetros extremos/aleatórios — todas terminam, nunca loop infinito:", c16.allTerminated, JSON.stringify(c16));
 
   // =========================================================
   // VALUATION (17-19) — confirma que a Fase 1.3 continua intacta
@@ -278,10 +274,10 @@ const { chromium } = require("playwright-core");
     const withinLimits = deal.initialOffer >= Math.round(player.value * 0.70) && deal.initialOffer <= Math.round(player.value * 1.50);
     return { directValuation, dealInitialOffer: deal.initialOffer, initialMatches, withinLimits };
   }, BUYER_CLUB);
-  console.log("17) Valuation inicial de negotiateOffer é EXATAMENTE igual a uma chamada direta de transferValuation (Fase 1.3 intacta):",
+  check("17) Valuation inicial de negotiateOffer é EXATAMENTE igual a uma chamada direta de transferValuation (Fase 1.3 intacta):",
     v1719.initialMatches, JSON.stringify(v1719));
-  console.log("18) negotiateOffer não modifica transferValuation (mesma função, mesmo resultado determinístico de sempre):", v1719.initialMatches);
-  console.log("19) Limites 70%-150% continuam válidos pra oferta INICIAL dentro de negotiateOffer:", v1719.withinLimits);
+  check("18) negotiateOffer não modifica transferValuation (mesma função, mesmo resultado determinístico de sempre):", v1719.initialMatches);
+  check("19) Limites 70%-150% continuam válidos pra oferta INICIAL dentro de negotiateOffer:", v1719.withinLimits);
 
   // =========================================================
   // INTEGRAÇÃO (20-22)
@@ -315,7 +311,7 @@ const { chromium } = require("playwright-core");
     CAREER.leagueSquads = backupLeague;
     return { generated: !!found, sample: found };
   });
-  console.log("20) maybeGenerateOffer integrado com negotiateOffer — gera oferta em cenário favorável:", int20.generated, JSON.stringify(int20.sample));
+  check("20) maybeGenerateOffer integrado com negotiateOffer — gera oferta em cenário favorável:", int20.generated, JSON.stringify(int20.sample));
 
   const int21 = await page.evaluate(() => {
     const backup = JSON.parse(JSON.stringify(CAREER.leagueSquads));
@@ -342,7 +338,7 @@ const { chromium } = require("playwright-core");
     CAREER.leagueSquads = backup;
     return { generated: !!found, sample: found };
   });
-  console.log("21) maybeSpawnListingOffer integrado com negotiateOffer — gera oferta em cenário favorável:", int21.generated, JSON.stringify(int21.sample));
+  check("21) maybeSpawnListingOffer integrado com negotiateOffer — gera oferta em cenário favorável:", int21.generated, JSON.stringify(int21.sample));
 
   const int22 = await page.evaluate(() => {
     const backup = JSON.parse(JSON.stringify(CAREER.leagueSquads));
@@ -369,7 +365,7 @@ const { chromium } = require("playwright-core");
     CAREER.leagueSquads = backup;
     return { generated: !!found, sample: found };
   });
-  console.log("22) maybeSpawnRivalOffer integrado com negotiateOffer — gera oferta rival em cenário favorável:", int22.generated, JSON.stringify(int22.sample));
+  check("22) maybeSpawnRivalOffer integrado com negotiateOffer — gera oferta rival em cenário favorável:", int22.generated, JSON.stringify(int22.sample));
 
   // =========================================================
   // INTEGRIDADE (23-26)
@@ -384,7 +380,7 @@ const { chromium } = require("playwright-core");
     negotiateOffer(p, clubId, CAREER.clubId);
     return { idBefore, idAfter: p.id, unchanged: idBefore === p.id };
   });
-  console.log("23) IDs preservados (negotiateOffer não altera id de jogador):", idsCheck.unchanged, JSON.stringify(idsCheck));
+  check("23) IDs preservados (negotiateOffer não altera id de jogador):", idsCheck.unchanged, JSON.stringify(idsCheck));
 
   // 24) schema preservado — CAREER só ganhou o campo temporário e
   // justificado (counterRounds, dentro de um item de pendingOffersOut,
@@ -395,7 +391,7 @@ const { chromium } = require("playwright-core");
   const schemaAfter = await page.evaluate(() => Object.keys(CAREER).sort());
   const newTopLevelKeys = schemaAfter.filter((k) => !schemaBefore.includes(k));
   const ALLOWED_NEW_KEYS = ["transferLog", "recentDeclines"];
-  console.log("24) Nenhuma chave nova em CAREER além das já justificadas (transferLog/recentDeclines):",
+  check("24) Nenhuma chave nova em CAREER além das já justificadas (transferLog/recentDeclines):",
     newTopLevelKeys.filter((k) => !ALLOWED_NEW_KEYS.includes(k)).length === 0, JSON.stringify(newTopLevelKeys));
 
   // 25) persistência existente continua funcionando — cria uma oferta
@@ -419,7 +415,7 @@ const { chromium } = require("playwright-core");
     CAREER.pendingOffersOut = (CAREER.pendingOffersOut || []).filter((o) => o.id !== "persist_test_offer");
     return { ok: true, after, shapeOk };
   });
-  console.log("25) Persistência existente (CAREER.pendingOffersOut, shape/campos) continua funcionando com a nova lógica de decisão do vendedor:",
+  check("25) Persistência existente (CAREER.pendingOffersOut, shape/campos) continua funcionando com a nova lógica de decisão do vendedor:",
     persistCheck.ok && persistCheck.shapeOk, JSON.stringify(persistCheck));
 
   // 26) empréstimos continuam funcionando — findInterestedBuyer
@@ -434,7 +430,7 @@ const { chromium } = require("playwright-core");
     }
     return { ok };
   });
-  console.log("26) Empréstimos continuam funcionando (findInterestedBuyer, não tocado nesta fase):", loanCheck.ok, JSON.stringify(loanCheck));
+  check("26) Empréstimos continuam funcionando (findInterestedBuyer, não tocado nesta fase):", loanCheck.ok, JSON.stringify(loanCheck));
 
   // =========================================================
   // CENÁRIOS CONTROLADOS (item 24 do pedido — A a E)

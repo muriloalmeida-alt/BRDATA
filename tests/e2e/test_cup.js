@@ -15,6 +15,8 @@
 // na REPRESENTAÇÃO NA UI (texto da aba Tabela, seção de Copa no modal
 // de resultados), não na estatística do chaveamento.
 const { chromium } = require("playwright-core");
+const { check } = require("./_check");
+const { enterGame, waitForBoot } = require("./_startup");
 
 async function newCareer(page, base, email) {
   await page.goto(base + "/", { waitUntil: "load" });
@@ -28,13 +30,7 @@ async function newCareer(page, base, email) {
   await page.click(".m3-club-row");
   await page.waitForTimeout(150);
   await page.click("#btnConfirmClub");
-  await page.click("#btnOnboardSkip", { timeout: 2000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnClaimDailyLogin", { timeout: 3000 }).catch(() => {});
-  await page.waitForTimeout(500);
+  await enterGame(page);
 }
 async function getCareer(page) {
   return page.evaluate(async () => (await (await fetch("/api/career")).json()).career);
@@ -60,7 +56,7 @@ async function resolveOneRoundProgrammatic(page) {
       pauseLiveMatch();
       skipLiveMatch();
       let waited = 0;
-      while (LIVE_MATCH && waited < 100) { await new Promise((r) => setTimeout(r, 20)); waited++; }
+      while (LIVE_MATCH && waited < 750) { await new Promise((r) => setTimeout(r, 20)); waited++; } // até 15 s (antes 2 s: sob carga a perna ao vivo não terminava a tempo)
     }
     return CAREER.currentRound;
   });
@@ -84,7 +80,7 @@ async function resolveOneRoundProgrammatic(page) {
   let career = await getCareer(page);
   const fase1Clubs = career.cup.ties.fase1.flatMap((t) => [String(t.home), String(t.away)]);
   const seeds = career.cup.seeds || [];
-  console.log("1) cup.expanded:", career.cup.expanded, "| phase:", career.cup.phase, "| Fase 1 tem 56 clubes (28 confrontos):", fase1Clubs.length === 56, "| 4 cabeças de chave:", seeds.length === 4);
+  check("1) cup.expanded:", career.cup.expanded, "| phase:", career.cup.phase, "| Fase 1 tem 56 clubes (28 confrontos):", fase1Clubs.length === 56, "| 4 cabeças de chave:", seeds.length === 4);
   const meInFase1 = fase1Clubs.includes(String(career.clubId));
   const meIsSeed = seeds.map(String).includes(String(career.clubId));
   console.log("   Meu clube participa (Fase 1 OU cabeça de chave, nunca os 2):", meInFase1 !== meIsSeed);
@@ -95,16 +91,21 @@ async function resolveOneRoundProgrammatic(page) {
   while (await page.evaluate(() => CAREER.currentRound) <= 6) {
     await resolveOneRoundProgrammatic(page);
   }
-  career = await getCareer(page);
-  console.log("2) Depois da rodada 6 (volta da Fase 1), avançou pra r32 (se o técnico seguiu vivo) ou ficou eliminado — fase:", career.cup.phase, "| humanAlive:", career.cup.humanAlive);
+  // Estado do CLIENTE (CAREER), não do servidor: o save é gravado com
+  // debounce (800 ms) e logo depois de jogar ainda podia estar defasado.
+  career = await page.evaluate(() => JSON.parse(JSON.stringify(CAREER)));
+  check("2) Depois da rodada 6 (volta da Fase 1), avançou pra r32 (se o técnico seguiu vivo) ou ficou eliminado — fase:", career.cup.phase === "r32" || career.cup.humanAlive === false, "| fase:", career.cup.phase, "| humanAlive:", career.cup.humanAlive);
   console.log("   r32 tem 32 clubes (16 confrontos), se ainda ativo:", career.cup.phase === "r32" ? new Set(career.cup.ties.r32.flatMap((t) => [String(t.home), String(t.away)])).size === 32 : "N/A (eliminado)");
   // Se o confronto do técnico virou ao vivo em alguma dessas rodadas
   // (ver finishCupLegLive), a MESMA cadeia normal de pós-rodada já
   // abriu proposta/Tabela sozinha ao terminar — fecha antes de seguir,
   // mesmo tratamento que o técnico faria clicando no X.
+  // (proposta ANTES da Tabela: fechar a proposta segue o fluxo e abre a
+  // Tabela — ver closePlayerOfferModal; na ordem inversa a Tabela ficava
+  // aberta por cima do menu, falha intermitente da Fase B.)
   await page.evaluate(() => {
-    if (document.getElementById("tabelaModalOverlay").classList.contains("open")) closeTabelaModal();
     if (document.getElementById("playerOfferOverlay").classList.contains("open")) closePlayerOfferModal();
+    if (document.getElementById("tabelaModalOverlay").classList.contains("open")) closeTabelaModal();
   });
 
   // 3) Tab Tabela mostra o card de Copa com o rótulo certo da fase atual.
@@ -114,7 +115,7 @@ async function resolveOneRoundProgrammatic(page) {
   await page.click("#btnOpenTabela");
   await page.waitForTimeout(300);
   const cupStatusText = await page.evaluate(() => document.getElementById("cupStatusText").textContent);
-  console.log("3) Texto de status na aba Tabela:", cupStatusText);
+  check("3) Texto de status na aba Tabela:", !!cupStatusText && cupStatusText.trim().length > 0, cupStatusText);
   await page.evaluate(() => closeTabelaModal());
   await page.waitForTimeout(200);
 
@@ -128,14 +129,14 @@ async function resolveOneRoundProgrammatic(page) {
   career.cup.humanAlive = true;
   await putCareer(page, career);
   await page.reload({ waitUntil: "load" });
-  await page.waitForTimeout(800);
+  await waitForBoot(page);
   await page.click("#btnBottomMenu");
   await page.waitForTimeout(150);
   await page.click("#topbarMenu .mt-topbar-menu-item.group[data-submenu='competicao']");
   await page.click("#btnOpenTabela");
   await page.waitForTimeout(300);
   const championText = await page.evaluate(() => document.getElementById("cupStatusText").innerHTML);
-  console.log("4) Texto de campeão:", championText);
+  check("4) Texto de campeão:", !!championText && championText.includes("Campeão"), championText);
 
   // 5) Força "não classificado" (cup.active=false) e confere o texto —
   // não acontece mais na prática pro formato expandido (todos os 60
@@ -145,14 +146,14 @@ async function resolveOneRoundProgrammatic(page) {
   career.cup.active = false;
   await putCareer(page, career);
   await page.reload({ waitUntil: "load" });
-  await page.waitForTimeout(800);
+  await waitForBoot(page);
   await page.click("#btnBottomMenu");
   await page.waitForTimeout(150);
   await page.click("#topbarMenu .mt-topbar-menu-item.group[data-submenu='competicao']");
   await page.click("#btnOpenTabela");
   await page.waitForTimeout(300);
   const notQualifiedText = await page.evaluate(() => document.getElementById("cupStatusText").textContent);
-  console.log("5) Texto de não classificado:", notQualifiedText);
+  check("5) Texto de não classificado:", !!notQualifiedText && notQualifiedText.includes("não se classificou"), notQualifiedText);
 
   // 6) Migração: remove CAREER.cup, força rodada 20 (entre r16.volta=18
   // e qf.ida=21 no calendário expandido), recarrega — setupCup deve
@@ -162,9 +163,9 @@ async function resolveOneRoundProgrammatic(page) {
   career.currentRound = 20;
   await putCareer(page, career);
   await page.reload({ waitUntil: "load" });
-  await page.waitForTimeout(800);
+  await waitForBoot(page);
   career = await getCareer(page);
-  console.log("6) Migração com rodada 20 -- cup existe:", !!career.cup, "| expanded:", career.cup.expanded, "| fase (deve ser 'qf', já fechadas fase1/r32/r16 por trás):", career.cup.phase);
+  check("6) Migração com rodada 20 -- cup existe:", !!career.cup, "| expanded:", career.cup.expanded, "| fase (deve ser 'qf', já fechadas fase1/r32/r16 por trás):", career.cup.phase);
 
   await browser.close();
 })().catch((e) => { console.error("FATAL:", e); process.exit(1); });

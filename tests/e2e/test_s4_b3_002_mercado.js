@@ -4,6 +4,8 @@
 // classes .m3-op-*) no lugar do antigo .mt-market-row ad hoc — mesma
 // informação, mesmos data-* de ação, só via componente nomeado.
 const { chromium } = require("playwright-core");
+const { check } = require("./_check");
+const { enterGame } = require("./_startup");
 
 (async () => {
   const browser = await chromium.launch({ executablePath: process.env.PW_CHROMIUM_PATH || undefined, headless: true, args: ["--host-resolver-rules=MAP fonts.googleapis.com 127.0.0.1,MAP fonts.gstatic.com 127.0.0.1"] });
@@ -26,13 +28,7 @@ const { chromium } = require("playwright-core");
   await page.click(".m3-club-row");
   await page.waitForTimeout(150);
   await page.click("#btnConfirmClub");
-  await page.click("#btnOnboardSkip", { timeout: 2000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnClaimDailyLogin", { timeout: 3000 }).catch(() => {});
-  await page.waitForTimeout(500);
+  await enterGame(page);
 
   await page.click(".m3-nav-item[data-panel='mercado']");
   await page.waitForTimeout(400);
@@ -42,7 +38,7 @@ const { chromium } = require("playwright-core");
     opCards: document.querySelectorAll("#marketList .m3-op-card").length,
     oldRows: document.querySelectorAll("#marketList .mt-market-row").length,
   }));
-  console.log("1) Lista de mercado usa .m3-op-card (TransferCard), zero .mt-market-row antigo:",
+  check("1) Lista de mercado usa .m3-op-card (TransferCard), zero .mt-market-row antigo:",
     rowShape.opCards > 0 && rowShape.oldRows === 0, JSON.stringify(rowShape));
 
   // 2) Um card tem badge/nome/clube clicável/chip de posição/ação de
@@ -61,7 +57,7 @@ const { chromium } = require("playwright-core");
       cardBg: getComputedStyle(card).backgroundColor,
     };
   });
-  console.log("2) Card individual: badge/nome/clube clicável/chip posição/detalhe/tokens m3:",
+  check("2) Card individual: badge/nome/clube clicável/chip posição/detalhe/tokens m3:",
     !!firstCard && firstCard.hasBadge && firstCard.hasName && firstCard.hasClub && !!firstCard.openPlayerAttr
     && !!firstCard.openClubAttr && firstCard.hasPosChip && firstCard.hasDetail && firstCard.cardBg === "rgb(44, 42, 39)",
     JSON.stringify(firstCard));
@@ -71,7 +67,7 @@ const { chromium } = require("playwright-core");
   await page.click("#marketList .m3-op-info");
   await page.waitForTimeout(250);
   const dialogOpened = await page.evaluate(() => !!document.querySelector(".m3-dialog-overlay.open"));
-  console.log("3) Clicar no nome do jogador continua abrindo o Perfil (Dialog):", dialogOpened);
+  check("3) Clicar no nome do jogador continua abrindo o Perfil (Dialog):", dialogOpened);
   await page.keyboard.press("Escape").catch(() => {});
   await page.evaluate(() => document.querySelectorAll(".m3-dialog-overlay.open").forEach((el) => el.classList.remove("open")));
   await page.waitForTimeout(150);
@@ -92,7 +88,7 @@ const { chromium } = require("playwright-core");
     const afterCleared = document.querySelectorAll("#marketList .m3-op-card").length;
     return { before, afterNoMatch, hasEmptyMsg: !!emptyMsg, afterCleared };
   });
-  console.log("4) Busca continua filtrando (zero resultado com nome inexistente, volta ao normal ao limpar):",
+  check("4) Busca continua filtrando (zero resultado com nome inexistente, volta ao normal ao limpar):",
     searchResult.before > 0 && searchResult.afterNoMatch === 0 && searchResult.hasEmptyMsg && searchResult.afterCleared === searchResult.before,
     JSON.stringify(searchResult));
 
@@ -113,7 +109,7 @@ const { chromium } = require("playwright-core");
     const stillHasBuyBtn = !!card?.querySelector("[data-buy]");
     return { hasBuyBtn: true, modalOpen, hasPendingIcon, stillHasBuyBtn };
   });
-  console.log("5) Enviar proposta continua funcionando (modal abre, card muda pra 'pendente' depois de confirmar):",
+  check("5) Enviar proposta continua funcionando (modal abre, card muda pra 'pendente' depois de confirmar):",
     offerFlow.hasBuyBtn && offerFlow.modalOpen && offerFlow.hasPendingIcon && !offerFlow.stillHasBuyBtn,
     JSON.stringify(offerFlow));
 

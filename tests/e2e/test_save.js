@@ -1,4 +1,7 @@
 const { chromium } = require("playwright-core");
+const { enterGame } = require("./_startup");
+const { check } = require("./_check");
+const { playNextMatchRound, closeLeftoverTabela } = require("./_round");
 
 (async () => {
   const browser = await chromium.launch({
@@ -8,9 +11,11 @@ const { chromium } = require("playwright-core");
   const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
   page.on("console", (msg) => { if (msg.type() === "error") console.log("CONSOLE ERROR:", msg.text()); });
   page.on("pageerror", (err) => console.log("PAGE ERROR:", err.message));
+  const puts = [];
   page.on("response", async (res) => {
     if (res.url().includes("/api/career") && res.request().method() === "PUT") {
       const postData = res.request().postData() || "";
+      puts.push(res.status());
       console.log("PUT /api/career ->", res.status(), "body bytes:", Buffer.byteLength(postData, "utf8"));
       if (res.status() !== 200) {
         try { console.log("RESPONSE BODY:", await res.text()); } catch {}
@@ -44,35 +49,29 @@ const { chromium } = require("playwright-core");
   await page.click(".m3-club-row");
   await page.waitForTimeout(150);
   await page.click("#btnConfirmClub");
-  await page.click("#btnOnboardSkip", { timeout: 2000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnClaimDailyLogin", { timeout: 3000 }).catch(() => {});
+  await enterGame(page);
   await page.waitForSelector("#panel-elenco, .m3-nav-item", { timeout: 10000 }).catch(() => {});
   await page.waitForTimeout(500);
 
   await page.click(".m3-nav-item[data-panel='central']");
   await page.waitForTimeout(300);
 
-  // Simula várias rodadas seguidas (fecha os 2 modais entre cada uma)
+  // Simula várias rodadas seguidas pela interface (fluxo atual completo:
+  // confirmação pré-jogo, ao vivo, detalhe, coletiva, notícias,
+  // resultados, tabela — ver _round.js; amistosos/semanas sem jogo do
+  // calendário são atravessados no caminho).
+  const roundBefore = await page.evaluate(() => CAREER.currentRound);
   for (let i = 0; i < 30; i++) {
-    await page.click("#btnSimulate");
-    await page.waitForTimeout(400);
-    const matchOpen = await page.evaluate(() => document.getElementById("matchDetailOverlay").classList.contains("open"));
-    if (matchOpen) {
-      await page.click("#btnMatchDetailContinue");
-      await page.waitForTimeout(300);
-    }
-    const resOpen = await page.evaluate(() => document.getElementById("roundResultsOverlay").classList.contains("open"));
-    if (resOpen) {
-      await page.click("#btnRoundResultsContinue");
-      await page.waitForTimeout(300);
-    }
+    const r = await playNextMatchRound(page);
+    if (r.stoppedAt === "playerOfferOverlay") { await page.click("#btnPlayerOfferDecline"); await closeLeftoverTabela(page); }
+    else if (r.stoppedAt) throw new Error(`rodada ${i + 1} parou numa tela inesperada: ${r.stoppedAt}`);
     await page.click(".m3-nav-item[data-panel='central']").catch(() => {});
     console.log(`--- round ${i + 1} done ---`);
   }
+  const roundAfter = await page.evaluate(() => CAREER.currentRound);
+  await page.waitForTimeout(1200); // persistência debounced (800 ms) da última rodada
+  check("1) 30 rodadas oficiais simuladas pela interface:", roundAfter - roundBefore === 30, { roundBefore, roundAfter });
+  check("2) Todo save (PUT /api/career) respondeu 200:", puts.length > 0 && puts.every((s) => s === 200), { puts: puts.length, naoOk: puts.filter((s) => s !== 200) });
 
   await browser.close();
 })().catch((e) => { console.error("FATAL:", e); process.exit(1); });

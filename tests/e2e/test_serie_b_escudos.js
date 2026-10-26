@@ -2,6 +2,9 @@
 // mostram a imagem de verdade (crestImg -> t.logo) e os outros 9 continuam
 // no monograma de sigla (fallback).
 const { chromium } = require("playwright-core");
+const { check } = require("./_check");
+const { enterGame } = require("./_startup");
+const { skipPreseason } = require("./_calendar_skip");
 
 const COM_ESCUDO = ["Goiás", "Avaí", "Criciúma", "Vila Nova", "Cuiabá", "Atlético Goianiense", "CRB", "Novorizontino", "Operário-PR", "Botafogo-SP", "Athletic Club"];
 const SEM_ESCUDO = ["Athletico Paranaense", "Coritiba", "Chapecoense", "Remo", "América Mineiro", "Amazonas", "Paysandu", "Volta Redonda", "Ferroviária"];
@@ -40,8 +43,8 @@ const SEM_ESCUDO = ["Athletico Paranaense", "Coritiba", "Chapecoense", "Remo", "
 
   const allWithImage = result.withCrest.every((r) => r.status === "imagem");
   const allWithMono = result.without.every((r) => r.status === "monograma");
-  console.log("1) Os 11 clubes com escudo real mostram <img>:", allWithImage, JSON.stringify(result.withCrest.filter(r => r.status !== "imagem")));
-  console.log("2) Os 9 clubes restantes continuam no monograma:", allWithMono, JSON.stringify(result.without.filter(r => r.status !== "monograma")));
+  check("1) Os 11 clubes com escudo real mostram <img>:", allWithImage, JSON.stringify(result.withCrest.filter(r => r.status !== "imagem")));
+  check("2) Os 9 clubes restantes continuam no monograma:", allWithMono, JSON.stringify(result.without.filter(r => r.status !== "monograma")));
 
   // 2) Abre um clube com escudo real e confere na Central também.
   await page.evaluate(() => {
@@ -51,17 +54,15 @@ const SEM_ESCUDO = ["Athletico Paranaense", "Coritiba", "Chapecoense", "Remo", "
   });
   await page.waitForTimeout(150);
   await page.click("#btnConfirmClub");
-  await page.click("#btnOnboardSkip", { timeout: 2000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.waitForTimeout(1500);
+  await enterGame(page, { claimDailyLogin: false });
+  // GE-CALENDAR-001: carreira nova começa na pré-temporada (o card mostra
+  // o amistoso) — o escudo verificado é o do próximo jogo oficial.
+  await skipPreseason(page);
   const centralHasImg = await page.evaluate(() => {
     const nextMatch = document.querySelector(".m3-hero-match");
     return nextMatch ? !!nextMatch.querySelector("img") : null;
   });
-  console.log("3) Escudo real também aparece no card 'Próximo jogo' da Central:", centralHasImg);
+  check("3) Escudo real também aparece no card 'Próximo jogo' da Central:", centralHasImg);
 
   await page.screenshot({ path: "screens/serieb-01-escolha-clube.png" });
 

@@ -2,6 +2,8 @@
 // (2) ajustar o fundo dos escudos reais pra contraste acessível (chapinha
 // clara "gelo" em vez de transparente).
 const { chromium } = require("playwright-core");
+const { check } = require("./_check");
+const { enterGame, waitForBoot } = require("./_startup");
 
 (async () => {
   const browser = await chromium.launch({ executablePath: process.env.PW_CHROMIUM_PATH || undefined, headless: true, args: ["--host-resolver-rules=MAP fonts.googleapis.com 127.0.0.1,MAP fonts.gstatic.com 127.0.0.1"] });
@@ -30,14 +32,7 @@ const { chromium } = require("playwright-core");
   });
   await page.waitForTimeout(150);
   await page.click("#btnConfirmClub");
-  await page.click("#btnOnboardSkip", { timeout: 2000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.waitForTimeout(1500);
-  await page.click("#btnClaimDailyLogin").catch(() => {});
-  await page.waitForTimeout(200);
+  await enterGame(page);
   await page.click(".m3-nav-item[data-panel='central']");
   await page.waitForTimeout(300);
 
@@ -50,17 +45,17 @@ const { chromium } = require("playwright-core");
       seasonYearLabelExists: !!document.getElementById("seasonYearLabel"),
     };
   });
-  console.log("1) Card 'Situação do elenco' removido (sem título, sem #squadKpis/#seasonYearLabel):",
+  check("1) Card 'Situação do elenco' removido (sem título, sem #squadKpis/#seasonYearLabel):",
     !check1.hasTitle && !check1.squadKpisExists && !check1.seasonYearLabelExists, JSON.stringify(check1));
 
   // 2) Topbar continua mostrando "Temporada X" (não perdeu a info).
   const check2 = await page.evaluate(() => document.getElementById("topbarClubSub").textContent);
-  console.log("2) Topbar continua com 'Temporada X' (info não se perdeu):", /Temporada \d{4}/.test(check2), check2);
+  check("2) Topbar continua com 'Temporada X' (info não se perdeu):", /Temporada \d{4}/.test(check2), check2);
 
   // 3) Card "Próximo jogo" continua funcionando normalmente (não quebrou
   //    nada ao remover o card vizinho).
   const check3 = await page.evaluate(() => !!document.getElementById("nextMatchBox").innerHTML.trim());
-  console.log("3) Card 'Próximo jogo' segue funcionando:", check3);
+  check("3) Card 'Próximo jogo' segue funcionando:", check3);
 
   // 4) Contraste do escudo: pega um clube com logo real (frozen catalog
   //    tem escudo real pros times da Série A) e confere que o fundo do
@@ -74,7 +69,7 @@ const { chromium } = require("playwright-core");
     const bg = getComputedStyle(el).backgroundColor;
     return { found: true, bg };
   });
-  console.log("4) Escudo real (.ct-crest.has-logo) tem fundo claro (não transparente):",
+  check("4) Escudo real (.ct-crest.has-logo) tem fundo claro (não transparente):",
     crestCheck.found ? crestCheck.bg !== "rgba(0, 0, 0, 0)" && crestCheck.bg !== "transparent" : "sem escudo real nesta tela",
     JSON.stringify(crestCheck));
 
@@ -85,7 +80,7 @@ const { chromium } = require("playwright-core");
     const bg = getComputedStyle(el).backgroundColor;
     return { hasLogo, bg };
   });
-  console.log("5) Topbar crest (se com escudo real) tem fundo claro:",
+  check("5) Topbar crest (se com escudo real) tem fundo claro:",
     topbarCrestCheck.hasLogo ? (topbarCrestCheck.bg !== "rgba(0, 0, 0, 0)") : "sem escudo real neste clube",
     JSON.stringify(topbarCrestCheck));
 
@@ -95,14 +90,14 @@ const { chromium } = require("playwright-core");
   //    claro (varre a lista inteira).
   await page.evaluate(async () => { await fetch("/api/career", { method: "DELETE" }); });
   await page.reload({ waitUntil: "domcontentloaded" });
-  await page.waitForTimeout(500);
+  await waitForBoot(page);
   await page.click('.mt-competition-card[data-competition="serie_b"]');
   await page.waitForTimeout(300);
   const pickerCheck = await page.evaluate(() => {
     const withLogo = [...document.querySelectorAll(".ct-crest.has-logo")];
     return { count: withLogo.length, allLightBg: withLogo.every((el) => getComputedStyle(el).backgroundColor !== "rgba(0, 0, 0, 0)") };
   });
-  console.log("6) Escolha do clube: todos os escudos reais com fundo claro:", pickerCheck.count > 0 && pickerCheck.allLightBg, JSON.stringify(pickerCheck));
+  check("6) Escolha do clube: todos os escudos reais com fundo claro:", pickerCheck.count > 0 && pickerCheck.allLightBg, JSON.stringify(pickerCheck));
   await page.screenshot({ path: "screens/escolha_clube_contraste.png" });
 
   await browser.close();

@@ -6,6 +6,8 @@
 // módulo isolado) + o comportamento observável de
 // simulateAiTransfers/findInterestedBuyer numa carreira real.
 const { chromium } = require("playwright-core");
+const { check } = require("./_check");
+const { enterGame } = require("./_startup");
 
 (async () => {
   const browser = await chromium.launch({ executablePath: process.env.PW_CHROMIUM_PATH || undefined, headless: true, args: ["--host-resolver-rules=MAP fonts.googleapis.com 127.0.0.1,MAP fonts.gstatic.com 127.0.0.1"] });
@@ -26,13 +28,7 @@ const { chromium } = require("playwright-core");
   await page.click(".m3-club-row");
   await page.waitForTimeout(150);
   await page.click("#btnConfirmClub");
-  await page.click("#btnOnboardSkip", { timeout: 2000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnClaimDailyLogin", { timeout: 3000 }).catch(() => {});
-  await page.waitForTimeout(500);
+  await enterGame(page);
 
   // ---------- Teste 11 — curva de adequação: crescente até diff=20,
   // depois decrescente suave, nunca toca 0 nem satura em 1 antes de
@@ -47,7 +43,7 @@ const { chromium } = require("playwright-core");
   const neverZero = curveVals.every((v) => v > 0);
   const neverOneBeforeDiff8 = curve.filter((c) => c.diff < 8).every((c) => c.fit < 1);
   const decaysGentlyAfter20 = curve.filter((c) => c.diff > 20).every((c) => c.fit >= 0.55);
-  console.log("11) Curva de adequação crescente até +20, decai suave depois, nunca zera nem satura cedo:",
+  check("11) Curva de adequação crescente até +20, decai suave depois, nunca zera nem satura cedo:",
     isMonotonicUpTo20 && neverZero && neverOneBeforeDiff8 && decaysGentlyAfter20, JSON.stringify(curve));
 
   // ---------- Teste 12 — clubPositionFactor bate com a MESMA ordenação
@@ -60,7 +56,7 @@ const { chromium } = require("playwright-core");
     const expected = 1 - (myPos - 1) / (total - 1);
     return { myPos, total, factor, expected, matches: Math.abs(factor - expected) < 1e-9 };
   });
-  console.log("12) clubPositionFactor(meu clube) bate com myLeaguePosition()/sortedStandings():", posCheck.matches, JSON.stringify(posCheck));
+  check("12) clubPositionFactor(meu clube) bate com myLeaguePosition()/sortedStandings():", posCheck.matches, JSON.stringify(posCheck));
 
   // ---------- Teste 13 — necessidadeScore escala com squad.length, sem
   // nenhuma constante fixa de tamanho de elenco.
@@ -76,7 +72,7 @@ const { chromium } = require("playwright-core");
     const idealsDistinct = new Set(results.map((r) => r.ideal)).size > 1;
     return { results, idealsDistinct };
   });
-  console.log("13) necessidadeScore/idealCountForGroup escalam com squad.length (sem constante fixa):", necessidadeCheck.idealsDistinct, JSON.stringify(necessidadeCheck.results));
+  check("13) necessidadeScore/idealCountForGroup escalam com squad.length (sem constante fixa):", necessidadeCheck.idealsDistinct, JSON.stringify(necessidadeCheck.results));
 
   // ---------- Exemplo A/B/C do documento de proposta — reproduzido
   // com dados fabricados, confirma a leitura qualitativa (clube médio
@@ -119,7 +115,7 @@ const { chromium } = require("playwright-core");
     return out;
   });
   const abcOk = abcCheck.fraco.financeiro === 0 && abcCheck.medio.score !== null && abcCheck.forte.score !== null && abcCheck.medio.score > abcCheck.forte.score;
-  console.log("14) Clube fraco eliminado pelo financeiro; clube médio carente pontua mais que o forte já servido:", abcOk, JSON.stringify(abcCheck));
+  check("14) Clube fraco eliminado pelo financeiro; clube médio carente pontua mais que o forte já servido:", abcOk, JSON.stringify(abcCheck));
 
   // ---------- Comportamento observável: findInterestedBuyer(excludeId, player)
   // ainda funciona (assinatura nova, compat mantida) e simulateAiTransfers
@@ -137,7 +133,7 @@ const { chromium } = require("playwright-core");
     });
     return bad;
   });
-  console.log("15) Elencos CPU dentro dos limites ANTES de simular (baseline):", squadLimitsBefore.length === 0, JSON.stringify(squadLimitsBefore));
+  check("15) Elencos CPU dentro dos limites ANTES de simular (baseline):", squadLimitsBefore.length === 0, JSON.stringify(squadLimitsBefore));
 
   // Simula 15 rodadas de transferência AI direto (sem depender do
   // motor de partida inteiro) pra checar estabilidade de limites.
@@ -151,7 +147,7 @@ const { chromium } = require("playwright-core");
     });
     return { bad, ranTwice: typeof transferScore === "function" };
   });
-  console.log("16) Nenhum elenco ultrapassa os limites após 15 rodadas de simulateAiTransfers:", afterSim.bad.length === 0, JSON.stringify(afterSim.bad));
+  check("16) Nenhum elenco ultrapassa os limites após 15 rodadas de simulateAiTransfers:", afterSim.bad.length === 0, JSON.stringify(afterSim.bad));
 
   // findInterestedBuyer com jogador real do próprio elenco (fluxo de
   // empréstimo de verdade).
@@ -160,7 +156,7 @@ const { chromium } = require("playwright-core");
     const buyer = findInterestedBuyer(CAREER.clubId, p);
     return { hasPlayer: !!p, buyerIsNullOrObject: buyer === null || (buyer && typeof buyer.id !== "undefined") };
   });
-  console.log("17) findInterestedBuyer(excludeId, player) continua funcionando (null ou clube válido):", loanCheck.buyerIsNullOrObject, JSON.stringify(loanCheck));
+  check("17) findInterestedBuyer(excludeId, player) continua funcionando (null ou clube válido):", loanCheck.buyerIsNullOrObject, JSON.stringify(loanCheck));
 
   await browser.close();
   console.log("OK");

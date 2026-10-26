@@ -1,6 +1,8 @@
 // Bloco 2 (brtreinadorbloco2tatica.html): campo hero sem card, chips de
 // formação, 4 eixos táticos reais em barra de 5 segmentos, FAB salvar.
 const { chromium } = require("playwright-core");
+const { check } = require("./_check");
+const { enterGame } = require("./_startup");
 const { skipPreseason } = require("./_calendar_skip");
 
 (async () => {
@@ -21,14 +23,7 @@ const { skipPreseason } = require("./_calendar_skip");
   await page.click(".m3-club-row");
   await page.waitForTimeout(150);
   await page.click("#btnConfirmClub");
-  await page.click("#btnOnboardSkip", { timeout: 2000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.waitForTimeout(1500);
-  await page.click("#btnClaimDailyLogin").catch(() => {});
-  await page.waitForTimeout(200);
+  await enterGame(page);
 
   await page.click(".m3-nav-item[data-panel='escalacao']");
   await page.waitForTimeout(300);
@@ -38,14 +33,14 @@ const { skipPreseason } = require("./_calendar_skip");
     const row = [...document.querySelectorAll("#formationChipRow .m3-filter-chip")];
     return { count: row.length, hasSelect: !!document.getElementById("formationSelect"), onChip: row.find((c) => c.classList.contains("on"))?.textContent };
   });
-  console.log("1) Formação em chips (sem <select>), uma marcada 'on':", chips.count > 0 && !chips.hasSelect && !!chips.onChip, JSON.stringify(chips));
+  check("1) Formação em chips (sem <select>), uma marcada 'on':", chips.count > 0 && !chips.hasSelect && !!chips.onChip, JSON.stringify(chips));
 
   // 2) Pitch sem card ao redor — #pitchLines não é filho direto de .mt-card.
   const pitchWrap = await page.evaluate(() => {
     const pl = document.getElementById("pitchLines");
     return { parentIsCard: pl.parentElement.classList.contains("mt-card"), hasPitch: !!pl.querySelector(".mt-pitch") };
   });
-  console.log("2) Pitch é hero (pai não é .mt-card), .mt-pitch renderizado:", !pitchWrap.parentIsCard && pitchWrap.hasPitch, JSON.stringify(pitchWrap));
+  check("2) Pitch é hero (pai não é .mt-card), .mt-pitch renderizado:", !pitchWrap.parentIsCard && pitchWrap.hasPitch, JSON.stringify(pitchWrap));
 
   // 3) "Instruções de jogo" com os 4 eixos certos, cada um com 5
   // segmentos, nível 3 (neutro) por padrão — 3 segmentos "on".
@@ -60,7 +55,7 @@ const { skipPreseason } = require("./_calendar_skip");
     }));
   });
   const axesOk = axes.length === 4 && axes.every((a) => a.segCount === 5 && a.level === 3 && a.onCount === 3);
-  console.log("3) 4 eixos táticos com 5 segmentos, nível neutro (3) por padrão:", axesOk, JSON.stringify(axes));
+  check("3) 4 eixos táticos com 5 segmentos, nível neutro (3) por padrão:", axesOk, JSON.stringify(axes));
 
   // 4) Clicar no 5º segmento de "Ritmo de jogo" muda o nível pra 5
   // (mas NÃO grava em CAREER ainda, só ao salvar).
@@ -72,7 +67,7 @@ const { skipPreseason } = require("./_calendar_skip");
     const row = document.querySelector('#tacticAxisRows .m3-instr-row[data-axis="ritmo"]');
     return { domLevel: Number(row.dataset.level), domOnCount: row.querySelectorAll(".m3-seg.on").length, careerLevel: CAREER.lineup.tactics.ritmo };
   });
-  console.log("4) Clicar no 5º segmento muda o visual pra nível 5, mas CAREER só grava ao Salvar:",
+  check("4) Clicar no 5º segmento muda o visual pra nível 5, mas CAREER só grava ao Salvar:",
     afterClick.domLevel === 5 && afterClick.domOnCount === 5 && afterClick.careerLevel === 3, JSON.stringify(afterClick));
 
   // 5) Botão salvar é FAB (position:fixed), não mais barra de ação
@@ -83,11 +78,11 @@ const { skipPreseason } = require("./_calendar_skip");
     const pos = getComputedStyle(btn).position;
     return { isFab, pos };
   });
-  console.log("5) Botão salvar é .m3-fab, position:fixed:", fabCheck.isFab && fabCheck.pos === "fixed", JSON.stringify(fabCheck));
+  check("5) Botão salvar é .m3-fab, position:fixed:", fabCheck.isFab && fabCheck.pos === "fixed", JSON.stringify(fabCheck));
   await page.click("#btnSaveLineup");
   await page.waitForTimeout(200);
   const savedLevel = await page.evaluate(() => CAREER.lineup.tactics.ritmo);
-  console.log("6) Salvar grava o nível 5 em CAREER.lineup.tactics.ritmo:", savedLevel === 5, savedLevel);
+  check("6) Salvar grava o nível 5 em CAREER.lineup.tactics.ritmo:", savedLevel === 5, savedLevel);
 
   // 7) Trocar de formação via chip aplica na hora (comportamento
   // imediato, igual o <select> antigo já tinha).
@@ -97,7 +92,7 @@ const { skipPreseason } = require("./_calendar_skip");
   });
   await page.waitForTimeout(150);
   const formationAfter = await page.evaluate(() => CAREER.lineup.formation);
-  console.log("7) Trocar formação via chip aplica na hora:", formationAfter === "4-4-2", formationAfter);
+  check("7) Trocar formação via chip aplica na hora:", formationAfter === "4-4-2", formationAfter);
 
   await page.screenshot({ path: "screens/bloco2_tatica.png" });
 
@@ -116,7 +111,7 @@ const { skipPreseason } = require("./_calendar_skip");
     const rows = [...document.querySelectorAll("#liveTacticAxisRows .m3-instr-row")];
     return { count: rows.length, hasOldSelects: !!document.getElementById("liveTacticsMentality") };
   });
-  console.log("8) Sub-modal ao vivo com os 4 eixos (sem os <select> antigos):", liveAxes.count === 4 && !liveAxes.hasOldSelects, JSON.stringify(liveAxes));
+  check("8) Sub-modal ao vivo com os 4 eixos (sem os <select> antigos):", liveAxes.count === 4 && !liveAxes.hasOldSelects, JSON.stringify(liveAxes));
   await page.screenshot({ path: "screens/bloco2_ajuste_tatico_ao_vivo.png" });
 
   await browser.close();

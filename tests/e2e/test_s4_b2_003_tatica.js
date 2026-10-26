@@ -7,6 +7,8 @@
 // foram alteradas — aguardam decisão do PM — então não são testadas
 // aqui como "migradas".
 const { chromium } = require("playwright-core");
+const { check } = require("./_check");
+const { enterGame } = require("./_startup");
 
 (async () => {
   const browser = await chromium.launch({ executablePath: process.env.PW_CHROMIUM_PATH || undefined, headless: true, args: ["--host-resolver-rules=MAP fonts.googleapis.com 127.0.0.1,MAP fonts.gstatic.com 127.0.0.1"] });
@@ -29,14 +31,7 @@ const { chromium } = require("playwright-core");
   await page.click(".m3-club-row");
   await page.waitForTimeout(150);
   await page.click("#btnConfirmClub");
-  await page.click("#btnOnboardSkip", { timeout: 2000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.waitForTimeout(800);
-  await page.click("#btnClaimDailyLogin", { timeout: 3000 }).catch(() => {});
-  await page.waitForTimeout(300);
+  await enterGame(page);
 
   await page.click(".m3-nav-item[data-panel='escalacao']");
   await page.waitForTimeout(300);
@@ -61,7 +56,7 @@ const { chromium } = require("playwright-core");
   }, starterId);
   // --m3-error é #FF5449 = rgb(255, 84, 73) — aparece no box-shadow
   // (0 0 0 2px var(--m3-error), ...).
-  console.log("1) Badge 'problema' no campinho usa --m3-error (não mais --mt-crimson-400):",
+  check("1) Badge 'problema' no campinho usa --m3-error (não mais --mt-crimson-400):",
     !!problemBadge && problemBadge.includes("rgb(255, 84, 73)"), problemBadge);
 
   // 2) O mesmo jogador contundido mostra o indicador de lesão
@@ -87,7 +82,7 @@ const { chromium } = require("playwright-core");
     probe.remove();
     return { actual: flag ? getComputedStyle(flag).backgroundColor : null, expected };
   }, starterId);
-  console.log("2) Indicador de lesão segue --m3-secondary (não mais --mt-gold-400 fixo):",
+  check("2) Indicador de lesão segue --m3-secondary (não mais --mt-gold-400 fixo):",
     !!injuryFlag.actual && injuryFlag.actual === injuryFlag.expected, JSON.stringify(injuryFlag));
 
   await page.screenshot({ path: "s4_b2_003_problem_badge.png" }).catch(() => {});
@@ -100,7 +95,7 @@ const { chromium } = require("playwright-core");
     document.querySelector('.m3-filter-chip[data-formation="4-4-2"]')?.click();
     return { chipExists: !!document.querySelector('.m3-filter-chip[data-formation="4-4-2"]'), formationBefore: before, formationAfter: CAREER.lineup.formation };
   });
-  console.log("3) Trocar formação continua funcionando (fluxo intacto):",
+  check("3) Trocar formação continua funcionando (fluxo intacto):",
     stillWorks.chipExists && stillWorks.formationAfter === "4-4-2", JSON.stringify(stillWorks));
 
   await browser.close();

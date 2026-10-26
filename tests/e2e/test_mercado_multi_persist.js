@@ -3,6 +3,8 @@
 // é aqui que o bug do save "grande demais" (413) apareceria se a
 // correção de tamanho não fosse suficiente.
 const { chromium } = require("playwright-core");
+const { check } = require("./_check");
+const { enterGame } = require("./_startup");
 const { skipPreseason } = require("./_calendar_skip");
 (async () => {
   const browser = await chromium.launch({ executablePath: process.env.PW_CHROMIUM_PATH || undefined, headless: true, args: ["--host-resolver-rules=MAP fonts.googleapis.com 127.0.0.1,MAP fonts.gstatic.com 127.0.0.1"] });
@@ -22,13 +24,7 @@ const { skipPreseason } = require("./_calendar_skip");
   await page.click(".m3-club-row");
   await page.waitForTimeout(150);
   await page.click("#btnConfirmClub");
-  await page.click("#btnOnboardSkip", { timeout: 2000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnClaimDailyLogin", { timeout: 3000 }).catch(() => {});
-  await page.waitForTimeout(1200);
+  await enterGame(page);
 
   // Simula uma rodada inteira via UI de verdade (persistCareer roda
   // dentro do fluxo normal de "Ir para o jogo").
@@ -48,7 +44,7 @@ const { skipPreseason } = require("./_calendar_skip");
     const data = await r.json();
     return { ok: r.ok, currentRound: data.career?.currentRound, size: new Blob([JSON.stringify(data.career)]).size };
   });
-  console.log("1) Save persistiu no servidor sem erro 413 depois de simular a rodada:", saved.ok && saved.currentRound === 2, JSON.stringify(saved));
+  check("1) Save persistiu no servidor sem erro 413 depois de simular a rodada:", saved.ok && saved.currentRound === 2, JSON.stringify(saved));
   console.log("   Tamanho do save depois de 1 rodada:", (saved.size/1024).toFixed(1), "KB (limite: 768 KB)");
 
   await browser.close();

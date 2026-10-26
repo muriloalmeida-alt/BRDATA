@@ -1,4 +1,5 @@
 const { chromium } = require("playwright-core");
+const { enterGame, waitForBoot } = require("./_startup");
 
 (async () => {
   const browser = await chromium.launch({
@@ -21,13 +22,7 @@ const { chromium } = require("playwright-core");
   await page.click(".m3-club-row");
   await page.waitForTimeout(150);
   await page.click("#btnConfirmClub");
-  await page.click("#btnOnboardSkip", { timeout: 2000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnClaimDailyLogin", { timeout: 3000 }).catch(() => {});
-  await page.waitForTimeout(500);
+  await enterGame(page);
 
   // Força o teto salarial artificialmente baixo direto via API, pra
   // testar o bloqueio sem precisar simular dezenas de promoções.
@@ -41,7 +36,7 @@ const { chromium } = require("playwright-core");
   console.log("Teto forçado:", JSON.stringify(result));
 
   await page.reload({ waitUntil: "load" });
-  await page.waitForTimeout(1000);
+  await waitForBoot(page);
   await page.click(".m3-nav-item[data-panel='elenco']");
   await page.waitForTimeout(300);
   const baseRow = await page.$("#squadBaseList [data-id]");

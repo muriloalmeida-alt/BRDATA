@@ -2,6 +2,8 @@
 // ficam FORA de .ct-modal-body (não rolam com o conteúdo) — moram em
 // .ct-modal-footer, irmã fixa (flex-shrink:0) da .ct-modal-body.
 const { chromium } = require("playwright-core");
+const { check } = require("./_check");
+const { enterGame } = require("./_startup");
 const { skipPreseason } = require("./_calendar_skip");
 
 function checkFooter(page, overlayId, btnId) {
@@ -38,22 +40,28 @@ function checkFooter(page, overlayId, btnId) {
   await page.click(".m3-club-row");
   await page.waitForTimeout(150);
   await page.click("#btnConfirmClub");
-  await page.click("#btnOnboardSkip", { timeout: 2000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnClaimDailyLogin", { timeout: 3000 }).catch(() => {});
-  await page.waitForTimeout(500);
+  await enterGame(page);
 
   // 1) Confirmar escalação — botões "Ir para o jogo"/"Ajustar escalação".
   await page.click(".m3-nav-item[data-panel='central']");
   await page.waitForTimeout(200);
   await skipPreseason(page); // GE-CALENDAR-001: carreira nova começa na pré-temporada
+  // A coletiva de imprensa é sorteada (PRESS_CHANCE_BY_ID) e, quando sai,
+  // entra ENTRE "Seu jogo" e Notícias — este teste é sobre os rodapés
+  // dessas telas (a coletiva tem os testes dela: test_coletiva_imprensa,
+  // test_toast_reposiciona), então desliga o sorteio: resultado
+  // determinístico em vez de falhar quando a coletiva aparece.
+  // (chance 1e-12 e não 0: determineMatchPressTrigger usa
+  // `PRESS_CHANCE_BY_ID[id] || 0.3`, então 0 vira 30% — ver relatório da
+  // Fase B do motor de testes.)
+  await page.evaluate(() => {
+    Object.keys(PRESS_CHANCE_BY_ID).forEach((k) => { PRESS_CHANCE_BY_ID[k] = 1e-12; });
+    PRESS_ALWAYS_IDS.clear();
+  });
   await page.click("#btnSimulate");
   await page.waitForSelector("#preMatchOverlay.open", { timeout: 5000 });
   const r1 = await checkFooter(page, "preMatchOverlay", "btnPreMatchGo");
-  console.log("1) Confirmar escalação — 'Ir para o jogo' no rodapé fixo, fora do corpo rolável:", r1.insideFooter && !r1.insideBody && r1.footerIsFlexShrink0 && r1.btnVisible);
+  check("1) Confirmar escalação — 'Ir para o jogo' no rodapé fixo, fora do corpo rolável:", r1.insideFooter && !r1.insideBody && r1.footerIsFlexShrink0 && r1.btnVisible);
   await page.click("#btnPreMatchGo");
 
   // 2) Resultado do jogo — "Continuar".
@@ -61,20 +69,20 @@ function checkFooter(page, overlayId, btnId) {
   await page.evaluate(() => skipLiveMatch());
   await page.waitForSelector("#matchDetailOverlay.open", { timeout: 5000 });
   const r2 = await checkFooter(page, "matchDetailOverlay", "btnMatchDetailContinue");
-  console.log("2) Resultado do jogo — 'Continuar' no rodapé fixo:", r2.insideFooter && !r2.insideBody && r2.footerIsFlexShrink0 && r2.btnVisible);
+  check("2) Resultado do jogo — 'Continuar' no rodapé fixo:", r2.insideFooter && !r2.insideBody && r2.footerIsFlexShrink0 && r2.btnVisible);
   await page.click("#btnMatchDetailContinue");
 
   // 3) Notícias (pós-jogo) — "Continuar" visível e no rodapé.
   await page.waitForSelector("#newsOverlay.open", { timeout: 5000 });
   const r3 = await checkFooter(page, "newsOverlay", "btnNewsContinue");
   const footerHidden3 = await page.evaluate(() => document.getElementById("newsFooter").classList.contains("hidden"));
-  console.log("3) Notícias (pós-jogo) — 'Continuar' no rodapé fixo e visível (footer não escondido):", r3.insideFooter && !r3.insideBody && !footerHidden3 && r3.btnVisible);
+  check("3) Notícias (pós-jogo) — 'Continuar' no rodapé fixo e visível (footer não escondido):", r3.insideFooter && !r3.insideBody && !footerHidden3 && r3.btnVisible);
   await page.click("#btnNewsContinue");
 
   // 4) Resultados da rodada — "Ver tabela atualizada".
   await page.waitForSelector("#roundResultsOverlay.open", { timeout: 5000 });
   const r4 = await checkFooter(page, "roundResultsOverlay", "btnRoundResultsContinue");
-  console.log("4) Resultados da rodada — 'Ver tabela atualizada' no rodapé fixo:", r4.insideFooter && !r4.insideBody && r4.footerIsFlexShrink0 && r4.btnVisible);
+  check("4) Resultados da rodada — 'Ver tabela atualizada' no rodapé fixo:", r4.insideFooter && !r4.insideBody && r4.footerIsFlexShrink0 && r4.btnVisible);
   await page.click("#btnRoundResultsContinue").catch(() => {});
   await page.click("#tabelaModalClose").catch(() => {});
   await page.waitForTimeout(150);
@@ -91,7 +99,7 @@ function checkFooter(page, overlayId, btnId) {
     const footer = document.getElementById("newsFooter");
     return { hasHiddenClass: footer.classList.contains("hidden"), rendersNothing: footer.getBoundingClientRect().height === 0 };
   });
-  console.log("5) Notícias (consulta pelo menu) — rodapé some por inteiro (sem faixa vazia):", footerHidden5.hasHiddenClass && footerHidden5.rendersNothing);
+  check("5) Notícias (consulta pelo menu) — rodapé some por inteiro (sem faixa vazia):", footerHidden5.hasHiddenClass && footerHidden5.rendersNothing);
   await page.click("#newsClose");
   await page.waitForTimeout(150);
 
@@ -109,9 +117,9 @@ function checkFooter(page, overlayId, btnId) {
   const renewOpen = await page.evaluate(() => document.getElementById("renewOverlay").classList.contains("open"));
   if (renewOpen) {
     const r6 = await checkFooter(page, "renewOverlay", "btnRenewPropose");
-    console.log("6) Renovar contrato — 'Propor' no rodapé fixo:", r6.insideFooter && !r6.insideBody && r6.footerIsFlexShrink0 && r6.btnVisible);
+    check("6) Renovar contrato — 'Propor' no rodapé fixo:", r6.insideFooter && !r6.insideBody && r6.footerIsFlexShrink0 && r6.btnVisible);
   } else {
-    console.log("6) Renovar contrato — modal não abriu (jogador pode não ter opção de renovar nesse contexto), pulando.");
+    check("6) Renovar contrato — modal não abriu (jogador pode não ter opção de renovar nesse contexto), pulando.");
   }
 
   await browser.close();

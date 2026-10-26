@@ -4,6 +4,8 @@
 // maybeSpawnListingOffer/maybeSpawnRivalOffer (chamadas de verdade, não
 // reimplementadas).
 const { chromium } = require("playwright-core");
+const { check } = require("./_check");
+const { enterGame } = require("./_startup");
 
 (async () => {
   const browser = await chromium.launch({ executablePath: process.env.PW_CHROMIUM_PATH || undefined, headless: true, args: ["--host-resolver-rules=MAP fonts.googleapis.com 127.0.0.1,MAP fonts.gstatic.com 127.0.0.1"] });
@@ -24,13 +26,7 @@ const { chromium } = require("playwright-core");
   await page.click(".m3-club-row");
   await page.waitForTimeout(150);
   await page.click("#btnConfirmClub");
-  await page.click("#btnOnboardSkip", { timeout: 2000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnClaimDailyLogin", { timeout: 3000 }).catch(() => {});
-  await page.waitForTimeout(500);
+  await enterGame(page);
 
   // ---------- Helpers no contexto da página ----------
   const setup = await page.evaluate(() => {
@@ -74,7 +70,7 @@ const { chromium } = require("playwright-core");
     CAREER.leagueSquads[buyerId] = backup;
     return { v70, v80, base70: p70.value, base80: p80.value };
   }, buyerId);
-  console.log("1) Jogador melhor (overall 80) vale mais que overall 70, mesmas demais variáveis:", t1.v80 > t1.v70, JSON.stringify(t1));
+  check("1) Jogador melhor (overall 80) vale mais que overall 70, mesmas demais variáveis:", t1.v80 > t1.v70, JSON.stringify(t1));
 
   // ---------- TESTE 2 — Potencial ----------
   const t2 = await page.evaluate((buyerId) => {
@@ -98,7 +94,7 @@ const { chromium } = require("playwright-core");
     CAREER.leagueSquads[buyerId] = backup;
     return { vLow, vHigh, baseLow: pLow.value, baseHigh: pHigh.value };
   }, buyerId);
-  console.log("2) overall 70/potencial 85 vale mais que overall 70/potencial 72:", t2.vHigh > t2.vLow, JSON.stringify(t2));
+  check("2) overall 70/potencial 85 vale mais que overall 70/potencial 72:", t2.vHigh > t2.vLow, JSON.stringify(t2));
 
   // ---------- TESTE 3 — Idade ----------
   // IMPORTANTE (documentado no relatório da Fase 1.3): a fórmula
@@ -134,7 +130,7 @@ const { chromium } = require("playwright-core");
     CAREER.leagueSquads[buyerId] = backup;
     return { v20, v25, v31, ageMultOrderMatchesBase: (v25 > v20) === (p25.value > p20.value) && (v20 > v31) === (p20.value > p31.value) };
   }, buyerId);
-  console.log("3) transferValuation preserva a ordem da curva de idade JÁ EXISTENTE (25 prime > 20 > 31, ver nota no código):",
+  check("3) transferValuation preserva a ordem da curva de idade JÁ EXISTENTE (25 prime > 20 > 31, ver nota no código):",
     t3.v25 > t3.v20 && t3.v20 > t3.v31 && t3.ageMultOrderMatchesBase, JSON.stringify(t3));
 
   // ---------- TESTE 4 — Contrato ----------
@@ -159,7 +155,7 @@ const { chromium } = require("playwright-core");
     CAREER.leagueSquads[buyerId] = backup;
     return { vShort, vLong, base: pShort.value };
   }, buyerId);
-  console.log("4) Contrato curto (último ano) vale menos que contrato longo (+4 anos), mesmo jogador:", t4.vShort < t4.vLong, JSON.stringify(t4));
+  check("4) Contrato curto (último ano) vale menos que contrato longo (+4 anos), mesmo jogador:", t4.vShort < t4.vLong, JSON.stringify(t4));
 
   // ---------- TESTE 5 — Necessidade ----------
   const t5 = await page.evaluate(() => {
@@ -188,7 +184,7 @@ const { chromium } = require("playwright-core");
   // de interesse, então scoreFactor também se desloca) — por isso o
   // efeito combinado (~15-20%) é maior que qualquer camada isolada,
   // mas ainda moderado e sempre dentro do teto de 70%-150% (Teste 8).
-  console.log("5) Clube carente oferece mais que clube bem servido pelo mesmo jogador (diferença moderada):",
+  check("5) Clube carente oferece mais que clube bem servido pelo mesmo jogador (diferença moderada):",
     t5.vCarente > t5.vServido && Math.abs(t5.diffPct) <= 20, JSON.stringify(t5));
 
   // ---------- TESTE 6 — TransferScore (necessidade mantida constante,
@@ -217,7 +213,7 @@ const { chromium } = require("playwright-core");
     CAREER.leagueSquads = backup;
     return { scoreGood, scoreBad, vGood, vBad, base: p.value };
   });
-  console.log("6) TransferScore alto (clube com bom fit) resulta em proposta maior que score baixo (mesmo jogador):",
+  check("6) TransferScore alto (clube com bom fit) resulta em proposta maior que score baixo (mesmo jogador):",
     t6.scoreGood > t6.scoreBad && t6.vGood > t6.vBad, JSON.stringify(t6));
 
   // ---------- TESTE 7 — Financeiro (necessidade/overall do clube
@@ -244,7 +240,7 @@ const { chromium } = require("playwright-core");
     CAREER.leagueSquads = backup;
     return { finRich, finPoor, vRich, vPoor, base: p.value, diffPct: Math.round(((vRich - vPoor) / p.value) * 100) };
   });
-  console.log("7) Clube rico paga um pouco mais que clube apertado (mesmo jogador), mas sem desproporção (diferença pequena):",
+  check("7) Clube rico paga um pouco mais que clube apertado (mesmo jogador), mas sem desproporção (diferença pequena):",
     t7.vRich >= t7.vPoor && Math.abs(t7.diffPct) <= 10, JSON.stringify(t7));
 
   // ---------- TESTE 8 — Limites (vários combos extremos) ----------
@@ -273,7 +269,7 @@ const { chromium } = require("playwright-core");
     return results;
   });
   const t8Ok = t8.every((r) => r.withinLimits);
-  console.log("8) Nenhuma valuation sai de [70%, 150%] do valor base, mesmo em combos extremos:", t8Ok, JSON.stringify(t8));
+  check("8) Nenhuma valuation sai de [70%, 150%] do valor base, mesmo em combos extremos:", t8Ok, JSON.stringify(t8));
 
   // ---------- TESTE 9 — Determinismo ----------
   const t9 = await page.evaluate((buyerId) => {
@@ -284,7 +280,7 @@ const { chromium } = require("playwright-core");
     const v3 = transferValuation({ ...p }, buyerId, "cpu_seller_x", { competitorCount: 1 });
     return { v1, v2, v3, allEqual: v1 === v2 && v2 === v3 };
   }, buyerId);
-  console.log("9) Mesmos inputs produzem sempre o mesmo resultado (determinístico, sem RNG interno):", t9.allEqual, JSON.stringify(t9));
+  check("9) Mesmos inputs produzem sempre o mesmo resultado (determinístico, sem RNG interno):", t9.allEqual, JSON.stringify(t9));
 
   // ---------- TESTE 10 — Integração real (maybeGenerateOffer) ----------
   // Mercado real (60 times) tem probabilidade baixa por tentativa
@@ -294,6 +290,21 @@ const { chromium } = require("playwright-core");
   // dentro de um número razoável de tentativas; o que este teste
   // verifica é a INTEGRAÇÃO (fee == transferValuation recalculado),
   // não a frequência (já coberta em test_transfer_ai_offers.js).
+  // negotiateOffer tem um sorteio interno (sellerNegotiationDecision: na
+  // faixa 95-105% da reserva aceita com 85% de chance, senão contrapõe).
+  // Os casos 10/10c comparam a oferta GERADA com negotiateOffer
+  // RECALCULADO — com o RNG real, o recálculo podia dar outro desfecho e
+  // a comparação falhava por acaso (intermitente desde o baseline da Fase
+  // A). fixNegotiationRng() fixa o RNG só DENTRO de negotiateOffer (a
+  // geração e o recálculo passam a ter o mesmo desfecho); os outros
+  // sorteios da geração (chance de oferta, escolha do clube) seguem reais.
+  await page.evaluate(() => {
+    window.fixNegotiationRng = () => {
+      const real = negotiateOffer;
+      window.negotiateOffer = (...a) => { const r = Math.random; Math.random = () => 0.01; try { return real(...a); } finally { Math.random = r; } };
+      return () => { window.negotiateOffer = real; };
+    };
+  });
   const t10 = await page.evaluate(() => {
     function fabricateSquad(n, avgOverall, forwards) {
       const squad = [];
@@ -311,6 +322,7 @@ const { chromium } = require("playwright-core");
       p.wage = cf.wage; p.value = cf.value; p.potential = 80;
     });
     Object.keys(CAREER.leagueSquads).forEach((id) => { CAREER.leagueSquads[id] = fabricateSquad(18, 66, 0); });
+    const restoreNegotiation = fixNegotiationRng();
     let found = null;
     for (let i = 0; i < 300 && !found; i++) {
       CAREER.pendingOffer = null;
@@ -334,12 +346,13 @@ const { chromium } = require("playwright-core");
       const recomputed = recomputedDeal.outcome === "accepted" ? recomputedDeal.finalValue : null;
       result = { ok: true, fee: found.fee, recomputed, matches: found.fee === recomputed, base: player.value, withinLimits: found.fee >= Math.round(player.value * 0.70) && found.fee <= Math.round(player.value * 1.50) };
     }
+    restoreNegotiation();
     CAREER.pendingOffer = null;
     CAREER.squad = backupSquad;
     CAREER.leagueSquads = backupLeague;
     return result;
   });
-  console.log("10) maybeGenerateOffer usa negotiateOffer de verdade (fee gerado == negotiateOffer recalculado pro mesmo par jogador/clube, Fase 1.4):",
+  check("10) maybeGenerateOffer usa negotiateOffer de verdade (fee gerado == negotiateOffer recalculado pro mesmo par jogador/clube, Fase 1.4):",
     t10.ok && t10.matches && t10.withinLimits, JSON.stringify(t10));
 
   // ---------- TESTE 10b — Integração real (maybeSpawnListingOffer) ----------
@@ -369,7 +382,7 @@ const { chromium } = require("playwright-core");
     if (!found) return { ok: false, reason: "nenhuma oferta gerada em 80 tentativas" };
     return { ok: true, value: found.value, withinLimits: found.value >= Math.round(listing.askingValue * 0.70) && found.value <= Math.round(listing.askingValue * 1.50) };
   });
-  console.log("10b) maybeSpawnListingOffer usa transferValuation de verdade (valor dentro de [70%,150%] do valor pedido):",
+  check("10b) maybeSpawnListingOffer usa transferValuation de verdade (valor dentro de [70%,150%] do valor pedido):",
     t10b.ok && t10b.withinLimits, JSON.stringify(t10b));
 
   // ---------- TESTE 10c — Integração real (maybeSpawnRivalOffer) ----------
@@ -389,6 +402,7 @@ const { chromium } = require("playwright-core");
     CAREER.leagueSquads[sellerId] = [player, ...fabricateSquad(17, 60, 0)];
     Object.keys(CAREER.leagueSquads).filter((id) => id !== sellerId).forEach((id) => { CAREER.leagueSquads[id] = fabricateSquad(18, 66, 0); });
     const o = { playerId: player.id, playerName: player.name, clubId: sellerId, marketValue: player.value, offerValue: Math.round(player.value * 0.9), installments: 1, roundsLeft: 2, status: "pending", counterValue: null };
+    const restoreNegotiation = fixNegotiationRng();
     let found = null;
     for (let i = 0; i < 200 && !found; i++) {
       o.rivalOffer = null;
@@ -405,10 +419,11 @@ const { chromium } = require("playwright-core");
       const recomputed = recomputedDeal.outcome === "accepted" ? recomputedDeal.finalValue : null;
       result = { ok: true, offerValue: found.offerValue, recomputed, matches: found.offerValue === recomputed, withinLimits: found.offerValue >= Math.round(o.marketValue * 0.70) && found.offerValue <= Math.round(o.marketValue * 1.50) };
     }
+    restoreNegotiation();
     CAREER.leagueSquads = backup;
     return result;
   });
-  console.log("10c) maybeSpawnRivalOffer usa negotiateOffer de verdade (offerValue == negotiateOffer recalculado, Fase 1.4):",
+  check("10c) maybeSpawnRivalOffer usa negotiateOffer de verdade (offerValue == negotiateOffer recalculado, Fase 1.4):",
     t10c.ok && t10c.matches && t10c.withinLimits, JSON.stringify(t10c));
 
   await browser.close();

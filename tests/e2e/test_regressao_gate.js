@@ -1,4 +1,5 @@
 const { chromium } = require("playwright-core");
+const { check } = require("./_check");
 (async () => {
   const browser = await chromium.launch({
     executablePath: process.env.PW_CHROMIUM_PATH || undefined,
@@ -18,7 +19,7 @@ const { chromium } = require("playwright-core");
   await page.waitForTimeout(500);
   const gateHidden = await page.evaluate(() => document.getElementById("authGate").style.display === "none");
   const shellVisible = await page.evaluate(() => document.querySelector(".shell").style.display !== "none");
-  console.log("1) Visitante sem params cai direto no app (gate escondido):", gateHidden, "| shell visível:", shellVisible);
+  check("1) Visitante sem params cai direto no app (gate escondido):", gateHidden, "| shell visível:", shellVisible);
 
   // 2) Avatar "Entrar" continua abrindo o gate na view de LOGIN (não
   // cadastro) -- comportamento de sempre, não deveria ter mudado.
@@ -26,7 +27,7 @@ const { chromium } = require("playwright-core");
   await page.waitForTimeout(300);
   const loginView = await page.evaluate(() => document.getElementById("gateLoginView").style.display);
   const signupView = await page.evaluate(() => document.getElementById("gateSignupView").style.display);
-  console.log("2) Avatar 'Entrar' abre o gate na view de login:", loginView === "block" && signupView === "none");
+  check("2) Avatar 'Entrar' abre o gate na view de login:", loginView === "block" && signupView === "none");
   await page.click("#authGateClose");
   await page.waitForTimeout(200);
 
@@ -37,7 +38,7 @@ const { chromium } = require("playwright-core");
   const urlClean = !page.url().includes("signup=1");
   const gateVisible = await page.evaluate(() => document.getElementById("authGate").style.display);
   const signupViewVisible = await page.evaluate(() => document.getElementById("gateSignupView").style.display);
-  console.log("3) ?signup=1 abre direto o cadastro:", gateVisible === "flex" && signupViewVisible === "block", "| URL limpa depois:", urlClean);
+  check("3) ?signup=1 abre direto o cadastro:", gateVisible === "flex" && signupViewVisible === "block", "| URL limpa depois:", urlClean);
 
   await browser.close();
 })().catch((e) => { console.error("FATAL:", e); process.exit(1); });

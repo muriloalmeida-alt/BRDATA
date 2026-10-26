@@ -1,6 +1,8 @@
 // Testa Bloco 7/8/9 pendentes: Configurações, Editar perfil, Central de
 // notificações, Histórico de compras, Central de ajuda, Sistema (splash/erro).
 const { chromium } = require("playwright-core");
+const { check } = require("./_check");
+const { enterGame, waitForBoot } = require("./_startup");
 
 (async () => {
   const browser = await chromium.launch({ executablePath: process.env.PW_CHROMIUM_PATH || undefined, headless: true, args: ["--host-resolver-rules=MAP fonts.googleapis.com 127.0.0.1,MAP fonts.gstatic.com 127.0.0.1"] });
@@ -21,12 +23,7 @@ const { chromium } = require("playwright-core");
   await page.click(".m3-club-row");
   await page.waitForTimeout(150);
   await page.click("#btnConfirmClub");
-  await page.click("#btnOnboardSkip", { timeout: 2000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.waitForTimeout(700);
+  await enterGame(page, { claimDailyLogin: false });
   // fecha modal de login diário se abrir
   try { await page.click("#btnClaimDailyLogin", { timeout: 1500 }); await page.waitForTimeout(200); } catch {}
 
@@ -48,14 +45,14 @@ const { chromium } = require("playwright-core");
     purchaseRow: !!document.getElementById("settingsRowPurchaseHistory"),
     helpRow: !!document.getElementById("settingsRowHelp"),
   }));
-  console.log("1) Configurações abre com perfil+3 toggles+linhas de conta:", cfg.open && cfg.name === "Murilo Melo" && cfg.toggles === 3 && cfg.editRow && cfg.purchaseRow && cfg.helpRow, JSON.stringify(cfg));
+  check("1) Configurações abre com perfil+3 toggles+linhas de conta:", cfg.open && cfg.name === "Murilo Melo" && cfg.toggles === 3 && cfg.editRow && cfg.purchaseRow && cfg.helpRow, JSON.stringify(cfg));
 
   // 2) Toggle de notificação persiste
   const before = await page.evaluate(() => CAREER.notificationSettings.loja);
   await page.click('#settingsBody [data-toggle-key="loja"]');
   await page.waitForTimeout(150);
   const after = await page.evaluate(() => CAREER.notificationSettings.loja);
-  console.log("2) Toggle 'loja' inverte de verdade:", after === !before, { before, after });
+  check("2) Toggle 'loja' inverte de verdade:", after === !before, { before, after });
 
   // 3) Editar perfil: nome editável, e-mail mascarado, nível = reputação
   await page.click("#settingsRowEditProfile");
@@ -67,18 +64,18 @@ const { chromium } = require("playwright-core");
     level: document.getElementById("editProfileLevel").textContent,
     avatar: document.getElementById("editProfileAvatar").textContent,
   }));
-  console.log("3) Editar perfil abre com nome/e-mail mascarado/nível:", editState.open && editState.nameVal === "Murilo Melo" && editState.email.includes("•") && /\d+/.test(editState.level) && editState.avatar === "MM", JSON.stringify(editState));
+  check("3) Editar perfil abre com nome/e-mail mascarado/nível:", editState.open && editState.nameVal === "Murilo Melo" && editState.email.includes("•") && /\d+/.test(editState.level) && editState.avatar === "MM", JSON.stringify(editState));
 
   await page.fill("#editProfileNameInput", "Murilo Editado");
   await page.click("#btnSaveProfileName");
   await page.waitForTimeout(400);
   const afterSave = await page.evaluate(() => ({ meName: ME.name, closed: !document.getElementById("editProfileOverlay").classList.contains("open") }));
-  console.log("4) Salvar nome persiste no servidor (ME.name) e fecha:", afterSave.meName === "Murilo Editado" && afterSave.closed, JSON.stringify(afterSave));
+  check("4) Salvar nome persiste no servidor (ME.name) e fecha:", afterSave.meName === "Murilo Editado" && afterSave.closed, JSON.stringify(afterSave));
   // confirma persistência real via reload
   await page.reload({ waitUntil: "domcontentloaded" });
-  await page.waitForTimeout(600);
+  await waitForBoot(page);
   const afterReload = await page.evaluate(() => ME && ME.name);
-  console.log("5) Nome sobrevive a reload (endpoint gravou no servidor):", afterReload === "Murilo Editado", afterReload);
+  check("5) Nome sobrevive a reload (endpoint gravou no servidor):", afterReload === "Murilo Editado", afterReload);
 
   // 6) Central de ajuda: FAQ abre/fecha
   await openSettings();
@@ -91,7 +88,7 @@ const { chromium } = require("playwright-core");
     const rows = document.querySelectorAll("#helpCenterOverlay .mt-faq-row");
     return Array.from(rows).some((r) => r.classList.contains("open") && r !== rows[0]);
   });
-  console.log("6) Central de ajuda abre e FAQ expande ao clicar:", helpOpen, "faq extra aberto:", faqToggled);
+  check("6) Central de ajuda abre e FAQ expande ao clicar:", helpOpen, "faq extra aberto:", faqToggled);
   await page.click("#helpCenterClose");
   await page.waitForTimeout(100);
 
@@ -102,14 +99,14 @@ const { chromium } = require("playwright-core");
     open: document.getElementById("purchaseHistoryOverlay").classList.contains("open"),
     hasContent: document.getElementById("purchaseHistoryBody").children.length > 0,
   }));
-  console.log("7) Histórico de compras abre (com ou sem entradas):", purchaseState.open, JSON.stringify(purchaseState));
+  check("7) Histórico de compras abre (com ou sem entradas):", purchaseState.open, JSON.stringify(purchaseState));
   await page.click("#purchaseHistoryClose");
 
   // 8) Central de notificações: sino abre bottom sheet
   await page.click("#settingsBell");
   await page.waitForTimeout(150);
   const notifOpen = await page.evaluate(() => document.getElementById("notificationsSheetOverlay").classList.contains("open"));
-  console.log("8) Central de notificações abre pelo sino:", notifOpen);
+  check("8) Central de notificações abre pelo sino:", notifOpen);
   await page.click("#notificationsSheetClose");
   await page.click("#settingsClose");
 
@@ -122,11 +119,11 @@ const { chromium } = require("playwright-core");
   await page.click("#settingsBell");
   await page.waitForTimeout(150);
   const notifText = await page.evaluate(() => document.getElementById("notificationsSheetBody").textContent);
-  console.log("9) Notificação forçada aparece no feed:", notifText.includes("Fortaleza recusou"), notifText.slice(0, 80));
+  check("9) Notificação forçada aparece no feed:", notifText.includes("Fortaleza recusou"), notifText.slice(0, 80));
 
   // 10) Sistema — splash tem crest de marca
   const hasCrest = await page.evaluate(() => !!document.querySelector(".mt-splash-crest"));
-  console.log("10) Splash (#screenLoading) tem crest de marca no HTML:", hasCrest);
+  check("10) Splash (#screenLoading) tem crest de marca no HTML:", hasCrest);
 
   await browser.close();
 })();

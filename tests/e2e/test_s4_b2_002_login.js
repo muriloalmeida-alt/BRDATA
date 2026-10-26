@@ -10,6 +10,8 @@
 // só test_carreira_login_form.js (2 checks funcionais básicos,
 // continua existindo, sem sobreposição).
 const { chromium } = require("playwright-core");
+const { waitForBoot } = require("./_startup");
+const { check } = require("./_check");
 
 (async () => {
   const browser = await chromium.launch({ executablePath: process.env.PW_CHROMIUM_PATH || undefined, headless: true, args: ["--host-resolver-rules=MAP fonts.googleapis.com 127.0.0.1,MAP fonts.gstatic.com 127.0.0.1"] });
@@ -26,7 +28,7 @@ const { chromium } = require("playwright-core");
     await fetch("/api/auth/logout", { method: "POST" }).catch(() => {});
   }, { email });
   await page.goto(base + "/carreira.html", { waitUntil: "load" });
-  await page.waitForTimeout(500);
+  await waitForBoot(page); // fim do boot (estado) em vez de 500 ms fixos
 
   // 1) Estado "default": tela visível, com os tokens --m3-* corretos
   // (painel/campo/botão) — não .auth-gate (confirma que são telas
@@ -48,7 +50,7 @@ const { chromium } = require("playwright-core");
   // --m3-surface-container é #211F1D = rgb(33,31,29); --m3-surface-
   // container-high é #2C2A27 = rgb(44,42,39); --m3-primary é #6DDB94 =
   // rgb(109,219,148); --m3-on-primary é #00391A = rgb(0,57,26).
-  console.log("1) Default: tela própria do Modo Técnico (não .auth-gate), tokens --m3-* aplicados:",
+  check("1) Default: tela própria do Modo Técnico (não .auth-gate), tokens --m3-* aplicados:",
     defaultState.visible && !defaultState.usesAuthGate &&
     defaultState.panelBg === "rgb(33, 31, 29)" && defaultState.inputBg === "rgb(44, 42, 39)" &&
     defaultState.btnBg === "rgb(109, 219, 148)" && defaultState.btnColor === "rgb(0, 57, 26)",
@@ -62,7 +64,7 @@ const { chromium } = require("playwright-core");
     const err = document.getElementById("ctLoginError");
     return { visible: err.style.display !== "none", text: err.textContent, color: getComputedStyle(err).color };
   });
-  console.log("2) Erro (campos vazios) com token --m3-error correto:",
+  check("2) Erro (campos vazios) com token --m3-error correto:",
     emptyErrorState.visible && emptyErrorState.color === "rgb(255, 84, 73)", JSON.stringify(emptyErrorState));
 
   // 3) Estado "erro" (credenciais erradas) — mesma mensagem inline,
@@ -70,13 +72,15 @@ const { chromium } = require("playwright-core");
   await page.fill("#ctLoginEmail", email);
   await page.fill("#ctLoginPassword", "senhaerrada");
   await page.click("#screenLoginRequired button[type=submit]");
-  await page.waitForTimeout(600);
+  // Espera a resposta do login recusado (estado: botão volta a "Entrar"),
+  // até 10 s — antes 600 ms fixos, curto sob carga.
+  await page.waitForFunction(() => { const b = document.querySelector("#screenLoginRequired button[type=submit]"); return !b.disabled && b.textContent === "Entrar"; }, null, { timeout: 10000 }).catch(() => {});
   const wrongPassState = await page.evaluate(() => {
     const err = document.getElementById("ctLoginError");
     const btn = document.querySelector("#screenLoginRequired button[type=submit]");
     return { errorVisible: err.style.display !== "none", errorText: err.textContent, btnReenabled: !btn.disabled, btnLabel: btn.textContent };
   });
-  console.log("3) Erro (senha errada): mensagem aparece, botão reabilitado pra tentar de novo:",
+  check("3) Erro (senha errada): mensagem aparece, botão reabilitado pra tentar de novo:",
     wrongPassState.errorVisible && wrongPassState.btnReenabled && wrongPassState.btnLabel === "Entrar",
     JSON.stringify(wrongPassState));
 
@@ -86,28 +90,37 @@ const { chromium } = require("playwright-core");
   // durante o fetch (checado via interceptação de rede pra dar tempo
   // de capturar o estado intermediário, que normalmente passa rápido
   // demais pro teste pegar).
+  // A requisição fica PRESA até o estado intermediário ser lido (antes:
+  // atraso fixo de 400 ms e leitura 150 ms depois de iniciar o clique —
+  // sob carga o clique ainda não tinha sido disparado e a leitura pegava
+  // o botão de antes).
+  let releaseLogin;
+  const loginGate = new Promise((r) => { releaseLogin = r; });
   await page.route("**/api/auth/login", async (route) => {
-    await new Promise((r) => setTimeout(r, 400));
+    await loginGate;
     await route.continue();
   });
   await page.fill("#ctLoginPassword", "senha123");
   const submitPromise = page.click("#screenLoginRequired button[type=submit]");
-  await page.waitForTimeout(150);
+  await page.waitForFunction(() => document.querySelector("#screenLoginRequired button[type=submit]").disabled, null, { timeout: 5000 }).catch(() => {});
   const loadingState = await page.evaluate(() => {
     const btn = document.querySelector("#screenLoginRequired button[type=submit]");
     return { disabled: btn.disabled, label: btn.textContent };
   });
-  console.log("4) Carregamento: botão desabilitado com texto 'Entrando...' durante o login:",
+  check("4) Carregamento: botão desabilitado com texto 'Entrando...' durante o login:",
     loadingState.disabled && loadingState.label === "Entrando...", JSON.stringify(loadingState));
+  releaseLogin();
   await submitPromise;
 
   // 5) Estado "sucesso"/conclusão: login válido faz a tela de login
   // sumir e o boot seguir pro resto do app (mesmo padrão de transição
   // de S4-B2-001 — sem estado de sucesso próprio nesta tela, só
   // desaparece).
-  await page.waitForTimeout(600);
+  // Espera o ESTADO (tela de login escondida), até 10 s, em vez de 600 ms
+  // fixos — sob carga o boot pós-login passava disso.
+  await page.waitForFunction(() => document.getElementById("screenLoginRequired").classList.contains("hidden"), null, { timeout: 10000 }).catch(() => {});
   const loggedIn = await page.evaluate(() => document.getElementById("screenLoginRequired").classList.contains("hidden"));
-  console.log("5) Sucesso: login válido faz a tela de login sumir (fluxo funcional intacto):", loggedIn);
+  check("5) Sucesso: login válido faz a tela de login sumir (fluxo funcional intacto):", loggedIn);
 
   await browser.close();
 })();

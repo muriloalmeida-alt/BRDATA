@@ -3,6 +3,8 @@
 // reposiciona sozinho quando a tela troca pra Notícias (rodapé fixo
 // de verdade) enquanto ele ainda está visível.
 const { chromium } = require("playwright-core");
+const { check } = require("./_check");
+const { enterGame } = require("./_startup");
 const { skipPreseason } = require("./_calendar_skip");
 
 (async () => {
@@ -23,13 +25,7 @@ const { skipPreseason } = require("./_calendar_skip");
   await page.click(".m3-club-row");
   await page.waitForTimeout(150);
   await page.click("#btnConfirmClub");
-  await page.click("#btnOnboardSkip", { timeout: 2000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnClaimDailyLogin", { timeout: 3000 }).catch(() => {});
-  await page.waitForTimeout(500);
+  await enterGame(page);
 
   // Força a coletiva de imprensa a SEMPRE aparecer (oposto do hábito
   // usual nos outros testes) -- é justo essa tela sem rodapé fixo que
@@ -37,23 +33,46 @@ const { skipPreseason } = require("./_calendar_skip");
   await page.evaluate(() => {
     Object.keys(PRESS_CHANCE_BY_ID).forEach((k) => { PRESS_CHANCE_BY_ID[k] = 1; });
   });
+  // Empate em casa não gera NENHUM gatilho de coletiva
+  // (determineMatchPressTrigger) — reforça o time pra vitória ser
+  // praticamente certa, como test_coletiva_imprensa faz pra goleada.
+  await page.evaluate(() => {
+    CAREER.squad.filter((p) => p.origin === "principal").forEach((p) => { p.atk = 99; p.overall = 95; });
+  });
 
   await page.click(".m3-nav-item[data-panel='central']");
   await page.waitForTimeout(200);
   await skipPreseason(page); // GE-CALENDAR-001: carreira nova começa na pré-temporada
+  // ...e enfraquece o adversário da rodada (mesma técnica de
+  // test_coletiva_imprensa), pra vitória — e a coletiva — serem certas.
+  await page.evaluate(() => {
+    const fx = (CAREER.schedule[CAREER.currentRound] || []).find((m) => String(m.home) === String(CAREER.clubId) || String(m.away) === String(CAREER.clubId));
+    const oppId = String(fx.home) === String(CAREER.clubId) ? fx.away : fx.home;
+    (CAREER.leagueSquads[String(oppId)] || []).forEach((p) => { p.atk = 1; p.overall = 20; });
+  });
   await page.click("#btnSimulate");
   await page.waitForSelector("#preMatchOverlay.open", { timeout: 5000 });
   await page.click("#btnPreMatchGo");
   await page.waitForSelector("#liveMatchOverlay.open", { timeout: 5000 });
   await page.evaluate(() => skipLiveMatch());
   await page.waitForSelector("#matchDetailOverlay.open", { timeout: 5000 });
+  // Este teste é sobre o toast POR CIMA da coletiva (tela sem rodapé
+  // fixo), não sobre o gatilho dela (coberto por test_coletiva_imprensa).
+  // Se a partida não gerou gatilho (empate em casa não gera nenhum),
+  // dispara a mesma coletiva pós-jogo pelas funções do próprio jogo.
+  const pressFromMatch = await page.evaluate(() => {
+    if (PENDING_PRESS) return true;
+    firePressConference("01", CAREER.currentRound - 1, true);
+    return false;
+  });
+  console.log("   Coletiva gerada pela própria partida:", pressFromMatch);
   await page.click("#btnMatchDetailContinue");
   await page.waitForSelector("#pressOverlay.open", { timeout: 5000 });
 
   // Confere ANTES de responder: a coletiva realmente não tem rodapé
   // fixo (é o cenário que expõe o bug).
   const pressHasFooter = await page.evaluate(() => !!document.querySelector("#pressOverlay .ct-modal-footer"));
-  console.log("0) Coletiva de imprensa não tem rodapé fixo (cenário do bug):", !pressHasFooter);
+  check("0) Coletiva de imprensa não tem rodapé fixo (cenário do bug):", !pressHasFooter);
 
   await page.click("#pressOptions [data-press]");
   // Não espera nada -- o toast já deve ter dado o primeiro cálculo
@@ -77,8 +96,8 @@ const { skipPreseason } = require("./_calendar_skip");
       gap: f.top - t.bottom,
     };
   });
-  console.log("1) Toast ainda visível (dentro dos 4s) com o texto de reputação/moral:", state.toastVisible && state.toastText.includes("Reputação"));
-  console.log("2) Toast reposicionado acima do rodapé de Notícias (gap >= 0), não mais preso na posição da coletiva:", state.gap >= 0, JSON.stringify(state));
+  check("1) Toast ainda visível (dentro dos 4s) com o texto de reputação/moral:", state.toastVisible && state.toastText.includes("Reputação"));
+  check("2) Toast reposicionado acima do rodapé de Notícias (gap >= 0), não mais preso na posição da coletiva:", state.gap >= 0, JSON.stringify(state));
 
   await browser.close();
 })().catch((e) => { console.error("FATAL:", e); process.exit(1); });

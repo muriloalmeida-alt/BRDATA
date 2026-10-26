@@ -1,4 +1,6 @@
 const { chromium } = require("playwright-core");
+const { check } = require("./_check");
+const { enterGame } = require("./_startup");
 (async () => {
   const browser = await chromium.launch({
     executablePath: process.env.PW_CHROMIUM_PATH || undefined,
@@ -20,13 +22,7 @@ const { chromium } = require("playwright-core");
   await page.click(".m3-club-row");
   await page.waitForTimeout(150);
   await page.click("#btnConfirmClub");
-  await page.click("#btnOnboardSkip", { timeout: 2000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnClaimDailyLogin", { timeout: 3000 }).catch(() => {});
-  await page.waitForTimeout(500);
+  await enterGame(page);
 
   // Força um jogador com moral muito baixa (recusa na certa, ver
   // proposeRenewal) e propõe renovação -- deve disparar a coletiva
@@ -40,7 +36,7 @@ const { chromium } = require("playwright-core");
   await page.evaluate(() => { document.getElementById("renewWageInput").value = "1"; document.getElementById("renewDurationSelect").value = "2"; proposeRenewal(); });
   await page.waitForTimeout(300);
   const pressOpen = await page.evaluate(() => document.getElementById("pressOverlay").classList.contains("open"));
-  console.log("1) Renovação recusada (moral baixíssima) dispara coletiva 19:", pressOpen);
+  check("1) Renovação recusada (moral baixíssima) dispara coletiva 19:", pressOpen);
   if (pressOpen) {
     const q = await page.evaluate(() => document.getElementById("pressQuestion").textContent);
     console.log("   Pergunta é a de renovação recusada:", q.includes("recusa"));

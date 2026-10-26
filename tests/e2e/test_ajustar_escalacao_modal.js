@@ -2,6 +2,8 @@
 // escalação (pré-jogo): deve abrir uma MODAL (não navegar pra aba)
 // com todos os controles da Escalação e um botão "Ir para o jogo".
 const { chromium } = require("playwright-core");
+const { check } = require("./_check");
+const { enterGame } = require("./_startup");
 const { skipPreseason } = require("./_calendar_skip");
 
 (async () => {
@@ -22,15 +24,9 @@ const { skipPreseason } = require("./_calendar_skip");
   await page.click(".m3-club-row");
   await page.waitForTimeout(150);
   await page.click("#btnConfirmClub");
-  await page.click("#btnOnboardSkip", { timeout: 2000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnClaimDailyLogin", { timeout: 3000 }).catch(() => {});
-  await page.waitForTimeout(500);
+  await enterGame(page);
   await page.evaluate(() => {
-    Object.keys(PRESS_CHANCE_BY_ID).forEach((k) => { PRESS_CHANCE_BY_ID[k] = 0; });
+    Object.keys(PRESS_CHANCE_BY_ID).forEach((k) => { PRESS_CHANCE_BY_ID[k] = 1e-12; }); // não 0: `|| 0.3` em determineMatchPressTrigger faria 0 virar 30%
     PRESS_ALWAYS_IDS.clear();
   });
 
@@ -49,7 +45,7 @@ const { skipPreseason } = require("./_calendar_skip");
     preMatchStillOpen: document.getElementById("preMatchOverlay").classList.contains("open"),
     stillOnCentralPanel: document.getElementById("panel-central").classList.contains("active"),
   }));
-  console.log("1) 'Ajustar escalação' abre uma modal (Confirmar escalação continua aberta por baixo, sem navegar de aba):", s1.adjustOpen && s1.preMatchStillOpen && s1.stillOnCentralPanel);
+  check("1) 'Ajustar escalação' abre uma modal (Confirmar escalação continua aberta por baixo, sem navegar de aba):", s1.adjustOpen && s1.preMatchStillOpen && s1.stillOnCentralPanel);
 
   // 2) A modal tem TODAS as opções da tela de Escalação: chips de
   // formação (Bloco 2 M3, era <select>), botão de auto-escalar, toggle
@@ -74,7 +70,7 @@ const { skipPreseason } = require("./_calendar_skip");
       fabHidden: body.querySelector(".m3-fab").classList.contains("hidden"),
     };
   });
-  console.log("2) Modal tem todos os controles da Escalação (chips de formação/auto/base/campinho 11 posições/banco/4 eixos táticos, sem foco de treino):",
+  check("2) Modal tem todos os controles da Escalação (chips de formação/auto/base/campinho 11 posições/banco/4 eixos táticos, sem foco de treino):",
     s2.hasFormationChips > 0 && s2.hasAutoLineupBtn && s2.hasIncludeBaseToggle && s2.pitchSlots === 11 && s2.hasBenchList
     && s2.tacticAxes === 4 && s2.noTrainingFocus, JSON.stringify(s2));
   console.log("   FAB da aba (Salvar) escondido dentro da modal:", s2.fabHidden);
@@ -84,7 +80,7 @@ const { skipPreseason } = require("./_calendar_skip");
     const btn = document.getElementById("btnAdjustLineupGo");
     return { exists: !!btn, text: btn.textContent.trim(), inFooter: !!btn.closest(".ct-modal-footer") };
   });
-  console.log("3) Modal tem botão 'Ir para o jogo' no rodapé:", s3.exists && s3.text === "Ir para o jogo" && s3.inFooter);
+  check("3) Modal tem botão 'Ir para o jogo' no rodapé:", s3.exists && s3.text === "Ir para o jogo" && s3.inFooter);
 
   // 4) Trocar a formação (chip) e um eixo tático (segmento) dentro da
   // modal reflete de verdade em CAREER (não é só um formulário
@@ -95,7 +91,7 @@ const { skipPreseason } = require("./_calendar_skip");
   });
   await page.waitForTimeout(150);
   const s4 = await page.evaluate(() => ({ formation: CAREER.lineup.formation }));
-  console.log("4) Trocar o esquema na modal (chip) já aplica de verdade (4-4-2):", s4.formation === "4-4-2");
+  check("4) Trocar o esquema na modal (chip) já aplica de verdade (4-4-2):", s4.formation === "4-4-2");
 
   // 5) Fechar a modal (X) SEM ir pro jogo volta pra Confirmar
   // escalação, que reflete a mudança de esquema feita na modal, e o
@@ -112,7 +108,7 @@ const { skipPreseason } = require("./_calendar_skip");
       preMatchMetaText: document.getElementById("preMatchMeta").textContent,
     };
   });
-  console.log("5) 'X' fecha só a modal de ajuste, Confirmar escalação continua aberta refletindo a mudança:",
+  check("5) 'X' fecha só a modal de ajuste, Confirmar escalação continua aberta refletindo a mudança:",
     s5.adjustClosed && s5.preMatchStillOpen && s5.panelBackInPlace && s5.preMatchMetaText.includes("4-4-2"));
 
   // 6) A escalação NÃO some da aba normal depois de tudo isso (o nó
@@ -127,7 +123,7 @@ const { skipPreseason } = require("./_calendar_skip");
     formationOnChip: document.querySelector("#formationChipRow .m3-filter-chip.on")?.dataset.formation,
     pitchSlots: document.querySelectorAll("#pitchLines .mt-pos-slot").length,
   }));
-  console.log("6) Aba Escalação normal continua funcionando depois (mesmo esquema 4-4-2, campinho com 11 posições):",
+  check("6) Aba Escalação normal continua funcionando depois (mesmo esquema 4-4-2, campinho com 11 posições):",
     s6.panelVisible && s6.formationOnChip === "4-4-2" && s6.pitchSlots === 11, JSON.stringify(s6));
 
   // 7) Reabre o fluxo, entra na modal de ajuste, clica "Ir para o
@@ -152,7 +148,7 @@ const { skipPreseason } = require("./_calendar_skip");
     liveOpen: document.getElementById("liveMatchOverlay").classList.contains("open"),
     pressaoCommitted: CAREER.lineup.tactics.pressao === 1,
   }));
-  console.log("7) 'Ir para o jogo' na modal de ajuste fecha as 2 modais e vai pro jogo direto, tática mudada foi salva:",
+  check("7) 'Ir para o jogo' na modal de ajuste fecha as 2 modais e vai pro jogo direto, tática mudada foi salva:",
     s7.adjustClosed && s7.preMatchClosed && s7.liveOpen && s7.pressaoCommitted, JSON.stringify(s7));
   if (s7.liveOpen) { await page.evaluate(() => skipLiveMatch()); await page.waitForTimeout(300); }
 

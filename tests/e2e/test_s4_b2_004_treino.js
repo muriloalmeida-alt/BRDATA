@@ -12,6 +12,8 @@
 // só CONFIRMADA (já reaproveitado via playerRow()/groupedListHTML,
 // nenhuma mudança necessária), não implementada nesta demanda.
 const { chromium } = require("playwright-core");
+const { check } = require("./_check");
+const { enterGame } = require("./_startup");
 
 (async () => {
   const browser = await chromium.launch({ executablePath: process.env.PW_CHROMIUM_PATH || undefined, headless: true, args: ["--host-resolver-rules=MAP fonts.googleapis.com 127.0.0.1,MAP fonts.gstatic.com 127.0.0.1"] });
@@ -34,14 +36,7 @@ const { chromium } = require("playwright-core");
   await page.click(".m3-club-row");
   await page.waitForTimeout(150);
   await page.click("#btnConfirmClub");
-  await page.click("#btnOnboardSkip", { timeout: 2000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.waitForTimeout(800);
-  await page.click("#btnClaimDailyLogin", { timeout: 3000 }).catch(() => {});
-  await page.waitForTimeout(300);
+  await enterGame(page);
 
   // Treino não está no bottom nav (só Início/Elenco/Tática/Mercado/
   // Clube) — é aberto via switchToPanel("treinos") (ver carreira.js),
@@ -67,7 +62,7 @@ const { chromium } = require("playwright-core");
   });
   // --m3-error é #FF5449 = rgb(255, 84, 73) (era --mt-crimson-400 =
   // rgb(227, 101, 101)).
-  console.log("1) Aviso de folga protegida sobrescrita usa --m3-error (não mais --mt-crimson-400):",
+  check("1) Aviso de folga protegida sobrescrita usa --m3-error (não mais --mt-crimson-400):",
     !!warning && warning.color === "rgb(255, 84, 73)", JSON.stringify(warning));
 
   const picker = await page.evaluate(() => {
@@ -85,7 +80,7 @@ const { chromium } = require("playwright-core");
   });
   // --m3-surface-container-high:#2C2A27 = rgb(44,42,39); --m3-outline-variant:#4A4744 = rgb(74,71,68);
   // --m3-on-surface:#E7E2DE = rgb(231,226,222); --m3-on-surface-variant:#CBC5BE = rgb(203,197,190).
-  console.log("2) Botão 'escolher jogador' usa tokens do campo padrão do DS (não mais navy/ivory fixos):",
+  check("2) Botão 'escolher jogador' usa tokens do campo padrão do DS (não mais navy/ivory fixos):",
     !!picker && picker.bg === "rgb(44, 42, 39)" && picker.color === "rgb(231, 226, 222)" && picker.placeholderColor === "rgb(203, 197, 190)",
     JSON.stringify(picker));
 
@@ -99,7 +94,7 @@ const { chromium } = require("playwright-core");
     const list = document.getElementById("trainingRosterList");
     return { hasListItems: !!list && list.querySelectorAll(".m3-list-item").length > 0, count: list ? list.querySelectorAll(".m3-list-item").length : 0 };
   });
-  console.log("3) Lista de elenco do Treino reaproveita playerRow()/PlayerCard (.m3-list-item), sem duplicar marcação:",
+  check("3) Lista de elenco do Treino reaproveita playerRow()/PlayerCard (.m3-list-item), sem duplicar marcação:",
     rosterUsesPlayerCard.hasListItems, JSON.stringify(rosterUsesPlayerCard));
 
   // 4) Preservação funcional: trocar de esquema de treino e voltar pro
@@ -111,7 +106,7 @@ const { chromium } = require("playwright-core");
     schemeBtn?.click();
     return { schemeExists: !!schemeBtn, before, after: CAREER.trainingSchemeId, dayPanelStillRenders: !!document.getElementById("trainingDayPanel").innerHTML.trim() };
   });
-  console.log("4) Trocar esquema de treino continua funcionando (fluxo intacto):",
+  check("4) Trocar esquema de treino continua funcionando (fluxo intacto):",
     stillWorks.schemeExists && stillWorks.dayPanelStillRenders, JSON.stringify(stillWorks));
 
   await browser.close();

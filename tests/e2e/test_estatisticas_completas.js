@@ -2,6 +2,8 @@
 // informações possíveis sobre o meu time e as principais informações
 // do campeonato... sempre divididas em Histórico e Temporada Atual").
 const { chromium } = require("playwright-core");
+const { check } = require("./_check");
+const { enterGame, waitForBoot } = require("./_startup");
 const { skipPreseason } = require("./_calendar_skip");
 
 (async () => {
@@ -23,14 +25,7 @@ const { skipPreseason } = require("./_calendar_skip");
   await page.click(".m3-club-row");
   await page.waitForTimeout(150);
   await page.click("#btnConfirmClub");
-  await page.click("#btnOnboardSkip", { timeout: 2000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.waitForTimeout(700);
-  await page.click("#btnClaimDailyLogin", { timeout: 3000 }).catch(() => {});
-  await page.waitForTimeout(300);
+  await enterGame(page);
 
   async function openStats() {
     await page.click("#btnBottomMenu");
@@ -51,7 +46,7 @@ const { skipPreseason } = require("./_calendar_skip");
     recordCards: document.querySelectorAll("#statsRecordKpis .mt-stat-block, #statsRecordKpis .m3-stat-card").length,
     goalsCards: document.querySelectorAll("#statsGoalsKpis .mt-stat-block, #statsGoalsKpis .m3-stat-card").length,
   }));
-  console.log("1) Abre em Meu Time / Temporada Atual, com os cards da Central presentes:",
+  check("1) Abre em Meu Time / Temporada Atual, com os cards da Central presentes:",
     check1.scopeActive === "time" && check1.periodActive === "temporada" && check1.timeVisible && check1.campeonatoHidden
     && check1.recordCards === 5 && check1.goalsCards === 4, JSON.stringify(check1));
 
@@ -64,7 +59,7 @@ const { skipPreseason } = require("./_calendar_skip");
     recordText: document.getElementById("statsRecordKpis").textContent,
     hasRecordeKpi: document.getElementById("statsStreakKpis").textContent.includes("Recorde"),
   }));
-  console.log("2) Histórico mostra os mesmos cards (carreira nova, tudo zerado) + recordes extras nas sequências:",
+  check("2) Histórico mostra os mesmos cards (carreira nova, tudo zerado) + recordes extras nas sequências:",
     check2.periodActive === "historico" && check2.hasRecordeKpi, JSON.stringify(check2));
 
   // 3) Campeonato / Temporada Atual — cards existentes de sempre.
@@ -78,7 +73,7 @@ const { skipPreseason } = require("./_calendar_skip");
     teamRows: document.querySelectorAll("#leagueTeamStatsTable .mt-mini-row").length,
     scorersTitle: document.getElementById("statsScorersLeagueTitle").textContent,
   }));
-  console.log("3) Campeonato/Temporada mostra KPIs+times da competição (20 linhas), esconde Campeões:",
+  check("3) Campeonato/Temporada mostra KPIs+times da competição (20 linhas), esconde Campeões:",
     check3.leagueKpisVisible && check3.teamsTableVisible && check3.championsHidden && check3.teamRows === 20
     && check3.scorersTitle.includes("temporada"), JSON.stringify(check3));
 
@@ -92,7 +87,7 @@ const { skipPreseason } = require("./_calendar_skip");
     emptyShown: !document.getElementById("statsChampionsEmpty").hidden,
     scorersTitle: document.getElementById("statsScorersLeagueTitle").textContent,
   }));
-  console.log("4) Campeonato/Histórico (carreira nova) mostra Campeões vazio, sem quebrar:",
+  check("4) Campeonato/Histórico (carreira nova) mostra Campeões vazio, sem quebrar:",
     check4.championsVisible && check4.leagueKpisHidden && check4.emptyShown && check4.scorersTitle.includes("históricos"),
     JSON.stringify(check4));
 
@@ -159,7 +154,7 @@ const { skipPreseason } = require("./_calendar_skip");
   const expectCleanSheet = afterMatch.standings.gc === 0 ? 1 : 0;
   const expectWinStreak = outcome === "v" ? 1 : 0;
   const expectUnbeatenStreak = outcome !== "d" ? 1 : 0;
-  console.log(`5) Resultado (${outcome}, ${afterMatch.standings.gp}x${afterMatch.standings.gc}, ${sideKey}) bate igual no lado certo (temporada e histórico), clean sheet e sequência corretos:`,
+  check(`5) Resultado (${outcome}, ${afterMatch.standings.gp}x${afterMatch.standings.gc}, ${sideKey}) bate igual no lado certo (temporada e histórico), clean sheet e sequência corretos:`,
     afterMatch.teamStats[sideKey].j === 1 && afterMatch.teamStats[sideKey][outcome] === 1
     && afterMatch.teamStats[sideKey].gp === afterMatch.standings.gp && afterMatch.teamStats[sideKey].gc === afterMatch.standings.gc
     && afterMatch.teamStats.cleanSheets === expectCleanSheet
@@ -180,7 +175,7 @@ const { skipPreseason } = require("./_calendar_skip");
     biggestText: document.getElementById("statsBiggestList").textContent,
   }));
   const expectBiggestLabel = outcome === "v" ? "Maior goleada" : outcome === "d" ? "Maior derrota" : null;
-  console.log("6) Tela (Meu Time/Temporada) mostra o resultado de verdade:",
+  check("6) Tela (Meu Time/Temporada) mostra o resultado de verdade:",
     check6.recordText.includes("Vitórias") && check6.homeAwayText.includes(sideKey === "home" ? "mandante" : "visitante")
     && (expectBiggestLabel ? check6.biggestText.includes(expectBiggestLabel) : true),
     JSON.stringify(check6));
@@ -190,7 +185,7 @@ const { skipPreseason } = require("./_calendar_skip");
   await page.click('#statsPeriodTabs .mt-obj-tab[data-period="historico"]');
   await page.waitForTimeout(150);
   const check7b = await page.evaluate(() => document.getElementById("statsCopaContent").textContent);
-  console.log("7) Card da Copa do Brasil aparece nos 2 períodos, sem quebrar:", check7 && check7b.includes("Edições"), check7b.replace(/\s+/g, " ").trim());
+  check("7) Card da Copa do Brasil aparece nos 2 períodos, sem quebrar:", check7 && check7b.includes("Edições"), check7b.replace(/\s+/g, " ").trim());
 
   // 8) Avança a temporada (via API, pulando pro fim) e confere que o
   // histórico de campeões grava alguma coisa coerente.
@@ -201,7 +196,7 @@ const { skipPreseason } = require("./_calendar_skip");
     await fetch("/api/career", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data.career) });
   });
   await page.reload({ waitUntil: "domcontentloaded" });
-  await page.waitForTimeout(800);
+  await waitForBoot(page);
   await page.click(".m3-nav-item[data-panel='central']");
   await page.waitForTimeout(200);
   await page.click("#btnAdvanceSeason");
@@ -214,7 +209,7 @@ const { skipPreseason } = require("./_calendar_skip");
     champions: JSON.parse(JSON.stringify(CAREER.leagueChampions || [])),
     seasonsPlayed: (CAREER.careerTotals || {}).seasonsPlayed,
   }));
-  console.log("8) advanceSeason grava 1 entrada em leagueChampions (campeão/vice/minha posição) e seasonsPlayed=1:",
+  check("8) advanceSeason grava 1 entrada em leagueChampions (campeão/vice/minha posição) e seasonsPlayed=1:",
     afterSeason.champions.length === 1 && !!afterSeason.champions[0].championName && afterSeason.seasonsPlayed === 1,
     JSON.stringify(afterSeason));
 
@@ -229,7 +224,7 @@ const { skipPreseason } = require("./_calendar_skip");
     titlesRows: document.querySelectorAll("#titlesByClubTable .mt-mini-row").length,
     emptyHidden: document.getElementById("statsChampionsEmpty").hidden,
   }));
-  console.log("9) Campeonato/Histórico mostra 1 temporada de campeões + títulos por clube, sem estado vazio:",
+  check("9) Campeonato/Histórico mostra 1 temporada de campeões + títulos por clube, sem estado vazio:",
     check9.championsRows === 1 && check9.titlesRows === 1 && check9.emptyHidden, JSON.stringify(check9));
 
   await browser.close();

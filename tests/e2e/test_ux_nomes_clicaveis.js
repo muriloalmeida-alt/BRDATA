@@ -2,6 +2,8 @@
 // deve ser clicável e abrir a página do jogador ou do clube (elenco)"
 // — escopo confirmado: só listas/cards estruturados.
 const { chromium } = require("playwright-core");
+const { check } = require("./_check");
+const { enterGame } = require("./_startup");
 
 (async () => {
   const browser = await chromium.launch({ executablePath: process.env.PW_CHROMIUM_PATH || undefined, headless: true, args: ["--host-resolver-rules=MAP fonts.googleapis.com 127.0.0.1,MAP fonts.gstatic.com 127.0.0.1"] });
@@ -22,12 +24,7 @@ const { chromium } = require("playwright-core");
   await page.click(".m3-club-row");
   await page.waitForTimeout(150);
   await page.click("#btnConfirmClub");
-  await page.click("#btnOnboardSkip", { timeout: 2000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.waitForTimeout(700);
+  await enterGame(page, { claimDailyLogin: false });
   try { await page.click("#btnClaimDailyLogin", { timeout: 1500 }); await page.waitForTimeout(200); } catch {}
 
   async function goToPanel(name) {
@@ -75,7 +72,7 @@ const { chromium } = require("playwright-core");
   await page.click(`#marketList .m3-op-card:nth-child(${otherRow + 1}) .m3-op-info`);
   await page.waitForTimeout(150);
   const marketPlayerName = await detailOpenWithName();
-  console.log("1a) Mercado: nome do jogador de outro clube abre Perfil (somente leitura):", !!marketPlayerName, marketPlayerName);
+  check("1a) Mercado: nome do jogador de outro clube abre Perfil (somente leitura):", !!marketPlayerName, marketPlayerName);
   // UX-MERCADO-001 — o perfil de jogador de outro clube deixou de ser
   // "consulta apenas": tem Fazer proposta / Pedir empréstimo / Comparar
   // (nenhuma ação de gestão do SEU elenco, como vender/dispensar).
@@ -84,7 +81,7 @@ const { chromium } = require("playwright-core");
     if (!dialog) return null;
     return { acts: [...dialog.querySelectorAll("[data-ext-act]")].map((b) => b.dataset.extAct), noManagement: !dialog.querySelector('[data-act="sell"],[data-act="release"]') };
   });
-  console.log("1b) Perfil de jogador de outro clube tem ações de negociação (sem ações de gestão):",
+  check("1b) Perfil de jogador de outro clube tem ações de negociação (sem ações de gestão):",
     !!externalActions && externalActions.acts.includes("offer") && externalActions.noManagement, JSON.stringify(externalActions));
   await closeAll();
 
@@ -93,7 +90,7 @@ const { chromium } = require("playwright-core");
   await page.waitForTimeout(150);
   await page.click(`#marketList .m3-op-card:nth-child(${otherRow + 1}) .m3-op-club`);
   await page.waitForTimeout(150);
-  console.log("2) Mercado: nome do clube abre elenco (roster read-only):", !!(await clubRosterOpenWithName()));
+  check("2) Mercado: nome do clube abre elenco (roster read-only):", !!(await clubRosterOpenWithName()));
   await closeAll();
 
   // 3) Tabela: nome do clube abre elenco (exceto o meu, que vai pra aba Elenco)
@@ -107,7 +104,7 @@ const { chromium } = require("playwright-core");
   await page.click(`#standingsTable .mt-team-cell:nth-child(${1})`, { trial: true }).catch(() => {});
   await page.evaluate((idx) => document.querySelectorAll("#standingsTable .mt-team-cell")[idx].click(), oppTeamCell);
   await page.waitForTimeout(150);
-  console.log("3) Tabela: nome de outro clube abre elenco read-only:", !!(await clubRosterOpenWithName()));
+  check("3) Tabela: nome de outro clube abre elenco read-only:", !!(await clubRosterOpenWithName()));
   await closeAll();
 
   // 3b) Tabela: nome do MEU clube abre a aba Elenco de verdade
@@ -122,7 +119,7 @@ const { chromium } = require("playwright-core");
   await page.evaluate((idx) => document.querySelectorAll("#standingsTable .mt-team-cell")[idx].click(), myTeamCellIdx);
   await page.waitForTimeout(150);
   const activeAfterMyClub = await page.evaluate(() => document.querySelector(".ct-panel.active")?.id);
-  console.log("3b) Tabela: nome do MEU clube leva pra aba Elenco (não abre modal):", activeAfterMyClub === "panel-elenco");
+  check("3b) Tabela: nome do MEU clube leva pra aba Elenco (não abre modal):", activeAfterMyClub === "panel-elenco");
 
   // 4) Estatísticas: artilheiro da liga (nome + clube) clicáveis
   await goToPanel("estatisticas");
@@ -131,17 +128,17 @@ const { chromium } = require("playwright-core");
   if (hasLeagueRows) {
     await page.click("#leagueTopScorersTable .mt-mini-row:first-child .mt-mini-col.name");
     await page.waitForTimeout(150);
-    console.log("4a) Estatísticas (artilheiro da liga): nome do jogador abre Perfil:", !!(await detailOpenWithName()));
+    check("4a) Estatísticas (artilheiro da liga): nome do jogador abre Perfil:", !!(await detailOpenWithName()));
     await closeAll();
     await goToPanel("estatisticas");
     await page.waitForTimeout(150);
     await page.click("#leagueTopScorersTable .mt-mini-row:first-child [data-openclub]");
     await page.waitForTimeout(150);
     const openedSomething = await page.evaluate(() => document.getElementById("clubRosterOverlay").classList.contains("open") || document.querySelector(".ct-panel.active")?.id === "panel-elenco");
-    console.log("4b) Estatísticas (artilheiro da liga): nome do clube abre elenco:", openedSomething);
+    check("4b) Estatísticas (artilheiro da liga): nome do clube abre elenco:", openedSomething);
     await closeAll();
   } else {
-    console.log("4) Estatísticas: sem artilheiros ainda nesta carreira nova (esperado) — checagem pulada.");
+    check("4) Estatísticas: sem artilheiros ainda nesta carreira nova (esperado) — checagem pulada.");
   }
 
   // 5) Indicações dos olheiros
@@ -162,10 +159,10 @@ const { chromium } = require("playwright-core");
     await page.waitForTimeout(150);
     await page.click("#scoutSuggestionsList [data-openplayer]");
     await page.waitForTimeout(150);
-    console.log("5) Indicações dos olheiros: nome do jogador abre Perfil:", !!(await detailOpenWithName()));
+    check("5) Indicações dos olheiros: nome do jogador abre Perfil:", !!(await detailOpenWithName()));
     await closeAll();
   } else {
-    console.log("5) Indicações dos olheiros: nenhuma indicação encontrada nesta rodada (sorteio) — checagem pulada.");
+    check("5) Indicações dos olheiros: nenhuma indicação encontrada nesta rodada (sorteio) — checagem pulada.");
   }
 
   // 6) Resultado do jogo ("Seu jogo"): nome do time abre elenco
@@ -177,7 +174,7 @@ const { chromium } = require("playwright-core");
   const matchDetailOpen = await page.evaluate(() => document.getElementById("matchDetailOverlay").classList.contains("open"));
   await page.click("#matchDetailScore .side:last-child");
   await page.waitForTimeout(150);
-  console.log("6) Resultado do jogo: nome do time adversário abre elenco:", matchDetailOpen && !!(await clubRosterOpenWithName()));
+  check("6) Resultado do jogo: nome do time adversário abre elenco:", matchDetailOpen && !!(await clubRosterOpenWithName()));
   await closeAll();
 
   // 7) H2H: nome/escudo do adversário abre elenco
@@ -188,7 +185,7 @@ const { chromium } = require("playwright-core");
   const h2hOpen = await page.evaluate(() => document.getElementById("h2hOverlay").classList.contains("open"));
   await page.click("#h2hOppName");
   await page.waitForTimeout(150);
-  console.log("7) H2H: nome do adversário abre elenco:", h2hOpen && !!(await clubRosterOpenWithName()));
+  check("7) H2H: nome do adversário abre elenco:", h2hOpen && !!(await clubRosterOpenWithName()));
   await closeAll();
 
   await browser.close();

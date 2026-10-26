@@ -7,6 +7,8 @@
 // contrato nova, só consumo do que já existe (computeContractFields/
 // isContractExpiring/proposeRenewal/handlePlayerAction).
 const { chromium } = require("playwright-core");
+const { check } = require("./_check");
+const { enterGame } = require("./_startup");
 
 (async () => {
   const browser = await chromium.launch({ executablePath: process.env.PW_CHROMIUM_PATH || undefined, headless: true, args: ["--host-resolver-rules=MAP fonts.googleapis.com 127.0.0.1,MAP fonts.gstatic.com 127.0.0.1"] });
@@ -29,14 +31,7 @@ const { chromium } = require("playwright-core");
   await page.click(".m3-club-row");
   await page.waitForTimeout(150);
   await page.click("#btnConfirmClub");
-  await page.click("#btnOnboardSkip", { timeout: 2000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.waitForTimeout(800);
-  await page.click("#btnClaimDailyLogin", { timeout: 3000 }).catch(() => {});
-  await page.waitForTimeout(300);
+  await enterGame(page);
 
   // Setup: força pelo menos 1 jogador com contrato vencendo (mesma
   // temporada) e confirma que há emprestados suficientes pro squad
@@ -53,7 +48,7 @@ const { chromium } = require("playwright-core");
   await page.click("#btnOpenContratos");
   await page.waitForTimeout(200);
   const opened = await page.evaluate(() => document.getElementById("contratosOverlay").classList.contains("open"));
-  console.log("1) Menu 'Equipe & Treinos' → 'Contratos' abre a tela:", opened);
+  check("1) Menu 'Equipe & Treinos' → 'Contratos' abre a tela:", opened);
 
   // 2) Lista mostra ContractCard por jogador, exclui emprestados, e
   // vem ordenada por proximidade do vencimento (ascendente).
@@ -68,7 +63,7 @@ const { chromium } = require("playwright-core");
     const sorted = years.every((y, i) => i === 0 || years[i - 1] <= y);
     return { cardCount: cards.length, nonLoanCount, sorted, hasBadge: !!cards[0]?.querySelector(".mt-ovr-badge"), hasName: !!cards[0]?.querySelector(".m3-op-name") };
   });
-  console.log("2) Lista mostra 1 ContractCard por jogador não-emprestado, ordenada por vencimento:",
+  check("2) Lista mostra 1 ContractCard por jogador não-emprestado, ordenada por vencimento:",
     check2.cardCount === check2.nonLoanCount && check2.sorted && check2.hasBadge && check2.hasName, JSON.stringify(check2));
 
   // 3) Filtro "Vencendo" mostra só quem tem isContractExpiring true.
@@ -80,14 +75,14 @@ const { chromium } = require("playwright-core");
     const allHaveFimDeContrato = [...document.querySelectorAll("#contratosList .m3-op-card")].every((c) => c.textContent.includes("Fim de contrato"));
     return { expiringCount, cards, allHaveFimDeContrato };
   });
-  console.log("3) Filtro 'Vencendo' mostra só contratos com isContractExpiring:",
+  check("3) Filtro 'Vencendo' mostra só contratos com isContractExpiring:",
     check3.cards === check3.expiringCount && check3.allHaveFimDeContrato && check3.cards > 0, JSON.stringify(check3));
 
   // 4) Nome do jogador é clicável e abre o Perfil (openDetail).
   await page.click("#contratosList .m3-op-info");
   await page.waitForTimeout(150);
   const profileOpen = await page.evaluate(() => document.getElementById("detailOverlay").classList.contains("open"));
-  console.log("4) Nome do jogador no ContractCard abre o Perfil:", profileOpen);
+  check("4) Nome do jogador no ContractCard abre o Perfil:", profileOpen);
   await page.evaluate(() => document.getElementById("detailOverlay").classList.remove("open"));
 
   // 5) Botão "Renovar" (só em quem está vencendo) abre o mesmo modal de
@@ -96,7 +91,7 @@ const { chromium } = require("playwright-core");
   await page.click("#contratosList [data-contratorenew]");
   await page.waitForTimeout(150);
   const renewOpen = await page.evaluate(() => document.getElementById("renewOverlay").classList.contains("open"));
-  console.log("5) Botão 'Renovar' abre o mesmo modal de renovação do Perfil:", hasRenewBtn && renewOpen);
+  check("5) Botão 'Renovar' abre o mesmo modal de renovação do Perfil:", hasRenewBtn && renewOpen);
   await page.evaluate(() => { document.getElementById("renewOverlay").classList.remove("open"); RENEW_CTX = null; });
 
   // 6) Botão "Dispensar" reaproveita a mesma ação (release) do Perfil —
@@ -115,7 +110,7 @@ const { chromium } = require("playwright-core");
       cardGone: !document.querySelector(`#contratosList .m3-op-card[data-id="${id}"]`),
     };
   });
-  console.log("6) Botão 'Dispensar' remove o jogador de verdade (mesma ação do Perfil) e some da lista:",
+  check("6) Botão 'Dispensar' remove o jogador de verdade (mesma ação do Perfil) e some da lista:",
     check6.squadReduced && check6.noLongerInSquad && check6.cardGone, JSON.stringify(check6));
 
   // 7) Estado vazio: filtro "Vencendo" sem ninguém vencendo mostra a
@@ -127,7 +122,7 @@ const { chromium } = require("playwright-core");
     renderContratos();
     return { emptyVisible: !document.getElementById("contratosEmpty").classList.contains("hidden"), listEmpty: document.getElementById("contratosList").innerHTML.trim() === "" };
   });
-  console.log("7) Estado vazio do filtro 'Vencendo' mostra a mensagem tratada:", check7.emptyVisible && check7.listEmpty, JSON.stringify(check7));
+  check("7) Estado vazio do filtro 'Vencendo' mostra a mensagem tratada:", check7.emptyVisible && check7.listEmpty, JSON.stringify(check7));
 
   await browser.close();
 })().catch((e) => { console.error("FATAL:", e); process.exit(1); });

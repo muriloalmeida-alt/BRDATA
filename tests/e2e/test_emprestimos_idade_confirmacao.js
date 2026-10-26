@@ -1,4 +1,6 @@
 const { chromium } = require("playwright-core");
+const { check } = require("./_check");
+const { enterGame } = require("./_startup");
 const { skipPreseason } = require("./_calendar_skip");
 
 async function newCareer(page, base, email) {
@@ -13,13 +15,7 @@ async function newCareer(page, base, email) {
   await page.click(".m3-club-row");
   await page.waitForTimeout(150);
   await page.click("#btnConfirmClub");
-  await page.click("#btnOnboardSkip", { timeout: 2000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnClaimDailyLogin", { timeout: 3000 }).catch(() => {});
-  await page.waitForTimeout(500);
+  await enterGame(page);
 }
 
 (async () => {
@@ -46,7 +42,7 @@ async function newCareer(page, base, email) {
     const pSem = buildRealPlayer(rawSemIdade, club, rng);
     return { comIdade: pCom.age, semIdade: pSem.age };
   });
-  console.log("1) Idade vinda do 'raw.age' da API é usada de verdade:", ageCheck.comIdade === 29);
+  check("1) Idade vinda do 'raw.age' da API é usada de verdade:", ageCheck.comIdade === 29);
   console.log("   Sem raw.age, cai no sorteio de sempre (18-35):", ageCheck.semIdade >= 18 && ageCheck.semIdade <= 35);
 
   // ---------- 2) Fator de reclamação: idade/overall ----------
@@ -62,7 +58,7 @@ async function newCareer(page, base, email) {
       lowOvr: playerComplaintFactor(lowOvr),
     };
   });
-  console.log("2) Jogador em idade de pico + overall alto reclama mais que veterano com o mesmo overall:", complaintCheck.prime > complaintCheck.old);
+  check("2) Jogador em idade de pico + overall alto reclama mais que veterano com o mesmo overall:", complaintCheck.prime > complaintCheck.old);
   console.log("   ...e mais que um jovem com o mesmo overall:", complaintCheck.prime > complaintCheck.young);
   console.log("   ...e mais que alguém de overall baixo na mesma idade:", complaintCheck.prime > complaintCheck.lowOvr);
 
@@ -83,7 +79,7 @@ async function newCareer(page, base, email) {
     }
     return { okDestaque, aindaNoElenco, okReserva, cashChanged: CAREER.finances.cash !== cashBefore };
   });
-  console.log("3) Jogador de destaque (prime + overall alto) tem empréstimo recusado:", loanCheck.okDestaque === false && loanCheck.aindaNoElenco === true);
+  check("3) Jogador de destaque (prime + overall alto) tem empréstimo recusado:", loanCheck.okDestaque === false && loanCheck.aindaNoElenco === true);
   console.log("   Jogador de overall baixo consegue ser emprestado (mesma idade):", loanCheck.okReserva === true);
 
   // ---------- 4) Botão "Emprestar" desabilitado pro destaque no detalhe ----------
@@ -101,7 +97,7 @@ async function newCareer(page, base, email) {
     const btn = document.querySelector('[data-act="loanout"]');
     return btn ? btn.disabled : "botão não existe";
   });
-  console.log("4) Botão 'Emprestar' vem desabilitado pro destaque, com tooltip explicando:", loanBtnDisabled === true);
+  check("4) Botão 'Emprestar' vem desabilitado pro destaque, com tooltip explicando:", loanBtnDisabled === true);
   await page.click("#detailClose");
   await page.waitForTimeout(200);
 
@@ -117,7 +113,7 @@ async function newCareer(page, base, email) {
     lineupRows: document.querySelectorAll("#preMatchLineup .ct-prematch-row").length,
     opponentText: document.getElementById("preMatchOpponent").textContent.trim().length > 0,
   }));
-  console.log("5) 'Simular rodada' abre a confirmação de escalação em tela cheia, SEM simular ainda:", preMatchState.isFullscreen && preMatchState.liveNotOpenYet);
+  check("5) 'Simular rodada' abre a confirmação de escalação em tela cheia, SEM simular ainda:", preMatchState.isFullscreen && preMatchState.liveNotOpenYet);
   console.log("   Lista os 11 titulares e o adversário:", preMatchState.lineupRows === 11 && preMatchState.opponentText);
 
   // 5b) X fecha sem simular.
@@ -156,7 +152,7 @@ async function newCareer(page, base, email) {
   await page.click("#btnPreMatchGo");
   await page.waitForSelector("#liveMatchOverlay.open, #matchDetailOverlay.open", { timeout: 5000 });
   const wentToMatch = await page.evaluate(() => document.getElementById("liveMatchOverlay").classList.contains("open") || document.getElementById("matchDetailOverlay").classList.contains("open"));
-  console.log("6) 'Ir para o jogo' de fato dispara a simulação:", wentToMatch);
+  check("6) 'Ir para o jogo' de fato dispara a simulação:", wentToMatch);
 
   await browser.close();
 })().catch((e) => { console.error("FATAL:", e); process.exit(1); });

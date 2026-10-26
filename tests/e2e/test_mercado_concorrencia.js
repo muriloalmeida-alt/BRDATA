@@ -4,6 +4,8 @@
 // jogador enquanto sua proposta espera; comparação lado a lado +
 // análise; quem "pesa" mais tem mais chance de vencer.
 const { chromium } = require("playwright-core");
+const { check } = require("./_check");
+const { enterGame } = require("./_startup");
 
 (async () => {
   const browser = await chromium.launch({ executablePath: process.env.PW_CHROMIUM_PATH || undefined, headless: true, args: ["--host-resolver-rules=MAP fonts.googleapis.com 127.0.0.1,MAP fonts.gstatic.com 127.0.0.1"] });
@@ -23,14 +25,7 @@ const { chromium } = require("playwright-core");
   await page.click(".m3-club-row");
   await page.waitForTimeout(150);
   await page.click("#btnConfirmClub");
-  await page.click("#btnOnboardSkip", { timeout: 2000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.waitForTimeout(1500);
-  await page.click("#btnClaimDailyLogin").catch(() => {});
-  await page.waitForTimeout(200);
+  await enterGame(page);
   await page.click(".m3-nav-item[data-panel='mercado']");
   await page.waitForTimeout(300);
 
@@ -54,7 +49,7 @@ const { chromium } = require("playwright-core");
     Math.random = orig;
     return { hasRival: !!o.rivalOffer, rival: o.rivalOffer };
   }, target);
-  console.log("1) Concorrente nasce numa proposta pendente (RNG dentro da chance):", check1.hasRival && !!check1.rival?.clubName && check1.rival?.offerValue > 0, JSON.stringify(check1));
+  check("1) Concorrente nasce numa proposta pendente (RNG dentro da chance):", check1.hasRival && !!check1.rival?.clubName && check1.rival?.offerValue > 0, JSON.stringify(check1));
 
   // 2) Nunca nasce um 2º concorrente pra mesma proposta (já tem um).
   const check2 = await page.evaluate(() => {
@@ -66,7 +61,7 @@ const { chromium } = require("playwright-core");
     Math.random = orig;
     return { sameRival: o.rivalOffer.clubName === firstRivalClub };
   });
-  console.log("2) Não nasce um 2º concorrente pra mesma proposta:", check2.sameRival, JSON.stringify(check2));
+  check("2) Não nasce um 2º concorrente pra mesma proposta:", check2.sameRival, JSON.stringify(check2));
 
   // 3) "Minhas propostas" mostra o selo de concorrência + botão
   // "Comparar" (não "Aumentar" direto).
@@ -80,7 +75,7 @@ const { chromium } = require("playwright-core");
       hasIncreaseBtn: !!row?.querySelector('[data-increase="test_rival_spawn"]'),
     };
   });
-  console.log("3) 'Minhas propostas' mostra selo de concorrência + botão Comparar (não Aumentar direto):",
+  check("3) 'Minhas propostas' mostra selo de concorrência + botão Comparar (não Aumentar direto):",
     check3.hasBadge && check3.hasCompareBtn && !check3.hasIncreaseBtn, JSON.stringify(check3));
 
   // 4) Abrir "Comparar propostas" mostra as 2 colunas com os valores
@@ -99,7 +94,7 @@ const { chromium } = require("playwright-core");
       oneColLead: cols.some((c) => c.classList.contains("lead")) && !cols.every((c) => c.classList.contains("lead")),
     };
   });
-  console.log("4) 'Comparar propostas' abre com as 2 colunas e uma análise não-vazia, só 1 lado em destaque:",
+  check("4) 'Comparar propostas' abre com as 2 colunas e uma análise não-vazia, só 1 lado em destaque:",
     check4.open && check4.colCount === 2 && check4.hasRivalClub && check4.analysisLength > 20 && check4.oneColLead, JSON.stringify(check4));
   await page.screenshot({ path: "screens/mercado_comparar_propostas.png" });
 
@@ -117,7 +112,7 @@ const { chromium } = require("playwright-core");
       roundsReset: o.roundsLeft,
     };
   }, rivalValueBefore);
-  console.log("5) 'Aumentar proposta' sobe pro valor do concorrente e fecha a tela:",
+  check("5) 'Aumentar proposta' sobe pro valor do concorrente e fecha a tela:",
     check5.compareClosed && check5.matchesRival, JSON.stringify(check5));
 
   // 6) Resolução COM concorrente: minha proposta "pesa mais" (valor
@@ -141,7 +136,7 @@ const { chromium } = require("playwright-core");
     Math.random = orig;
     return { inSquad: !!CAREER.squad.find((x) => x.id === t.playerId), stillPending: !!CAREER.pendingOffersOut.find((x) => x.id === "test_rival_win") };
   }, target2);
-  console.log("6) Minha proposta pesa mais que a do concorrente e vence (RNG dentro dos 80%):",
+  check("6) Minha proposta pesa mais que a do concorrente e vence (RNG dentro dos 80%):",
     check6.inSquad && !check6.stillPending, JSON.stringify(check6));
 
   await page.click('#pressOptions [data-press]').catch(() => {});
@@ -173,7 +168,7 @@ const { chromium } = require("playwright-core");
       stillPending: !!CAREER.pendingOffersOut.find((x) => x.id === "test_rival_lose"),
     };
   }, target3);
-  console.log("7) Minha proposta pesa menos e perco a disputa (RNG fora dos 25%), sem afetar meu caixa/elenco:",
+  check("7) Minha proposta pesa menos e perco a disputa (RNG fora dos 25%), sem afetar meu caixa/elenco:",
     check7.cashUnchanged && check7.notInMySquad && !check7.stillPending, JSON.stringify(check7));
 
   await browser.close();

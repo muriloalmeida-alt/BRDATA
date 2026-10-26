@@ -17,6 +17,8 @@
 // existente, ajustado só na forma de checar "mesma posição" já que o
 // chip por linha não existe mais).
 const { chromium } = require("playwright-core");
+const { check } = require("./_check");
+const { enterGame } = require("./_startup");
 
 (async () => {
   const browser = await chromium.launch({ executablePath: process.env.PW_CHROMIUM_PATH || undefined, headless: true, args: ["--host-resolver-rules=MAP fonts.googleapis.com 127.0.0.1,MAP fonts.gstatic.com 127.0.0.1"] });
@@ -37,14 +39,7 @@ const { chromium } = require("playwright-core");
   await page.click(".m3-club-row");
   await page.waitForTimeout(150);
   await page.click("#btnConfirmClub");
-  await page.click("#btnOnboardSkip", { timeout: 2000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.waitForTimeout(1000);
-  await page.click("#btnClaimDailyLogin").catch(() => {});
-  await page.waitForTimeout(200);
+  await enterGame(page);
 
   await page.click(".m3-nav-item[data-panel='elenco']");
   await page.waitForTimeout(300);
@@ -64,7 +59,7 @@ const { chromium } = require("playwright-core");
       hasRatingBadge: rows.every((r) => !!r.querySelector(".m3-li-rating")),
     };
   });
-  console.log("1) Passo 1 (picker) usa playerRow()/PlayerCard (.m3-list-item), não mais .mt-sel-row:",
+  check("1) Passo 1 (picker) usa playerRow()/PlayerCard (.m3-list-item), não mais .mt-sel-row:",
     pickList.allPlayerCard && pickList.noneOldRow && pickList.hasRatingBadge, JSON.stringify(pickList));
 
   // 2) Passo 2 (resultado): tokens exclusivos migrados — nome do
@@ -90,7 +85,7 @@ const { chromium } = require("playwright-core");
   const nameOk = tokens.nameColor === hexToRgb(tokens.onSurface);
   const borderOk = tokens.rowBorderColor === hexToRgb(tokens.outlineVariant);
   const valOk = tokens.valColor === hexToRgb(tokens.onSurfaceVariant);
-  console.log("2) Passo 2 (resultado) migrado — nome --m3-on-surface, borda --m3-outline-variant, valor --m3-on-surface-variant:",
+  check("2) Passo 2 (resultado) migrado — nome --m3-on-surface, borda --m3-outline-variant, valor --m3-on-surface-variant:",
     nameOk && borderOk && valOk, JSON.stringify({ ...tokens, nameOk, borderOk, valOk }));
 
   await browser.close();

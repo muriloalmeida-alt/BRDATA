@@ -2,6 +2,8 @@
 // (qualquer chamada de rede via fetchJSON) demorar mais de 3s, some
 // assim que termina.
 const { chromium } = require("playwright-core");
+const { check } = require("./_check");
+const { enterGame } = require("./_startup");
 
 (async () => {
   const browser = await chromium.launch({ executablePath: process.env.PW_CHROMIUM_PATH || undefined, headless: true, args: ["--host-resolver-rules=MAP fonts.googleapis.com 127.0.0.1,MAP fonts.gstatic.com 127.0.0.1"] });
@@ -21,14 +23,7 @@ const { chromium } = require("playwright-core");
   await page.click(".m3-club-row");
   await page.waitForTimeout(150);
   await page.click("#btnConfirmClub");
-  await page.click("#btnOnboardSkip", { timeout: 2000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.waitForTimeout(1500);
-  await page.click("#btnClaimDailyLogin").catch(() => {});
-  await page.waitForTimeout(200);
+  await enterGame(page);
 
   // 1) Ação RÁPIDA (fetchJSON normal, sem atraso artificial) nunca
   // mostra o overlay -- persistCareer() de verdade, servidor local
@@ -36,7 +31,7 @@ const { chromium } = require("playwright-core");
   await page.evaluate(() => persistCareer());
   await page.waitForTimeout(300);
   const check1 = await page.evaluate(() => document.getElementById("actionLoadingOverlay").classList.contains("open"));
-  console.log("1) Ação rápida nunca mostra o overlay:", !check1, check1);
+  check("1) Ação rápida nunca mostra o overlay:", !check1, check1);
 
   // 2) Ação que demora MAIS de 3s mostra o overlay depois de 3s (não
   // antes) e some assim que termina -- monkey-patch em window.fetch
@@ -68,7 +63,7 @@ const { chromium } = require("playwright-core");
   await fetchPromise;
   await page.waitForTimeout(100);
   const hiddenAfterDone = await page.evaluate(() => !document.getElementById("actionLoadingOverlay").classList.contains("open"));
-  console.log("2) Overlay escondido em 2s, visível em 4s, escondido de novo assim que a chamada termina:",
+  check("2) Overlay escondido em 2s, visível em 4s, escondido de novo assim que a chamada termina:",
     stillHiddenAt2s && visibleAt4s && hiddenAfterDone,
     JSON.stringify({ stillHiddenAt2s, visibleAt4s, hiddenAfterDone }));
 
@@ -97,7 +92,7 @@ const { chromium } = require("playwright-core");
     const overlayAfterSlowDone = document.getElementById("actionLoadingOverlay").classList.contains("open");
     return { overlayRightAfterFastDone, overlayAfterSlowDone };
   });
-  console.log("3) Com 2 chamadas simultâneas, some só quando a última (mais lenta) termina:",
+  check("3) Com 2 chamadas simultâneas, some só quando a última (mais lenta) termina:",
     check3.overlayRightAfterFastDone === false && check3.overlayAfterSlowDone === false, JSON.stringify(check3));
 
   await browser.close();

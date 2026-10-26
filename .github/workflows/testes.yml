@@ -1,0 +1,84 @@
+# CI da suíte de testes do BRDATA (motor de testes, Fase C).
+#
+# - "Rota rápida": smoke de fluxos críticos + unitários (suites.json → fast).
+#   Primeiro sinal em poucos minutos; NÃO substitui a suíte completa.
+# - "Suíte completa": os 153 testes divididos em 4 máquinas em paralelo
+#   (run_parallel.js --shard=I/4 — a divisão é a mesma em qualquer máquina,
+#   ver suites.json → durationsMs). Cada máquina sobe seu próprio servidor
+#   isolado com dados vazios (--isolated-server).
+# Nada aqui pula teste nem repete teste que falhou: o código de saída de
+# cada script é o veredito (ver tests/e2e/README.md).
+name: Testes
+
+on:
+  push:
+    branches: [main, "claude/**"]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: testes-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  # Mesma versão do playwright-core de tests/e2e/package.json — o navegador
+  # instalado tem que ser o que essa versão espera.
+  PLAYWRIGHT_BROWSERS_PATH: ${{ github.workspace }}/.pw-browsers
+
+jobs:
+  rapida:
+    name: Rota rápida
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/preparar-testes
+      - name: Rodar rota rápida
+        working-directory: tests/e2e
+        run: node run_parallel.js --suite=fast --isolated-server
+      - name: Resumo
+        if: always()
+        working-directory: tests/e2e
+        run: node ../../.github/scripts/resumo-testes.js "Rota rápida" >> "$GITHUB_STEP_SUMMARY"
+      - name: Guardar logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: testes-rapida
+          path: |
+            tests/e2e/_last_parallel_run.json
+            tests/e2e/_artifacts/
+          if-no-files-found: ignore
+          retention-days: 14
+
+  completa:
+    name: Suíte completa (${{ matrix.shard }}/4)
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/preparar-testes
+      - name: Rodar parte ${{ matrix.shard }} de 4
+        working-directory: tests/e2e
+        run: node run_parallel.js --isolated-server --shard=${{ matrix.shard }}/4
+      - name: Resumo
+        if: always()
+        working-directory: tests/e2e
+        run: node ../../.github/scripts/resumo-testes.js "Suíte completa — parte ${{ matrix.shard }}/4" >> "$GITHUB_STEP_SUMMARY"
+      - name: Guardar logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: testes-completa-${{ matrix.shard }}
+          path: |
+            tests/e2e/_last_parallel_run.json
+            tests/e2e/_artifacts/
+          if-no-files-found: ignore
+          retention-days: 14

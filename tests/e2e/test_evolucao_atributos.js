@@ -4,6 +4,8 @@
 // tbm podem perder atributos naturalmente") — ver derivePotentialForAdult/
 // attributeTrainingGain/backfillPlayerPotential em carreira.js.
 const { chromium } = require("playwright-core");
+const { check } = require("./_check");
+const { enterGame } = require("./_startup");
 
 (async () => {
   const browser = await chromium.launch({ executablePath: process.env.PW_CHROMIUM_PATH || undefined, headless: true, args: ["--host-resolver-rules=MAP fonts.googleapis.com 127.0.0.1,MAP fonts.gstatic.com 127.0.0.1"] });
@@ -23,14 +25,7 @@ const { chromium } = require("playwright-core");
   await page.click(".m3-club-row");
   await page.waitForTimeout(150);
   await page.click("#btnConfirmClub");
-  await page.click("#btnOnboardSkip", { timeout: 2000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.waitForTimeout(1500);
-  await page.click("#btnClaimDailyLogin").catch(() => {});
-  await page.waitForTimeout(200);
+  await enterGame(page);
 
   // 0) Todo jogador do elenco (real, vindo de buildRealPlayer) já
   // nasce com potential definido e >= overall.
@@ -39,7 +34,7 @@ const { chromium } = require("playwright-core");
     allHavePotential: CAREER.squad.every((p) => p.potential != null && p.potential >= p.overall && p.potential <= 99),
     sample: CAREER.squad.slice(0, 3).map((p) => ({ name: p.name, age: p.age, overall: p.overall, potential: p.potential })),
   }));
-  console.log("0) Todo jogador nasce com potential >= overall (buildRealPlayer):", check0.allHavePotential, JSON.stringify({ total: check0.total, sample: check0.sample }));
+  check("0) Todo jogador nasce com potential >= overall (buildRealPlayer):", check0.allHavePotential, JSON.stringify({ total: check0.total, sample: check0.sample }));
 
   // 1) Jogador JOVEM com teto alto: treino técnico intenso, semana
   // após semana, converge pro potencial e NUNCA passa dele -- mesmo
@@ -53,18 +48,31 @@ const { chromium } = require("playwright-core");
     CAREER.trainingPlan[1] = { foco: "tecnico", intensidade: "intensa", grupo: "principal" };
     CAREER.trainingPlan[2] = { foco: "tecnico", intensidade: "intensa", grupo: "principal" };
     CAREER.trainingPlan[3] = { foco: "tecnico", intensidade: "intensa", grupo: "principal" };
+    // GE-BALANCE-005 (issue #38): o ganho por atributo tem teto POR
+    // TEMPORADA (seasonGainCap: 6 pontos até 21 anos) — então a
+    // convergência pro potencial leva mais de uma temporada. Cada
+    // "temporada" aqui são 60 semanas de treino; entre elas o ganho da
+    // temporada zera (p.seasonGain = {}, como na virada de temporada).
     let maxSeen = p.overall;
     let everExceeded = false;
-    for (let i = 0; i < 60; i++) {
-      CAREER.trainingAppliedForRound = null; // bypassa a idempotência por rodada (não avançamos rodada de verdade aqui)
-      applyWeeklyTraining();
-      if (p.overall > p.potential) everExceeded = true;
-      maxSeen = Math.max(maxSeen, p.overall);
+    const perSeason = [];
+    p.seasonGain = {};
+    const firstSeasonCap = seasonGainCap(p, CAREER.currentRound - 1);
+    for (let season = 0; season < 4 && p.overall < p.potential; season++) {
+      p.seasonGain = {};
+      for (let i = 0; i < 60; i++) {
+        CAREER.trainingAppliedForRound = null; // bypassa a idempotência por rodada (não avançamos rodada de verdade aqui)
+        applyWeeklyTraining();
+        if (p.overall > p.potential) everExceeded = true;
+        maxSeen = Math.max(maxSeen, p.overall);
+      }
+      perSeason.push(p.overall);
     }
-    return { finalOverall: p.overall, potential: p.potential, everExceeded, reachedPotential: p.overall === p.potential };
+    return { finalOverall: p.overall, potential: p.potential, everExceeded, reachedPotential: p.overall === p.potential, perSeason, firstSeasonCap,
+      firstSeasonWithinCap: perSeason[0] <= 60 + firstSeasonCap };
   });
-  console.log("1) Jogador jovem (potencial 75) converge pro teto em 60 semanas de treino técnico intenso, sem NUNCA passar dele:",
-    !check1.everExceeded && check1.reachedPotential, JSON.stringify(check1));
+  check("1) Jogador jovem (potencial 75) converge pro teto com treino técnico intenso ao longo das temporadas (respeitando o teto de ganho por temporada), sem NUNCA passar dele:",
+    !check1.everExceeded && check1.reachedPotential && check1.firstSeasonWithinCap, JSON.stringify(check1));
 
   // 2) Jogador VETERANO (30+) nasce com potential === overall (sem
   // espaço) -- treino técnico intenso não move o overall dele NADA,
@@ -79,7 +87,7 @@ const { chromium } = require("playwright-core");
     }
     return { before, after: p.overall, potential: p.potential, noRoom: p.potential === before };
   });
-  console.log("2) Veterano (34 anos) nasce sem espaço de crescimento (potential === overall) e treino não move nada:",
+  check("2) Veterano (34 anos) nasce sem espaço de crescimento (potential === overall) e treino não move nada:",
     check2.noRoom && check2.after === check2.before, JSON.stringify(check2));
 
   // 3) Ganho de treino agora é PROBABILÍSTICO/decrescente perto do
@@ -101,7 +109,7 @@ const { chromium } = require("playwright-core");
     const avg = gainsSeen.reduce((a, b) => a + b, 0) / gainsSeen.length;
     return { avg, samples: gainsSeen.slice(0, 10), neverExceeds5: gainsSeen.every((g) => g <= 5) };
   });
-  console.log("3) Ganho por semana com pouco espaço restante (5 pontos) é bem menor que o baseGain cheio (4) na média, nunca passa do espaço:",
+  check("3) Ganho por semana com pouco espaço restante (5 pontos) é bem menor que o baseGain cheio (4) na média, nunca passa do espaço:",
     check3.avg < 3.5 && check3.neverExceeds5, JSON.stringify({ avg: check3.avg, samples: check3.samples }));
 
   // 4) Migração: jogador SEM potential (save antigo) recebe um valor
@@ -117,7 +125,7 @@ const { chromium } = require("playwright-core");
     const second = p.potential;
     return { hasPotentialNow: first != null, deterministic: first === second, coherent: first >= p.overall };
   });
-  console.log("4) Migração dá potential retroativo determinístico (mesma seed sempre) e coerente (>= overall):",
+  check("4) Migração dá potential retroativo determinístico (mesma seed sempre) e coerente (>= overall):",
     check4.hasPotentialNow && check4.deterministic && check4.coherent, JSON.stringify(check4));
 
   // 5) Maturação natural (applyNaturalAgingEvolution) também respeita
@@ -127,13 +135,16 @@ const { chromium } = require("playwright-core");
   const check5 = await page.evaluate(() => {
     const p = CAREER.squad.find((x) => x.origin === "principal");
     p.age = 19; p.overall = 60; p.atk = 60; p.def = 60; p.phys = 60; p.potential = 65;
+    // Temporada nova pra este caso (o caso 1 consumiu o ganho da
+    // temporada deste mesmo jogador — teto por temporada do GE-BALANCE-005).
+    p.seasonGain = {};
     const orig = Math.random;
     Math.random = () => 0; // sempre "cresce" (roll < growChance, growChance > 0 pra jovem)
     for (let i = 0; i < 100; i++) applyNaturalAgingEvolution([]);
     Math.random = orig;
     return { overall: p.overall, atk: p.atk, def: p.def, phys: p.phys, potential: p.potential, allAtCeiling: [p.overall, p.atk, p.def, p.phys].every((v) => v === p.potential) };
   });
-  console.log("5) Maturação natural (mesmo forçada a crescer sempre) também para no potential, nunca passa dele:",
+  check("5) Maturação natural (mesmo forçada a crescer sempre) também para no potential, nunca passa dele:",
     check5.allAtCeiling, JSON.stringify(check5));
 
   // 6) Declínio natural: veterano NÃO titular (mais chance de
@@ -154,7 +165,7 @@ const { chromium } = require("playwright-core");
     const allDeclined = Object.keys(before).every((k) => after[k] < before[k]);
     return { before, after, allDeclined };
   });
-  console.log("6) Veterano (35 anos) sem jogar perde atributos de verdade ao longo de várias rodadas (declínio natural):",
+  check("6) Veterano (35 anos) sem jogar perde atributos de verdade ao longo de várias rodadas (declínio natural):",
     check6.allDeclined, JSON.stringify(check6));
 
   await browser.close();

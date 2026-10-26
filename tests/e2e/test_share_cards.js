@@ -6,6 +6,8 @@
 // com fallback pra download direto do PNG, já que o Chromium headless
 // deste ambiente não implementa navigator.share/canShare).
 const { chromium } = require("playwright-core");
+const { check } = require("./_check");
+const { enterGame } = require("./_startup");
 const { skipPreseason } = require("./_calendar_skip");
 
 async function newCareer(page, base, email) {
@@ -20,13 +22,7 @@ async function newCareer(page, base, email) {
   await page.click(".m3-club-row");
   await page.waitForTimeout(150);
   await page.click("#btnConfirmClub");
-  await page.click("#btnOnboardSkip", { timeout: 2000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnClaimDailyLogin", { timeout: 3000 }).catch(() => {});
-  await page.waitForTimeout(500);
+  await enterGame(page);
 }
 
 (async () => {
@@ -60,7 +56,7 @@ async function newCareer(page, base, email) {
     page.waitForEvent("download", { timeout: 8000 }),
     page.click("#btnMatchDetailShare"),
   ]);
-  console.log("1) Botão 'Compartilhar' existe em 'Seu jogo' e gera um PNG de verdade:", !!shareBtnExists && download1.suggestedFilename().endsWith(".png"), download1.suggestedFilename());
+  check("1) Botão 'Compartilhar' existe em 'Seu jogo' e gera um PNG de verdade:", !!shareBtnExists && download1.suggestedFilename().endsWith(".png"), download1.suggestedFilename());
 
   // Fecha o fluxo pós-jogo pra não interferir com o resto do teste.
   await page.click("#btnMatchDetailCloseFooter", { timeout: 3000 }).catch(() => {});
@@ -82,7 +78,7 @@ async function newCareer(page, base, email) {
     page.waitForEvent("download", { timeout: 8000 }),
     page.click("#btnShareAchievement"),
   ]);
-  console.log("2) Conquista desbloqueada mostra 'Compartilhar' e gera um PNG (não é mais só texto):", shareVisible && download2.suggestedFilename().endsWith(".png"), download2.suggestedFilename());
+  check("2) Conquista desbloqueada mostra 'Compartilhar' e gera um PNG (não é mais só texto):", shareVisible && download2.suggestedFilename().endsWith(".png"), download2.suggestedFilename());
   await page.click("#achievementDetailClose", { timeout: 3000 }).catch(() => {});
   await page.waitForTimeout(150);
 
@@ -102,7 +98,7 @@ async function newCareer(page, base, email) {
     page.waitForEvent("download", { timeout: 8000 }),
     page.click("#btnShareTitle"),
   ]);
-  console.log("3) 'Compartilhar título' some sem título e aparece + gera PNG sendo campeão:", hiddenWhenNotChampion === true && championState === false && download3.suggestedFilename().endsWith(".png"), download3.suggestedFilename());
+  check("3) 'Compartilhar título' some sem título e aparece + gera PNG sendo campeão:", hiddenWhenNotChampion === true && championState === false && download3.suggestedFilename().endsWith(".png"), download3.suggestedFilename());
 
   await browser.close();
   console.log("OK");

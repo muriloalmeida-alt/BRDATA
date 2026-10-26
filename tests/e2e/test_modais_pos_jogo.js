@@ -5,6 +5,7 @@
 // d) Resultados da rodada — seção de notícias (Rádio Data FM) removida
 // e) Tabela da carreira — mesmo layout de rodapé fixo, só com Fechar
 const { chromium } = require("playwright-core");
+const { enterGame } = require("./_startup");
 const { skipPreseason } = require("./_calendar_skip");
 
 (async () => {
@@ -25,18 +26,12 @@ const { skipPreseason } = require("./_calendar_skip");
   await page.click(".m3-club-row");
   await page.waitForTimeout(150);
   await page.click("#btnConfirmClub");
-  await page.click("#btnOnboardSkip", { timeout: 2000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnClaimDailyLogin", { timeout: 3000 }).catch(() => {});
-  await page.waitForTimeout(500);
+  await enterGame(page);
   // Zera a chance de coletiva de imprensa (mesmo hábito de sempre) pra
   // esse teste ser determinístico — o foco aqui é a sequência de
   // botões das modais, não a coletiva.
   await page.evaluate(() => {
-    Object.keys(PRESS_CHANCE_BY_ID).forEach((k) => { PRESS_CHANCE_BY_ID[k] = 0; });
+    Object.keys(PRESS_CHANCE_BY_ID).forEach((k) => { PRESS_CHANCE_BY_ID[k] = 1e-12; }); // não 0: `|| 0.3` em determineMatchPressTrigger faria 0 virar 30%
     PRESS_ALWAYS_IDS.clear();
   });
   await page.click(".m3-nav-item[data-panel='central']");

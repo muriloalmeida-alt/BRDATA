@@ -9,6 +9,8 @@
 // a global ME, quebrando showGameScreen() em silêncio pra quem já
 // tinha carreira salva).
 const { chromium } = require("playwright-core");
+const { check } = require("./_check");
+const { enterGame, waitForBoot } = require("./_startup");
 
 async function signupAndLogin(page, base, email, name) {
   await page.goto(base + "/", { waitUntil: "load" });
@@ -24,13 +26,7 @@ async function newCareer(page, base) {
   await page.click(".m3-club-row");
   await page.waitForTimeout(150);
   await page.click("#btnConfirmClub");
-  await page.click("#btnOnboardSkip", { timeout: 2000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnClaimDailyLogin", { timeout: 3000 }).catch(() => {});
-  await page.waitForTimeout(500);
+  await enterGame(page);
 }
 
 (async () => {
@@ -55,7 +51,7 @@ async function newCareer(page, base) {
   await pageA.click("#btnOpenRanking");
   await pageA.waitForTimeout(300);
   const codeA = await pageA.evaluate(() => ME.friendCode);
-  console.log("0) Código de amigo da conta A existe:", !!codeA && codeA.length === 6, codeA);
+  check("0) Código de amigo da conta A existe:", !!codeA && codeA.length === 6, codeA);
 
   // 1) Botão "Compartilhar convite" existe e cai no fallback de
   // clipboard (Chromium headless não implementa navigator.share).
@@ -63,14 +59,14 @@ async function newCareer(page, base) {
   await pageA.click("#btnShareInvite");
   await pageA.waitForTimeout(200);
   const clipboardText = await pageA.evaluate(() => navigator.clipboard.readText()).catch(() => null);
-  console.log("1) 'Compartilhar convite' existe e copia um link com o código pro clipboard:", !!shareBtnExists && !!clipboardText && clipboardText.includes(codeA) && clipboardText.includes("convite="), clipboardText);
+  check("1) 'Compartilhar convite' existe e copia um link com o código pro clipboard:", !!shareBtnExists && !!clipboardText && clipboardText.includes(codeA) && clipboardText.includes("convite="), clipboardText);
 
   // 2) A própria dona clicando no próprio link não vira "amiga de si
   // mesma" (ignorado em silêncio).
   await pageA.goto(`${base}/carreira.html?convite=${codeA}`, { waitUntil: "load" });
   await pageA.waitForTimeout(800);
   const selfInvite = await pageA.evaluate(() => ({ friendsCount: (ME.friends || []).length, urlClean: !location.search.includes("convite") }));
-  console.log("2) Clicar no PRÓPRIO link não adiciona a si mesma, e a URL fica limpa:", selfInvite.friendsCount === 0 && selfInvite.urlClean, JSON.stringify(selfInvite));
+  check("2) Clicar no PRÓPRIO link não adiciona a si mesma, e a URL fica limpa:", selfInvite.friendsCount === 0 && selfInvite.urlClean, JSON.stringify(selfInvite));
 
   // ---------- Conta B: visita o link de A SEM estar logada ----------
   const ctxB = await browser.newContext({ viewport: { width: 390, height: 900 } });
@@ -80,7 +76,7 @@ async function newCareer(page, base) {
   await pageB.waitForTimeout(300);
   const loginShown = await pageB.evaluate(() => !document.getElementById("screenLoginRequired").classList.contains("hidden"));
   const urlCleanedBeforeLogin = await pageB.evaluate(() => !location.search.includes("convite"));
-  console.log("3) Visitante sem sessão vê a tela de login (convite fica guardado em sessionStorage), URL já limpa:", loginShown && urlCleanedBeforeLogin);
+  check("3) Visitante sem sessão vê a tela de login (convite fica guardado em sessionStorage), URL já limpa:", loginShown && urlCleanedBeforeLogin);
 
   // 4) Cadastro/login da conta B — pelo FLUXO NORMAL (fetch direto,
   // como o resto da suíte), depois reload pra passar pelo boot() com
@@ -91,13 +87,13 @@ async function newCareer(page, base) {
     await fetch("/api/auth/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, password: "senha123" }) });
   }, { email: emailB });
   await pageB.reload({ waitUntil: "load" });
-  await pageB.waitForTimeout(1000);
+  await waitForBoot(pageB);
   const bState = await pageB.evaluate(() => ({ friends: (ME && ME.friends) || [], onScreenPicker: !document.getElementById("screenCompetitionPicker").classList.contains("hidden") }));
-  console.log("4) Depois de logar, o convite pendente vira amizade de verdade automaticamente:", bState.friends.length === 1, JSON.stringify(bState));
+  check("4) Depois de logar, o convite pendente vira amizade de verdade automaticamente:", bState.friends.length === 1, JSON.stringify(bState));
 
   // 5) Bidirecional: a conta A também ganha B como amiga.
   const friendsOfA = await pageA.evaluate(async () => (await (await fetch("/api/friends")).json()).friends);
-  console.log("5) Amizade é bidirecional -- A também vê B na lista:", friendsOfA.length === 1 && friendsOfA[0].name === "Convite B", JSON.stringify(friendsOfA));
+  check("5) Amizade é bidirecional -- A também vê B na lista:", friendsOfA.length === 1 && friendsOfA[0].name === "Convite B", JSON.stringify(friendsOfA));
 
   // ---------- Bug real encontrado no caminho: login pelo FORMULÁRIO
   // visível (não pelo bypass de fetch) nunca setava ME, quebrando
@@ -106,7 +102,7 @@ async function newCareer(page, base) {
   await newCareer(pageB, base);
   await pageB.evaluate(async () => { await fetch("/api/auth/logout", { method: "POST" }); });
   await pageB.reload({ waitUntil: "load" });
-  await pageB.waitForTimeout(300);
+  await waitForBoot(pageB);
   await pageB.fill("#ctLoginEmail", emailB);
   await pageB.fill("#ctLoginPassword", "senha123");
   await pageB.click("#ctLoginForm button[type=submit]");
@@ -116,7 +112,7 @@ async function newCareer(page, base) {
     gameVisible: !document.getElementById("screenGame").classList.contains("hidden"),
     loginErrorText: document.getElementById("ctLoginError").textContent,
   }));
-  console.log("6) BUG CORRIGIDO: login pelo formulário seta ME e não quebra showGameScreen():",
+  check("6) BUG CORRIGIDO: login pelo formulário seta ME e não quebra showGameScreen():",
     afterFormLogin.meSet && afterFormLogin.gameVisible && !afterFormLogin.loginErrorText, JSON.stringify(afterFormLogin));
 
   await browser.close();

@@ -5,7 +5,10 @@
 // sequência) continua sem esse bônus — nenhuma regressão no fluxo Ao
 // Vivo de sempre (esse já é coberto por test_ao_vivo.js).
 const { chromium } = require("playwright-core");
+const { check } = require("./_check");
+const { enterGame } = require("./_startup");
 const { skipPreseason } = require("./_calendar_skip");
+const { closeLeftoverTabela } = require("./_round");
 
 async function newCareer(page, base, email) {
   await page.goto(base + "/", { waitUntil: "load" });
@@ -19,13 +22,7 @@ async function newCareer(page, base, email) {
   await page.click(".m3-club-row");
   await page.waitForTimeout(150);
   await page.click("#btnConfirmClub");
-  await page.click("#btnOnboardSkip", { timeout: 2000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnClaimDailyLogin", { timeout: 3000 }).catch(() => {});
-  await page.waitForTimeout(500);
+  await enterGame(page);
 }
 
 (async () => {
@@ -51,7 +48,7 @@ async function newCareer(page, base, email) {
   });
   const stepsOk = steps[0] === 1 && steps[4] === 1 && steps[5] === 1.04 && steps[7] === 1.04
     && steps[8] === 1.08 && steps[11] === 1.08 && steps[12] === 1.12 && steps[20] === 1.12;
-  console.log("1) Degraus de opponentMotivationMod batem com a especificação:", stepsOk, JSON.stringify(steps));
+  check("1) Degraus de opponentMotivationMod batem com a especificação:", stepsOk, JSON.stringify(steps));
 
   // 2) Carreira nova (sequência 0) simulando uma rodada não mostra o
   // aviso "Adversário motivado" — nenhum efeito fora do gatilho.
@@ -68,7 +65,7 @@ async function newCareer(page, base, email) {
     const el = document.getElementById("toast");
     return { visible: el.style.display === "flex", title: el.querySelector(".ct-toast-title")?.textContent || null };
   });
-  console.log("2) Carreira nova (sem sequência) NÃO mostra aviso de adversário motivado:",
+  check("2) Carreira nova (sem sequência) NÃO mostra aviso de adversário motivado:",
     toastNoStreak.title !== "Adversário motivado", JSON.stringify(toastNoStreak));
 
   // Termina essa 1ª rodada rápido (pular pro fim) pra liberar a próxima —
@@ -89,14 +86,13 @@ async function newCareer(page, base, email) {
   await page.waitForTimeout(300);
   // Depois de "Continuar", o jogo abre OU a proposta por jogador (se
   // houver uma pendente) OU a Tabela (ver btnRoundResultsContinue em
-  // carreira.js) — nunca os 2 juntos, então fecha o que tiver aberto.
+  // carreira.js) — nunca os 2 juntos. Fechar a proposta abre a Tabela
+  // em seguida (closePlayerOfferModal), então a Tabela é fechada depois
+  // nos 2 casos.
   if (await page.waitForSelector("#playerOfferOverlay.open", { timeout: 1200 }).then(() => true).catch(() => false)) {
     await page.click("#playerOfferClose");
-    await page.waitForTimeout(200);
-  } else if (await page.evaluate(() => document.getElementById("tabelaModalOverlay").classList.contains("open"))) {
-    await page.evaluate(() => closeTabelaModal());
-    await page.waitForTimeout(200);
   }
+  await closeLeftoverTabela(page);
 
   // 3) Forçando uma sequência de invencibilidade longa (>=12) ANTES de
   // simular a próxima rodada, o aviso pré-partida aparece — efeito
@@ -111,7 +107,7 @@ async function newCareer(page, base, email) {
     const el = document.getElementById("toast");
     return { visible: el.style.display === "flex", title: el.querySelector(".ct-toast-title")?.textContent || null, detail: el.querySelector(".ct-toast-detail")?.textContent || null };
   });
-  console.log("3) Sequência de 14 jogos invicto dispara o aviso 'Adversário motivado' antes da partida:",
+  check("3) Sequência de 14 jogos invicto dispara o aviso 'Adversário motivado' antes da partida:",
     toastStreak.title === "Adversário motivado" && /14/.test(toastStreak.detail || ""), JSON.stringify(toastStreak));
 
   // 4) Nenhuma regressão: a partida com o mecanismo ativo ainda termina
@@ -121,7 +117,7 @@ async function newCareer(page, base, email) {
   await page.waitForTimeout(300);
   const roundAfter = await page.evaluate(() => CAREER.currentRound);
   const persistOk = await page.evaluate(async () => await persistCareer());
-  console.log("5) Partida com adversário motivado termina normalmente (rodada avançou) e persistCareer() continua ok:",
+  check("5) Partida com adversário motivado termina normalmente (rodada avançou) e persistCareer() continua ok:",
     roundAfter >= 2 && persistOk, JSON.stringify({ roundAfter, persistOk }));
 
   await browser.close();

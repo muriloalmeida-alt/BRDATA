@@ -4,6 +4,8 @@
 // comprar/vender/emprestar entre elas, e uma carreira "single" (de
 // antes desta mudança) continua exatamente como sempre foi.
 const { chromium } = require("playwright-core");
+const { check } = require("./_check");
+const { enterGame } = require("./_startup");
 
 (async () => {
   const browser = await chromium.launch({ executablePath: process.env.PW_CHROMIUM_PATH || undefined, headless: true, args: ["--host-resolver-rules=MAP fonts.googleapis.com 127.0.0.1,MAP fonts.gstatic.com 127.0.0.1"] });
@@ -23,12 +25,7 @@ const { chromium } = require("playwright-core");
   await page.click(".m3-club-row");
   await page.waitForTimeout(150);
   await page.click("#btnConfirmClub");
-  await page.click("#btnOnboardSkip", { timeout: 2000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnClaimDailyLogin", { timeout: 3000 }).catch(() => {});
+  await enterGame(page);
   await page.waitForTimeout(1000); // criação da carreira agora busca as 3 competições
 
   // 1) Carreira nasce "multi", com liveModeByCompetition das 3.
@@ -37,7 +34,7 @@ const { chromium } = require("playwright-core");
     liveModeByCompetition: CAREER.liveModeByCompetition,
     leagueSquadCount: Object.keys(CAREER.leagueSquads).length,
   }));
-  console.log("1) Carreira nasce 'multi':", created.marketScope === "multi", "| 59 outros times com elenco:", created.leagueSquadCount === 59, JSON.stringify(created));
+  check("1) Carreira nasce 'multi':", created.marketScope === "multi", "| 59 outros times com elenco:", created.leagueSquadCount === 59, JSON.stringify(created));
 
   // 2) O Mercado mostra o filtro de divisão e jogadores das 3 séries
   // (checa via ALL_TEAMS_FLAT/teamById que os clubes de fora resolvem
@@ -45,7 +42,7 @@ const { chromium } = require("playwright-core");
   await page.click(".m3-nav-item[data-panel='mercado']");
   await page.waitForTimeout(300);
   const compFilterVisible = await page.evaluate(() => !document.getElementById("marketCompFilter").classList.contains("hidden"));
-  console.log("2) Filtro de divisão aparece no Mercado:", compFilterVisible);
+  check("2) Filtro de divisão aparece no Mercado:", compFilterVisible);
 
   const marketState = await page.evaluate(() => {
     const rows = allMarketPlayers();
@@ -57,14 +54,14 @@ const { chromium } = require("playwright-core");
     const anyBroken = rows.some(({ club }) => club.name.startsWith("Time #"));
     return { byComp, anyBroken, total: rows.length };
   });
-  console.log("3) Jogadores das 3 divisões aparecem no mercado (sem 'Time #xxx' quebrado):", !marketState.anyBroken && Object.keys(marketState.byComp).length === 3, JSON.stringify(marketState.byComp));
+  check("3) Jogadores das 3 divisões aparecem no mercado (sem 'Time #xxx' quebrado):", !marketState.anyBroken && Object.keys(marketState.byComp).length === 3, JSON.stringify(marketState.byComp));
 
   // 4) Filtrar por Série C some com Série A/B da lista renderizada.
   await page.selectOption("#marketCompFilter", "serie_c", { force: true }); // UX-MERCADO-001: filtros ficam no estado escondido (ver openMarketFiltersSheet)
   await page.waitForTimeout(200);
   const filteredClubs = await page.evaluate(() => [...document.querySelectorAll("#marketList .m3-op-tags")].map((el) => el.textContent));
   const onlySerieC = filteredClubs.length > 0 && filteredClubs.every((t) => t.includes("Série C"));
-  console.log("4) Filtro 'Série C' só mostra jogadores dessa divisão:", onlySerieC, filteredClubs.length, "linhas");
+  check("4) Filtro 'Série C' só mostra jogadores dessa divisão:", onlySerieC, filteredClubs.length, "linhas");
   await page.selectOption("#marketCompFilter", "", { force: true }); // UX-MERCADO-001: filtros ficam no estado escondido (ver openMarketFiltersSheet)
   await page.waitForTimeout(200);
 
@@ -101,7 +98,7 @@ const { chromium } = require("playwright-core");
   }
   const after = await page.evaluate(() => ({ cash: CAREER.finances.cash, squadLen: CAREER.squad.length }));
   const bought = { found: !!buyBtn, targetClub, cashChanged: after.cash < before.cash, squadGrew: after.squadLen === before.squadLen + 1 };
-  console.log("5) Comprou jogador da Série B com sucesso (via clique real):", bought.found && bought.cashChanged && bought.squadGrew, JSON.stringify(bought));
+  check("5) Comprou jogador da Série B com sucesso (via clique real):", bought.found && bought.cashChanged && bought.squadGrew, JSON.stringify(bought));
   // Enviar a proposta (#btnOfferConfirm) já fechou tudo e voltou pra
   // Início (Task #72) -- volta pro Mercado antes de continuar.
   await page.evaluate(() => switchToPanel("mercado"));
@@ -124,7 +121,7 @@ const { chromium } = require("playwright-core");
     // roda bastante e confia no sorteio (0-2 por rodada, 40 rodadas).
     return { transferLogSize: (CAREER.transferLog || []).length, leagueSquadCount: Object.keys(CAREER.leagueSquads).length };
   });
-  console.log("6) simulateAiTransfers rodou sem erro (40 rodadas simuladas):", crossDivisionTrade.transferLogSize > 0, JSON.stringify(crossDivisionTrade));
+  check("6) simulateAiTransfers rodou sem erro (40 rodadas simuladas):", crossDivisionTrade.transferLogSize > 0, JSON.stringify(crossDivisionTrade));
 
   // 7) Depois de 40 rodadas de negociação CPU x CPU, nenhum elenco de
   // outra divisão passou do teto menor (MAX_LEAGUE_SQUAD_OTHER_DIVISION)
@@ -142,7 +139,7 @@ const { chromium } = require("playwright-core");
     });
     return { ok, min: Math.min(...sizes), max: Math.max(...sizes) };
   });
-  console.log("7) Elenco de times de fora respeita o teto de 16 mesmo depois de várias negociações CPU:", capsHeld.ok, JSON.stringify(capsHeld));
+  check("7) Elenco de times de fora respeita o teto de 16 mesmo depois de várias negociações CPU:", capsHeld.ok, JSON.stringify(capsHeld));
 
   await page.screenshot({ path: "screens/mercado-multi-01-lista.png" });
 

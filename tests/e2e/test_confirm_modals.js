@@ -1,4 +1,6 @@
 const { chromium } = require("playwright-core");
+const { enterGame, waitForBoot } = require("./_startup");
+const { check } = require("./_check");
 
 (async () => {
   const browser = await chromium.launch({
@@ -24,13 +26,7 @@ const { chromium } = require("playwright-core");
   await page.click(".m3-club-row");
   await page.waitForTimeout(150);
   await page.click("#btnConfirmClub");
-  await page.click("#btnOnboardSkip", { timeout: 2000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnClaimDailyLogin", { timeout: 3000 }).catch(() => {});
-  await page.waitForTimeout(500);
+  await enterGame(page);
 
   // Teste 1: vender jogador (via Mercado) -- desde o Bloco 3 ("Colocar
   // à venda"), vender não usa mais o confirmModal() genérico testado
@@ -62,10 +58,16 @@ const { chromium } = require("playwright-core");
   const buyBtns = await page.$$("[data-buy]");
   await buyBtns[buyBtns.length - 1].click();
   await page.waitForTimeout(300);
-  const offerSheetOpen = await page.evaluate(() => document.getElementById("offerOverlay").classList.contains("open"));
-  console.log("Comprar agora abre a sheet de proposta (não mais confirmModal):", offerSheetOpen);
-  await page.click("#offerClose");
+  // S4-B3-003: a proposta virou um Dialog dinâmico (.m3-dialog-overlay,
+  // ver test_s4_b3_003_negociacao.js) — #offerOverlay estático não existe mais.
+  const offerSheetOpen = await page.evaluate(() => {
+    const d = document.querySelector(".m3-dialog-overlay.open");
+    return !!d && d.querySelector(".m3-dialog-header h3")?.textContent === "Fazer proposta";
+  });
+  check("2) Comprar abre o diálogo de proposta (não mais confirmModal):", offerSheetOpen);
+  await page.keyboard.press("Escape");
   await page.waitForTimeout(300);
+  check("2b) Fechar o diálogo não envia proposta nenhuma:", await page.evaluate(() => !document.querySelector(".m3-dialog-overlay.open") && (CAREER.pendingOffersOut || []).length === 0));
 
   // Teste 3: Reiniciar (menu hambúrguer)
   await page.click("#btnBottomMenu");
@@ -86,7 +88,7 @@ const { chromium } = require("playwright-core");
     await fetch("/api/career", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data.career) });
   });
   await page.reload({ waitUntil: "load" });
-  await page.waitForTimeout(800);
+  await waitForBoot(page);
   await page.click("#btnAdvanceSeason");
   await page.waitForTimeout(300);
   const confirmTextSeason = await page.evaluate(() => document.getElementById("confirmText").textContent);

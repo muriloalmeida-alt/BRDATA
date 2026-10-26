@@ -1,4 +1,7 @@
 const { chromium } = require("playwright-core");
+const { enterGame } = require("./_startup");
+const { check } = require("./_check");
+const { playNextMatchRound, closeLeftoverTabela } = require("./_round");
 
 (async () => {
   const browser = await chromium.launch({
@@ -29,40 +32,34 @@ const { chromium } = require("playwright-core");
   await page.click(".m3-club-row");
   await page.waitForTimeout(150);
   await page.click("#btnConfirmClub");
-  await page.click("#btnOnboardSkip", { timeout: 2000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnClaimDailyLogin", { timeout: 3000 }).catch(() => {});
-  await page.waitForTimeout(500);
+  await enterGame(page);
   await page.click(".m3-nav-item[data-panel='central']");
   await page.waitForTimeout(300);
 
+  // 10 jogos oficiais pela interface (fluxo atual completo, ver
+  // _round.js); em cada um, o detalhe "Seu jogo" é lido antes de seguir.
+  const matches = [];
   for (let i = 0; i < 10; i++) {
-    await page.click("#btnSimulate");
-    await page.waitForTimeout(400);
-    const matchOpen = await page.evaluate(() => document.getElementById("matchDetailOverlay").classList.contains("open"));
-    if (matchOpen) {
-      const info = await page.evaluate(() => ({
-        score: document.getElementById("matchDetailScore").textContent.replace(/\s+/g, " ").trim(),
-        events: document.getElementById("matchDetailEvents").textContent.replace(/\s+/g, " ").trim(),
-      }));
-      console.log(`round ${i + 1}:`, info.score, "|", info.events);
-      // Screenshot only when opponent likely scored more (heuristic: just grab first case with content)
-      if (i === 0 || info.events.includes("Gol do")) {
-        await page.screenshot({ path: `events-round${i + 1}.png` });
-      }
-      await page.click("#btnMatchDetailContinue");
-      await page.waitForTimeout(300);
-    }
-    const resOpen = await page.evaluate(() => document.getElementById("roundResultsOverlay").classList.contains("open"));
-    if (resOpen) {
-      await page.click("#btnRoundResultsContinue");
-      await page.waitForTimeout(300);
-    }
+    const r = await playNextMatchRound(page, {
+      onMatchDetail: async (p) => {
+        const info = await p.evaluate(() => ({
+          score: document.getElementById("matchDetailScore").textContent.replace(/\s+/g, " ").trim(),
+          events: document.getElementById("matchDetailEvents").textContent.replace(/\s+/g, " ").trim(),
+        }));
+        matches.push(info);
+        console.log(`round ${i + 1}:`, info.score, "|", info.events);
+        if (i === 0 || info.events.includes("Gol do")) await p.screenshot({ path: `events-round${i + 1}.png` });
+      },
+    });
+    if (r.stoppedAt === "playerOfferOverlay") { await page.click("#btnPlayerOfferDecline"); await closeLeftoverTabela(page); }
+    else if (r.stoppedAt) throw new Error(`jogo ${i + 1} parou numa tela inesperada: ${r.stoppedAt}`);
     await page.click(".m3-nav-item[data-panel='central']").catch(() => {});
   }
+  check("1) Os 10 jogos mostraram o detalhe 'Seu jogo' com placar:", matches.length === 10 && matches.every((m) => /\d+\D+\d+/.test(m.score)), matches.map((m) => m.score));
+  // Jogo com gol tem que listar eventos (o detalhe lista gol/cartão).
+  const goalsOf = (score) => (score.match(/\d+/g) || []).slice(0, 2).reduce((a, n) => a + Number(n), 0);
+  const withGoals = matches.filter((m) => goalsOf(m.score) > 0);
+  check("2) Todo jogo com gol lista eventos no detalhe:", withGoals.every((m) => m.events.length > 0), { jogosComGol: withGoals.length, semEventos: withGoals.filter((m) => !m.events.length).map((m) => m.score) });
 
   await browser.close();
 })().catch((e) => { console.error("FATAL:", e); process.exit(1); });

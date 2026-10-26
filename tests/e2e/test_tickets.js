@@ -1,4 +1,7 @@
 const { chromium } = require("playwright-core");
+const { enterGame } = require("./_startup");
+const { check } = require("./_check");
+const { playNextMatchRound, closeLeftoverTabela } = require("./_round");
 
 (async () => {
   const browser = await chromium.launch({
@@ -23,39 +26,31 @@ const { chromium } = require("playwright-core");
   await page.click(".m3-club-row");
   await page.waitForTimeout(150);
   await page.click("#btnConfirmClub");
-  await page.click("#btnOnboardSkip", { timeout: 2000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnClaimDailyLogin", { timeout: 3000 }).catch(() => {});
-  await page.waitForTimeout(500);
+  await enterGame(page);
   await page.click(".m3-nav-item[data-panel='central']");
   await page.waitForTimeout(300);
 
   let sawHomeGame = false;
+  // Até 8 jogos oficiais pela interface (fluxo atual, ver _round.js),
+  // parando no primeiro em casa (o detalhe "Seu jogo" mostra a bilheteria).
   for (let i = 0; i < 8 && !sawHomeGame; i++) {
-    await page.click("#btnSimulate");
-    await page.waitForTimeout(400);
-    const matchOpen = await page.evaluate(() => document.getElementById("matchDetailOverlay").classList.contains("open"));
-    if (matchOpen) {
-      const ticketsText = await page.evaluate(() => document.getElementById("matchDetailTickets").textContent);
-      if (ticketsText) {
-        sawHomeGame = true;
-        console.log(`Rodada ${i + 1} (casa):`, ticketsText);
-        await page.screenshot({ path: "tickets-home-game.png" });
-      }
-      await page.click("#btnMatchDetailContinue");
-      await page.waitForTimeout(300);
-    }
-    if (await page.evaluate(() => document.getElementById("roundResultsOverlay").classList.contains("open"))) {
-      await page.click("#btnRoundResultsContinue"); await page.waitForTimeout(300);
-    }
+    const r = await playNextMatchRound(page, {
+      onMatchDetail: async (p) => {
+        const ticketsText = await p.evaluate(() => document.getElementById("matchDetailTickets").textContent);
+        if (ticketsText) {
+          sawHomeGame = true;
+          console.log(`Rodada ${i + 1} (casa):`, ticketsText);
+          await p.screenshot({ path: "tickets-home-game.png" });
+        }
+      },
+    });
+    if (r.stoppedAt === "playerOfferOverlay") { await page.click("#btnPlayerOfferDecline"); await closeLeftoverTabela(page); }
+    else if (r.stoppedAt) throw new Error(`jogo ${i + 1} parou numa tela inesperada: ${r.stoppedAt}`);
     await page.click(".m3-nav-item[data-panel='central']").catch(() => {});
   }
   const finalCash = await page.evaluate(async () => (await (await fetch("/api/career")).json()).career.finances.cash);
   const recentForm = await page.evaluate(async () => (await (await fetch("/api/career")).json()).career.recentForm);
-  console.log("Viu jogo em casa com receita:", sawHomeGame);
+  check("1) Jogo em casa mostra a receita de bilheteria no detalhe:", sawHomeGame);
   console.log("Caixa final:", finalCash);
   console.log("Forma recente:", JSON.stringify(recentForm));
 

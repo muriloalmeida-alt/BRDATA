@@ -3,6 +3,8 @@
 // destaque de gol em tela cheia, estatísticas agregadas na tela
 // "Seu jogo" e o botão "Rever lances".
 const { chromium } = require("playwright-core");
+const { check } = require("./_check");
+const { enterGame } = require("./_startup");
 const { skipPreseason } = require("./_calendar_skip");
 
 (async () => {
@@ -23,13 +25,7 @@ const { skipPreseason } = require("./_calendar_skip");
   await page.click(".m3-club-row");
   await page.waitForTimeout(150);
   await page.click("#btnConfirmClub");
-  await page.click("#btnOnboardSkip", { timeout: 2000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnClaimDailyLogin", { timeout: 3000 }).catch(() => {});
-  await page.waitForTimeout(500);
+  await enterGame(page);
 
   // 1) Iniciar partida ao vivo.
   await skipPreseason(page); // GE-CALENDAR-001: carreira nova começa na pré-temporada
@@ -37,7 +33,7 @@ const { skipPreseason } = require("./_calendar_skip");
   await page.waitForSelector("#preMatchOverlay.open", { timeout: 5000 });
   await page.click("#btnPreMatchGo");
   await page.waitForSelector("#liveMatchOverlay.open", { timeout: 5000 });
-  console.log("1) Tela Ao Vivo abriu:", await page.locator("#liveMatchOverlay.open").count() === 1);
+  check("1) Tela Ao Vivo abriu:", await page.locator("#liveMatchOverlay.open").count() === 1);
 
   // 2) Controles de velocidade — clicar 2x muda o estado ativo.
   await page.click("#liveSpeedToggle .mt-live-speed-btn[data-speed='2']");
@@ -45,20 +41,22 @@ const { skipPreseason } = require("./_calendar_skip");
     speed: LIVE_MATCH.speed,
     activeBtn: document.querySelector("#liveSpeedToggle .mt-live-speed-btn.active").dataset.speed,
   }));
-  console.log("2) Velocidade 2x aplicada (LIVE_MATCH.speed=2, botão 2x ativo):", speedState.speed === 2 && speedState.activeBtn === "2", JSON.stringify(speedState));
+  check("2) Velocidade 2x aplicada (LIVE_MATCH.speed=2, botão 2x ativo):", speedState.speed === 2 && speedState.activeBtn === "2", JSON.stringify(speedState));
   await page.click("#liveSpeedToggle .mt-live-speed-btn[data-speed='1']");
 
   // 3) Espera alguns tempos passarem (2x = ~450ms por tempo) e checa
   // se chance_perdida/defesa já apareceram no feed (evento novo).
-  await page.waitForTimeout(2500);
+  // Espera o ESTADO (tipo novo no feed), até 15 s — antes 2,5 s fixos,
+  // que sob carga cobriam menos tempos de jogo e às vezes só gol/cartão.
+  await page.waitForFunction(() => LIVE_MATCH && LIVE_MATCH.events.some((e) => e.type === "chance_perdida" || e.type === "defesa"), null, { timeout: 15000 }).catch(() => {});
   const feedTypes = await page.evaluate(() => LIVE_MATCH ? [...new Set(LIVE_MATCH.events.map((e) => e.type))] : []);
-  console.log("3) Feed já tem tipos de evento variados (chance_perdida ou defesa presentes):",
+  check("3) Feed já tem tipos de evento variados (chance_perdida ou defesa presentes):",
     feedTypes.includes("chance_perdida") || feedTypes.includes("defesa"), JSON.stringify(feedTypes));
 
   // 4) Pular pro fim e checar estado final.
   await page.click("#btnLiveSkip");
   await page.waitForSelector("#matchDetailOverlay.open", { timeout: 8000 });
-  console.log("4) Partida terminou, modal 'Seu jogo' abriu:", true);
+  check("4) Partida terminou, modal 'Seu jogo' abriu:", true);
 
   // 5) Estatísticas (posse/finalizações/no alvo/faltas) aparecem.
   const stats = await page.evaluate(() => {
@@ -66,7 +64,7 @@ const { skipPreseason } = require("./_calendar_skip");
     const rows = [...document.querySelectorAll(".mt-stat-bar-row")];
     return { visible: !card.classList.contains("hidden"), rowCount: rows.length, labels: rows.map((r) => r.querySelector(".mt-stat-bar-label").textContent) };
   });
-  console.log("5) Cartão de estatísticas visível com 4 métricas:", stats.visible && stats.rowCount === 4, JSON.stringify(stats.labels));
+  check("5) Cartão de estatísticas visível com 4 métricas:", stats.visible && stats.rowCount === 4, JSON.stringify(stats.labels));
 
   // 6) "Rever lances" abre o feed completo (inclui chance/defesa/sub).
   await page.click("#btnMatchDetailReplay");
@@ -75,7 +73,7 @@ const { skipPreseason } = require("./_calendar_skip");
     const rows = [...document.querySelectorAll("#matchReplayFeed .mt-live-tl-event")];
     return { count: rows.length, hasText: rows.length > 0 && rows[0].querySelector(".mt-live-tl-desc").textContent.length > 0 };
   });
-  console.log("6) 'Rever lances' mostra o feed completo (com texto de comentário):", replay.count > 0 && replay.hasText, replay.count);
+  check("6) 'Rever lances' mostra o feed completo (com texto de comentário):", replay.count > 0 && replay.hasText, replay.count);
   await page.click("#matchReplayClose");
   await page.waitForTimeout(200);
 
@@ -86,7 +84,8 @@ const { skipPreseason } = require("./_calendar_skip");
     const withAssist = rows.find((r) => r.querySelector(".ct-event-assist"));
     return { totalRows: rows.length, hasAssistLine: !!withAssist, assistText: withAssist ? withAssist.querySelector(".ct-event-assist").textContent : null };
   });
-  console.log("7) Lista de eventos (gol/cartão) sem linha 'Assistência' separada — vira sub-linha do gol:", JSON.stringify(goalRow));
+  if (goalRow.hasAssistLine) check("7) Lista de eventos (gol/cartão) sem linha 'Assistência' separada — vira sub-linha do gol:", !!goalRow.assistText && goalRow.assistText.trim().length > 0, JSON.stringify(goalRow));
+  else check("7) (pulado -- nenhum gol assistido nesta partida pra conferir a sub-linha)");
 
   await browser.close();
 })().catch((e) => { console.error("FATAL:", e); process.exit(1); });

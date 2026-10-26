@@ -1,4 +1,6 @@
 const { chromium } = require("playwright-core");
+const { check } = require("./_check");
+const { enterGame } = require("./_startup");
 
 (async () => {
   const browser = await chromium.launch({
@@ -22,13 +24,7 @@ const { chromium } = require("playwright-core");
   await page.click(".m3-club-row");
   await page.waitForTimeout(150);
   await page.click("#btnConfirmClub");
-  await page.click("#btnOnboardSkip", { timeout: 2000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnClaimDailyLogin", { timeout: 3000 }).catch(() => {});
-  await page.waitForTimeout(500);
+  await enterGame(page);
 
   // 1) Determinismo + limites da faixa (rodado direto no client)
   const stats = await page.evaluate(() => {
@@ -45,7 +41,9 @@ const { chromium } = require("playwright-core");
       };
     });
   });
-  console.log("1) Checks de", stats.length, "jogadores da base:");
+  // Fase B: as 4 condições abaixo eram só console.log (não reprovavam).
+  check(`1) Faixa de potencial dos ${stats.length} jogadores da base: determinística, lo >= overall, hi <= 99, lo <= hi:`,
+    stats.length > 0 && stats.every((s) => s.deterministico && s.loMaiorOuIgualOverall && s.hiMenorOuIgual99 && s.loMenorOuIgualHi));
   console.log("   Todos determinísticos:", stats.every((s) => s.deterministico));
   console.log("   Todos com lo >= overall:", stats.every((s) => s.loMaiorOuIgualOverall));
   console.log("   Todos com hi <= 99:", stats.every((s) => s.hiMenorOuIgual99));
@@ -60,7 +58,7 @@ const { chromium } = require("playwright-core");
     real.potential = real.overall; // força "sem espaço", igual um veterano de verdade
     return scoutedPotentialRange(real) === null;
   });
-  console.log("2) Jogador principal sem espaço real de crescimento não tem faixa:", noRangeForReal);
+  check("2) Jogador principal sem espaço real de crescimento não tem faixa:", noRangeForReal);
 
   // 3) Aparece na lista do Elenco (categoria de base)
   await page.click("#btnClaimDailyLogin", { timeout: 3000 }).catch(() => {});
@@ -70,7 +68,7 @@ const { chromium } = require("playwright-core");
     const list = document.getElementById("squadBaseList");
     return list.querySelector(".m3-list-item").textContent;
   });
-  console.log("3) Texto da 1ª linha da base (deve conter 'pot.'):", baseRowText.trim());
+  check("3) Texto da 1ª linha da base (deve conter 'pot.'):", /pot\.|Potencial/.test(baseRowText), baseRowText.replace(/\s+/g, " ").trim());
 
   // 4) Aparece no detalhe do jogador
   const baseId = await page.evaluate(() => CAREER.squad.find((p) => p.origin === "base").id);
@@ -78,7 +76,7 @@ const { chromium } = require("playwright-core");
   await page.waitForSelector("#detailOverlay.open");
   await page.waitForTimeout(200);
   const detailText = await page.evaluate(() => document.getElementById("detailBody").textContent);
-  console.log("4) Avaliação do olheiro aparece no detalhe:", detailText.includes("Avaliação do olheiro"));
+  check("4) Avaliação do olheiro aparece no detalhe:", detailText.includes("Avaliação do olheiro"));
   await page.click("#detailClose");
   await page.waitForTimeout(200);
 
@@ -90,7 +88,7 @@ const { chromium } = require("playwright-core");
   await page.waitForSelector("#detailOverlay.open");
   await page.waitForTimeout(200);
   const detailTextReal = await page.evaluate(() => document.getElementById("detailBody").textContent);
-  console.log("5) Jogador principal NÃO mostra avaliação do olheiro (deve ser false):", detailTextReal.includes("Avaliação do olheiro"));
+  check("5) Jogador principal NÃO mostra avaliação do olheiro:", !detailTextReal.includes("Avaliação do olheiro"));
 
   await browser.close();
 })().catch((e) => { console.error("FATAL:", e); process.exit(1); });

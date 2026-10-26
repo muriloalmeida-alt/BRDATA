@@ -5,6 +5,7 @@
 // conta) continua 100% preservado — nenhuma mudança de lógica, só de
 // token visual, conforme o escopo.
 const { chromium } = require("playwright-core");
+const { check } = require("./_check");
 
 (async () => {
   const browser = await chromium.launch({ executablePath: process.env.PW_CHROMIUM_PATH || undefined, headless: true, args: ["--host-resolver-rules=MAP fonts.googleapis.com 127.0.0.1,MAP fonts.gstatic.com 127.0.0.1"] });
@@ -37,7 +38,7 @@ const { chromium } = require("playwright-core");
     hasText: !!document.querySelector("#onboardingBody .mt-onboard-text"),
     nextLabel: document.getElementById("btnOnboardNext").textContent,
   }));
-  console.log("1) Onboarding abre no 1º acesso com slide 1 (dots/título/texto presentes):",
+  check("1) Onboarding abre no 1º acesso com slide 1 (dots/título/texto presentes):",
     slide1.dotsCount >= 3 && slide1.firstDotActive && slide1.hasTitle && slide1.hasText && slide1.nextLabel === "Avançar",
     JSON.stringify(slide1));
 
@@ -61,7 +62,7 @@ const { chromium } = require("playwright-core");
   const titleOk = tokens.titleColor === hexToRgb(tokens.onSurface);
   const textOk = tokens.textColor === hexToRgb(tokens.onSurfaceVariant);
   const skipOk = tokens.skipColor === hexToRgb(tokens.onSurfaceVariant);
-  console.log("2) Título usa --m3-on-surface, texto/'Pular' usam --m3-on-surface-variant (tokens migrados, não mais --mt-ivory-50/--mt-ink-muted):",
+  check("2) Título usa --m3-on-surface, texto/'Pular' usam --m3-on-surface-variant (tokens migrados, não mais --mt-ivory-50/--mt-ink-muted):",
     titleOk && textOk && skipOk, JSON.stringify({ ...tokens, titleOk, textOk, skipOk }));
 
   // 3) Navegação entre os 4 slides continua funcionando (avança até o
@@ -76,7 +77,7 @@ const { chromium } = require("playwright-core");
     nextLabel: document.getElementById("btnOnboardNext").textContent,
     lastDotActive: [...document.querySelectorAll("#onboardingDots .mt-onboard-dot")].pop().classList.contains("active"),
   }));
-  console.log("3) Depois de 3 cliques em 'Avançar', chegou no último slide ('Começar', último ponto ativo):",
+  check("3) Depois de 3 cliques em 'Avançar', chegou no último slide ('Começar', último ponto ativo):",
     lastSlide.nextLabel === "Começar" && lastSlide.lastDotActive, JSON.stringify(lastSlide));
 
   // 4) Fechar (Começar) marca a conta como já tendo visto — não
@@ -84,7 +85,7 @@ const { chromium } = require("playwright-core");
   await page.click("#btnOnboardNext");
   await page.waitForTimeout(300);
   const closedNow = await page.evaluate(() => !document.getElementById("onboardingOverlay").classList.contains("open"));
-  console.log("4) Onboarding fecha ao terminar o último slide:", closedNow);
+  check("4) Onboarding fecha ao terminar o último slide:", closedNow);
 
   await browser.close();
 })().catch((e) => { console.error("FATAL:", e); process.exit(1); });

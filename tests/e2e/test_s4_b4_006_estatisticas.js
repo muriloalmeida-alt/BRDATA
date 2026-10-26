@@ -17,6 +17,8 @@
 // aceitar .mt-stat-block OU .m3-stat-card, sinal de que essa migração
 // já era esperada) e test_ux_estatisticas_check.js.
 const { chromium } = require("playwright-core");
+const { check } = require("./_check");
+const { enterGame } = require("./_startup");
 
 (async () => {
   const browser = await chromium.launch({ executablePath: process.env.PW_CHROMIUM_PATH || undefined, headless: true, args: ["--host-resolver-rules=MAP fonts.googleapis.com 127.0.0.1,MAP fonts.gstatic.com 127.0.0.1"] });
@@ -37,14 +39,7 @@ const { chromium } = require("playwright-core");
   await page.click(".m3-club-row");
   await page.waitForTimeout(150);
   await page.click("#btnConfirmClub");
-  await page.click("#btnOnboardSkip", { timeout: 2000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.waitForTimeout(1000);
-  await page.click("#btnClaimDailyLogin").catch(() => {});
-  await page.waitForTimeout(200);
+  await enterGame(page);
 
   await page.click("#btnBottomMenu");
   await page.waitForTimeout(150);
@@ -61,7 +56,7 @@ const { chromium } = require("playwright-core");
     streakM3: document.querySelectorAll("#statsStreakKpis .m3-stat-card").length,
     copaM3: document.querySelectorAll("#statsCopaContent .m3-stat-card").length,
   }));
-  console.log("1) Grades de KPI reaproveitam .m3-stat-card (já usado no card Financeiro), nenhum .mt-stat-block restante:",
+  check("1) Grades de KPI reaproveitam .m3-stat-card (já usado no card Financeiro), nenhum .mt-stat-block restante:",
     kpiCards.recordM3 === 5 && kpiCards.recordOld === 0 && kpiCards.goalsM3 === 4 && kpiCards.streakM3 >= 2 && kpiCards.copaM3 === 1,
     JSON.stringify(kpiCards));
 
@@ -81,7 +76,7 @@ const { chromium } = require("playwright-core");
   const hexToRgb = (hex) => { const h = hex.replace("#", ""); const n = parseInt(h, 16); return `rgb(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255})`; };
   const inactiveOk = tabTokens.inactiveColor === hexToRgb(tabTokens.onSurfaceVariant);
   const wrapBorderOk = tabTokens.wrapBorderColor === hexToRgb(tabTokens.outlineVariant);
-  console.log("2) Tab inativo/borda do seletor migrados (--m3-on-surface-variant/--m3-outline-variant), escopado a #panel-estatisticas:",
+  check("2) Tab inativo/borda do seletor migrados (--m3-on-surface-variant/--m3-outline-variant), escopado a #panel-estatisticas:",
     inactiveOk && wrapBorderOk, JSON.stringify({ ...tabTokens, inactiveOk, wrapBorderOk }));
 
   // 3) Mini-tabela (times da competição) migrada — nome da coluna
@@ -101,7 +96,7 @@ const { chromium } = require("playwright-core");
   });
   const nameOk = miniTable.nameColor === hexToRgb(miniTable.onSurface);
   const headOk = miniTable.headColor === hexToRgb(miniTable.onSurfaceVariant);
-  console.log("3) Mini-tabela migrada (nome do time --m3-on-surface, cabeçalho --m3-on-surface-variant):",
+  check("3) Mini-tabela migrada (nome do time --m3-on-surface, cabeçalho --m3-on-surface-variant):",
     nameOk && headOk, JSON.stringify({ ...miniTable, nameOk, headOk }));
 
   // 4) O override ESCOPADO não vazou: o Histórico por temporada do
@@ -124,7 +119,7 @@ const { chromium } = require("playwright-core");
   });
   const profileOk = !profileUnaffected.hasSeasonHistory
     || profileUnaffected.nameColor === hexToRgb(profileUnaffected.ivory50);
-  console.log("4) Override escopado não vazou pro Histórico por temporada do Perfil (mesma classe, ainda legada lá):",
+  check("4) Override escopado não vazou pro Histórico por temporada do Perfil (mesma classe, ainda legada lá):",
     profileOk, JSON.stringify({ ...profileUnaffected, profileOk }));
 
   await browser.close();

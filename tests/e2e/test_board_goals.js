@@ -1,4 +1,6 @@
 const { chromium } = require("playwright-core");
+const { check } = require("./_check");
+const { enterGame, waitForBoot } = require("./_startup");
 
 async function forceStandings(page, { rank }) {
   // rank: "first" (bate qualquer meta) ou "last" (falha qualquer meta)
@@ -55,17 +57,11 @@ async function setStreak(page, n) {
   await page.click(".m3-club-row");
   await page.waitForTimeout(150);
   await page.click("#btnConfirmClub");
-  await page.click("#btnOnboardSkip", { timeout: 2000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnClaimDailyLogin", { timeout: 3000 }).catch(() => {});
-  await page.waitForTimeout(500);
+  await enterGame(page);
 
   // 1) Meta existe já na criação da carreira e aparece na Central
   const initial = await page.evaluate(async () => (await (await fetch("/api/career")).json()).career.boardGoal);
-  console.log("1) Meta inicial:", initial);
+  check("1) Meta inicial:", initial);
   const labelText = await page.evaluate(() => document.getElementById("boardGoalLabel").textContent);
   console.log("   Label na Central:", labelText);
 
@@ -73,7 +69,7 @@ async function setStreak(page, n) {
   await setStreak(page, 2);
   await forceStandings(page, { rank: "last" });
   await page.reload({ waitUntil: "load" });
-  await page.waitForTimeout(800);
+  await waitForBoot(page);
   await page.click("#btnAdvanceSeason");
   await page.waitForTimeout(200);
   await page.click("#confirmOkBtn");
@@ -81,7 +77,7 @@ async function setStreak(page, n) {
   const dismissalOpen = await page.evaluate(() => document.getElementById("dismissalOverlay").classList.contains("open"));
   const seasonOpenA = await page.evaluate(() => document.getElementById("seasonOverlay").classList.contains("open"));
   const dismissalText = await page.evaluate(() => document.getElementById("dismissalText").textContent);
-  console.log("2) Cenário A (streak 2 + temporada ruim) -- modal de demissão abriu:", dismissalOpen, "| modal de nova temporada abriu (deve ser false):", seasonOpenA);
+  check("2) Cenário A (streak 2 + temporada ruim) -- modal de demissão abriu e o de nova temporada não:", dismissalOpen && !seasonOpenA, "| demissão abriu:", dismissalOpen, "| modal de nova temporada abriu (deve ser false):", seasonOpenA);
   console.log("   Texto da demissão:", dismissalText);
 
   // 3) Confirma "Escolher outro clube" -- deve voltar pro picker e apagar o save
@@ -92,7 +88,7 @@ async function setStreak(page, n) {
   // seletor de clube.
   const pickerVisible = await page.evaluate(() => !document.getElementById("screenCompetitionPicker").classList.contains("hidden"));
   const careerGone = await page.evaluate(async () => (await (await fetch("/api/career")).json()).career);
-  console.log("3) Voltou pro seletor de competição:", pickerVisible, "| save apagado (career null):", careerGone === null);
+  check("3) Voltou pro seletor de competição:", pickerVisible, "| save apagado (career null):", careerGone === null);
 
   // 4) Cenário B: nova carreira, streak=2, mas temporada BOA -> reseta streak, NÃO demite
   await page.click('.mt-competition-card[data-competition="brasileirao"]');
@@ -100,17 +96,11 @@ async function setStreak(page, n) {
   await page.click(".m3-club-row");
   await page.waitForTimeout(150);
   await page.click("#btnConfirmClub");
-  await page.click("#btnOnboardSkip", { timeout: 2000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnClaimDailyLogin", { timeout: 3000 }).catch(() => {});
-  await page.waitForTimeout(500);
+  await enterGame(page);
   await setStreak(page, 2);
   await forceStandings(page, { rank: "first" });
   await page.reload({ waitUntil: "load" });
-  await page.waitForTimeout(800);
+  await waitForBoot(page);
   await page.click("#btnAdvanceSeason");
   await page.waitForTimeout(200);
   await page.click("#confirmOkBtn");
@@ -119,7 +109,7 @@ async function setStreak(page, n) {
   const dismissalOpenB = await page.evaluate(() => document.getElementById("dismissalOverlay").classList.contains("open"));
   const summaryTextB = await page.evaluate(() => document.getElementById("seasonSummaryText").textContent);
   const streakAfterB = await page.evaluate(async () => (await (await fetch("/api/career")).json()).career.negativeSeasonsStreak);
-  console.log("4) Cenário B (streak 2 + temporada boa) -- modal de nova temporada abriu:", seasonOpenB, "| demissão abriu (deve ser false):", dismissalOpenB);
+  check("4) Cenário B (streak 2 + temporada boa) -- modal de nova temporada abriu e o de demissão não:", seasonOpenB && !dismissalOpenB, "| nova temporada abriu:", seasonOpenB, "| demissão abriu (deve ser false):", dismissalOpenB);
   console.log("   Resumo:", summaryTextB);
   console.log("   Streak depois (deve ser 0):", streakAfterB);
 

@@ -1,4 +1,8 @@
 const { chromium } = require("playwright-core");
+const { enterGame } = require("./_startup");
+const { skipPreseason } = require("./_calendar_skip");
+const { playRound, playNextMatchRound } = require("./_round");
+const { check } = require("./_check");
 
 (async () => {
   const browser = await chromium.launch({
@@ -51,12 +55,7 @@ const { chromium } = require("playwright-core");
   await page.click(".m3-club-row");
   await page.waitForTimeout(150);
   await page.click("#btnConfirmClub");
-  await page.click("#btnOnboardSkip", { timeout: 2000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnClaimDailyLogin", { timeout: 3000 }).catch(() => {});
+  await enterGame(page);
   await page.waitForSelector("#screenGame.active, #panel-elenco", { timeout: 10000 }).catch(() => {});
   await page.waitForTimeout(500);
   await page.screenshot({ path: "02-game-screen.png" });
@@ -91,21 +90,16 @@ const { chromium } = require("playwright-core");
   // Vai pra aba Central e simula a rodada -> modal de detalhe do jogo
   await page.click(".m3-nav-item[data-panel='central']");
   await page.waitForTimeout(300);
-  await page.click("#btnSimulate");
-  await page.waitForSelector("#matchDetailOverlay.open, #roundResultsOverlay.open", { timeout: 10000 });
-  await page.waitForTimeout(300);
-  const matchModalOpen = await page.evaluate(() => document.getElementById("matchDetailOverlay").classList.contains("open"));
-  console.log("match detail modal open:", matchModalOpen);
-  await page.screenshot({ path: "06-match-detail-modal.png" });
-
-  if (matchModalOpen) {
-    await page.click("#btnMatchDetailContinue");
-    await page.waitForSelector("#roundResultsOverlay.open", { timeout: 5000 });
-    await page.waitForTimeout(300);
-  }
-  await page.screenshot({ path: "07-round-results-modal.png" });
-
-  await page.click("#btnRoundResultsContinue");
+  await skipPreseason(page); // GE-CALENDAR-001: carreira nova começa na pré-temporada
+  // Fluxo atual da rodada (ver _round.js); os screenshots de cada modal
+  // são tirados nos ganchos, com a modal aberta.
+  let matchModalOpen = false, resultsOpen = false;
+  await playNextMatchRound(page, {
+    onMatchDetail: async (p) => { matchModalOpen = true; await p.screenshot({ path: "06-match-detail-modal.png" }); },
+    onRoundResults: async (p) => { resultsOpen = true; await p.screenshot({ path: "07-round-results-modal.png" }); },
+  });
+  check("1) Modal de detalhe do jogo abriu:", matchModalOpen);
+  check("2) Modal de resultados da rodada abriu:", resultsOpen);
   await page.waitForTimeout(300);
   await page.screenshot({ path: "08-tabela-after.png" });
 

@@ -5,6 +5,8 @@
 // Ver openListModal/resolvePendingListingsRound/acceptListingOffer em
 // carreira.js.
 const { chromium } = require("playwright-core");
+const { check } = require("./_check");
+const { enterGame } = require("./_startup");
 
 (async () => {
   const browser = await chromium.launch({ executablePath: process.env.PW_CHROMIUM_PATH || undefined, headless: true, args: ["--host-resolver-rules=MAP fonts.googleapis.com 127.0.0.1,MAP fonts.gstatic.com 127.0.0.1"] });
@@ -24,14 +26,7 @@ const { chromium } = require("playwright-core");
   await page.click(".m3-club-row");
   await page.waitForTimeout(150);
   await page.click("#btnConfirmClub");
-  await page.click("#btnOnboardSkip", { timeout: 2000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.waitForTimeout(3000);
-  await page.click("#btnClaimDailyLogin").catch(() => {});
-  await page.waitForTimeout(200);
+  await enterGame(page);
   await page.click(".m3-nav-item[data-panel='mercado']");
   await page.waitForTimeout(300);
   // Folga o teto/caixa pra nenhuma trava de orçamento atrapalhar as
@@ -56,7 +51,7 @@ const { chromium } = require("playwright-core");
     value: Number(document.getElementById("listValueInput").value),
     sub: document.getElementById("listSub").textContent,
   }), target.value);
-  console.log("1) 'Colocar à venda' abre o sheet pré-preenchido com o valor de mercado:",
+  check("1) 'Colocar à venda' abre o sheet pré-preenchido com o valor de mercado:",
     check1.open && check1.value === target.value, JSON.stringify(check1));
 
   // 2) Confirmar cria o anúncio (sem vender na hora) — caixa/elenco
@@ -72,7 +67,7 @@ const { chromium } = require("playwright-core");
     modalClosed: !document.getElementById("listOverlay").classList.contains("open"),
     pendingIconShown: !!document.querySelector(`[data-viewlisting="${id}"]`),
   }), { id: target.id, cashBefore, squadBefore });
-  console.log("2) Confirmar cria o anúncio sem vender na hora (caixa/elenco intactos, ícone vira 'pendente'):",
+  check("2) Confirmar cria o anúncio sem vender na hora (caixa/elenco intactos, ícone vira 'pendente'):",
     check2b.listingCount === 1 && check2b.cashUnchanged && check2b.squadUnchanged && check2b.modalClosed && check2b.pendingIconShown,
     JSON.stringify(check2b));
 
@@ -91,7 +86,7 @@ const { chromium } = require("playwright-core");
     hasEmptyOffersMsg: document.getElementById("mySalesList").textContent.includes("Nenhuma proposta ainda"),
     badge: document.getElementById("mySalesBadge").textContent,
   }));
-  console.log("3) 'Minhas vendas' abre com o anúncio listado, sem proposta ainda:",
+  check("3) 'Minhas vendas' abre com o anúncio listado, sem proposta ainda:",
     check3.open && check3.countLabel.includes("1") && check3.hasEmptyOffersMsg && check3.badge === "1", JSON.stringify(check3));
 
   // 4) Rodando resolvePendingListingsRound com RNG forçado dentro da
@@ -104,12 +99,12 @@ const { chromium } = require("playwright-core");
     const listing = CAREER.pendingListings[0];
     return { offerCount: listing.offers.length, offer: listing.offers[0] };
   });
-  console.log("4) Proposta nasce de verdade (clube com nome/valor plausíveis):",
+  check("4) Proposta nasce de verdade (clube com nome/valor plausíveis):",
     check4.offerCount === 1 && !!check4.offer?.clubName && check4.offer?.value > 0, JSON.stringify(check4));
   await page.evaluate(() => renderMySalesScreen());
   await page.waitForTimeout(200);
   const check4b = await page.evaluate(() => document.getElementById("mySalesList").textContent);
-  console.log("4b) 'Minhas vendas' mostra a proposta recebida:", check4b.includes(check4.offer.clubName), check4b.includes(check4.offer.clubName) ? "ok" : check4b);
+  check("4b) 'Minhas vendas' mostra a proposta recebida:", check4b.includes(check4.offer.clubName), check4b.includes(check4.offer.clubName) ? "ok" : check4b);
 
   // 5) Recusar a proposta some só ela — o anúncio continua ativo.
   await page.click("button[data-rejectlisting]");
@@ -118,7 +113,7 @@ const { chromium } = require("playwright-core");
     listingStillThere: (CAREER.pendingListings || []).length === 1,
     offerGone: CAREER.pendingListings[0].offers.length === 0,
   }));
-  console.log("5) Recusar a proposta some só ela, anúncio continua ativo:", check5.listingStillThere && check5.offerGone, JSON.stringify(check5));
+  check("5) Recusar a proposta some só ela, anúncio continua ativo:", check5.listingStillThere && check5.offerGone, JSON.stringify(check5));
 
   // 6) Nova proposta à vista -- aceitar fecha a venda de verdade:
   // jogador sai do elenco, vai pro elenco do comprador, caixa recebe o
@@ -138,7 +133,7 @@ const { chromium } = require("playwright-core");
     cashDelta: CAREER.finances.cash - cashBefore6,
     listingGone: !CAREER.pendingListings.find((l) => l.playerId === id),
   }), { id: target.id, cashBefore6 });
-  console.log("6) Aceitar proposta à vista fecha a venda de verdade (jogador sai, vai pro comprador, caixa recebe tudo na hora):",
+  check("6) Aceitar proposta à vista fecha a venda de verdade (jogador sai, vai pro comprador, caixa recebe tudo na hora):",
     check6b.playerGone && check6b.playerInBuyerSquad && check6b.cashDelta === 5000000 && check6b.listingGone, JSON.stringify(check6b));
 
   // 7) Novo jogador anunciado + proposta parcelada -- aceitar paga só
@@ -171,13 +166,13 @@ const { chromium } = require("playwright-core");
     expectedFirst: 3000000,
     receivablesCount: (CAREER.pendingReceivables || []).length,
   }), { id: target2.id, cashBefore7 });
-  console.log("7) Proposta parcelada (3x) paga só 1/3 na hora, resto agendado como recebível:",
+  check("7) Proposta parcelada (3x) paga só 1/3 na hora, resto agendado como recebível:",
     check7.firstPaymentDelta === check7.expectedFirst && check7.receivablesCount !== 0, JSON.stringify(check7));
   const receivablesBefore = await page.evaluate(() => JSON.parse(JSON.stringify(CAREER.pendingReceivables)));
   const cashBeforeProcess = await page.evaluate(() => CAREER.finances.cash);
   const received = await page.evaluate(() => processPendingReceivables());
   const check7b = await page.evaluate((cashBeforeProcess) => CAREER.finances.cash - cashBeforeProcess, cashBeforeProcess);
-  console.log("7b) processPendingReceivables credita o caixa e decrementa as rodadas restantes:",
+  check("7b) processPendingReceivables credita o caixa e decrementa as rodadas restantes:",
     check7b === received && received > 0, JSON.stringify({ receivablesBefore, received, check7b }));
 
   // 8) Cancelar um anúncio (sem proposta nenhuma) tira o jogador da
@@ -205,7 +200,7 @@ const { chromium } = require("playwright-core");
     listingGone: !CAREER.pendingListings.some((l) => l.playerId === id),
     stillInSquad: !!CAREER.squad.find((p) => p.id === id),
   }), target3);
-  console.log("8) Cancelar o anúncio tira da vitrine sem vender (jogador continua no elenco):", check8.listingGone && check8.stillInSquad, JSON.stringify(check8));
+  check("8) Cancelar o anúncio tira da vitrine sem vender (jogador continua no elenco):", check8.listingGone && check8.stillInSquad, JSON.stringify(check8));
   await page.click("#mySalesClose");
   await page.waitForTimeout(150);
 
@@ -225,14 +220,14 @@ const { chromium } = require("playwright-core");
     listOpen: document.getElementById("listOverlay").classList.contains("open"),
     detailStillOpen: document.getElementById("detailOverlay").classList.contains("open"),
   }));
-  console.log("9) 'Vender' no detalhe abre o sheet de anúncio (detalhe continua aberto por baixo, não vende na hora):",
+  check("9) 'Vender' no detalhe abre o sheet de anúncio (detalhe continua aberto por baixo, não vende na hora):",
     check9.listOpen && check9.detailStillOpen, JSON.stringify({ sellBtnLabelBefore, ...check9 }));
   await page.click("#btnListConfirm");
   await page.waitForTimeout(200);
   await page.evaluate((id) => openDetail(id), target4);
   await page.waitForTimeout(200);
   const check9b = await page.evaluate(() => document.querySelector('[data-act="sell"]')?.textContent);
-  console.log("9b) Depois de anunciado, o botão muda pra 'Ver anúncio de venda':", check9b === "Ver anúncio de venda", check9b);
+  check("9b) Depois de anunciado, o botão muda pra 'Ver anúncio de venda':", check9b === "Ver anúncio de venda", check9b);
 
   await browser.close();
 })().catch((e) => { console.error("FATAL:", e); process.exit(1); });

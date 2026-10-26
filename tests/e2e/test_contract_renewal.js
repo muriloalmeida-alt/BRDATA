@@ -1,4 +1,6 @@
 const { chromium } = require("playwright-core");
+const { check } = require("./_check");
+const { enterGame, waitForBoot } = require("./_startup");
 
 (async () => {
   const browser = await chromium.launch({
@@ -24,13 +26,7 @@ const { chromium } = require("playwright-core");
   await page.click(".m3-club-row");
   await page.waitForTimeout(150);
   await page.click("#btnConfirmClub");
-  await page.click("#btnOnboardSkip", { timeout: 2000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnClaimDailyLogin", { timeout: 3000 }).catch(() => {});
-  await page.waitForTimeout(500);
+  await enterGame(page);
 
   // Força o contrato de um jogador do elenco principal, velho/baixo
   // overall (evita cair na regra de "quer mais tempo"), pra vencer
@@ -47,7 +43,7 @@ const { chromium } = require("playwright-core");
   console.log("Jogador escolhido pro teste:", targetId);
 
   await page.reload({ waitUntil: "load" });
-  await page.waitForTimeout(800);
+  await waitForBoot(page);
   await page.click(".m3-nav-item[data-panel='elenco']");
   await page.waitForTimeout(300);
 
@@ -56,7 +52,7 @@ const { chromium } = require("playwright-core");
     const row = document.querySelector(`[data-id="${id}"]`);
     return row ? row.textContent.includes("Fim de contrato") : null;
   }, targetId);
-  console.log("1) Tag 'Fim de contrato' na lista do Elenco:", tagVisible);
+  check("1) Tag 'Fim de contrato' na lista do Elenco:", tagVisible);
 
   // 2) Abre detalhe -- aviso + botão Renovar aparecem
   await page.click(`[data-id="${targetId}"]`);
@@ -64,7 +60,7 @@ const { chromium } = require("playwright-core");
   await page.waitForTimeout(200);
   const detailHasWarning = await page.evaluate(() => document.getElementById("detailBody").textContent.includes("sai de graça"));
   const renewBtnExists = await page.evaluate(() => !!document.querySelector('[data-act="renew"]'));
-  console.log("2) Aviso no detalhe:", detailHasWarning, "| botão Renovar existe:", renewBtnExists);
+  check("2) Aviso no detalhe:", detailHasWarning, "| botão Renovar existe:", renewBtnExists);
 
   // 3) Abre sub-modal de renovação -- campos vêm prefilled
   await page.click('[data-act="renew"]');
@@ -75,7 +71,7 @@ const { chromium } = require("playwright-core");
     suggestedText: document.getElementById("renewSuggestedWage").textContent,
     durationValue: document.getElementById("renewDurationSelect").value,
   }));
-  console.log("3) Pré-preenchido:", prefill);
+  check("3) Pré-preenchido:", Number(prefill.wageValue) > 0 && !!prefill.durationValue && prefill.suggestedText.trim().length > 0, prefill);
 
   // 4) Recusa por salário abaixo do mínimo
   const wageBefore = await page.evaluate(async (id) => (await (await fetch("/api/career")).json()).career.squad.find((p) => p.id === id).wage, targetId);
@@ -85,8 +81,26 @@ const { chromium } = require("playwright-core");
   const toastLow = await page.evaluate(() => document.getElementById("toast").textContent);
   const renewOverlayClosedAfterLow = await page.evaluate(() => !document.getElementById("renewOverlay").classList.contains("open"));
   const wageAfterLow = await page.evaluate(async (id) => (await (await fetch("/api/career")).json()).career.squad.find((p) => p.id === id).wage, targetId);
-  console.log("4) Toast (salário baixo):", toastLow);
+  check("4) Toast (salário baixo):", toastLow.includes("recusou") && renewOverlayClosedAfterLow && wageAfterLow === wageBefore, toastLow.replace(/\s+/g, " ").trim());
   console.log("   Sub-modal fechou:", renewOverlayClosedAfterLow, "| salário mudou (deve ser false):", wageAfterLow !== wageBefore);
+  // A recusa também dispara a coletiva de imprensa "19" (renovação
+  // recusada, ver proposeRenewal) POR CIMA do detalhe — responde antes
+  // de seguir (adicionada depois deste teste).
+  const pressAfterRefusal = await page.evaluate(() => document.getElementById("pressOverlay").classList.contains("open"));
+  if (pressAfterRefusal) {
+    await page.click("#pressOptions [data-press]");
+    await page.waitForTimeout(200);
+  }
+  console.log("   Coletiva após a recusa:", pressAfterRefusal, "| detalhe continua aberto:", await page.evaluate(() => document.getElementById("detailOverlay").classList.contains("open")));
+  // Responder a coletiva encerra a operação e volta pro Início
+  // (finishOperationAndGoHome) — reabre o detalhe do mesmo jogador.
+  if (!(await page.evaluate(() => document.getElementById("detailOverlay").classList.contains("open")))) {
+    await page.click(".m3-nav-item[data-panel='elenco']");
+    await page.waitForTimeout(300);
+    await page.click(`[data-id="${targetId}"]`);
+    await page.waitForSelector("#detailOverlay.open");
+    await page.waitForTimeout(200);
+  }
 
   // 5) O detalhe continua aberto por baixo (recusa só fecha o sub-modal
   // de renovação, ver proposeRenewal) -- propõe de novo com o valor
@@ -102,7 +116,7 @@ const { chromium } = require("playwright-core");
     const career = (await (await fetch("/api/career")).json()).career;
     return { contractUntil: career.squad.find((p) => p.id === id).contractUntil, wage: career.squad.find((p) => p.id === id).wage, seasonYear: career.seasonYear };
   }, targetId);
-  console.log("5) Toast (sucesso):", toastSuccess);
+  check("5) Toast (sucesso):", toastSuccess.includes("renovou") && after.contractUntil === after.seasonYear + 2, toastSuccess.replace(/\s+/g, " ").trim());
   console.log("   contractUntil depois:", after.contractUntil, "(deve ser seasonYear+2 =", after.seasonYear + 2, ") | salário:", after.wage);
 
   // 6) Tag "Fim de contrato" some da lista agora
@@ -111,7 +125,7 @@ const { chromium } = require("playwright-core");
     const row = document.querySelector(`[data-id="${id}"]`);
     return row ? !row.textContent.includes("Fim de contrato") : null;
   }, targetId);
-  console.log("6) Tag sumiu da lista (deve ser true):", tagGone);
+  check("6) Tag sumiu da lista (deve ser true):", tagGone);
 
   await browser.close();
 })().catch((e) => { console.error("FATAL:", e); process.exit(1); });

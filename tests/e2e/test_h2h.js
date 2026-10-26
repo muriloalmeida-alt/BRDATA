@@ -1,4 +1,8 @@
 const { chromium } = require("playwright-core");
+const { check } = require("./_check");
+const { enterGame } = require("./_startup");
+const { playNextMatchRound, closeLeftoverTabela } = require("./_round");
+const { skipPreseason } = require("./_calendar_skip");
 (async () => {
   const browser = await chromium.launch({ executablePath: process.env.PW_CHROMIUM_PATH || undefined, headless: true, args: ["--host-resolver-rules=MAP fonts.googleapis.com 127.0.0.1,MAP fonts.gstatic.com 127.0.0.1"] });
   const page = await browser.newPage({ viewport: { width: 390, height: 900 } });
@@ -18,15 +22,11 @@ const { chromium } = require("playwright-core");
   await page.click(".m3-club-row");
   await page.waitForTimeout(150);
   await page.click("#btnConfirmClub");
-  await page.click("#btnOnboardSkip", { timeout: 2000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.waitForTimeout(700);
-  await page.click("#btnClaimDailyLogin", { timeout: 3000 }).catch(() => {});
-  await page.waitForTimeout(300);
+  await enterGame(page);
 
+  // GE-CALENDAR-001: carreira nova começa na pré-temporada (o card do
+  // próximo jogo mostra o amistoso) — o H2H é do próximo jogo oficial.
+  await skipPreseason(page);
   // 1) Sem matchLog ainda -- abrir H2H mostra "nunca se enfrentaram".
   const opponentId = await page.evaluate(() => document.getElementById("nextMatchBox").dataset.opponentId);
   await page.click("#nextMatchBox");
@@ -37,45 +37,24 @@ const { chromium } = require("playwright-core");
     sub: document.getElementById("h2hSub").textContent,
     oppName: document.getElementById("h2hOppName").textContent,
   }));
-  console.log("1) H2H abre sem histórico ainda:", before.record === "—" && /nunca/.test(before.sub), JSON.stringify(before));
+  check("1) H2H abre sem histórico ainda:", before.record === "—" && /nunca|ainda não se enfrentaram/.test(before.sub), JSON.stringify(before));
   await page.click("#h2hClose");
   await page.waitForTimeout(150);
 
-  // 2) Simula 3 rodadas via skip, confere que matchLog registra.
+  // 2) Joga 3 rodadas oficiais pela interface (fluxo atual, ver
+  // _round.js), confere que matchLog registra.
   for (let i = 0; i < 3; i++) {
-    await page.click("#btnSimulate");
-    await page.waitForSelector("#preMatchOverlay.open", { timeout: 5000 });
-    await page.click("#btnPreMatchGo");
-    await page.waitForSelector("#liveMatchOverlay.open", { timeout: 5000 });
-    await page.click("#btnLiveSkip");
-    await page.waitForSelector("#matchDetailOverlay.open, #roundResultsOverlay.open", { timeout: 10000 });
-    await page.waitForTimeout(300);
-    if (await page.evaluate(() => document.getElementById("matchDetailOverlay").classList.contains("open"))) {
-      await page.click("#btnMatchDetailContinue");
-      await page.waitForTimeout(300);
-      if (await page.evaluate(() => document.getElementById("pressOverlay").classList.contains("open"))) {
-        await page.click("#pressOptions [data-press]");
-        await page.waitForTimeout(300);
-      }
-      await page.waitForSelector("#newsOverlay.open", { timeout: 5000 });
-      await page.click("#btnNewsContinue");
-      await page.waitForTimeout(300);
-    }
-    if (await page.evaluate(() => document.getElementById("roundResultsOverlay").classList.contains("open"))) {
-      await page.click("#btnRoundResultsContinue");
-      await page.waitForTimeout(300);
-      if (await page.evaluate(() => document.getElementById("playerOfferOverlay")?.classList.contains("open"))) {
-        await page.click("#playerOfferClose");
-        await page.waitForTimeout(200);
-      }
-      if (await page.evaluate(() => !document.getElementById("panel-central").classList.contains("active"))) {
-        await page.click(".m3-nav-item[data-panel='central']");
-        await page.waitForTimeout(200);
-      }
-    }
+    const r = await playNextMatchRound(page);
+    if (r.stoppedAt === "playerOfferOverlay") { await page.click("#playerOfferClose"); await closeLeftoverTabela(page); }
+    else if (r.stoppedAt) throw new Error(`rodada ${i + 1} parou numa tela inesperada: ${r.stoppedAt}`);
+    await page.waitForTimeout(200);
+  }
+  if (await page.evaluate(() => !document.getElementById("panel-central").classList.contains("active"))) {
+    await page.click(".m3-nav-item[data-panel='central']");
+    await page.waitForTimeout(200);
   }
   const matchLogLen = await page.evaluate(() => (CAREER.matchLog || []).length);
-  console.log("2) matchLog registrou as 3 partidas jogadas:", matchLogLen === 3, matchLogLen);
+  check("2) matchLog registrou as 3 partidas jogadas:", matchLogLen === 3, matchLogLen);
 
   await page.click("#nextMatchBox");
   await page.waitForSelector("#h2hOverlay.open", { timeout: 3000 });
@@ -84,7 +63,7 @@ const { chromium } = require("playwright-core");
     matchListRows: document.querySelectorAll("#h2hMatchList .m3-match-row").length,
     formDots: document.querySelectorAll("#h2hFormRow .m3-form-dot").length,
   }));
-  console.log("3) H2H mostra a lista de confrontos (mesmo sem repetir adversário, deve ser 0 rows contra o NOVO adversário):", after.matchListRows === 0, JSON.stringify(after));
+  check("3) H2H mostra a lista de confrontos (mesmo sem repetir adversário, deve ser 0 rows contra o NOVO adversário):", after.matchListRows === 0, JSON.stringify(after));
 
   await page.screenshot({ path: "m3_31_h2h.png" });
   console.log("OK");

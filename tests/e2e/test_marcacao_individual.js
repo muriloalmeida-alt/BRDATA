@@ -2,6 +2,8 @@
 // marcar um jogador específico do rival, com efeito REAL (reduz o peso
 // de sorteio dele na simulação, nunca zera de vez).
 const { chromium } = require("playwright-core");
+const { check } = require("./_check");
+const { enterGame } = require("./_startup");
 
 (async () => {
   const browser = await chromium.launch({ executablePath: process.env.PW_CHROMIUM_PATH || undefined, headless: true, args: ["--host-resolver-rules=MAP fonts.googleapis.com 127.0.0.1,MAP fonts.gstatic.com 127.0.0.1"] });
@@ -21,14 +23,7 @@ const { chromium } = require("playwright-core");
   await page.click(".m3-club-row");
   await page.waitForTimeout(150);
   await page.click("#btnConfirmClub");
-  await page.click("#btnOnboardSkip", { timeout: 2000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.waitForTimeout(1500);
-  await page.click("#btnClaimDailyLogin").catch(() => {});
-  await page.waitForTimeout(200);
+  await enterGame(page);
 
   // 1) Abrir pelo Menu -> mostra o próximo adversário, meus titulares e
   // os 5 melhores jogadores de linha do rival, sem designação ativa.
@@ -47,7 +42,7 @@ const { chromium } = require("playwright-core");
   }));
   // myCount = 10 (11 titulares MENOS o goleiro -- goleiro não marca
   // ninguém, ver filtro em renderManMarkingScreen).
-  console.log("1) Abre com próximo adversário, 10 titulares de linha meus (sem goleiro) e 5 do rival, sem designação, Aplicar desabilitado:",
+  check("1) Abre com próximo adversário, 10 titulares de linha meus (sem goleiro) e 5 do rival, sem designação, Aplicar desabilitado:",
     check1.open && check1.oppLabel.includes("Próximo jogo") && check1.myCount === 10 && check1.rivalCount === 5 && check1.activeCardHidden && check1.applyDisabled,
     JSON.stringify(check1));
 
@@ -61,7 +56,7 @@ const { chromium } = require("playwright-core");
   await page.click(`#markingRivalPlayers [data-id="${ids.rival}"]`);
   await page.waitForTimeout(150);
   const check2a = await page.evaluate(() => document.getElementById("btnApplyMarking").disabled);
-  console.log("2) Escolher os 2 habilita 'Aplicar':", !check2a);
+  check("2) Escolher os 2 habilita 'Aplicar':", !check2a);
   await page.click("#btnApplyMarking");
   await page.waitForTimeout(200);
   const check2b = await page.evaluate((ids) => ({
@@ -69,7 +64,7 @@ const { chromium } = require("playwright-core");
     matches: CAREER.manMarking && CAREER.manMarking.myPlayerId === ids.mine && CAREER.manMarking.rivalPlayerId === ids.rival,
     activeCardVisible: document.getElementById("markingActiveCard").style.display !== "none",
   }), ids);
-  console.log("2b) Aplicar grava CAREER.manMarking com os ids certos, mostra designação ativa:", check2b.matches && check2b.activeCardVisible, JSON.stringify(check2b));
+  check("2b) Aplicar grava CAREER.manMarking com os ids certos, mostra designação ativa:", check2b.matches && check2b.activeCardVisible, JSON.stringify(check2b));
 
   await page.screenshot({ path: "screens/marcacao_individual.png" });
 
@@ -86,7 +81,7 @@ const { chromium } = require("playwright-core");
     mineSelected: document.querySelector(`#markingMyPlayers [data-id="${ids.mine}"]`)?.classList.contains("selected"),
     rivalSelected: document.querySelector(`#markingRivalPlayers [data-id="${ids.rival}"]`)?.classList.contains("selected"),
   }), ids);
-  console.log("3) Reabrir mantém a mesma designação selecionada:", check3.mineSelected && check3.rivalSelected, JSON.stringify(check3));
+  check("3) Reabrir mantém a mesma designação selecionada:", check3.mineSelected && check3.rivalSelected, JSON.stringify(check3));
 
   // 4) Efeito REAL na simulação: com o jogador rival marcado
   // (factor 0.4), ele deve ser sorteado MENOS que o normal como
@@ -108,7 +103,7 @@ const { chromium } = require("playwright-core");
     }
     return { creditedWith, creditedWithout, N, ratio: creditedWith / creditedWithout };
   }, ids);
-  console.log("4) Com marcação, o jogador marcado é sorteado como autor de gol/assistência bem menos vezes que sem marcação:",
+  check("4) Com marcação, o jogador marcado é sorteado como autor de gol/assistência bem menos vezes que sem marcação:",
     !effectCheck.error && effectCheck.creditedWith < effectCheck.creditedWithout * 0.75, JSON.stringify(effectCheck));
 
   // 5) Remover marcação limpa CAREER.manMarking e some a designação ativa.
@@ -118,7 +113,7 @@ const { chromium } = require("playwright-core");
     manMarking: CAREER.manMarking,
     activeCardHidden: document.getElementById("markingActiveCard").style.display === "none",
   }));
-  console.log("5) Remover marcação limpa CAREER.manMarking:", check5.manMarking === null && check5.activeCardHidden, JSON.stringify(check5));
+  check("5) Remover marcação limpa CAREER.manMarking:", check5.manMarking === null && check5.activeCardHidden, JSON.stringify(check5));
 
   await browser.close();
 })().catch((e) => { console.error("FATAL:", e); process.exit(1); });

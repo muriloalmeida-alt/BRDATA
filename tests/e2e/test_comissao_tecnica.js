@@ -2,6 +2,8 @@
 // treinos, tática, mercado), o técnico decide se aplica. Custa salário
 // mensal quando contratada.
 const { chromium } = require("playwright-core");
+const { check } = require("./_check");
+const { enterGame, waitForBoot } = require("./_startup");
 const { skipPreseason } = require("./_calendar_skip");
 
 (async () => {
@@ -22,14 +24,7 @@ const { skipPreseason } = require("./_calendar_skip");
   await page.click(".m3-club-row");
   await page.waitForTimeout(150);
   await page.click("#btnConfirmClub");
-  await page.click("#btnOnboardSkip", { timeout: 2000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.waitForTimeout(1500);
-  await page.click("#btnClaimDailyLogin").catch(() => {});
-  await page.waitForTimeout(200);
+  await enterGame(page);
 
   // 1) Abrir pelo Menu -> estado "não contratada" com custo estimado.
   await page.click("#btnBottomMenu");
@@ -43,7 +38,7 @@ const { skipPreseason } = require("./_calendar_skip");
     hiredHidden: document.getElementById("commissionHiredState").classList.contains("hidden"),
     costText: document.getElementById("commissionCostEstimate").textContent,
   }));
-  console.log("1) Abre no estado 'não contratada' com custo estimado:", check1.open && check1.notHiredVisible && check1.hiredHidden && check1.costText.includes("R$"), JSON.stringify(check1));
+  check("1) Abre no estado 'não contratada' com custo estimado:", check1.open && check1.notHiredVisible && check1.hiredHidden && check1.costText.includes("R$"), JSON.stringify(check1));
 
   // 2) Contratar -> vira "contratada", mostra os 4 cards de sugestão.
   await page.click("#btnHireCommission");
@@ -59,7 +54,7 @@ const { skipPreseason } = require("./_calendar_skip");
       titles: cards.map((c) => c.querySelector(".mt-card-title").textContent),
     };
   });
-  console.log("2) Contratar mostra os 4 cards (Escalação/Treinos/Tática/Mercado):",
+  check("2) Contratar mostra os 4 cards (Escalação/Treinos/Tática/Mercado):",
     check2.hired && check2.hiredVisible && check2.cardCount === 4
     && check2.titles.some((t) => t.includes("Escalação")) && check2.titles.some((t) => t.includes("Treinos"))
     && check2.titles.some((t) => t.includes("Tática")) && check2.titles.some((t) => t.includes("Mercado")),
@@ -71,12 +66,12 @@ const { skipPreseason } = require("./_calendar_skip");
   // Física" (regra real: round===1). Aplicar de fato muda
   // CAREER.trainingSchemeId.
   const check3a = await page.evaluate(() => suggestTraining());
-  console.log("3) Sugestão de treino na rodada 1 recomenda Pré-Temporada Física:", check3a.text.includes("Pré-Temporada Física"), JSON.stringify(check3a));
+  check("3) Sugestão de treino na rodada 1 recomenda Pré-Temporada Física:", check3a.text.includes("Pré-Temporada Física"), JSON.stringify(check3a));
   const trainingCardIdx = await page.evaluate(() => [...document.querySelectorAll("#commissionCards .mt-card")].findIndex((c) => c.querySelector(".mt-card-title").textContent.includes("Treinos")));
   await page.click(`#commissionCards .mt-card:nth-child(${trainingCardIdx + 1}) [data-apply]`);
   await page.waitForTimeout(300);
   const check3b = await page.evaluate(() => CAREER.trainingSchemeId);
-  console.log("3b) Aplicar a sugestão de treino grava de verdade o esquema:", check3b === "pretemporada", check3b);
+  check("3b) Aplicar a sugestão de treino grava de verdade o esquema:", check3b === "pretemporada", check3b);
 
   // 4) Sugestão de Tática: compara força real do clube com o próximo
   // adversário (dado real do catálogo, não texto de enchimento).
@@ -84,13 +79,13 @@ const { skipPreseason } = require("./_calendar_skip");
     const s = suggestTactics();
     return { hasText: !!s.text, mentionsOpponent: /favorito|equilibrado|parelh/.test(s.text) };
   });
-  console.log("4) Sugestão de tática compara com o próximo adversário de verdade:", check4.hasText && check4.mentionsOpponent, JSON.stringify(check4));
+  check("4) Sugestão de tática compara com o próximo adversário de verdade:", check4.hasText && check4.mentionsOpponent, JSON.stringify(check4));
 
   // 5) Sugestão de Escalação: reaproveita autoLineup -- se aplicar,
   // titulares mudam pros melhores overalls disponíveis.
   const beforeStarters = await page.evaluate(() => [...CAREER.lineup.starters]);
   const lineupSuggestion = await page.evaluate(() => suggestLineup());
-  console.log("5) Sugestão de escalação calculada (canApply ou já é a melhor):", typeof lineupSuggestion.canApply === "boolean", JSON.stringify(lineupSuggestion));
+  check("5) Sugestão de escalação calculada (canApply ou já é a melhor):", typeof lineupSuggestion.canApply === "boolean", JSON.stringify(lineupSuggestion));
   if (lineupSuggestion.canApply) {
     await page.click("#topbarMenu .mt-topbar-menu-item.group[data-submenu='equipe']").catch(() => {});
     await page.click("#btnOpenCommission").catch(() => {});
@@ -114,7 +109,9 @@ const { skipPreseason } = require("./_calendar_skip");
       await fetch("/api/career", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(snap) });
     }, { snap: snapshot, hired });
     await page.reload({ waitUntil: "domcontentloaded" });
-    await page.waitForTimeout(800);
+    // Espera a carreira carregar (estado), até 15 s — antes 800 ms fixos,
+    // curto sob carga (CAREER ainda null).
+    await page.waitForFunction(() => typeof CAREER !== "undefined" && CAREER && CAREER.finances, null, { timeout: 15000 }).catch(() => {});
     // Grava a sequência de Math.random() na 1ª chamada (hired=true) e
     // reproduz a MESMA sequência na 2ª (hired=false) — window persiste
     // entre reloads? NÃO — precisa gravar/ler via localStorage, que
@@ -133,7 +130,11 @@ const { skipPreseason } = require("./_calendar_skip");
       };
       window.__saveRng = () => localStorage.setItem("__rngSeq", JSON.stringify(seq));
     });
+    // Caixa e mês lidos ANTES da pré-temporada: a janela medida (semanas
+    // da pré-temporada + a rodada 1) cruza a virada de mês, quando a
+    // comissão é cobrada (GE-CALENDAR-001).
     const before = await page.evaluate(() => CAREER.finances.cash);
+    const monthBefore = await page.evaluate(() => calendarWeekMonth(calendarWeek()));
     await page.click(".m3-nav-item[data-panel='central']");
     await page.waitForTimeout(200);
     await skipPreseason(page); // GE-CALENDAR-001: carreira nova começa na pré-temporada
@@ -150,18 +151,24 @@ const { skipPreseason } = require("./_calendar_skip");
     // a tela pra próxima chamada.
     await page.waitForTimeout(500);
     const after = await page.evaluate(() => CAREER.finances.cash);
+    const monthAfter = await page.evaluate(() => calendarWeekMonth(calendarWeek()));
     await page.evaluate(() => window.__saveRng());
-    return after - before;
+    return { delta: after - before, monthChanged: monthAfter !== monthBefore };
   }
 
   await page.evaluate(() => localStorage.removeItem("__rngSeq"));
-  const deltaHired = await simulateOneRoundDeterministic(true);
-  const deltaNotHired = await simulateOneRoundDeterministic(false);
+  const hired = await simulateOneRoundDeterministic(true);
+  const notHired = await simulateOneRoundDeterministic(false);
+  const deltaHired = hired.delta, deltaNotHired = notHired.delta;
   const observedCommissionCost = deltaNotHired - deltaHired;
-  const expectedCommissionDeduction = Math.round(monthlyCost / 4);
-  console.log("6) Rodando a MESMA rodada (sorteio idêntico) com e sem comissão, a diferença de caixa bate com 1/4 do custo mensal:",
-    observedCommissionCost === expectedCommissionDeduction,
-    JSON.stringify({ deltaHired, deltaNotHired, observedCommissionCost, expectedCommissionDeduction }));
+  // GE-CALENDAR-001 (finanças mensais, 12x/ano): a comissão é cobrada
+  // inteira na virada do mês (applyCalendarMonthlyFinances), não mais
+  // 1/4 por rodada — a janela medida cruza uma virada de mês e tem que
+  // cobrar exatamente o custo mensal cheio.
+  const expectedCommissionDeduction = hired.monthChanged ? monthlyCost : 0;
+  check("6) Rodando a MESMA rodada (sorteio idêntico) com e sem comissão, a diferença de caixa bate com o custo cobrado no mês:",
+    hired.monthChanged && notHired.monthChanged && observedCommissionCost === expectedCommissionDeduction,
+    JSON.stringify({ deltaHired, deltaNotHired, observedCommissionCost, expectedCommissionDeduction, viradaDeMes: hired.monthChanged }));
 
   // Volta pra um estado limpo (Central, sem nenhum modal pós-jogo
   // aberto) pro resto do teste — a 2ª rodada determinística deixou
@@ -173,7 +180,7 @@ const { skipPreseason } = require("./_calendar_skip");
     await fetch("/api/career", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data.career) });
   });
   await page.reload({ waitUntil: "domcontentloaded" });
-  await page.waitForTimeout(800);
+  await waitForBoot(page);
 
   // 7) Demitir -> volta pro estado "não contratada", sem mais custo.
   await page.click("#btnBottomMenu");
@@ -189,7 +196,7 @@ const { skipPreseason } = require("./_calendar_skip");
     hired: CAREER.technicalStaff.hired,
     notHiredVisible: !document.getElementById("commissionNotHiredState").classList.contains("hidden"),
   }));
-  console.log("7) Demitir volta ao estado 'não contratada':", !check7.hired && check7.notHiredVisible, JSON.stringify(check7));
+  check("7) Demitir volta ao estado 'não contratada':", !check7.hired && check7.notHiredVisible, JSON.stringify(check7));
 
   await browser.close();
 })().catch((e) => { console.error("FATAL:", e); process.exit(1); });

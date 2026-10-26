@@ -5,6 +5,9 @@
 // 2) Info de salários pagos/patrocínio/caixa saiu de "Resultados da
 //    rodada" e passou a aparecer no cartão-resumo da tela de Notícias.
 const { chromium } = require("playwright-core");
+const { check } = require("./_check");
+const { enterGame } = require("./_startup");
+const { playNextMatchRound, closeLeftoverTabela } = require("./_round");
 const { skipPreseason } = require("./_calendar_skip");
 
 (async () => {
@@ -25,19 +28,15 @@ const { skipPreseason } = require("./_calendar_skip");
   await page.click(".m3-club-row");
   await page.waitForTimeout(150);
   await page.click("#btnConfirmClub");
-  await page.click("#btnOnboardSkip", { timeout: 2000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnClaimDailyLogin", { timeout: 3000 }).catch(() => {});
-  await page.waitForTimeout(500);
+  await enterGame(page);
   await page.evaluate(() => {
-    Object.keys(PRESS_CHANCE_BY_ID).forEach((k) => { PRESS_CHANCE_BY_ID[k] = 0; });
+    Object.keys(PRESS_CHANCE_BY_ID).forEach((k) => { PRESS_CHANCE_BY_ID[k] = 1e-12; }); // não 0: `|| 0.3` em determineMatchPressTrigger faria 0 virar 30%
     PRESS_ALWAYS_IDS.clear();
   });
 
-  // 1) Botão da Central.
+  // 1) Botão da Central (numa semana de jogo — GE-CALENDAR-001: a
+  // carreira nova começa na pré-temporada, onde o botão é outro).
+  await skipPreseason(page);
   await page.click(".m3-nav-item[data-panel='central']");
   await page.waitForTimeout(200);
   const btn1 = await page.evaluate(() => {
@@ -50,43 +49,36 @@ const { skipPreseason } = require("./_calendar_skip");
       sameClassAsReference: b.className === gold.className,
     };
   });
-  console.log("1) Botão da Central agora diz 'Ir para o jogo':", btn1.text === "Ir para o jogo");
+  check("1) Botão da Central agora diz 'Ir para o jogo':", btn1.text === "Ir para o jogo");
   console.log("   Tem a classe .mt-btn-primary-gold (mesmo estilo dos outros 'Ir para o jogo'), sem a verde antiga:", btn1.hasGoldClass && !btn1.hasGreenClass);
 
   // 2) Fluxo completo até Notícias — confere a linha financeira lá.
-  await skipPreseason(page); // GE-CALENDAR-001: carreira nova começa na pré-temporada
-  await page.click("#btnSimulate");
-  await page.waitForSelector("#preMatchOverlay.open", { timeout: 5000 });
-  await page.click("#btnPreMatchGo");
-  await page.waitForSelector("#liveMatchOverlay.open", { timeout: 5000 });
-  await page.evaluate(() => skipLiveMatch());
-  await page.waitForSelector("#matchDetailOverlay.open", { timeout: 5000 });
-  await page.click("#btnMatchDetailContinue");
-  await page.waitForTimeout(200);
-  if (await page.evaluate(() => document.getElementById("pressOverlay").classList.contains("open"))) {
-    await page.click("#pressOptions [data-press]");
-    await page.waitForTimeout(200);
+  // GE-CALENDAR-001: salários são pagos 1x por mês (na virada do mês), e a
+  // linha financeira só aparece na rodada em que houve pagamento — então
+  // joga rodadas (fluxo atual, ver _round.js) até a 1ª com salário pago.
+  let newsFinance = "", roundResultsState = null, rounds = 0;
+  for (; rounds < 8 && !newsFinance.includes("Salários pagos"); rounds++) {
+    const r = await playNextMatchRound(page, {
+      onNews: async (p) => { newsFinance = await p.evaluate(() => document.getElementById("newsFinanceRow").textContent); },
+      onRoundResults: async (p) => {
+        roundResultsState = await p.evaluate(() => ({
+          hasFinanceEl: !!document.getElementById("roundResultsFinance"),
+          bodyText: document.querySelector("#roundResultsOverlay .ct-modal-body").textContent,
+        }));
+      },
+    });
+    if (r.stoppedAt === "playerOfferOverlay") { await page.click("#btnPlayerOfferDecline"); await closeLeftoverTabela(page); }
+    else if (r.stoppedAt) throw new Error(`rodada parou numa tela inesperada: ${r.stoppedAt}`);
   }
-  await page.waitForSelector("#newsOverlay.open", { timeout: 5000 });
-
-  const newsFinance = await page.evaluate(() => document.getElementById("newsFinanceRow").textContent);
-  console.log("2) Notícias mostra a linha financeira (salários pagos):", newsFinance.includes("Salários pagos"));
+  check("2) Notícias mostra a linha financeira (salários pagos):", newsFinance.includes("Salários pagos"), { rodadasJogadas: rounds });
   console.log("   ...e a caixa restante:", newsFinance.includes("Caixa"));
 
-  await page.click("#btnNewsContinue");
-  await page.waitForSelector("#roundResultsOverlay.open", { timeout: 5000 });
-  const roundResultsState = await page.evaluate(() => ({
-    hasFinanceEl: !!document.getElementById("roundResultsFinance"),
-    bodyText: document.querySelector("#roundResultsOverlay .ct-modal-body").textContent,
-  }));
-  console.log("3) Resultados da rodada NÃO tem mais a info financeira (elemento removido):", !roundResultsState.hasFinanceEl);
-  console.log("   ...e o texto 'Salários pagos' não aparece mais lá:", !roundResultsState.bodyText.includes("Salários pagos"));
+  check("3) Resultados da rodada NÃO tem mais a info financeira (elemento removido):", !!roundResultsState && !roundResultsState.hasFinanceEl);
+  console.log("   ...e o texto 'Salários pagos' não aparece mais lá:", !!roundResultsState && !roundResultsState.bodyText.includes("Salários pagos"));
 
   // 4) Abrindo Notícias pelo menu (consulta, fora do pós-jogo) a linha
   // financeira fica vazia (não é dado que faz sentido fora do momento
   // exato da rodada que acabou de rolar).
-  await page.click("#btnRoundResultsCloseFooter").catch(() => {});
-  await page.waitForTimeout(150);
   await page.click("#btnBottomMenu");
   await page.waitForTimeout(150);
   await page.click("#topbarMenu .mt-topbar-menu-item.group[data-submenu='imprensa']");
@@ -94,7 +86,7 @@ const { skipPreseason } = require("./_calendar_skip");
   await page.waitForSelector("#newsOverlay.open");
   await page.waitForTimeout(150);
   const financeOutsideFlow = await page.evaluate(() => document.getElementById("newsFinanceRow").innerHTML.trim());
-  console.log("4) Notícias aberta pelo menu (consulta) não mostra linha financeira de rodada nenhuma (vazia):", financeOutsideFlow === "");
+  check("4) Notícias aberta pelo menu (consulta) não mostra linha financeira de rodada nenhuma (vazia):", financeOutsideFlow === "");
 
   await browser.close();
 })().catch((e) => { console.error("FATAL:", e); process.exit(1); });

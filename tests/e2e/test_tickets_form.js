@@ -1,4 +1,7 @@
 const { chromium } = require("playwright-core");
+const { enterGame, waitForBoot } = require("./_startup");
+const { check } = require("./_check");
+const { playNextMatchRound, closeLeftoverTabela } = require("./_round");
 
 (async () => {
   const browser = await chromium.launch({
@@ -21,13 +24,7 @@ const { chromium } = require("playwright-core");
   await page.click(".m3-club-row");
   await page.waitForTimeout(150);
   await page.click("#btnConfirmClub");
-  await page.click("#btnOnboardSkip", { timeout: 2000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnClaimDailyLogin", { timeout: 3000 }).catch(() => {});
-  await page.waitForTimeout(500);
+  await enterGame(page);
 
   // Força forma recente artificialmente (5 vitórias seguidas) via API,
   // testando o efeito no público sem depender do resultado aleatório.
@@ -38,25 +35,24 @@ const { chromium } = require("playwright-core");
     await fetch("/api/career", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data.career) });
   });
   await page.reload({ waitUntil: "load" });
-  await page.waitForTimeout(800);
+  await waitForBoot(page);
 
   await page.click(".m3-nav-item[data-panel='central']");
   await page.waitForTimeout(300);
 
   let found = false;
   for (let i = 0; i < 8 && !found; i++) {
-    await page.click("#btnSimulate");
-    await page.waitForTimeout(400);
-    if (await page.evaluate(() => document.getElementById("matchDetailOverlay").classList.contains("open"))) {
-      const text = await page.evaluate(() => document.getElementById("matchDetailTickets").textContent);
-      if (text) { found = true; console.log("Com 5 derrotas seguidas:", text); }
-      await page.click("#btnMatchDetailContinue"); await page.waitForTimeout(300);
-    }
-    if (await page.evaluate(() => document.getElementById("roundResultsOverlay").classList.contains("open"))) {
-      await page.click("#btnRoundResultsContinue"); await page.waitForTimeout(300);
-    }
+    const r = await playNextMatchRound(page, {
+      onMatchDetail: async (p) => {
+        const text = await p.evaluate(() => document.getElementById("matchDetailTickets").textContent);
+        if (text) { found = true; console.log("Com a forma recente forçada:", text); }
+      },
+    });
+    if (r.stoppedAt === "playerOfferOverlay") { await page.click("#btnPlayerOfferDecline"); await closeLeftoverTabela(page); }
+    else if (r.stoppedAt) throw new Error(`jogo ${i + 1} parou numa tela inesperada: ${r.stoppedAt}`);
     await page.click(".m3-nav-item[data-panel='central']").catch(() => {});
   }
+  check("1) Com a forma recente forçada, jogo em casa mostra a bilheteria:", found);
 
   await browser.close();
 })().catch((e) => { console.error("FATAL:", e); process.exit(1); });

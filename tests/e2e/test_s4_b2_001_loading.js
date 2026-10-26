@@ -5,6 +5,7 @@
 // estados) e preservação do fluxo funcional normal (boot → login →
 // escolha de clube/carreira, sem erro de console).
 const { chromium } = require("playwright-core");
+const { check } = require("./_check");
 
 (async () => {
   const browser = await chromium.launch({ executablePath: process.env.PW_CHROMIUM_PATH || undefined, headless: true, args: ["--host-resolver-rules=MAP fonts.googleapis.com 127.0.0.1,MAP fonts.gstatic.com 127.0.0.1"] });
@@ -36,7 +37,7 @@ const { chromium } = require("playwright-core");
   });
   // --m3-surface-dim (tema padrão "Verde de Campo") é #100F0E = rgb(16,15,14);
   // --m3-primary é #6DDB94 = rgb(109,219,148).
-  console.log("1) Estado 'carregamento' com tokens --m3-* aplicados (bg/spinner):",
+  check("1) Estado 'carregamento' com tokens --m3-* aplicados (bg/spinner):",
     loadingState.hasCrest && loadingState.hasText &&
     loadingState.bgColor === "rgb(16, 15, 14)" && loadingState.spinnerBorderTopColor === "rgb(109, 219, 148)",
     JSON.stringify(loadingState));
@@ -45,7 +46,7 @@ const { chromium } = require("playwright-core");
   // desta tela jamais teve um <h1> — confirmado por busca literal no
   // código antes da migração).
   const hasH1Anywhere = await page.evaluate(() => !!document.querySelector("#screenLoading h1"));
-  console.log("2) #screenLoading nunca tem <h1> (regra morta removida, nada quebrou):", !hasH1Anywhere);
+  check("2) #screenLoading nunca tem <h1> (regra morta removida, nada quebrou):", !hasH1Anywhere);
 
   // 3) Estado "erro" (splashErrorHTML) — testado diretamente via a
   // função de render (mesma técnica já usada pra Bottom Sheet/Skeleton
@@ -73,7 +74,7 @@ const { chromium } = require("playwright-core");
   });
   // --m3-error é #FF5449 = rgb(255,84,73); --m3-on-surface é #E7E2DE =
   // rgb(231,226,222); --m3-on-surface-variant é #CBC5BE = rgb(203,197,190).
-  console.log("3) Estado 'erro' com tokens --m3-* corretos (ícone/título/subtítulo/detalhe) e botão de retry:",
+  check("3) Estado 'erro' com tokens --m3-* corretos (ícone/título/subtítulo/detalhe) e botão de retry:",
     errorState.iconColor === "rgb(255, 84, 73)" &&
     errorState.titleColor === "rgb(231, 226, 222)" &&
     errorState.subColor === "rgb(203, 197, 190)" &&
@@ -104,7 +105,7 @@ const { chromium } = require("playwright-core");
       || !document.getElementById("screenPicker").classList.contains("hidden")
       || !document.getElementById("screenGame").classList.contains("hidden"),
   }));
-  console.log("4) Conclusão: #screenLoading some e a próxima tela real aparece (fluxo normal intacto):",
+  check("4) Conclusão: #screenLoading some e a próxima tela real aparece (fluxo normal intacto):",
     afterBoot.loadingHidden && afterBoot.pickerOrGameVisible, JSON.stringify(afterBoot));
 
   await browser.close();

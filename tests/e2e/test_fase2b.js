@@ -1,4 +1,8 @@
 const { chromium } = require("playwright-core");
+const { enterGame } = require("./_startup");
+const { skipPreseason } = require("./_calendar_skip");
+const { playRound, playNextMatchRound } = require("./_round");
+const { check } = require("./_check");
 
 (async () => {
   const browser = await chromium.launch({
@@ -23,13 +27,7 @@ const { chromium } = require("playwright-core");
   await page.click(".m3-club-row");
   await page.waitForTimeout(150);
   await page.click("#btnConfirmClub");
-  await page.click("#btnOnboardSkip", { timeout: 2000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnClaimDailyLogin", { timeout: 3000 }).catch(() => {});
-  await page.waitForTimeout(500);
+  await enterGame(page);
 
   // Card Financeiro na Central
   await page.screenshot({ path: "f2b-1-central-financeiro.png" });
@@ -71,14 +69,13 @@ const { chromium } = require("playwright-core");
   await page.click("#detailClose").catch(() => {});
   await page.click(".m3-nav-item[data-panel='central']");
   await page.waitForTimeout(300);
-  await page.click("#btnSimulate");
-  await page.waitForSelector("#matchDetailOverlay.open, #roundResultsOverlay.open", { timeout: 10000 });
-  await page.waitForTimeout(300);
-  if (await page.evaluate(() => document.getElementById("matchDetailOverlay").classList.contains("open"))) {
-    await page.click("#btnMatchDetailContinue");
-    await page.waitForTimeout(300);
-  }
-  await page.screenshot({ path: "f2b-4-round-results-financeiro.png" });
+  await skipPreseason(page); // GE-CALENDAR-001: carreira nova começa na pré-temporada
+  // Fluxo atual da rodada (ver _round.js) — o screenshot é tirado nos Resultados.
+  let sawResults = false;
+  await playNextMatchRound(page, {
+    onRoundResults: async (p) => { sawResults = true; await p.screenshot({ path: "f2b-4-round-results-financeiro.png" }); },
+  });
+  check("1) A rodada simulada chega nos Resultados da rodada:", sawResults);
 
   await browser.close();
 })().catch((e) => { console.error("FATAL:", e); process.exit(1); });

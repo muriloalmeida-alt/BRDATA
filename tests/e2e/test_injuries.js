@@ -1,4 +1,6 @@
 const { chromium } = require("playwright-core");
+const { check } = require("./_check");
+const { enterGame, waitForBoot } = require("./_startup");
 
 (async () => {
   const browser = await chromium.launch({
@@ -24,13 +26,7 @@ const { chromium } = require("playwright-core");
   await page.click(".m3-club-row");
   await page.waitForTimeout(150);
   await page.click("#btnConfirmClub");
-  await page.click("#btnOnboardSkip", { timeout: 2000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnClaimDailyLogin", { timeout: 3000 }).catch(() => {});
-  await page.waitForTimeout(500);
+  await enterGame(page);
 
   // 1) Estatística: roda simulatePlayerEvents MUITAS vezes num time
   // fictício de 11 jogadores físico/condição médios, e conta as
@@ -56,7 +52,7 @@ const { chromium } = require("playwright-core");
     }
     return counts;
   });
-  console.log("1) Estatística de 20000x11 rolls de lesão:", stats);
+  check("1) Estatística de 20000x11 rolls de lesão:", stats);
   const total = stats.leve + stats.media + stats.grave;
   console.log("   Proporção leve/média/grave:", (stats.leve / total).toFixed(2), (stats.media / total).toFixed(2), (stats.grave / total).toFixed(2), "(esperado ~0.70/0.25/0.05)");
   console.log("   Maior duração observada (deve poder passar de 4, até 14):", stats.maxDur);
@@ -66,7 +62,7 @@ const { chromium } = require("playwright-core");
     saudavel: window.injuryChanceFor({ phys: 85, condition: 100 }),
     exausto: window.injuryChanceFor({ phys: 40, condition: 30 }),
   }));
-  console.log("2) Chance jogador saudável (físico alto, condição cheia):", chances.saudavel, "| exausto (físico baixo, condição baixa):", chances.exausto, "(exausto deve ser maior)");
+  check("2) Chance de lesão do exausto (físico baixo, condição baixa) maior que a do saudável (físico alto, condição cheia):", chances.exausto > chances.saudavel, "| saudável:", chances.saudavel, "| exausto:", chances.exausto);
 
   // 3) Força um jogador MEU pra "contundido" com lesão grave (14
   // rodadas) e confirma: badge com gravidade, sumiço do picker, aviso
@@ -81,11 +77,13 @@ const { chromium } = require("playwright-core");
     return p.id;
   });
   await page.reload({ waitUntil: "load" });
-  await page.waitForTimeout(800);
+  await waitForBoot(page);
   await page.click(".m3-nav-item[data-panel='elenco']");
   await page.waitForTimeout(300);
-  const badgeText = await page.evaluate((id) => document.querySelector(`[data-id="${id}"]`).textContent, targetId);
-  console.log("3) Badge na lista do Elenco:", badgeText.trim());
+  // Linha do jogador na LISTA do Elenco (#squadMainList) — o 1º
+  // [data-id] da página podia ser outro elemento (ex.: campinho).
+  const badgeText = await page.evaluate((id) => (document.querySelector(`#squadMainList [data-id="${id}"]`) || {}).textContent || "", targetId);
+  check("3) Badge na lista do Elenco:", badgeText.includes("Lesionado"), badgeText.replace(/\s+/g, " ").trim());
 
   await page.click(`[data-id="${targetId}"]`);
   await page.waitForSelector("#detailOverlay.open");
@@ -114,7 +112,7 @@ const { chromium } = require("playwright-core");
     await fetch("/api/career", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data.career) });
   });
   await page.reload({ waitUntil: "load" });
-  await page.waitForTimeout(800);
+  await waitForBoot(page);
   await page.click("#btnAdvanceSeason");
   await page.waitForTimeout(200);
   await page.click("#confirmOkBtn");
@@ -124,7 +122,7 @@ const { chromium } = require("playwright-core");
     const p = career.squad.find((x) => x.id === id);
     return p ? { status: p.status, outUntilRound: p.outUntilRound } : "SAIU_DO_ELENCO";
   }, targetId);
-  console.log("4) Jogador depois da virada de temporada (deve estar 'ok', outUntilRound null, a menos que tenha saído por fim de contrato):", afterSeason);
+  check("4) Jogador depois da virada de temporada (deve estar 'ok', outUntilRound null, a menos que tenha saído por fim de contrato):", afterSeason === "SAIU_DO_ELENCO" || (afterSeason.status === "ok" && afterSeason.outUntilRound == null), afterSeason);
 
   await browser.close();
 })().catch((e) => { console.error("FATAL:", e); process.exit(1); });

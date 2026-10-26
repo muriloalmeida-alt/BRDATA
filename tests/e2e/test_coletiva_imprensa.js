@@ -1,4 +1,6 @@
 const { chromium } = require("playwright-core");
+const { check } = require("./_check");
+const { enterGame } = require("./_startup");
 const { skipPreseason } = require("./_calendar_skip");
 
 async function newCareer(page, base, email) {
@@ -13,13 +15,7 @@ async function newCareer(page, base, email) {
   await page.click(".m3-club-row");
   await page.waitForTimeout(150);
   await page.click("#btnConfirmClub");
-  await page.click("#btnOnboardSkip", { timeout: 2000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnClaimDailyLogin", { timeout: 3000 }).catch(() => {});
-  await page.waitForTimeout(500);
+  await enterGame(page);
 }
 
 (async () => {
@@ -42,7 +38,7 @@ async function newCareer(page, base, email) {
     allHaveOptions: PRESS_LIBRARY.every((e) => e.respostas.length === 2 || e.respostas.length === 3),
     ids: PRESS_LIBRARY.map((e) => e.id),
   }));
-  console.log("1) Biblioteca com 21 situações, cada uma com 2-3 respostas:", libCheck.total === 21 && libCheck.allHaveOptions);
+  check("1) Biblioteca com 21 situações, cada uma com 2-3 respostas:", libCheck.total === 21 && libCheck.allHaveOptions);
 
   // 2) Determinação de gatilho: goleada aplicada (margem >= 3). Evita
   // clube "grande" (clássico tem prioridade maior, ver PRESS_PRIORITY)
@@ -62,7 +58,7 @@ async function newCareer(page, base, email) {
       winlessBefore: 0, injuredBeforeIds: new Set(), events: [], roundPlayed: 10,
     });
   });
-  console.log("2) Goleada aplicada dispara gatilho 12:", t1 && t1.id === "12");
+  check("2) Goleada aplicada dispara gatilho 12:", t1 && t1.id === "12");
 
   // 3) Zebra sofrida: perde pra time com overall bem menor.
   const t2 = await page.evaluate(() => {
@@ -76,7 +72,7 @@ async function newCareer(page, base, email) {
       winlessBefore: 0, injuredBeforeIds: new Set(), events: [], roundPlayed: 11,
     });
   });
-  console.log("3) Zebra sofrida (perder pro fraco) dispara gatilho 10:", t2 && t2.id === "10");
+  check("3) Zebra sofrida (perder pro fraco) dispara gatilho 10:", t2 && t2.id === "10");
 
   // 4) Lanterna vence e reage: estava em último, vence.
   const t3 = await page.evaluate(() => {
@@ -92,7 +88,7 @@ async function newCareer(page, base, email) {
       winlessBefore: 0, injuredBeforeIds: new Set(), events: [], roundPlayed: 12,
     });
   });
-  console.log("4) Time em último vencendo dispara gatilho 09 (lanterna reage) ou 08 (zona):", t3 && (t3.id === "09" || t3.id === "08"));
+  check("4) Time em último vencendo dispara gatilho 09 (lanterna reage) ou 08 (zona):", t3 && (t3.id === "09" || t3.id === "08"));
 
   // 5) Meta em risco: posição bem pior que a meta, só dispara 1x por
   // temporada.
@@ -113,7 +109,7 @@ async function newCareer(page, base, email) {
     });
     return { firstId: first && first.id, secondId: second && second.id, warnedSeason: CAREER.metaRiskWarnedSeason === CAREER.seasonYear };
   });
-  console.log("5) Meta em risco dispara (gatilho 20 ou zona 08, ambos plausíveis com último lugar):", ["20", "08"].includes(t4.firstId));
+  check("5) Meta em risco dispara (gatilho 20 ou zona 08, ambos plausíveis com último lugar):", ["20", "08"].includes(t4.firstId));
   console.log("   Meta em risco NÃO repete no mesmo jogo se já avisou:", t4.secondId !== "20" || t4.firstId !== "20");
 
   // Restaura o Math.random de verdade antes de qualquer simulação real
@@ -136,7 +132,7 @@ async function newCareer(page, base, email) {
       logEntry: CAREER.pressLog[0],
     };
   });
-  console.log("6) Resposta A (goleada aplicada) sobe reputação e moral:", applyCheck.repAfter > applyCheck.repBefore, applyCheck.moraleAfter > applyCheck.moraleBefore);
+  check("6) Resposta A (goleada aplicada) sobe reputação e moral:", applyCheck.repAfter > applyCheck.repBefore, applyCheck.moraleAfter > applyCheck.moraleBefore);
   console.log("   Fica registrado no histórico (pressLog):", applyCheck.logLen === 1 && applyCheck.logEntry.letra === "A" && applyCheck.logEntry.round === 15);
 
   // 7) Fluxo real via UI: força uma goleada no PRÓPRIO jogo (derruba o
@@ -157,6 +153,11 @@ async function newCareer(page, base, email) {
   });
   await page.click(".m3-nav-item[data-panel='central']");
   await page.waitForTimeout(300);
+  // A coletiva só sai com probabilidade (PRESS_CHANCE_BY_ID: 0,6 pra
+  // goleada) — o que este passo verifica é que a SITUAÇÃO dispara o
+  // gatilho na partida de verdade; a "moeda" de chance já é verificada
+  // nos passos 2-5. Chance 1 aqui deixa o resultado determinístico.
+  await page.evaluate(() => { Object.keys(PRESS_CHANCE_BY_ID).forEach((k) => { PRESS_CHANCE_BY_ID[k] = 1; }); });
   await page.click("#btnSimulate");
   await page.waitForSelector("#preMatchOverlay.open", { timeout: 5000 });
   await page.click("#btnPreMatchGo");
@@ -175,7 +176,7 @@ async function newCareer(page, base, email) {
   await page.click("#btnMatchDetailContinue");
   await page.waitForTimeout(300);
   const pressAppeared = await page.evaluate(() => document.getElementById("pressOverlay").classList.contains("open"));
-  console.log("7) Coletiva aparece após 'Seu jogo' quando a situação bate (goleada forçada):", pressAppeared);
+  check("7) Coletiva aparece após 'Seu jogo' quando a situação bate (goleada forçada):", pressAppeared);
   if (pressAppeared) {
     const questionText = await page.evaluate(() => document.getElementById("pressQuestion").textContent);
     const optCount = await page.evaluate(() => document.querySelectorAll("#pressOptions [data-press]").length);
@@ -212,7 +213,7 @@ async function newCareer(page, base, email) {
   await page.click("#pressClose");
   await page.waitForTimeout(200);
   const afterX = await page.evaluate(() => ({ rep: CAREER.reputation, closed: !document.getElementById("pressOverlay").classList.contains("open") }));
-  console.log("8) X fecha sem mudar reputação:", afterX.rep === xCheck, "| modal fechou:", afterX.closed);
+  check("8) X fecha sem mudar reputação:", afterX.rep === xCheck, "| modal fechou:", afterX.closed);
 
   // 9) Contratação polêmica / venda de ídolo: ver test_coletiva_buy.js
   // (script separado, mais enxuto, pra não competir com a flakiness de

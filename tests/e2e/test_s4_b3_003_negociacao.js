@@ -6,6 +6,8 @@
 // no lugar do antigo .mt-sponsor-proposal-row (reaproveitado de um
 // contexto de patrocínio sem relação com transferência).
 const { chromium } = require("playwright-core");
+const { check } = require("./_check");
+const { enterGame } = require("./_startup");
 
 (async () => {
   const browser = await chromium.launch({ executablePath: process.env.PW_CHROMIUM_PATH || undefined, headless: true, args: ["--host-resolver-rules=MAP fonts.googleapis.com 127.0.0.1,MAP fonts.gstatic.com 127.0.0.1"] });
@@ -28,13 +30,7 @@ const { chromium } = require("playwright-core");
   await page.click(".m3-club-row");
   await page.waitForTimeout(150);
   await page.click("#btnConfirmClub");
-  await page.click("#btnOnboardSkip", { timeout: 2000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnClaimDailyLogin", { timeout: 3000 }).catch(() => {});
-  await page.waitForTimeout(500);
+  await enterGame(page);
 
   await page.click(".m3-nav-item[data-panel='mercado']");
   await page.waitForTimeout(400);
@@ -55,7 +51,7 @@ const { chromium } = require("playwright-core");
       title: overlay?.querySelector(".m3-dialog-header h3")?.textContent,
     };
   });
-  console.log("1) 'Fazer proposta' abre Dialog dinâmico (não mais #offerOverlay estático), foco no valor:",
+  check("1) 'Fazer proposta' abre Dialog dinâmico (não mais #offerOverlay estático), foco no valor:",
     dialog.isDialog && !dialog.oldOverlayExists && dialog.hasValueInput && dialog.hasInstallmentsSelect && dialog.focusedIsValueInput && dialog.title === "Fazer proposta",
     JSON.stringify(dialog));
 
@@ -64,7 +60,7 @@ const { chromium } = require("playwright-core");
   await page.keyboard.press("Escape");
   await page.waitForTimeout(200);
   const closedByEsc = await page.evaluate(() => !document.querySelector(".m3-dialog-overlay.open") && (CAREER.pendingOffersOut || []).length === 0);
-  console.log("2) Esc fecha o Dialog sem enviar proposta:", closedByEsc);
+  check("2) Esc fecha o Dialog sem enviar proposta:", closedByEsc);
 
   // 3) Enviar a proposta de verdade funciona (clique real no botão
   // dentro do Dialog) e o Dialog fecha sozinho depois.
@@ -88,7 +84,7 @@ const { chromium } = require("playwright-core");
       atPointIsConfirmBtn: atPoint?.id === "btnOfferConfirm",
     };
   });
-  console.log("2b) Overlay do Dialog é position:fixed/z-index:500 de verdade (não auto/static) e o botão de confirmar é o elemento clicável no seu próprio ponto:",
+  check("2b) Overlay do Dialog é position:fixed/z-index:500 de verdade (não auto/static) e o botão de confirmar é o elemento clicável no seu próprio ponto:",
     overlayCss.zIndex === "500" && overlayCss.position === "fixed" && overlayCss.atPointIsConfirmBtn, JSON.stringify(overlayCss));
   await page.click("#btnOfferConfirm");
   await page.waitForTimeout(250);
@@ -96,7 +92,7 @@ const { chromium } = require("playwright-core");
     dialogClosed: !document.querySelector(".m3-dialog-overlay.open"),
     offerCount: (CAREER.pendingOffersOut || []).length,
   }));
-  console.log("3) Confirmar dentro do Dialog envia a proposta e fecha sozinho:",
+  check("3) Confirmar dentro do Dialog envia a proposta e fecha sozinho:",
     sent.dialogClosed && sent.offerCount === 1, JSON.stringify(sent));
 
   // 4) "Minhas propostas" mostra a proposta como TransferCard
@@ -119,7 +115,7 @@ const { chromium } = require("playwright-core");
       hasIncreaseOrCompareBtn: !!(card?.querySelector("[data-increase]") || card?.querySelector("[data-compare]")),
     };
   });
-  console.log("4) 'Minhas propostas' usa TransferCard (.m3-op-card), zero .mt-sponsor-proposal-row:",
+  check("4) 'Minhas propostas' usa TransferCard (.m3-op-card), zero .mt-sponsor-proposal-row:",
     myOffers.hasCard && myOffers.oldRows === 0 && myOffers.hasName && myOffers.hasClub
     && (myOffers.metaText || "").includes("aguardando resposta") && myOffers.hasWithdrawBtn && myOffers.hasIncreaseOrCompareBtn,
     JSON.stringify(myOffers));
@@ -129,7 +125,7 @@ const { chromium } = require("playwright-core");
   await page.click("#myOffersList [data-withdraw]");
   await page.waitForTimeout(200);
   const withdrawn = await page.evaluate(() => (CAREER.pendingOffersOut || []).length === 0 && document.querySelectorAll("#myOffersList .m3-op-card").length === 0);
-  console.log("5) Retirar a proposta continua funcionando:", withdrawn);
+  check("5) Retirar a proposta continua funcionando:", withdrawn);
 
   await page.screenshot({ path: "s4_b3_003_negociacao.png" }).catch(() => {});
 

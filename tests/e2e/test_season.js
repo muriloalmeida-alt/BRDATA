@@ -1,4 +1,5 @@
 const { chromium } = require("playwright-core");
+const { enterGame, waitForBoot } = require("./_startup");
 
 (async () => {
   const browser = await chromium.launch({
@@ -23,13 +24,7 @@ const { chromium } = require("playwright-core");
   await page.click(".m3-club-row");
   await page.waitForTimeout(150);
   await page.click("#btnConfirmClub");
-  await page.click("#btnOnboardSkip", { timeout: 2000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnClaimDailyLogin", { timeout: 3000 }).catch(() => {});
-  await page.waitForTimeout(500);
+  await enterGame(page);
 
   // Força contrato de alguns jogadores pra vencer JÁ (testa a saída de
   // verdade), e pula direto pro fim da temporada via API (evita simular
@@ -48,7 +43,7 @@ const { chromium } = require("playwright-core");
   console.log("Antes de avançar:", JSON.stringify(before));
 
   await page.reload({ waitUntil: "load" });
-  await page.waitForTimeout(800);
+  await waitForBoot(page);
   await page.screenshot({ path: "season-1-ended.png" });
 
   const btnVisible = await page.evaluate(() => !document.getElementById("btnAdvanceSeason").classList.contains("hidden"));

@@ -1,4 +1,6 @@
 const { chromium } = require("playwright-core");
+const { check } = require("./_check");
+const { enterGame } = require("./_startup");
 const { skipPreseason } = require("./_calendar_skip");
 
 async function newCareer(page, base, email) {
@@ -13,13 +15,7 @@ async function newCareer(page, base, email) {
   await page.click(".m3-club-row");
   await page.waitForTimeout(150);
   await page.click("#btnConfirmClub");
-  await page.click("#btnOnboardSkip", { timeout: 2000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnClaimDailyLogin", { timeout: 3000 }).catch(() => {});
-  await page.waitForTimeout(500);
+  await enterGame(page);
 }
 async function getCareer(page) {
   return page.evaluate(async () => (await (await fetch("/api/career")).json()).career);
@@ -48,7 +44,7 @@ async function getCareer(page) {
   await page.waitForSelector("#preMatchOverlay.open", { timeout: 5000 });
   await page.click("#btnPreMatchGo");
   await page.waitForSelector("#liveMatchOverlay.open", { timeout: 5000 });
-  console.log("1) Tela Ao Vivo abriu ao simular:", true);
+  check("1) Tela Ao Vivo abriu ao simular:", true);
 
   // Pausa a progressão automática IMEDIATAMENTE (evita timers reais
   // concorrendo com as chamadas manuais abaixo, ver comentário em
@@ -76,7 +72,7 @@ async function getCareer(page) {
     subsUsed: LIVE_MATCH.subsUsed,
     paused: LIVE_MATCH.paused,
   }), before.outId);
-  console.log("2) Substituição -- jogador que saiu não é mais titular:", !afterSub.outStillStarter, "| subsUsed=1:", afterSub.subsUsed === 1, "| partida retomada (paused=false):", afterSub.paused === false);
+  check("2) Substituição -- jogador que saiu não é mais titular:", !afterSub.outStillStarter, "| subsUsed=1:", afterSub.subsUsed === 1, "| partida retomada (paused=false):", afterSub.paused === false);
   // AJUSTE (item 4) — confirmLiveSub() retoma a progressão automática
   // sozinho (resumeLiveMatch) — repausa de novo aqui pra manter o
   // controle 100% manual dos "tempos" abaixo, sem um timer real
@@ -100,14 +96,14 @@ async function getCareer(page) {
     formationChanged: CAREER.lineup.formation === f,
     penaltyChunks: LIVE_MATCH.formationPenaltyChunksLeft,
   }), otherFormation);
-  console.log("3) Esquema trocado:", tacticsState.formationChanged, "| penalidade de familiaridade ativa (2 tempos):", tacticsState.penaltyChunks === 2);
+  check("3) Esquema trocado:", tacticsState.formationChanged, "| penalidade de familiaridade ativa (2 tempos):", tacticsState.penaltyChunks === 2);
   // AJUSTE (item 4) — confirmLiveTactics() também retoma sozinho.
   await page.evaluate(() => pauseLiveMatch());
 
   await page.evaluate(() => resolveLiveChunk()); // 2º tempo -- consome 1 de familiaridade
   await page.evaluate(() => resolveLiveChunk()); // 3º tempo -- consome o outro
   const penaltyAfter2 = await page.evaluate(() => LIVE_MATCH.formationPenaltyChunksLeft);
-  console.log("4) Penalidade de familiaridade zerou depois de 2 tempos:", penaltyAfter2 === 0);
+  check("4) Penalidade de familiaridade zerou depois de 2 tempos:", penaltyAfter2 === 0);
 
   // 5) Cota de substituição: máximo 5, e cartão vermelho libera bônus
   // extra sem contar na cota (força vermelho fixando Math.random baixo
@@ -119,7 +115,7 @@ async function getCareer(page) {
     subsBonus: LIVE_MATCH.subsBonus,
     someoneSuspended: CAREER.squad.some((p) => p.status === "suspenso"),
   }));
-  console.log("5) Expulsão liberou substituição extra (subsBonus > 0):", afterRed.subsBonus > 0, "| algum jogador ficou suspenso:", afterRed.someoneSuspended);
+  check("5) Expulsão liberou substituição extra (subsBonus > 0):", afterRed.subsBonus > 0, "| algum jogador ficou suspenso:", afterRed.someoneSuspended);
 
   // Restaura aleatoriedade normal e termina a partida com "Pular pro
   // fim" (sem esperar os timers reais).
@@ -128,7 +124,7 @@ async function getCareer(page) {
   await page.evaluate(() => skipLiveMatch());
   await page.waitForSelector("#matchDetailOverlay.open", { timeout: 5000 });
   const career1 = await getCareer(page);
-  console.log("6) Partida terminou e rodada avançou (skipLiveMatch):", career1.currentRound === beforeSkip + 1);
+  check("6) Partida terminou e rodada avançou (skipLiveMatch):", career1.currentRound === beforeSkip + 1);
   console.log("   Modal 'Seu jogo' mostra o placar final ao vivo:", true, "-- texto:", await page.evaluate(() => document.getElementById("matchDetailScore").textContent.trim()));
 
   await page.click("#btnMatchDetailContinue");
@@ -145,7 +141,7 @@ async function getCareer(page) {
   await page.click("#btnNewsContinue");
   await page.waitForSelector("#roundResultsOverlay.open", { timeout: 5000 });
   const resultsCount = await page.evaluate(() => document.querySelectorAll("#roundResultsList .m3-match-card").length);
-  console.log("7) Resultados da rodada inteira (10 jogos, CPU x CPU incluídos):", resultsCount === 10);
+  check("7) Resultados da rodada inteira (10 jogos, CPU x CPU incluídos):", resultsCount === 10);
   await page.click("#btnRoundResultsContinue");
   await page.waitForTimeout(300);
   // AJUSTE (item 6, pedido do usuário) — proposta por jogador pode

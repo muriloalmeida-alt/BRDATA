@@ -3,6 +3,7 @@
 // divisão nova, rebaixados acima, e a força nova persiste no save.
 const { skipPreseason } = require("./_calendar_skip");
 const { chromium } = require("playwright-core");
+const { skipOnboarding } = require("./_startup");
 
 (async () => {
   const browser = await chromium.launch({ executablePath: process.env.PW_CHROMIUM_PATH || undefined, headless: true, args: ["--host-resolver-rules=MAP fonts.googleapis.com 127.0.0.1,MAP fonts.gstatic.com 127.0.0.1"] });
@@ -22,7 +23,7 @@ const { chromium } = require("playwright-core");
   await page.click(".m3-club-row");
   await page.waitForTimeout(150);
   await page.click("#btnConfirmClub");
-  await page.click("#btnOnboardSkip", { timeout: 2000 }).catch(() => {});
+  await skipOnboarding(page);
   await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
   await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
   for (let i = 0; i < 6; i++) { await page.click("#btnWizardSkip", { timeout: 2500 }).catch(() => {}); await page.waitForTimeout(300); }
@@ -70,7 +71,9 @@ const { chromium } = require("playwright-core");
   await page.evaluate(() => persistCareer());
   await page.waitForTimeout(2500);
   await page.reload({ waitUntil: "domcontentloaded" });
-  await page.waitForTimeout(3000);
+  // Espera a carreira recarregar do save (estado), até 15 s — antes 3 s
+  // fixos, curto sob carga (CAREER ainda null).
+  await page.waitForFunction(() => typeof CAREER !== "undefined" && CAREER && CAREER.divisionTeams, null, { timeout: 15000 }).catch(() => {});
   const reloaded = await page.evaluate((saved) => {
     const promotedNow = CAREER.divisionTeams.brasileirao.filter((t) => saved.includes(t.atk));
     return promotedNow.length;

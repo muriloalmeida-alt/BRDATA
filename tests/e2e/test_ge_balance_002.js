@@ -9,6 +9,8 @@
 // redução) já foi validada em tests/e2e/sim_ge_balance_002.js — este
 // teste é sobre regressão de wiring/invariantes, não estatística.
 const { chromium } = require("playwright-core");
+const { check } = require("./_check");
+const { enterGame } = require("./_startup");
 
 async function newCareer(page, base, email) {
   await page.goto(base + "/", { waitUntil: "load" });
@@ -22,13 +24,7 @@ async function newCareer(page, base, email) {
   await page.click(".m3-club-row");
   await page.waitForTimeout(150);
   await page.click("#btnConfirmClub");
-  await page.click("#btnOnboardSkip", { timeout: 2000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnClaimDailyLogin", { timeout: 3000 }).catch(() => {});
-  await page.waitForTimeout(500);
+  await enterGame(page);
 }
 
 (async () => {
@@ -44,7 +40,7 @@ async function newCareer(page, base, email) {
   // 1) Lista curada de tradição — os 12 clubes esperados, nada a mais.
   const list = await page.evaluate(() => [...CLUB_TRADITION_IDS].sort());
   const expected = ["bot", "cam", "cor", "cru", "flu", "fla", "gre", "int", "pal", "san", "sao", "vas"].sort();
-  console.log("1) CLUB_TRADITION_IDS tem exatamente os 12 clubes esperados:",
+  check("1) CLUB_TRADITION_IDS tem exatamente os 12 clubes esperados:",
     JSON.stringify(list) === JSON.stringify(expected), JSON.stringify(list));
 
   // 2) O sorteio realmente pode sair dos 2 jeitos (não é sempre
@@ -64,7 +60,7 @@ async function newCareer(page, base, email) {
   const anyReprieved = rolls.some((r) => r.reprieved);
   const anyNotReprieved = rolls.some((r) => !r.reprieved);
   const allZoneSize4 = rolls.every((r) => r.zoneSize === 4);
-  console.log("2) O sorteio determinístico sai dos 2 jeitos ao variar o seedKey (não é sempre true/false), zona sempre com 4:",
+  check("2) O sorteio determinístico sai dos 2 jeitos ao variar o seedKey (não é sempre true/false), zona sempre com 4:",
     anyReprieved && anyNotReprieved && allZoneSize4,
     JSON.stringify({ anyReprieved, anyNotReprieved, allZoneSize4, sample: rolls.slice(0, 6) }));
 
@@ -76,7 +72,7 @@ async function newCareer(page, base, email) {
     const result = applyTraditionReprieve(zone, sortedRows, "no-tradition-probe");
     return { same: JSON.stringify(result.slice().sort()) === JSON.stringify(zone.slice().sort()) };
   });
-  console.log("3) Zona sem nenhum clube de tradição não muda nada (mecanismo é inerte fora do seu escopo):",
+  check("3) Zona sem nenhum clube de tradição não muda nada (mecanismo é inerte fora do seu escopo):",
     noTraditionCase.same, JSON.stringify(noTraditionCase));
 
   // 4) Integração real: applyPromotionRelegation com um clube de
@@ -104,7 +100,7 @@ async function newCareer(page, base, email) {
       targetStillInA: CAREER.divisionTeams.brasileirao.some((t) => String(t.id) === target),
     };
   });
-  console.log("4) applyPromotionRelegation com um clube de tradição forçado em último continua consistente (20/20/20/20, zona=4), com ou sem reprieve:",
+  check("4) applyPromotionRelegation com um clube de tradição forçado em último continua consistente (20/20/20/20, zona=4), com ou sem reprieve:",
     integration.countsOk && integration.relegatedACount === 4 && (integration.targetRelegated !== integration.targetStillInA),
     JSON.stringify(integration));
 
