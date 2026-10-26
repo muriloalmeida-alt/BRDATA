@@ -9,6 +9,84 @@ divergências, aprovação) — elas não são repetidas aqui.
 
 Demandas vigentes
 
+CAREER-PG-001 + APP-VERSION-001 — Carreira no Postgres e aviso de versão nova
+
+Status: REVISÃO DO PM NECESSÁRIA
+Prioridade: P0 (confiabilidade/saves) + P4 (feedback de UX)
+Pedido do Murilo (26/10/2026): "a) mudar a forma de gravar carreira
+para postgres, com isso não teremos problemas de espaço. b) criar o
+toast que comunica quando houve uma atualização de versão no jogo.
+Esse toast deve sempre olhar se o commit do jogo está igual ao último
+no servidor."
+
+a) CAREER-PG-001 — o que foi feito
+
+* `server/src/careerStore.js`: com `DATABASE_URL` definida, cada
+  carreira vira 1 linha da tabela `careers` (criada sozinha no boot:
+  `user_id`, `data_gz` BYTEA com o mesmo gzip de antes, `raw_bytes`,
+  `gz_bytes`, `updated_at`). Sem a variável, segue no `careers.json`
+  (dev local, suíte E2E) — mesmo comportamento de antes.
+* Migração: no 1º boot com Postgres, um `careers.json` existente
+  (Volume) é importado (`ON CONFLICT DO NOTHING` — nunca sobrescreve
+  save mais novo do banco) e renomeado pra
+  `careers.json.migrated-to-pg` (backup; também impede que uma
+  carreira apagada volte do arquivo no boot seguinte).
+* Saves do mesmo usuário são serializados (fila por usuário) — com
+  pool de conexões, 2 PUTs seguidos podiam commitar fora de ordem.
+* Limites: teto comprimido 768KB -> 8MB no modo Postgres (~100MB de
+  JSON bruto na razão medida); corpo do PUT /api/career 1MB -> 16MB
+  (era o próximo limite a estourar: carreira "multi" já nasce com
+  ~560KB brutos). Corpo grande demais agora devolve 413 (antes 502).
+  Poda automática de histórico (SAVE-LIMIT-001) mantida.
+* `getCareer/saveCareer/deleteCareer` agora são assíncronas
+  (server.js aguarda); SIGTERM espera saves em andamento e fecha o pool.
+* `GET /api/health` ganhou `careerStorage: "postgres" | "file"`.
+* Nova dependência: `pg` (server/package.json).
+* Docs: `server/.env.example` (DATABASE_URL, PG_POOL_MAX) e checklist
+  de `docs/ops/README-DEPLOY-RAILWAY.md`.
+
+b) APP-VERSION-001 — o que foi feito
+
+* Servidor: `APP_VERSION` = commit do build (`RAILWAY_GIT_COMMIT_SHA`)
+  ou, sem ele (dev), o `DEPLOY_VERSION` do boot. Embutida no HTML
+  servido (`<meta name="brdata-version">`, nas rotas `/carreira` e
+  `/carreira.html`) = versão que a aba carregou; `GET /api/version`
+  (público, antes do guard de login) = versão servida agora.
+* Cliente (`carreira.js`): `checkAppVersion()` compara as duas no
+  boot, a cada 2 min e sempre que a aba volta a ficar visível. Se
+  diferem: toast verde "Nova versão do jogo disponível — Toque aqui
+  para atualizar" (reaproveita `toast()` com as opções novas `sticky`
+  e `kind`). Não some sozinho; se outro toast tomar o lugar, volta
+  quando ele sai; escondido durante partida ao vivo (LIVE_MATCH não é
+  persistido — um toque sem querer perderia a partida). Toque: salva a
+  carreira e recarrega. Nunca recarrega sozinho.
+
+Testes
+
+* Novos: `tests/e2e/test_career_pg_001.js` (12 checks, modo Postgres —
+  pula com PASS sem DATABASE_URL) e `tests/e2e/test_app_version_toast.js`
+  (10 checks).
+* Ajustado: `test_save_limit_001_careerstore.js` (await nas chamadas
+  agora assíncronas; força modo arquivo).
+* `npm run test:fast`: 18/18 PASS (modo arquivo).
+* `npm run test:full`: em andamento (atualizo aqui ao terminar).
+
+Riscos / pendências
+
+* Precisa de ação no Railway em cada ambiente: adicionar Postgres e
+  `DATABASE_URL=${{Postgres.DATABASE_URL}}` no serviço (ver checklist).
+  Sem isso o deploy continua no arquivo, sem quebra.
+* Com Postgres não há mais leitura em memória: GET /api/career vai ao
+  banco a cada abertura da carreira (~1 query, ~40KB gzip) — irrelevante
+  no volume atual.
+* Os caps de histórico do cliente (`*_MAX` em carreira.js) e o elenco
+  reduzido de outras divisões continuam como estão — existiam também
+  por desempenho do cliente; afrouxá-los seria demanda própria.
+* Home (`index.html`) segue com o aviso antigo via service worker —
+  o toast novo é só do Modo Técnico.
+
+⸻
+
 S4-B5-QA-001 — Batch 5: QA Visual/UX transversal — fecha a S4
 
 Status: PRONTO PARA IMPLEMENTAÇÃO

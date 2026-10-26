@@ -11,6 +11,11 @@ const crypto = require("crypto");
 
 const os = require("os");
 
+// CAREER-PG-001 — este teste cobre o modo ARQUIVO; com DATABASE_URL no
+// ambiente (suíte rodando contra Postgres) careerStore.js trocaria de
+// backend. O modo Postgres tem teste próprio: test_career_pg_001.js.
+delete process.env.DATABASE_URL;
+
 // Fase B do motor de testes: o teste usava o server/data/careers.json DO
 // REPOSITÓRIO (e terminava gravando "{}" nele), apagando as carreiras do
 // servidor de dev a cada execução da suíte. careerStore.js grava em
@@ -40,8 +45,8 @@ function randomIncompressible(bytes) {
   // 1) Save normal: round-trip idêntico (comprime ao salvar, descomprime ao ler).
   let careerStore = freshStore();
   const normal = { clubId: "cap", squad: [{ id: "p1", name: "Jogador Um" }], newsFeed: [{ headline: "oi" }] };
-  const saved1 = careerStore.saveCareer("u1", normal);
-  const reread1 = careerStore.getCareer("u1");
+  const saved1 = await careerStore.saveCareer("u1", normal);
+  const reread1 = await careerStore.getCareer("u1");
   check("1) Save normal: round-trip idêntico (comprimido no armazenamento, transparente na leitura):",
     JSON.stringify(saved1) === JSON.stringify(normal) && JSON.stringify(reread1) === JSON.stringify(normal));
 
@@ -64,7 +69,7 @@ function randomIncompressible(bytes) {
   // nenhuma ação do cliente.
   const legacy = { clubId: "gre", squad: [{ id: "p2", name: "Jogador Dois" }], seasonYear: 2026 };
   careerStore = freshStore({ u_legacy: legacy });
-  const migrated = careerStore.getCareer("u_legacy");
+  const migrated = await careerStore.getCareer("u_legacy");
   check("3) Save antigo (pré-compressão) migra transparente ao carregar:", JSON.stringify(migrated) === JSON.stringify(legacy));
 
   // 4) newsFeed gigante e incompressível estoura o limite comprimido —
@@ -73,7 +78,7 @@ function randomIncompressible(bytes) {
   careerStore = freshStore();
   const bigNews = { clubId: "cap", squad: [{ id: "p1", name: "Jogador Um" }], newsFeed: Array.from({ length: 200 }, () => ({ headline: randomIncompressible(6000) })) };
   let threw4 = false, saved4 = null;
-  try { saved4 = careerStore.saveCareer("u4", bigNews); } catch (e) { threw4 = true; }
+  try { saved4 = await careerStore.saveCareer("u4", bigNews); } catch (e) { threw4 = true; }
   check("4) Histórico gigante incompressível -> poda automática resolve sozinha (nunca toca squad/clubId):",
     !threw4 && saved4 && saved4.newsFeed.length <= 20 && saved4.clubId === "cap" && saved4.squad.length === 1,
     saved4 ? `newsFeed: ${saved4.newsFeed.length} entradas` : null);
@@ -84,15 +89,15 @@ function randomIncompressible(bytes) {
   careerStore = freshStore();
   const bigSquad = { clubId: "cap", squad: Array.from({ length: 300 }, (_, i) => ({ id: "p" + i, name: randomIncompressible(6000) })) };
   let threw5 = false, status5 = null;
-  try { careerStore.saveCareer("u5", bigSquad); } catch (e) { threw5 = true; status5 = e.status; }
-  const afterFailedSave = careerStore.getCareer("u5");
+  try { await careerStore.saveCareer("u5", bigSquad); } catch (e) { threw5 = true; status5 = e.status; }
+  const afterFailedSave = await careerStore.getCareer("u5");
   check("5) Estado ativo (squad) gigante -- poda não mexe nisso, lança 413 explícito, nada fica meio-salvo:",
     threw5 && status5 === 413 && afterFailedSave === null);
 
   // 6) Formato inválido continua rejeitado com 400 (regra antiga preservada).
   careerStore = freshStore();
   let threw6 = false, status6 = null;
-  try { careerStore.saveCareer("u6", { foo: "bar" }); } catch (e) { threw6 = true; status6 = e.status; }
+  try { await careerStore.saveCareer("u6", { foo: "bar" }); } catch (e) { threw6 = true; status6 = e.status; }
   check("6) Formato de save inválido continua rejeitado com 400 (regra preservada):", threw6 && status6 === 400);
 
 })().catch((e) => { console.error("FATAL:", e); process.exit(1); });

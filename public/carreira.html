@@ -13,6 +13,10 @@
      "zoom" no sentido de viewport) é bloqueado à parte via
      touch-action:manipulation no <body>, ver <style>. -->
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<!-- APP-VERSION-001 — o servidor troca o marcador pela versão (commit)
+     servida no momento em que esta aba carregou; ver checkAppVersion em
+     js/carreira.js e APP_VERSION em server/server.js. -->
+<meta name="brdata-version" content="__APP_VERSION__">
 <title>Modo Técnico · BR Data</title>
 <!-- AJUSTE (pedido do usuário: "quando eu clico em adicionar à tela
      de início no Chrome eu quero que a logo do BR Data fique em

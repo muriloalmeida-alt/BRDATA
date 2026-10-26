@@ -17,7 +17,9 @@
    MESMO AVISO de users.js/sessions.js: em host com sistema de
    arquivos efêmero (Railway sem Volume anexado), esse arquivo é
    apagado a cada novo deploy — quem estiver com uma carreira em
-   andamento perde o progresso. */
+   andamento perde o progresso. CAREER-PG-001: com DATABASE_URL
+   configurada, o save vai pro Postgres (ver createPgBackend) e esse
+   aviso deixa de valer pras carreiras. */
 
 const fs = require("fs");
 const path = require("path");
@@ -63,7 +65,21 @@ const FILE = path.join(DATA_DIR, "careers.json");
 // (não o JSON bruto) — na prática, o teto efetivo de JSON bruto sobe
 // de ~768KB pra ~10MB (768KB / ~0.075 de razão de compressão medida),
 // eliminando o cenário relatado sem precisar mexer no número em si.
-const MAX_BYTES = 768 * 1024;
+//
+// CAREER-PG-001 — com Postgres (ver createPgBackend abaixo) o teto
+// comprimido sobe pra 8MB (~100MB de JSON bruto na razão medida):
+// cada carreira é uma linha própria, não infla mais um arquivo único
+// com todas as contas. Continua existindo como trava contra blob
+// infinito (bug no cliente / conta comprometida), não como limite de
+// jogo. Modo arquivo (sem DATABASE_URL) mantém os 768KB de sempre.
+const MAX_BYTES = (process.env.DATABASE_URL ? 8 * 1024 : 768) * 1024;
+
+// CAREER-PG-001 — teto do CORPO do PUT /api/career (JSON bruto, antes
+// de comprimir — ver readBody em server.js). Era o 1MB genérico de
+// todas as rotas: uma carreira "multi" já nasce em ~560KB brutos e
+// cresce ao longo das temporadas, então esse era o próximo limite
+// "invisível" a estourar, mesmo com o armazenamento resolvido.
+const MAX_BODY_BYTES = 16 * 1024 * 1024;
 
 // SAVE-LIMIT-001 — última linha de defesa: se MESMO comprimido o save
 // ainda estourar MAX_BYTES (não encontrado em nenhuma medição real,
@@ -118,9 +134,9 @@ function decompressEnvelope(entry) {
   return entry; // formato antigo (pré-compressão) — ver load()
 }
 
-let store = new Map(); // userId -> envelope comprimido { __gz }
+let store = new Map(); // userId -> envelope comprimido { __gz } (só no modo arquivo)
 
-function load() {
+function loadFile() {
   try {
     if (fs.existsSync(FILE)) {
       const raw = JSON.parse(fs.readFileSync(FILE, "utf8"));
@@ -162,9 +178,124 @@ function persist() {
   scheduleWrite(FILE, DATA_DIR, () => JSON.stringify(Object.fromEntries(store)));
 }
 
-load();
+// CAREER-PG-001 (pedido do usuário: "mudar a forma de gravar carreira
+// para postgres, com isso não teremos problemas de espaço") — com
+// DATABASE_URL configurada (Railway preenche sozinho ao anexar um
+// Postgres ao serviço), cada carreira vira 1 linha da tabela `careers`,
+// guardada no MESMO formato comprimido de antes (gzip em BYTEA, não
+// JSONB — o blob continua opaco pro backend, ver aviso no topo, e
+// comprimido ocupa ~92-95% menos). Resolve de vez os 2 problemas do
+// arquivo único: 1) disco efêmero do Railway apagando todo save a cada
+// deploy sem Volume; 2) `careers.json` com TODAS as contas num blob só,
+// reescrito inteiro a cada save. Sem DATABASE_URL (dev local, suíte
+// E2E) continua no arquivo de sempre — nenhuma mudança de comportamento.
+const pg = process.env.DATABASE_URL ? createPgBackend(process.env.DATABASE_URL) : null;
 
-function getCareer(userId) {
+function createPgBackend(connectionString) {
+  const { Pool } = require("pg");
+  // SSL: Postgres interno do Railway (*.railway.internal) não usa TLS;
+  // a URL pública (proxy) usa — PGSSLMODE=require / ?sslmode=require na
+  // própria URL ligam. rejectUnauthorized:false porque o certificado do
+  // proxy do Railway é autoassinado.
+  const wantsSsl = /sslmode=require/.test(connectionString) || process.env.PGSSLMODE === "require";
+  const pool = new Pool({
+    connectionString,
+    max: Number(process.env.PG_POOL_MAX) || 5,
+    ssl: wantsSsl ? { rejectUnauthorized: false } : undefined,
+  });
+  pool.on("error", (err) => console.error("[careerStore] erro no pool do Postgres:", err.message));
+
+  const ready = (async () => {
+    await pool.query(`CREATE TABLE IF NOT EXISTS careers (
+      user_id    TEXT PRIMARY KEY,
+      data_gz    BYTEA NOT NULL,
+      raw_bytes  INTEGER NOT NULL,
+      gz_bytes   INTEGER NOT NULL,
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    )`);
+    // Migração única do arquivo antigo (se o host tiver Volume e ainda
+    // existir careers.json): importa só quem ainda não tem linha no
+    // banco (ON CONFLICT DO NOTHING) — nunca sobrescreve um save mais
+    // novo já gravado no Postgres. Depois o arquivo é renomeado (não
+    // apagado — fica como backup): sem isso, uma carreira apagada pelo
+    // técnico ("Reiniciar") voltaria do arquivo no próximo boot.
+    if (fs.existsSync(FILE)) {
+      loadFile();
+      let imported = 0;
+      for (const [userId, entry] of store) {
+        const data = decompressEnvelope(entry);
+        if (!isValidCareerShape(data)) continue;
+        const json = Buffer.from(JSON.stringify(data), "utf8");
+        const gz = zlib.gzipSync(json);
+        const r = await pool.query(
+          "INSERT INTO careers (user_id, data_gz, raw_bytes, gz_bytes) VALUES ($1, $2, $3, $4) ON CONFLICT (user_id) DO NOTHING",
+          [userId, gz, json.length, gz.length]
+        );
+        imported += r.rowCount;
+      }
+      store = new Map(); // não fica segurando todas as carreiras em memória à toa
+      fs.renameSync(FILE, `${FILE}.migrated-to-pg`);
+      if (imported) console.log(`[careerStore] ${imported} carreira(s) importada(s) de careers.json pro Postgres.`);
+    }
+    console.log("[careerStore] gravando carreiras no Postgres.");
+  })();
+  // Falha de conexão no boot não derruba o processo (resto do site
+  // segue no ar) — cada chamada abaixo reaguarda `ready` e devolve o
+  // erro pro cliente (500), visível no toast de "não deu pra salvar".
+  ready.catch((err) => console.error("[careerStore] falha ao preparar o Postgres:", err.message));
+
+  // Saves do MESMO usuário são enfileirados (nunca 2 em paralelo): com
+  // pool de várias conexões, 2 PUTs seguidos poderiam commitar fora de
+  // ordem e o save mais VELHO ganhar. Fila por usuário mantém a ordem
+  // de chegada (a mesma garantia que o Map síncrono dava de graça).
+  const queues = new Map(); // userId -> Promise da última operação
+  function serialize(userId, fn) {
+    const prev = queues.get(userId) || Promise.resolve();
+    const next = prev.catch(() => {}).then(fn);
+    queues.set(userId, next);
+    const cleanup = () => { if (queues.get(userId) === next) queues.delete(userId); };
+    next.then(cleanup, cleanup);
+    return next;
+  }
+
+  return {
+    async get(userId) {
+      await ready;
+      const r = await pool.query("SELECT data_gz FROM careers WHERE user_id = $1", [userId]);
+      if (!r.rowCount) return null;
+      return JSON.parse(zlib.gunzipSync(r.rows[0].data_gz).toString("utf8"));
+    },
+    set(userId, gz, rawBytes) {
+      return serialize(userId, async () => {
+        await ready;
+        await pool.query(
+          `INSERT INTO careers (user_id, data_gz, raw_bytes, gz_bytes, updated_at) VALUES ($1, $2, $3, $4, now())
+           ON CONFLICT (user_id) DO UPDATE SET data_gz = EXCLUDED.data_gz, raw_bytes = EXCLUDED.raw_bytes,
+             gz_bytes = EXCLUDED.gz_bytes, updated_at = now()`,
+          [userId, gz, rawBytes, gz.length]
+        );
+      });
+    },
+    del(userId) {
+      return serialize(userId, async () => {
+        await ready;
+        const r = await pool.query("DELETE FROM careers WHERE user_id = $1", [userId]);
+        return r.rowCount > 0;
+      });
+    },
+    async close() {
+      await Promise.allSettled([...queues.values()]);
+      await pool.end();
+    },
+  };
+}
+
+if (!pg) loadFile();
+
+// Mesma interface nos 2 modos, agora assíncrona (Postgres exige) —
+// server.js aguarda cada chamada.
+async function getCareer(userId) {
+  if (pg) return pg.get(userId);
   return decompressEnvelope(store.get(userId));
 }
 
@@ -179,16 +310,26 @@ function isValidCareerShape(data) {
     && Array.isArray(data.squad);
 }
 
-function saveCareer(userId, data) {
+function compressForStore(data) {
+  const json = Buffer.from(JSON.stringify(data), "utf8");
+  return { gz: zlib.gzipSync(json), rawBytes: json.length };
+}
+
+async function writeCompressed(userId, { gz, rawBytes }) {
+  if (pg) return pg.set(userId, gz, rawBytes);
+  store.set(userId, { __gz: gz.toString("base64") });
+  persist();
+}
+
+async function saveCareer(userId, data) {
   if (!isValidCareerShape(data)) {
     const err = new Error("Formato de save inválido.");
     err.status = 400;
     throw err;
   }
-  const first = compressToEnvelope(data);
-  if (first.compressedBytes <= MAX_BYTES) {
-    store.set(userId, first.envelope);
-    persist();
+  const first = compressForStore(data);
+  if (first.gz.length <= MAX_BYTES) {
+    await writeCompressed(userId, first);
     return data;
   }
   // SAVE-LIMIT-001 — última linha de defesa antes do beco sem saída:
@@ -200,10 +341,9 @@ function saveCareer(userId, data) {
   // saída automática antes de recusar.
   const pruned = JSON.parse(JSON.stringify(data));
   if (pruneNonEssentialHistory(pruned)) {
-    const retry = compressToEnvelope(pruned);
-    if (retry.compressedBytes <= MAX_BYTES) {
-      store.set(userId, retry.envelope);
-      persist();
+    const retry = compressForStore(pruned);
+    if (retry.gz.length <= MAX_BYTES) {
+      await writeCompressed(userId, retry);
       // Devolve o que foi de fato salvo (podado) — persistCareer() no
       // cliente não consome a resposta hoje (o estado ativo do jogo
       // nunca foi tocado), mas fica correto pra quem vier a depender
@@ -216,10 +356,20 @@ function saveCareer(userId, data) {
   throw err;
 }
 
-function deleteCareer(userId) {
+async function deleteCareer(userId) {
+  if (pg) return pg.del(userId);
   const existed = store.delete(userId);
   if (existed) persist();
   return existed;
 }
 
-module.exports = { getCareer, saveCareer, deleteCareer };
+// Desligamento limpo (SIGTERM/SIGINT, ver server.js): espera os saves
+// em andamento terminarem antes de fechar o pool. No modo arquivo não
+// faz nada — flushAllSync() de debouncedPersist.js já cobre.
+async function close() {
+  if (pg) await pg.close();
+}
+
+const storageBackend = pg ? "postgres" : "file";
+
+module.exports = { getCareer, saveCareer, deleteCareer, close, storageBackend, MAX_BODY_BYTES };

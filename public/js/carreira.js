@@ -541,9 +541,22 @@ function toastStatHTML(stat) {
 // toast() pra ser reaproveitada também pelo clique de fechar (ver
 // wireEvents), sem duplicar a lógica de limpar o timer/reposicionador.
 function hideToast() {
-  document.getElementById("toast").style.display = "none";
+  const el = document.getElementById("toast");
+  const wasUpdate = el.dataset.kind === "update";
+  el.style.display = "none";
+  el.dataset.kind = "";
   clearTimeout(toastTimer);
   clearInterval(toastRepositionTimer);
+  // APP-VERSION-001 — outro toast tomou o lugar do aviso de versão nova
+  // por alguns segundos; quando ele sai, o aviso volta (ver
+  // showAppUpdateToast).
+  if (!wasUpdate && appUpdateAvailable) showAppUpdateToast();
+}
+// APP-VERSION-001 — o aviso de versão nova atualiza ao ser tocado; os
+// demais toasts só fecham (comportamento de sempre).
+function onToastClick() {
+  if (document.getElementById("toast").dataset.kind === "update") applyAppUpdate();
+  else hideToast();
 }
 // `input` aceita uma string simples (vira só o título) ou um objeto
 // {title, detail, stats} pra mensagens com mais de uma informação
@@ -554,8 +567,11 @@ function hideToast() {
 // aceita um número (dura esse tanto, mesmo default de sempre) ou
 // {durationMs, type: "pos"|"info"|"warn"} — "info" (dourado) por
 // padrão quando não especificado.
+// APP-VERSION-001 — `sticky: true` não some sozinho (fica até o
+// clique ou até outro toast tomar o lugar); `kind` marca o toast
+// (hoje só "update", ver onToastClick).
 function toast(input, opts = {}) {
-  const { durationMs = 3600, type = "info" } = typeof opts === "number" ? { durationMs: opts } : opts;
+  const { durationMs = 3600, type = "info", sticky = false, kind = "" } = typeof opts === "number" ? { durationMs: opts } : opts;
   const el = document.getElementById("toast");
   let title, detail, stats;
   if (typeof input === "string") {
@@ -566,6 +582,7 @@ function toast(input, opts = {}) {
     ({ title, detail, stats } = input);
   }
   el.className = `ct-toast ${type}`;
+  el.dataset.kind = kind;
   el.innerHTML = `
     <div class="ct-toast-row1"><span class="ct-toast-dot"></span><span class="ct-toast-title">${escapeHtml(title)}</span></div>
     ${detail ? `<div class="ct-toast-row2"><span class="ct-toast-detail">${escapeHtml(detail)}</span></div>` : ""}
@@ -575,7 +592,73 @@ function toast(input, opts = {}) {
   clearTimeout(toastTimer);
   clearInterval(toastRepositionTimer);
   toastRepositionTimer = setInterval(() => { el.style.bottom = toastBottomOffset() + "px"; }, 150);
-  toastTimer = setTimeout(hideToast, durationMs);
+  if (!sticky) toastTimer = setTimeout(hideToast, durationMs);
+}
+
+// ---------- Aviso de versão nova (APP-VERSION-001) ----------
+// Pedido do usuário: "criar o toast que comunica quando houve uma
+// atualização de versão no jogo. Esse toast deve sempre olhar se o
+// commit do jogo está igual ao último no servidor". A versão que ESTA
+// aba carregou vem embutida no HTML (<meta name="brdata-version">,
+// preenchida pelo servidor — ver APP_VERSION em server.js); a versão
+// atual do servidor vem de GET /api/version. Confere no boot, a cada
+// APP_VERSION_CHECK_MS e sempre que a aba volta a ficar visível (caso
+// comum no celular: app em segundo plano durante o deploy). Diferente
+// de index.html (aviso via "controllerchange" do service worker), não
+// depende do service worker ter sido atualizado — compara o commit
+// direto. Nunca recarrega sozinho: só o toque do técnico atualiza, e
+// nunca no meio de uma partida ao vivo (LIVE_MATCH não é persistido).
+const APP_VERSION_CHECK_MS = 2 * 60 * 1000;
+let LOADED_APP_VERSION = null;
+let appUpdateAvailable = false;
+function readLoadedAppVersion() {
+  const v = document.querySelector('meta[name="brdata-version"]')?.content || "";
+  // Marcador não substituído = HTML servido por fora do server.js
+  // (arquivo aberto direto, outro servidor) — cai pra 1ª resposta de
+  // /api/version como referência (ver checkAppVersion).
+  return v && v !== "__APP_VERSION__" ? v : null;
+}
+async function checkAppVersion() {
+  if (document.hidden) return;
+  if (appUpdateAvailable) { showAppUpdateToast(); return; } // já detectada — só garante que o aviso está visível
+  try {
+    // fetch direto (não fetchJSON) — checagem em segundo plano não
+    // deve acender o indicador de carregamento das ações.
+    const res = await fetch("/api/version", { cache: "no-store" });
+    if (!res.ok) return;
+    const { version } = await res.json();
+    if (!version) return;
+    if (!LOADED_APP_VERSION) { LOADED_APP_VERSION = version; return; }
+    if (version !== LOADED_APP_VERSION) {
+      appUpdateAvailable = true;
+      showAppUpdateToast();
+    }
+  } catch { /* offline/servidor reiniciando no meio do deploy — tenta de novo no próximo ciclo */ }
+}
+function showAppUpdateToast() {
+  const el = document.getElementById("toast");
+  if (LIVE_MATCH) {
+    // Partida ao vivo em andamento: esconde o aviso (um toque sem
+    // querer recarregaria e perderia a partida) — volta no próximo
+    // ciclo de checkAppVersion depois que a partida acabar.
+    if (el.dataset.kind === "update") hideToast();
+    return;
+  }
+  if (el.dataset.kind === "update" && el.style.display !== "none") return; // já visível
+  if (el.style.display === "flex") return; // outro toast na tela — hideToast() reexibe este quando ele sair
+  toast({ title: "Nova versão do jogo disponível", detail: "Toque aqui para atualizar — seu progresso fica salvo." }, { type: "pos", sticky: true, kind: "update" });
+}
+async function applyAppUpdate() {
+  if (LIVE_MATCH) { showAppUpdateToast(); return; }
+  hideToast();
+  if (CAREER) await persistCareer(); // garante o último estado no servidor antes de recarregar
+  location.reload();
+}
+function startAppVersionWatch() {
+  LOADED_APP_VERSION = readLoadedAppVersion();
+  checkAppVersion();
+  setInterval(checkAppVersion, APP_VERSION_CHECK_MS);
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) checkAppVersion(); });
 }
 
 // ---------- M3 Dialog / Bottom Sheet / Skeleton (S3-DS20-S4-PREP-001) ----------
@@ -15140,7 +15223,7 @@ function wireStaticListeners() {
   // #toast (nunca recriado — toast() só troca innerHTML/className a
   // cada chamada), então wired uma vez só aqui no boot, não a cada
   // toast() disparado (evitaria empilhar um listener novo por chamada).
-  document.getElementById("toast").addEventListener("click", hideToast);
+  document.getElementById("toast").addEventListener("click", onToastClick);
 
   // Onboarding — "Pular" fecha direto; "Avançar" passa pro próximo
   // slide (ou fecha, se já for o último — ver renderOnboardingSlide,
@@ -16293,6 +16376,7 @@ async function boot() {
   applyStoredTheme();
   wireStaticListeners();
   wireModalScrollResetObserver();
+  startAppVersionWatch();
   try {
     const me = await fetchJSON("/api/auth/me").catch(() => ({ authenticated: false }));
     if (!me.authenticated) { show("screenLoginRequired"); return; }

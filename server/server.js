@@ -74,6 +74,16 @@ const PORT = process.env.PORT || 8787;
 // (era o processo antigo — ver histórico de "BUMP" no git blame de
 // sw.js). Também exposto em GET /api/health, só pra debug.
 const DEPLOY_VERSION = Date.now().toString(36);
+// APP-VERSION-001 (pedido do usuário: toast avisando que saiu versão
+// nova, "sempre olhar se o commit do jogo está igual ao último no
+// servidor") — identidade da versão servida: o commit do build
+// (Railway preenche RAILWAY_GIT_COMMIT_SHA sozinho) e, sem ele (dev
+// local), o DEPLOY_VERSION do boot. Vai embutida em todo .html servido
+// ("__APP_VERSION__", ver serveStatic) — é a versão que a ABA carregou —
+// e em GET /api/version — a versão que o servidor serve AGORA. O
+// cliente compara as duas (ver checkAppVersion em carreira.js).
+const APP_COMMIT = (process.env.RAILWAY_GIT_COMMIT_SHA || process.env.GIT_COMMIT_SHA || "").slice(0, 12) || null;
+const APP_VERSION = APP_COMMIT || DEPLOY_VERSION;
 const LEAGUE_ID = process.env.LEAGUE_ID || "71"; // 71 = Brasileirão Série A na API-Sports (confirme no /api/leagues/search)
 // Temporada usada no modo ao vivo — configurável no Railway/host, sem
 // precisar editar código nem dar redeploy manual de código toda vez
@@ -401,13 +411,15 @@ function resolveCompetition(req, searchParams, opts = {}) {
 // Lê o corpo de um POST (JSON ou form-urlencoded, o Mercado Pago pode
 // mandar qualquer um dos dois no webhook dependendo da configuração).
 // Limite de 1MB — esses endpoints só recebem payloads pequenos.
-function readBody(req) {
+// CAREER-PG-001 — `maxBytes` opcional pra rota que recebe payload
+// grande de verdade (PUT /api/career, ver careerStore.MAX_BODY_BYTES).
+function readBody(req, maxBytes = 1024 * 1024) {
   return new Promise((resolve, reject) => {
     let size = 0;
     const chunks = [];
     req.on("data", (chunk) => {
       size += chunk.length;
-      if (size > 1024 * 1024) { reject(new Error("corpo da requisição grande demais")); req.destroy(); return; }
+      if (size > maxBytes) { const e = new Error("corpo da requisição grande demais"); e.status = 413; reject(e); req.destroy(); return; }
       chunks.push(chunk);
     });
     req.on("end", () => {
@@ -918,7 +930,7 @@ function serveStatic(req, res) {
     res.writeHead(200, headers);
     // Todo .html (raiz, privacidade, admin) leva a checagem de
     // homologação — ver withRobotsMetaIfHomolog acima.
-    if (ext === ".html") return res.end(withRobotsMetaIfHomolog(req, data.toString("utf8")));
+    if (ext === ".html") return res.end(withRobotsMetaIfHomolog(req, data.toString("utf8").replaceAll("__APP_VERSION__", APP_VERSION)));
     res.end(data);
   });
 }
@@ -928,6 +940,12 @@ const server = http.createServer(async (req, res) => {
   const { pathname, searchParams } = url;
 
   try {
+    // APP-VERSION-001 — consultado periodicamente pela carreira (ver
+    // APP_VERSION acima). Público e minúsculo de propósito: roda antes
+    // do guard de login, sem tocar em fornecedor de dados nenhum.
+    if (pathname === "/api/version") {
+      return sendJSON(res, 200, { version: APP_VERSION, commit: APP_COMMIT });
+    }
     if (pathname === "/api/health") {
       return sendJSON(res, 200, {
         ok: true,
@@ -942,7 +960,8 @@ const server = http.createServer(async (req, res) => {
         // correção, comparar esse valor com o hash do commit no
         // GitHub) — sem isso não dava pra saber, só de olhar o
         // comportamento do site, se o host tinha mesmo redeployado.
-        commit: (process.env.RAILWAY_GIT_COMMIT_SHA || process.env.GIT_COMMIT_SHA || "").slice(0, 12) || null,
+        commit: APP_COMMIT,
+        careerStorage: careerStore.storageBackend, // CAREER-PG-001 — "postgres" ou "file"
         deployVersion: DEPLOY_VERSION, // muda a cada boot -- ver comentário ao lado da constante
         // Sinal explícito pra debug: pediram modo ao vivo (APP_MODE=live)
         // mas o fornecedor ativo não tem credencial configurada no host
@@ -1643,7 +1662,7 @@ const server = http.createServer(async (req, res) => {
       return fs.readFile(path.join(PUBLIC_DIR, "carreira.html"), (err, data) => {
         if (err) { res.writeHead(404); return res.end("Not found"); }
         res.writeHead(200, { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-cache" });
-        res.end(data.toString("utf8").replace(
+        res.end(data.toString("utf8").replaceAll("__APP_VERSION__", APP_VERSION).replace(
           "</head>",
           `<meta name="robots" content="noindex, nofollow">\n</head>`
         ));
@@ -2237,15 +2256,15 @@ const server = http.createServer(async (req, res) => {
     // elenco/escalação/tabela/notícias são montados e recalculados no
     // cliente (public/js/carreira.js), aqui só persiste por conta.
     if (pathname === "/api/career" && req.method === "GET") {
-      return sendJSONMaybeGzip(req, res, 200, { career: careerStore.getCareer(req.authUser.id) });
+      return sendJSONMaybeGzip(req, res, 200, { career: await careerStore.getCareer(req.authUser.id) });
     }
     if (pathname === "/api/career" && req.method === "PUT") {
-      const body = await readBody(req);
-      const saved = careerStore.saveCareer(req.authUser.id, body);
+      const body = await readBody(req, careerStore.MAX_BODY_BYTES);
+      const saved = await careerStore.saveCareer(req.authUser.id, body);
       return sendJSON(res, 200, { career: saved });
     }
     if (pathname === "/api/career" && req.method === "DELETE") {
-      careerStore.deleteCareer(req.authUser.id);
+      await careerStore.deleteCareer(req.authUser.id);
       return sendJSON(res, 200, { ok: true });
     }
 
@@ -2812,7 +2831,11 @@ const server = http.createServer(async (req, res) => {
 function gracefulShutdown(signal) {
   console.log(`\n[server] ${signal} recebido — descarregando saves pendentes antes de sair...`);
   flushAllSync();
-  server.close(() => process.exit(0));
+  // CAREER-PG-001 — espera saves de carreira em andamento no Postgres
+  // (no modo arquivo é no-op) antes de soltar o processo.
+  careerStore.close()
+    .catch((err) => console.error("[server] falha ao fechar o Postgres:", err.message))
+    .finally(() => server.close(() => process.exit(0)));
   // Se algo travar o close (conexão pendurada), não fica esperando pra
   // sempre — o flush já rodou, é o que importa de verdade.
   setTimeout(() => process.exit(0), 3000).unref();
