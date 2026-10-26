@@ -53,7 +53,7 @@ async function enterGame(page, { claimDailyLogin = true } = {}) {
     const opened = await page.waitForSelector("#dailyLoginOverlay.open", { timeout: 3000 }).then(() => true, () => false);
     if (opened) {
       await page.click("#btnClaimDailyLogin");
-      await page.waitForFunction(() => !document.getElementById("dailyLoginOverlay").classList.contains("open"), null, { timeout: 5000 });
+      await page.waitForFunction(() => !document.getElementById("dailyLoginOverlay").classList.contains("open"), null, { timeout: 15000 }); // 5 s estourou sob carga (concorrência 16)
     }
   }
   await page.waitForFunction(() => ![...document.querySelectorAll(".ct-modal-overlay.open")].some((e) => e.id !== "actionLoadingOverlay" && (e.id !== "dailyLoginOverlay")), null, { timeout: 5000 }).catch(() => {});
