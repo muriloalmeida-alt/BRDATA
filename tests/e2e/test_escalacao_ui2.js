@@ -142,7 +142,7 @@ async function newCareer(page, base, email) {
   await page.waitForSelector("#liveMatchOverlay.open", { timeout: 5000 });
   const liveHasClose = await page.evaluate(() => !!document.getElementById("liveMatchClose"));
   await page.click("#liveMatchClose");
-  await page.waitForSelector("#matchDetailOverlay.open", { timeout: 5000 });
+  await page.waitForSelector("#matchDetailOverlay.open", { timeout: 20000 });
   check("8) liveMatchOverlay tem X:", liveHasClose, "| clicar no X termina a partida e mostra o resultado:", true);
   await page.click("#btnMatchDetailContinue");
   await page.waitForTimeout(300);

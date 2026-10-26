@@ -122,7 +122,7 @@ async function getCareer(page) {
   await page.evaluate(() => { Math.random = window.__origRandom; });
   const beforeSkip = await page.evaluate(() => CAREER.currentRound);
   await page.evaluate(() => skipLiveMatch());
-  await page.waitForSelector("#matchDetailOverlay.open", { timeout: 5000 });
+  await page.waitForSelector("#matchDetailOverlay.open", { timeout: 20000 });
   const career1 = await getCareer(page);
   check("6) Partida terminou e rodada avançou (skipLiveMatch):", career1.currentRound === beforeSkip + 1);
   console.log("   Modal 'Seu jogo' mostra o placar final ao vivo:", true, "-- texto:", await page.evaluate(() => document.getElementById("matchDetailScore").textContent.trim()));

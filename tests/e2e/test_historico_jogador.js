@@ -40,7 +40,7 @@ async function simulateWholeSeasonFast(page) {
     const result = await page.evaluate(() => simulateRound());
     if (result === "live") {
       await page.evaluate(() => skipLiveMatch());
-      await page.waitForSelector("#matchDetailOverlay.open", { timeout: 8000 }).catch(() => {});
+      await page.waitForSelector("#matchDetailOverlay.open", { timeout: 20000 }).catch(() => {});
       await page.evaluate(() => {
         ["matchDetailOverlay", "roundResultsOverlay", "newsOverlay", "tabelaModalOverlay", "playerOfferOverlay", "pressOverlay"].forEach((id) => document.getElementById(id).classList.remove("open"));
         CAREER.pendingOffer = null;

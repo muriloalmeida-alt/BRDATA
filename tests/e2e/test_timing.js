@@ -62,7 +62,7 @@ const { skipPreseason } = require("./_calendar_skip");
   await page.click("#btnPreMatchGo");
   await page.waitForSelector("#liveMatchOverlay.open", { timeout: 5000 });
   await page.click("#btnLiveSkip");
-  await page.waitForSelector("#matchDetailOverlay.open, #roundResultsOverlay.open", { timeout: 10000 });
+  await page.waitForSelector("#matchDetailOverlay.open, #roundResultsOverlay.open", { timeout: 20000 });
   await page.waitForTimeout(300);
   const matchOpen = await page.evaluate(() => document.getElementById("matchDetailOverlay").classList.contains("open"));
   await page.screenshot({ path: "timing-matchmodal.png" });

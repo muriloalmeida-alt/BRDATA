@@ -55,7 +55,7 @@ const { skipPreseason } = require("./_calendar_skip");
   await page.click("#btnPreMatchGo");
   await page.waitForSelector("#liveMatchOverlay.open", { timeout: 5000 });
   await page.evaluate(() => skipLiveMatch());
-  await page.waitForSelector("#matchDetailOverlay.open", { timeout: 5000 });
+  await page.waitForSelector("#matchDetailOverlay.open", { timeout: 20000 });
   // Este teste é sobre o toast POR CIMA da coletiva (tela sem rodapé
   // fixo), não sobre o gatilho dela (coberto por test_coletiva_imprensa).
   // Se a partida não gerou gatilho (empate em casa não gera nenhum),

@@ -82,7 +82,16 @@ async function playRound(page, hooks = {}) {
     && ![...document.querySelectorAll(".ct-modal-overlay.open")].some((e) => e.id !== "actionLoadingOverlay"), null, { timeout: 15000 }).then(() => true, () => false);
   if (!clean) {
     const st = await readState(page);
-    throw new Error(`playRound: tela do jogo não ficou limpa pra começar a rodada (abertas: ${st.open.join(", ") || "nenhuma"}; botão ocupado: ${st.busy})`);
+    // O que está no lugar do "Fechar" da Tabela (se ela sobrou aberta):
+    // diz se o clique não passou por estar coberto, fora da tela ou invisível.
+    const closeBtn = await page.evaluate(() => {
+      const b = document.getElementById("btnTabelaModalCloseFooter");
+      if (!b || !document.getElementById("tabelaModalOverlay").classList.contains("open")) return null;
+      const r = b.getBoundingClientRect();
+      const top = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+      return { rect: [Math.round(r.top), Math.round(r.bottom)], viewport: innerHeight, display: getComputedStyle(b).display, coveredBy: top && top !== b && !b.contains(top) ? `${top.tagName}#${top.id}.${top.className}` : null };
+    });
+    throw new Error(`playRound: tela do jogo não ficou limpa pra começar a rodada (abertas: ${st.open.join(", ") || "nenhuma"}; botão ocupado: ${st.busy}${closeBtn ? `; Fechar da Tabela: ${JSON.stringify(closeBtn)}` : ""})`);
   }
   await page.evaluate(() => document.getElementById("btnSimulate").click());
   const t0 = Date.now();

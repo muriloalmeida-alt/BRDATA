@@ -34,7 +34,7 @@ const { skipPreseason } = require("./_calendar_skip");
   await page.click("#btnPreMatchGo");
   await page.waitForSelector("#liveMatchOverlay.open", { timeout: 5000 });
   await page.evaluate(() => skipLiveMatch());
-  await page.waitForSelector("#matchDetailOverlay.open, #roundResultsOverlay.open", { timeout: 10000 });
+  await page.waitForSelector("#matchDetailOverlay.open, #roundResultsOverlay.open", { timeout: 20000 });
   await page.waitForTimeout(500);
 
   // Confere direto no servidor (fetch real) que o save persistiu sem

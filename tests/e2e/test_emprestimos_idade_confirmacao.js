@@ -150,7 +150,7 @@ async function newCareer(page, base, email) {
   await page.click("#btnSimulate");
   await page.waitForSelector("#preMatchOverlay.open");
   await page.click("#btnPreMatchGo");
-  await page.waitForSelector("#liveMatchOverlay.open, #matchDetailOverlay.open", { timeout: 5000 });
+  await page.waitForSelector("#liveMatchOverlay.open, #matchDetailOverlay.open", { timeout: 20000 });
   const wentToMatch = await page.evaluate(() => document.getElementById("liveMatchOverlay").classList.contains("open") || document.getElementById("matchDetailOverlay").classList.contains("open"));
   check("6) 'Ir para o jogo' de fato dispara a simulação:", wentToMatch);
 

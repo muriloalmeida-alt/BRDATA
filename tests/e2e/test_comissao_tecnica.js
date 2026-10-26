@@ -187,7 +187,16 @@ const { skipPreseason } = require("./_calendar_skip");
   await page.waitForTimeout(150);
   await page.click("#topbarMenu .mt-topbar-menu-item.group[data-submenu='equipe']");
   await page.click("#btnOpenCommission");
-  await page.waitForTimeout(200);
+  // Falhou 1x sob carga com "Demitir" invisível — se acontecer de novo, o
+  // log diz se a comissão voltou do servidor como não contratada ou se a
+  // tela nem abriu.
+  if (!(await page.waitForSelector("#btnFireCommission", { state: "visible", timeout: 10000 }).then(() => true, () => false))) {
+    console.log("DIAG 7:", JSON.stringify(await page.evaluate(async () => ({
+      hiredNaPagina: !!(CAREER.technicalStaff && CAREER.technicalStaff.hired),
+      hiredNoServidor: !!((await (await fetch("/api/career")).json()).career.technicalStaff || {}).hired,
+      telasAbertas: [...document.querySelectorAll(".ct-modal-overlay.open")].map((e) => e.id),
+    }))));
+  }
   await page.click("#btnFireCommission");
   await page.waitForTimeout(150);
   await page.click("#confirmOkBtn");

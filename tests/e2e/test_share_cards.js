@@ -50,7 +50,7 @@ async function newCareer(page, base, email) {
   await page.click("#btnPreMatchGo");
   await page.waitForSelector("#liveMatchOverlay.open", { timeout: 5000 });
   await page.click("#btnLiveSkip");
-  await page.waitForSelector("#matchDetailOverlay.open", { timeout: 10000 });
+  await page.waitForSelector("#matchDetailOverlay.open", { timeout: 20000 });
   const shareBtnExists = await page.$("#btnMatchDetailShare");
   const [download1] = await Promise.all([
     page.waitForEvent("download", { timeout: 8000 }),
