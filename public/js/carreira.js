@@ -11177,7 +11177,7 @@ function renderSchemesScreen() {
       e.stopPropagation();
       const scheme = CAREER.tacticalSchemes.find((s) => s.id === btn.dataset.delete);
       if (!scheme) return;
-      if (!(await confirmModal(`Apagar o esquema "${scheme.name}"?`, "Apagar"))) return;
+      if (!(await confirmModal(`Apagar o esquema "${scheme.name}"?`, "Apagar", { danger: true }))) return;
       deleteTacticalScheme(scheme.id);
       renderSchemesScreen();
       persistCareer();
@@ -11643,7 +11643,7 @@ async function confirmHireCommission() {
   toast("Comissão técnica contratada — as sugestões já estão disponíveis.", { type: "pos" });
 }
 async function confirmFireCommission() {
-  if (!(await confirmModal("Demitir a comissão técnica? As sugestões deixam de aparecer.", "Demitir"))) return;
+  if (!(await confirmModal("Demitir a comissão técnica? As sugestões deixam de aparecer.", "Demitir", { danger: true }))) return;
   fireTechnicalStaff();
   renderCommissionScreen();
   renderCommissionSummaryCard(); // mesmo motivo do hire acima
@@ -13449,7 +13449,7 @@ async function fireScout(scoutId) {
     toast("Esse olheiro está em missão — espere ele voltar antes de dispensar.", { type: "warn" });
     return;
   }
-  if (!(await confirmModal(`Dispensar ${scout.name}?`, "Dispensar"))) return;
+  if (!(await confirmModal(`Dispensar ${scout.name}?`, "Dispensar", { danger: true }))) return;
   CAREER.scouts = CAREER.scouts.filter((s) => s.id !== scoutId);
   persistCareer();
   renderScoutingScreen();
@@ -15094,13 +15094,17 @@ function showDismissalModal(result) {
 // cancelou ou fechou clicando fora) no lugar do valor síncrono que
 // confirm() devolvia — por isso todo chamador precisa de "await" na
 // frente agora (ver buyPlayer/sellPlayer/btnRestart/btnAdvanceSeason).
-function confirmModal(text, okLabel = "Confirmar") {
+// danger: ação destrutiva/irreversível — botão de confirmar em vermelho
+// (--m3-error), como pede a direção visual do redesign (vermelho só pra
+// risco/destruição).
+function confirmModal(text, okLabel = "Confirmar", { danger = false } = {}) {
   return new Promise((resolve) => {
     const overlay = document.getElementById("confirmOverlay");
     const okBtn = document.getElementById("confirmOkBtn");
     const cancelBtn = document.getElementById("confirmCancelBtn");
     document.getElementById("confirmText").textContent = text;
     okBtn.textContent = okLabel;
+    okBtn.classList.toggle("danger", danger);
     overlay.classList.add("open");
     function cleanup(result) {
       overlay.classList.remove("open");
@@ -15457,7 +15461,7 @@ function wireStaticListeners() {
   document.getElementById("btnRestart").addEventListener("click", async () => {
     document.getElementById("topbarMenu").classList.remove("open");
     if (!CAREER) return;
-    if (!(await confirmModal(`Isso vai apagar sua carreira atual no ${CAREER.clubName} e começar do zero. Continuar?`, "Apagar e reiniciar"))) return;
+    if (!(await confirmModal(`Isso vai apagar sua carreira atual no ${CAREER.clubName} e começar do zero. Continuar?`, "Apagar e reiniciar", { danger: true }))) return;
     await fetchJSON("/api/career", { method: "DELETE" }).catch(() => {});
     CAREER = null;
     // AJUSTE (pedido do usuário: "acrescentar a Série B, C [ao Modo

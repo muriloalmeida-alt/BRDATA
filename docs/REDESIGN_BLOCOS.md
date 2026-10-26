@@ -28,9 +28,10 @@ scratchpad da sessão (`redesign/b1..b5`).
 
 ## Pendências / não feito
 
-- **Confirmação destrutiva (F05):** "Dispensar" usa o botão lima; a direção
-  reserva vermelho pra ação destrutiva — exige parâmetro novo em
-  `confirmModal` (JS). Não feito.
+- **Confirmação destrutiva (F05): feito** (26/10, aprovado pelo Murilo) —
+  `confirmModal(texto, rótulo, { danger: true })` deixa o botão vermelho
+  (`--m3-error`); usado em Apagar esquema, Demitir comissão, Dispensar
+  olheiro e Apagar e reiniciar. Coberto por `test_confirm_modals` (3).
 - **Hero do jogador com foto, anel de condição em %:** a referência mostra
   foto do atleta; o jogo não tem fotos de jogadores.
 - **Menu principal em tela cheia (06):** o jogo usa menu popover + nav
@@ -39,6 +40,10 @@ scratchpad da sessão (`redesign/b1..b5`).
   jogo como abas; não criadas.
 - Desktop: validado só nas sheets (fundação); telas por bloco foram
   capturadas no celular.
+
+## Aceite
+
+Aceite do redesign (blocos 1–5) dado pelo Murilo em 26/10/2026.
 
 ## Prompt para GPT
 
