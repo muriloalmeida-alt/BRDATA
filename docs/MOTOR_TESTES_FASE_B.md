@@ -147,19 +147,33 @@ Branch `claude/correcoes-p1-p3`.
   | 2× | 5/11 | 0/11 | 2,11 / 2,5 | sem venda |
   | 10× | 4/11 | 0/11 | 10,67 / 12,49 | sem venda |
 
-  Ritmo no jogo (anúncio pelo valor de mercado, 400 simulações por
-  jogador): 1ª proposta em ~11–16 rodadas em média; ~6–29% sem proposta
-  na temporada — ritmo da exposição já existente (40% por rodada ×
-  interesse), não alterado.
+  Na medição apareceu um 2º motivo de anúncio sem proposta: jogador com
+  contrato acabando recebe oferta inicial até 15% abaixo do valor
+  (`transferValuation`), a negociação interna parava sem acordo e o
+  técnico nunca via o lance. Agora, num anúncio, o último lance do
+  comprador vira proposta quando chega a ≥ 75% do pedido (mesmo corte de
+  "muito abaixo" de `sellerNegotiationDecision`) — o técnico decide em
+  Minhas vendas, como previa o desenho original do anúncio (propostas de
+  55–110% do pedido).
+
+  Pelo caminho real do jogo (`maybeSpawnListingOffer`, 150 simulações de
+  uma temporada por jogador, 24 jogadores):
+
+  | Pedido | 1ª proposta (rodadas, média) | Sem proposta na temporada | Jogadores que nunca recebem | Valor médio / máx (× mercado) |
+  |---|---:|---:|---|---|
+  | 1× | 14,6 | 21,8% | 0/24 | 1,00 / 1,12 |
+  | 1,3× | 14,7 | 19,7% | 0/24 | 1,30 / 1,46 |
+  | 2× | — | 100% | 24/24 | — |
+  | 10× | — | 100% | 24/24 | — |
+
+  O ritmo (≈ 15 rodadas até a 1ª proposta) é o da exposição já existente
+  (40% por rodada × interesse do clube) — não alterado.
   `test_historico_negociacoes` passou a simular rodadas de exposição
   normais (até 200) em vez de forçar `Math.random = 0.01` (que sempre
   escolhia o mesmo clube) e a anunciar o jogador mais barato.
-- **Observação nova (não alterada):** jogador com valor de mercado acima
-  do caixa de qualquer clube CPU (ex.: R$ 56,8M contra no máximo R$ 32M
-  de caixa na Série A) não vende pelo valor de mercado — só pedindo menos.
-  Além disso, 3 de 24 jogadores do elenco medido (R$ 3,6M–17,5M, todos
-  reservas) não receberam proposta em nenhuma das 400 simulações — causa
-  ainda não investigada.
+- **Observação (não alterada):** jogador com valor de mercado acima do
+  caixa de qualquer clube CPU (ex.: R$ 56,8M contra no máximo R$ 32M de
+  caixa na Série A) não vende pelo valor de mercado — só pedindo menos.
 
 ## 6. Medições
 

@@ -4726,10 +4726,10 @@ function negotiateOffer(player, buyingClubId, sellingClubId, context = {}) {
     if (sellerDecision.action === "reject") return { outcome: "rejected", finalValue: null, initialOffer, reservation, rounds };
     const buyerDecision = buyerNegotiationDecision(sellerDecision.value, initialOffer, player, buyingClubId, context);
     if (buyerDecision.action === "accept") return { outcome: "accepted", finalValue: sellerDecision.value, initialOffer, reservation, rounds };
-    if (buyerDecision.action === "walk" || buyerDecision.value <= currentOffer) return { outcome: "walked", finalValue: null, initialOffer, reservation, rounds };
+    if (buyerDecision.action === "walk" || buyerDecision.value <= currentOffer) return { outcome: "walked", finalValue: null, lastOffer: currentOffer, initialOffer, reservation, rounds };
     currentOffer = buyerDecision.value; // "raise" com progresso real -> próxima rodada
   }
-  return { outcome: "walked", finalValue: null, initialOffer, reservation, rounds }; // esgotou o limite -> encerra, nunca loop infinito
+  return { outcome: "walked", finalValue: null, lastOffer: currentOffer, initialOffer, reservation, rounds }; // esgotou o limite -> encerra, nunca loop infinito
 }
 
 function findInterestedBuyer(excludeId, player) {
@@ -13138,8 +13138,16 @@ function maybeSpawnListingOffer(listing) {
   const buyerAnchor = Math.min(listing.askingValue, Math.round(p.value * LISTING_BUYER_ANCHOR_CAP));
   const dealCtx = { baseValue: buyerAnchor, sellerAsking: listing.askingValue, competitorCount: listing.offers.length };
   const deal = negotiateOffer(p, club.id, CAREER.clubId, dealCtx);
-  if (deal.outcome !== "accepted") return;
-  const value = Math.max(1000, deal.finalValue);
+  // P2 — num anúncio quem decide é o técnico (Minhas vendas): se a
+  // negociação interna parou sem acordo, o último lance do comprador
+  // ainda vira proposta quando não está "muito abaixo" do pedido (mesmo
+  // corte de 75% de sellerNegotiationDecision). Sem isso, jogador com
+  // contrato acabando (transferValuation desconta até 15%) anunciado pelo
+  // valor de mercado nunca recebia proposta nenhuma.
+  let dealValue = deal.outcome === "accepted" ? deal.finalValue : null;
+  if (deal.outcome === "walked" && deal.lastOffer >= listing.askingValue * 0.75) dealValue = deal.lastOffer;
+  if (dealValue == null) return;
+  const value = Math.max(1000, dealValue);
   const installments = Math.random() < 0.6 ? 1 : Math.random() < 0.7 ? 2 : 3; // clube CPU às vezes parcela também
   listing.offers.unshift({
     id: `listingoffer_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
