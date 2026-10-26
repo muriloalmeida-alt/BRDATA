@@ -338,7 +338,13 @@ async function main() {
     fails.forEach((r) => {
       fs.writeFileSync(path.join(ARTIFACTS, `${r.file.replace(/\//g, "__")}.log`), r.out);
       console.log(`\n=== ${r.timedOut ? `TIMEOUT(${r.timeoutMs}ms)` : `FAIL(${r.code})`}: ${r.file} (${(r.ms / 1000).toFixed(1)}s) ===`);
-      console.log(r.out.trim().split("\n").slice(-8).join("\n"));
+      const linhas = r.out.trim().split("\n");
+      // Verificações que falharam com a linha COMPLETA (valores impressos)
+      // — no CI o log do job é o que se lê primeiro.
+      const rotulos = linhas.filter((l) => l.startsWith("  - ")).map((l) => l.slice(4).trim());
+      const cheias = rotulos.map((rot) => linhas.find((l) => l.startsWith(rot))).filter(Boolean);
+      if (cheias.length) console.log("Verificações que falharam:\n" + cheias.map((l) => "  " + l.slice(0, 600)).join("\n"));
+      console.log(linhas.slice(-8).join("\n"));
     });
   }
   fs.writeFileSync(path.join(DIR, "_last_parallel_run.json"), JSON.stringify({ meta, totalMs, results }, null, 2));
