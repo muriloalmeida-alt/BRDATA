@@ -2776,6 +2776,13 @@
   .m3-club-crest{ border-radius:50%; background:var(--m3-surface-container-highest); }
   .m3-club-row.selected{ border-color:var(--m3-outline-variant); box-shadow:inset 3px 0 0 var(--m3-primary); }
   .mt-onboard-title{ font-family:var(--m3-display); font-weight:700; font-size:24px; letter-spacing:0; line-height:1.2; }
+
+  /* ================= Redesign — Bloco 5 (estados) =================
+     Movimento reduzido (F15 da matriz): várias animações já tinham sua
+     própria regra; esta cobre todas as da carreira de uma vez. */
+  @media (prefers-reduced-motion: reduce){
+    *, *::before, *::after{ animation-duration:.01ms !important; animation-iteration-count:1 !important; transition-duration:.01ms !important; scroll-behavior:auto !important; }
+  }
 </style>
 </head>
 <body>
