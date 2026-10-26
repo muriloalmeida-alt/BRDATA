@@ -855,8 +855,11 @@
     position:fixed; inset:0; z-index:500; background:rgba(0,0,0,.55);
     display:none; justify-content:center; padding:0;
   }
-  .m3-dialog-overlay{ align-items:center; padding:24px; }
-  .m3-bottom-sheet-overlay{ align-items:flex-end; }
+  /* Redesign (pacote "Implementação Visual", regra global de bottom
+     sheets) — o diálogo dinâmico (openM3Dialog: proposta de compra,
+     jogador de outro clube...) também ancora embaixo, nunca centralizado.
+     Mesmas classes/JS de antes; só a apresentação muda. */
+  .m3-dialog-overlay, .m3-bottom-sheet-overlay{ align-items:flex-end; }
   .m3-dialog-overlay.open, .m3-bottom-sheet-overlay.open{ display:flex; animation:ctOverlayIn .16s ease-out; }
   .m3-dialog-overlay.open .m3-dialog,
   .m3-bottom-sheet-overlay.open .m3-bottom-sheet{ animation:ctSheetIn .22s cubic-bezier(.16,1,.3,1); }
@@ -864,13 +867,7 @@
     .m3-dialog-overlay.open, .m3-bottom-sheet-overlay.open,
     .m3-dialog-overlay.open .m3-dialog, .m3-bottom-sheet-overlay.open .m3-bottom-sheet{ animation:none; }
   }
-  .m3-dialog{
-    background:var(--m3-surface-container-high); color:var(--m3-on-surface);
-    border:1px solid var(--m3-outline-variant); border-radius:var(--m3-shape-lg);
-    width:100%; max-width:420px; max-height:86vh; overflow:hidden;
-    display:flex; flex-direction:column; box-shadow:0 12px 40px rgba(0,0,0,.5);
-  }
-  .m3-bottom-sheet{
+  .m3-dialog, .m3-bottom-sheet{
     background:var(--m3-surface-container-high); color:var(--m3-on-surface);
     border:1px solid var(--m3-outline-variant); border-bottom:none;
     border-radius:var(--m3-shape-xl) var(--m3-shape-xl) 0 0;
@@ -879,7 +876,7 @@
   }
   /* Grabber visual — convenção M3 de bottom sheet arrastável (aqui só
      indicador visual; arraste por gesto não é requisito da demanda). */
-  .m3-bottom-sheet::before{
+  .m3-dialog::before, .m3-bottom-sheet::before{
     content:""; display:block; width:32px; height:4px; border-radius:var(--m3-shape-full);
     background:var(--m3-outline-variant); margin:10px auto 0; flex-shrink:0;
   }
@@ -908,6 +905,14 @@
     outline:2px solid var(--m3-primary); outline-offset:2px;
   }
   .m3-dialog-body, .m3-bottom-sheet-body{ padding:18px; overflow-y:auto; }
+  .m3-dialog-body{ padding-bottom:calc(18px + env(safe-area-inset-bottom, 0px)); }
+  /* Tela larga: sheet continua ancorada embaixo, com largura máxima de
+     640px (limite do bottom sheet M3) em vez de esticar a tela inteira.
+     Não vale pras telas cheias (.ct-modal-fullscreen), que têm regra própria. */
+  @media (min-width: 720px){
+    .m3-dialog, .m3-bottom-sheet,
+    .ct-modal-overlay:not(.ct-modal-fullscreen) > .ct-modal{ max-width:640px; }
+  }
   .m3-bottom-sheet-body{ padding:4px 20px calc(20px + env(safe-area-inset-bottom, 0px)); }
 
   /* ---- Skeleton (m3SkeletonHTML() em carreira.js) ----
@@ -3897,7 +3902,7 @@
 </div>
 
 <!-- ================= Modal genérico de escolha de jogador ================= -->
-<div class="ct-modal-overlay ct-modal-fullscreen" id="pickerOverlay">
+<div class="ct-modal-overlay" id="pickerOverlay">
   <div class="ct-modal">
     <div class="ct-modal-header">
       <span class="ct-modal-icon">🔄</span>
