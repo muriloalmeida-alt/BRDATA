@@ -368,6 +368,13 @@ function publicUser(u) {
     // (endpoint/chaves), que não tem uso nenhum no front-end.
     pushEnabled: !!u.pushSubscription,
     onboardingSeen: !!u.onboardingSeen,
+    // Cap. 1 / Tela 05 (configurar carreira) — identidade do TREINADOR,
+    // ligada à conta (vale em todas as carreiras/saves). Contas antigas
+    // não têm os campos: null = "não informado", nunca um valor inventado.
+    coachNationality: u.coachNationality || null,
+    coachAvatar: u.coachAvatar || null,
+    // Cap. 1 / Tela 04 — clubes marcados como favoritos na escolha de clube.
+    careerFavorites: Array.isArray(u.careerFavorites) ? u.careerFavorites : [],
   };
 }
 

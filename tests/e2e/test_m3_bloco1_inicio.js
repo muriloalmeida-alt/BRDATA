@@ -26,8 +26,12 @@ const { enterGame } = require("./_startup");
   await enterGame(page);
 
   // 1) Nav tem 5 itens + Menu, todos com data-panel certo.
-  const navLabels = await page.evaluate(() => [...document.querySelectorAll(".m3-nav-item")].map((el) => el.textContent.trim()));
-  check("1) Nav com 5 itens + Menu:", navLabels.length === 6 && navLabels[0] === "Início" && navLabels[4] === "Clube" && navLabels[5] === "Menu", JSON.stringify(navLabels));
+  // Redesign Cap. 2 (referência aprovada): nav inferior Início/Clube/Jogos/
+  // Competições/Mais; Elenco/Tática/Mercado viraram abas contextuais do topo.
+  const navLabels = await page.evaluate(() => [...document.querySelectorAll(".m3-bottom-nav .m3-nav-item")].map((el) => el.textContent.trim()));
+  const ctxLabels = await page.evaluate(() => [...document.querySelectorAll(".bd-ctx-tabs .m3-nav-item")].map((el) => el.dataset.panel));
+  check("1) Nav inferior Início/Clube/Jogos/Competições/Mais + abas de contexto com Elenco/Tática/Mercado:",
+    JSON.stringify(navLabels) === JSON.stringify(["Início", "Clube", "Jogos", "Competições", "Mais"]) && ["elenco", "escalacao", "mercado"].every((p) => ctxLabels.includes(p)), JSON.stringify({ navLabels, ctxLabels }));
 
   // 2) Topbar mostra identidade do clube (nome + posição).
   const topbar = await page.evaluate(() => ({
@@ -35,7 +39,7 @@ const { enterGame } = require("./_startup");
     sub: document.getElementById("topbarClubSub").textContent,
     chip: document.getElementById("topbarPositionChip").textContent,
   }));
-  check("2) Topbar com identidade do clube:", topbar.name.length > 0 && /\dº lugar/.test(topbar.chip), JSON.stringify(topbar));
+  check("2) Topbar com identidade do clube:", topbar.name.length > 0 && (/\dº lugar/.test(topbar.chip) || topbar.chip === "Pré-jogo"), JSON.stringify(topbar));
 
   // 3) Início (M3): hero card, FAB visível. AJUSTE (pedido do usuário:
   // "remover o card de situação do elenco") — #squadKpis (5 stat cards)

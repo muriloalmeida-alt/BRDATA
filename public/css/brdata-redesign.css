@@ -1,0 +1,604 @@
+/* =====================================================================
+   BRDATA — Redesign capítulos 1–7 (pacotes de especificação 10/2026)
+   ---------------------------------------------------------------------
+   Carregado DEPOIS do <style> de carreira.html: sobrepõe por ordem de
+   origem, sem !important. Reusa os tokens --m3-* (paleta navy + lima já
+   aprovada) e acrescenta só o que a direção cinematográfica pede:
+   slots de cena (img/redesign/, fotos pendentes), marca BRDATA oficial, faixas de ação, chips, sheets.
+   Prefixo "bd-" = componente novo do redesign.
+   ===================================================================== */
+
+:root{
+  --br-bg:#03101D;
+  --br-lime:var(--m3-primary);
+  --br-text:#F0F3F6;
+  --br-muted:#94A3B8;
+  --bd-glass:rgba(10,22,36,.72);
+  --bd-glass-strong:rgba(10,22,36,.9);
+  --bd-line:rgba(148,163,184,.18);
+  --bd-radius:16px;
+  --bd-radius-sm:12px;
+  --bd-gutter:clamp(16px, 5vw, 28px);
+  --bd-cta-h:56px;
+  --bd-display:var(--m3-display);
+}
+
+.sr-only{ position:absolute !important; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
+
+/* ---------- Cenas (estratégia híbrida de assets) ----------
+   Fotografia de cenário e personagens = WebP/PNG fornecidos (NÃO
+   desenhados em SVG nem improvisados com gradiente). Enquanto o asset de
+   cada slot não existe, o fundo é o vetor LIMPO entregue no pacote do
+   Capítulo 1 (assets/shared/background-navy-clean.svg → img/redesign/).
+   Quando a foto chegar, basta preencher a variável do slot, ex.:
+     .bd-scene--tunnel{ --bd-scene-photo:url("../img/scene/tunel-noturno.webp"); }
+   e o overlay de legibilidade do pacote (overlay-sombra.svg) passa a
+   valer sobre ela. Inventário e pendências: docs/REDESIGN_ASSETS.md. */
+.bd-scene{
+  position:relative; isolation:isolate; overflow:hidden;
+  --bd-scene-photo:none;
+  background:var(--br-bg) url("../img/redesign/background-navy-clean.svg") center top / cover no-repeat;
+}
+.bd-scene.has-photo{
+  background-image:url("../img/redesign/overlay-sombra.svg"), var(--bd-scene-photo), url("../img/redesign/background-navy-clean.svg");
+  background-size:100% 100%, cover, cover;
+}
+/* #screenLoading tem fundo próprio por ID no <style> antigo. */
+#screenLoading.bd-scene{ background:var(--br-bg) url("../img/redesign/background-navy-clean.svg") center top / cover no-repeat; }
+/* Slots de cenário (todos PENDENTES — ver docs/REDESIGN_ASSETS.md):
+   --tunnel  CEN-01 túnel/estádio noturno (splash, login)
+   --stadium CEN-02 arquibancada noturna (configurar carreira, Início)
+   --club    CEN-03 torcida/celebração (primeira entrada) */
+.bd-scene--dim{ background:var(--br-bg) url("../img/redesign/background-navy-clean.svg") center top / cover no-repeat; }
+/* Tipografia do redesign: texto corrido em Inter (o #ctShell antigo usa
+   Barlow Condensed em tudo), títulos na display do DS. */
+#ctShell .bd-scene, #ctShell .bd-scene input, #ctShell .bd-scene select, #ctShell .bd-scene button{ font-family:var(--font); }
+#ctShell .bd-scene h1, #ctShell .bd-btn-primary{ font-family:var(--bd-display); }
+
+/* ---------- Marca BRDATA (oficial: img/brand-icon.png) ----------
+   Só o símbolo oficial do repositório. O wordmark horizontal "BRDATA" da
+   referência NÃO existe como arquivo oficial transparente (img/logo.png
+   tem fundo navy chapado) — pendência MAR-01; não é recriado em texto. */
+.bd-brand{ display:flex; flex-direction:column; align-items:center; gap:10px; }
+.bd-brand-mark{ width:96px; height:96px; display:flex; align-items:center; justify-content:center; background:none; border:none; }
+.bd-brand-mark img{ width:100%; height:100%; object-fit:contain; }
+.bd-brand-sig{ font-family:var(--font); font-size:11.5px; letter-spacing:.32em; text-transform:uppercase; color:#DCE4EC; text-align:center; }
+.bd-brand--compact .bd-brand-mark{ width:64px; height:64px; }
+.bd-brand--compact .bd-brand-sig{ font-size:10px; }
+.bd-brand--inline{ flex-direction:row; gap:8px; }
+.bd-brand--inline .bd-brand-mark{ width:32px; height:32px; border-radius:0; }
+
+/* ---------- Botões ---------- */
+.bd-btn-primary{
+  display:flex; align-items:center; justify-content:center; gap:10px; width:100%;
+  min-height:var(--bd-cta-h); padding:0 22px; border:none; border-radius:999px; cursor:pointer;
+  background:var(--br-lime); color:var(--m3-on-primary);
+  font-family:var(--bd-display); font-weight:700; font-size:17px; letter-spacing:.01em;
+  box-shadow:0 10px 30px rgba(180,230,75,.22);
+  transition:transform .12s ease, filter .12s ease;
+}
+.bd-btn-primary:hover{ filter:brightness(1.06); }
+.bd-btn-primary:active{ transform:scale(.985); }
+.bd-btn-primary:disabled{ opacity:.55; cursor:not-allowed; box-shadow:none; }
+.bd-btn-primary:focus-visible, .bd-btn-ghost:focus-visible, .bd-chip:focus-visible, .bd-link:focus-visible{ outline:3px solid #fff; outline-offset:3px; }
+.bd-btn-arrow{ background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2313200A' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12h14M13 6l6 6-6 6'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right 22px center; background-size:22px; }
+.bd-btn-ghost{
+  display:inline-flex; align-items:center; justify-content:center; gap:8px; min-height:44px; padding:0 18px;
+  border-radius:999px; border:1px solid var(--bd-line); background:var(--bd-glass); color:var(--br-text);
+  font-family:var(--font); font-weight:600; font-size:14px; cursor:pointer;
+}
+.bd-link{ background:none; border:none; padding:6px 2px; color:var(--br-lime); font-weight:600; font-size:13px; cursor:pointer; text-decoration:underline; text-underline-offset:3px; }
+
+/* ---------- Chips / filtros ---------- */
+.bd-chips{ display:flex; gap:8px; overflow-x:auto; scrollbar-width:none; padding:2px 0 4px; margin:0 0 14px; -webkit-overflow-scrolling:touch; }
+.bd-chips::-webkit-scrollbar{ display:none; }
+.bd-chip{
+  flex:0 0 auto; display:inline-flex; align-items:center; gap:6px; min-height:40px; padding:0 16px;
+  border-radius:999px; border:1px solid var(--bd-line); background:var(--bd-glass); color:#C9D5E2;
+  font-family:var(--font); font-weight:600; font-size:13.5px; cursor:pointer; white-space:nowrap;
+}
+.bd-chip.active{ background:var(--br-lime); color:var(--m3-on-primary); border-color:transparent; }
+.bd-chip-select{ padding:0 4px 0 12px; position:relative; }
+.bd-chip-select select{ appearance:none; -webkit-appearance:none; background:transparent; border:none; color:inherit; font:inherit; padding:0 26px 0 0; min-height:38px; cursor:pointer; }
+.bd-chip-select::after{ content:""; position:absolute; right:12px; top:50%; width:7px; height:7px; border-right:2px solid currentColor; border-bottom:2px solid currentColor; transform:translateY(-70%) rotate(45deg); pointer-events:none; }
+.bd-chip-select select option{ color:#0B1626; }
+.bd-badge{ flex-shrink:0; display:inline-flex; align-items:center; padding:3px 9px; border-radius:999px; background:var(--br-lime); color:var(--m3-on-primary); font-size:10.5px; font-weight:700; letter-spacing:.02em; }
+
+/* ---------- Busca ---------- */
+.bd-search{ position:relative; margin:0 0 12px; }
+.bd-search svg{ position:absolute; left:15px; top:50%; width:18px; height:18px; transform:translateY(-50%); fill:none; stroke:var(--br-muted); stroke-width:2; stroke-linecap:round; pointer-events:none; }
+.bd-search input{
+  width:100%; min-height:48px; padding:0 14px 0 44px; border-radius:var(--bd-radius-sm);
+  border:1px solid var(--bd-line); background:var(--bd-glass); color:var(--br-text); font:500 15px var(--font); outline:none;
+}
+.bd-search input:focus{ border-color:var(--br-lime); box-shadow:0 0 0 3px rgba(180,230,75,.18); }
+.bd-search input::placeholder{ color:var(--br-muted); }
+
+.bd-empty{ text-align:center; padding:28px 16px; color:var(--br-muted); font-size:14px; }
+.bd-empty p{ margin:0 0 12px; }
+
+/* ---------- CTA ancorado (respeita safe area, nunca cobre conteúdo:
+   o conteúdo reserva padding-bottom equivalente) ---------- */
+.bd-cta-dock{
+  position:fixed; left:0; right:0; bottom:0; z-index:19;
+  padding:14px var(--bd-gutter) calc(14px + env(safe-area-inset-bottom, 0px));
+  background:linear-gradient(180deg, rgba(3,16,29,0), rgba(3,16,29,.88) 38%, rgba(3,16,29,.98));
+  display:flex; justify-content:center; pointer-events:none;
+}
+.bd-cta-dock > *{ pointer-events:auto; max-width:480px; }
+.bd-cta-dock:has(> .hidden){ display:none; }
+.bd-cta-dock--inline{ position:static; background:none; padding:18px 0 0; }
+
+/* =========================================================
+   Cap. 1 · Tela 01 — Splash
+   ========================================================= */
+#screenLoading.bd-scene{ min-height:100vh; min-height:100dvh; padding:0; gap:0; justify-content:stretch; }
+.bd-splash{
+  position:relative; z-index:1; flex:1; width:100%; max-width:560px; margin:0 auto;
+  display:flex; flex-direction:column; align-items:center;
+  padding:calc(18vh + env(safe-area-inset-top, 0px)) var(--bd-gutter) calc(26px + env(safe-area-inset-bottom, 0px));
+}
+#screenLoading .bd-brand-mark.mt-splash-crest{ width:clamp(84px, 24vw, 120px); height:clamp(84px, 24vw, 120px); border-radius:0; margin:0; }
+#screenLoading .bd-brand-mark.mt-splash-crest img{ width:100%; height:100%; }
+.bd-splash-msg{
+  margin:auto 0 0 !important; padding-top:24px; max-width:none !important;
+  font-family:var(--bd-display); font-weight:600; font-size:clamp(22px, 6.4vw, 30px) !important; line-height:1.25;
+  color:#fff !important; text-align:center; text-shadow:0 2px 16px rgba(0,0,0,.7);
+}
+.bd-splash-msg span{ color:var(--br-lime); }
+.bd-progress{
+  position:relative; width:min(72%, 360px); height:5px; margin-top:clamp(36px, 9vh, 90px);
+  border-radius:999px; background:rgba(37,66,90,.85); overflow:hidden;
+}
+.bd-progress-fill{ position:absolute; left:0; top:0; bottom:0; width:0; border-radius:inherit; background:var(--br-lime); transition:width .35s ease; box-shadow:0 0 12px rgba(180,230,75,.6); }
+.bd-progress.is-indeterminate .bd-progress-fill{ width:38%; animation:bd-indet 1.4s ease-in-out infinite; }
+@keyframes bd-indet{ 0%{ left:-40%; } 100%{ left:100%; } }
+.bd-progress-label{
+  margin:14px 0 0 !important; font-family:var(--font); font-size:11px !important; letter-spacing:.3em;
+  text-transform:uppercase; color:#8FA0B4 !important;
+}
+#screenLoading .mt-error-screen{ position:relative; z-index:1; margin:auto; padding:24px var(--bd-gutter); background:var(--bd-glass-strong); border-radius:var(--bd-radius); max-width:420px; }
+
+/* =========================================================
+   Cap. 1 · Tela 02 — Login
+   ========================================================= */
+#screenLoginRequired.bd-scene{ min-height:100vh; min-height:100dvh; }
+#screenLoginRequired .mt-screen{ background:none; overflow:visible; min-height:100vh; min-height:100dvh; }
+#screenLoginRequired .mt-screen::before{ display:none; }
+#screenLoginRequired .mt-login-content{
+  max-width:520px; margin:0 auto; min-height:100vh; min-height:100dvh;
+  padding:calc(28px + env(safe-area-inset-top, 0px)) var(--bd-gutter) calc(24px + env(safe-area-inset-bottom, 0px));
+}
+#screenLoginRequired .bd-brand{ margin-bottom:auto; }
+#screenLoginRequired .mt-panel.bd-login-panel{ background:transparent; padding:32px 0 0; border-radius:0; }
+.bd-hero-title{
+  margin:0 0 12px; font-family:var(--bd-display); font-weight:700; letter-spacing:-.01em;
+  font-size:clamp(34px, 10.5vw, 48px); line-height:1.02; color:#fff; text-align:left; text-shadow:0 2px 20px rgba(0,0,0,.55);
+}
+.bd-hero-title span{ color:var(--br-lime); }
+#screenLoginRequired .mt-panel h1.bd-hero-title{ font-size:clamp(34px, 10.5vw, 48px); text-align:left; margin-bottom:12px; }
+#screenLoginRequired .mt-panel .mt-sub{ text-align:left; font-size:16px; line-height:1.45; color:#D5DEE7; margin:0 0 24px; max-width:22em; text-shadow:0 1px 10px rgba(0,0,0,.6); }
+.bd-field{ position:relative; margin-bottom:12px; }
+.bd-field input{
+  min-height:56px; padding:0 52px 0 50px !important; border-radius:var(--bd-radius-sm) !important;
+  background:rgba(19,35,56,.72) !important; border:1px solid rgba(148,163,184,.28) !important;
+  backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); font-size:16px !important;
+}
+.bd-field input::placeholder{ color:#9AA9BA; opacity:1; }
+.bd-field-icon{ position:absolute; z-index:2; left:16px; top:50%; width:22px; height:22px; transform:translateY(-50%); fill:none; stroke:#C6D2DE; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; pointer-events:none; }
+.bd-field-action{ position:absolute; z-index:2; right:4px; top:50%; transform:translateY(-50%); width:48px; height:48px; border:none; background:none; color:#C6D2DE; cursor:pointer; border-radius:10px; display:flex; align-items:center; justify-content:center; }
+.bd-field-action svg{ width:22px; height:22px; fill:none; stroke:currentColor; stroke-width:1.8; }
+.bd-field-action[aria-pressed="true"]{ color:var(--br-lime); }
+.bd-field-action:focus-visible{ outline:2px solid var(--br-lime); }
+#screenLoginRequired .mt-btn-enter.bd-btn-primary{ margin-top:14px; border-radius:999px; font-size:18px; padding:0 22px; }
+#screenLoginRequired .mt-form-error{ text-align:left; margin:4px 0 6px; font-weight:600; }
+#screenLoginRequired .mt-signup{ margin-top:22px; font-size:15px; color:#C9D5E2; }
+
+/* =========================================================
+   Cap. 1 · Telas 03/04/05 — fluxo de escolha (cabeçalho comum)
+   ========================================================= */
+.bd-flow-top.mt-topbar{
+  background:linear-gradient(180deg, rgba(3,16,29,.96), rgba(3,16,29,.72));
+  border-bottom:1px solid rgba(148,163,184,.08);
+  padding:calc(10px + env(safe-area-inset-top, 0px)) 12px 10px;
+}
+.bd-flow-top .mt-topbar-row{ gap:8px; }
+.bd-flow-top .mt-icon-btn{ width:44px; height:44px; border-radius:12px; background:transparent; border:none; color:#E6EDF4; display:flex; align-items:center; justify-content:center; cursor:pointer; }
+.bd-flow-top .mt-icon-btn[hidden]{ display:flex; visibility:hidden; }
+.bd-flow-top .mt-icon-btn svg{ width:22px; height:22px; }
+.bd-flow-top .mt-icon-btn:focus-visible{ outline:2px solid var(--br-lime); }
+.bd-scene .mt-picker-screen{ background:none; min-height:100vh; min-height:100dvh; }
+.bd-flow-content.mt-picker-content{ max-width:620px; margin:0 auto; padding:18px var(--bd-gutter) calc(var(--bd-cta-h) + 56px + env(safe-area-inset-bottom, 0px)); }
+.bd-flow-intro.mt-intro{ text-align:left; margin-bottom:18px; }
+.bd-flow-title{ font-family:var(--bd-display); font-weight:700; font-size:clamp(26px, 7.6vw, 34px) !important; line-height:1.1; color:#fff !important; margin:0 0 8px !important; letter-spacing:-.01em !important; }
+.bd-flow-sub{ margin:0 !important; font-size:15px !important; color:#B9C6D3 !important; line-height:1.45; max-width:none !important; }
+.bd-flow-title-row{ display:flex; align-items:flex-start; gap:8px; }
+
+/* Tela 03 — lista contínua de competições */
+#screenCompetitionPicker .mt-competition-list{ max-width:none; background:none; border:none; border-radius:0; overflow:visible; gap:10px; }
+.bd-comp-row.mt-competition-card{
+  display:flex; align-items:center; gap:14px; width:100%; min-height:72px; padding:14px 14px 14px 16px; text-align:left; cursor:pointer;
+  background:var(--bd-glass); border:1px solid var(--bd-line); border-radius:var(--bd-radius-sm); color:inherit; font:inherit;
+}
+.bd-comp-row.mt-competition-card:hover{ border-color:rgba(180,230,75,.45); }
+.bd-comp-row.is-popular, .bd-comp-row.selected{ border-color:var(--br-lime); box-shadow:0 0 0 1px var(--br-lime) inset, 0 8px 26px rgba(180,230,75,.12); }
+.bd-comp-row:focus-visible{ outline:3px solid #fff; outline-offset:2px; }
+.bd-comp-row:disabled{ cursor:progress; opacity:.75; }
+.bd-flag{ flex-shrink:0; width:40px; height:28px; border-radius:5px; overflow:hidden; box-shadow:0 0 0 1px rgba(255,255,255,.12); display:flex; }
+.bd-flag svg{ width:100%; height:100%; }
+.bd-flag-code{ margin:auto; font-size:11px; font-weight:700; }
+.bd-comp-row .mt-competition-body{ display:flex; flex-direction:column; gap:2px; }
+.bd-comp-row .mt-competition-title{ font-family:var(--bd-display); font-weight:700; font-size:16.5px; color:#fff; }
+.bd-comp-country{ font-size:11px !important; letter-spacing:.14em; text-transform:uppercase; color:#93A4B6 !important; margin:0 !important; }
+.bd-comp-desc{ font-size:12.5px; color:#A9B7C5; line-height:1.35; }
+.bd-comp-row .mt-competition-chevron{ color:#C6D2DE; width:20px; height:20px; }
+
+/* Tela 04 — grade de escudos */
+#screenPicker .bd-club-grid.m3-club-grid{
+  display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:10px;
+  background:none; border:none; border-radius:0; overflow:visible;
+}
+@media (min-width:560px){ #screenPicker .bd-club-grid.m3-club-grid{ grid-template-columns:repeat(4, minmax(0, 1fr)); } }
+@media (min-width:900px){ #screenPicker .bd-club-grid.m3-club-grid{ grid-template-columns:repeat(5, minmax(0, 1fr)); } }
+.bd-club-tile.m3-club-row{
+  position:relative; flex-direction:column; justify-content:flex-start; gap:8px; min-height:132px; padding:16px 6px 12px;
+  text-align:center; border-radius:var(--bd-radius-sm); border:1px solid var(--bd-line); background:var(--bd-glass); outline:none;
+}
+.bd-club-tile.m3-club-row:hover{ border-color:rgba(180,230,75,.4); }
+.bd-club-tile.m3-club-row:focus-visible{ box-shadow:0 0 0 3px #fff; }
+.bd-club-tile.m3-club-row.selected{ background:rgba(29,51,36,.82); border-color:var(--br-lime); box-shadow:0 0 0 1px var(--br-lime) inset, 0 0 22px rgba(180,230,75,.25); }
+.bd-club-crest{ height:56px; display:flex; align-items:center; justify-content:center; }
+.bd-crest{ object-fit:contain; filter:drop-shadow(0 2px 8px rgba(0,0,0,.45)) drop-shadow(0 0 1px rgba(255,255,255,.5)); }
+.bd-club-tile .m3-club-body{ display:flex; flex-direction:column; align-items:center; gap:2px; min-width:0; width:100%; }
+.bd-club-tile .m3-club-name{ font-family:var(--bd-display); font-size:13.5px; font-weight:700; color:#fff; line-height:1.15; overflow-wrap:anywhere; }
+.bd-club-tile .m3-club-meta{ font-size:11px; color:#97A8BA; line-height:1.2; overflow-wrap:anywhere; }
+.bd-club-tile.selected .m3-club-meta{ color:#CFE6A8; }
+.bd-club-tile .m3-club-check{ position:absolute; left:8px; top:8px; width:20px; height:20px; padding:3px; border-radius:50%; background:var(--br-lime); color:var(--m3-on-primary); }
+.bd-fav{ position:absolute; right:2px; top:2px; width:40px; height:40px; border:none; background:none; color:#7F90A3; cursor:pointer; display:flex; align-items:center; justify-content:center; border-radius:10px; }
+.bd-fav svg{ width:18px; height:18px; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linejoin:round; }
+.bd-fav.on{ color:#F4C542; }
+.bd-fav.on svg{ fill:currentColor; }
+.bd-fav:focus-visible{ outline:2px solid var(--br-lime); }
+#btnConfirmClub.bd-btn-primary{ position:static; width:100%; right:auto; bottom:auto; box-shadow:0 10px 30px rgba(180,230,75,.22); border-radius:999px; font-size:17px; }
+#screenPicker .mt-picker-banner{ margin:0 0 14px; }
+
+/* Tela 05 — configurar carreira */
+.bd-setup .bd-flow-intro{ max-width:70%; }
+.bd-setup-club{ display:flex; align-items:center; gap:10px; margin:0 0 18px; color:#DCE4EC; font-size:14px; }
+.bd-setup-club b{ display:block; color:#fff; font-family:var(--bd-display); }
+.bd-setup-club small{ color:#97A8BA; font-size:12px; }
+.bd-avatar-pick{ display:flex; flex-direction:column; align-items:center; gap:6px; margin:4px 0 18px; position:relative; }
+.bd-avatar{ width:44px; height:44px; border-radius:50%; overflow:hidden; display:inline-flex; align-items:center; justify-content:center; flex-shrink:0; background:#132338; border:2px solid rgba(148,163,184,.35); }
+.bd-avatar img{ width:100%; height:100%; object-fit:cover; }
+.bd-avatar--mono{ background:linear-gradient(160deg, #1A2D45, #0B1626); color:#DCE4EC; font-family:var(--bd-display); font-weight:700; }
+.bd-avatar--xl{ width:116px; height:116px; font-size:38px; border-color:rgba(180,230,75,.5); box-shadow:0 0 0 6px rgba(3,16,29,.5); }
+.bd-avatar-btn{ position:absolute; top:78px; left:calc(50% + 30px); width:44px; height:44px; border-radius:50%; background:var(--bd-glass-strong); border:1px solid var(--bd-line); display:flex; align-items:center; justify-content:center; cursor:pointer; color:#fff; }
+.bd-avatar-btn svg{ width:20px; height:20px; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linejoin:round; }
+.bd-avatar-btn:focus-within, #setupAvatarInput:focus-visible + .bd-avatar-btn{ outline:2px solid var(--br-lime); }
+.bd-form-field{ margin:0 0 16px; }
+.bd-form-field label{ display:block; margin:0 0 8px; font-size:14px; font-weight:600; color:#DCE4EC; }
+.bd-form-field input, .bd-form-field select{
+  width:100%; min-height:52px; padding:0 14px; border-radius:var(--bd-radius-sm); border:1px solid rgba(148,163,184,.28);
+  background:rgba(19,35,56,.78); color:#fff; font:500 16px var(--font); outline:none;
+}
+.bd-form-field select{ appearance:none; -webkit-appearance:none; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23C6D2DE' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right 14px center; background-size:20px; padding-right:44px; }
+.bd-form-field select option{ color:#0B1626; }
+.bd-form-field input:focus, .bd-form-field select:focus{ border-color:var(--br-lime); box-shadow:0 0 0 3px rgba(180,230,75,.18); }
+#screenSetup .mt-form-error{ text-align:left; font-weight:600; margin:0 0 8px; }
+
+/* =========================================================
+   Cap. 1 · Tela 06 — Primeira entrada
+   ========================================================= */
+#screenFirstEntry.bd-scene{ min-height:100vh; min-height:100dvh; }
+/* Atmosfera do clube (CEN-03) pendente: sem foto, a tela não improvisa
+   cenário com as cores do clube — o escudo oficial é o protagonista. */
+.bd-first{
+  min-height:100vh; min-height:100dvh; max-width:520px; margin:0 auto; display:flex; flex-direction:column; align-items:center;
+  padding:calc(18px + env(safe-area-inset-top, 0px)) var(--bd-gutter) calc(22px + env(safe-area-inset-bottom, 0px));
+}
+.bd-first-body{ margin-top:auto; display:flex; flex-direction:column; align-items:center; text-align:center; gap:12px; }
+.bd-first-title.bd-hero-title{ text-align:center; font-size:clamp(30px, 8.6vw, 42px); }
+.bd-first-sub{ margin:0; font-size:16px; color:#E0E7EE; line-height:1.45; text-shadow:0 1px 10px rgba(0,0,0,.7); }
+.bd-first-crest{ margin:10px 0 4px; display:flex; }
+.bd-first-crest .bd-crest{ filter:drop-shadow(0 10px 30px rgba(0,0,0,.6)) drop-shadow(0 0 1px rgba(255,255,255,.6)); }
+.bd-first-quote{ margin:0; font-size:14.5px; color:#C9D5E2; line-height:1.5; max-width:26em; font-style:italic; }
+.bd-first .bd-cta-dock--inline{ width:100%; padding-top:26px; }
+
+/* Desktop: fluxos centrados, sem esticar */
+@media (min-width:900px){
+}
+
+@media (prefers-reduced-motion: reduce){
+  .bd-progress.is-indeterminate .bd-progress-fill{ animation:none; width:100%; opacity:.45; }
+  .bd-btn-primary{ transition:none; }
+}
+
+/* =========================================================
+   Shell do jogo — cabeçalho, abas contextuais e navegação (Cap. 2)
+   ========================================================= */
+#screenGame{ background:var(--br-bg); }
+.m3-topbar.bd-topbar{
+  display:block; position:sticky; top:0; z-index:15;
+  padding:calc(8px + env(safe-area-inset-top, 0px)) 0 0;
+  background:linear-gradient(180deg, rgba(3,16,29,.98) 0%, rgba(3,16,29,.94) 100%);
+  backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px);
+  border-bottom:1px solid rgba(148,163,184,.08);
+}
+.bd-topbar-row{ display:flex; align-items:center; justify-content:space-between; gap:12px; padding:0 var(--bd-gutter); max-width:1180px; margin:0 auto; }
+.bd-topbar-actions{ display:flex; align-items:center; gap:4px; }
+.bd-icon-btn{
+  position:relative; width:44px; height:44px; border-radius:12px; border:none; background:transparent; color:#E6EDF4;
+  display:inline-flex; align-items:center; justify-content:center; cursor:pointer; padding:0;
+}
+.bd-icon-btn svg{ width:23px; height:23px; fill:none; stroke:currentColor; stroke-width:1.9; stroke-linecap:round; stroke-linejoin:round; }
+.bd-icon-btn:hover{ background:rgba(148,163,184,.1); }
+.bd-icon-btn:focus-visible{ outline:2px solid var(--br-lime); }
+.bd-icon-btn:disabled{ opacity:.35; cursor:default; }
+.bd-dot-badge{ position:absolute; top:5px; right:4px; min-width:17px; height:17px; padding:0 4px; border-radius:999px; background:var(--br-lime); color:var(--m3-on-primary); font:700 10px/17px var(--font); text-align:center; box-shadow:0 0 0 2px var(--br-bg); }
+.bd-avatar--sm{ width:34px; height:34px; font-size:12.5px; border-width:1.5px; }
+.bd-topbar-club{ display:flex; align-items:center; justify-content:space-between; gap:10px; padding:8px var(--bd-gutter) 6px; max-width:1180px; margin:0 auto; }
+.bd-topbar .m3-topbar-crest{ width:44px; height:44px; border-radius:0; background:none !important; box-shadow:none !important; }
+.bd-topbar .m3-topbar-crest img{ filter:drop-shadow(0 2px 6px rgba(0,0,0,.5)); }
+.bd-topbar .m3-topbar-crest:not(.has-logo){ border-radius:12px; background:var(--m3-primary) !important; }
+.bd-topbar .m3-topbar-name{ font-family:var(--bd-display); font-size:18px; font-weight:700; color:#fff; }
+.bd-topbar .m3-topbar-sub{ font-size:12.5px; color:#A9B7C5; margin-top:2px; }
+.bd-topbar .m3-topbar-chip{ background:rgba(180,230,75,.14); color:var(--br-lime); border:1px solid rgba(180,230,75,.35); font-size:11.5px; }
+.bd-ctx-tabs{
+  display:flex; gap:8px; overflow-x:auto; scrollbar-width:none; padding:6px var(--bd-gutter) 10px; max-width:1180px; margin:0 auto;
+  -webkit-overflow-scrolling:touch; scroll-padding-inline:var(--bd-gutter);
+  -webkit-mask-image:linear-gradient(90deg, transparent 0, #000 12px, #000 calc(100% - 28px), transparent);
+          mask-image:linear-gradient(90deg, transparent 0, #000 12px, #000 calc(100% - 28px), transparent);
+}
+.bd-ctx-tabs::-webkit-scrollbar{ display:none; }
+.bd-ctx-tabs .m3-nav-item.bd-ctx-tab{
+  flex:0 0 auto; flex-direction:row; gap:0; min-height:40px; padding:0 16px; border-radius:999px;
+  border:1px solid var(--bd-line); background:var(--bd-glass); color:#C9D5E2;
+  font-family:var(--font); font-size:14px; font-weight:600; white-space:nowrap;
+}
+.bd-ctx-tabs .m3-nav-item.bd-ctx-tab.active{ background:var(--br-lime); color:var(--m3-on-primary); border-color:transparent; }
+.bd-ctx-tabs .m3-nav-item:focus-visible{ outline:2px solid #fff; outline-offset:2px; }
+
+/* Navegação inferior: Início · Clube · Jogos · Competições · Mais */
+.m3-bottom-nav.bd-bottom-nav{
+  left:0; right:0; bottom:0; border-radius:22px 22px 0 0; justify-content:space-around;
+  padding:8px 6px calc(8px + env(safe-area-inset-bottom, 0px));
+  background:rgba(8,20,33,.97); border-top:1px solid rgba(148,163,184,.12);
+  backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px);
+}
+.bd-bottom-nav .m3-nav-item{ flex:1 1 0; min-width:0; min-height:52px; padding:6px 2px; font-size:11.5px; gap:4px; color:#AFBBC8; }
+.bd-bottom-nav .m3-nav-item svg{ width:24px; height:24px; }
+.bd-bottom-nav .m3-nav-item.active{ color:var(--br-lime); }
+.bd-bottom-nav .m3-nav-item.active .m3-nav-pill{ display:none; }
+.bd-bottom-nav .m3-nav-item:focus-visible{ outline:2px solid var(--br-lime); outline-offset:-2px; border-radius:12px; }
+.m3-body{ background:var(--br-bg); padding:0 var(--bd-gutter) calc(var(--m3-navh) + 40px + env(safe-area-inset-bottom, 0px)); }
+.m3-body > .ct-panel{ max-width:1180px; margin:0 auto; }
+
+/* =========================================================
+   Início (Cap. 1 · T07 / Cap. 2 · T01)
+   ========================================================= */
+.bd-home-hero{
+  position:relative; margin:0 calc(-1 * var(--bd-gutter)); min-height:clamp(150px, 40vw, 260px);
+  display:flex; align-items:flex-end; padding:0 var(--bd-gutter) 18px;
+  background-position:center 40%;
+}
+.bd-home-greet{ position:relative; max-width:64%; }
+.bd-home-greet .bd-hero-title{ font-size:clamp(34px, 10vw, 52px); margin:0 0 8px; }
+.bd-home-greet-sub{ margin:0; color:#DCE4EC; font-size:15px; line-height:1.45; text-shadow:0 1px 10px rgba(0,0,0,.7); }
+
+.m3-hero-card.bd-next-card{
+  position:relative; margin:-4px 0 14px; padding:16px; border-radius:var(--bd-radius);
+  background:linear-gradient(160deg, rgba(14,27,45,.96), rgba(8,17,30,.98)); color:var(--br-text);
+  border:1px solid rgba(180,230,75,.28); box-shadow:0 18px 40px rgba(0,0,0,.35);
+}
+.bd-next-head{ display:flex; align-items:baseline; justify-content:space-between; gap:10px; flex-wrap:wrap; margin-bottom:6px; }
+.bd-next-title{ font-family:var(--bd-display); font-weight:700; font-size:18px; color:#fff; }
+.bd-next-meta{ font-size:12.5px; color:#A9B7C5; }
+.bd-next-card .ct-next-match .side .n{ font-family:var(--bd-display); font-size:14px; color:#fff; }
+.bd-next-card .mt-calendar-phase{ color:#D5DEE7; }
+.bd-next-actions{ display:flex; flex-direction:column; gap:8px; margin-top:12px; }
+#panel-central #btnSimulate, #panel-central #btnAdvanceSeason{ position:static; right:auto; bottom:auto; box-shadow:0 8px 24px rgba(180,230,75,.18); }
+#panel-central #btnSimulate.hidden, #panel-central #btnAdvanceSeason.hidden, #panel-central #btnSkipToMatch.hidden{ display:none; }
+#panel-central #btnSimulate svg, #panel-central #btnAdvanceSeason svg{ width:18px; height:18px; }
+#panel-central #btnSkipToMatch{ min-height:44px; border-radius:999px; }
+
+.bd-stats-strip{
+  display:grid; grid-template-columns:repeat(4, minmax(0, 1fr)); margin:0 0 12px; padding:14px 4px;
+  border-radius:var(--bd-radius); border:1px solid var(--bd-line); background:var(--bd-glass);
+}
+.bd-stat{ display:flex; flex-direction:column; align-items:center; text-align:center; gap:2px; padding:0 4px; min-width:0; }
+.bd-stat + .bd-stat{ border-left:1px solid var(--bd-line); }
+.bd-stat-ico{ width:24px; height:24px; fill:none; stroke:#DCE4EC; stroke-width:1.7; stroke-linecap:round; stroke-linejoin:round; margin-bottom:4px; }
+.bd-stat b{ font-family:var(--bd-display); font-size:22px; color:#fff; line-height:1.1; }
+.bd-stat span{ font-size:12px; color:#A9B7C5; }
+.bd-stat small{ font-size:11px; color:#8FA0B4; overflow-wrap:anywhere; }
+.bd-empty-inline{ margin:0; color:#97A8BA; font-size:13.5px; line-height:1.45; grid-column:1 / -1; padding:2px 10px; }
+
+.bd-home-grid{ display:grid; grid-template-columns:1fr 1fr; gap:10px; margin:0 0 12px; }
+.bd-home-grid > :nth-child(3){ grid-column:1 / -1; }
+.bd-home-grid--2{ grid-template-columns:1fr; }
+.bd-home-grid--2 > :nth-child(3){ grid-column:auto; }
+.bd-panel{
+  display:block; width:100%; min-width:0; text-align:left; color:inherit; font:inherit;
+  padding:14px; border-radius:var(--bd-radius); border:1px solid var(--bd-line); background:var(--bd-glass); margin:0 0 12px;
+}
+.bd-home-grid .bd-panel{ margin:0; }
+.bd-panel--btn{ cursor:pointer; }
+.bd-panel--btn:hover{ border-color:rgba(180,230,75,.4); }
+.bd-panel--btn:focus-visible{ outline:3px solid #fff; outline-offset:2px; }
+.bd-panel-h, .bd-panel-head h2{ display:block; margin:0 0 10px; font-family:var(--bd-display); font-weight:700; font-size:15px; color:#fff; }
+.bd-panel-head{ display:flex; align-items:center; justify-content:space-between; gap:8px; }
+.bd-panel-link{ width:44px; height:36px; margin:-8px -8px 0 0; border:none; background:none; color:#C6D2DE; font-size:24px; cursor:pointer; border-radius:10px; }
+.bd-panel-link:focus-visible{ outline:2px solid var(--br-lime); }
+#homeBoardCard{ display:flex; flex-direction:column; align-items:center; text-align:center; }
+#homeBoardCard .bd-panel-h{ align-self:flex-start; }
+.bd-ring{ width:92px; height:92px; }
+.bd-ring-track{ fill:none; stroke:rgba(148,163,184,.18); stroke-width:8; }
+.bd-ring-fill{ fill:none; stroke-width:8; stroke-linecap:round; }
+.bd-ring text{ fill:#fff; font:700 18px var(--bd-display); }
+.bd-ring--good .bd-ring-fill{ stroke:var(--br-lime); }
+.bd-ring--mid .bd-ring-fill{ stroke:#F4C542; }
+.bd-ring--bad .bd-ring-fill{ stroke:#FF6B6B; }
+.bd-tone{ font-weight:700; font-size:14px; margin-top:4px; }
+.bd-tone--good{ color:var(--br-lime); } .bd-tone--mid{ color:#F4C542; } .bd-tone--bad{ color:#FF8A8A; }
+.bd-form{ display:flex; align-items:flex-end; justify-content:space-around; gap:6px; min-height:84px; }
+.bd-form-item{ display:flex; flex-direction:column; align-items:center; gap:6px; }
+.bd-form-bar{ width:16px; border-radius:4px; display:block; }
+.bd-form-bar--3{ background:var(--br-lime); } .bd-form-bar--1{ background:#9AA6B4; } .bd-form-bar--0{ background:#FF6B6B; }
+.bd-form-chip{ width:24px; height:24px; border-radius:50%; display:flex; align-items:center; justify-content:center; font:700 11px var(--font); border:1.5px solid; }
+.bd-form-chip--3{ color:var(--br-lime); } .bd-form-chip--1{ color:#C6D2DE; } .bd-form-chip--0{ color:#FF8A8A; }
+.bd-goals{ list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:10px; }
+.bd-goals li{ display:flex; gap:10px; align-items:flex-start; font-size:14px; color:#DCE4EC; line-height:1.3; }
+.bd-goals small{ display:block; color:#8FA0B4; font-size:12px; margin-top:2px; }
+.bd-goal-dot{ flex-shrink:0; width:20px; height:20px; border-radius:50%; border:2px solid #8FA0B4; margin-top:1px; }
+.bd-goals li.done .bd-goal-dot{ background:var(--br-lime); border-color:var(--br-lime); box-shadow:inset 0 0 0 4px #0B1626; }
+.bd-highlights{ display:grid; grid-template-columns:repeat(4, minmax(0, 1fr)); gap:8px; }
+.bd-hl{ position:relative; display:flex; flex-direction:column; align-items:center; gap:4px; padding:12px 4px 10px; border-radius:var(--bd-radius-sm); border:1px solid var(--bd-line); background:rgba(19,35,56,.55); color:inherit; cursor:pointer; min-width:0; }
+.bd-hl:focus-visible{ outline:2px solid var(--br-lime); }
+.bd-hl-avatar{ width:48px; height:48px; font-size:16px; }
+.bd-hl-ovr{ position:absolute; top:44px; right:10%; min-width:28px; height:28px; padding:0 4px; border-radius:50%; background:#0B1626; border:2px solid var(--br-lime); color:#fff; font:700 12px/24px var(--font); text-align:center; }
+.bd-hl-name{ margin-top:8px; font-family:var(--bd-display); font-weight:700; font-size:13px; color:#fff; max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.bd-hl-pos{ font-size:11px; color:#97A8BA; }
+.bd-news{ display:flex; flex-direction:column; gap:6px; width:100%; text-align:left; padding:14px; border-radius:var(--bd-radius-sm); border:none; cursor:pointer; color:#fff; font:inherit;
+  background:rgba(19,35,56,.6); min-height:96px; justify-content:flex-end; }
+.bd-news:focus-visible{ outline:2px solid var(--br-lime); }
+.bd-news-kicker{ font-size:11px; letter-spacing:.12em; text-transform:uppercase; color:var(--br-lime); font-weight:700; }
+.bd-news-title{ font-family:var(--bd-display); font-weight:700; font-size:16px; line-height:1.25; }
+.bd-mini-table{ width:100%; border-collapse:collapse; font-size:13.5px; color:#DCE4EC; }
+.bd-mini-table th{ font-weight:600; font-size:11.5px; color:#8FA0B4; text-align:center; padding:0 4px 8px; }
+.bd-mini-table th:nth-child(2){ text-align:left; }
+.bd-mini-table td{ text-align:center; padding:8px 4px; border-top:1px solid var(--bd-line); }
+.bd-mini-table td:nth-child(2){ text-align:left; }
+.bd-mini-table tr.mine td{ background:rgba(180,230,75,.1); }
+.bd-mini-table tr.mine td:first-child{ box-shadow:inset 3px 0 0 var(--br-lime); color:var(--br-lime); font-weight:700; }
+.bd-mini-club{ display:flex; align-items:center; gap:8px; min-width:0; }
+.bd-mini-club span:last-child{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.bd-quick{ display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:10px; margin:0 0 14px; }
+.bd-quick-btn{
+  display:flex; align-items:center; gap:10px; min-height:60px; padding:10px 12px; border-radius:var(--bd-radius);
+  border:1px solid var(--bd-line); background:var(--bd-glass); color:#fff; cursor:pointer; font:600 13.5px var(--font); text-align:left;
+}
+.bd-quick-btn svg{ flex-shrink:0; width:26px; height:26px; fill:none; stroke:#DCE4EC; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
+.bd-quick-btn:focus-visible{ outline:2px solid var(--br-lime); }
+.bd-quick-btn:hover{ border-color:rgba(180,230,75,.4); }
+@media (max-width:420px){
+  .bd-quick{ grid-template-columns:1fr; }
+  .bd-quick-btn{ min-height:52px; }
+  .bd-stat b{ font-size:19px; }
+}
+@media (min-width:760px){
+  .bd-home-grid{ grid-template-columns:repeat(3, minmax(0, 1fr)); }
+  .bd-home-grid > :nth-child(3){ grid-column:auto; }
+  .bd-home-grid--2{ grid-template-columns:3fr 2fr; }
+}
+@media (min-width:1000px){
+  /* Desktop: hero e próximo jogo lado a lado */
+  #panel-central{ display:grid; grid-template-columns:minmax(0, 1.4fr) minmax(320px, 1fr); column-gap:16px; align-items:start; }
+  #panel-central > *{ grid-column:1 / -1; }
+  #panel-central > .bd-home-hero{ grid-column:1; margin-right:0; border-radius:0 0 var(--bd-radius) var(--bd-radius); min-height:360px; }
+  #panel-central > .bd-next-card{ grid-column:2; grid-row:1; align-self:end; margin:0 0 0; }
+  .bd-home-greet{ max-width:80%; }
+}
+
+/* =========================================================
+   Jogos / Calendário (Cap. 2 · T07)
+   ========================================================= */
+.bd-section-head{ padding:16px 0 4px; }
+.bd-section-title{ font-family:var(--bd-display); font-weight:700; font-size:clamp(24px, 7vw, 30px); color:#fff; margin:0 0 12px; }
+.bd-month-nav{ display:flex; align-items:center; justify-content:space-between; gap:8px; margin:0 0 10px; }
+.bd-month-nav[hidden]{ display:none; }
+.bd-month-label{ margin:0; font-family:var(--bd-display); font-weight:700; font-size:18px; color:#fff; }
+.bd-fixtures{ display:flex; flex-direction:column; gap:10px; }
+.bd-fixture{
+  display:flex; flex-direction:column; gap:8px; width:100%; padding:12px 14px; text-align:left; cursor:pointer; color:inherit; font:inherit;
+  border-radius:var(--bd-radius-sm); border:1px solid var(--bd-line); background:var(--bd-glass);
+}
+.bd-fixture.next{ border-color:var(--br-lime); box-shadow:0 0 0 1px var(--br-lime) inset; }
+.bd-fixture:focus-visible{ outline:3px solid #fff; outline-offset:2px; }
+.bd-fx-top{ display:flex; align-items:center; justify-content:space-between; }
+.bd-fx-day{ font-size:12.5px; color:#A9B7C5; font-weight:600; }
+.bd-fx-teams{ display:grid; grid-template-columns:minmax(0, 1fr) auto minmax(0, 1fr); align-items:center; gap:10px; }
+.bd-fx-team{ display:flex; align-items:center; gap:8px; min-width:0; font-weight:600; color:#fff; font-size:14px; }
+.bd-fx-team span{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.bd-fx-team--away{ justify-content:flex-end; text-align:right; }
+.bd-fx-score{ font-family:var(--bd-display); font-weight:700; font-size:18px; color:#fff; min-width:48px; text-align:center; }
+.bd-fixture:not(.played) .bd-fx-score{ font-size:13px; color:#8FA0B4; }
+.bd-fx-meta{ font-size:12px; color:#8FA0B4; }
+.bd-res{ width:24px; height:24px; border-radius:6px; display:flex; align-items:center; justify-content:center; font:700 12px var(--font); }
+.bd-res--3{ background:var(--br-lime); color:var(--m3-on-primary); }
+.bd-res--1{ background:#9AA6B4; color:#0B1626; }
+.bd-res--0{ background:#FF6B6B; color:#2A0606; }
+.bd-fx-teams--lg .bd-fx-team{ flex-direction:column; gap:6px; text-align:center; }
+.bd-fx-teams--lg .bd-fx-team--away{ flex-direction:column-reverse; }
+.bd-fx-teams--lg .bd-fx-score{ font-size:30px; }
+.bd-sheet-meta{ text-align:center; color:#A9B7C5; font-size:13px; margin:12px 0 6px; }
+.bd-sheet-result{ text-align:center; font-weight:700; margin:0 0 10px; }
+.bd-res-text--3{ color:var(--br-lime); } .bd-res-text--1{ color:#C6D2DE; } .bd-res-text--0{ color:#FF8A8A; }
+.bd-sheet-actions{ display:flex; flex-direction:column; gap:8px; margin-top:16px; }
+.bd-sheet-actions .bd-btn-ghost{ width:100%; min-height:48px; }
+
+/* =========================================================
+   Cap. 2 · T02–T06 — Elenco, Jogador, Diretoria, Finanças
+   ========================================================= */
+#ctShell [class*="bd-"]{ font-family:var(--font); }
+#ctShell .bd-hero-title, #ctShell .bd-section-title, #ctShell .bd-flow-title, #ctShell .bd-btn-primary,
+#ctShell .bd-panel-h, #ctShell .bd-panel-head h2, #ctShell .bd-next-title, #ctShell .bd-stat b, #ctShell .bd-month-label,
+#ctShell .bd-fx-score, #ctShell .bd-hl-name, #ctShell .bd-news-title, #ctShell .bd-ring text{ font-family:var(--bd-display); }
+.bd-stats-strip--compact{ padding:10px 4px; }
+.bd-stats-strip--compact .bd-stat b{ font-size:20px; }
+.bd-list-tools{ display:flex; gap:8px; align-items:stretch; margin:0 0 4px; }
+.bd-list-tools .bd-search{ flex:1; margin:0; }
+.bd-sort{ min-height:48px; border-radius:var(--bd-radius-sm); }
+.bd-sort select{ min-height:46px; }
+#panel-elenco .m3-filter-row{ flex-wrap:nowrap; overflow-x:auto; scrollbar-width:none; padding:8px 0; }
+#panel-elenco .m3-filter-row::-webkit-scrollbar{ display:none; }
+#panel-elenco .m3-filter-chip{ flex:0 0 auto; min-height:40px; }
+.bd-player-hero.mt-player-hero{ display:grid; grid-template-columns:auto 1fr auto; align-items:center; gap:14px; padding:6px 0 14px; }
+.bd-avatar--lg{ width:72px; height:72px; font-size:24px; }
+.bd-player-hero .mt-player-hero-info b{ font-family:var(--bd-display); font-size:22px; color:#fff; letter-spacing:0; }
+.bd-attr-strip{ display:grid; grid-template-columns:repeat(4, minmax(0, 1fr)); gap:6px; margin:0 0 12px; }
+.bd-attr-strip div{ display:flex; flex-direction:column; align-items:center; padding:10px 4px; border-radius:var(--bd-radius-sm); background:var(--bd-glass); border:1px solid var(--bd-line); }
+.bd-attr-strip b{ font-family:var(--bd-display); font-size:22px; color:#fff; }
+.bd-attr-strip span{ font-size:11.5px; color:#A9B7C5; }
+.bd-tabs{ margin-bottom:10px; }
+.bd-tabpanel[hidden]{ display:none; }
+.bd-tabpanel{ margin-bottom:12px; }
+.bd-board-conf{ display:flex; align-items:center; gap:16px; padding:6px 0 10px; }
+.bd-board-conf p{ margin:6px 0 0; color:#C9D5E2; font-size:13.5px; line-height:1.45; }
+.bd-breakdown{ list-style:none; margin:0 0 10px; padding:0; border-top:1px solid var(--bd-line); }
+.bd-breakdown li{ display:flex; justify-content:space-between; gap:10px; padding:8px 0; border-bottom:1px solid var(--bd-line); font-size:13.5px; color:#DCE4EC; }
+.bd-breakdown b{ font-family:var(--bd-display); }
+.pos{ color:var(--br-lime); } .neg{ color:#FF8A8A; }
+.bd-pressure{ font-size:13px; color:#A9B7C5; margin:0 0 14px; padding:10px 12px; border-radius:var(--bd-radius-sm); background:rgba(148,163,184,.08); }
+.bd-pressure.warn{ color:#FFD7D7; background:rgba(255,107,107,.12); }
+.bd-panel-sub{ margin:-4px 0 10px; font-size:12.5px; color:#8FA0B4; }
+.bd-flow-totals{ display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:8px; margin:0 0 12px; }
+.bd-flow-totals div{ display:flex; flex-direction:column; gap:2px; }
+.bd-flow-totals span{ font-size:11.5px; color:#8FA0B4; }
+.bd-flow-totals b{ font-family:var(--bd-display); font-size:15px; overflow-wrap:anywhere; }
+.bd-flow-list{ list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:6px; }
+.bd-flow-row{ display:grid; grid-template-columns:96px 1fr auto; align-items:center; gap:10px; width:100%; min-height:44px; padding:6px 8px; border-radius:10px; border:1px solid transparent; background:rgba(19,35,56,.45); color:#DCE4EC; font:500 13px var(--font); cursor:pointer; text-align:left; }
+.bd-flow-row:hover{ border-color:rgba(180,230,75,.35); }
+.bd-flow-row:focus-visible{ outline:2px solid var(--br-lime); }
+.bd-flow-bars{ display:flex; flex-direction:column; gap:3px; }
+.bd-flow-bar{ height:7px; border-radius:4px; display:block; }
+.bd-flow-bar.in{ background:var(--br-lime); } .bd-flow-bar.out{ background:#FF6B6B; }
+.bd-flow-val{ display:flex; flex-direction:column; align-items:flex-end; font-size:12px; font-weight:700; }
+.bd-quick-btn--row{ width:100%; margin:12px 0 0; }
+.bd-quick-sub{ margin-left:auto; font-size:12px; font-weight:500; color:#A9B7C5; }
+
+/* =========================================================
+   Cap. 3 · T04 (renomear esquema) / Cap. 7 · T02 (Meus saves)
+   ========================================================= */
+.bd-sheet-form .bd-sheet-actions{ margin-top:8px; }
+.bd-save{
+  display:grid; grid-template-columns:auto 1fr auto auto; align-items:center; gap:12px; padding:14px; margin:0 0 10px;
+  border-radius:var(--bd-radius); border:1px solid var(--bd-line); background:var(--bd-glass);
+}
+.bd-save.active{ border-color:var(--br-lime); box-shadow:0 0 0 1px var(--br-lime) inset; }
+.bd-save--empty{ grid-template-columns:1fr auto; border-style:dashed; }
+.bd-save-body{ display:flex; flex-direction:column; gap:3px; min-width:0; }
+.bd-save-body b{ font-family:var(--bd-display); font-size:16px; color:#fff; }
+.bd-save-body span{ font-size:13px; color:#B9C6D3; }
+.bd-save-body small{ font-size:12px; color:#8FA0B4; }
+.bd-save-del{ color:#FF8A8A; }
+@media (max-width:380px){ .bd-save{ grid-template-columns:auto 1fr auto; } .bd-save .bd-btn-ghost, .bd-save .bd-badge{ grid-column:2 / 3; justify-self:start; } }
