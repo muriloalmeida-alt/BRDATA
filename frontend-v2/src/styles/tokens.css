@@ -1,0 +1,28 @@
+/* BRDATA Carreira 2.0 — tokens (docs/02_DESIGN_SYSTEM.md do pacote).
+   Lima é acento FUNCIONAL (ação, seleção, progresso), não decoração. */
+:root {
+  --bg: #06111c;
+  --surface: #0b1927;
+  --surface-2: #102235;
+  --surface-3: #15304a;
+  --text: #f5f7fa;
+  --muted: #a5b4c4;
+  --faint: #7b8da2;
+  --accent: #b4e64b;
+  --on-accent: #10200a;
+  --line: rgba(170, 197, 220, .16);
+  --danger: #ef5c62;
+  --warn: #f2b84b;
+  --success: #b4e64b;
+
+  --font-ui: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-num: "Space Grotesk", var(--font-ui); /* só números de placar/indicadores */
+
+  --s1: 4px; --s2: 8px; --s3: 12px; --s4: 16px; --s6: 24px; --s8: 32px; --s12: 48px;
+  --gutter: 20px;
+  --r-sm: 12px; --r-md: 18px; --r-lg: 24px; --r-pill: 999px;
+  --touch: 44px;
+  --nav-h: 64px;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}

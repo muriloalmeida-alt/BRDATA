@@ -1,0 +1,84 @@
+/* Dashboard — contrato visual (docs/03 do pacote): header leve, saudação
+   compacta, próximo jogo como ação principal, indicadores em faixa
+   contínua, situação do clube em composição fluida. */
+.dash { display: flex; flex-direction: column; gap: var(--s4); margin-top: var(--s2); }
+.dash-club { display: flex; align-items: center; gap: var(--s3); }
+.dash-club h2 { margin: 0; font: 700 20px/1.15 var(--font-ui); }
+.dash-club p { margin: 2px 0 0; }
+.dash-hello { margin: var(--s2) 0 0; font: 700 28px/1.08 var(--font-ui); letter-spacing: -.3px; }
+.dash-hello span { color: var(--accent); }
+
+.next { padding: var(--s4) var(--s4) var(--s4); }
+.next-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px var(--s3); margin-bottom: var(--s4); }
+.next-head h3 { margin: 0; font: 600 16px var(--font-ui); }
+.next-teams { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: var(--s2); }
+.next-team { display: flex; flex-direction: column; align-items: center; gap: var(--s2); text-align: center; min-width: 0; }
+.next-team span { font-weight: 600; font-size: 14px; line-height: 1.2; overflow-wrap: anywhere; }
+.next-mid { display: flex; flex-direction: column; align-items: center; gap: 4px; text-align: center; color: var(--muted); }
+.next-mid b { color: var(--text); font: 600 15px var(--font-ui); white-space: nowrap; }
+.next-venue { display: flex; align-items: center; justify-content: center; gap: 6px; margin: var(--s3) 0 0; }
+.next-cta { width: 100%; margin-top: var(--s4); }
+
+.stats { display: grid; grid-template-columns: repeat(4, 1fr); padding: var(--s3) var(--s2); }
+.stats > div { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 2px; padding: var(--s2) 4px; min-width: 0; }
+.stats > div + div { border-left: 1px solid var(--line); }
+.stats svg { color: var(--muted); margin-bottom: 2px; }
+.stats b { font: 700 24px/1.1 var(--font-num); }
+.stats span { font-size: 12px; color: var(--muted); line-height: 1.2; }
+.stats small { font-size: 11px; color: var(--faint); white-space: nowrap; }
+
+.dash-grid { display: grid; gap: var(--s3); grid-template-columns: 1fr 1fr; }
+.dash-grid .goals { grid-column: 1 / -1; }
+.dash-grid.two { grid-template-columns: 1fr; }
+/* Celular: confiança e desempenho lado a lado (densidade da referência). */
+.conf .conf-body { flex-direction: column; align-items: flex-start; gap: var(--s2); }
+.conf .panel-title, .form .panel-title { font-size: 14px; }
+.conf-body { display: flex; align-items: center; gap: var(--s4); }
+.conf-body b { font-size: 16px; }
+.conf-body p { margin: 4px 0 0; }
+.tone-good { color: var(--accent); } .tone-mid { color: var(--warn); } .tone-bad { color: var(--danger); }
+
+.form-bars { list-style: none; margin: 0; padding: 0; display: flex; align-items: flex-end; gap: var(--s2); min-height: 92px; }
+.form-bars li { display: flex; flex-direction: column; align-items: center; gap: 4px; flex: 1; max-width: 44px; }
+.form-bars i { display: block; width: 100%; max-width: 22px; border-radius: 6px 6px 3px 3px; background: var(--accent); }
+.form-bars .res-E i { background: var(--faint); } .form-bars .res-D i { background: var(--danger); }
+.form-bars span { width: 24px; height: 24px; display: grid; place-items: center; border-radius: 50%; border: 1.5px solid currentColor; font: 700 11px var(--font-ui); color: var(--accent); }
+.form-bars .res-E span { color: var(--muted); } .form-bars .res-D span { color: var(--danger); }
+.form-bars small { font-size: 11px; color: var(--faint); }
+
+.goal-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--s3); }
+.goal-list li { display: flex; gap: var(--s2); align-items: flex-start; font-size: 14px; }
+.goal-list svg { flex-shrink: 0; margin-top: 1px; color: var(--faint); }
+.goal-list svg.ok { color: var(--accent); }
+
+.stars { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--s2); }
+.stars li { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 2px; min-width: 0; }
+.stars b { font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.stars .meta { font-size: 11px; }
+.star-avatar { position: relative; width: 56px; height: 56px; border-radius: 50%; display: grid; place-items: center; background: var(--surface-3); font: 700 16px var(--font-ui); margin-bottom: 4px; }
+.star-avatar em { position: absolute; right: -6px; bottom: -4px; min-width: 28px; height: 22px; padding: 0 5px; border-radius: 11px; background: var(--bg); border: 2px solid var(--accent); color: var(--text); font: 700 12px/18px var(--font-num); font-style: normal; }
+
+.news { list-style: none; margin: 0; padding: 0; }
+.news li { display: flex; flex-direction: column; gap: 2px; padding: var(--s3) 0; border-bottom: 1px solid var(--line); }
+.news li:first-child { padding-top: 0; } .news li:last-child { border-bottom: 0; padding-bottom: 0; }
+.news b { font-weight: 600; font-size: 14px; }
+
+.quick { display: grid; gap: var(--s2); grid-template-columns: 1fr; }
+.quick a { display: flex; align-items: center; gap: var(--s3); min-height: 52px; padding: 0 var(--s4); border-radius: var(--r-sm); background: rgba(11,25,39,.82); border: 1px solid var(--line); text-decoration: none; font-weight: 600; }
+.quick a span { flex: 1; } .quick a svg:last-child { color: var(--muted); }
+
+@media (min-width: 600px) {
+  .dash-grid.two { grid-template-columns: repeat(2, 1fr); }
+  .conf .conf-body { flex-direction: row; align-items: center; }
+  .quick { grid-template-columns: repeat(3, 1fr); }
+}
+@media (min-width: 1000px) {
+  .dash { display: grid; grid-template-columns: 1.15fr 1fr; column-gap: var(--s6); align-items: start; }
+  .dash-club, .dash-hello { grid-column: 1; }
+  .next { grid-column: 2; grid-row: 1 / span 3; }
+  .stats, .dash-grid, .quick { grid-column: 1 / -1; }
+  .dash-grid { grid-template-columns: repeat(3, 1fr); }
+  .dash-grid .goals { grid-column: auto; }
+  .dash-grid.two { grid-template-columns: 1.4fr 1fr; }
+  .dash-hello { font-size: 32px; }
+}
