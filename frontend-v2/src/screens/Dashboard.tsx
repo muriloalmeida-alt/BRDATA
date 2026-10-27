@@ -45,7 +45,7 @@ export function Dashboard({ career, user, now = new Date() }: { career: Career; 
         <div className="hero-bg" aria-hidden />
         <div className="hero-coach" aria-hidden />
         <div className="hero-hello">
-          <h1 className="dash-hello">{greeting(now)},<br /><span>{firstName(user.name)}!</span></h1>
+          <h1 className="dash-hello">{greeting(now)},{" "}<br /><span>{firstName(user.name)}!</span></h1>
           <p className="hero-quote">"Trabalho, estratégia e consistência constroem grandes histórias."</p>
         </div>
 
