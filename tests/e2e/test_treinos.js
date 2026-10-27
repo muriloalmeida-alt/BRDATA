@@ -31,9 +31,8 @@ const { enterGame } = require("./_startup");
 
   // 0) Redesign M3 — nav de 5 itens (Início/Elenco/Tática/Mercado/
   // Clube) + Menu; Treinos saiu do rodapé, mora dentro do Menu agora.
-  // Redesign Cap. 2: nav inferior Início/Clube/Jogos/Competições/Mais.
-  const navLabels = await page.evaluate(() => [...document.querySelectorAll(".m3-bottom-nav .m3-nav-item")].map((b) => b.textContent.trim()));
-  check("0) Nav com 5 itens (Treinos mora no Menu \"Mais\"):", navLabels.length === 5 && !navLabels.includes("Treinos") && navLabels.includes("Mais"), JSON.stringify(navLabels));
+  const navLabels = await page.evaluate(() => [...document.querySelectorAll(".m3-nav-item")].map((b) => b.textContent.trim()));
+  check("0) Nav com 5 itens + Menu (Treinos mora no Menu agora):", navLabels.length === 6 && !navLabels.includes("Treinos") && navLabels.includes("Menu"), JSON.stringify(navLabels));
 
   // 1) Abrir a aba Treinos — esquema padrão "Equilíbrio Semanal" ativo,
   // 5 cartões de esquema, 7 células na semana.

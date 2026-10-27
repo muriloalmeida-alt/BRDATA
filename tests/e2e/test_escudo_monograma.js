@@ -68,10 +68,7 @@ const { skipPreseason } = require("./_calendar_skip");
   await page.click('.mt-competition-card[data-competition="brasileirao"]');
   await page.waitForTimeout(300);
   const picker = await page.evaluate(() => {
-    // Série A agora usa os escudos oficiais de img/teams/ (redesign);
-    // o monograma continua sendo o fallback de quem não tem arquivo —
-    // o Mirassol (ver public/img/teams/README.md).
-    const card = document.querySelector('.m3-club-row[data-id="mir"]');
+    const card = document.querySelector(".m3-club-row");
     const mono = card ? card.querySelector(".ct-crest-mono") : null;
     return { hasCard: !!card, monoText: mono ? mono.textContent : null };
   });

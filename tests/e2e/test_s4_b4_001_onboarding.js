@@ -6,7 +6,6 @@
 // token visual, conforme o escopo.
 const { chromium } = require("playwright-core");
 const { check } = require("./_check");
-const { passCareerSetup } = require("./_startup");
 
 (async () => {
   const browser = await chromium.launch({ executablePath: process.env.PW_CHROMIUM_PATH || undefined, headless: true, args: ["--host-resolver-rules=MAP fonts.googleapis.com 127.0.0.1,MAP fonts.gstatic.com 127.0.0.1"] });
@@ -28,7 +27,6 @@ const { passCareerSetup } = require("./_startup");
   await page.click(".m3-club-row");
   await page.waitForTimeout(150);
   await page.click("#btnConfirmClub");
-  await passCareerSetup(page); // Cap. 1 T05/T06 (redesign)
 
   // 1) Onboarding aparece na 1ª carreira desta conta (gatilho de sempre,
   // ver ME.onboardingSeen), com o slide 1 renderizado.

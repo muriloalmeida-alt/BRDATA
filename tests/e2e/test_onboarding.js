@@ -4,7 +4,7 @@
 // reaparece (nem em conta nova retomando, nem depois de "Reiniciar"),
 // e libera o modal de login diário só depois de fechado.
 const { chromium } = require("playwright-core");
-const { passCareerSetup, waitForBoot } = require("./_startup");
+const { waitForBoot } = require("./_startup");
 const { check } = require("./_check");
 
 (async () => {
@@ -30,7 +30,6 @@ const { check } = require("./_check");
   await page.click(".m3-club-row");
   await page.waitForTimeout(150);
   await page.click("#btnConfirmClub");
-  await passCareerSetup(page); // Cap. 1 T05/T06 (redesign)
   // Espera a tela do jogo (estado) — o tutorial abre no mesmo instante;
   // antes 700 ms fixos, curto no CI (criar a carreira demora mais).
   await page.waitForFunction(() => { const g = document.getElementById("screenGame"); return !!g && !g.classList.contains("hidden"); }, null, { timeout: 20000 }).catch(() => {});
@@ -116,7 +115,6 @@ const { check } = require("./_check");
   await page.click(".m3-club-row");
   await page.waitForTimeout(150);
   await page.click("#btnConfirmClub");
-  await passCareerSetup(page); // Cap. 1 T05/T06 (redesign)
   // Espera o tutorial abrir (criar a carreira passou de 700 ms no CI).
   const openedForSkip = await page.waitForSelector("#onboardingOverlay.open", { timeout: 20000 }).then(() => true, () => false);
   await page.click("#btnOnboardSkip");

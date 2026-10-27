@@ -118,61 +118,27 @@ function decompressEnvelope(entry) {
   return entry; // formato antigo (pré-compressão) — ver load()
 }
 
-// Cap. 7 / Tela 02 (Gerenciamento de saves) — cada conta passa a ter
-// até MAX_SLOTS carreiras, uma delas ATIVA. /api/career (GET/PUT/DELETE)
-// continua operando só na ativa, então o cliente antigo segue
-// funcionando sem mudança nenhuma. Registro por conta:
-//   { active: "s1", slots: { s1: { __gz } }, meta: { s1: {...} } }
-// `meta` é um resumo pequeno (clube, competição, temporada, rodada,
-// data) gravado a cada save — alimenta a lista de saves e a
-// popularidade das competições (Cap. 1 / Tela 03) sem descomprimir
-// carreira nenhuma.
-const MAX_SLOTS = 3;
-let store = new Map(); // userId -> registro de slots (acima)
-
-function metaOf(data) {
-  if (!data || typeof data !== "object") return null;
-  return {
-    clubId: String(data.clubId || ""), clubName: String(data.clubName || "").slice(0, 60),
-    clubLogo: typeof data.clubLogo === "string" ? data.clubLogo.slice(0, 300) : null,
-    competitionId: String(data.competitionId || "brasileirao"),
-    seasonYear: Number(data.seasonYear) || null, currentRound: Number(data.currentRound) || null,
-    updatedAt: Number(data.updatedAt) || Date.now(),
-  };
-}
-// Normaliza qualquer formato já gravado em disco: objeto cru (pré-
-// compressão), envelope { __gz } (pré-slots) ou registro de slots.
-function normalizeRecord(entry) {
-  if (!entry) return null;
-  if (entry.slots && typeof entry.slots === "object") {
-    if (!entry.meta) entry.meta = {};
-    for (const [id, env] of Object.entries(entry.slots)) {
-      if (env && !env.__gz) entry.slots[id] = compressToEnvelope(env).envelope;
-      if (!entry.meta[id]) entry.meta[id] = metaOf(decompressEnvelope(entry.slots[id]));
-    }
-    return entry;
-  }
-  const data = decompressEnvelope(entry);
-  const env = entry.__gz ? entry : compressToEnvelope(entry).envelope;
-  return { active: "s1", slots: { s1: env }, meta: { s1: metaOf(data) } };
-}
+let store = new Map(); // userId -> envelope comprimido { __gz }
 
 function load() {
   try {
     if (fs.existsSync(FILE)) {
       const raw = JSON.parse(fs.readFileSync(FILE, "utf8"));
-      store = new Map();
-      // Migração transparente: arquivo escrito antes dos slots (envelope
-      // { __gz } ou, ainda mais antigo, objeto cru) vira o slot "s1"
-      // ativo, em memória; o próximo persist() já grava no formato novo.
-      // Nenhum dado perdido, nada muda pro cliente.
+      store = new Map(Object.entries(raw));
+      // Migração transparente: arquivo escrito antes desta demanda
+      // guarda o objeto de carreira CRU (sem __gz) — comprime agora,
+      // em memória, pra normalizar; o próximo persist() já grava no
+      // formato novo. Nenhum dado perdido, nenhuma mudança visível
+      // pro cliente (getCareer segue devolvendo o objeto descomprimido
+      // de sempre).
       let migrated = 0;
-      for (const [userId, entry] of Object.entries(raw)) {
-        if (entry && !entry.slots) migrated++;
-        const rec = normalizeRecord(entry);
-        if (rec) store.set(userId, rec);
+      for (const [userId, entry] of store) {
+        if (entry && !entry.__gz) {
+          store.set(userId, compressToEnvelope(entry).envelope);
+          migrated++;
+        }
       }
-      if (migrated) console.log(`[careerStore] ${migrated} carreira(s) migrada(s) pro formato de slots.`);
+      if (migrated) console.log(`[careerStore] ${migrated} carreira(s) migrada(s) pro formato comprimido.`);
     }
   } catch (err) {
     console.error("[careerStore] falha ao carregar arquivo local:", err.message);
@@ -199,9 +165,7 @@ function persist() {
 load();
 
 function getCareer(userId) {
-  const rec = store.get(userId);
-  if (!rec || !rec.active) return null;
-  return decompressEnvelope(rec.slots[rec.active]);
+  return decompressEnvelope(store.get(userId));
 }
 
 // Validação BEM rasa de propósito (ver aviso no topo: o cliente é dono
@@ -223,7 +187,8 @@ function saveCareer(userId, data) {
   }
   const first = compressToEnvelope(data);
   if (first.compressedBytes <= MAX_BYTES) {
-    putActive(userId, first.envelope, data);
+    store.set(userId, first.envelope);
+    persist();
     return data;
   }
   // SAVE-LIMIT-001 — última linha de defesa antes do beco sem saída:
@@ -237,7 +202,8 @@ function saveCareer(userId, data) {
   if (pruneNonEssentialHistory(pruned)) {
     const retry = compressToEnvelope(pruned);
     if (retry.compressedBytes <= MAX_BYTES) {
-      putActive(userId, retry.envelope, pruned);
+      store.set(userId, retry.envelope);
+      persist();
       // Devolve o que foi de fato salvo (podado) — persistCareer() no
       // cliente não consome a resposta hoje (o estado ativo do jogo
       // nunca foi tocado), mas fica correto pra quem vier a depender
@@ -250,76 +216,10 @@ function saveCareer(userId, data) {
   throw err;
 }
 
-function putActive(userId, envelope, data) {
-  let rec = store.get(userId);
-  if (!rec) { rec = { active: "s1", slots: {}, meta: {} }; store.set(userId, rec); }
-  if (!rec.active) rec.active = nextSlotId(rec);
-  rec.slots[rec.active] = envelope;
-  rec.meta[rec.active] = metaOf(data);
-  persist();
-}
-function nextSlotId(rec) {
-  for (let i = 1; i <= MAX_SLOTS; i++) if (!rec.slots[`s${i}`]) return `s${i}`;
-  return null;
-}
-
-// "Apagar e reiniciar" (comportamento de sempre): apaga só a carreira
-// ATIVA — o slot continua ativo e vazio, o próximo save o preenche.
 function deleteCareer(userId) {
-  const rec = store.get(userId);
-  if (!rec || !rec.active || !rec.slots[rec.active]) return false;
-  delete rec.slots[rec.active];
-  delete rec.meta[rec.active];
-  persist();
-  return true;
+  const existed = store.delete(userId);
+  if (existed) persist();
+  return existed;
 }
 
-// ---------- Gerenciamento de saves (Cap. 7 / Tela 02) ----------
-function listSlots(userId) {
-  const rec = store.get(userId);
-  const out = [];
-  for (let i = 1; i <= MAX_SLOTS; i++) {
-    const id = `s${i}`;
-    const filled = !!(rec && rec.slots[id]);
-    out.push({ id, active: !!rec && rec.active === id, empty: !filled, meta: filled ? rec.meta[id] : null });
-  }
-  // Conta sem registro nenhum: o slot 1 é o "ativo" implícito (é onde o
-  // 1º save vai cair, ver putActive).
-  if (!rec) out[0].active = true;
-  return { maxSlots: MAX_SLOTS, slots: out };
-}
-function slotError(msg, status) { const e = new Error(msg); e.status = status; return e; }
-function validSlotId(id) { return /^s[1-9]$/.test(id) && Number(id.slice(1)) <= MAX_SLOTS; }
-// Troca a carreira ativa. Slot vazio também pode ser ativado — é assim
-// que o cliente começa uma carreira NOVA sem apagar as outras (o
-// próximo save cai nele).
-function activateSlot(userId, slotId) {
-  if (!validSlotId(slotId)) throw slotError("Slot inválido.", 400);
-  let rec = store.get(userId);
-  if (!rec) { rec = { active: null, slots: {}, meta: {} }; store.set(userId, rec); }
-  rec.active = slotId;
-  persist();
-  return listSlots(userId);
-}
-function deleteSlot(userId, slotId) {
-  if (!validSlotId(slotId)) throw slotError("Slot inválido.", 400);
-  const rec = store.get(userId);
-  if (!rec || !rec.slots[slotId]) throw slotError("Esse save não existe.", 404);
-  delete rec.slots[slotId];
-  delete rec.meta[slotId];
-  persist();
-  return listSlots(userId);
-}
-// Quantas carreiras (todas as contas, todos os slots) existem por
-// competição — dado real pro selo "Mais popular" (Cap. 1 / Tela 03).
-function competitionPopularity() {
-  const counts = {};
-  for (const rec of store.values()) {
-    for (const m of Object.values(rec.meta || {})) {
-      if (m && m.competitionId) counts[m.competitionId] = (counts[m.competitionId] || 0) + 1;
-    }
-  }
-  return counts;
-}
-
-module.exports = { getCareer, saveCareer, deleteCareer, listSlots, activateSlot, deleteSlot, competitionPopularity, MAX_SLOTS };
+module.exports = { getCareer, saveCareer, deleteCareer };

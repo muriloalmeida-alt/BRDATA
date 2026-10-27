@@ -9,7 +9,6 @@
 // rodando ANTES dele na 1ª carreira.
 const { chromium } = require("playwright-core");
 const { check } = require("./_check");
-const { passCareerSetup } = require("./_startup");
 
 async function newAccount(page, base, email) {
   await page.goto(base + "/", { waitUntil: "load" });
@@ -25,7 +24,6 @@ async function pickClub(page, base) {
   await page.click(".m3-club-row");
   await page.waitForTimeout(150);
   await page.click("#btnConfirmClub");
-  await passCareerSetup(page); // Cap. 1 T05/T06 (redesign)
 }
 
 (async () => {
@@ -184,7 +182,6 @@ async function pickClub(page, base) {
     await page.click(".m3-club-row");
     await page.waitForTimeout(150);
     await page.click("#btnConfirmClub");
-    await passCareerSetup(page); // Cap. 1 T05/T06 (redesign)
     await page.waitForTimeout(600);
     const secondCareer = await page.evaluate(() => ({
       onboardOpen: document.getElementById("onboardingOverlay").classList.contains("open"),

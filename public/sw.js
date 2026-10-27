@@ -81,10 +81,6 @@ const APP_SHELL = [
   // app shell para funcionar offline desde a instalação. css/m3-tokens.css
   // também é usado por carreira.html.
   "/css/m3-tokens.css",
-  // Redesign capítulos 1–7 — estilos e cenas da splash/login (abrem
-  // offline desde a instalação, como o resto do app shell).
-  "/css/brdata-redesign.css",
-  "/img/redesign/background-navy-clean.svg",
   "/2048.html",
   "/js/game2048/engine.js",
   "/js/game2048/ui.js",
