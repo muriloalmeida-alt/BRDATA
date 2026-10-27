@@ -9,6 +9,166 @@ divergências, aprovação) — elas não são repetidas aqui.
 
 Demandas vigentes
 
+S5-DIL-001 — Motor de Dilemas (Fase 1 de "A Semana do Treinador")
+
+Status: PRONTO PARA IMPLEMENTAÇÃO
+
+Registrado em 27/10/2026 a pedido do Murilo ("registre a Fase 1"),
+a partir da proposta de design "A Semana do Treinador" (conversa de
+26/10/2026, mockups das 4 telas publicados como artefato). Só a Fase 1
+é demanda; as Fases 2–5 abaixo são visão, não escopo aprovado.
+Sprint: S5 — Loop de carreira (primeira demanda da Sprint)
+Prioridade: P1 (CLAUDE.md §47 — Game Engine: profundidade + explicabilidade)
+Etapa do loop (CLAUDE.md §11): Events — avaliado no fim de cada rodada,
+depois de Finances/Player Evolution e antes de News/Notifications.
+
+Objetivo
+
+Transformar situações que hoje o jogador só descobre se for procurar
+numa tela (insatisfação, proposta recebida, contrato acabando, meta do
+conselho em risco) em **dilemas**: cartões que chegam até ele, com
+rosto, contexto, 2–3 escolhas com consequência anunciada e efeito
+**lembrado** pelo jogo. Uma decisão não é mais "um botão de moral"; é um
+compromisso que volta a cobrar depois.
+
+Contexto
+
+* A proposta "A Semana do Treinador" tem 4 pilares (Semana, Dilemas,
+  Vestiário, Partida). Dilemas vêm primeiro porque são a base que os
+  outros consomem (a Semana mostra dilemas do dia; a Partida gera
+  dilemas no live) e porque o risco de UI é o menor — reaproveitam
+  sistemas e overlays existentes.
+* Fases futuras (não fazem parte desta demanda): 2 Semana como linha do
+  tempo (nova Central); 3 Partida (momentos de decisão no live, discurso
+  do intervalo, manchete pós-jogo); 4 Vestiário + quadro tático unificado;
+  5 Legado (linha da vida do técnico/jogadores).
+
+Problema (verificado no código de `main` @ `6be4e6c`)
+
+1. **Decisões sem memória.** `applyTalkOption()` (`public/js/carreira.js`,
+   ~l.1313) — "prometer" dá +10 de moral e zera `benchStreak`, e o
+   próprio comentário registra que **não rastreia promessa cumprida ou
+   não**. Exploit (CLAUDE.md §29): prometer toda rodada mantém o
+   jogador satisfeito para sempre sem nunca escalá-lo (limitado só por
+   `lastTalkRound`, 1 conversa/rodada).
+2. **Sistemas dispersos, descoberta passiva.** Conversa (`canTalkTo`/
+   `openTalkModal`), proposta por jogador (`maybeGenerateOffer`/
+   `openPlayerOfferModal`), proposta de clube (`maybeGenerateClubProposals`),
+   contrato (`computeContractFields`, tela Contratos), metas
+   (`openBoardGoalsScreen`) e coletiva (`openPressConferenceModal`) têm
+   gatilhos e telas próprios; não há um lugar que diga "isto precisa de
+   você agora" nem cooldown comum.
+3. Não existe `schemaVersion` no save (0 ocorrências) — migração hoje é
+   só `migrateCareerDefaults()` com `if (x === undefined)`.
+
+Escopo
+
+1. **Event Engine mínima** (CLAUDE.md §28): definição declarativa de
+   dilema = `id`, `trigger` (função pura sobre `CAREER` → candidatos),
+   `conditions`, `options[]` (rótulo, consequência anunciada em texto,
+   `effect`), `cooldown` (em rodadas, por dilema e por jogador),
+   `expiresIn` (rodadas até expirar sem resposta, com efeito default).
+2. **6 dilemas iniciais**, todos usando estado/funções que já existem:
+   | # | Dilema | Gatilho (existente) | Opções (efeito) |
+   |---|---|---|---|
+   | D1 | Jogador insatisfeito no banco | `benchStreak >= TALK_BENCH_STREAK_THRESHOLD` ou moral ≤ 30 (`canTalkTo`) | Prometer titularidade (cria **compromisso**) · Pedir paciência · Liberar para negociar (`wantsTransfer`/listagem existente) |
+   | D2 | Proposta por um jogador seu | oferta gerada por `maybeGenerateOffer` | Aceitar · Recusar (moral do jogador cai se ele queria sair) · Contraproposta (fluxo existente) |
+   | D3 | Contrato acabando | ≤ 1 temporada restante (`computeContractFields`) em titular ou jovem promissor | Renovar agora (abre `renewOverlay`) · Deixar para depois (risco de perder de graça) · Vender |
+   | D4 | Meta do conselho em risco | progresso das metas da diretoria abaixo do ritmo | Assumir publicamente (confiança ± maior) · Pedir paciência (confiança cai pouco agora) |
+   | D5 | Lesionado quer voltar antes | lesão existente em titular, ≤ 1 rodada restante | Liberar (risco de recaída) · Segurar (moral −) |
+   | D6 | Joia da base pede chance | jogador da base com potencial alto e sem minutos | Subir ao profissional · Emprestar (fluxo de empréstimo) · Manter na base (moral −) |
+3. **Compromissos** (corrige o Problema 1): "Prometer titularidade"
+   grava `{ playerId, type: "titular", madeRound, dueRound, minStarts }`.
+   No prazo, se cumprido → moral +, notícia positiva; se quebrado →
+   moral cai **mais** do que a promessa deu e o jogador fica com
+   `wantsTransfer` mais cedo. Não é possível ter 2 promessas abertas ao
+   mesmo jogador. O botão "prometer" do `talkOverlay` passa a usar o
+   mesmo compromisso (sem segunda implementação — CLAUDE.md §5).
+4. **UI — DilemmaCard**: cartão com foto/escudo, frase em primeira
+   pessoa, contexto em 1 linha (dado real: "5 jogos no banco"), opções
+   com consequência visível antes de tocar. Entrega:
+   * fila de dilemas pendentes no topo da Central (substitui a
+     necessidade de procurar o jogador no Elenco);
+   * abre em bottom sheet (padrão `.ct-modal-overlay` existente,
+     tokens `--m3-*`, sem estilo isolado);
+   * badge na navegação inferior quando há dilema pendente;
+   * resolver gera feedback (toast) + entrada em Notícias quando
+     relevante; "ver detalhes" leva à tela existente correspondente.
+5. **Persistência e migração**: `CAREER.dilemmas = { pending: [],
+   commitments: [], cooldowns: {} }` com default em
+   `migrateCareerDefaults()`; introduzir `CAREER.schemaVersion` (save sem
+   o campo = v1; esta demanda grava v2) e uma função de migração
+   v1 → v2 explícita (primeiro passo do `migrateCareer` do CLAUDE.md
+   §10). Histórico de dilemas resolvidos **não** é guardado inteiro: só
+   cooldowns e compromissos abertos (limite de 768 KB, §9).
+6. **Determinismo**: escolha de quais dilemas aparecem na rodada usa
+   RNG semeado pelo estado da rodada (mesma seed → mesmos dilemas).
+   Máx. 2 dilemas novos por rodada.
+
+Fora de escopo
+
+* Fases 2–5 da proposta (linha do tempo da semana, momentos de decisão
+  no live, vestiário, quadro tático, legado).
+* Mudar fórmula de moral, força de equipe, mercado ou finanças além do
+  efeito explícito de cada opção.
+* Remover as telas/fluxos atuais (Conversa, Contratos, Metas, propostas):
+  continuam acessíveis e funcionando; o dilema é um novo caminho até elas.
+* Dilemas para clubes da CPU (a IA não "responde dilemas" nesta fase).
+* Som/háptico.
+
+Dependências
+
+* S4 (Redesign Mobile) — bottom sheets e tokens navy+lima já em `main`
+  (PR #47 e blocos). Nenhuma demanda aberta bloqueia.
+
+Requisitos
+
+R1. Cada dilema é testável isoladamente: `trigger(CAREER)` puro, sem
+    DOM; efeito aplicado por função que recebe estado e retorna delta.
+R2. Toda opção mostra a consequência **antes** da escolha (§34/§45).
+R3. Dilema expirado aplica o efeito default anunciado (ignorar também é
+    decisão) e respeita cooldown.
+R4. Nenhum dilema se repete para o mesmo jogador/contexto dentro do
+    cooldown; promessa só pode ser feita de novo depois de resolvida.
+R5. Save antigo (sem `dilemmas`/`schemaVersion`) carrega sem erro e
+    vira v2; save v2 recarrega idêntico.
+R6. Mobile first: cartão legível e operável com uma mão a 390×844.
+
+Critérios de aceite
+
+1. Os 6 dilemas disparam pelos gatilhos da tabela, num save de teste
+   montado para cada caso, e não disparam fora deles.
+2. Promessa de titularidade: cumprida → moral sobe; quebrada → moral
+   cai mais do que subiu e `wantsTransfer` é antecipado. O exploit
+   "prometer toda rodada" deixa de funcionar (teste dedicado).
+3. "Prometer" pelo `talkOverlay` e pelo dilema D1 produzem o mesmo
+   compromisso (uma implementação só).
+4. Máx. 2 dilemas novos por rodada; mesma seed → mesmos dilemas.
+5. Save v1 (antigo), save incompleto e save grande carregam e migram
+   para v2 sem perder dados; payload continua abaixo de 768 KB.
+6. Fila na Central + badge na nav + bottom sheet aparecem e somem
+   conforme o estado; resolver gera toast e, quando relevante, notícia.
+7. Fluxos antigos (Conversa, Contratos, Metas, propostas) seguem
+   passando nos testes existentes.
+8. `npm run test:fast` e `npm run test:full` verdes (exceto
+   intermitentes já conhecidos, listados no relatório); testes novos
+   seguem `tests/e2e/README.md` (`check()`, espera por estado).
+9. Capturas 390×844 e 1280×800 do DilemmaCard e da fila no relatório.
+
+Riscos
+
+* **Fadiga de decisão**: dilemas demais viram ruído → teto de 2/rodada
+  e cooldown; balancear olhando uma temporada inteira (§30).
+* **Exploit de expiração**: deixar expirar não pode ser sempre a opção
+  ótima → efeito default nunca é neutro.
+* **Monólito**: `carreira.js` tem ~16 mil linhas → motor de dilemas em
+  bloco próprio e coeso (candidato a primeiro módulo extraído, §40), sem
+  refatorar o resto.
+* Migração de schema é a primeira explícita do projeto — testar save
+  antigo real, não só sintético.
+
+⸻
+
 S4-AUDIT-BACKLOG-001 — Auditoria de prontidão das demandas #12 a #21
 
 Status: APROVADO
