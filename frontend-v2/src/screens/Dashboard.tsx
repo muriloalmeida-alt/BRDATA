@@ -57,12 +57,12 @@ export function Dashboard({ career, user, now = new Date() }: { career: Career; 
             <>
               <p className="next-meta">{nm.competition} · {nm.round}ª rodada</p>
               <div className="next-teams">
-                <div className="next-team"><Crest team={nm.home} size={48} bare /><span>{nm.home.name}</span></div>
+                <div className="next-team"><Crest team={nm.home} size={60} bare /><span>{nm.home.name}</span></div>
                 <div className="next-mid">
                   {nm.date ? <b>{shortDate(nm.date)}</b> : <b>Rodada {nm.round}</b>}
                   <span>{nm.isHome ? "Em casa" : "Fora"}</span>
                 </div>
-                <div className="next-team"><Crest team={nm.away} size={48} bare /><span>{nm.away.name}</span></div>
+                <div className="next-team"><Crest team={nm.away} size={60} bare /><span>{nm.away.name}</span></div>
               </div>
               {nm.venue && <p className="next-venue"><MapPin size={14} aria-hidden /> {nm.venue}</p>}
               <a className="btn-primary next-cta" href="/carreira.html"><Play size={16} fill="currentColor" aria-hidden /> Ver detalhes</a>

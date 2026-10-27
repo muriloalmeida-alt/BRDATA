@@ -4,7 +4,7 @@
    painéis em linha, destaques + notícia com imagem, 3 atalhos. Fotos do
    hero/notícia: recortes PROVISÓRIOS da prancha de produção (aprovado
    pelo Murilo até os assets CEN-02/PERS-01 chegarem). */
-.dash { display: flex; flex-direction: column; gap: var(--s3); margin-top: var(--s2); }
+.dash { display: flex; flex-direction: column; gap: var(--s3); margin-top: var(--s4); }
 
 .dash-club { display: flex; align-items: center; gap: var(--s3); }
 .dash-club h2 { margin: 0; font: 700 22px/1.15 var(--font-ui); }
@@ -107,12 +107,21 @@
 }
 /* Celular: saudação no alto do hero e card embaixo à direita, sem se
    sobreporem (na referência o card tem 41% da largura, ilegível em 390px). */
+/* Celular: saudação no alto do hero e o próximo jogo centralizado na
+   largura toda, embaixo (pedido do Murilo: "centraliza e expande"). */
 @media (max-width: 699px) {
-  .hero { min-height: 520px; align-items: flex-start; }
-  .hero-hello { width: 62%; margin-top: 64px; }
-  .next { width: 72%; }
+  .hero { min-height: 560px; align-items: flex-start; }
+  .hero-hello { width: 70%; margin-top: 64px; }
+  .next { left: var(--gutter); right: var(--gutter); width: auto; padding: var(--s4); }
+  .next-head h3 { font-size: 17px; }
+  .next-meta { font-size: 13px; margin-bottom: var(--s3); }
+  .next-teams { gap: var(--s2); }
+  .next-team span { font-size: 14px; }
+  .next-mid b { font-size: 15px; }
+  .next-mid span, .next-venue { font-size: 13px; }
+  .next-cta { min-height: 50px; margin-top: var(--s3); }
 }
-@media (max-width: 370px) { .dash-hello { font-size: 29px; } .hero-quote { font-size: 12.5px; } .hero { min-height: 540px; } .next { width: 78%; } }
+@media (max-width: 370px) { .dash-hello { font-size: 29px; } .hero-quote { font-size: 12.5px; } }
 @media (min-width: 700px) {
   .hero { min-height: 480px; border-radius: var(--r-lg); margin: 0; }
   .hero-coach { width: 45%; left: 0; }
