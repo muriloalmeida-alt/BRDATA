@@ -26,20 +26,22 @@ const { check } = require("./_check");
   const loadingState = await page.evaluate(() => {
     const el = document.getElementById("screenLoading");
     const cs = getComputedStyle(el);
-    const spinner = el.querySelector(".ct-spinner");
+    // Redesign Cap. 1 T01: barra de progresso (etapas reais do boot) no
+    // lugar do spinner.
+    const spinner = el.querySelector(".bd-progress-fill");
     const spinnerCs = spinner ? getComputedStyle(spinner) : null;
     return {
       bgColor: cs.backgroundColor,
       hasCrest: !!el.querySelector(".mt-splash-crest"),
       hasText: !!el.querySelector("p"),
-      spinnerBorderTopColor: spinnerCs?.borderTopColor,
+      spinnerBorderTopColor: spinnerCs?.backgroundColor,
     };
   });
   // Paleta do redesign (carreira.html): --m3-surface-dim é #050B15 =
   // rgb(5,11,21); --m3-primary é #B4E64B = rgb(180,230,75).
   check("1) Estado 'carregamento' com tokens --m3-* aplicados (bg/spinner):",
     loadingState.hasCrest && loadingState.hasText &&
-    loadingState.bgColor === "rgb(5, 11, 21)" && loadingState.spinnerBorderTopColor === "rgb(180, 230, 75)",
+    /* --br-bg #03101D */ loadingState.bgColor === "rgb(3, 16, 29)" && loadingState.spinnerBorderTopColor === "rgb(180, 230, 75)",
     JSON.stringify(loadingState));
 
   // 2) Regra morta "#screenLoading h1" removida (nenhum dos 3 estados

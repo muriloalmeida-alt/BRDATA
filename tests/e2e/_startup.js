@@ -14,7 +14,31 @@
 // conta já viu o tutorial, não gasta mais os 2 s do timeout.
 const GAME_SCREEN_TIMEOUT = 20000;
 
+// Redesign capítulos 1–7 — depois de "Continuar" na escolha do clube a
+// carreira nova passa por "Configurar carreira" (#screenSetup, Cap. 1
+// T05) e "Primeira entrada" (#screenFirstEntry, T06). Atravessa as duas
+// com os valores padrão (nome da conta, sem nacionalidade/foto), pelo
+// ESTADO da tela. Sem nenhuma das duas no caminho (save retomado), não
+// espera nada.
+async function passCareerSetup(page) {
+  const where = await page.waitForFunction(() => {
+    const vis = (id) => { const el = document.getElementById(id); return !!el && !el.classList.contains("hidden"); };
+    if (vis("screenSetup")) return "setup";
+    if (vis("screenFirstEntry")) return "first";
+    if (vis("screenGame")) return "game";
+    return false;
+  }, null, { timeout: GAME_SCREEN_TIMEOUT }).then((h) => h.jsonValue(), () => null);
+  if (where === "setup") {
+    await page.click("#btnStartCareer");
+    await page.waitForSelector("#screenFirstEntry:not(.hidden)", { timeout: GAME_SCREEN_TIMEOUT }).catch(() => {});
+  }
+  if (where === "setup" || where === "first") {
+    if (await page.locator("#screenFirstEntry:not(.hidden)").count()) await page.click("#btnFirstEntryGo");
+  }
+}
+
 async function skipOnboarding(page) {
+  await passCareerSetup(page);
   const inGame = await page.waitForFunction(() => {
     const g = document.getElementById("screenGame");
     return !!g && !g.classList.contains("hidden");
@@ -71,8 +95,8 @@ async function waitForBoot(page) {
     if (loading && !loading.classList.contains("hidden")) return false;
     const visible = (id) => { const el = document.getElementById(id); return !!el && !el.classList.contains("hidden"); };
     if (visible("screenGame")) return typeof CAREER !== "undefined" && !!CAREER;
-    return ["screenCompetitionPicker", "screenPicker", "screenLoginRequired"].some(visible);
+    return ["screenCompetitionPicker", "screenPicker", "screenSetup", "screenFirstEntry", "screenLoginRequired"].some(visible);
   }, null, { timeout: 15000 }).catch(() => {});
 }
 
-module.exports = { skipOnboarding, skipStartupWizard, enterGame, waitForBoot };
+module.exports = { passCareerSetup, skipOnboarding, skipStartupWizard, enterGame, waitForBoot };

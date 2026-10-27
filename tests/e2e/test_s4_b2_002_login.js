@@ -53,7 +53,7 @@ const { check } = require("./_check");
   // rgb(19,32,10).
   check("1) Default: tela própria do Modo Técnico (não .auth-gate), tokens --m3-* aplicados:",
     defaultState.visible && !defaultState.usesAuthGate &&
-    defaultState.panelBg === "rgba(0, 0, 0, 0)" /* redesign bloco 1: campos direto no fundo, sem cartão */ && defaultState.inputBg === "rgb(19, 35, 56)" &&
+    defaultState.panelBg === "rgba(0, 0, 0, 0)" /* redesign bloco 1: campos direto no fundo, sem cartão */ && /* redesign Cap. 1 T02: campo translúcido sobre a cena */ defaultState.inputBg === "rgba(19, 35, 56, 0.72)" &&
     defaultState.btnBg === "rgb(180, 230, 75)" && defaultState.btnColor === "rgb(19, 32, 10)",
     JSON.stringify(defaultState));
 

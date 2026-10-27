@@ -54,7 +54,7 @@ const { enterGame } = require("./_startup");
   });
   // --m3-on-surface:#E7E2DE = rgb(231,226,222); --m3-on-surface-variant:#CBC5BE = rgb(203,197,190).
   check("1) Perfil abre e hero (nome/subtítulo) usa tokens --m3-on-surface/--m3-on-surface-variant:",
-    hero.overlayOpen && hero.nameColor === "rgb(232, 238, 246)" && hero.subColor === "rgb(159, 176, 198)", JSON.stringify(hero));
+    hero.overlayOpen && /* redesign Cap. 2 T03: nome em branco puro (título display) */ hero.nameColor === "rgb(255, 255, 255)" && hero.subColor === "rgb(159, 176, 198)", JSON.stringify(hero));
 
   // 2) Todas as seções esperadas continuam presentes: atributos,
   // condição, histórico por temporada (se houver), relacionamento/
