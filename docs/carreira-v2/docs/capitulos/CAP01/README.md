@@ -1,0 +1,1 @@
+Assets de produção: `background-clean.svg` é um fundo vetorial limpo e reutilizável, sem texto, marca ou UI. Ícones em `../../shared/`. Cenário fotográfico/treinador das referências NÃO foi extraído como camada limpa; reconstruir ou obter arte limpa licenciada. Escudos dos clubes exclusivamente no repositório.

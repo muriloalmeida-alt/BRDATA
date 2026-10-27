@@ -1,0 +1,11 @@
+:root {
+  --bd-bg: #06111c;
+  --bd-surface: #0b1927;
+  --bd-surface-raised: #102235;
+  --bd-text: #f5f7fa;
+  --bd-muted: #a5b4c4;
+  --bd-accent: #b4e64b;
+  --bd-border: rgba(170,197,220,.16);
+  --bd-space-1: 4px; --bd-space-2: 8px; --bd-space-3: 12px;
+  --bd-space-4: 16px; --bd-space-6: 24px; --bd-space-8: 32px;
+}
