@@ -95,4 +95,18 @@ function randomIncompressible(bytes) {
   try { careerStore.saveCareer("u6", { foo: "bar" }); } catch (e) { threw6 = true; status6 = e.status; }
   check("6) Formato de save inválido continua rejeitado com 400 (regra preservada):", threw6 && status6 === 400);
 
+  // 7) Disco gravado pelo redesign (PRs #47-#52, revertidos) no formato
+  // de slots { active, slots: { sN: { __gz } }, meta } — cru OU já
+  // recomprimido como { __gz } pelo load() antigo. getCareer precisa
+  // devolver a carreira do slot ativo, não o registro de slots.
+  const zlib = require("zlib");
+  const gz = (o) => ({ __gz: zlib.gzipSync(Buffer.from(JSON.stringify(o), "utf8")).toString("base64") });
+  const activeCareer = { clubId: "ativo", squad: [{ id: "p1" }] };
+  const slotRec = { active: "s2", slots: { s1: gz({ clubId: "velho", squad: [] }), s2: gz(activeCareer) }, meta: {} };
+  careerStore = freshStore({ u7a: slotRec, u7b: gz(slotRec), u7c: { active: "s1", slots: {}, meta: {} } });
+  const g7a = careerStore.getCareer("u7a"), g7b = careerStore.getCareer("u7b");
+  check("7) Registro de slots do redesign (cru e recomprimido) -> devolve a carreira do slot ativo:",
+    JSON.stringify(g7a) === JSON.stringify(activeCareer) && JSON.stringify(g7b) === JSON.stringify(activeCareer)
+      && careerStore.getCareer("u7c") === null);
+
 })().catch((e) => { console.error("FATAL:", e); process.exit(1); });
