@@ -41,17 +41,23 @@
 Capturas (scratchpad da sessão): `gateA_390_ref_vs_v2.png` (referência ×
 v2, primeira dobra), `dash_360/390/430/1280_full.png`.
 
-Diferenças em relação à referência:
-- **PENDÊNCIA VISUAL**: sem foto de estádio/treinador atrás da saudação
-  (CEN-02/PERS-01 ainda não produzidos; recortes provisórios proibidos como
-  hero). Base navy + SVG de atmosfera.
-- Sem fotos de jogador (o jogo não tem) → iniciais + OVR.
-- Sem a citação abaixo da saudação (não existe no jogo; texto inventado).
-- Abas no header (Visão geral/Elenco/…) não entraram: doc 02 proíbe header
-  + abas + bottom nav disputando prioridade.
-- "Ir para o jogo" abre o Modo Carreira atual (partida ainda não migrada).
-- Desktop usa a mesma bottom nav (layout em 2 colunas); trilho lateral fica
-  pra decisão.
+Rodada 2 (27/10, após "está muito diferente da proposta"), com decisões do
+Murilo: **seguir a imagem literalmente** (abas no topo, frase abaixo da
+saudação, card do próximo jogo sobreposto ao hero, 3 painéis) e **usar
+recortes da prancha de produção** como fotos provisórias.
+
+- Hero: estádio + treinador de costas e a notícia com torcida — recortes
+  de `a_cinematic…`/`a_wide…` (≈ 300×390 px, em PNG porque o servidor não
+  serve `.webp`). **Provisórios**: baixa resolução; trocar quando CEN-02 /
+  PERS-01 chegarem.
+- Diferenças que ficam: no celular (≤ 480px) a referência é mais densa do
+  que cabe legível — saudação no alto do hero e card embaixo (sem se
+  sobreporem), confiança + desempenho lado a lado e objetivos na largura
+  toda, destaques e notícia em linhas separadas. ≥ 700px segue a imagem
+  (card ao lado da saudação, 3 painéis em linha).
+- Sem fotos de jogador (o jogo não tem) → iniciais + OVR; sem busca no topo
+  (não existe função de busca — botão sem ação é proibido).
+- "Ver detalhes" abre o Modo Carreira atual (partida ainda não migrada).
 
 ## Próximo (após aprovação do Gate A)
 

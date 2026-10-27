@@ -3,10 +3,12 @@ import { crestSrc } from "../domain/dashboard";
 
 // Escudo oficial do repositório; sem escudo, sigla do clube (nunca imagem
 // inventada). Fundo claro garante contraste de escudos escuros (doc 03).
-export function Crest({ team, size = 40, logo }: { team?: Pick<Team, "id" | "logo" | "short" | "name"> | null; size?: number; logo?: string | null }) {
+// bare: escudo solto sobre o fundo (como na referência), com sombra pra
+// contraste; sem bare, num disco claro (listas densas, escudos escuros).
+export function Crest({ team, size = 40, logo, bare = false }: { team?: Pick<Team, "id" | "logo" | "short" | "name"> | null; size?: number; logo?: string | null; bare?: boolean }) {
   const src = logo ? "/" + logo.replace(/^\//, "") : crestSrc(team);
   const label = team?.name ?? "";
-  if (src) return <span className="crest" style={{ width: size, height: size }}><img src={src} alt={label ? `Escudo do ${label}` : ""} loading="lazy" /></span>;
+  if (src) return <span className={bare ? "crest bare" : "crest"} style={{ width: size, height: size }}><img src={src} alt={label ? `Escudo do ${label}` : ""} loading="lazy" /></span>;
   return <span className="crest mono" style={{ width: size, height: size, fontSize: Math.round(size * 0.3) }} aria-label={label}>{team?.short ?? "?"}</span>;
 }
 

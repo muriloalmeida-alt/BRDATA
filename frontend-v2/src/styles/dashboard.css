@@ -1,84 +1,124 @@
-/* Dashboard — contrato visual (docs/03 do pacote): header leve, saudação
-   compacta, próximo jogo como ação principal, indicadores em faixa
-   contínua, situação do clube em composição fluida. */
-.dash { display: flex; flex-direction: column; gap: var(--s4); margin-top: var(--s2); }
+/* Dashboard — composição da referência aprovada (dashboard_conceito.png):
+   marca + clube, abas de contexto, hero cinematográfico com saudação e o
+   card do próximo jogo sobreposto à direita, faixa de indicadores, 3
+   painéis em linha, destaques + notícia com imagem, 3 atalhos. Fotos do
+   hero/notícia: recortes PROVISÓRIOS da prancha de produção (aprovado
+   pelo Murilo até os assets CEN-02/PERS-01 chegarem). */
+.dash { display: flex; flex-direction: column; gap: var(--s3); margin-top: var(--s2); }
+
 .dash-club { display: flex; align-items: center; gap: var(--s3); }
-.dash-club h2 { margin: 0; font: 700 20px/1.15 var(--font-ui); }
-.dash-club p { margin: 2px 0 0; }
-.dash-hello { margin: var(--s2) 0 0; font: 700 28px/1.08 var(--font-ui); letter-spacing: -.3px; }
+.dash-club h2 { margin: 0; font: 700 22px/1.15 var(--font-ui); }
+.dash-club p { margin: 2px 0 0; color: var(--muted); font-size: 15px; }
+
+.tabs { display: flex; gap: var(--s2); overflow-x: auto; scrollbar-width: none; margin: 0 calc(-1 * var(--gutter)); padding: 2px var(--gutter); }
+.tabs::-webkit-scrollbar { display: none; }
+.tabs a { flex-shrink: 0; display: inline-flex; align-items: center; min-height: var(--touch); padding: 0 18px; border-radius: var(--r-pill); border: 1px solid var(--line); background: rgba(11,25,39,.6); text-decoration: none; color: var(--text); font-size: 14.5px; white-space: nowrap; }
+.tabs a[aria-current="page"] { background: var(--accent); border-color: var(--accent); color: var(--on-accent); font-weight: 700; }
+
+/* ---------- Hero ---------- */
+.hero { position: relative; min-height: 440px; margin: 0 calc(-1 * var(--gutter)); padding: 0 var(--gutter) var(--s3); display: flex; align-items: flex-end; overflow: hidden; }
+.hero-bg { position: absolute; inset: 0; background: url("/carreira-v2/assets/provisorio-estadio.png") center 30% / cover no-repeat; }
+.hero-bg::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, var(--bg) 0%, rgba(6,17,28,.15) 22%, rgba(6,17,28,.25) 60%, var(--bg) 100%); }
+.hero-coach { position: absolute; left: -6%; bottom: 0; width: 62%; height: 100%; background: url("/carreira-v2/assets/provisorio-treinador.png") center bottom / cover no-repeat;
+  -webkit-mask-image: linear-gradient(90deg, #000 55%, transparent 100%), linear-gradient(0deg, transparent 0%, #000 30%); -webkit-mask-composite: source-in; mask-image: linear-gradient(90deg, #000 55%, transparent 100%); opacity: .9; }
+.hero-hello { position: relative; z-index: 1; width: 40%; align-self: flex-start; margin-top: 150px; }
+.dash-hello { margin: 0; font: 800 34px/1.04 var(--font-ui); letter-spacing: -.6px; text-shadow: 0 2px 14px rgba(0,0,0,.6); }
 .dash-hello span { color: var(--accent); }
+.hero-quote { margin: var(--s3) 0 0; color: #dfe6ee; font-size: 13.5px; line-height: 1.4; text-shadow: 0 1px 8px rgba(0,0,0,.7); }
 
-.next { padding: var(--s4) var(--s4) var(--s4); }
-.next-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px var(--s3); margin-bottom: var(--s4); }
-.next-head h3 { margin: 0; font: 600 16px var(--font-ui); }
-.next-teams { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: var(--s2); }
-.next-team { display: flex; flex-direction: column; align-items: center; gap: var(--s2); text-align: center; min-width: 0; }
-.next-team span { font-weight: 600; font-size: 14px; line-height: 1.2; overflow-wrap: anywhere; }
-.next-mid { display: flex; flex-direction: column; align-items: center; gap: 4px; text-align: center; color: var(--muted); }
-.next-mid b { color: var(--text); font: 600 15px var(--font-ui); white-space: nowrap; }
-.next-venue { display: flex; align-items: center; justify-content: center; gap: 6px; margin: var(--s3) 0 0; }
-.next-cta { width: 100%; margin-top: var(--s4); }
+.next { position: absolute; z-index: 2; right: var(--gutter); bottom: var(--s3); width: 63%; min-width: 0;
+  background: rgba(8, 20, 32, .88); backdrop-filter: blur(10px); border: 1px solid var(--line); border-radius: var(--r-md); padding: var(--s3); }
+.next-head { display: flex; align-items: center; justify-content: space-between; text-decoration: none; min-height: 28px; }
+.next-head h3 { margin: 0; font: 700 16px var(--font-ui); }
+.next-meta { margin: 2px 0 var(--s2); color: var(--muted); font-size: 12.5px; }
+.next-teams { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 4px; }
+.next-team { display: flex; flex-direction: column; align-items: center; gap: 4px; text-align: center; min-width: 0; }
+.next-team span { font-weight: 600; font-size: 12px; line-height: 1.15; hyphens: auto; overflow-wrap: break-word; max-width: 100%; }
+.next-mid { display: flex; flex-direction: column; align-items: center; gap: 2px; text-align: center; }
+.next-mid b { font: 600 13.5px var(--font-ui); white-space: nowrap; }
+.next-mid span { color: var(--muted); font-size: 12px; }
+.next-venue { display: flex; align-items: center; justify-content: center; gap: 5px; margin: var(--s2) 0 0; color: var(--muted); font-size: 12.5px; }
+.next-cta { width: 100%; margin-top: var(--s2); min-height: 46px; }
 
-.stats { display: grid; grid-template-columns: repeat(4, 1fr); padding: var(--s3) var(--s2); }
-.stats > div { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 2px; padding: var(--s2) 4px; min-width: 0; }
+/* ---------- Indicadores ---------- */
+.stats { display: grid; grid-template-columns: repeat(4, 1fr); padding: var(--s3) var(--s1); }
+.stats > div { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 1px; padding: var(--s2) 2px; min-width: 0; }
 .stats > div + div { border-left: 1px solid var(--line); }
-.stats svg { color: var(--muted); margin-bottom: 2px; }
+.stats svg { color: var(--text); margin-bottom: 4px; }
 .stats b { font: 700 24px/1.1 var(--font-num); }
-.stats span { font-size: 12px; color: var(--muted); line-height: 1.2; }
-.stats small { font-size: 11px; color: var(--faint); white-space: nowrap; }
+.stats span { font-size: 12.5px; color: var(--muted); line-height: 1.2; }
+.stats small { font-size: 11px; color: var(--muted); white-space: nowrap; }
 
-.dash-grid { display: grid; gap: var(--s3); grid-template-columns: 1fr 1fr; }
-.dash-grid .goals { grid-column: 1 / -1; }
-.dash-grid.two { grid-template-columns: 1fr; }
-/* Celular: confiança e desempenho lado a lado (densidade da referência). */
-.conf .conf-body { flex-direction: column; align-items: flex-start; gap: var(--s2); }
-.conf .panel-title, .form .panel-title { font-size: 14px; }
-.conf-body { display: flex; align-items: center; gap: var(--s4); }
-.conf-body b { font-size: 16px; }
-.conf-body p { margin: 4px 0 0; }
+/* ---------- 3 painéis em linha ---------- */
+.dash-grid { display: grid; gap: var(--s2); grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.45fr); }
+.dash-grid.two { grid-template-columns: minmax(0, 1.65fr) minmax(0, 1fr); }
+.dash-grid .panel { position: relative; padding: var(--s3); min-width: 0; }
+.dash-grid .panel-title { font-size: 13.5px; margin-bottom: var(--s2); gap: 4px; }
+.panel-chev { position: absolute; right: 10px; bottom: 12px; color: var(--muted); }
+.conf-body { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.conf-body b { font-size: 14px; }
 .tone-good { color: var(--accent); } .tone-mid { color: var(--warn); } .tone-bad { color: var(--danger); }
 
-.form-bars { list-style: none; margin: 0; padding: 0; display: flex; align-items: flex-end; gap: var(--s2); min-height: 92px; }
-.form-bars li { display: flex; flex-direction: column; align-items: center; gap: 4px; flex: 1; max-width: 44px; }
-.form-bars i { display: block; width: 100%; max-width: 22px; border-radius: 6px 6px 3px 3px; background: var(--accent); }
-.form-bars .res-E i { background: var(--faint); } .form-bars .res-D i { background: var(--danger); }
-.form-bars span { width: 24px; height: 24px; display: grid; place-items: center; border-radius: 50%; border: 1.5px solid currentColor; font: 700 11px var(--font-ui); color: var(--accent); }
-.form-bars .res-E span { color: var(--muted); } .form-bars .res-D span { color: var(--danger); }
-.form-bars small { font-size: 11px; color: var(--faint); }
+.form-bars { list-style: none; margin: var(--s2) 0 0; padding: 0; display: flex; align-items: flex-end; justify-content: space-between; gap: 4px; min-height: 78px; }
+.form-bars li { display: flex; flex-direction: column; align-items: center; gap: 5px; flex: 1; }
+.form-bars i { display: block; width: 100%; max-width: 16px; border-radius: 3px; background: var(--accent); }
+.form-bars .res-E i { background: #c9d1da; } .form-bars .res-D i { background: var(--danger); }
+.form-bars span { width: 20px; height: 20px; display: grid; place-items: center; border-radius: 50%; border: 1.5px solid currentColor; font: 700 10px var(--font-ui); color: var(--accent); }
+.form-bars .res-E span { color: #c9d1da; } .form-bars .res-D span { color: var(--danger); }
 
-.goal-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--s3); }
-.goal-list li { display: flex; gap: var(--s2); align-items: flex-start; font-size: 14px; }
-.goal-list svg { flex-shrink: 0; margin-top: 1px; color: var(--faint); }
+.goal-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 9px; }
+.goal-list li { display: grid; grid-template-columns: auto 1fr auto; gap: 6px; align-items: center; font-size: 12px; line-height: 1.25; }
+.goal-list svg { flex-shrink: 0; color: var(--muted); }
 .goal-list svg.ok { color: var(--accent); }
 
-.stars { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--s2); }
-.stars li { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 2px; min-width: 0; }
-.stars b { font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
-.stars .meta { font-size: 11px; }
-.star-avatar { position: relative; width: 56px; height: 56px; border-radius: 50%; display: grid; place-items: center; background: var(--surface-3); font: 700 16px var(--font-ui); margin-bottom: 4px; }
-.star-avatar em { position: absolute; right: -6px; bottom: -4px; min-width: 28px; height: 22px; padding: 0 5px; border-radius: 11px; background: var(--bg); border: 2px solid var(--accent); color: var(--text); font: 700 12px/18px var(--font-num); font-style: normal; }
+/* ---------- Destaques + notícia ---------- */
+.stars { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+.stars li { display: flex; flex-direction: column; align-items: flex-start; gap: 1px; min-width: 0; background: var(--surface-2); border: 1px solid var(--line); border-radius: var(--r-sm); padding: 6px 6px 8px; }
+.stars b { font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.stars .meta { font-size: 10.5px; }
+.star-avatar { position: relative; width: 100%; aspect-ratio: 1; border-radius: 8px; display: grid; place-items: center; background: linear-gradient(160deg, var(--surface-3), var(--bg)); font: 700 16px var(--font-ui); margin-bottom: 4px; }
+.star-avatar em { position: absolute; right: 2px; bottom: 2px; width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; background: var(--bg); border: 2px solid var(--accent); font: 700 11px var(--font-num); font-style: normal; }
 
-.news { list-style: none; margin: 0; padding: 0; }
-.news li { display: flex; flex-direction: column; gap: 2px; padding: var(--s3) 0; border-bottom: 1px solid var(--line); }
-.news li:first-child { padding-top: 0; } .news li:last-child { border-bottom: 0; padding-bottom: 0; }
-.news b { font-weight: 600; font-size: 14px; }
+.news-card .panel-title { margin-bottom: var(--s2); }
+.news-hero { position: relative; border-radius: var(--r-sm); overflow: hidden; min-height: 150px; display: flex; flex-direction: column; justify-content: flex-end; }
+.news-img { position: absolute; inset: 0; background: url("/carreira-v2/assets/provisorio-torcida.png") center / cover no-repeat; }
+.news-img::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, transparent 20%, rgba(6,17,28,.92) 78%); }
+.news-text { position: relative; padding: var(--s2); display: flex; flex-direction: column; gap: 2px; }
+.news-text b { font-size: 13px; line-height: 1.25; }
+.news-dots { position: relative; display: flex; justify-content: flex-end; gap: 4px; padding: 0 var(--s2) var(--s2); }
+.news-dots i { width: 5px; height: 5px; border-radius: 50%; background: var(--muted); } .news-dots i.on { background: var(--accent); }
 
-.quick { display: grid; gap: var(--s2); grid-template-columns: 1fr; }
-.quick a { display: flex; align-items: center; gap: var(--s3); min-height: 52px; padding: 0 var(--s4); border-radius: var(--r-sm); background: rgba(11,25,39,.82); border: 1px solid var(--line); text-decoration: none; font-weight: 600; }
-.quick a span { flex: 1; } .quick a svg:last-child { color: var(--muted); }
+/* ---------- Atalhos ---------- */
+.quick { display: grid; gap: var(--s2); grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.quick a { display: flex; align-items: center; gap: 8px; min-height: 56px; padding: 0 10px; border-radius: var(--r-md); background: rgba(11,25,39,.82); border: 1px solid var(--line); text-decoration: none; font-weight: 600; font-size: 13px; line-height: 1.2; }
+.quick a span { flex: 1; min-width: 0; } .quick a svg:last-child { color: var(--muted); flex-shrink: 0; }
 
-@media (min-width: 600px) {
-  .dash-grid.two { grid-template-columns: repeat(2, 1fr); }
-  .conf .conf-body { flex-direction: row; align-items: center; }
-  .quick { grid-template-columns: repeat(3, 1fr); }
+/* Celular (≤ 480px): a referência é mais densa do que cabe legível em
+   360–430px — confiança e desempenho lado a lado, objetivos na largura
+   toda; destaques e notícia cada um numa linha; atalhos sem seta. */
+@media (max-width: 480px) {
+  .dash-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .dash-grid .goals { grid-column: 1 / -1; }
+  .goal-list li { font-size: 13px; }
+  .dash-grid.two { grid-template-columns: minmax(0, 1fr); }
+  .news-hero { min-height: 170px; }
+  .quick a { padding: 0 8px; gap: 6px; font-size: 12.5px; }
+  .quick a svg:last-child { display: none; }
 }
-@media (min-width: 1000px) {
-  .dash { display: grid; grid-template-columns: 1.15fr 1fr; column-gap: var(--s6); align-items: start; }
-  .dash-club, .dash-hello { grid-column: 1; }
-  .next { grid-column: 2; grid-row: 1 / span 3; }
-  .stats, .dash-grid, .quick { grid-column: 1 / -1; }
-  .dash-grid { grid-template-columns: repeat(3, 1fr); }
-  .dash-grid .goals { grid-column: auto; }
-  .dash-grid.two { grid-template-columns: 1.4fr 1fr; }
-  .dash-hello { font-size: 32px; }
+/* Celular: saudação no alto do hero e card embaixo à direita, sem se
+   sobreporem (na referência o card tem 41% da largura, ilegível em 390px). */
+@media (max-width: 699px) {
+  .hero { min-height: 520px; align-items: flex-start; }
+  .hero-hello { width: 62%; margin-top: 64px; }
+  .next { width: 72%; }
 }
+@media (max-width: 370px) { .dash-hello { font-size: 29px; } .hero-quote { font-size: 12.5px; } .hero { min-height: 540px; } .next { width: 78%; } }
+@media (min-width: 700px) {
+  .hero { min-height: 480px; border-radius: var(--r-lg); margin: 0; }
+  .hero-coach { width: 45%; left: 0; }
+  .hero-hello { width: 45%; }
+  .next { width: 46%; max-width: 420px; padding: var(--s4); }
+  .next-team span { font-size: 14px; }
+  .dash-hello { font-size: 48px; }
+}
+@media (min-width: 1000px) { .dash-hello { font-size: 56px; } .hero-quote { font-size: 16px; max-width: 360px; } }

@@ -12,7 +12,7 @@ type Boot =
   | { s: "loading" } | { s: "anon" } | { s: "error"; msg: string }
   | { s: "ready"; user: SessionUser; career: Career | null };
 
-const TITLES: Record<string, string> = { clube: "Clube", jogos: "Jogos", competicoes: "Competições", mais: "Mais", mercado: "Mercado" };
+const TITLES: Record<string, string> = { clube: "Clube", jogos: "Jogos", competicoes: "Competições", mais: "Mais", mercado: "Mercado", tatica: "Tática", financas: "Finanças" };
 const currentRoute = () => (location.hash.replace(/^#\/?/, "").split("/")[0] || "inicio");
 
 export function App() {
