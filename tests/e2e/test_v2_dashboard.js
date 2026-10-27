@@ -95,6 +95,15 @@ const { playNextMatchRound, closeLeftoverTabela } = require("./_round");
   }
   check("11) Sem scroll horizontal e último bloco acima da nav (360/390/430/1280):",
     Object.values(layout).every((l) => l.overflowX <= 0 && l.lastBottomAboveNav >= 0), JSON.stringify(layout));
+  // 13) Menu inferior fixo: colado na borda de baixo em qualquer rolagem.
+  await page.setViewportSize({ width: 390, height: 844 });
+  const navPos = [];
+  for (const y of [0, 500, 99999]) {
+    await page.evaluate((y) => window.scrollTo(0, y), y);
+    await page.waitForTimeout(150);
+    navPos.push(await page.evaluate(() => { const r = document.querySelector(".bottom-nav").getBoundingClientRect(); return { y: Math.round(scrollY), bottom: Math.round(r.bottom), vh: innerHeight }; }));
+  }
+  check("13) Menu inferior fica fixo na borda de baixo ao rolar:", navPos.every((p) => p.bottom === p.vh) && navPos[2].y > 0, JSON.stringify(navPos));
   check("12) Nenhum erro de JavaScript na v2:", errors.length === 0, JSON.stringify(errors));
 
   await browser.close();
