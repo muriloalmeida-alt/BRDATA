@@ -117,6 +117,23 @@ function decompressEnvelope(entry) {
   if (entry.__gz) return JSON.parse(zlib.gunzipSync(Buffer.from(entry.__gz, "base64")).toString("utf8"));
   return entry; // formato antigo (pré-compressão) — ver load()
 }
+// BUG CORRIGIDO ("Sem conexão" ao abrir o Modo Técnico depois do
+// revert da main pro PR #46): o redesign (PRs #47-#52) gravou o disco
+// no formato de slots — { active, slots: { s1: { __gz } }, meta } por
+// conta. O load() daqui não conhecia esse formato e tratava o registro
+// inteiro como se fosse a carreira — o cliente recebia um objeto sem
+// clubId/squad e migrateCareerDefaults() quebrava em CAREER.squad.
+// Pode aparecer cru ou já recomprimido como { __gz } (se algum save de
+// outra conta disparou persist() com o load() antigo) — os dois casos
+// passam por aqui. Fica só a carreira do slot ATIVO (a que o jogador
+// estava usando); os outros slots não têm como existir nesta versão.
+function unwrapSlotRecord(entry) {
+  const data = decompressEnvelope(entry);
+  if (!data || typeof data !== "object" || !data.slots || typeof data.slots !== "object") return null;
+  const active = data.active && data.slots[data.active];
+  if (!active) return { envelope: null };
+  return { envelope: active.__gz ? active : compressToEnvelope(active).envelope };
+}
 
 let store = new Map(); // userId -> envelope comprimido { __gz }
 
@@ -132,13 +149,22 @@ function load() {
       // pro cliente (getCareer segue devolvendo o objeto descomprimido
       // de sempre).
       let migrated = 0;
+      let unwrapped = 0;
       for (const [userId, entry] of store) {
+        const slotRec = entry && unwrapSlotRecord(entry);
+        if (slotRec) {
+          if (slotRec.envelope) store.set(userId, slotRec.envelope);
+          else store.delete(userId);
+          unwrapped++;
+          continue;
+        }
         if (entry && !entry.__gz) {
           store.set(userId, compressToEnvelope(entry).envelope);
           migrated++;
         }
       }
       if (migrated) console.log(`[careerStore] ${migrated} carreira(s) migrada(s) pro formato comprimido.`);
+      if (unwrapped) console.log(`[careerStore] ${unwrapped} carreira(s) convertida(s) do formato de slots pro slot ativo.`);
     }
   } catch (err) {
     console.error("[careerStore] falha ao carregar arquivo local:", err.message);
