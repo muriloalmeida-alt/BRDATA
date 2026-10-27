@@ -3132,11 +3132,11 @@
          clique de #btnBottomMenu). -->
     <div class="mt-topbar-menu" id="topbarMenu">
       <div id="topbarMenuRoot">
-        <button class="mt-topbar-menu-item group" data-submenu="competicao">📊 Competição <span class="mt-menu-chevron">›</span></button>
-        <button class="mt-topbar-menu-item group" data-submenu="tatica">🎯 Tática avançada <span class="mt-menu-chevron">›</span></button>
-        <button class="mt-topbar-menu-item group" data-submenu="equipe">👔 Equipe &amp; Treinos <span class="mt-menu-chevron">›</span></button>
-        <button class="mt-topbar-menu-item group" data-submenu="progresso">🏅 Progresso <span class="mt-menu-chevron">›</span></button>
-        <button class="mt-topbar-menu-item group" data-submenu="imprensa">📰 Imprensa <span class="mt-menu-chevron">›</span></button>
+        <button class="mt-topbar-menu-item group" data-submenu="competicao">Competição <span class="mt-menu-chevron">›</span></button>
+        <button class="mt-topbar-menu-item group" data-submenu="tatica">Tática avançada <span class="mt-menu-chevron">›</span></button>
+        <button class="mt-topbar-menu-item group" data-submenu="equipe">Equipe &amp; Treinos <span class="mt-menu-chevron">›</span></button>
+        <button class="mt-topbar-menu-item group" data-submenu="progresso">Progresso <span class="mt-menu-chevron">›</span></button>
+        <button class="mt-topbar-menu-item group" data-submenu="imprensa">Imprensa <span class="mt-menu-chevron">›</span></button>
         <!-- Loja (BR_Data_Treinador_Monetizacao.xlsx +
              BR_Data_Treinador_Loja_Mockup.html) — mesmo padrão de item
              sem aba própria no rodapé. Ver AVISO grande em renderLoja()
@@ -3146,28 +3146,29 @@
              Reiniciar/Sair abaixo. -->
         <!-- GE-CALENDAR-001 (B3) — Calendário da temporada (também abre
              tocando na data do topo do Início). -->
-        <button class="mt-topbar-menu-item" id="btnOpenCalendar">🗓️ Calendário</button>
-        <button class="mt-topbar-menu-item" id="btnOpenLoja">🛒 Loja</button>
+        <button class="mt-topbar-menu-item" id="btnOpenCalendar">Calendário</button>
+        <button class="mt-topbar-menu-item" id="btnOpenLoja">Loja</button>
         <!-- Bloco 8 (brtreinadorbloco8sistema.html) — Configurações:
              hub de perfil/jogo/notificações/conta — mesmo critério de
              item solto na raiz de Loja/Histórico/Reiniciar/Sair (não é
              "categoria" de mais nada). -->
-        <button class="mt-topbar-menu-item" id="btnOpenSettings">⚙️ Configurações</button>
+        <button class="mt-topbar-menu-item" id="btnOpenSettings">Configurações</button>
         <!-- AJUSTE (pedido do usuário: "página estática que controle
              o histórico de mudanças do jogo") — página própria,
              fora do SPA (ver historico.html), por isso é um <a>
              normal (navega de verdade) e não um botão com listener
              JS como os outros itens deste menu. -->
-        <a class="mt-topbar-menu-item" href="historico.html">🗒️ Histórico de Atualizações</a>
-        <button class="mt-topbar-menu-item" id="btnRestart">↺ Reiniciar</button>
-        <button class="mt-topbar-menu-item danger" id="btnLogout">⎋ Sair</button>
+        <a class="mt-topbar-menu-item" href="historico.html">Histórico de Atualizações</a>
+        <button class="mt-topbar-menu-item" id="btnOpenSaves">Meus saves</button>
+        <button class="mt-topbar-menu-item" id="btnRestart">Reiniciar</button>
+        <button class="mt-topbar-menu-item danger" id="btnLogout">Sair</button>
       </div>
 
       <!-- Competição: telas de acompanhamento da liga (leitura, sem
            ação de gestão nenhuma). -->
       <div class="mt-topbar-submenu hidden" data-submenu-panel="competicao">
         <button class="mt-topbar-submenu-back">‹ Menu</button>
-        <button class="mt-topbar-menu-item" id="btnOpenTabela">📅 Tabela</button>
+        <button class="mt-topbar-menu-item" id="btnOpenTabela">Tabela</button>
         <!-- Nova feature — Resumo da rodada (brtreinadorbloco1pendentes.html):
              todos os confrontos da rodada, inclusive os ainda não jogados
              (ver renderRodada/openRodadaScreen em carreira.js) — dado
@@ -3176,8 +3177,8 @@
              estados de verdade (nenhum jogo resolvido ainda / todos
              resolvidos), sem fingir um estado "ao vivo" que o motor não
              produz. -->
-        <button class="mt-topbar-menu-item" id="btnOpenRodada">📆 Rodada</button>
-        <button class="mt-topbar-menu-item" id="btnOpenEstatisticas">📊 Estatísticas</button>
+        <button class="mt-topbar-menu-item" id="btnOpenRodada">Rodada</button>
+        <button class="mt-topbar-menu-item" id="btnOpenEstatisticas">Estatísticas</button>
       </div>
 
       <!-- Tática avançada: os 3 ajustes do Bloco 2 M3, complementares à
@@ -3188,15 +3189,15 @@
         <!-- Nova feature — Meus esquemas (Bloco 2 M3,
              brtreinadorbloco2pendentes.html): biblioteca de esquemas
              táticos completos (ver openSchemesScreen/carreira.js). -->
-        <button class="mt-topbar-menu-item" id="btnOpenSchemes">🗂️ Meus esquemas</button>
+        <button class="mt-topbar-menu-item" id="btnOpenSchemes">Meus esquemas</button>
         <!-- Nova feature — Marcação individual (Bloco 2 M3,
              brtreinadorbloco2pendentes.html): ver openManMarkingScreen/
              carreira.js. -->
-        <button class="mt-topbar-menu-item" id="btnOpenMarking">🎯 Marcação individual</button>
+        <button class="mt-topbar-menu-item" id="btnOpenMarking">Marcação individual</button>
         <!-- Nova feature — Instruções por setor (Bloco 2 M3,
              brtreinadorbloco2pendentes.html): ver openSectorScreen/
              carreira.js. -->
-        <button class="mt-topbar-menu-item" id="btnOpenSector">🎚️ Instruções por setor</button>
+        <button class="mt-topbar-menu-item" id="btnOpenSector">Instruções por setor</button>
       </div>
 
       <!-- Equipe & Treinos: gestão do dia a dia do clube. -->
@@ -3206,17 +3207,17 @@
              nos treinos, escalação, táticas e outras opções pra garantir
              que sempre o melhor time estará em campo") — ver
              openCommissionScreen/carreira.js. -->
-        <button class="mt-topbar-menu-item" id="btnOpenCommission">🧑‍💼 Comissão Técnica</button>
+        <button class="mt-topbar-menu-item" id="btnOpenCommission">Comissão Técnica</button>
         <!-- S4-B3-004 (tela criada do zero, decisão do PM — issue #20):
              visão consolidada de todos os contratos do elenco, usando o
              ContractCard (S4-B3-001). Ver openContratosScreen/carreira.js. -->
-        <button class="mt-topbar-menu-item" id="btnOpenContratos">📄 Contratos</button>
-        <button class="mt-topbar-menu-item" id="btnOpenTreinos">🏋️ Treinos</button>
+        <button class="mt-topbar-menu-item" id="btnOpenContratos">Contratos</button>
+        <button class="mt-topbar-menu-item" id="btnOpenTreinos">Treinos</button>
         <!-- Bloco 6 (mockups brtreinadorbloco6base.html/
              brtreinadorbloco6pendentes.html) — olheiros contratáveis que
              saem em missão por região e trazem promissores pra base (ver
              openScoutingScreen/carreira.js). -->
-        <button class="mt-topbar-menu-item" id="btnOpenScouting">🧭 Base e Olheiros</button>
+        <button class="mt-topbar-menu-item" id="btnOpenScouting">Base e Olheiros</button>
       </div>
 
       <!-- Progresso: Retenção/Engajamento (BRDataRetencaoEspecificacao)
@@ -3224,13 +3225,13 @@
            conquistou. -->
       <div class="mt-topbar-submenu hidden" data-submenu-panel="progresso">
         <button class="mt-topbar-submenu-back">‹ Menu</button>
-        <button class="mt-topbar-menu-item" id="btnOpenObjetivos">🎯 Objetivos</button>
-        <button class="mt-topbar-menu-item" id="btnOpenConquistas">🥇 Conquistas</button>
-        <button class="mt-topbar-menu-item" id="btnOpenRanking">📈 Ranking</button>
+        <button class="mt-topbar-menu-item" id="btnOpenObjetivos">Objetivos</button>
+        <button class="mt-topbar-menu-item" id="btnOpenConquistas">Conquistas</button>
+        <button class="mt-topbar-menu-item" id="btnOpenRanking">Ranking</button>
         <!-- FASE 4 (item 6) — tela própria de histórico de premiações
              (ver openAwardsScreen em carreira.js), pedido do usuário:
              "uma tela que armazena os resultados de cada ano". -->
-        <button class="mt-topbar-menu-item" id="btnOpenAwards">🏆 Premiações</button>
+        <button class="mt-topbar-menu-item" id="btnOpenAwards">Premiações</button>
       </div>
 
       <!-- Imprensa: conteúdo editorial/institucional, não gestão. -->
@@ -3239,10 +3240,10 @@
         <!-- AJUSTE (pedido do usuário: "esperava uma tela exclusiva
              pra notícias nos padrões de um portal de esportes") — ver
              openNewsScreen em carreira.js. -->
-        <button class="mt-topbar-menu-item" id="btnOpenNews">📰 Notícias</button>
+        <button class="mt-topbar-menu-item" id="btnOpenNews">Notícias</button>
         <!-- FASE 4 (item 4) — currículo do técnico (reputação +
              histórico de clubes), ver openCoachProfileScreen. -->
-        <button class="mt-topbar-menu-item" id="btnOpenCoachProfile">👔 Perfil do Técnico</button>
+        <button class="mt-topbar-menu-item" id="btnOpenCoachProfile">Perfil do Técnico</button>
       </div>
     </div>
 
@@ -3917,7 +3918,7 @@
           <p class="mt-card-sub ct-help-text" id="helpMercado" hidden>Seu elenco (pra vender) e os outros 19 times da competição (pra contratar). Contratar soma o salário na sua folha (mesmo teto do Financeiro).</p>
           <div class="mt-search-box">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-            <input id="marketSearch" placeholder="Buscar por nome ou time...">
+            <input id="marketSearch" placeholder="Buscar por nome ou time..." aria-label="Buscar jogador por nome ou time">
           </div>
           <!-- UX-MERCADO-001 — os 4 filtros (antes empilhados antes da
                lista, ~4 telas de scroll no mobile) saem da tela: viram um
@@ -4715,6 +4716,25 @@
      temporadas (CAREER.seasonHistory, já existente — ver
      renderBoardGoalsScreen em carreira.js). Aberta a partir da linha
      Diretoria da tela Clube. -->
+<!-- Cap. 7 · Tela 02 — Gerenciamento de saves: até 3 carreiras por
+     conta (server/src/careerStore.js, /api/career/slots). Continuar,
+     começar nova carreira num slot vazio e excluir (confirmação
+     destrutiva). Trocar de save grava a carreira atual antes. -->
+<div class="ct-modal-overlay ct-modal-fullscreen" id="savesOverlay">
+  <div class="ct-modal">
+    <div class="ct-modal-header mt-fullheader">
+      <span class="ct-modal-icon" aria-hidden="true">💾</span>
+      <div class="ct-modal-header-text">
+        <h3>Meus saves</h3>
+        <div class="ct-modal-sub" id="savesSub"></div>
+      </div>
+      <button class="ct-modal-close" aria-label="Fechar" id="savesClose">✕</button>
+    </div>
+    <div class="ct-modal-body">
+      <div id="savesList" aria-live="polite"><p class="bd-empty-inline">Carregando saves...</p></div>
+    </div>
+  </div>
+</div>
 <div class="ct-modal-overlay ct-modal-fullscreen" id="boardGoalsOverlay">
   <div class="ct-modal">
     <div class="ct-modal-header mt-fullheader">
@@ -5696,10 +5716,21 @@
       <button class="ct-modal-close" aria-label="Fechar" id="editProfileClose">✕</button>
     </div>
     <div class="ct-modal-body">
-      <div class="mt-avatar-picker"><div class="mt-big-avatar" id="editProfileAvatar"></div></div>
+      <!-- Redesign Cap. 6 · Tela 01 — foto e nacionalidade do treinador
+           (mesmos dados da tela Configurar carreira, conta). -->
+      <div class="mt-avatar-picker bd-avatar-pick">
+        <div class="mt-big-avatar" id="editProfileAvatar"></div>
+        <label class="bd-chip" for="editProfileAvatarInput">Trocar foto</label>
+        <input type="file" id="editProfileAvatarInput" accept="image/jpeg,image/png,image/webp" class="sr-only">
+        <button type="button" class="bd-link" id="btnEditProfileAvatarRemove" hidden>Remover foto</button>
+      </div>
       <div class="mt-form-row">
-        <div class="mt-form-label">Nome de treinador</div>
+        <label class="mt-form-label" for="editProfileNameInput">Nome de treinador</label>
         <input id="editProfileNameInput" class="mt-friend-input" maxlength="80">
+      </div>
+      <div class="mt-form-row">
+        <label class="mt-form-label" for="editProfileNationality">Nacionalidade</label>
+        <select id="editProfileNationality" class="mt-friend-input"></select>
       </div>
       <div class="mt-form-row">
         <div class="mt-form-label">E-mail</div>

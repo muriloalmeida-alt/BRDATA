@@ -585,3 +585,20 @@
 .bd-flow-val{ display:flex; flex-direction:column; align-items:flex-end; font-size:12px; font-weight:700; }
 .bd-quick-btn--row{ width:100%; margin:12px 0 0; }
 .bd-quick-sub{ margin-left:auto; font-size:12px; font-weight:500; color:#A9B7C5; }
+
+/* =========================================================
+   Cap. 3 · T04 (renomear esquema) / Cap. 7 · T02 (Meus saves)
+   ========================================================= */
+.bd-sheet-form .bd-sheet-actions{ margin-top:8px; }
+.bd-save{
+  display:grid; grid-template-columns:auto 1fr auto auto; align-items:center; gap:12px; padding:14px; margin:0 0 10px;
+  border-radius:var(--bd-radius); border:1px solid var(--bd-line); background:var(--bd-glass);
+}
+.bd-save.active{ border-color:var(--br-lime); box-shadow:0 0 0 1px var(--br-lime) inset; }
+.bd-save--empty{ grid-template-columns:1fr auto; border-style:dashed; }
+.bd-save-body{ display:flex; flex-direction:column; gap:3px; min-width:0; }
+.bd-save-body b{ font-family:var(--bd-display); font-size:16px; color:#fff; }
+.bd-save-body span{ font-size:13px; color:#B9C6D3; }
+.bd-save-body small{ font-size:12px; color:#8FA0B4; }
+.bd-save-del{ color:#FF8A8A; }
+@media (max-width:380px){ .bd-save{ grid-template-columns:auto 1fr auto; } .bd-save .bd-btn-ghost, .bd-save .bd-badge{ grid-column:2 / 3; justify-self:start; } }

@@ -117,11 +117,11 @@ const failures = [];
 
   // ---------- Cap. 3 ----------
   await tab("escalacao"); await shot("c3t01-formacao-escalacao");
-  await shot("c3t02-troca-jogador", async () => { await page.click(".mt-pitch-slot, [data-slot]", { timeout: 4000 }); });
+  await shot("c3t02-troca-jogador", async () => { await page.click(".mt-pitch-badge", { timeout: 4000 }); });
   await shot("c3t03-instrucoes", async () => { await closeAll(); await page.evaluate(() => openSectorScreen()); });
   await shot("c3t04-esquemas", async () => { await closeAll(); await page.evaluate(() => openSchemesScreen()); });
   await tab("treinos"); await shot("c3t05-treinamento");
-  await shot("c3t06-evolucao-condicao", async () => { await closeAll(); await page.evaluate(() => openFatigueHistory && openFatigueHistory()); });
+  await shot("c3t06-evolucao-condicao", async () => { await closeAll(); await page.evaluate(() => openFatigueHistoryScreen()); });
 
   // ---------- Cap. 4 ----------
   await tab("tabela"); await shot("c4t07-competicoes");
@@ -143,8 +143,9 @@ const failures = [];
   // ---------- Cap. 7 ----------
   await shot("c7t01-menu", async () => { await closeAll(); await page.click("#btnBottomMenu"); });
   await shot("c7t01-configuracoes", async () => { await closeAll(); await page.evaluate(() => openSettingsScreen()); });
-  await shot("c7t03-ajuda", async () => { await closeAll(); await page.evaluate(() => openHelpCenter && openHelpCenter()); });
-  await shot("c7t04-confirmacao", async () => { await closeAll(); await page.evaluate(() => confirmModal("Apagar este esquema? Essa ação não pode ser desfeita.", "Apagar", { danger: true })); });
+  await shot("c7t03-ajuda", async () => { await closeAll(); await page.evaluate(() => openHelpCenterScreen()); });
+  await shot("c7t02-saves", async () => { await closeAll(); await page.evaluate(() => { openSavesScreen(); }); await page.waitForSelector("#savesList .bd-save"); });
+  await shot("c7t04-confirmacao", async () => { await closeAll(); await page.evaluate(() => { confirmModal("Apagar este esquema? Essa ação não pode ser desfeita.", "Apagar", { danger: true }); }); });
 
   fs.writeFileSync(path.join(out, `_falhas-${tag}.txt`), failures.join("\n"));
   console.log(`\n${failures.length} falha(s)`);

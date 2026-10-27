@@ -2210,7 +2210,13 @@ function renderCoachProfile() {
         <p class="ct-sub">${h.seasons} temporada(s) · ${h.titles} título(s) · posição média ${h.avgPosition}º${h.reason === "dismissed" ? " · saiu por demissão" : h.reason === "accepted_proposal" ? " · saiu por proposta de outro clube" : ""}</p>
       </div>`).join("")
     : `<p class="ct-empty">Nenhuma passagem anterior ainda — esse é seu primeiro clube.</p>`;
+  // Redesign Cap. 6 · T01 — identidade do treinador (conta) no topo.
   document.getElementById("coachProfileBody").innerHTML = `
+    <div class="bd-player-hero mt-player-hero">
+      ${coachAvatarHTML(ME, "bd-avatar--lg")}
+      <div class="mt-player-hero-info"><b>${escapeHtml((ME && ME.name) || "Treinador")}</b><span>${ME && ME.coachNationality ? escapeHtml(nationalityName(ME.coachNationality)) : "Nacionalidade não informada"} · ${escapeHtml(CAREER.clubName)}</span></div>
+      <button type="button" class="bd-btn-ghost" id="btnCoachEditProfile">Editar</button>
+    </div>
     <div class="mt-stat-grid" style="margin-bottom:14px;">
       ${kpiHTML("Reputação", rep, "gold")}
       <div class="mt-stat-block"><div class="num" style="font-size:17px;">${escapeHtml(reputationLabel(rep))}</div><div class="lbl">Status</div></div>
@@ -2218,6 +2224,7 @@ function renderCoachProfile() {
     </div>
     <p class="ct-sub" style="margin-bottom:14px;">Clube atual: <b>${escapeHtml(CAREER.clubName)}</b> — ${(CAREER.seasonHistory || []).length} temporada(s) aqui até agora.</p>
     ${historyHTML}`;
+  document.getElementById("btnCoachEditProfile").addEventListener("click", openEditProfileScreen);
 }
 function openCoachProfileScreen() {
   renderCoachProfile();
@@ -2557,8 +2564,19 @@ function openSettingsScreen() {
 function closeSettingsScreen() {
   document.getElementById("settingsOverlay").classList.remove("open");
 }
+let EDIT_PROFILE_AVATAR; // undefined = sem mudança, null = removida, string = nova
+function renderEditProfileAvatar() {
+  const cur = EDIT_PROFILE_AVATAR === undefined ? ME.coachAvatar || null : EDIT_PROFILE_AVATAR;
+  const el = document.getElementById("editProfileAvatar");
+  el.innerHTML = cur ? `<img src="${escapeHtml(cur)}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">` : escapeHtml(initialsFor(ME.name));
+  document.getElementById("btnEditProfileAvatarRemove").hidden = !cur;
+}
 function openEditProfileScreen() {
-  document.getElementById("editProfileAvatar").textContent = initialsFor(ME.name);
+  EDIT_PROFILE_AVATAR = undefined;
+  renderEditProfileAvatar();
+  const natSel = document.getElementById("editProfileNationality");
+  natSel.innerHTML = `<option value="">Não informar</option>` + NATIONALITY_CODES.map((c) => ({ c, n: nationalityName(c) })).sort((a, b) => a.n.localeCompare(b.n, "pt-BR")).map((o) => `<option value="${o.c}">${escapeHtml(o.n)}</option>`).join("");
+  natSel.value = ME.coachNationality || "";
   document.getElementById("editProfileNameInput").value = ME.name || "";
   document.getElementById("editProfileEmail").textContent = maskEmail(ME.email);
   const rep = CAREER.reputation == null ? 50 : CAREER.reputation;
@@ -2574,8 +2592,10 @@ async function saveProfileName() {
   const btn = document.getElementById("btnSaveProfileName");
   btn.disabled = true;
   try {
-    const result = await fetchJSON("/api/account/name", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name }) });
-    ME.name = result.user.name;
+    const patch = { name, nationality: document.getElementById("editProfileNationality").value };
+    if (EDIT_PROFILE_AVATAR !== undefined) patch.avatar = EDIT_PROFILE_AVATAR;
+    const result = await fetchJSON("/api/account/coach-profile", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(patch) });
+    ME = { ...ME, ...result.user };
     renderSettingsScreen();
     renderAll();
     toast({ title: "Perfil atualizado", detail: `Nome salvo como "${ME.name}"` }, { type: "pos" });
@@ -5524,6 +5544,10 @@ function renderCompetitionPicker() {
       });
     });
   });
+  // Cap. 7 · T02 — conta com outras carreiras: "voltar" leva aos saves.
+  fetchJSON("/api/career/slots").then((d) => {
+    document.getElementById("btnCompetitionPickerBack").hidden = !d.slots.some((x) => !x.empty);
+  }).catch(() => {});
   if (COMPETITION_POPULARITY === null) {
     COMPETITION_POPULARITY = {};
     fetchJSON("/api/career/competition-popularity")
@@ -5789,6 +5813,66 @@ async function submitSetup(e) {
 
 /* ---------- Cap. 1 · Tela 06 — Primeira entrada ----------
    Só logo depois de startCareer (carreira nova ou novo clube). */
+/* ---------- Cap. 7 · Tela 02 — Gerenciamento de saves ---------- */
+async function openSavesScreen() {
+  document.getElementById("topbarMenu").classList.remove("open");
+  document.getElementById("savesOverlay").classList.add("open");
+  await renderSavesScreen();
+}
+function closeSavesScreen() { document.getElementById("savesOverlay").classList.remove("open"); }
+async function renderSavesScreen() {
+  const box = document.getElementById("savesList");
+  let data;
+  try { data = await fetchJSON("/api/career/slots"); }
+  catch (err) {
+    box.innerHTML = `<div class="bd-empty"><p>Não foi possível carregar seus saves.</p><button type="button" class="bd-btn-ghost" id="btnSavesRetry">Tentar novamente</button></div>`;
+    document.getElementById("btnSavesRetry").addEventListener("click", renderSavesScreen);
+    return;
+  }
+  const used = data.slots.filter((x) => !x.empty).length;
+  document.getElementById("savesSub").textContent = `${used} de ${data.maxSlots} carreiras`;
+  box.innerHTML = data.slots.map((slot, i) => {
+    if (slot.empty) {
+      return `<div class="bd-save bd-save--empty"><div class="bd-save-body"><b>Slot ${i + 1} · vazio</b><span>Comece outra carreira sem perder as atuais.</span></div>
+        <button type="button" class="bd-btn-ghost" data-save-new="${slot.id}">Nova carreira</button></div>`;
+    }
+    const m = slot.meta || {};
+    const t = teamById(m.clubId) || { id: m.clubId, name: m.clubName, logo: m.clubLogo };
+    const when = m.updatedAt ? new Date(m.updatedAt).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" }) : "";
+    return `<div class="bd-save${slot.active ? " active" : ""}">
+      <span class="bd-save-crest">${crestImg(t, 44)}</span>
+      <div class="bd-save-body"><b>${escapeHtml(m.clubName || "Carreira")}</b>
+        <span>${escapeHtml(competitionName(m.competitionId))}${m.seasonYear ? ` · ${m.seasonYear}` : ""}${m.currentRound ? ` · ${m.currentRound > 38 ? "temporada encerrada" : `rodada ${m.currentRound}`}` : ""}</span>
+        ${when ? `<small>Salvo em ${escapeHtml(when)}</small>` : ""}</div>
+      ${slot.active ? `<span class="bd-badge">Em uso</span>` : `<button type="button" class="bd-btn-ghost" data-save-load="${slot.id}">Continuar</button>`}
+      <button type="button" class="bd-icon-btn bd-save-del" data-save-del="${slot.id}" aria-label="Excluir save ${escapeHtml(m.clubName || "")}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
+    </div>`;
+  }).join("");
+  box.querySelectorAll("[data-save-load]").forEach((b) => b.addEventListener("click", () => switchSaveSlot(b.dataset.saveLoad, false)));
+  box.querySelectorAll("[data-save-new]").forEach((b) => b.addEventListener("click", () => switchSaveSlot(b.dataset.saveNew, true)));
+  box.querySelectorAll("[data-save-del]").forEach((b) => b.addEventListener("click", async () => {
+    const slot = data.slots.find((x) => x.id === b.dataset.saveDel);
+    const name = (slot.meta && slot.meta.clubName) || "esta carreira";
+    if (!(await confirmModal(`Excluir o save de ${name}? Essa ação não pode ser desfeita.`, "Excluir save", { danger: true }))) return;
+    try {
+      await fetchJSON(`/api/career/slots/${slot.id}`, { method: "DELETE" });
+      if (slot.active) { CAREER = null; location.reload(); return; }
+      toast("Save excluído.", { type: "info" });
+      renderSavesScreen();
+    } catch (err) { toast("Não foi possível excluir o save. Tente de novo.", { type: "warn" }); }
+  }));
+}
+// Troca a carreira ativa: grava a atual, ativa o slot e recarrega (o
+// boot normal monta a carreira escolhida, ou o seletor de competição
+// num slot vazio).
+async function switchSaveSlot(slotId, isNew) {
+  if (CAREER) { const ok = await persistCareer(); if (!ok) return; }
+  try {
+    await fetchJSON(`/api/career/slots/${slotId}/activate`, { method: "POST" });
+  } catch (err) { toast("Não foi possível trocar de save. Tente de novo.", { type: "warn" }); return; }
+  location.reload();
+}
+
 function openFirstEntry() {
   const t = teamById(CAREER.clubId) || { name: CAREER.clubName, logo: CAREER.clubLogo, short: CAREER.clubShort };
   const isNewClubInCareer = (CAREER.clubHistory || []).length > 0;
@@ -11868,7 +11952,43 @@ function applyTacticalScheme(id) {
   CAREER.lineup.bench = [...scheme.bench];
   CAREER.lineup.tactics = { ...scheme.tactics };
   CAREER.activeSchemeId = scheme.id;
+  // Redesign Cap. 3 · T04 — "data de uso" real (campo opcional: esquemas
+  // salvos antes disto ficam sem e mostram só a rodada em que foram salvos).
+  scheme.lastUsedRound = CAREER.currentRound;
+  scheme.lastUsedSeason = CAREER.seasonYear;
   return true;
+}
+// Cap. 3 · T04 — renomear: 1–30 caracteres, sem repetir nome (sem
+// diferenciar maiúsculas). Devolve { ok, error }.
+function renameTacticalScheme(id, rawName) {
+  const scheme = CAREER.tacticalSchemes.find((s) => s.id === id);
+  if (!scheme) return { ok: false, error: "Esquema não encontrado." };
+  const name = String(rawName || "").trim().replace(/\s+/g, " ");
+  if (!name) return { ok: false, error: "Dê um nome ao esquema." };
+  if (name.length > 30) return { ok: false, error: "Use no máximo 30 caracteres." };
+  if (CAREER.tacticalSchemes.some((s) => s.id !== id && s.name.toLowerCase() === name.toLowerCase())) return { ok: false, error: "Já existe um esquema com esse nome." };
+  scheme.name = name;
+  return { ok: true, scheme };
+}
+function openRenameSchemeSheet(id) {
+  const scheme = CAREER.tacticalSchemes.find((s) => s.id === id);
+  if (!scheme) return;
+  const sheetId = openM3BottomSheet({ title: "Renomear esquema", bodyHTML: `<form class="bd-sheet-form" id="renameSchemeForm" novalidate>
+      <div class="bd-form-field"><label for="renameSchemeInput">Nome</label><input type="text" id="renameSchemeInput" maxlength="30" value="${escapeHtml(scheme.name)}" autocomplete="off"></div>
+      <p class="mt-form-error" id="renameSchemeError" role="alert" style="display:none;"></p>
+      <div class="bd-sheet-actions"><button type="submit" class="bd-btn-primary">Salvar nome</button></div>
+    </form>` });
+  const ov = document.getElementById(sheetId);
+  ov.querySelector("#renameSchemeForm").addEventListener("submit", (e) => {
+    e.preventDefault();
+    const r = renameTacticalScheme(id, ov.querySelector("#renameSchemeInput").value);
+    const err = ov.querySelector("#renameSchemeError");
+    if (!r.ok) { err.textContent = r.error; err.style.display = "block"; return; }
+    closeM3BottomSheet(sheetId);
+    renderSchemesScreen();
+    persistCareer();
+    toast(`Esquema renomeado para "${r.scheme.name}".`, { type: "pos" });
+  });
 }
 function deleteTacticalScheme(id) {
   CAREER.tacticalSchemes = CAREER.tacticalSchemes.filter((s) => s.id !== id);
@@ -11879,7 +11999,8 @@ function deleteTacticalScheme(id) {
 // guarda: quantos titulares tinha quando foi salvo + em que rodada.
 function schemeSummary(s) {
   const filled = s.starters.filter(Boolean).length;
-  return `Salvo na rodada ${s.createdRound} · ${filled}/11 titulares`;
+  const used = s.lastUsedRound != null ? ` · usado na rodada ${s.lastUsedRound}${s.lastUsedSeason && s.lastUsedSeason !== CAREER.seasonYear ? ` de ${s.lastUsedSeason}` : ""}` : "";
+  return `Salvo na rodada ${s.createdRound} · ${filled}/11 titulares${used}`;
 }
 function schemeRowHTML(s) {
   const isActive = s.id === CAREER.activeSchemeId;
@@ -11890,6 +12011,7 @@ function schemeRowHTML(s) {
       <div class="m3-scheme-meta">${escapeHtml(schemeSummary(s))}</div>
     </div>
     ${isActive ? `<span class="m3-scheme-badge">ATIVO</span>` : ""}
+    <button class="m3-scheme-delete" data-rename="${s.id}" aria-label="Renomear esquema ${escapeHtml(s.name)}" title="Renomear"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button>
     <button class="m3-scheme-delete" data-delete="${s.id}" aria-label="Apagar esquema" title="Apagar esquema"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
   </div>`;
 }
@@ -11901,7 +12023,7 @@ function renderSchemesScreen() {
     : `<p class="ct-empty">Nenhum esquema salvo ainda — monte a escalação/tática que quiser na aba Tática e toque em "Novo esquema".</p>`;
   document.querySelectorAll("#schemesList .m3-scheme-row").forEach((row) => {
     row.addEventListener("click", (e) => {
-      if (e.target.closest("[data-delete]")) return;
+      if (e.target.closest("[data-delete], [data-rename]")) return;
       applyTacticalScheme(row.dataset.id);
       renderSchemesScreen();
       renderEscalacao();
@@ -11909,6 +12031,7 @@ function renderSchemesScreen() {
       toast(`Esquema "${CAREER.tacticalSchemes.find((s) => s.id === row.dataset.id)?.name}" aplicado.`, { type: "pos" });
     });
   });
+  document.querySelectorAll("#schemesList [data-rename]").forEach((btn) => btn.addEventListener("click", (e) => { e.stopPropagation(); openRenameSchemeSheet(btn.dataset.rename); }));
   document.querySelectorAll("#schemesList [data-delete]").forEach((btn) => {
     btn.addEventListener("click", async (e) => {
       e.stopPropagation();
@@ -16497,6 +16620,16 @@ function wireStaticListeners() {
   document.getElementById("elencoSearch").addEventListener("input", (e) => { ELENCO_SEARCH = e.target.value; renderElenco(); });
   document.getElementById("elencoSort").addEventListener("change", (e) => { ELENCO_SORT = e.target.value; renderElenco(); });
   document.getElementById("btnClubCommission").addEventListener("click", openCommissionScreen);
+  document.getElementById("btnOpenSaves").addEventListener("click", openSavesScreen);
+  document.getElementById("savesClose").addEventListener("click", closeSavesScreen);
+  document.getElementById("btnCompetitionPickerBack").addEventListener("click", openSavesScreen);
+  document.getElementById("editProfileAvatarInput").addEventListener("change", async (e) => {
+    const file = e.target.files[0]; e.target.value = "";
+    if (!file) return;
+    if (!/^image\/(jpeg|png|webp)$/.test(file.type) || file.size > 10 * 1024 * 1024) { toast("Use uma foto JPG, PNG ou WebP de até 10 MB.", { type: "warn" }); return; }
+    try { EDIT_PROFILE_AVATAR = await resizeImageToDataURL(file); renderEditProfileAvatar(); } catch { toast("Não foi possível ler essa imagem.", { type: "warn" }); }
+  });
+  document.getElementById("btnEditProfileAvatarRemove").addEventListener("click", () => { EDIT_PROFILE_AVATAR = null; renderEditProfileAvatar(); });
   // Cap. 1 · Tela 02 — mostrar/ocultar senha.
   document.getElementById("btnTogglePassword").addEventListener("click", (e) => {
     const input = document.getElementById("ctLoginPassword");
