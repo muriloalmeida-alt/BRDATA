@@ -80,12 +80,8 @@ const { enterGame, waitForBoot } = require("./_startup");
     const bg = getComputedStyle(el).backgroundColor;
     return { hasLogo, bg };
   });
-  // Redesign capítulos 1–7 (referência aprovada): escudo oficial sem a
-  // chapinha clara no topo; o contraste passa a vir de um contorno/sombra
-  // no próprio <img> (filter drop-shadow), que funciona em qualquer escudo.
-  const topbarImgFilter = await page.evaluate(() => { const i = document.querySelector("#topbarClubCrest img"); return i ? getComputedStyle(i).filter : null; });
-  check("5) Topbar crest (se com escudo real) tem tratamento de contraste:",
-    topbarCrestCheck.hasLogo ? /drop-shadow/.test(topbarImgFilter || "") : "sem escudo real neste clube",
+  check("5) Topbar crest (se com escudo real) tem fundo claro:",
+    topbarCrestCheck.hasLogo ? (topbarCrestCheck.bg !== "rgba(0, 0, 0, 0)") : "sem escudo real neste clube",
     JSON.stringify(topbarCrestCheck));
 
   await page.screenshot({ path: "screens/central_sem_situacao_elenco.png" });
@@ -98,10 +94,10 @@ const { enterGame, waitForBoot } = require("./_startup");
   await page.click('.mt-competition-card[data-competition="serie_b"]');
   await page.waitForTimeout(300);
   const pickerCheck = await page.evaluate(() => {
-    const withLogo = [...document.querySelectorAll("#clubGrid img.bd-crest, #clubGrid .ct-crest.has-logo")];
-    return { count: withLogo.length, allLightBg: withLogo.every((el) => el.tagName === "IMG" ? /drop-shadow/.test(getComputedStyle(el).filter) : getComputedStyle(el).backgroundColor !== "rgba(0, 0, 0, 0)") };
+    const withLogo = [...document.querySelectorAll(".ct-crest.has-logo")];
+    return { count: withLogo.length, allLightBg: withLogo.every((el) => getComputedStyle(el).backgroundColor !== "rgba(0, 0, 0, 0)") };
   });
-  check("6) Escolha do clube: todos os escudos reais com tratamento de contraste:", pickerCheck.count > 0 && pickerCheck.allLightBg, JSON.stringify(pickerCheck));
+  check("6) Escolha do clube: todos os escudos reais com fundo claro:", pickerCheck.count > 0 && pickerCheck.allLightBg, JSON.stringify(pickerCheck));
   await page.screenshot({ path: "screens/escolha_clube_contraste.png" });
 
   await browser.close();

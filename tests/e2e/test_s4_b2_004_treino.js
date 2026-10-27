@@ -81,7 +81,7 @@ const { enterGame } = require("./_startup");
   // --m3-surface-container-high:#2C2A27 = rgb(44,42,39); --m3-outline-variant:#4A4744 = rgb(74,71,68);
   // --m3-on-surface:#E7E2DE = rgb(231,226,222); --m3-on-surface-variant:#CBC5BE = rgb(203,197,190).
   check("2) Botão 'escolher jogador' usa tokens do campo padrão do DS (não mais navy/ivory fixos):",
-    !!picker && picker.bg === "rgb(19, 35, 56)" && picker.color === "rgb(232, 238, 246)" && picker.placeholderColor === "rgb(159, 176, 198)",
+    !!picker && picker.bg === "rgb(44, 42, 39)" && picker.color === "rgb(231, 226, 222)" && picker.placeholderColor === "rgb(203, 197, 190)",
     JSON.stringify(picker));
 
   await page.screenshot({ path: "s4_b2_004_treino_warning.png" }).catch(() => {});

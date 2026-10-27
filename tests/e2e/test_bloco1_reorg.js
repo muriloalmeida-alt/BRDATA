@@ -48,7 +48,7 @@ const { enterGame } = require("./_startup");
     baseCardVisible: !document.getElementById("squadBaseCard").classList.contains("hidden"),
     mainCardVisible: !document.getElementById("squadMainCard").classList.contains("hidden"),
   }));
-  check("3) Chips certos, os 2 cards visíveis em 'Todos':", /* redesign Cap. 2 T02: +4 filtros por posição */ chipsBefore.chips.length === 8 && ["Goleiros", "Defensores", "Meio-campistas", "Atacantes"].every((l) => chipsBefore.chips.includes(l)) && chipsBefore.baseCardVisible && chipsBefore.mainCardVisible, JSON.stringify(chipsBefore));
+  check("3) Chips certos, os 2 cards visíveis em 'Todos':", chipsBefore.chips.length === 4 && chipsBefore.baseCardVisible && chipsBefore.mainCardVisible, JSON.stringify(chipsBefore));
 
   await page.click('#elencoFilterRow .m3-filter-chip[data-filter="base"]');
   await page.waitForTimeout(150);

@@ -57,9 +57,7 @@ function randomIncompressible(bytes) {
     try { onDisk = JSON.parse(fs.readFileSync(DATA_FILE, "utf8")); if (onDisk.u1) break; } catch (_) { /* ainda escrevendo */ }
   }
   onDisk = onDisk || {};
-  // Cap. 7 / Tela 02: o registro da conta agora é de slots — o envelope
-  // comprimido mora em slots.<ativo>.
-  check("2) Arquivo em disco guarda { __gz } comprimido (no slot ativo), não o JSON cru:", !!onDisk.u1 && !!onDisk.u1.slots && onDisk.u1.active === "s1" && typeof onDisk.u1.slots.s1.__gz === "string");
+  check("2) Arquivo em disco guarda { __gz } comprimido, não o JSON cru:", !!onDisk.u1 && !!onDisk.u1.__gz && typeof onDisk.u1.__gz === "string");
 
   // 3) Migração transparente: save ANTIGO (pré-compressão, objeto cru
   // no arquivo) é migrado ao carregar, sem perder dado nem exigir
@@ -96,33 +94,5 @@ function randomIncompressible(bytes) {
   let threw6 = false, status6 = null;
   try { careerStore.saveCareer("u6", { foo: "bar" }); } catch (e) { threw6 = true; status6 = e.status; }
   check("6) Formato de save inválido continua rejeitado com 400 (regra preservada):", threw6 && status6 === 400);
-
-  // 7) Save no formato pré-slots ({ __gz } direto) migra pro slot s1 ativo.
-  const envOnly = (() => { const zlib = require("zlib"); return { __gz: zlib.gzipSync(Buffer.from(JSON.stringify(legacy))).toString("base64") }; })();
-  careerStore = freshStore({ u_env: envOnly });
-  const slots7 = careerStore.listSlots("u_env");
-  check("7) Save pré-slots ({__gz}) vira o slot s1 ativo, com resumo (clube/temporada):",
-    JSON.stringify(careerStore.getCareer("u_env")) === JSON.stringify(legacy) && slots7.slots[0].active && slots7.slots[0].meta.clubId === "gre" && slots7.slots[0].meta.seasonYear === 2026);
-
-  // 8) Nova carreira em outro slot não apaga a primeira; trocar o ativo
-  // troca o que GET /api/career devolve.
-  careerStore = freshStore();
-  careerStore.saveCareer("u8", { clubId: "fla", clubName: "Flamengo", competitionId: "brasileirao", squad: [] });
-  careerStore.activateSlot("u8", "s2");
-  const emptyActive = careerStore.getCareer("u8");
-  careerStore.saveCareer("u8", { clubId: "goi", clubName: "Goiás", competitionId: "serie_b", squad: [] });
-  const s8 = careerStore.listSlots("u8");
-  careerStore.activateSlot("u8", "s1");
-  check("8) Slot novo nasce vazio, recebe o próximo save e não toca o slot 1; ativar s1 devolve o Flamengo:",
-    emptyActive === null && !s8.slots[0].empty && !s8.slots[1].empty && s8.slots[1].active && careerStore.getCareer("u8").clubId === "fla");
-
-  // 9) Excluir um slot só remove aquele; popularidade conta por competição.
-  const pop = careerStore.competitionPopularity();
-  careerStore.deleteSlot("u8", "s2");
-  const s9 = careerStore.listSlots("u8");
-  let threw9 = null; try { careerStore.deleteSlot("u8", "s2"); } catch (e) { threw9 = e.status; }
-  let threw9b = null; try { careerStore.activateSlot("u8", "s9"); } catch (e) { threw9b = e.status; }
-  check("9) Excluir slot remove só ele (404 ao repetir, 400 em slot inválido); popularidade por competição:",
-    s9.slots[1].empty && !s9.slots[0].empty && threw9 === 404 && threw9b === 400 && pop.brasileirao === 1 && pop.serie_b === 1, JSON.stringify(pop));
 
 })().catch((e) => { console.error("FATAL:", e); process.exit(1); });

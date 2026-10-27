@@ -100,18 +100,6 @@ const { check } = require("./_check");
   await page.click("#btnSeasonContinue");
   await page.waitForTimeout(300);
 
-  // 3) Confirmação destrutiva (redesign): botão de confirmar em vermelho
-  // (--m3-error) só quando a ação destrói algo; confirmação comum em lima.
-  const btnColors = await page.evaluate(async () => {
-    const read = () => getComputedStyle(document.getElementById("confirmOkBtn")).backgroundColor;
-    const tone = (c) => { const el = document.createElement("div"); el.style.background = c; document.body.appendChild(el); const v = getComputedStyle(el).backgroundColor; el.remove(); return v; };
-    const p1 = confirmModal("Teste destrutivo", "Apagar", { danger: true }); const danger = read(); document.getElementById("confirmCancelBtn").click(); await p1;
-    const p2 = confirmModal("Teste comum", "Confirmar"); const normal = read(); document.getElementById("confirmCancelBtn").click(); await p2;
-    return { danger, normal, error: tone("var(--m3-error)"), primary: tone("var(--m3-primary)") };
-  });
-  check("3) Confirmação destrutiva em vermelho, confirmação comum na cor primária:",
-    btnColors.danger === btnColors.error && btnColors.normal === btnColors.primary, JSON.stringify(btnColors));
-
   console.log("--- Nenhum 'DIALOG NATIVO' deve ter aparecido acima ---");
 
   await browser.close();

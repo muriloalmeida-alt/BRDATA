@@ -130,26 +130,6 @@
        calculando certo, sem precisar caçar cada um. */
     --mt-navh:var(--m3-navh);
   }
-  /* ===== Redesign — paleta da referência visual aprovada (pacote
-     "Implementação Visual", 10/2026): navy quase preto + verde-lima de
-     ação, ciano discreto pra dado secundário, dourado da marca. Só na
-     carreira (sobrepõe css/m3-tokens.css, que é compartilhado com o
-     2048). Lima fixo pra todo clube — a cor do clube fica no escudo
-     (decisão do Murilo; ver applyClubPalette em carreira.js). */
-  :root{
-    --m3-primary:#B4E64B; --m3-on-primary:#13200A;
-    --m3-primary-container:#1D3324; --m3-on-primary-container:#D9F5A0;
-    --m3-tertiary:#6CC6E8; --m3-on-tertiary:#00344A;
-    --m3-tertiary-container:#0E3A52; --m3-on-tertiary-container:#C6ECFA;
-    --m3-surface-dim:#050B15; --m3-surface:#08111E; --m3-surface-bright:#22324A;
-    --m3-surface-container-lowest:#040A13; --m3-surface-container-low:#0B1626;
-    --m3-surface-container:#0E1B2D; --m3-surface-container-high:#132338;
-    --m3-surface-container-highest:#1A2D45;
-    --m3-on-surface:#E8EEF6; --m3-on-surface-variant:#9FB0C6;
-    --m3-outline:#5B6E86; --m3-outline-variant:#1F3550;
-    --bg-app:#060D18;
-    --m3-on-error:#410002; /* 5,4:1 sobre --m3-error (era #690002, 4,1:1 — abaixo do AA) */
-  }
   /* ===== Tokens do Redesign M3 (--m3-*) — movidos sem alteração para
      css/m3-tokens.css (linkado no <head>), compartilhados com 2048.html.
      applyClubPalette() em carreira.js continua sobrescrevendo os papéis
@@ -180,7 +160,7 @@
      porque clip-path corta outline) garante leitura em cima de
      QUALQUER gradiente de cor (mesmo os times com c2 quase branco). */
   .ct-crest-mono{
-    font-family:var(--m3-display); color:#fff; letter-spacing:.5px; line-height:1;
+    font-family:'Bebas Neue', var(--font); color:#fff; letter-spacing:.5px; line-height:1;
     text-shadow:-1px 0 rgba(0,0,0,.55), 1px 0 rgba(0,0,0,.55), 0 -1px rgba(0,0,0,.55), 0 1px rgba(0,0,0,.55);
   }
   /* AJUSTE (pedido do usuário: "a [toast] que traz as mensagens no
@@ -513,7 +493,7 @@
      o espaço do flex apertava. flex-shrink:0 garante que o placar
      nunca é o item espremido — os escudos (.side, largura fixa) cedem
      antes. */
-  .ct-next-match .vs{ font-family:var(--m3-display); color:var(--mt-ink-faint); font-size:16px; white-space:nowrap; flex-shrink:0; }
+  .ct-next-match .vs{ font-family:'Bebas Neue', var(--font); color:var(--mt-ink-faint); font-size:16px; white-space:nowrap; flex-shrink:0; }
   /* AJUSTE (pedido do usuário: "o diamante abaixo da logo está tirando
      o peso que os times representam... valorize mais a marca dos
      clubes", card "Próximo jogo" da Central) — mockup de comparação
@@ -679,7 +659,7 @@
   .ct-award-season{ border:1px solid var(--mt-navy-600); clip-path:polygon(0 0, calc(100% - 18px) 0, 100% 18px, 100% 100%, 0 100%); padding:16px 18px; margin-bottom:16px; background:linear-gradient(160deg, var(--mt-navy-700), var(--mt-navy-800) 65%); }
   .ct-award-season.champion{ border-color:var(--mt-gold-600); box-shadow:0 0 0 1px var(--mt-gold-600) inset; }
   .ct-award-season .yr{ display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:12px; }
-  .ct-award-season .yr h2{ margin:0; font-family:var(--m3-display); font-size:18px; letter-spacing:.5px; color:var(--mt-ivory-50); font-weight:700; }
+  .ct-award-season .yr h2{ margin:0; font-family:'Bebas Neue', var(--font); font-size:18px; letter-spacing:.5px; color:var(--mt-ivory-50); font-weight:700; }
   .ct-award-season .yr .ribbon{ font-family:'Rajdhani', var(--font); font-size:10.5px; font-weight:700; color:#2A1D02; background:linear-gradient(180deg, var(--mt-gold-300), var(--mt-gold-600)); padding:3px 9px; border-radius:100px; text-transform:uppercase; letter-spacing:.4px; white-space:nowrap; }
   .ct-award-podium{ display:flex; gap:10px; margin-bottom:12px; }
   .ct-award-podium .slot{ flex:1; min-width:0; display:flex; align-items:center; gap:8px; background:var(--mt-navy-900); border-radius:8px; padding:9px 10px; border:1px solid var(--mt-navy-600); }
@@ -721,7 +701,7 @@
      aqui — é só a fonte secundária padrão da BRDATA DS, usada em ~65
      seletores por todo o app, não algo específico desta tela. */
   .mt-news-masthead{ text-align:center; padding:0 0 14px; border-bottom:2px solid var(--m3-secondary); margin-bottom:16px; }
-  .mt-news-masthead .brand{ font-family:var(--m3-display); font-size:22px; letter-spacing:1px; color:var(--m3-on-surface); }
+  .mt-news-masthead .brand{ font-family:'Bebas Neue', var(--font); font-size:22px; letter-spacing:1px; color:var(--m3-on-surface); }
   .mt-news-masthead .tagline{ font-family:'Rajdhani', var(--font); font-size:11px; font-weight:600; color:var(--m3-on-surface-variant); text-transform:uppercase; letter-spacing:1.5px; margin-top:4px; }
   .mt-news-sectitle{ display:flex; align-items:center; gap:10px; margin:20px 0 12px; }
   .mt-news-sectitle span{ font-family:'Rajdhani', var(--font); font-size:11px; font-weight:700; color:var(--m3-on-surface-variant); text-transform:uppercase; letter-spacing:1px; white-space:nowrap; }
@@ -744,7 +724,7 @@
      Destaque "mine" (rgba dourada) preservado — mesmo tom já usado em
      Conquistas pra destacar o próprio clube. */
   .m3-news-kicker{ font-family:'Rajdhani', var(--font); font-size:10.5px; font-weight:700; color:var(--m3-secondary); text-transform:uppercase; letter-spacing:1px; margin-bottom:6px; }
-  .m3-news-headline{ font-family:var(--m3-display); font-size:21px; line-height:1.15; letter-spacing:.3px; color:var(--m3-on-surface); }
+  .m3-news-headline{ font-family:'Bebas Neue', var(--font); font-size:21px; line-height:1.15; letter-spacing:.3px; color:var(--m3-on-surface); }
   .m3-news-feature-meta{ font-family:'Rajdhani', var(--font); font-size:11px; color:var(--m3-on-surface-variant); margin-top:6px; }
   .m3-news-rule{ height:1px; background:linear-gradient(90deg, var(--m3-secondary), transparent); margin:16px 0; }
   .m3-news-brief{ display:flex; gap:11px; padding:11px 0; border-bottom:1px solid var(--m3-outline-variant); }
@@ -875,11 +855,8 @@
     position:fixed; inset:0; z-index:500; background:rgba(0,0,0,.55);
     display:none; justify-content:center; padding:0;
   }
-  /* Redesign (pacote "Implementação Visual", regra global de bottom
-     sheets) — o diálogo dinâmico (openM3Dialog: proposta de compra,
-     jogador de outro clube...) também ancora embaixo, nunca centralizado.
-     Mesmas classes/JS de antes; só a apresentação muda. */
-  .m3-dialog-overlay, .m3-bottom-sheet-overlay{ align-items:flex-end; }
+  .m3-dialog-overlay{ align-items:center; padding:24px; }
+  .m3-bottom-sheet-overlay{ align-items:flex-end; }
   .m3-dialog-overlay.open, .m3-bottom-sheet-overlay.open{ display:flex; animation:ctOverlayIn .16s ease-out; }
   .m3-dialog-overlay.open .m3-dialog,
   .m3-bottom-sheet-overlay.open .m3-bottom-sheet{ animation:ctSheetIn .22s cubic-bezier(.16,1,.3,1); }
@@ -887,7 +864,13 @@
     .m3-dialog-overlay.open, .m3-bottom-sheet-overlay.open,
     .m3-dialog-overlay.open .m3-dialog, .m3-bottom-sheet-overlay.open .m3-bottom-sheet{ animation:none; }
   }
-  .m3-dialog, .m3-bottom-sheet{
+  .m3-dialog{
+    background:var(--m3-surface-container-high); color:var(--m3-on-surface);
+    border:1px solid var(--m3-outline-variant); border-radius:var(--m3-shape-lg);
+    width:100%; max-width:420px; max-height:86vh; overflow:hidden;
+    display:flex; flex-direction:column; box-shadow:0 12px 40px rgba(0,0,0,.5);
+  }
+  .m3-bottom-sheet{
     background:var(--m3-surface-container-high); color:var(--m3-on-surface);
     border:1px solid var(--m3-outline-variant); border-bottom:none;
     border-radius:var(--m3-shape-xl) var(--m3-shape-xl) 0 0;
@@ -896,7 +879,7 @@
   }
   /* Grabber visual — convenção M3 de bottom sheet arrastável (aqui só
      indicador visual; arraste por gesto não é requisito da demanda). */
-  .m3-dialog::before, .m3-bottom-sheet::before{
+  .m3-bottom-sheet::before{
     content:""; display:block; width:32px; height:4px; border-radius:var(--m3-shape-full);
     background:var(--m3-outline-variant); margin:10px auto 0; flex-shrink:0;
   }
@@ -925,14 +908,6 @@
     outline:2px solid var(--m3-primary); outline-offset:2px;
   }
   .m3-dialog-body, .m3-bottom-sheet-body{ padding:18px; overflow-y:auto; }
-  .m3-dialog-body{ padding-bottom:calc(18px + env(safe-area-inset-bottom, 0px)); }
-  /* Tela larga: sheet continua ancorada embaixo, com largura máxima de
-     640px (limite do bottom sheet M3) em vez de esticar a tela inteira.
-     Não vale pras telas cheias (.ct-modal-fullscreen), que têm regra própria. */
-  @media (min-width: 720px){
-    .m3-dialog, .m3-bottom-sheet,
-    .ct-modal-overlay:not(.ct-modal-fullscreen) > .ct-modal{ max-width:640px; }
-  }
   .m3-bottom-sheet-body{ padding:4px 20px calc(20px + env(safe-area-inset-bottom, 0px)); }
 
   /* ---- Skeleton (m3SkeletonHTML() em carreira.js) ----
@@ -1300,7 +1275,7 @@
      compensar não ter mais moldura ao redor. */
   .mt-crest-mini{ width:34px; height:34px; flex-shrink:0; display:flex; align-items:center; justify-content:center; }
   .mt-crest-mini img{ height:100%; width:100%; object-fit:contain; }
-  .mt-brand-mini .t{ font-family:var(--m3-display); font-size:21px; letter-spacing:2px; color:var(--mt-ivory-50); }
+  .mt-brand-mini .t{ font-family:'Bebas Neue', var(--font); font-size:21px; letter-spacing:2px; color:var(--mt-ivory-50); }
   .mt-brand-mini .t span{ color:var(--mt-gold-400); }
   .mt-icon-btn{
     color:var(--mt-ivory-100); width:42px; height:42px;
@@ -1322,7 +1297,7 @@
     display:flex; align-items:center; justify-content:center;
   }
   .mt-intro-crest img{ height:32px; width:32px; object-fit:contain; }
-  .mt-intro h1{ font-family:var(--m3-display); font-size:24px; letter-spacing:.5px; margin:0 0 10px; line-height:1.15; color:var(--mt-ivory-50); }
+  .mt-intro h1{ font-family:'Bebas Neue', var(--font); font-size:24px; letter-spacing:.5px; margin:0 0 10px; line-height:1.15; color:var(--mt-ivory-50); }
   .mt-intro p{ font-size:13px; color:var(--mt-ink-muted); line-height:1.55; margin:0 auto; max-width:480px; }
   .mt-picker-banner{
     text-align:center; max-width:480px; margin:0 auto 20px; padding:10px 14px;
@@ -1359,7 +1334,7 @@
   .mt-competition-card:active{ filter:brightness(1.08); }
   .mt-competition-flag{ font-size:26px; flex-shrink:0; }
   .mt-competition-body{ flex:1; min-width:0; }
-  .mt-competition-title{ font-family:var(--m3-display); font-size:18px; letter-spacing:.3px; color:var(--mt-ivory-50); }
+  .mt-competition-title{ font-family:'Bebas Neue', var(--font); font-size:18px; letter-spacing:.3px; color:var(--mt-ivory-50); }
   .mt-competition-sub{ font-size:12px; color:var(--mt-ink-muted); margin-top:2px; }
   .mt-competition-chevron{ flex-shrink:0; width:18px; height:18px; color:var(--mt-ink-faint); }
 
@@ -1558,13 +1533,13 @@
   .mt-rank-row{ display:flex; align-items:center; gap:12px; padding:11px 4px; border-bottom:1px solid var(--mt-navy-700); }
   .mt-rank-row:last-child{ border-bottom:none; }
   .mt-rank-row.me{ color:var(--m3-primary); }
-  .mt-rank-num{ font-family:var(--m3-display); font-size:19px; color:var(--mt-ink-faint); width:28px; flex-shrink:0; }
+  .mt-rank-num{ font-family:'Bebas Neue', var(--font); font-size:19px; color:var(--mt-ink-faint); width:28px; flex-shrink:0; }
   .mt-rank-num.top3{ color:var(--m3-primary); }
   .mt-rank-info{ flex:1; min-width:0; }
   .mt-rank-name{ font-size:13px; font-weight:600; color:var(--mt-ivory-50); }
   .mt-rank-you{ font-family:var(--font); font-weight:700; font-size:9px; letter-spacing:.3px; color:var(--m3-primary); }
   .mt-rank-club{ font-family:'Rajdhani', var(--font); font-size:11px; color:var(--mt-ink-faint); }
-  .mt-rank-score{ font-family:var(--m3-display); font-size:17px; color:var(--mt-ivory-50); flex-shrink:0; }
+  .mt-rank-score{ font-family:'Bebas Neue', var(--font); font-size:17px; color:var(--mt-ivory-50); flex-shrink:0; }
   .mt-rank-updated{ text-align:center; font-family:'Rajdhani', var(--font); font-weight:600; font-size:11px; color:var(--mt-ink-faint); margin:10px 0 0; }
   /* Campo de texto simples (não é <select>, não usa .mt-select-box de
      propósito -- aquela classe embute a setinha de dropdown via
@@ -1590,7 +1565,7 @@
   .mt-day-cell-login.today .dnum{ color:var(--m3-on-primary); }
   .mt-reward-showcase{ text-align:center; padding:18px 0 20px; border-top:1px solid var(--mt-navy-600); border-bottom:1px solid var(--mt-navy-600); margin-bottom:18px; }
   .mt-reward-icon{ width:58px; height:58px; border-radius:50%; background:var(--m3-primary-container); border:2px solid var(--m3-primary); margin:0 auto 10px; display:flex; align-items:center; justify-content:center; font-size:24px; }
-  .mt-reward-value{ font-family:var(--m3-display); font-size:22px; color:var(--mt-ivory-50); }
+  .mt-reward-value{ font-family:'Bebas Neue', var(--font); font-size:22px; color:var(--mt-ivory-50); }
   .mt-reward-label{ font-family:'Rajdhani', var(--font); font-size:11px; font-weight:700; letter-spacing:.5px; color:var(--mt-ink-faint); margin-top:2px; }
   .mt-streak-warning{ text-align:center; font-size:11px; color:var(--mt-ink-faint); line-height:1.4; margin:12px 0 0; }
 
@@ -1619,7 +1594,7 @@
      escopado só a essas 2 (não mexe no .ct-modal-overlay base). */
   .mt-player-hero{ display:flex; align-items:center; gap:14px; padding:16px 4px 4px; }
   .mt-ovr-badge.sz-lg{ width:56px; height:56px; font-size:21px; }
-  .mt-player-hero-info b{ display:block; font-size:19px; font-family:var(--m3-display); letter-spacing:.4px; color:var(--m3-on-surface); }
+  .mt-player-hero-info b{ display:block; font-size:19px; font-family:'Bebas Neue', var(--font); letter-spacing:.4px; color:var(--m3-on-surface); }
   .mt-player-hero-info span{ font-family:'Rajdhani', var(--font); font-size:12.5px; color:var(--m3-on-surface-variant); font-weight:600; }
 
   .mt-attr-grid{ display:grid; grid-template-columns:1fr 1fr; gap:10px; margin:18px 0; }
@@ -1653,7 +1628,7 @@
      de propósito (BRDATA Extension, mesmo critério de estádio/placar
      já usado em Onboarding/Tática — aqui é um confronto "VS" estilo
      card de luta, não texto comum). */
-  .m3-compare-player b{ font-size:13px; font-family:var(--m3-display); letter-spacing:.3px; color:var(--m3-on-surface); text-align:center; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%; }
+  .m3-compare-player b{ font-size:13px; font-family:'Bebas Neue', var(--font); letter-spacing:.3px; color:var(--m3-on-surface); text-align:center; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%; }
   .m3-compare-vs{ font-family:var(--m3-display); font-size:12px; font-weight:700; color:var(--m3-on-surface-variant); flex-shrink:0; }
   .m3-compare-row{ display:grid; grid-template-columns:1fr auto 1fr; align-items:center; gap:10px; padding:9px 0; border-bottom:1px solid var(--m3-outline-variant); }
   .m3-compare-row:last-child{ border-bottom:none; }
@@ -1708,7 +1683,6 @@
     background:transparent; border:1.5px solid var(--m3-error); color:var(--m3-error);
   }
   .mt-btn-primary-gold:disabled, .mt-btn-danger-outline:disabled{ opacity:.4; cursor:not-allowed; }
-  .mt-btn-primary-gold.danger{ background:var(--m3-error); color:var(--m3-on-error); } /* confirmModal(..., { danger: true }) */
   .mt-btn-primary svg, .mt-btn-ghost svg, .mt-btn-primary-gold svg, .mt-btn-danger-outline svg{ width:17px; height:17px; flex-shrink:0; }
 
   /* ---- bottom sheet (Conversa individual, Renovar contrato) ---- */
@@ -1812,7 +1786,7 @@
   }
   .mt-onboard-icon svg{ width:44px; height:44px; }
   /* S4-B4-001 (issue #31) — título/texto/skip migrados pra --m3-on-surface(-variant), mesmo mapeamento semântico usado no resto da migração (título/texto principal vs. secundário) */
-  .mt-onboard-title{ font-family:var(--m3-display); font-size:26px; letter-spacing:.4px; color:var(--m3-on-surface); margin:0 0 12px; }
+  .mt-onboard-title{ font-family:'Bebas Neue', var(--font); font-size:26px; letter-spacing:.4px; color:var(--m3-on-surface); margin:0 0 12px; }
   .mt-onboard-text{ font-size:14.5px; line-height:1.65; color:var(--m3-on-surface-variant); max-width:300px; margin:0; }
   .mt-onboard-dots{ display:flex; gap:6px; align-self:center; margin-bottom:2px; }
   .mt-onboard-dot{ width:7px; height:7px; border-radius:50%; background:var(--m3-outline-variant); transition:width .2s, border-radius .2s; }
@@ -1865,7 +1839,7 @@
   .mt-live-tag{ display:flex; align-items:center; gap:9px; }
   .mt-live-dot{ width:9px; height:9px; border-radius:50%; background:var(--mt-crimson-500); box-shadow:0 0 8px rgba(214,69,69,.8); animation:mtLivePulse 1.4s infinite; }
   @keyframes mtLivePulse{ 0%,100%{ opacity:1; } 50%{ opacity:.35; } }
-  .mt-live-title{ font-family:var(--m3-display); font-size:18px; letter-spacing:1px; color:var(--mt-ivory-50); }
+  .mt-live-title{ font-family:'Bebas Neue', var(--font); font-size:18px; letter-spacing:1px; color:var(--mt-ivory-50); }
   .mt-live-minute{ font-family:var(--m3-display); font-weight:700; font-size:12px; color:var(--m3-primary); letter-spacing:.2px; }
   .mt-live-close{ width:34px; height:34px; border-radius:8px; display:flex; align-items:center; justify-content:center; background:var(--mt-navy-800); border:1px solid var(--mt-navy-600); color:var(--mt-ink-muted); flex-shrink:0; cursor:pointer; }
   .mt-live-close svg{ width:16px; height:16px; }
@@ -2056,10 +2030,10 @@
   .mt-goal-tag{ font-family:var(--m3-display); font-size:24px; letter-spacing:4px; color:var(--m3-primary); }
   .mt-goal-crest{ margin-top:8px; }
   .mt-goal-crest .ct-crest{ box-shadow:inset 0 0 0 3px var(--m3-primary), 0 0 44px rgba(255,255,255,.2); }
-  .mt-goal-scorer{ font-family:var(--m3-display); font-size:40px; color:#fff; letter-spacing:.5px; text-wrap:balance; }
+  .mt-goal-scorer{ font-family:'Bebas Neue', var(--font); font-size:40px; color:#fff; letter-spacing:.5px; text-wrap:balance; }
   .mt-goal-assist{ font-family:var(--font); font-weight:700; font-size:12px; letter-spacing:.3px; color:var(--m3-primary); text-transform:uppercase; }
   .mt-goal-score{ margin-top:10px; padding-top:14px; border-top:1px solid rgba(232,184,75,.25); }
-  .mt-goal-score .vs{ font-family:var(--m3-display); font-size:30px; color:var(--mt-ivory-50); }
+  .mt-goal-score .vs{ font-family:'Bebas Neue', var(--font); font-size:30px; color:var(--mt-ivory-50); }
 
   /* ================= Tela 6 — Escalação =================
      AJUSTE (refatoração completa, ver 06-escalacao-restyled.html do
@@ -2384,7 +2358,7 @@
   .mt-pkg-card.featured{ border-color:var(--m3-primary); background:var(--m3-primary-container); }
   .mt-pkg-best{ position:absolute; top:-8px; right:12px; background:var(--m3-primary); color:var(--m3-on-primary); font-family:var(--font); font-weight:700; font-size:9px; letter-spacing:.3px; padding:3px 8px; border-radius:999px; }
   .mt-pkg-icon{ width:48px; height:48px; border-radius:12px; flex-shrink:0; display:flex; flex-direction:column; align-items:center; justify-content:center; line-height:1.1; }
-  .mt-pkg-icon .n{ font-family:var(--m3-display); font-size:17px; }
+  .mt-pkg-icon .n{ font-family:'Bebas Neue', var(--font); font-size:17px; }
   .mt-pkg-icon .u{ font-size:7px; font-weight:700; letter-spacing:.4px; opacity:.85; }
   .mt-pkg-icon.tier-bronze{ background:radial-gradient(circle at 35% 30%, #D2A870, #8B6B3D 75%); color:#2E2007; }
   .mt-pkg-icon.tier-prata{ background:radial-gradient(circle at 35% 30%, #EAEDF2, #9AA3B2 75%); color:#1C2430; }
@@ -2732,98 +2706,17 @@
   /* ---- botões genéricos M3 (pílula) ---- */
   .m3-btn-primary{ width:100%; display:flex; align-items:center; justify-content:center; gap:8px; background:var(--m3-primary); color:var(--m3-on-primary); border:none; border-radius:var(--m3-shape-full); padding:13px; font-family:var(--font); font-weight:700; font-size:13px; cursor:pointer; }
   .m3-btn-ghost{ width:100%; display:flex; align-items:center; justify-content:center; gap:8px; background:var(--m3-surface-container); color:var(--m3-on-surface); border:1px solid var(--m3-outline-variant); border-radius:var(--m3-shape-full); padding:13px; font-family:var(--font); font-weight:700; font-size:13px; cursor:pointer; }
-
-  /* ================= Redesign — Bloco 1 (Entrada) =================
-     Referência visual aprovada (10/2026), telas 01–05: splash com marca
-     e "luz de estádio" em gradiente (sem foto — o projeto não tem esse
-     ativo), login com a marca BRDATA / MODO CARREIRA, competição e clube
-     como listas contínuas com divisores (no lugar de cartões soltos). */
-  #screenLoading{
-    background:
-      radial-gradient(120% 55% at 50% -8%, rgba(180,230,75,.16), transparent 60%),
-      radial-gradient(90% 45% at 50% 108%, rgba(108,198,232,.10), transparent 65%),
-      var(--m3-surface-dim);
-    gap:10px;
-  }
-  #screenLoading .mt-splash-crest{ width:92px; height:92px; border-radius:26px; background:transparent; border:none; }
-  #screenLoading .mt-splash-crest img{ width:76px; height:76px; }
-  .mt-splash-brand, .mt-brand-name{
-    font-family:var(--m3-display); font-weight:700; font-size:30px; letter-spacing:2px; line-height:1;
-    color:var(--m3-on-surface); text-align:center;
-  }
-  .mt-splash-brand small, .mt-brand-name small{
-    display:block; margin-top:6px; font-size:11px; letter-spacing:4px; font-weight:600; color:var(--m3-secondary);
-  }
-  .mt-splash-tagline{ font-size:13px; color:var(--m3-on-surface-variant); margin:4px 0 14px; text-align:center; }
-  .mt-splash-tagline b{ color:var(--m3-primary); font-weight:700; }
-  #screenLoginRequired .mt-panel{ background:transparent; padding:8px 4px 0; }
-  #screenLoginRequired .mt-panel h1{ font-size:22px; }
-
-  .mt-intro h1{ font-family:var(--m3-display); font-weight:700; font-size:22px; letter-spacing:0; color:var(--m3-on-surface); }
-  .mt-competition-list, .m3-club-grid{
-    gap:0; background:var(--m3-surface-container); border:1px solid var(--m3-outline-variant);
-    border-radius:var(--m3-shape-lg); overflow:hidden;
-  }
-  .mt-competition-card{
-    background:transparent; border:none; border-bottom:1px solid var(--m3-outline-variant);
-    clip-path:none; padding:15px 16px;
-  }
-  .mt-competition-card:last-child, .m3-club-row:last-child{ border-bottom:none; }
-  .mt-competition-card:hover, .m3-club-row:hover{ background:var(--m3-surface-container-high); }
-  .mt-competition-card:focus-visible, .m3-club-row:focus-visible{ outline:2px solid var(--m3-primary); outline-offset:-2px; }
-  .mt-competition-title{ font-family:var(--m3-display); font-weight:700; font-size:15px; letter-spacing:0; color:var(--m3-on-surface); }
-  .mt-competition-sub{ color:var(--m3-on-surface-variant); }
-  .mt-competition-chevron{ color:var(--m3-primary); }
-  .m3-club-row{ border-radius:0; border:none; border-bottom:1px solid var(--m3-outline-variant); background:transparent; padding:12px 16px; }
-  .m3-club-crest{ border-radius:50%; background:var(--m3-surface-container-highest); }
-  .m3-club-row.selected{ border-color:var(--m3-outline-variant); box-shadow:inset 3px 0 0 var(--m3-primary); }
-  .mt-onboard-title{ font-family:var(--m3-display); font-weight:700; font-size:24px; letter-spacing:0; line-height:1.2; }
-
-  /* ================= S4-B5-QA-001 — área de toque (≥ 44px) =================
-     Correções mecânicas da auditoria: o X das modais (26px), o "?" de
-     ajuda e o botão de ícone do topo ficavam abaixo de 44px. O visual não
-     muda — só a área clicável cresce (margem negativa / pseudo-elemento). */
-  .ct-modal-close{ width:44px; height:44px; margin:-9px -9px -9px 0; border-radius:50%; }
-  .ct-modal-close:focus-visible{ outline:2px solid var(--m3-primary); outline-offset:-6px; }
-  .ct-help-btn{ position:relative; }
-  .ct-help-btn::after{ content:""; position:absolute; inset:-12px; }
-  .ct-modal:focus{ outline:none; } /* foco programático no diálogo (initModalA11y) — o anel fica nos controles */
-  .mt-icon-btn{ width:44px; height:44px; }
-
-  /* ================= Redesign — Bloco 5 (estados) =================
-     Movimento reduzido (F15 da matriz): várias animações já tinham sua
-     própria regra; esta cobre todas as da carreira de uma vez. */
-  @media (prefers-reduced-motion: reduce){
-    *, *::before, *::after{ animation-duration:.01ms !important; animation-iteration-count:1 !important; transition-duration:.01ms !important; scroll-behavior:auto !important; }
-  }
 </style>
-<!-- Redesign capítulos 1–7 (sobrepõe o <style> acima por ordem de origem) -->
-<link rel="stylesheet" href="css/brdata-redesign.css">
 </head>
 <body>
 
 <div class="ct-shell" id="ctShell">
 
-  <!-- ================= Splash / carregamento (Cap. 1 · Tela 01) =================
-       Redesign capítulos 1–7 (estratégia híbrida de assets): o cenário
-       do túnel e o treinador de costas são assets fotográficos AINDA NÃO
-       FORNECIDOS (ver docs/REDESIGN_ASSETS.md, CEN-01/PERS-01) — a tela
-       usa o fundo vetorial limpo do pacote até lá. Marca: só a oficial do
-       repositório (img/brand-icon.png); wordmark oficial pendente. Texto,
-       marca e progresso são nativos (nunca embutidos na imagem). O
-       progresso é o das etapas reais do boot (ver setBootProgress em
-       carreira.js); antes do JS rodar fica indeterminado. O conteúdo é
-       regerado por splashLoadingHTML()/splashErrorHTML(). -->
-  <div class="ct-full bd-scene bd-scene--tunnel" id="screenLoading">
-    <div class="bd-splash">
-      <div class="bd-brand" role="img" aria-label="BRDATA — Futebol, gestão, resultados">
-        <div class="mt-splash-crest bd-brand-mark"><img src="img/brand-icon.png" alt=""></div>
-        <div class="bd-brand-sig" aria-hidden="true">Futebol · Gestão · Resultados</div>
-      </div>
-      <p class="bd-splash-msg">O clube é seu.<br><span>A estratégia, também.</span></p>
-      <div class="bd-progress is-indeterminate" id="splashProgress" role="progressbar" aria-label="Carregando o Modo Técnico" aria-valuemin="0" aria-valuemax="100"><span class="bd-progress-fill"></span></div>
-      <p class="bd-progress-label" aria-live="polite">Carregando...</p>
-    </div>
+  <!-- ================= Loading ================= -->
+  <div class="ct-full" id="screenLoading">
+    <div class="mt-splash-crest"><img src="img/brand-icon.png" alt=""></div>
+    <div class="ct-spinner"></div>
+    <p>Carregando o Modo Técnico...</p>
   </div>
 
   <!-- Nova feature (pedido do usuário: "criar uma tela de loading que
@@ -2856,41 +2749,32 @@
        como criar a conta de verdade. "?signup=1" é reconhecido em
        startAuthFlow/hasSignupIntent, que abre o gate direto na view de
        cadastro (ver requireSignup). -->
-  <div class="hidden bd-scene bd-scene--tunnel" id="screenLoginRequired">
-    <div class="mt-screen bd-login">
+  <div class="hidden" id="screenLoginRequired">
+    <div class="mt-screen">
       <div class="mt-login-content">
-        <div class="bd-brand bd-brand--compact" role="img" aria-label="BRDATA">
-          <div class="bd-brand-mark"><img src="img/brand-icon.png" alt=""></div>
-          <div class="bd-brand-sig" aria-hidden="true">Futebol · Gestão · Resultados</div>
+        <div class="mt-brand">
+          <div class="mt-crest"><img src="img/logo.png" alt="BR Data"></div>
+          <div class="mt-brand-name">DATA <span>TREINADOR</span></div>
         </div>
 
-        <div class="mt-panel bd-login-panel">
-          <h1 class="bd-hero-title">Bem-vindo,<br><span>treinador.</span></h1>
-          <p class="mt-sub">Entre na sua conta e continue escrevendo a sua história.</p>
+        <div class="mt-panel">
+          <h1>Entrar</h1>
+          <p class="mt-sub">Faça login pra acessar o Modo Técnico — o progresso da sua carreira fica salvo na sua conta BR Data.</p>
 
-          <!-- Cap. 1 · Tela 02 — só os métodos que existem de verdade
-               (e-mail + senha). Login social e "Esqueci minha senha"
-               aparecem na referência, mas ficaram fora por decisão de
-               Produto (27/10/2026) — ver docs/REDESIGN_CAPITULOS_1_7.md. -->
-          <form id="ctLoginForm" novalidate>
-            <div class="mt-field bd-field">
-              <label for="ctLoginEmail" class="sr-only">E-mail</label>
-              <svg class="bd-field-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg>
-              <input type="email" inputmode="email" id="ctLoginEmail" autocomplete="username" placeholder="E-mail" autocapitalize="off" spellcheck="false">
+          <form id="ctLoginForm">
+            <div class="mt-field">
+              <label for="ctLoginEmail">E-mail</label>
+              <input type="text" inputmode="email" id="ctLoginEmail" autocomplete="username" placeholder="voce@email.com">
             </div>
-            <div class="mt-field bd-field">
-              <label for="ctLoginPassword" class="sr-only">Senha</label>
-              <svg class="bd-field-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/><path d="M12 15v2"/></svg>
-              <input type="password" id="ctLoginPassword" autocomplete="current-password" placeholder="Senha">
-              <button type="button" class="bd-field-action" id="btnTogglePassword" aria-label="Mostrar senha" aria-pressed="false" aria-controls="ctLoginPassword">
-                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg>
-              </button>
+            <div class="mt-field">
+              <label for="ctLoginPassword">Senha</label>
+              <input type="password" id="ctLoginPassword" autocomplete="current-password" placeholder="Sua senha">
             </div>
-            <p class="mt-form-error" id="ctLoginError" role="alert" style="display:none;"></p>
-            <button type="submit" class="mt-btn-enter bd-btn-primary bd-btn-arrow">Entrar</button>
+            <p class="mt-form-error" id="ctLoginError" style="display:none;"></p>
+            <button type="submit" class="mt-btn-enter">Entrar</button>
           </form>
 
-          <p class="mt-signup">Ainda não tem conta? <a href="/?signup=1">Criar conta</a></p>
+          <p class="mt-signup">Não tem uma conta? <a href="/?signup=1">Cadastre-se no BR Data</a></p>
         </div>
       </div>
     </div>
@@ -2906,28 +2790,25 @@
        aparece ao criar uma carreira NOVA — uma carreira salva já sabe
        seu campeonato (CAREER.competitionId) e pula direto pra
        Escolha do Clube/Central, sem passar por aqui de novo. -->
-  <div class="hidden bd-scene bd-scene--dim" id="screenCompetitionPicker">
+  <div class="hidden" id="screenCompetitionPicker">
     <div class="mt-picker-screen">
-      <div class="mt-topbar bd-flow-top">
+      <div class="mt-topbar">
         <div class="mt-topbar-row">
-          <button class="mt-icon-btn" id="btnCompetitionPickerBack" aria-label="Voltar para os saves" title="Meus saves" hidden>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
-          </button>
-          <div class="bd-brand bd-brand--inline" role="img" aria-label="BRDATA"><div class="bd-brand-mark mt-crest-mini"><img src="img/brand-icon.png" alt=""></div></div>
+          <div class="mt-brand-mini">
+            <div class="mt-crest-mini"><img src="img/brand-icon.png" alt=""></div>
+            <div class="t">MODO <span>CARREIRA</span></div>
+          </div>
           <button class="mt-icon-btn" id="btnCompetitionPickerLogout" aria-label="Sair" title="Sair">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
           </button>
         </div>
       </div>
-      <div class="mt-picker-content bd-flow-content">
-        <div class="mt-intro bd-flow-intro">
-          <h1 class="bd-flow-title">Qual competição você quer jogar?</h1>
-          <p class="bd-flow-sub">Escolha uma liga para iniciar a sua carreira.</p>
+      <div class="mt-picker-content">
+        <div class="mt-intro">
+          <div class="mt-intro-crest"><img src="img/logo.png" alt=""></div>
+          <h1 style="margin:0;">Em qual divisão você vai treinar?</h1>
         </div>
-        <!-- Abas de categoria: montadas a partir das competições reais
-             (renderCompetitionPicker) — só aparecem com 2+ categorias. -->
-        <div class="bd-chips" id="competitionCategories" role="tablist" aria-label="Categorias de competição" hidden></div>
-        <div class="mt-competition-list" id="competitionList" aria-live="polite"></div>
+        <div class="mt-competition-list" id="competitionList"></div>
       </div>
     </div>
   </div>
@@ -2939,122 +2820,47 @@
        verdade pra abrir ainda — carreira não existe até escolher o
        clube — o ícone vira ação real de "Sair" em vez de um botão que
        não abre nada). -->
-  <div class="hidden bd-scene bd-scene--dim" id="screenPicker">
+  <div class="hidden" id="screenPicker">
     <div class="mt-picker-screen">
-      <div class="mt-topbar bd-flow-top">
+      <div class="mt-topbar">
         <div class="mt-topbar-row">
-          <button class="mt-icon-btn" id="btnPickerBack" aria-label="Voltar para a escolha da competição" title="Voltar">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
-          </button>
-          <div class="bd-brand bd-brand--inline" role="img" aria-label="BRDATA"><div class="bd-brand-mark mt-crest-mini"><img src="img/brand-icon.png" alt=""></div></div>
+          <div class="mt-brand-mini">
+            <div class="mt-crest-mini"><img src="img/brand-icon.png" alt=""></div>
+            <div class="t">MODO <span>CARREIRA</span></div>
+          </div>
           <button class="mt-icon-btn" id="btnPickerLogout" aria-label="Sair" title="Sair">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
           </button>
         </div>
       </div>
-      <div class="mt-picker-content bd-flow-content">
-        <div class="mt-intro bd-flow-intro">
-          <div class="bd-flow-title-row">
-            <h1 class="bd-flow-title">Qual será o seu clube?</h1>
+      <div class="mt-picker-content">
+        <!-- AJUSTE (pedido do usuário: "tirar esses textos das telas —
+             quando for útil coloca o ícone de interrogação") — o texto
+             explicativo (que não é óbvio pra quem tá vendo o app pela
+             1ª vez: os outros 19 times são jogados pela CPU, dá pra
+             promover da base) some da tela por padrão e vira um "?"
+             clicável, mesmo padrão já usado em outras telas do app (ver
+             .ct-help-btn/.ct-help-text, wireHelpToggles em
+             carreira.js — funciona automático, sem JS novo aqui). -->
+        <div class="mt-intro">
+          <div class="mt-intro-crest"><img src="img/logo.png" alt=""></div>
+          <div style="display:flex; align-items:center; justify-content:center; gap:6px;">
+            <h1 style="margin:0;">Escolha o clube que você vai comandar</h1>
             <button class="ct-help-btn" data-help="helpEscolhaClube" aria-label="Ajuda">?</button>
           </div>
-          <p class="bd-flow-sub" id="pickerCompetitionLabel">Escolha o time que você vai comandar.</p>
-          <p id="helpEscolhaClube" hidden style="margin-top:10px;">Você define escalação, formação, banco de reservas e as trocas — os outros times são simulados pela CPU. Dá pra promover jogadores da base pro time principal a qualquer momento.</p>
+          <p id="helpEscolhaClube" hidden style="margin-top:10px;">Você define escalação, formação, banco de reservas e as trocas — os outros 19 times são simulados pela CPU. Dá pra promover jogadores da base pro time principal a qualquer momento.</p>
         </div>
         <!-- FASE 4 (item 4) — banner de contexto quando essa tela reaparece
              no fluxo de "aceitar proposta de outro clube" (ver
-             acceptClubProposal/renderClubPicker em carreira.js). -->
+             acceptClubProposal/renderClubPicker em carreira.js) — some
+             normalmente na 1ª escolha, reinício e demissão. -->
         <p class="mt-picker-banner" id="pickerContextBanner" hidden></p>
-        <!-- Cap. 1 · Tela 04 — busca (nome/cidade) e filtros reais:
-             Todos, Favoritos (conta, ver /api/account/career-favorites)
-             e Região (UF do catálogo, quando existir). -->
-        <div class="bd-search">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
-          <label for="clubSearch" class="sr-only">Buscar clube ou cidade</label>
-          <input type="search" id="clubSearch" placeholder="Buscar clube ou cidade" autocomplete="off" enterkeyhint="search">
-        </div>
-        <div class="bd-chips" id="clubFilters" role="group" aria-label="Filtrar clubes">
-          <button type="button" class="bd-chip active" data-club-filter="all" aria-pressed="true">Todos</button>
-          <button type="button" class="bd-chip" data-club-filter="fav" aria-pressed="false">Favoritos</button>
-          <label class="bd-chip bd-chip-select" id="clubRegionWrap" hidden><span class="sr-only">Região</span>
-            <select id="clubRegion"><option value="">Regiões</option></select>
-          </label>
-        </div>
-        <div class="m3-club-grid bd-club-grid" id="clubGrid" role="listbox" aria-label="Clubes"></div>
-        <div class="bd-empty" id="clubGridEmpty" hidden>
-          <p>Nenhum clube encontrado com esses filtros.</p>
-          <button type="button" class="bd-btn-ghost" id="btnClearClubFilters">Limpar filtros</button>
-        </div>
+        <div class="m3-club-grid" id="clubGrid"></div>
       </div>
-      <div class="bd-cta-dock">
-        <button class="m3-fab bd-btn-primary hidden" id="btnConfirmClub">Continuar</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- ================= Configurar carreira (Cap. 1 · Tela 05) =================
-       Entre a escolha do clube e o início da carreira. Só o que a
-       carreira realmente usa: nome, nacionalidade e foto do treinador
-       (conta — PUT /api/account/coach-profile). Dificuldade e duração
-       da referência ficaram fora por decisão de Produto. -->
-  <div class="hidden bd-scene bd-scene--stadium" id="screenSetup">
-    <div class="mt-picker-screen">
-      <div class="mt-topbar bd-flow-top">
-        <div class="mt-topbar-row">
-          <button class="mt-icon-btn" id="btnSetupBack" aria-label="Voltar para a escolha do clube" title="Voltar">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
-          </button>
-          <div class="bd-brand bd-brand--inline" role="img" aria-label="BRDATA"><div class="bd-brand-mark mt-crest-mini"><img src="img/brand-icon.png" alt=""></div></div>
-          <span class="mt-icon-btn" aria-hidden="true"></span>
-        </div>
-      </div>
-      <form class="mt-picker-content bd-flow-content bd-setup" id="setupForm" novalidate>
-        <div class="mt-intro bd-flow-intro">
-          <h1 class="bd-flow-title">Vamos configurar sua carreira?</h1>
-          <p class="bd-flow-sub">Algumas informações para personalizar sua experiência.</p>
-        </div>
-        <div class="bd-setup-club" id="setupClubSummary"></div>
-        <div class="bd-avatar-pick">
-          <div class="bd-avatar bd-avatar--xl" id="setupAvatarPreview" aria-hidden="true"></div>
-          <label class="bd-avatar-btn" for="setupAvatarInput" title="Escolher foto">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>
-            <span class="sr-only">Escolher foto do treinador</span>
-          </label>
-          <input type="file" id="setupAvatarInput" accept="image/jpeg,image/png,image/webp" class="sr-only">
-          <button type="button" class="bd-link" id="btnSetupAvatarRemove" hidden>Remover foto</button>
-        </div>
-        <div class="bd-form-field">
-          <label for="setupCoachName">Nome do treinador</label>
-          <input type="text" id="setupCoachName" maxlength="80" autocomplete="name" required>
-        </div>
-        <div class="bd-form-field">
-          <label for="setupNationality">Nacionalidade</label>
-          <select id="setupNationality"></select>
-        </div>
-        <p class="mt-form-error" id="setupError" role="alert" style="display:none;"></p>
-        <div class="bd-cta-dock bd-cta-dock--inline">
-          <button type="submit" class="bd-btn-primary" id="btnStartCareer">Iniciar carreira</button>
-        </div>
-      </form>
-    </div>
-  </div>
-
-  <!-- ================= Primeira entrada (Cap. 1 · Tela 06) =================
-       Só logo depois de criar uma carreira (startCareer) — retomar um
-       save nunca passa por aqui. Escudo oficial do clube, clube e
-       competição reais, uma única ação. -->
-  <div class="hidden bd-scene bd-scene--stadium bd-scene--club" id="screenFirstEntry">
-    <div class="bd-first">
-      <div class="bd-brand bd-brand--inline" role="img" aria-label="BRDATA"><div class="bd-brand-mark mt-crest-mini"><img src="img/brand-icon.png" alt=""></div></div>
-      <div class="bd-first-body">
-        <h1 class="bd-hero-title bd-first-title" id="firstEntryTitle">Bem-vindo ao seu novo desafio!</h1>
-        <p class="bd-first-sub" id="firstEntrySub"></p>
-        <div class="bd-first-crest" id="firstEntryCrest"></div>
-        <p class="bd-first-quote">“Aqui começa a sua história. Planeje, escale, negocie e leve seu clube ao topo.”</p>
-      </div>
-      <div class="bd-cta-dock bd-cta-dock--inline">
-        <button type="button" class="bd-btn-primary bd-btn-arrow" id="btnFirstEntryGo">Vamos lá</button>
-      </div>
+      <button class="m3-fab hidden" id="btnConfirmClub">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+        Confirmar clube
+      </button>
     </div>
   </div>
 
@@ -3067,41 +2873,15 @@
          renderAll() (sempre em dia, qualquer painel ativo). Chrome
          global de #screenGame — aparece em toda tela do jogo, migrada
          ou não pro M3. -->
-    <div class="m3-topbar bd-topbar">
-      <!-- Redesign Cap. 2 · Tela 01 — cabeçalho integrado: marca BRDATA,
-           notificações (badge = contagem real, ver
-           unreadNotificationCount) e perfil do treinador; clube e
-           competição com escudo oficial; abas contextuais com destinos
-           reais (switchToPanel). -->
-      <div class="bd-topbar-row">
-        <div class="bd-brand bd-brand--inline" role="img" aria-label="BRDATA"><div class="bd-brand-mark"><img src="img/brand-icon.png" alt=""></div></div>
-        <div class="bd-topbar-actions">
-          <button type="button" class="bd-icon-btn" id="btnTopbarNotifications" aria-label="Notificações">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9a6 6 0 0 1 12 0c0 6 2.5 7.5 2.5 7.5h-17S6 15 6 9Z"/><path d="M10 20a2 2 0 0 0 4 0"/></svg>
-            <span class="bd-dot-badge" id="topbarNotifBadge" hidden></span>
-          </button>
-          <button type="button" class="bd-icon-btn bd-topbar-avatar" id="btnTopbarCoach" aria-label="Perfil do treinador"></button>
+    <div class="m3-topbar">
+      <div class="m3-topbar-id">
+        <div class="m3-topbar-crest" id="topbarClubCrest"></div>
+        <div style="min-width:0;">
+          <div class="m3-topbar-name" id="topbarClubName"></div>
+          <div class="m3-topbar-sub" id="topbarClubSub"></div>
         </div>
       </div>
-      <div class="bd-topbar-club">
-        <div class="m3-topbar-id">
-          <div class="m3-topbar-crest" id="topbarClubCrest"></div>
-          <div style="min-width:0;">
-            <div class="m3-topbar-name" id="topbarClubName"></div>
-            <div class="m3-topbar-sub" id="topbarClubSub"></div>
-          </div>
-        </div>
-        <div class="m3-topbar-chip" id="topbarPositionChip"></div>
-      </div>
-      <nav class="bd-ctx-tabs" aria-label="Áreas do clube">
-        <button type="button" class="m3-nav-item bd-ctx-tab active" data-panel="central">Visão geral</button>
-        <button type="button" class="m3-nav-item bd-ctx-tab" data-panel="elenco">Elenco</button>
-        <button type="button" class="m3-nav-item bd-ctx-tab" data-panel="escalacao">Tática</button>
-        <button type="button" class="m3-nav-item bd-ctx-tab" data-panel="mercado">Mercado</button>
-        <button type="button" class="m3-nav-item bd-ctx-tab" data-panel="jogos">Calendário</button>
-        <button type="button" class="m3-nav-item bd-ctx-tab" data-panel="tabela">Competições</button>
-        <button type="button" class="m3-nav-item bd-ctx-tab" data-panel="clube">Finanças</button>
-      </nav>
+      <div class="m3-topbar-chip" id="topbarPositionChip"></div>
     </div>
 
     <!-- AJUSTE (pedido do usuário: "o hambúrguer não ficaria melhor no
@@ -3132,11 +2912,11 @@
          clique de #btnBottomMenu). -->
     <div class="mt-topbar-menu" id="topbarMenu">
       <div id="topbarMenuRoot">
-        <button class="mt-topbar-menu-item group" data-submenu="competicao">Competição <span class="mt-menu-chevron">›</span></button>
-        <button class="mt-topbar-menu-item group" data-submenu="tatica">Tática avançada <span class="mt-menu-chevron">›</span></button>
-        <button class="mt-topbar-menu-item group" data-submenu="equipe">Equipe &amp; Treinos <span class="mt-menu-chevron">›</span></button>
-        <button class="mt-topbar-menu-item group" data-submenu="progresso">Progresso <span class="mt-menu-chevron">›</span></button>
-        <button class="mt-topbar-menu-item group" data-submenu="imprensa">Imprensa <span class="mt-menu-chevron">›</span></button>
+        <button class="mt-topbar-menu-item group" data-submenu="competicao">📊 Competição <span class="mt-menu-chevron">›</span></button>
+        <button class="mt-topbar-menu-item group" data-submenu="tatica">🎯 Tática avançada <span class="mt-menu-chevron">›</span></button>
+        <button class="mt-topbar-menu-item group" data-submenu="equipe">👔 Equipe &amp; Treinos <span class="mt-menu-chevron">›</span></button>
+        <button class="mt-topbar-menu-item group" data-submenu="progresso">🏅 Progresso <span class="mt-menu-chevron">›</span></button>
+        <button class="mt-topbar-menu-item group" data-submenu="imprensa">📰 Imprensa <span class="mt-menu-chevron">›</span></button>
         <!-- Loja (BR_Data_Treinador_Monetizacao.xlsx +
              BR_Data_Treinador_Loja_Mockup.html) — mesmo padrão de item
              sem aba própria no rodapé. Ver AVISO grande em renderLoja()
@@ -3146,29 +2926,28 @@
              Reiniciar/Sair abaixo. -->
         <!-- GE-CALENDAR-001 (B3) — Calendário da temporada (também abre
              tocando na data do topo do Início). -->
-        <button class="mt-topbar-menu-item" id="btnOpenCalendar">Calendário</button>
-        <button class="mt-topbar-menu-item" id="btnOpenLoja">Loja</button>
+        <button class="mt-topbar-menu-item" id="btnOpenCalendar">🗓️ Calendário</button>
+        <button class="mt-topbar-menu-item" id="btnOpenLoja">🛒 Loja</button>
         <!-- Bloco 8 (brtreinadorbloco8sistema.html) — Configurações:
              hub de perfil/jogo/notificações/conta — mesmo critério de
              item solto na raiz de Loja/Histórico/Reiniciar/Sair (não é
              "categoria" de mais nada). -->
-        <button class="mt-topbar-menu-item" id="btnOpenSettings">Configurações</button>
+        <button class="mt-topbar-menu-item" id="btnOpenSettings">⚙️ Configurações</button>
         <!-- AJUSTE (pedido do usuário: "página estática que controle
              o histórico de mudanças do jogo") — página própria,
              fora do SPA (ver historico.html), por isso é um <a>
              normal (navega de verdade) e não um botão com listener
              JS como os outros itens deste menu. -->
-        <a class="mt-topbar-menu-item" href="historico.html">Histórico de Atualizações</a>
-        <button class="mt-topbar-menu-item" id="btnOpenSaves">Meus saves</button>
-        <button class="mt-topbar-menu-item" id="btnRestart">Reiniciar</button>
-        <button class="mt-topbar-menu-item danger" id="btnLogout">Sair</button>
+        <a class="mt-topbar-menu-item" href="historico.html">🗒️ Histórico de Atualizações</a>
+        <button class="mt-topbar-menu-item" id="btnRestart">↺ Reiniciar</button>
+        <button class="mt-topbar-menu-item danger" id="btnLogout">⎋ Sair</button>
       </div>
 
       <!-- Competição: telas de acompanhamento da liga (leitura, sem
            ação de gestão nenhuma). -->
       <div class="mt-topbar-submenu hidden" data-submenu-panel="competicao">
         <button class="mt-topbar-submenu-back">‹ Menu</button>
-        <button class="mt-topbar-menu-item" id="btnOpenTabela">Tabela</button>
+        <button class="mt-topbar-menu-item" id="btnOpenTabela">📅 Tabela</button>
         <!-- Nova feature — Resumo da rodada (brtreinadorbloco1pendentes.html):
              todos os confrontos da rodada, inclusive os ainda não jogados
              (ver renderRodada/openRodadaScreen em carreira.js) — dado
@@ -3177,8 +2956,8 @@
              estados de verdade (nenhum jogo resolvido ainda / todos
              resolvidos), sem fingir um estado "ao vivo" que o motor não
              produz. -->
-        <button class="mt-topbar-menu-item" id="btnOpenRodada">Rodada</button>
-        <button class="mt-topbar-menu-item" id="btnOpenEstatisticas">Estatísticas</button>
+        <button class="mt-topbar-menu-item" id="btnOpenRodada">📆 Rodada</button>
+        <button class="mt-topbar-menu-item" id="btnOpenEstatisticas">📊 Estatísticas</button>
       </div>
 
       <!-- Tática avançada: os 3 ajustes do Bloco 2 M3, complementares à
@@ -3189,15 +2968,15 @@
         <!-- Nova feature — Meus esquemas (Bloco 2 M3,
              brtreinadorbloco2pendentes.html): biblioteca de esquemas
              táticos completos (ver openSchemesScreen/carreira.js). -->
-        <button class="mt-topbar-menu-item" id="btnOpenSchemes">Meus esquemas</button>
+        <button class="mt-topbar-menu-item" id="btnOpenSchemes">🗂️ Meus esquemas</button>
         <!-- Nova feature — Marcação individual (Bloco 2 M3,
              brtreinadorbloco2pendentes.html): ver openManMarkingScreen/
              carreira.js. -->
-        <button class="mt-topbar-menu-item" id="btnOpenMarking">Marcação individual</button>
+        <button class="mt-topbar-menu-item" id="btnOpenMarking">🎯 Marcação individual</button>
         <!-- Nova feature — Instruções por setor (Bloco 2 M3,
              brtreinadorbloco2pendentes.html): ver openSectorScreen/
              carreira.js. -->
-        <button class="mt-topbar-menu-item" id="btnOpenSector">Instruções por setor</button>
+        <button class="mt-topbar-menu-item" id="btnOpenSector">🎚️ Instruções por setor</button>
       </div>
 
       <!-- Equipe & Treinos: gestão do dia a dia do clube. -->
@@ -3207,17 +2986,17 @@
              nos treinos, escalação, táticas e outras opções pra garantir
              que sempre o melhor time estará em campo") — ver
              openCommissionScreen/carreira.js. -->
-        <button class="mt-topbar-menu-item" id="btnOpenCommission">Comissão Técnica</button>
+        <button class="mt-topbar-menu-item" id="btnOpenCommission">🧑‍💼 Comissão Técnica</button>
         <!-- S4-B3-004 (tela criada do zero, decisão do PM — issue #20):
              visão consolidada de todos os contratos do elenco, usando o
              ContractCard (S4-B3-001). Ver openContratosScreen/carreira.js. -->
-        <button class="mt-topbar-menu-item" id="btnOpenContratos">Contratos</button>
-        <button class="mt-topbar-menu-item" id="btnOpenTreinos">Treinos</button>
+        <button class="mt-topbar-menu-item" id="btnOpenContratos">📄 Contratos</button>
+        <button class="mt-topbar-menu-item" id="btnOpenTreinos">🏋️ Treinos</button>
         <!-- Bloco 6 (mockups brtreinadorbloco6base.html/
              brtreinadorbloco6pendentes.html) — olheiros contratáveis que
              saem em missão por região e trazem promissores pra base (ver
              openScoutingScreen/carreira.js). -->
-        <button class="mt-topbar-menu-item" id="btnOpenScouting">Base e Olheiros</button>
+        <button class="mt-topbar-menu-item" id="btnOpenScouting">🧭 Base e Olheiros</button>
       </div>
 
       <!-- Progresso: Retenção/Engajamento (BRDataRetencaoEspecificacao)
@@ -3225,13 +3004,13 @@
            conquistou. -->
       <div class="mt-topbar-submenu hidden" data-submenu-panel="progresso">
         <button class="mt-topbar-submenu-back">‹ Menu</button>
-        <button class="mt-topbar-menu-item" id="btnOpenObjetivos">Objetivos</button>
-        <button class="mt-topbar-menu-item" id="btnOpenConquistas">Conquistas</button>
-        <button class="mt-topbar-menu-item" id="btnOpenRanking">Ranking</button>
+        <button class="mt-topbar-menu-item" id="btnOpenObjetivos">🎯 Objetivos</button>
+        <button class="mt-topbar-menu-item" id="btnOpenConquistas">🥇 Conquistas</button>
+        <button class="mt-topbar-menu-item" id="btnOpenRanking">📈 Ranking</button>
         <!-- FASE 4 (item 6) — tela própria de histórico de premiações
              (ver openAwardsScreen em carreira.js), pedido do usuário:
              "uma tela que armazena os resultados de cada ano". -->
-        <button class="mt-topbar-menu-item" id="btnOpenAwards">Premiações</button>
+        <button class="mt-topbar-menu-item" id="btnOpenAwards">🏆 Premiações</button>
       </div>
 
       <!-- Imprensa: conteúdo editorial/institucional, não gestão. -->
@@ -3240,10 +3019,10 @@
         <!-- AJUSTE (pedido do usuário: "esperava uma tela exclusiva
              pra notícias nos padrões de um portal de esportes") — ver
              openNewsScreen em carreira.js. -->
-        <button class="mt-topbar-menu-item" id="btnOpenNews">Notícias</button>
+        <button class="mt-topbar-menu-item" id="btnOpenNews">📰 Notícias</button>
         <!-- FASE 4 (item 4) — currículo do técnico (reputação +
              histórico de clubes), ver openCoachProfileScreen. -->
-        <button class="mt-topbar-menu-item" id="btnOpenCoachProfile">Perfil do Técnico</button>
+        <button class="mt-topbar-menu-item" id="btnOpenCoachProfile">👔 Perfil do Técnico</button>
       </div>
     </div>
 
@@ -3258,30 +3037,35 @@
          muda. Botão "Menu" continua sem data-panel de propósito (não é
          aba, abre o popover #topbarMenu — excluído do loop genérico de
          switchToPanel, que seleciona só ".m3-nav-item[data-panel]"). -->
-    <nav class="m3-bottom-nav bd-bottom-nav" aria-label="Navegação principal">
+    <nav class="m3-bottom-nav">
       <button class="m3-nav-item active" data-panel="central">
         <span class="m3-nav-pill"></span>
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-7 9 7"/><path d="M5 10v9a1 1 0 0 0 1 1h4v-6h4v6h4a1 1 0 0 0 1-1v-9"/></svg>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-7 9 7"/><path d="M5 10v9a1 1 0 0 0 1 1h4v-6h4v6h4a1 1 0 0 0 1-1v-9"/></svg>
         Início
+      </button>
+      <button class="m3-nav-item" data-panel="elenco">
+        <span class="m3-nav-pill"></span>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.2"/><path d="M2.5 20c0-3.6 2.9-6 6.5-6s6.5 2.4 6.5 6"/><circle cx="17" cy="9" r="2.6"/><path d="M15.5 14.3c2.7.3 4.5 2.3 4.5 5.7"/></svg>
+        Elenco
+      </button>
+      <button class="m3-nav-item" data-panel="escalacao">
+        <span class="m3-nav-pill"></span>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="1.5"/><circle cx="12" cy="8.5" r="1.6"/><circle cx="7" cy="15" r="1.6"/><circle cx="17" cy="15" r="1.6"/></svg>
+        Tática
+      </button>
+      <button class="m3-nav-item" data-panel="mercado">
+        <span class="m3-nav-pill"></span>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="7" width="18" height="13" rx="1.5"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><circle cx="16" cy="13.5" r="1.4"/></svg>
+        Mercado
       </button>
       <button class="m3-nav-item" data-panel="clube">
         <span class="m3-nav-pill"></span>
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 4 6v6c0 4.5 3.4 8 8 9 4.6-1 8-4.5 8-9V6Z"/><path d="m9.5 12 1.8 1.8 3.4-3.6"/></svg>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 21V9l8-6 8 6v12"/><path d="M9 21v-6h6v6"/><path d="M9 12h.01M15 12h.01M12 9h.01"/></svg>
         Clube
       </button>
-      <button class="m3-nav-item" data-panel="jogos">
-        <span class="m3-nav-pill"></span>
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m12 7 4 3-1.5 4.5h-5L8 10Z"/><path d="M12 3v4M21 10.5l-5 -.5M17.5 19.5 14.5 14.5M6.5 19.5l3-5M3 10.5l5-.5"/></svg>
-        Jogos
-      </button>
-      <button class="m3-nav-item" data-panel="tabela">
-        <span class="m3-nav-pill"></span>
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 21h8M12 17v4M7 4h10v4a5 5 0 0 1-10 0V4Z"/><path d="M7 5H4v2a4 4 0 0 0 3 4M17 5h3v2a4 4 0 0 1-3 4"/></svg>
-        Competições
-      </button>
-      <button class="m3-nav-item" id="btnBottomMenu" aria-label="Mais opções" aria-expanded="false" aria-controls="topbarMenu">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="20" y2="17"/></svg>
-        Mais
+      <button class="m3-nav-item" id="btnBottomMenu" aria-label="Menu" aria-expanded="false" aria-controls="topbarMenu">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="20" y2="17"/></svg>
+        Menu
       </button>
     </nav>
 
@@ -3296,67 +3080,17 @@
            fluxo normal do card e vira .mt-action-bar, fixa acima da
            nav — sempre alcançável sem rolar a tela. -->
       <section class="ct-panel active" id="panel-central">
-        <!-- Redesign Cap. 1 · Tela 07 / Cap. 2 · Tela 01 (referência
-             aprovada) — Início como centro de comando: saudação com o
-             nome real do treinador, próximo jogo em destaque, faixa de
-             desempenho, confiança/forma/objetivos, destaques do elenco,
-             notícia do clube, tabela e ações rápidas. Tudo de CAREER
-             (renderHomeDashboard em carreira.js); nada fixo. -->
-        <div class="bd-home-hero bd-scene bd-scene--stadium">
-          <div class="bd-home-greet">
-            <h1 class="bd-hero-title" id="homeGreeting"></h1>
-            <p class="bd-home-greet-sub" id="homeGreetingSub"></p>
-          </div>
-        </div>
-        <div class="m3-hero-card bd-next-card">
-          <div class="bd-next-head">
-            <span class="bd-next-title">Próximo jogo</span>
-            <span class="bd-next-meta" id="roundPill">1 / 38</span>
+        <div class="m3-hero-card">
+          <div class="m3-hero-top">
+            <span class="m3-hero-label">PRÓXIMO JOGO</span>
+            <span class="m3-hero-label" id="roundPill">1 / 38</span>
           </div>
           <div class="ct-next-match m3-hero-match" id="nextMatchBox"></div>
           <!-- :empty (ver CSS) esconde o badge quando a escalação está
                completa — lineupWarning só recebe texto quando falta
                titular (ver renderCentral em carreira.js). -->
           <p class="mt-badge-alert" id="lineupWarning"></p>
-          <div class="bd-next-actions">
-        <button class="mt-btn-ghost hidden" id="btnSkipToMatch" >Pular até o próximo jogo</button>
-        <button class="bd-btn-primary" id="btnSimulate"><svg viewBox="0 0 24 24" fill="currentColor"><polygon points="6,4 20,12 6,20"/></svg>Ir para o jogo</button>
-        <button class="bd-btn-primary hidden" id="btnAdvanceSeason"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 21h8M12 17v4M7 4h10v4a5 5 0 0 1-10 0V4Z"/><path d="M7 5H4a1 1 0 0 0-1 1v1a4 4 0 0 0 4 4"/><path d="M17 5h3a1 1 0 0 1 1 1v1a4 4 0 0 1-4 4"/></svg>Próxima Temporada</button>
-          </div>
         </div>
-
-        <!-- Faixa de desempenho (só com dado real da tabela). -->
-        <div class="bd-stats-strip" id="homeStats" aria-label="Desempenho na competição"></div>
-
-        <!-- Confiança da diretoria · desempenho recente · objetivos -->
-        <div class="bd-home-grid">
-          <button type="button" class="bd-panel bd-panel--btn" id="homeBoardCard" aria-label="Abrir diretoria"></button>
-          <div class="bd-panel" id="homeFormCard"></div>
-          <button type="button" class="bd-panel bd-panel--btn" id="homeGoalsCard" aria-label="Abrir objetivos da temporada"></button>
-        </div>
-
-        <div class="bd-home-grid bd-home-grid--2">
-          <section class="bd-panel" aria-labelledby="homeHighlightsTitle">
-            <div class="bd-panel-head"><h2 id="homeHighlightsTitle">Destaques do elenco</h2><button type="button" class="bd-panel-link" id="btnHomeSquad" aria-label="Ver elenco completo">›</button></div>
-            <div class="bd-highlights" id="homeHighlights"></div>
-          </section>
-          <section class="bd-panel" aria-labelledby="homeNewsTitle">
-            <div class="bd-panel-head"><h2 id="homeNewsTitle">Notícias do clube</h2><button type="button" class="bd-panel-link" id="btnHomeNews" aria-label="Abrir notícias">›</button></div>
-            <div id="homeNews"></div>
-          </section>
-        </div>
-
-        <section class="bd-panel" aria-labelledby="homeTableTitle">
-          <div class="bd-panel-head"><h2 id="homeTableTitle">Tabela da competição</h2><button type="button" class="bd-panel-link" id="btnHomeTable" aria-label="Abrir tabela completa">›</button></div>
-          <div id="homeMiniTable"></div>
-        </section>
-
-        <div class="bd-quick" role="group" aria-label="Ações rápidas">
-          <button type="button" class="bd-quick-btn" data-quick="escalacao"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="18" r="2.5"/><path d="M8 8l8 8M18 6l-4 4M6 18l4-4"/></svg><span>Ajustar tática</span></button>
-          <button type="button" class="bd-quick-btn" data-quick="mercado"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h14l-3-3M20 16H6l3 3"/></svg><span>Mercado</span></button>
-          <button type="button" class="bd-quick-btn" data-quick="elenco"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/><circle cx="17" cy="9" r="2.4"/><path d="M15.5 14.3c2.7.3 4.5 2.3 4.5 5.7"/></svg><span>Relatório do elenco</span></button>
-        </div>
-
         <!-- AJUSTE (pedido do usuário: "remover o card de situação do
              elenco") — card "Situação do elenco" (elenco/disponíveis/
              contundidos/suspensos/moral média + "Temporada X") removido
@@ -3400,7 +3134,10 @@
              antes). -->
         <!-- GE-CALENDAR-001 — semana sem jogo: atalho pra pular direto até
              a semana do próximo jogo (o FAB avança 1 semana). -->
-</section>
+        <button class="mt-btn-ghost hidden" id="btnSkipToMatch" style="width:100%; margin-top:8px;">Pular até o próximo jogo</button>
+        <button class="m3-fab" id="btnSimulate"><svg viewBox="0 0 24 24" fill="currentColor"><polygon points="6,4 20,12 6,20"/></svg>Ir para o jogo</button>
+        <button class="m3-fab hidden" id="btnAdvanceSeason"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 21h8M12 17v4M7 4h10v4a5 5 0 0 1-10 0V4Z"/><path d="M7 5H4a1 1 0 0 0-1 1v1a4 4 0 0 0 4 4"/><path d="M17 5h3a1 1 0 0 1 1 1v1a4 4 0 0 1-4 4"/></svg>Próxima Temporada</button>
+      </section>
 
       <!-- ---------- Clube (novo, 5º item do rodapé M3) =================
            Financeiro/Patrocínios/Proposta de outro clube — antes
@@ -3419,33 +3156,6 @@
            (financeKpis/wageCapFill/wageCapLabel/btnAskBoard/
            boardDecisionText/sponsorshipBox) preservados — só a
            marcação ao redor mudou. -->
-      <!-- ---------- Jogos / Calendário (Cap. 2 · Tela 07) ----------
-           Todos os jogos do seu clube (Brasileirão + Copa do Brasil) por
-           mês, com escudo oficial, mando, competição, data e estádio;
-           resultado real com V/E/D em texto. Jogo futuro abre o detalhe
-           de preparação; jogo passado abre o resumo real (eventos). -->
-      <section class="ct-panel" id="panel-jogos" aria-labelledby="jogosTitle">
-        <div class="bd-section-head">
-          <h1 class="bd-section-title" id="jogosTitle">Jogos</h1>
-          <div class="bd-chips" role="tablist" aria-label="Visão" id="jogosTabs">
-            <button type="button" class="bd-chip active" role="tab" aria-selected="true" data-jogos-tab="mes">Calendário</button>
-            <button type="button" class="bd-chip" role="tab" aria-selected="false" data-jogos-tab="resultados">Resultados</button>
-            <button type="button" class="bd-chip" role="tab" aria-selected="false" data-jogos-tab="semanas">Semana a semana</button>
-          </div>
-        </div>
-        <div class="bd-month-nav" id="jogosMonthNav">
-          <button type="button" class="bd-icon-btn" id="btnJogosPrev" aria-label="Mês anterior"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg></button>
-          <h2 class="bd-month-label" id="jogosMonthLabel" aria-live="polite"></h2>
-          <button type="button" class="bd-icon-btn" id="btnJogosNext" aria-label="Próximo mês"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></button>
-        </div>
-        <div class="bd-chips" id="jogosCompFilter" role="group" aria-label="Filtrar por competição">
-          <button type="button" class="bd-chip active" data-jogos-comp="all" aria-pressed="true">Todas</button>
-          <button type="button" class="bd-chip" data-jogos-comp="liga" aria-pressed="false">Brasileirão</button>
-          <button type="button" class="bd-chip" data-jogos-comp="copa" aria-pressed="false">Copa do Brasil</button>
-        </div>
-        <div class="bd-fixtures" id="jogosList"></div>
-      </section>
-
       <section class="ct-panel" id="panel-clube">
         <div class="mt-card" id="clubProposalCard" style="display:none;">
           <div class="mt-proposal-row">
@@ -3469,17 +3179,6 @@
         <button class="m3-btn-ghost" id="btnAskBoard" style="margin-top:10px;">🏛️ Pedir mais orçamento à diretoria</button>
         <p class="mt-card-sub" id="boardDecisionText" style="margin:8px 0 0; text-align:center;"></p>
         <button class="m3-btn-ghost" id="btnOpenExtrato" style="margin-top:10px;">📄 Ver extrato financeiro</button>
-
-        <!-- Redesign Cap. 2 · Tela 06 — receitas × despesas por categoria
-             (CAREER.financeLedger, período explícito: os lançamentos
-             guardados) em SVG acessível; tocar abre o extrato filtrado. -->
-        <section class="bd-panel" aria-labelledby="financeFlowTitle" style="margin-top:14px;">
-          <div class="bd-panel-head"><h2 id="financeFlowTitle">Receitas e despesas</h2></div>
-          <p class="bd-panel-sub" id="financeFlowPeriod"></p>
-          <div id="financeFlowChart"></div>
-        </section>
-        <!-- Cap. 2 · Tela 04 — atalho da Comissão Técnica dentro do Clube. -->
-        <button type="button" class="bd-quick-btn bd-quick-btn--row" id="btnClubCommission"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/><path d="M16 11h6M19 8v6"/></svg><span>Comissão técnica</span><span class="bd-quick-sub" id="clubCommissionSub"></span></button>
 
         <div class="mt-card-head" style="margin-top:18px;">
           <div class="mt-card-title" style="margin-bottom:0;">Patrocínios</div>
@@ -3517,26 +3216,6 @@
              só alterna a VISIBILIDADE de cada card e filtra dentro do
              principal, ver renderElencoFilters()/applyElencoFilter()
              em carreira.js. -->
-        <!-- Redesign Cap. 2 · Tela 02 — título, indicadores reais do
-             elenco, busca por nome e ordenação; filtros por posição
-             (as 4 posições que os dados informam de verdade). -->
-        <div class="bd-section-head"><h1 class="bd-section-title">Elenco</h1></div>
-        <div class="bd-stats-strip bd-stats-strip--compact" id="elencoSummary" aria-label="Resumo do elenco"></div>
-        <div class="bd-list-tools">
-          <div class="bd-search">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
-            <label for="elencoSearch" class="sr-only">Buscar jogador</label>
-            <input type="search" id="elencoSearch" placeholder="Buscar jogador" autocomplete="off">
-          </div>
-          <label class="bd-chip bd-chip-select bd-sort"><span class="sr-only">Ordenar por</span>
-            <select id="elencoSort">
-              <option value="posicao">Posição</option>
-              <option value="overall">Nota</option>
-              <option value="idade">Idade</option>
-              <option value="condicao">Condição</option>
-            </select>
-          </label>
-        </div>
         <div class="m3-filter-row" id="elencoFilterRow"></div>
         <!-- AJUSTE (refatoração completa, Tela 4 — Elenco, ver
              04-elenco-restyled.html do designer) — reconstruída do zero:
@@ -3918,7 +3597,7 @@
           <p class="mt-card-sub ct-help-text" id="helpMercado" hidden>Seu elenco (pra vender) e os outros 19 times da competição (pra contratar). Contratar soma o salário na sua folha (mesmo teto do Financeiro).</p>
           <div class="mt-search-box">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-            <input id="marketSearch" placeholder="Buscar por nome ou time..." aria-label="Buscar jogador por nome ou time">
+            <input id="marketSearch" placeholder="Buscar por nome ou time...">
           </div>
           <!-- UX-MERCADO-001 — os 4 filtros (antes empilhados antes da
                lista, ~4 telas de scroll no mobile) saem da tela: viram um
@@ -4207,7 +3886,7 @@
     <div class="ct-modal-header">
       <span class="ct-modal-icon" id="achievementDetailIcon" style="font-size:19px;"></span>
       <div class="ct-modal-header-text"><h3 id="achievementDetailTitle"></h3></div>
-      <button class="ct-modal-close" aria-label="Fechar" id="achievementDetailClose">✕</button>
+      <button class="ct-modal-close" id="achievementDetailClose">✕</button>
     </div>
     <div class="ct-modal-body">
       <p class="ct-sub" id="achievementDetailDesc"></p>
@@ -4218,12 +3897,12 @@
 </div>
 
 <!-- ================= Modal genérico de escolha de jogador ================= -->
-<div class="ct-modal-overlay" id="pickerOverlay">
+<div class="ct-modal-overlay ct-modal-fullscreen" id="pickerOverlay">
   <div class="ct-modal">
     <div class="ct-modal-header">
       <span class="ct-modal-icon">🔄</span>
       <div class="ct-modal-header-text"><h3 id="pickerTitle">Escolher jogador</h3></div>
-      <button class="ct-modal-close" aria-label="Fechar" id="pickerClose">✕</button>
+      <button class="ct-modal-close" id="pickerClose">✕</button>
     </div>
     <div class="ct-modal-body">
       <!-- AJUSTE (refatoração completa, Tela 7 — ver 07-trocar-jogador-
@@ -4248,7 +3927,7 @@
         <h3 id="detailName"></h3>
         <div class="ct-modal-sub" id="detailSub"></div>
       </div>
-      <button class="ct-modal-close" aria-label="Fechar" id="detailClose">✕</button>
+      <button class="ct-modal-close" id="detailClose">✕</button>
     </div>
     <div class="ct-modal-body" id="detailBody"></div>
   </div>
@@ -4269,7 +3948,7 @@
         <h3>Renovar contrato</h3>
         <div class="ct-modal-sub" id="renewSub"></div>
       </div>
-      <button class="ct-modal-close" aria-label="Fechar" id="renewClose">✕</button>
+      <button class="ct-modal-close" id="renewClose">✕</button>
     </div>
     <div class="ct-modal-body">
       <p class="ct-sub" id="renewCurrentInfo"></p>
@@ -4307,7 +3986,7 @@
         <h3>Conversa individual</h3>
         <div class="ct-modal-sub" id="talkSub"></div>
       </div>
-      <button class="ct-modal-close" aria-label="Fechar" id="talkClose">✕</button>
+      <button class="ct-modal-close" id="talkClose">✕</button>
     </div>
     <div class="ct-modal-body">
       <p class="ct-sub" id="talkContext" style="margin-bottom:14px;"></p>
@@ -4340,7 +4019,7 @@
         <h3>Coletiva de imprensa</h3>
         <div class="ct-modal-sub">Um jornalista pede sua palavra</div>
       </div>
-      <button class="ct-modal-close" aria-label="Fechar" id="pressClose">✕</button>
+      <button class="ct-modal-close" id="pressClose">✕</button>
     </div>
     <div class="ct-modal-body">
       <p class="ct-sub" id="pressQuestion" style="font-weight:700; color:var(--mt-ivory-50); margin-bottom:14px;"></p>
@@ -4374,7 +4053,7 @@
         <h3>Minhas propostas</h3>
         <div class="ct-modal-sub" id="myOffersCountLabel"></div>
       </div>
-      <button class="ct-modal-close" aria-label="Fechar" id="myOffersClose">✕</button>
+      <button class="ct-modal-close" id="myOffersClose">✕</button>
     </div>
     <div class="ct-modal-body">
       <div class="mt-card">
@@ -4408,7 +4087,7 @@
         <h3>Contratos</h3>
         <div class="ct-modal-sub" id="contratosCountLabel"></div>
       </div>
-      <button class="ct-modal-close" aria-label="Fechar" id="contratosClose">✕</button>
+      <button class="ct-modal-close" id="contratosClose">✕</button>
     </div>
     <div class="ct-modal-body">
       <div class="mt-seg-group" id="contratosFilterRow">
@@ -4434,7 +4113,7 @@
         <h3>Comparar propostas</h3>
         <div class="ct-modal-sub" id="offerCompareSub"></div>
       </div>
-      <button class="ct-modal-close" aria-label="Fechar" id="offerCompareClose">✕</button>
+      <button class="ct-modal-close" id="offerCompareClose">✕</button>
     </div>
     <div class="ct-modal-body">
       <div class="mt-card" id="offerCompareCard"></div>
@@ -4464,7 +4143,7 @@
         <h3>Colocar à venda</h3>
         <div class="ct-modal-sub" id="listSub"></div>
       </div>
-      <button class="ct-modal-close" aria-label="Fechar" id="listClose">✕</button>
+      <button class="ct-modal-close" id="listClose">✕</button>
     </div>
     <div class="ct-modal-body">
       <div class="ct-field" style="margin-bottom:12px;">
@@ -4491,7 +4170,7 @@
         <h3>Minhas vendas</h3>
         <div class="ct-modal-sub" id="mySalesCountLabel"></div>
       </div>
-      <button class="ct-modal-close" aria-label="Fechar" id="mySalesClose">✕</button>
+      <button class="ct-modal-close" id="mySalesClose">✕</button>
     </div>
     <div class="ct-modal-body">
       <div id="mySalesList"></div>
@@ -4518,7 +4197,7 @@
         <h3>Indicações dos olheiros</h3>
         <div class="ct-modal-sub" id="scoutSuggestionsCountLabel"></div>
       </div>
-      <button class="ct-modal-close" aria-label="Fechar" id="scoutSuggestionsClose">✕</button>
+      <button class="ct-modal-close" id="scoutSuggestionsClose">✕</button>
     </div>
     <div class="ct-modal-body">
       <!-- GE-SCOUT-001 — indicações vêm de olheiro em missão Profissional
@@ -4550,7 +4229,7 @@
         <h3>Calendário</h3>
         <div class="ct-modal-sub" id="calendarSub"></div>
       </div>
-      <button class="ct-modal-close" aria-label="Fechar" id="calendarClose">✕</button>
+      <button class="ct-modal-close" id="calendarClose">✕</button>
     </div>
     <div class="ct-modal-body">
       <div id="calendarList"></div>
@@ -4569,7 +4248,7 @@
         <h3>Histórico de negociações</h3>
         <div class="ct-modal-sub" id="transferHistoryCountLabel"></div>
       </div>
-      <button class="ct-modal-close" aria-label="Fechar" id="transferHistoryClose">✕</button>
+      <button class="ct-modal-close" id="transferHistoryClose">✕</button>
     </div>
     <div class="ct-modal-body">
       <div id="transferHistoryList"></div>
@@ -4595,7 +4274,7 @@
         <h3>Histórico de fadiga</h3>
         <div class="ct-modal-sub">Fadiga semanal e lesões do período</div>
       </div>
-      <button class="ct-modal-close" aria-label="Fechar" id="fatigueHistoryClose">✕</button>
+      <button class="ct-modal-close" id="fatigueHistoryClose">✕</button>
     </div>
     <div class="ct-modal-body">
       <p class="ct-empty hidden" id="fatigueHistoryEmpty">Sem jogadores no elenco.</p>
@@ -4629,7 +4308,7 @@
         <h3 id="loanTitle">Empréstimo</h3>
         <div class="ct-modal-sub" id="loanSub"></div>
       </div>
-      <button class="ct-modal-close" aria-label="Fechar" id="loanClose">✕</button>
+      <button class="ct-modal-close" id="loanClose">✕</button>
     </div>
     <div class="ct-modal-body">
       <div class="ct-field" style="margin-bottom:12px;">
@@ -4680,7 +4359,7 @@
     <div class="ct-modal-header">
       <span class="ct-modal-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg></span>
       <div class="ct-modal-header-text"><h3 id="sponsorProposalsTitle">Propostas de patrocínio</h3></div>
-      <button class="ct-modal-close" aria-label="Fechar" id="sponsorProposalsClose">✕</button>
+      <button class="ct-modal-close" id="sponsorProposalsClose">✕</button>
     </div>
     <div class="ct-modal-body" id="sponsorProposalsList"></div>
   </div>
@@ -4698,7 +4377,7 @@
         <h3 id="stadiumScreenName">Estádio</h3>
         <div class="ct-modal-sub">Capacidade e melhorias</div>
       </div>
-      <button class="ct-modal-close" aria-label="Fechar" id="stadiumClose">✕</button>
+      <button class="ct-modal-close" id="stadiumClose">✕</button>
     </div>
     <div class="ct-modal-body">
       <div class="m3-hero-card" style="text-align:center;">
@@ -4716,33 +4395,14 @@
      temporadas (CAREER.seasonHistory, já existente — ver
      renderBoardGoalsScreen em carreira.js). Aberta a partir da linha
      Diretoria da tela Clube. -->
-<!-- Cap. 7 · Tela 02 — Gerenciamento de saves: até 3 carreiras por
-     conta (server/src/careerStore.js, /api/career/slots). Continuar,
-     começar nova carreira num slot vazio e excluir (confirmação
-     destrutiva). Trocar de save grava a carreira atual antes. -->
-<div class="ct-modal-overlay ct-modal-fullscreen" id="savesOverlay">
-  <div class="ct-modal">
-    <div class="ct-modal-header mt-fullheader">
-      <span class="ct-modal-icon" aria-hidden="true">💾</span>
-      <div class="ct-modal-header-text">
-        <h3>Meus saves</h3>
-        <div class="ct-modal-sub" id="savesSub"></div>
-      </div>
-      <button class="ct-modal-close" aria-label="Fechar" id="savesClose">✕</button>
-    </div>
-    <div class="ct-modal-body">
-      <div id="savesList" aria-live="polite"><p class="bd-empty-inline">Carregando saves...</p></div>
-    </div>
-  </div>
-</div>
 <div class="ct-modal-overlay ct-modal-fullscreen" id="boardGoalsOverlay">
   <div class="ct-modal">
     <div class="ct-modal-header mt-fullheader">
       <span class="ct-modal-icon">👔</span>
       <div class="ct-modal-header-text">
-        <h3>Diretoria</h3>
+        <h3>Metas da diretoria</h3>
       </div>
-      <button class="ct-modal-close" aria-label="Fechar" id="boardGoalsClose">✕</button>
+      <button class="ct-modal-close" id="boardGoalsClose">✕</button>
     </div>
     <div class="ct-modal-body">
       <div class="m3-hero-card">
@@ -4751,11 +4411,7 @@
         <div class="m3-hero-bar"><span class="m3-hero-bar-fill" id="boardGoalsHeroFill" style="width:0%"></span></div>
         <div class="m3-hero-meta" id="boardGoalsHeroSub"></div>
       </div>
-      <div class="mt-card-title">Confiança da diretoria</div>
-      <div id="boardConfidenceBox"></div>
-      <div class="mt-card-title">Outros objetivos da temporada</div>
-      <div id="boardObjectivesList"></div>
-      <div class="mt-card-title">Avaliações das temporadas anteriores</div>
+      <div class="mt-card-title">Temporadas anteriores</div>
       <div id="boardGoalsHistoryList"></div>
     </div>
   </div>
@@ -4773,7 +4429,7 @@
       <div class="ct-modal-header-text">
         <h3>Extrato financeiro</h3>
       </div>
-      <button class="ct-modal-close" aria-label="Fechar" id="extratoClose">✕</button>
+      <button class="ct-modal-close" id="extratoClose">✕</button>
     </div>
     <div class="ct-modal-body">
       <div class="m3-filter-row" id="extratoFilterRow"></div>
@@ -4799,7 +4455,7 @@
         <h3>Confirmar compra</h3>
         <div class="ct-modal-sub" id="purchaseConfirmTitle"></div>
       </div>
-      <button class="ct-modal-close" aria-label="Fechar" id="purchaseConfirmClose">✕</button>
+      <button class="ct-modal-close" id="purchaseConfirmClose">✕</button>
     </div>
     <div class="ct-modal-body">
       <div class="mt-purchase-summary">
@@ -4855,7 +4511,7 @@
      carreira.js), botões secundários (.mt-btn-secondary, novo) +
      "Pular pro fim" reaproveitando .mt-btn-primary-gold (Tela 5). -->
 <div class="ct-modal-overlay ct-modal-fullscreen" id="liveMatchOverlay">
-  <div class="ct-modal" aria-label="Partida ao vivo">
+  <div class="ct-modal">
     <div class="mt-live-topbar">
       <div class="mt-live-tag">
         <span class="mt-live-dot"></span>
@@ -4955,7 +4611,7 @@
     <div class="ct-modal-header">
       <span class="ct-modal-icon">🔄</span>
       <div class="ct-modal-header-text"><h3>Substituição</h3></div>
-      <button class="ct-modal-close" aria-label="Fechar" id="liveSubClose">✕</button>
+      <button class="ct-modal-close" id="liveSubClose">✕</button>
     </div>
     <div class="ct-modal-body">
       <div class="ct-field" style="margin-bottom:12px;"><label>Sai</label><select id="liveSubOutSelect"></select></div>
@@ -4976,7 +4632,7 @@
     <div class="ct-modal-header">
       <span class="ct-modal-icon">⚙️</span>
       <div class="ct-modal-header-text"><h3>Ajustar tática</h3></div>
-      <button class="ct-modal-close" aria-label="Fechar" id="liveTacticsClose">✕</button>
+      <button class="ct-modal-close" id="liveTacticsClose">✕</button>
     </div>
     <div class="ct-modal-body">
       <div class="ct-tactics">
@@ -5025,7 +4681,7 @@
         <h3>Confirmar escalação</h3>
         <div class="ct-modal-sub">Rodada <span id="preMatchRound"></span></div>
       </div>
-      <button class="ct-modal-close" aria-label="Fechar" id="preMatchClose">✕</button>
+      <button class="ct-modal-close" id="preMatchClose">✕</button>
     </div>
     <div class="ct-modal-body">
       <div class="mt-card">
@@ -5066,7 +4722,7 @@
     <div class="ct-modal-header mt-fullheader">
       <span class="ct-modal-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></span>
       <div class="ct-modal-header-text"><h3>Ajustar escalação</h3></div>
-      <button class="ct-modal-close" aria-label="Fechar" id="adjustLineupClose">✕</button>
+      <button class="ct-modal-close" id="adjustLineupClose">✕</button>
     </div>
     <div class="ct-modal-body" id="adjustLineupBody"></div>
     <div class="ct-modal-footer">
@@ -5096,7 +4752,7 @@
         <h3>Seu jogo</h3>
         <div class="ct-modal-sub">Rodada <span id="matchDetailRound"></span></div>
       </div>
-      <button class="ct-modal-close" aria-label="Fechar" id="matchDetailClose">✕</button>
+      <button class="ct-modal-close" id="matchDetailClose">✕</button>
     </div>
     <div class="ct-modal-body">
       <div class="mt-card mt-matchdetail-score">
@@ -5137,7 +4793,7 @@
     <div class="ct-modal-header">
       <span class="ct-modal-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5,3 19,12 5,21"/></svg></span>
       <div class="ct-modal-header-text"><h3>Rever lances</h3></div>
-      <button class="ct-modal-close" aria-label="Fechar" id="matchReplayClose">✕</button>
+      <button class="ct-modal-close" id="matchReplayClose">✕</button>
     </div>
     <div class="ct-modal-body">
       <div id="matchReplayFeed" class="mt-live-timeline"></div>
@@ -5177,7 +4833,7 @@
         <h3>Resultados da rodada</h3>
         <div class="ct-modal-sub">Rodada <span id="roundResultsRound"></span></div>
       </div>
-      <button class="ct-modal-close" aria-label="Fechar" id="roundResultsClose">✕</button>
+      <button class="ct-modal-close" id="roundResultsClose">✕</button>
     </div>
     <div class="ct-modal-body">
       <div class="mt-card">
@@ -5218,7 +4874,7 @@
         <h3>Resumo da rodada</h3>
         <div class="ct-modal-sub" id="rodadaRoundLabel"></div>
       </div>
-      <button class="ct-modal-close" aria-label="Fechar" id="rodadaClose">✕</button>
+      <button class="ct-modal-close" id="rodadaClose">✕</button>
     </div>
     <div class="ct-modal-body">
       <div class="m3-filter-row" id="rodadaTabRow">
@@ -5251,7 +4907,7 @@
         <h3>Meus esquemas</h3>
         <div class="ct-modal-sub" id="schemesCountLabel"></div>
       </div>
-      <button class="ct-modal-close" aria-label="Fechar" id="schemesClose">✕</button>
+      <button class="ct-modal-close" id="schemesClose">✕</button>
     </div>
     <div class="ct-modal-body">
       <div class="mt-card">
@@ -5276,7 +4932,7 @@
         <h3>Novo esquema</h3>
         <div class="ct-modal-sub">Salva a formação, titulares, banco e táticas de agora</div>
       </div>
-      <button class="ct-modal-close" aria-label="Fechar" id="newSchemeClose">✕</button>
+      <button class="ct-modal-close" id="newSchemeClose">✕</button>
     </div>
     <div class="ct-modal-body">
       <!-- S4-B4-002 (issue #32) — antes o input ficava direto no
@@ -5311,7 +4967,7 @@
         <h3>Marcação individual</h3>
         <div class="ct-modal-sub" id="markingOppLabel"></div>
       </div>
-      <button class="ct-modal-close" aria-label="Fechar" id="markingClose">✕</button>
+      <button class="ct-modal-close" id="markingClose">✕</button>
     </div>
     <div class="ct-modal-body">
       <div id="markingEmpty" class="hidden"><p class="ct-empty">Sem jogo marcado agora (folga ou fim de temporada) — volte aqui quando tiver um próximo confronto.</p></div>
@@ -5349,7 +5005,7 @@
         <h3>Instruções por setor</h3>
         <div class="ct-modal-sub">Ajuste fino sobre as instruções gerais da Tática</div>
       </div>
-      <button class="ct-modal-close" aria-label="Fechar" id="sectorClose">✕</button>
+      <button class="ct-modal-close" id="sectorClose">✕</button>
     </div>
     <div class="ct-modal-body">
       <div class="m3-sector-tabs" id="sectorTabs">
@@ -5381,7 +5037,7 @@
         <h3>Comissão Técnica</h3>
         <div class="ct-modal-sub">Sugestões pra garantir o melhor time em campo</div>
       </div>
-      <button class="ct-modal-close" aria-label="Fechar" id="commissionClose">✕</button>
+      <button class="ct-modal-close" id="commissionClose">✕</button>
     </div>
     <div class="ct-modal-body">
       <div id="commissionNotHiredState" class="hidden">
@@ -5416,7 +5072,7 @@
         <div class="ct-modal-sub">Prospecção e relatório de olheiro</div>
       </div>
       <button class="ct-modal-close" id="btnOpenScoutMarket" title="Contratar olheiro" aria-label="Contratar olheiro">🗺️</button>
-      <button class="ct-modal-close" aria-label="Fechar" id="scoutingClose">✕</button>
+      <button class="ct-modal-close" id="scoutingClose">✕</button>
     </div>
     <div class="ct-modal-body">
       <div class="m3-filter-row" id="scoutingRegionRow"></div>
@@ -5437,7 +5093,7 @@
     <div class="ct-modal-header">
       <span class="ct-modal-icon">🧭</span>
       <div class="ct-modal-header-text"><h3>Nova missão</h3><div class="ct-modal-sub">Escolha o olheiro e o foco da missão</div></div>
-      <button class="ct-modal-close" aria-label="Fechar" id="scoutMissionClose">✕</button>
+      <button class="ct-modal-close" id="scoutMissionClose">✕</button>
     </div>
     <div class="ct-modal-body">
       <div id="missionScoutList"></div>
@@ -5467,7 +5123,7 @@
     <div class="ct-modal-header">
       <span class="ct-modal-icon" id="prospectSheetAvatar"></span>
       <div class="ct-modal-header-text"><h3 id="prospectSheetName"></h3><div class="ct-modal-sub" id="prospectSheetSub"></div></div>
-      <button class="ct-modal-close" aria-label="Fechar" id="prospectSheetClose">✕</button>
+      <button class="ct-modal-close" id="prospectSheetClose">✕</button>
     </div>
     <div class="ct-modal-body">
       <div id="prospectSheetAttrs"></div>
@@ -5487,7 +5143,7 @@
     <div class="ct-modal-header mt-fullheader">
       <span class="ct-modal-icon">🔎</span>
       <div class="ct-modal-header-text"><h3>Contratar olheiro</h3><div class="ct-modal-sub">Disponíveis no mercado</div></div>
-      <button class="ct-modal-close" aria-label="Fechar" id="scoutMarketClose">✕</button>
+      <button class="ct-modal-close" id="scoutMarketClose">✕</button>
     </div>
     <div class="ct-modal-body">
       <div id="scoutMarketList"></div>
@@ -5504,7 +5160,7 @@
     <div class="ct-modal-header mt-fullheader">
       <span class="ct-modal-icon">📋</span>
       <div class="ct-modal-header-text"><h3>Categorias de base</h3></div>
-      <button class="ct-modal-close" aria-label="Fechar" id="baseCategoriesClose">✕</button>
+      <button class="ct-modal-close" id="baseCategoriesClose">✕</button>
     </div>
     <div class="ct-modal-body">
       <div class="m3-filter-row" id="baseCatTabs"></div>
@@ -5555,7 +5211,7 @@
     <div class="ct-modal-header mt-fullheader">
       <span class="ct-modal-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="1.5"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="9" y1="10" x2="9" y2="20"/></svg></span>
       <div class="ct-modal-header-text"><h3>Tabela da carreira</h3></div>
-      <button class="ct-modal-close" aria-label="Fechar" id="tabelaModalClose">✕</button>
+      <button class="ct-modal-close" id="tabelaModalClose">✕</button>
     </div>
     <div class="ct-modal-body">
       <div class="mt-card">
@@ -5599,7 +5255,7 @@
         <h3>Premiações</h3>
         <div class="ct-modal-sub">Histórico de cada temporada encerrada</div>
       </div>
-      <button class="ct-modal-close" aria-label="Fechar" id="awardsClose">✕</button>
+      <button class="ct-modal-close" id="awardsClose">✕</button>
     </div>
     <div class="ct-modal-body">
       <div class="ct-awards-hero" id="awardsHero"></div>
@@ -5642,7 +5298,7 @@
         <h3>Notícias</h3>
         <div class="ct-modal-sub">Cobertura da temporada, rodada a rodada</div>
       </div>
-      <button class="ct-modal-close" aria-label="Fechar" id="newsClose">✕</button>
+      <button class="ct-modal-close" id="newsClose">✕</button>
     </div>
     <div class="ct-modal-body">
       <div class="mt-news-masthead">
@@ -5697,7 +5353,7 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
         <span class="mt-bell-badge hidden" id="settingsBellBadge">0</span>
       </button>
-      <button class="ct-modal-close" aria-label="Fechar" id="settingsClose">✕</button>
+      <button class="ct-modal-close" id="settingsClose">✕</button>
     </div>
     <div class="ct-modal-body" id="settingsBody"></div>
   </div>
@@ -5713,24 +5369,13 @@
     <div class="ct-modal-header mt-fullheader">
       <span class="ct-modal-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a8 8 0 0 1 16 0v1"/></svg></span>
       <div class="ct-modal-header-text"><h3>Editar perfil</h3></div>
-      <button class="ct-modal-close" aria-label="Fechar" id="editProfileClose">✕</button>
+      <button class="ct-modal-close" id="editProfileClose">✕</button>
     </div>
     <div class="ct-modal-body">
-      <!-- Redesign Cap. 6 · Tela 01 — foto e nacionalidade do treinador
-           (mesmos dados da tela Configurar carreira, conta). -->
-      <div class="mt-avatar-picker bd-avatar-pick">
-        <div class="mt-big-avatar" id="editProfileAvatar"></div>
-        <label class="bd-chip" for="editProfileAvatarInput">Trocar foto</label>
-        <input type="file" id="editProfileAvatarInput" accept="image/jpeg,image/png,image/webp" class="sr-only">
-        <button type="button" class="bd-link" id="btnEditProfileAvatarRemove" hidden>Remover foto</button>
-      </div>
+      <div class="mt-avatar-picker"><div class="mt-big-avatar" id="editProfileAvatar"></div></div>
       <div class="mt-form-row">
-        <label class="mt-form-label" for="editProfileNameInput">Nome de treinador</label>
+        <div class="mt-form-label">Nome de treinador</div>
         <input id="editProfileNameInput" class="mt-friend-input" maxlength="80">
-      </div>
-      <div class="mt-form-row">
-        <label class="mt-form-label" for="editProfileNationality">Nacionalidade</label>
-        <select id="editProfileNationality" class="mt-friend-input"></select>
       </div>
       <div class="mt-form-row">
         <div class="mt-form-label">E-mail</div>
@@ -5764,7 +5409,7 @@
         <h3>Histórico de compras</h3>
         <div class="ct-modal-sub">Uso real de itens e recompensas — a Loja ainda não cobra nada</div>
       </div>
-      <button class="ct-modal-close" aria-label="Fechar" id="purchaseHistoryClose">✕</button>
+      <button class="ct-modal-close" id="purchaseHistoryClose">✕</button>
     </div>
     <div class="ct-modal-body" id="purchaseHistoryBody"></div>
   </div>
@@ -5779,7 +5424,7 @@
     <div class="ct-modal-header mt-fullheader">
       <span class="ct-modal-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></span>
       <div class="ct-modal-header-text"><h3>Central de ajuda</h3></div>
-      <button class="ct-modal-close" aria-label="Fechar" id="helpCenterClose">✕</button>
+      <button class="ct-modal-close" id="helpCenterClose">✕</button>
     </div>
     <div class="ct-modal-body">
       <div class="mt-help-search">🔎 Buscar dúvida ou palavra-chave</div>
@@ -5813,7 +5458,7 @@
     <div class="ct-modal-header">
       <span class="ct-modal-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></span>
       <div class="ct-modal-header-text"><h3>Notificações</h3></div>
-      <button class="ct-modal-close" aria-label="Fechar" id="notificationsSheetClose">✕</button>
+      <button class="ct-modal-close" id="notificationsSheetClose">✕</button>
     </div>
     <div class="ct-modal-body" id="notificationsSheetBody"></div>
   </div>
@@ -5836,7 +5481,7 @@
         <h3 id="clubRosterName"></h3>
         <div class="ct-modal-sub" id="clubRosterSub"></div>
       </div>
-      <button class="ct-modal-close" aria-label="Fechar" id="clubRosterClose">✕</button>
+      <button class="ct-modal-close" id="clubRosterClose">✕</button>
     </div>
     <div class="ct-modal-body" id="clubRosterBody"></div>
   </div>
@@ -5858,7 +5503,7 @@
         <h3>Perfil do Técnico</h3>
         <div class="ct-modal-sub">Reputação e currículo de carreira</div>
       </div>
-      <button class="ct-modal-close" aria-label="Fechar" id="coachProfileClose">✕</button>
+      <button class="ct-modal-close" id="coachProfileClose">✕</button>
     </div>
     <div class="ct-modal-body" id="coachProfileBody"></div>
   </div>
@@ -5877,7 +5522,7 @@
       <div class="ct-modal-header-text">
         <h3>Histórico de confrontos</h3>
       </div>
-      <button class="ct-modal-close" aria-label="Fechar" id="h2hClose">✕</button>
+      <button class="ct-modal-close" id="h2hClose">✕</button>
     </div>
     <div class="ct-modal-body">
       <div class="m3-h2h-hero">
@@ -5907,7 +5552,7 @@
         <h3>Comparar jogadores</h3>
         <div class="ct-modal-sub" id="compareSub"></div>
       </div>
-      <button class="ct-modal-close" aria-label="Fechar" id="compareClose">✕</button>
+      <button class="ct-modal-close" id="compareClose">✕</button>
     </div>
     <div class="ct-modal-body">
       <!-- Passo 1 — escolher o 2º jogador (mesma posição do jogador de
@@ -5947,7 +5592,7 @@
         <h3>Proposta de outro clube</h3>
         <div class="ct-modal-sub">Sua reputação chamou atenção</div>
       </div>
-      <button class="ct-modal-close" aria-label="Fechar" id="clubProposalClose">✕</button>
+      <button class="ct-modal-close" id="clubProposalClose">✕</button>
     </div>
     <div class="ct-modal-body">
       <p class="ct-sub" id="clubProposalText" style="margin-bottom:16px;"></p>
@@ -5984,7 +5629,7 @@
         <h3>Proposta por um jogador</h3>
         <div class="ct-modal-sub">Decida agora ou resolva depois na aba Mercado</div>
       </div>
-      <button class="ct-modal-close" aria-label="Fechar" id="playerOfferClose">✕</button>
+      <button class="ct-modal-close" id="playerOfferClose">✕</button>
     </div>
     <div class="ct-modal-body">
       <p class="ct-sub" id="playerOfferText" style="margin-bottom:16px;"></p>
@@ -6018,7 +5663,7 @@
         <h3 id="seasonModalTitle">Nova temporada!</h3>
         <div class="ct-modal-sub" id="seasonModalSub"></div>
       </div>
-      <button class="ct-modal-close" aria-label="Fechar" id="seasonModalClose">✕</button>
+      <button class="ct-modal-close" id="seasonModalClose">✕</button>
     </div>
     <div class="ct-modal-body">
       <p class="ct-sub" id="seasonSummaryText"></p>
@@ -6059,7 +5704,7 @@
         <h3>Fim de carreira</h3>
         <div class="ct-modal-sub" id="dismissalClub"></div>
       </div>
-      <button class="ct-modal-close" aria-label="Fechar" id="dismissalModalClose">✕</button>
+      <button class="ct-modal-close" id="dismissalModalClose">✕</button>
     </div>
     <div class="ct-modal-body">
       <p class="ct-sub" id="dismissalText"></p>
