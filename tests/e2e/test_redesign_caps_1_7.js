@@ -1,8 +1,7 @@
-// Redesign capítulos 1–7 — funcionalidades novas pela UI real:
-// configurar carreira (validação, nacionalidade, foto), primeira entrada,
-// busca/favoritos na escolha de clube, Início com dados reais, Jogos,
-// filtros do Elenco, renomear esquema, confiança da diretoria e
-// gerenciamento de saves (vários slots por conta).
+// Redesign capítulos 1–7 — pela UI real: configurar carreira (nome),
+// primeira entrada, escudos oficiais, Início com dados reais, Jogos,
+// filtros do Elenco, renomear esquema; e a RETIRADA (31/10/2026) de
+// busca/favoritos/popularidade, nacionalidade/foto, confiança e saves.
 const { chromium } = require("playwright-core");
 const { check } = require("./_check");
 const { enterGame, waitForBoot } = require("./_startup");
@@ -32,28 +31,17 @@ const { enterGame, waitForBoot } = require("./_startup");
   await page.click('.mt-competition-card[data-competition="brasileirao"]');
   await page.waitForSelector(".m3-club-row", { timeout: 20000 });
 
-  // 2) Escolha do clube: escudos oficiais, busca por cidade, vazio + limpar.
+  // 2) Escolha do clube: escudos oficiais; busca, favoritos, região e
+  // selo "Mais popular" foram RETIRADOS (decisão de 31/10/2026).
   const crests = await page.evaluate(() => document.querySelector('.m3-club-row[data-id="fla"] img.bd-crest')?.getAttribute("src"));
   check("2a) Escudo oficial do repositório na grade (Flamengo):", crests === "img/teams/fla.svg", crests);
-  await page.fill("#clubSearch", "porto alegre");
-  const porto = await page.evaluate(() => [...document.querySelectorAll(".m3-club-row")].map((r) => r.dataset.id).sort());
-  check("2b) Busca por cidade (sem acento/caixa) acha Grêmio e Internacional:", JSON.stringify(porto) === JSON.stringify(["gre", "int"]), JSON.stringify(porto));
-  await page.fill("#clubSearch", "xyzxyz");
-  const empty = await page.evaluate(() => ({ rows: document.querySelectorAll(".m3-club-row").length, emptyShown: !document.getElementById("clubGridEmpty").hidden }));
-  await page.click("#btnClearClubFilters");
-  const cleared = await page.evaluate(() => document.querySelectorAll(".m3-club-row").length);
-  check("2c) Sem resultado mostra estado vazio; 'Limpar filtros' devolve a lista:", empty.rows === 0 && empty.emptyShown && cleared === 20, JSON.stringify({ empty, cleared }));
+  const retired = await page.evaluate(async () => ({
+    search: !!document.getElementById("clubSearch"), favs: document.querySelectorAll(".bd-fav").length, popular: document.querySelectorAll(".bd-badge").length,
+    popApi: (await fetch("/api/career/competition-popularity")).status, favApi: (await fetch("/api/account/career-favorites", { method: "PUT", headers: { "Content-Type": "application/json" }, body: "{}" })).status,
+  }));
+  check("2b) Busca/favoritos/região/'Mais popular' retirados (tela e API):", !retired.search && retired.favs === 0 && retired.popular === 0 && retired.popApi >= 400 && retired.favApi >= 400 /* 404, ou 501 sem fornecedor ao vivo */, JSON.stringify(retired));
 
-  // 3) Favoritos: marca, filtra e persiste na conta.
-  await page.click('.m3-club-row[data-id="pal"] .bd-fav');
-  await page.waitForFunction(() => (ME.careerFavorites || []).includes("pal"), null, { timeout: 5000 }).catch(() => {});
-  await page.click('#clubFilters [data-club-filter="fav"]');
-  const favRows = await page.evaluate(() => [...document.querySelectorAll(".m3-club-row")].map((r) => r.dataset.id));
-  const favServer = await page.evaluate(async () => (await (await fetch("/api/auth/me")).json()).user.careerFavorites);
-  check("3) Favorito filtra e fica salvo na conta:", JSON.stringify(favRows) === '["pal"]' && JSON.stringify(favServer) === '["pal"]', JSON.stringify({ favRows, favServer }));
-  await page.click('#clubFilters [data-club-filter="all"]');
-
-  // 4) Configurar carreira: nome obrigatório, nacionalidade e foto salvas.
+  // 4) Configurar carreira: só o nome (nacionalidade e foto retiradas).
   await page.click('.m3-club-row[data-id="fla"]');
   await page.click("#btnConfirmClub");
   await page.waitForSelector("#screenSetup:not(.hidden)");
@@ -61,16 +49,12 @@ const { enterGame, waitForBoot } = require("./_startup");
   await page.click("#btnStartCareer");
   const nameErr = await page.evaluate(() => ({ shown: document.getElementById("setupError").style.display !== "none", stillSetup: !document.getElementById("screenSetup").classList.contains("hidden") }));
   check("4a) Nome vazio bloqueia com mensagem, sem sair da tela:", nameErr.shown && nameErr.stillSetup, JSON.stringify(nameErr));
-  // PNG 2×2 válido gerado na hora (sem arquivo externo).
-  const png = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAIAAAD91JpzAAAAFklEQVR4nGP8z8DAwMDAxMDAwMDAAAANHQEDasKb6QAAAABJRU5ErkJggg==", "base64");
-  await page.setInputFiles("#setupAvatarInput", { name: "foto.png", mimeType: "image/png", buffer: png });
-  await page.waitForFunction(() => !!document.querySelector("#setupAvatarPreview img"), null, { timeout: 5000 }).catch(() => {});
   await page.fill("#setupCoachName", "Murilo Treinador");
-  await page.selectOption("#setupNationality", "PT");
+  const noExtras = await page.evaluate(() => !document.getElementById("setupNationality") && !document.getElementById("setupAvatarInput"));
   await page.click("#btnStartCareer");
   await page.waitForSelector("#screenFirstEntry:not(.hidden)", { timeout: 30000 });
   const me = await page.evaluate(async () => (await (await fetch("/api/auth/me")).json()).user);
-  check("4b) Perfil do treinador salvo (nome, nacionalidade, foto reduzida):", me.name === "Murilo Treinador" && me.coachNationality === "PT" && /^data:image\/(webp|jpeg);base64,/.test(me.coachAvatar || ""), JSON.stringify({ name: me.name, nat: me.coachNationality, avatar: (me.coachAvatar || "").slice(0, 24) }));
+  check("4b) Nome salvo na conta; sem campos de nacionalidade/foto:", me.name === "Murilo Treinador" && noExtras && me.coachNationality === undefined && me.coachAvatar === undefined, JSON.stringify({ name: me.name, noExtras }));
 
   // 5) Primeira entrada: clube e competição reais; uma ação.
   const first = await page.evaluate(() => ({ sub: document.getElementById("firstEntrySub").textContent, crest: document.querySelector("#firstEntryCrest img")?.getAttribute("src") }));
@@ -84,14 +68,14 @@ const { enterGame, waitForBoot } = require("./_startup");
     statsEmpty: !!document.querySelector("#homeStats .bd-empty-inline"),
     tableMine: !!document.querySelector("#homeMiniTable tr.mine"),
     chip: document.getElementById("topbarPositionChip").textContent,
-    avatar: !!document.querySelector("#btnTopbarCoach img"),
+    initials: (document.querySelector("#btnTopbarCoach .bd-avatar--mono")?.textContent || "").trim(),
   }));
-  check("6) Início: nome real, sem estatística/posição antes do 1º jogo, tabela com o clube, foto no topo:",
-    home.greet.includes("Murilo") && home.statsEmpty && home.tableMine && home.chip === "Pré-jogo" && home.avatar, JSON.stringify(home));
+  check("6) Início: nome real, sem estatística/posição antes do 1º jogo, tabela com o clube, iniciais no topo:",
+    home.greet.includes("Murilo") && home.statsEmpty && home.tableMine && home.chip === "Pré-jogo" && home.initials === "MT", JSON.stringify(home));
 
-  // 7) Confiança da diretoria: 0–100 e igual à soma das parcelas exibidas.
-  const conf = await page.evaluate(() => { const c = boardConfidence(); return { v: c.value, sum: 50 + c.parts.reduce((a, p) => a + p.delta, 0) }; });
-  check("7) Confiança da diretoria explicável (valor = base + parcelas, limitado 0–100):", conf.v >= 0 && conf.v <= 100 && conf.v === Math.max(0, Math.min(100, conf.sum)), JSON.stringify(conf));
+  // 7) Indicador de confiança da diretoria retirado (decisão de 31/10/2026).
+  const conf = await page.evaluate(() => ({ fn: typeof boardConfidence, card: !!document.getElementById("homeBoardCard"), box: !!document.getElementById("boardConfidenceBox") }));
+  check("7) Indicador de confiança da diretoria retirado:", conf.fn === "undefined" && !conf.card && !conf.box, JSON.stringify(conf));
 
   // 8) Jogos: calendário do clube com o 1º jogo marcado como próximo.
   await page.click('.m3-bottom-nav [data-panel="jogos"]');
@@ -122,41 +106,19 @@ const { enterGame, waitForBoot } = require("./_startup");
   check("10) Renomear esquema: duplicado recusado, novo nome aplicado:", dup.ok === false && names.includes("Contra-ataque"), JSON.stringify({ dup, names }));
   await page.evaluate(() => { closeSchemesScreen && closeSchemesScreen(); persistCareer(); });
 
-  // 11) Saves: nova carreira em outro slot sem perder a primeira; trocar; excluir.
+  // 11) Uma carreira por conta: "Meus saves" e a API de slots retirados
+  // (decisão de 31/10/2026); recarregar volta para a mesma carreira.
   await page.evaluate(() => persistCareer());
   await page.waitForTimeout(400);
-  await page.evaluate(() => openSavesScreen());
-  await page.waitForSelector("[data-save-new]");
-  await page.click("[data-save-new]");
-  await page.waitForLoadState("domcontentloaded");
-  await waitForBoot(page);
-  // O "voltar aos saves" aparece depois da consulta a /api/career/slots.
-  const onPicker = await page.waitForFunction(() => !document.getElementById("screenCompetitionPicker").classList.contains("hidden") && !document.getElementById("btnCompetitionPickerBack").hidden, null, { timeout: 8000 }).then(() => true, () => false);
-  await page.click('.mt-competition-card[data-competition="serie_b"]');
-  await page.waitForSelector(".m3-club-row", { timeout: 20000 });
-  await page.click(".m3-club-row");
-  await page.click("#btnConfirmClub");
-  await enterGame(page);
-  const clubB = await page.evaluate(() => CAREER.clubName);
-  await page.evaluate(() => persistCareer());
-  await page.waitForTimeout(300);
-  const slots = await page.evaluate(async () => (await (await fetch("/api/career/slots")).json()).slots.filter((s) => !s.empty).map((s) => s.meta.clubName));
-  check("11a) Nova carreira em slot vazio: seletor com 'voltar aos saves'; 2 saves na conta:", onPicker && slots.length === 2 && slots.includes("Flamengo") && slots.includes(clubB), JSON.stringify({ onPicker, slots }));
-  await page.evaluate(() => openSavesScreen());
-  await page.waitForSelector("[data-save-load]");
-  await page.click("[data-save-load]");
-  await page.waitForLoadState("domcontentloaded");
+  const saves = await page.evaluate(async () => ({
+    menu: !!document.getElementById("btnOpenSaves"), overlay: !!document.getElementById("savesOverlay"),
+    api: (await fetch("/api/career/slots")).status,
+  }));
+  await page.reload({ waitUntil: "domcontentloaded" });
   await waitForBoot(page);
   const back = await page.evaluate(() => ({ club: CAREER && CAREER.clubName, schemes: CAREER && CAREER.tacticalSchemes.map((s) => s.name) }));
-  check("11b) 'Continuar' volta pra carreira do Flamengo intacta (esquemas renomeados preservados):", back.club === "Flamengo" && back.schemes.includes("Contra-ataque"), JSON.stringify(back));
-  await page.evaluate(() => openSavesScreen());
-  await page.waitForSelector("[data-save-del]");
-  const delBtns = await page.$$("[data-save-del]");
-  await delBtns[1].click();
-  await page.click("#confirmOkBtn");
-  await page.waitForTimeout(800);
-  const after = await page.evaluate(async () => (await (await fetch("/api/career/slots")).json()).slots.filter((s) => !s.empty).map((s) => s.meta.clubName));
-  check("11c) Excluir (com confirmação) remove só o outro save:", JSON.stringify(after) === '["Flamengo"]', JSON.stringify(after));
+  check("11) Sem gerência de saves (tela e API); recarregar mantém a carreira e os esquemas:",
+    !saves.menu && !saves.overlay && saves.api === 404 && back.club === "Flamengo" && back.schemes.includes("Contra-ataque"), JSON.stringify({ saves, back }));
 
   await browser.close();
 })();

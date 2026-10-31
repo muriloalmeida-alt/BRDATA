@@ -1639,6 +1639,17 @@ const server = http.createServer(async (req, res) => {
     // verdade é o login obrigatório de /api/career/* (ver guard mais
     // abaixo). noindex sempre — é uma ferramenta atrás de login, não
     // conteúdo pra indexar.
+    // Carreira 2.0 (frontend novo, React — fonte em carreira-v2/, build
+    // versionado em public/carreira-v2/). Rota paralela: /carreira segue
+    // intacta. Qualquer subrota SEM extensão serve o index da SPA (deep
+    // link); arquivos (assets/…, *.webp) caem no estático normal.
+    if (pathname === "/carreira-v2" || (pathname.startsWith("/carreira-v2/") && !path.extname(pathname))) {
+      return fs.readFile(path.join(PUBLIC_DIR, "carreira-v2", "index.html"), (err, data) => {
+        if (err) { res.writeHead(404); return res.end("Not found"); }
+        res.writeHead(200, { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-cache" });
+        res.end(data.toString("utf8").replace("</head>", `<meta name="robots" content="noindex, nofollow">\n</head>`));
+      });
+    }
     if (pathname === "/carreira") {
       return fs.readFile(path.join(PUBLIC_DIR, "carreira.html"), (err, data) => {
         if (err) { res.writeHead(404); return res.end("Not found"); }
@@ -1778,8 +1789,7 @@ const server = http.createServer(async (req, res) => {
     // impossível de jogar em qualquer host sem chave.
     const LIVE_ONLY = pathname.startsWith("/api/") && pathname !== "/api/broadcast" && pathname !== "/api/news"
       && pathname !== "/api/competitions" && pathname !== "/api/account/favorite-club" && pathname !== "/api/account/name"
-      && pathname !== "/api/account/onboarding-seen" && pathname !== "/api/account/coach-profile"
-      && pathname !== "/api/account/career-favorites"
+      && pathname !== "/api/account/onboarding-seen"
       && !pathname.startsWith("/api/support/") && !pathname.startsWith("/api/auth/")
       && !pathname.startsWith("/api/admin/") && !pathname.startsWith("/api/adminpanel/")
       && !pathname.startsWith("/api/career")
@@ -2224,49 +2234,6 @@ const server = http.createServer(async (req, res) => {
       const updated = users.updateUser(req.authUser.id, { name });
       return sendJSON(res, 200, { user: users.publicUser(updated) });
     }
-    // Cap. 1 / Tela 05 — "Vamos configurar sua carreira?": nome,
-    // nacionalidade e foto do treinador (conta). Cada campo é opcional
-    // no corpo; só o que vier é validado e gravado.
-    //  - nationality: código ISO-3166 alfa-2 (o cliente mostra o nome do
-    //    país); "" limpa.
-    //  - avatar: foto já reduzida no cliente (canvas 160×160) como data
-    //    URL JPEG/WebP/PNG — limite de 60KB pra não inflar o arquivo de
-    //    contas; null limpa (volta pro monograma).
-    if (pathname === "/api/account/coach-profile" && req.method === "PUT") {
-      const body = await readBody(req);
-      const patch = {};
-      if (body.name !== undefined) {
-        const name = String(body.name || "").trim().slice(0, 80);
-        if (!name) return sendJSON(res, 400, { error: "Informe o nome do treinador." });
-        patch.name = name;
-      }
-      if (body.nationality !== undefined) {
-        const code = String(body.nationality || "").trim().toUpperCase();
-        if (code && !/^[A-Z]{2}$/.test(code)) return sendJSON(res, 400, { error: "Nacionalidade inválida." });
-        patch.coachNationality = code || null;
-      }
-      if (body.avatar !== undefined) {
-        if (body.avatar === null || body.avatar === "") patch.coachAvatar = null;
-        else {
-          const avatar = String(body.avatar);
-          if (!/^data:image\/(jpeg|webp|png);base64,[A-Za-z0-9+/=]+$/.test(avatar)) return sendJSON(res, 400, { error: "Formato de imagem não suportado." });
-          if (avatar.length > 60 * 1024) return sendJSON(res, 413, { error: "Imagem grande demais." });
-          patch.coachAvatar = avatar;
-        }
-      }
-      const updated = users.updateUser(req.authUser.id, patch);
-      return sendJSON(res, 200, { user: users.publicUser(updated) });
-    }
-    // Cap. 1 / Tela 04 — favoritos da escolha de clube (lista de ids,
-    // conta). Sem validar contra o catálogo (o backend não conhece os
-    // times de cada competição — mesmo motivo de favorite-club acima).
-    if (pathname === "/api/account/career-favorites" && req.method === "PUT") {
-      const body = await readBody(req);
-      if (!Array.isArray(body.clubIds)) return sendJSON(res, 400, { error: "clubIds precisa ser uma lista." });
-      const clubIds = [...new Set(body.clubIds.map((x) => String(x).trim().slice(0, 40)).filter(Boolean))].slice(0, 60);
-      const updated = users.updateUser(req.authUser.id, { careerFavorites: clubIds });
-      return sendJSON(res, 200, { careerFavorites: users.publicUser(updated).careerFavorites });
-    }
     // Onboarding (pedido do usuário: "tutorial curtinho na primeira
     // carreira") — marcado como visto quando o usuário pula ou termina
     // o tutorial (ver closeOnboardingOverlay em carreira.js). Ligado à
@@ -2292,25 +2259,6 @@ const server = http.createServer(async (req, res) => {
       careerStore.deleteCareer(req.authUser.id);
       return sendJSON(res, 200, { ok: true });
     }
-    // Cap. 7 / Tela 02 — gerenciamento de saves (até 3 carreiras por
-    // conta, uma ativa). GET/PUT/DELETE /api/career acima continuam
-    // valendo só pra ativa.
-    if (pathname === "/api/career/slots" && req.method === "GET") {
-      return sendJSON(res, 200, careerStore.listSlots(req.authUser.id));
-    }
-    const slotMatch = pathname.match(/^\/api\/career\/slots\/(s\d)(\/activate)?$/);
-    if (slotMatch && ((slotMatch[2] && req.method === "POST") || (!slotMatch[2] && req.method === "DELETE"))) {
-      try {
-        const out = slotMatch[2] ? careerStore.activateSlot(req.authUser.id, slotMatch[1]) : careerStore.deleteSlot(req.authUser.id, slotMatch[1]);
-        return sendJSON(res, 200, out);
-      } catch (e) { return sendJSON(res, e.status || 500, { error: e.message }); }
-    }
-    // Cap. 1 / Tela 03 — quantas carreiras existem por competição (todas
-    // as contas). Agregado anônimo: nunca devolve conta nenhuma.
-    if (pathname === "/api/career/competition-popularity" && req.method === "GET") {
-      return sendJSON(res, 200, { counts: careerStore.competitionPopularity() });
-    }
-
     // ================= Retenção/Engajamento (BRDataRetencaoEspecificacao) =================
     // Login diário com streak — ligado à CONTA (users.js), não à
     // carreira (ver comentário lá). `localDate` ("YYYY-MM-DD") vem do

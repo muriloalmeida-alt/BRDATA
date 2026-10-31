@@ -1,0 +1,70 @@
+{
+  "formato": "WEBP",
+  "assets": [
+    {
+      "arquivo": "fontes_webp/cen-01-tunel-nativo.webp",
+      "largura": 941,
+      "altura": 1672,
+      "bytes": 413546,
+      "qualidade_webp": 96,
+      "origem": "CEN-01",
+      "sha256": "83cd2c87377eab73f12db27af64eb90ccb381ca6d066edcc4401be1e48b364a4"
+    },
+    {
+      "arquivo": "fontes_webp/cen-02-estadio-nativo.webp",
+      "largura": 1122,
+      "altura": 1402,
+      "bytes": 507312,
+      "qualidade_webp": 96,
+      "origem": "CEN-02",
+      "sha256": "28e161d3fdf6add6c84ff596b6cbb87830282dda042978ca678c50c4e9acf894"
+    },
+    {
+      "arquivo": "fontes_webp/cen-03-torcida-nativo.webp",
+      "largura": 941,
+      "altura": 1672,
+      "bytes": 319348,
+      "qualidade_webp": 96,
+      "origem": "CEN-03",
+      "sha256": "bb61dcda7d02e90b14618915ca80be3d5c63d2236dd6457524a42ce0b14ba92e"
+    },
+    {
+      "arquivo": "mobile/cen-01-tunel-mobile.webp",
+      "largura": 941,
+      "altura": 1672,
+      "bytes": 248660,
+      "qualidade_webp": 90,
+      "origem": "CEN-01",
+      "sha256": "4c75aefa548b19be07c302a6d16fbcb8757512ce869d26da84ea6ef25a6766df"
+    },
+    {
+      "arquivo": "mobile/cen-02-estadio-mobile.webp",
+      "largura": 1080,
+      "altura": 1350,
+      "bytes": 274932,
+      "qualidade_webp": 88,
+      "origem": "CEN-02",
+      "sha256": "eba0c5f2378d2d976e92e43735c91d9e31ab6505ca59d23a8db9de4469f1437d"
+    },
+    {
+      "arquivo": "mobile/cen-02-estadio-header.webp",
+      "largura": 1080,
+      "altura": 608,
+      "bytes": 173810,
+      "qualidade_webp": 90,
+      "origem": "CEN-02 / recorte",
+      "sha256": "a8496e78103eccaa4d3cb06dbef23eec7be023b7ecf18eeb8ab353c73171283b"
+    },
+    {
+      "arquivo": "mobile/cen-03-torcida-mobile.webp",
+      "largura": 941,
+      "altura": 1672,
+      "bytes": 199648,
+      "qualidade_webp": 90,
+      "origem": "CEN-03",
+      "sha256": "8ef4d3bcfde31822b532d7b66842d18656409dbf37cad05a83bac39290a3bd73"
+    }
+  ],
+  "geracao": "ImageGen integrado; imagens novas, não extraídas de telas.",
+  "limite": "CEN-01 e CEN-03: geração nativa941x1672, abaixo do alvo1080x1920. Sem upscale."
+}

@@ -2910,9 +2910,6 @@
     <div class="mt-picker-screen">
       <div class="mt-topbar bd-flow-top">
         <div class="mt-topbar-row">
-          <button class="mt-icon-btn" id="btnCompetitionPickerBack" aria-label="Voltar para os saves" title="Meus saves" hidden>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
-          </button>
           <div class="bd-brand bd-brand--inline" role="img" aria-label="BRDATA"><div class="bd-brand-mark mt-crest-mini"><img src="img/brand-icon.png" alt=""></div></div>
           <button class="mt-icon-btn" id="btnCompetitionPickerLogout" aria-label="Sair" title="Sair">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
@@ -2965,26 +2962,7 @@
              no fluxo de "aceitar proposta de outro clube" (ver
              acceptClubProposal/renderClubPicker em carreira.js). -->
         <p class="mt-picker-banner" id="pickerContextBanner" hidden></p>
-        <!-- Cap. 1 · Tela 04 — busca (nome/cidade) e filtros reais:
-             Todos, Favoritos (conta, ver /api/account/career-favorites)
-             e Região (UF do catálogo, quando existir). -->
-        <div class="bd-search">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
-          <label for="clubSearch" class="sr-only">Buscar clube ou cidade</label>
-          <input type="search" id="clubSearch" placeholder="Buscar clube ou cidade" autocomplete="off" enterkeyhint="search">
-        </div>
-        <div class="bd-chips" id="clubFilters" role="group" aria-label="Filtrar clubes">
-          <button type="button" class="bd-chip active" data-club-filter="all" aria-pressed="true">Todos</button>
-          <button type="button" class="bd-chip" data-club-filter="fav" aria-pressed="false">Favoritos</button>
-          <label class="bd-chip bd-chip-select" id="clubRegionWrap" hidden><span class="sr-only">Região</span>
-            <select id="clubRegion"><option value="">Regiões</option></select>
-          </label>
-        </div>
         <div class="m3-club-grid bd-club-grid" id="clubGrid" role="listbox" aria-label="Clubes"></div>
-        <div class="bd-empty" id="clubGridEmpty" hidden>
-          <p>Nenhum clube encontrado com esses filtros.</p>
-          <button type="button" class="bd-btn-ghost" id="btnClearClubFilters">Limpar filtros</button>
-        </div>
       </div>
       <div class="bd-cta-dock">
         <button class="m3-fab bd-btn-primary hidden" id="btnConfirmClub">Continuar</button>
@@ -2994,9 +2972,9 @@
 
   <!-- ================= Configurar carreira (Cap. 1 · Tela 05) =================
        Entre a escolha do clube e o início da carreira. Só o que a
-       carreira realmente usa: nome, nacionalidade e foto do treinador
-       (conta — PUT /api/account/coach-profile). Dificuldade e duração
-       da referência ficaram fora por decisão de Produto. -->
+       carreira realmente usa: o nome do treinador (conta — PUT
+       /api/account/name). Nacionalidade, foto, dificuldade e duração
+       ficaram fora por decisão de Produto (31/10/2026). -->
   <div class="hidden bd-scene bd-scene--stadium" id="screenSetup">
     <div class="mt-picker-screen">
       <div class="mt-topbar bd-flow-top">
@@ -3014,22 +2992,9 @@
           <p class="bd-flow-sub">Algumas informações para personalizar sua experiência.</p>
         </div>
         <div class="bd-setup-club" id="setupClubSummary"></div>
-        <div class="bd-avatar-pick">
-          <div class="bd-avatar bd-avatar--xl" id="setupAvatarPreview" aria-hidden="true"></div>
-          <label class="bd-avatar-btn" for="setupAvatarInput" title="Escolher foto">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>
-            <span class="sr-only">Escolher foto do treinador</span>
-          </label>
-          <input type="file" id="setupAvatarInput" accept="image/jpeg,image/png,image/webp" class="sr-only">
-          <button type="button" class="bd-link" id="btnSetupAvatarRemove" hidden>Remover foto</button>
-        </div>
         <div class="bd-form-field">
           <label for="setupCoachName">Nome do treinador</label>
           <input type="text" id="setupCoachName" maxlength="80" autocomplete="name" required>
-        </div>
-        <div class="bd-form-field">
-          <label for="setupNationality">Nacionalidade</label>
-          <select id="setupNationality"></select>
         </div>
         <p class="mt-form-error" id="setupError" role="alert" style="display:none;"></p>
         <div class="bd-cta-dock bd-cta-dock--inline">
@@ -3159,7 +3124,6 @@
              normal (navega de verdade) e não um botão com listener
              JS como os outros itens deste menu. -->
         <a class="mt-topbar-menu-item" href="historico.html">Histórico de Atualizações</a>
-        <button class="mt-topbar-menu-item" id="btnOpenSaves">Meus saves</button>
         <button class="mt-topbar-menu-item" id="btnRestart">Reiniciar</button>
         <button class="mt-topbar-menu-item danger" id="btnLogout">Sair</button>
       </div>
@@ -3328,9 +3292,8 @@
         <!-- Faixa de desempenho (só com dado real da tabela). -->
         <div class="bd-stats-strip" id="homeStats" aria-label="Desempenho na competição"></div>
 
-        <!-- Confiança da diretoria · desempenho recente · objetivos -->
+        <!-- Desempenho recente · objetivos -->
         <div class="bd-home-grid">
-          <button type="button" class="bd-panel bd-panel--btn" id="homeBoardCard" aria-label="Abrir diretoria"></button>
           <div class="bd-panel" id="homeFormCard"></div>
           <button type="button" class="bd-panel bd-panel--btn" id="homeGoalsCard" aria-label="Abrir objetivos da temporada"></button>
         </div>
@@ -4716,25 +4679,6 @@
      temporadas (CAREER.seasonHistory, já existente — ver
      renderBoardGoalsScreen em carreira.js). Aberta a partir da linha
      Diretoria da tela Clube. -->
-<!-- Cap. 7 · Tela 02 — Gerenciamento de saves: até 3 carreiras por
-     conta (server/src/careerStore.js, /api/career/slots). Continuar,
-     começar nova carreira num slot vazio e excluir (confirmação
-     destrutiva). Trocar de save grava a carreira atual antes. -->
-<div class="ct-modal-overlay ct-modal-fullscreen" id="savesOverlay">
-  <div class="ct-modal">
-    <div class="ct-modal-header mt-fullheader">
-      <span class="ct-modal-icon" aria-hidden="true">💾</span>
-      <div class="ct-modal-header-text">
-        <h3>Meus saves</h3>
-        <div class="ct-modal-sub" id="savesSub"></div>
-      </div>
-      <button class="ct-modal-close" aria-label="Fechar" id="savesClose">✕</button>
-    </div>
-    <div class="ct-modal-body">
-      <div id="savesList" aria-live="polite"><p class="bd-empty-inline">Carregando saves...</p></div>
-    </div>
-  </div>
-</div>
 <div class="ct-modal-overlay ct-modal-fullscreen" id="boardGoalsOverlay">
   <div class="ct-modal">
     <div class="ct-modal-header mt-fullheader">
@@ -4751,8 +4695,6 @@
         <div class="m3-hero-bar"><span class="m3-hero-bar-fill" id="boardGoalsHeroFill" style="width:0%"></span></div>
         <div class="m3-hero-meta" id="boardGoalsHeroSub"></div>
       </div>
-      <div class="mt-card-title">Confiança da diretoria</div>
-      <div id="boardConfidenceBox"></div>
       <div class="mt-card-title">Outros objetivos da temporada</div>
       <div id="boardObjectivesList"></div>
       <div class="mt-card-title">Avaliações das temporadas anteriores</div>
@@ -5716,21 +5658,10 @@
       <button class="ct-modal-close" aria-label="Fechar" id="editProfileClose">✕</button>
     </div>
     <div class="ct-modal-body">
-      <!-- Redesign Cap. 6 · Tela 01 — foto e nacionalidade do treinador
-           (mesmos dados da tela Configurar carreira, conta). -->
-      <div class="mt-avatar-picker bd-avatar-pick">
-        <div class="mt-big-avatar" id="editProfileAvatar"></div>
-        <label class="bd-chip" for="editProfileAvatarInput">Trocar foto</label>
-        <input type="file" id="editProfileAvatarInput" accept="image/jpeg,image/png,image/webp" class="sr-only">
-        <button type="button" class="bd-link" id="btnEditProfileAvatarRemove" hidden>Remover foto</button>
-      </div>
+      <div class="mt-avatar-picker"><div class="mt-big-avatar" id="editProfileAvatar"></div></div>
       <div class="mt-form-row">
         <label class="mt-form-label" for="editProfileNameInput">Nome de treinador</label>
         <input id="editProfileNameInput" class="mt-friend-input" maxlength="80">
-      </div>
-      <div class="mt-form-row">
-        <label class="mt-form-label" for="editProfileNationality">Nacionalidade</label>
-        <select id="editProfileNationality" class="mt-friend-input"></select>
       </div>
       <div class="mt-form-row">
         <div class="mt-form-label">E-mail</div>

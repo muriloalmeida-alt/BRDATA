@@ -2214,7 +2214,7 @@ function renderCoachProfile() {
   document.getElementById("coachProfileBody").innerHTML = `
     <div class="bd-player-hero mt-player-hero">
       ${coachAvatarHTML(ME, "bd-avatar--lg")}
-      <div class="mt-player-hero-info"><b>${escapeHtml((ME && ME.name) || "Treinador")}</b><span>${ME && ME.coachNationality ? escapeHtml(nationalityName(ME.coachNationality)) : "Nacionalidade não informada"} · ${escapeHtml(CAREER.clubName)}</span></div>
+      <div class="mt-player-hero-info"><b>${escapeHtml((ME && ME.name) || "Treinador")}</b><span>Treinador do ${escapeHtml(CAREER.clubName)}</span></div>
       <button type="button" class="bd-btn-ghost" id="btnCoachEditProfile">Editar</button>
     </div>
     <div class="mt-stat-grid" style="margin-bottom:14px;">
@@ -2564,19 +2564,8 @@ function openSettingsScreen() {
 function closeSettingsScreen() {
   document.getElementById("settingsOverlay").classList.remove("open");
 }
-let EDIT_PROFILE_AVATAR; // undefined = sem mudança, null = removida, string = nova
-function renderEditProfileAvatar() {
-  const cur = EDIT_PROFILE_AVATAR === undefined ? ME.coachAvatar || null : EDIT_PROFILE_AVATAR;
-  const el = document.getElementById("editProfileAvatar");
-  el.innerHTML = cur ? `<img src="${escapeHtml(cur)}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">` : escapeHtml(initialsFor(ME.name));
-  document.getElementById("btnEditProfileAvatarRemove").hidden = !cur;
-}
 function openEditProfileScreen() {
-  EDIT_PROFILE_AVATAR = undefined;
-  renderEditProfileAvatar();
-  const natSel = document.getElementById("editProfileNationality");
-  natSel.innerHTML = `<option value="">Não informar</option>` + NATIONALITY_CODES.map((c) => ({ c, n: nationalityName(c) })).sort((a, b) => a.n.localeCompare(b.n, "pt-BR")).map((o) => `<option value="${o.c}">${escapeHtml(o.n)}</option>`).join("");
-  natSel.value = ME.coachNationality || "";
+  document.getElementById("editProfileAvatar").textContent = initialsFor(ME.name);
   document.getElementById("editProfileNameInput").value = ME.name || "";
   document.getElementById("editProfileEmail").textContent = maskEmail(ME.email);
   const rep = CAREER.reputation == null ? 50 : CAREER.reputation;
@@ -2592,10 +2581,8 @@ async function saveProfileName() {
   const btn = document.getElementById("btnSaveProfileName");
   btn.disabled = true;
   try {
-    const patch = { name, nationality: document.getElementById("editProfileNationality").value };
-    if (EDIT_PROFILE_AVATAR !== undefined) patch.avatar = EDIT_PROFILE_AVATAR;
-    const result = await fetchJSON("/api/account/coach-profile", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(patch) });
-    ME = { ...ME, ...result.user };
+    const result = await fetchJSON("/api/account/name", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name }) });
+    ME.name = result.user.name;
     renderSettingsScreen();
     renderAll();
     toast({ title: "Perfil atualizado", detail: `Nome salvo como "${ME.name}"` }, { type: "pos" });
@@ -5497,12 +5484,8 @@ function competitionName(id) {
 
 /* ---------- Cap. 1 · Tela 03 — Seleção da competição ----------
    Lista contínua das competições REAIS do jogo. Abas de categoria só
-   aparecem com 2+ categorias (hoje todas são do Brasil). O selo "Mais
-   popular" vem de /api/career/competition-popularity (quantas carreiras
-   existem por competição, todas as contas) — só aparece quando uma
-   competição lidera sozinha; sem dado, nenhum selo. */
+   aparecem com 2+ categorias (hoje todas são do Brasil). */
 let COMPETITION_CATEGORY = null;
-let COMPETITION_POPULARITY = null;
 function renderCompetitionPicker() {
   const cats = [...new Set(CAREER_COMPETITIONS.map((c) => c.category))];
   const catBar = document.getElementById("competitionCategories");
@@ -5517,18 +5500,14 @@ function renderCompetitionPicker() {
     catBar.innerHTML = "";
   }
   const list = CAREER_COMPETITIONS.filter((c) => !COMPETITION_CATEGORY || c.category === COMPETITION_CATEGORY);
-  const counts = COMPETITION_POPULARITY || {};
-  const ranked = list.map((c) => counts[c.id] || 0).sort((x, y) => y - x);
-  const popularId = ranked[0] > 0 && ranked[0] > (ranked[1] || 0) ? list.find((c) => (counts[c.id] || 0) === ranked[0]).id : null;
   document.getElementById("competitionList").innerHTML = list.length ? list.map((c) => `
-    <button class="mt-competition-card bd-comp-row${c.id === popularId ? " is-popular" : ""}" data-competition="${escapeHtml(c.id)}">
+    <button class="mt-competition-card bd-comp-row" data-competition="${escapeHtml(c.id)}">
       ${countryFlagHTML(c.countryCode)}
       <span class="mt-competition-body">
         <span class="mt-competition-title">${escapeHtml(c.name)}</span>
         <span class="mt-competition-sub bd-comp-country">${escapeHtml(c.country)}</span>
         <span class="bd-comp-desc">${escapeHtml(c.sub)}</span>
       </span>
-      ${c.id === popularId ? `<span class="bd-badge">Mais popular</span>` : ""}
       <svg class="mt-competition-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 18 15 12 9 6"/></svg>
     </button>`).join("") : `<div class="bd-empty"><p>Nenhuma competição disponível nesta categoria.</p></div>`;
   document.querySelectorAll(".mt-competition-card").forEach((btn) => {
@@ -5544,16 +5523,6 @@ function renderCompetitionPicker() {
       });
     });
   });
-  // Cap. 7 · T02 — conta com outras carreiras: "voltar" leva aos saves.
-  fetchJSON("/api/career/slots").then((d) => {
-    document.getElementById("btnCompetitionPickerBack").hidden = !d.slots.some((x) => !x.empty);
-  }).catch(() => {});
-  if (COMPETITION_POPULARITY === null) {
-    COMPETITION_POPULARITY = {};
-    fetchJSON("/api/career/competition-popularity")
-      .then((r) => { COMPETITION_POPULARITY = (r && r.counts) || {}; if (!document.getElementById("screenCompetitionPicker").classList.contains("hidden")) renderCompetitionPicker(); })
-      .catch(() => { /* sem selo — dado opcional */ });
-  }
 }
 // Escolhida a divisão, carrega o campeonato certo (real, se disponível
 // — ver loadLeague/DEMO_DATA_BY_COMPETITION) e só então mostra a
@@ -5569,15 +5538,12 @@ async function chooseCompetition(competitionId) {
 
 /* ---------- Cap. 1 · Tela 04 — Seleção do clube ----------
    Grade de escudos oficiais (img/teams/ via t.logo; sem logo, o
-   monograma de crestImg). Busca por nome/cidade, filtros Todos /
-   Favoritos (conta: ME.careerFavorites) / Região (UF, só quando o
-   catálogo traz UF de 2+ estados). Clicar seleciona; "Continuar" leva
+   monograma de crestImg). Clicar seleciona; "Continuar" leva
    pra configuração da carreira (ou direto pro novo clube, no fluxo de
    proposta aceita — filterIds). PICKER_SELECTED_CLUB é resetado a cada
    renderClubPicker(). */
 let PICKER_SELECTED_CLUB = null;
 let PICKER_CONTEXT_IDS = null;
-let PICKER_FILTER = { q: "", mode: "all", region: "" };
 function crestLarge(t, size = 64) {
   const logo = teamLogoSrc(t);
   if (logo) return `<img class="bd-crest" src="${escapeHtml(logo)}" alt="" width="${size}" height="${size}" loading="lazy" style="width:${size}px;height:${size}px;">`;
@@ -5596,8 +5562,6 @@ function renderClubPicker(filterIds, bannerText) {
   else { banner.textContent = ""; banner.hidden = true; }
   PICKER_CONTEXT_IDS = filterIds || null;
   PICKER_SELECTED_CLUB = null;
-  PICKER_FILTER = { q: "", mode: "all", region: "" };
-  document.getElementById("clubSearch").value = "";
   // Fluxo de proposta aceita (filterIds): não há "voltar" pra escolha
   // de competição — o destino já está definido.
   document.getElementById("btnPickerBack").hidden = !!filterIds;
@@ -5613,35 +5577,11 @@ function renderClubPicker(filterIds, bannerText) {
   const grid = document.getElementById("clubGrid");
   grid.style.opacity = "";
   grid.style.pointerEvents = "";
-  const ufs = [...new Set(pickerTeams().map((t) => t.uf).filter(Boolean))].sort();
-  const regionWrap = document.getElementById("clubRegionWrap");
-  regionWrap.hidden = ufs.length < 2;
-  document.getElementById("clubRegion").innerHTML = `<option value="">Regiões</option>` + ufs.map((u) => `<option value="${escapeHtml(u)}">${escapeHtml(u)}</option>`).join("");
-  syncClubFilterChips();
   renderClubGrid();
 }
-function syncClubFilterChips() {
-  document.querySelectorAll("#clubFilters [data-club-filter]").forEach((b) => {
-    const on = b.dataset.clubFilter === PICKER_FILTER.mode;
-    b.classList.toggle("active", on);
-    b.setAttribute("aria-pressed", String(on));
-  });
-  document.getElementById("clubRegion").value = PICKER_FILTER.region;
-  document.getElementById("clubRegionWrap").classList.toggle("active", !!PICKER_FILTER.region);
-}
-function careerFavorites() {
-  return new Set(((ME && ME.careerFavorites) || []).map(String));
-}
 function renderClubGrid() {
-  const favs = careerFavorites();
-  const q = normalizeSearch(PICKER_FILTER.q);
   const compLabel = COMPETITION_SHORT[CURRENT_COMPETITION_ID] || "Brasileirão";
-  const teams = pickerTeams().filter((t) => {
-    if (PICKER_FILTER.mode === "fav" && !favs.has(String(t.id))) return false;
-    if (PICKER_FILTER.region && t.uf !== PICKER_FILTER.region) return false;
-    if (q && !normalizeSearch(`${t.name} ${t.short || ""} ${t.venue?.city || ""}`).includes(q)) return false;
-    return true;
-  });
+  const teams = pickerTeams();
   const grid = document.getElementById("clubGrid");
   // Seleção que saiu do filtro deixa de valer (o "Continuar" some junto).
   if (PICKER_SELECTED_CLUB && !teams.some((t) => String(t.id) === String(PICKER_SELECTED_CLUB))) {
@@ -5652,11 +5592,7 @@ function renderClubGrid() {
     const id = String(t.id);
     const city = t.venue?.city ? `${t.venue.city}${t.uf ? ", " + t.uf : ""}` : "";
     const sel = id === String(PICKER_SELECTED_CLUB);
-    const fav = favs.has(id);
     return `<div class="m3-club-row bd-club-tile${sel ? " selected" : ""}" role="option" tabindex="0" aria-selected="${sel}" data-id="${escapeHtml(id)}" aria-label="${escapeHtml(t.name)}${city ? ", " + escapeHtml(city) : ""}">
-      <button type="button" class="bd-fav${fav ? " on" : ""}" data-fav="${escapeHtml(id)}" aria-pressed="${fav}" aria-label="${fav ? "Remover dos favoritos" : "Adicionar aos favoritos"}: ${escapeHtml(t.name)}">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9Z"/></svg>
-      </button>
       <span class="bd-club-crest">${crestLarge(t, 52)}</span>
       <span class="m3-club-body">
         <span class="m3-club-name">${escapeHtml(t.name)}</span>
@@ -5665,26 +5601,10 @@ function renderClubGrid() {
       <svg class="m3-club-check${sel ? "" : " hidden"}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>
     </div>`;
   }).join("");
-  document.getElementById("clubGridEmpty").hidden = teams.length > 0;
   grid.querySelectorAll(".m3-club-row").forEach((el) => {
     el.addEventListener("click", () => selectClubRow(el.dataset.id));
     el.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); selectClubRow(el.dataset.id); } });
   });
-  grid.querySelectorAll("[data-fav]").forEach((b) => b.addEventListener("click", (e) => { e.stopPropagation(); toggleCareerFavorite(b.dataset.fav); }));
-}
-async function toggleCareerFavorite(clubId) {
-  const before = [...careerFavorites()];
-  const next = before.includes(clubId) ? before.filter((x) => x !== clubId) : [...before, clubId];
-  ME.careerFavorites = next; // otimista — desfaz se o servidor recusar
-  renderClubGrid();
-  try {
-    const r = await fetchJSON("/api/account/career-favorites", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ clubIds: next }) });
-    ME.careerFavorites = r.careerFavorites;
-  } catch (err) {
-    ME.careerFavorites = before;
-    renderClubGrid();
-    toast("Não foi possível salvar o favorito. Tente de novo.");
-  }
 }
 function selectClubRow(clubId) {
   PICKER_SELECTED_CLUB = clubId;
@@ -5698,80 +5618,23 @@ function selectClubRow(clubId) {
 }
 
 /* ---------- Cap. 1 · Tela 05 — Configurar carreira ----------
-   Nome, nacionalidade e foto do treinador (conta). A foto é reduzida no
-   próprio aparelho (160×160, recorte central) antes de subir — nunca o
-   arquivo original. SETUP_AVATAR: undefined = sem mudança, null =
-   removida, string = nova. */
+   Só o nome do treinador (conta, PUT /api/account/name) — nacionalidade
+   e foto retiradas por decisão de Produto (31/10/2026). */
 let SETUP_CLUB_ID = null;
-let SETUP_AVATAR;
-// ISO 3166-1 alfa-2; nomes em pt-BR via Intl.DisplayNames (sem lista
-// de nomes fixa pra manter).
-const NATIONALITY_CODES = "AD AE AF AG AL AM AO AR AT AU AZ BA BB BD BE BF BG BH BI BJ BO BR BS BT BW BY BZ CA CD CF CG CH CI CL CM CN CO CR CU CV CY CZ DE DJ DK DM DO DZ EC EE EG ER ES ET FI FJ FR GA GB GD GE GH GM GN GQ GR GT GW GY HN HR HT HU ID IE IL IN IQ IR IS IT JM JO JP KE KG KH KM KN KR KW KZ LA LB LC LI LK LR LS LT LU LV LY MA MC MD ME MG MK ML MM MN MR MT MU MV MW MX MY MZ NA NE NG NI NL NO NP NZ OM PA PE PG PH PK PL PS PT PY QA RO RS RU RW SA SB SC SD SE SG SI SK SL SM SN SO SR SS ST SV SY SZ TD TG TH TJ TL TM TN TO TR TT TV TZ UA UG US UY UZ VA VC VE VN VU WS YE ZA ZM ZW".split(" ");
-function nationalityName(code) {
-  if (!code) return "";
-  try { return new Intl.DisplayNames(["pt-BR"], { type: "region" }).of(code) || code; } catch { return code; }
-}
 function coachAvatarHTML(user, extraClass = "") {
-  const src = user && user.coachAvatar;
-  return src
-    ? `<span class="bd-avatar ${extraClass}"><img src="${escapeHtml(src)}" alt=""></span>`
-    : `<span class="bd-avatar bd-avatar--mono ${extraClass}">${escapeHtml(initialsFor((user && user.name) || "?"))}</span>`;
+  return `<span class="bd-avatar bd-avatar--mono ${extraClass}">${escapeHtml(initialsFor((user && user.name) || "?"))}</span>`;
 }
 function openSetupScreen(clubId) {
   SETUP_CLUB_ID = clubId;
-  SETUP_AVATAR = undefined;
   const t = LEAGUE_TEAMS.find((x) => String(x.id) === String(clubId));
   document.getElementById("setupClubSummary").innerHTML = t
     ? `${crestLarge(t, 36)}<span><b>${escapeHtml(t.name)}</b><small>${escapeHtml(competitionName(CURRENT_COMPETITION_ID))}</small></span>`
     : "";
   document.getElementById("setupCoachName").value = (ME && ME.name) || "";
-  const natSel = document.getElementById("setupNationality");
-  const opts = NATIONALITY_CODES.map((c) => ({ c, n: nationalityName(c) })).sort((a, b) => a.n.localeCompare(b.n, "pt-BR"));
-  natSel.innerHTML = `<option value="">Não informar</option>` + opts.map((o) => `<option value="${o.c}">${escapeHtml(o.n)}</option>`).join("");
-  natSel.value = (ME && ME.coachNationality) || "";
   document.getElementById("setupError").style.display = "none";
   const btn = document.getElementById("btnStartCareer");
   btn.disabled = false; btn.textContent = "Iniciar carreira";
-  renderSetupAvatar();
   show("screenSetup");
-}
-function renderSetupAvatar() {
-  const current = SETUP_AVATAR === undefined ? (ME && ME.coachAvatar) || null : SETUP_AVATAR;
-  const name = document.getElementById("setupCoachName").value || (ME && ME.name) || "";
-  const prev = document.getElementById("setupAvatarPreview");
-  prev.classList.toggle("bd-avatar--mono", !current);
-  prev.innerHTML = current ? `<img src="${escapeHtml(current)}" alt="">` : escapeHtml(initialsFor(name || "?"));
-  document.getElementById("btnSetupAvatarRemove").hidden = !current;
-}
-function resizeImageToDataURL(file, size = 160) {
-  return new Promise((resolve, reject) => {
-    const url = URL.createObjectURL(file);
-    const img = new Image();
-    img.onload = () => {
-      const side = Math.min(img.naturalWidth, img.naturalHeight);
-      const c = document.createElement("canvas"); c.width = size; c.height = size;
-      c.getContext("2d").drawImage(img, (img.naturalWidth - side) / 2, (img.naturalHeight - side) / 2, side, side, 0, 0, size, size);
-      URL.revokeObjectURL(url);
-      let out = c.toDataURL("image/webp", 0.82);
-      if (!out.startsWith("data:image/webp")) out = c.toDataURL("image/jpeg", 0.82);
-      resolve(out);
-    };
-    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error("Imagem inválida.")); };
-    img.src = url;
-  });
-}
-async function handleSetupAvatarFile(file) {
-  const err = document.getElementById("setupError");
-  err.style.display = "none";
-  if (!file) return;
-  if (!/^image\/(jpeg|png|webp)$/.test(file.type)) { err.textContent = "Use uma foto JPG, PNG ou WebP."; err.style.display = "block"; return; }
-  if (file.size > 10 * 1024 * 1024) { err.textContent = "Foto grande demais (máximo 10 MB)."; err.style.display = "block"; return; }
-  try {
-    SETUP_AVATAR = await resizeImageToDataURL(file);
-    renderSetupAvatar();
-  } catch (e) {
-    err.textContent = "Não foi possível ler essa imagem."; err.style.display = "block";
-  }
 }
 async function submitSetup(e) {
   e.preventDefault();
@@ -5779,18 +5642,13 @@ async function submitSetup(e) {
   err.style.display = "none";
   const name = document.getElementById("setupCoachName").value.trim();
   if (!name) { err.textContent = "Informe o nome do treinador."; err.style.display = "block"; document.getElementById("setupCoachName").focus(); return; }
-  const nationality = document.getElementById("setupNationality").value;
-  const patch = {};
-  if (name !== ME.name) patch.name = name;
-  if ((nationality || null) !== (ME.coachNationality || null)) patch.nationality = nationality;
-  if (SETUP_AVATAR !== undefined) patch.avatar = SETUP_AVATAR;
   const btn = document.getElementById("btnStartCareer");
   if (btn.disabled) return; // toque repetido
   btn.disabled = true; btn.textContent = "Salvando...";
   try {
-    if (Object.keys(patch).length) {
-      const r = await fetchJSON("/api/account/coach-profile", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(patch) });
-      ME = { ...ME, ...r.user };
+    if (name !== ME.name) {
+      const r = await fetchJSON("/api/account/name", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name }) });
+      ME.name = r.user.name;
     }
   } catch (ex) {
     err.textContent = ex.message || "Não foi possível salvar seu perfil. Tente de novo.";
@@ -5813,66 +5671,6 @@ async function submitSetup(e) {
 
 /* ---------- Cap. 1 · Tela 06 — Primeira entrada ----------
    Só logo depois de startCareer (carreira nova ou novo clube). */
-/* ---------- Cap. 7 · Tela 02 — Gerenciamento de saves ---------- */
-async function openSavesScreen() {
-  document.getElementById("topbarMenu").classList.remove("open");
-  document.getElementById("savesOverlay").classList.add("open");
-  await renderSavesScreen();
-}
-function closeSavesScreen() { document.getElementById("savesOverlay").classList.remove("open"); }
-async function renderSavesScreen() {
-  const box = document.getElementById("savesList");
-  let data;
-  try { data = await fetchJSON("/api/career/slots"); }
-  catch (err) {
-    box.innerHTML = `<div class="bd-empty"><p>Não foi possível carregar seus saves.</p><button type="button" class="bd-btn-ghost" id="btnSavesRetry">Tentar novamente</button></div>`;
-    document.getElementById("btnSavesRetry").addEventListener("click", renderSavesScreen);
-    return;
-  }
-  const used = data.slots.filter((x) => !x.empty).length;
-  document.getElementById("savesSub").textContent = `${used} de ${data.maxSlots} carreiras`;
-  box.innerHTML = data.slots.map((slot, i) => {
-    if (slot.empty) {
-      return `<div class="bd-save bd-save--empty"><div class="bd-save-body"><b>Slot ${i + 1} · vazio</b><span>Comece outra carreira sem perder as atuais.</span></div>
-        <button type="button" class="bd-btn-ghost" data-save-new="${slot.id}">Nova carreira</button></div>`;
-    }
-    const m = slot.meta || {};
-    const t = teamById(m.clubId) || { id: m.clubId, name: m.clubName, logo: m.clubLogo };
-    const when = m.updatedAt ? new Date(m.updatedAt).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" }) : "";
-    return `<div class="bd-save${slot.active ? " active" : ""}">
-      <span class="bd-save-crest">${crestImg(t, 44)}</span>
-      <div class="bd-save-body"><b>${escapeHtml(m.clubName || "Carreira")}</b>
-        <span>${escapeHtml(competitionName(m.competitionId))}${m.seasonYear ? ` · ${m.seasonYear}` : ""}${m.currentRound ? ` · ${m.currentRound > 38 ? "temporada encerrada" : `rodada ${m.currentRound}`}` : ""}</span>
-        ${when ? `<small>Salvo em ${escapeHtml(when)}</small>` : ""}</div>
-      ${slot.active ? `<span class="bd-badge">Em uso</span>` : `<button type="button" class="bd-btn-ghost" data-save-load="${slot.id}">Continuar</button>`}
-      <button type="button" class="bd-icon-btn bd-save-del" data-save-del="${slot.id}" aria-label="Excluir save ${escapeHtml(m.clubName || "")}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
-    </div>`;
-  }).join("");
-  box.querySelectorAll("[data-save-load]").forEach((b) => b.addEventListener("click", () => switchSaveSlot(b.dataset.saveLoad, false)));
-  box.querySelectorAll("[data-save-new]").forEach((b) => b.addEventListener("click", () => switchSaveSlot(b.dataset.saveNew, true)));
-  box.querySelectorAll("[data-save-del]").forEach((b) => b.addEventListener("click", async () => {
-    const slot = data.slots.find((x) => x.id === b.dataset.saveDel);
-    const name = (slot.meta && slot.meta.clubName) || "esta carreira";
-    if (!(await confirmModal(`Excluir o save de ${name}? Essa ação não pode ser desfeita.`, "Excluir save", { danger: true }))) return;
-    try {
-      await fetchJSON(`/api/career/slots/${slot.id}`, { method: "DELETE" });
-      if (slot.active) { CAREER = null; location.reload(); return; }
-      toast("Save excluído.", { type: "info" });
-      renderSavesScreen();
-    } catch (err) { toast("Não foi possível excluir o save. Tente de novo.", { type: "warn" }); }
-  }));
-}
-// Troca a carreira ativa: grava a atual, ativa o slot e recarrega (o
-// boot normal monta a carreira escolhida, ou o seletor de competição
-// num slot vazio).
-async function switchSaveSlot(slotId, isNew) {
-  if (CAREER) { const ok = await persistCareer(); if (!ok) return; }
-  try {
-    await fetchJSON(`/api/career/slots/${slotId}/activate`, { method: "POST" });
-  } catch (err) { toast("Não foi possível trocar de save. Tente de novo.", { type: "warn" }); return; }
-  location.reload();
-}
-
 function openFirstEntry() {
   const t = teamById(CAREER.clubId) || { name: CAREER.clubName, logo: CAREER.clubLogo, short: CAREER.clubShort };
   const isNewClubInCareer = (CAREER.clubHistory || []).length > 0;
@@ -10033,53 +9831,6 @@ function openH2H(opponentId) {
 function closeH2H() {
   document.getElementById("h2hOverlay").classList.remove("open");
 }
-/* ---------- Confiança da diretoria (Cap. 2 · T01/T05, Cap. 6 · T02) ----------
-   Indicador DERIVADO, só leitura — não muda regra nenhuma da diretoria
-   (meta da temporada, 3 temporadas seguidas sem meta = demissão, ver
-   DISMISSAL_STREAK). Junta o que a diretoria de fato acompanha, com cada
-   parcela exposta pra explicar o número (CLAUDE.md §45):
-     base 50
-     + meta: dentro da meta → +20; fora → −4 por posição além (máx −30)
-       (só depois da 1ª rodada; antes disso a meta não pesa)
-     + forma: média de pontos nas últimas 5 (0–3) × 12, centrada em 1,3
-     − 15 por temporada seguida sem bater a meta
-     + (reputação − 50) × 0,2
-   Resultado limitado a 0–100. */
-function boardConfidence() {
-  const parts = [];
-  let v = 50;
-  const pos = myLeaguePosition();
-  const goal = CAREER.boardGoal;
-  if (goal && pos > 0 && (CAREER.currentRound > 1)) {
-    const d = pos <= goal.target ? 20 : -Math.min(30, (pos - goal.target) * 4);
-    parts.push({ label: pos <= goal.target ? `Dentro da meta (${pos}º, meta até ${goal.target}º)` : `Fora da meta (${pos}º, meta até ${goal.target}º)`, delta: d });
-    v += d;
-  }
-  const form = (CAREER.recentForm || []).slice(-5);
-  if (form.length) {
-    const avg = form.reduce((a, b) => a + b, 0) / form.length;
-    const d = Math.round((avg - 1.3) * 12);
-    parts.push({ label: `Forma recente (${avg.toFixed(1).replace(".", ",")} pts/jogo nos últimos ${form.length})`, delta: d });
-    v += d;
-  }
-  const streak = CAREER.negativeSeasonsStreak || 0;
-  if (streak) { parts.push({ label: `${streak} temporada(s) seguida(s) sem bater a meta`, delta: -15 * streak }); v -= 15 * streak; }
-  const rep = CAREER.reputation == null ? 50 : CAREER.reputation;
-  const repD = Math.round((rep - 50) * 0.2);
-  if (repD) { parts.push({ label: `Reputação do treinador (${rep})`, delta: repD }); v += repD; }
-  const value = clamp(Math.round(v), 0, 100);
-  const label = value >= 80 ? "Muito alta" : value >= 60 ? "Alta" : value >= 40 ? "Estável" : value >= 20 ? "Baixa" : "Crítica";
-  const tone = value >= 60 ? "good" : value >= 40 ? "mid" : "bad";
-  return { value, label, tone, parts };
-}
-function ringHTML(pct, tone, text, sub) {
-  const r = 34, c = 2 * Math.PI * r, off = c * (1 - pct / 100);
-  return `<svg class="bd-ring bd-ring--${tone}" viewBox="0 0 84 84" role="img" aria-label="${escapeHtml(sub ? `${text} — ${sub}` : text)}">
-    <circle cx="42" cy="42" r="${r}" class="bd-ring-track"/>
-    <circle cx="42" cy="42" r="${r}" class="bd-ring-fill" stroke-dasharray="${c.toFixed(1)}" stroke-dashoffset="${off.toFixed(1)}" transform="rotate(-90 42 42)"/>
-    <text x="42" y="47" text-anchor="middle">${escapeHtml(text)}</text>
-  </svg>`;
-}
 const FORM_LETTER = { 3: "V", 1: "E", 0: "D" };
 const FORM_WORD = { 3: "Vitória", 1: "Empate", 0: "Derrota" };
 function greetingFor(date = new Date()) {
@@ -10107,12 +9858,6 @@ function renderHomeDashboard() {
       { icon: "shield", num: row.gc, lbl: "Gols sofridos", sub: `${perGame(row.gc)} por jogo` },
     ].map((x) => `<div class="bd-stat">${homeIcon(x.icon)}<b>${x.num}</b><span>${x.lbl}</span><small>${x.sub}</small></div>`).join("");
   }
-
-  // Confiança da diretoria
-  const conf = boardConfidence();
-  document.getElementById("homeBoardCard").innerHTML = `<span class="bd-panel-h">Confiança da diretoria</span>
-    ${ringHTML(conf.value, conf.tone, `${conf.value}%`, conf.label)}
-    <span class="bd-tone bd-tone--${conf.tone}">${conf.label}</span>`;
 
   // Desempenho recente (V/E/D com texto, nunca só cor)
   const form = (CAREER.recentForm || []).slice(-5);
@@ -10572,23 +10317,7 @@ function boardGoalProgressPct(goal, position) {
   return clamp((20 - position) / (20 - goal.target), 0, 1);
 }
 function renderBoardGoalsScreen() {
-  // Redesign Cap. 2 · T05 / Cap. 6 · T02 — confiança (derivada, com o
-  // que pesa nela), pressão real (temporadas sem meta → demissão) e
-  // objetivos da temporada.
-  const conf = boardConfidence();
-  const streak = CAREER.negativeSeasonsStreak || 0;
-  document.getElementById("boardConfidenceBox").innerHTML = `
-    <div class="bd-board-conf">${ringHTML(conf.value, conf.tone, `${conf.value}%`, conf.label)}
-      <div><span class="bd-tone bd-tone--${conf.tone}">${conf.label}</span>
-      <p>${conf.value >= 60 ? "A diretoria está satisfeita com o seu trabalho. Mantenha o bom desempenho e cumpra os objetivos." : conf.value >= 40 ? "A diretoria acompanha de perto. Resultados nas próximas rodadas vão definir o clima." : "A diretoria está insatisfeita. Sem reação, a pressão aumenta."}</p></div>
-    </div>
-    <ul class="bd-breakdown" aria-label="O que pesa na confiança">
-      <li><span>Base</span><b>50</b></li>
-      ${conf.parts.map((x) => `<li><span>${escapeHtml(x.label)}</span><b class="${x.delta >= 0 ? "pos" : "neg"}">${x.delta >= 0 ? "+" : ""}${x.delta}</b></li>`).join("")}
-    </ul>
-    <p class="bd-pressure ${streak ? "warn" : ""}">${streak
-      ? `Temporadas seguidas sem bater a meta: ${streak} de ${DISMISSAL_STREAK}. Na ${DISMISSAL_STREAK}ª, a diretoria demite o treinador.`
-      : `Regra do clube: ${DISMISSAL_STREAK} temporadas seguidas sem bater a meta levam à demissão.`}</p>`;
+  // Objetivos extras da temporada (sistema de objetivos existente).
   const objs = ((CAREER.objectives && Array.isArray(CAREER.objectives.season) && CAREER.objectives.season) || []);
   document.getElementById("boardObjectivesList").innerHTML = objs.length ? objs.map((o) => {
     const done = o.status === "completed" || o.status === "claimed";
@@ -16574,23 +16303,8 @@ function wireStaticListeners() {
     }
   });
   document.getElementById("btnPickerBack").addEventListener("click", () => { renderCompetitionPicker(); show("screenCompetitionPicker"); });
-  document.getElementById("clubSearch").addEventListener("input", (e) => { PICKER_FILTER.q = e.target.value; renderClubGrid(); });
-  document.querySelectorAll("#clubFilters [data-club-filter]").forEach((b) => b.addEventListener("click", () => {
-    PICKER_FILTER.mode = b.dataset.clubFilter;
-    if (b.dataset.clubFilter === "all") PICKER_FILTER.region = "";
-    syncClubFilterChips(); renderClubGrid();
-  }));
-  document.getElementById("clubRegion").addEventListener("change", (e) => { PICKER_FILTER.region = e.target.value; syncClubFilterChips(); renderClubGrid(); });
-  document.getElementById("btnClearClubFilters").addEventListener("click", () => {
-    PICKER_FILTER = { q: "", mode: "all", region: "" };
-    document.getElementById("clubSearch").value = "";
-    syncClubFilterChips(); renderClubGrid();
-  });
   document.getElementById("btnSetupBack").addEventListener("click", () => { show("screenPicker"); });
   document.getElementById("setupForm").addEventListener("submit", submitSetup);
-  document.getElementById("setupCoachName").addEventListener("input", () => { if (SETUP_AVATAR === null || !(ME && ME.coachAvatar) || SETUP_AVATAR === undefined) renderSetupAvatar(); });
-  document.getElementById("setupAvatarInput").addEventListener("change", (e) => { handleSetupAvatarFile(e.target.files[0]); e.target.value = ""; });
-  document.getElementById("btnSetupAvatarRemove").addEventListener("click", () => { SETUP_AVATAR = null; renderSetupAvatar(); });
   document.getElementById("btnFirstEntryGo").addEventListener("click", (e) => {
     if (e.currentTarget.disabled) return;
     e.currentTarget.disabled = true; // toque repetido
@@ -16603,7 +16317,6 @@ function wireStaticListeners() {
   document.getElementById("btnHomeSquad").addEventListener("click", () => switchToPanel("elenco"));
   document.getElementById("btnHomeNews").addEventListener("click", () => openNewsScreen());
   document.getElementById("btnHomeTable").addEventListener("click", () => switchToPanel("tabela"));
-  document.getElementById("homeBoardCard").addEventListener("click", openBoardGoalsScreen);
   document.getElementById("homeGoalsCard").addEventListener("click", openBoardGoalsScreen);
   document.querySelectorAll("#jogosTabs [data-jogos-tab]").forEach((b) => b.addEventListener("click", () => {
     if (b.dataset.jogosTab === "semanas") { openCalendarScreen(); return; }
@@ -16620,16 +16333,6 @@ function wireStaticListeners() {
   document.getElementById("elencoSearch").addEventListener("input", (e) => { ELENCO_SEARCH = e.target.value; renderElenco(); });
   document.getElementById("elencoSort").addEventListener("change", (e) => { ELENCO_SORT = e.target.value; renderElenco(); });
   document.getElementById("btnClubCommission").addEventListener("click", openCommissionScreen);
-  document.getElementById("btnOpenSaves").addEventListener("click", openSavesScreen);
-  document.getElementById("savesClose").addEventListener("click", closeSavesScreen);
-  document.getElementById("btnCompetitionPickerBack").addEventListener("click", openSavesScreen);
-  document.getElementById("editProfileAvatarInput").addEventListener("change", async (e) => {
-    const file = e.target.files[0]; e.target.value = "";
-    if (!file) return;
-    if (!/^image\/(jpeg|png|webp)$/.test(file.type) || file.size > 10 * 1024 * 1024) { toast("Use uma foto JPG, PNG ou WebP de até 10 MB.", { type: "warn" }); return; }
-    try { EDIT_PROFILE_AVATAR = await resizeImageToDataURL(file); renderEditProfileAvatar(); } catch { toast("Não foi possível ler essa imagem.", { type: "warn" }); }
-  });
-  document.getElementById("btnEditProfileAvatarRemove").addEventListener("click", () => { EDIT_PROFILE_AVATAR = null; renderEditProfileAvatar(); });
   // Cap. 1 · Tela 02 — mostrar/ocultar senha.
   document.getElementById("btnTogglePassword").addEventListener("click", (e) => {
     const input = document.getElementById("ctLoginPassword");
@@ -17152,6 +16855,38 @@ function migrateCareerDefaults() {
 // (CAREER.competitionId), não sempre Série A. Sem carreira salva, quem
 // decide o campeonato é o novo seletor (ver renderCompetitionPicker) —
 // loadLeague só roda depois que ele escolher.
+// Carreira 2.0 — a v2 (/carreira-v2) abre aqui as telas que ainda não tem,
+// via fragmento: /carreira#elenco, #preparar etc. Só depois que o tutorial,
+// o assistente e o login diário (que abrem sozinhos ao entrar) fecharem;
+// o fragmento é limpo pra um recarregamento não repetir a ação.
+const V2_DEEP_LINKS = {
+  preparar: () => { switchToPanel("central"); document.getElementById("btnSimulate").click(); },
+  "avancar-semana": () => { switchToPanel("central"); document.getElementById("btnSimulate").click(); },
+  amistoso: () => { switchToPanel("central"); document.getElementById("btnSimulate").click(); },
+  "proxima-temporada": () => { switchToPanel("central"); document.getElementById("btnAdvanceSeason").click(); },
+  escalacao: () => switchToPanel("escalacao"),
+  elenco: () => switchToPanel("elenco"),
+  calendario: () => switchToPanel("jogos"),
+  jogos: () => switchToPanel("jogos"),
+  financas: () => switchToPanel("clube"),
+  diretoria: () => openBoardGoalsScreen(),
+  noticias: () => openNewsScreen(),
+  proposta: () => openClubProposalModal(),
+  mais: () => document.getElementById("btnBottomMenu").click(),
+};
+function applyV2DeepLink() {
+  const key = decodeURIComponent((location.hash || "").slice(1));
+  const action = V2_DEEP_LINKS[key];
+  if (!action) return;
+  history.replaceState(null, "", location.pathname + location.search);
+  let tries = 0;
+  const run = () => {
+    const blocking = [...document.querySelectorAll(".ct-modal-overlay.open")].some((o) => o.id !== "actionLoadingOverlay");
+    if (blocking && tries++ < 120) { setTimeout(run, 250); return; }
+    if (!blocking) action();
+  };
+  setTimeout(run, 0);
+}
 async function enterAfterAuth() {
   show("screenLoading");
   document.getElementById("screenLoading").innerHTML = splashLoadingHTML("Carregando o Modo Técnico...");
@@ -17207,6 +16942,7 @@ async function enterAfterAuth() {
     persistCareer(); // grava os campos novos pra não migrar de novo (e de novo) a cada load
     setBootProgress(5, 5);
     showGameScreen();
+    applyV2DeepLink();
   } else {
     setBootProgress(5, 5);
     renderCompetitionPicker();

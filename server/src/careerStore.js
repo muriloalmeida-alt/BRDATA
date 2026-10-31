@@ -118,15 +118,13 @@ function decompressEnvelope(entry) {
   return entry; // formato antigo (pré-compressão) — ver load()
 }
 
-// Cap. 7 / Tela 02 (Gerenciamento de saves) — cada conta passa a ter
-// até MAX_SLOTS carreiras, uma delas ATIVA. /api/career (GET/PUT/DELETE)
-// continua operando só na ativa, então o cliente antigo segue
-// funcionando sem mudança nenhuma. Registro por conta:
-//   { active: "s1", slots: { s1: { __gz } }, meta: { s1: {...} } }
-// `meta` é um resumo pequeno (clube, competição, temporada, rodada,
-// data) gravado a cada save — alimenta a lista de saves e a
-// popularidade das competições (Cap. 1 / Tela 03) sem descomprimir
-// carreira nenhuma.
+// Registro por conta: { active: "s1", slots: { s1: { __gz } }, meta: {...} }.
+// Formato introduzido no PR #52 (vários saves por conta). Por decisão de
+// Produto (31/10/2026) o jogo voltou a ter UMA carreira por conta: a
+// gerência de slots saiu da API, mas o formato continua sendo LIDO e
+// gravado (save escrito pelo #52 segue legível; save antigo {__gz} ou
+// objeto cru é migrado para o slot s1 ao carregar). Carreiras em slots
+// não ativos ficam preservadas no arquivo, sem acesso pela interface.
 const MAX_SLOTS = 3;
 let store = new Map(); // userId -> registro de slots (acima)
 
@@ -274,52 +272,4 @@ function deleteCareer(userId) {
   return true;
 }
 
-// ---------- Gerenciamento de saves (Cap. 7 / Tela 02) ----------
-function listSlots(userId) {
-  const rec = store.get(userId);
-  const out = [];
-  for (let i = 1; i <= MAX_SLOTS; i++) {
-    const id = `s${i}`;
-    const filled = !!(rec && rec.slots[id]);
-    out.push({ id, active: !!rec && rec.active === id, empty: !filled, meta: filled ? rec.meta[id] : null });
-  }
-  // Conta sem registro nenhum: o slot 1 é o "ativo" implícito (é onde o
-  // 1º save vai cair, ver putActive).
-  if (!rec) out[0].active = true;
-  return { maxSlots: MAX_SLOTS, slots: out };
-}
-function slotError(msg, status) { const e = new Error(msg); e.status = status; return e; }
-function validSlotId(id) { return /^s[1-9]$/.test(id) && Number(id.slice(1)) <= MAX_SLOTS; }
-// Troca a carreira ativa. Slot vazio também pode ser ativado — é assim
-// que o cliente começa uma carreira NOVA sem apagar as outras (o
-// próximo save cai nele).
-function activateSlot(userId, slotId) {
-  if (!validSlotId(slotId)) throw slotError("Slot inválido.", 400);
-  let rec = store.get(userId);
-  if (!rec) { rec = { active: null, slots: {}, meta: {} }; store.set(userId, rec); }
-  rec.active = slotId;
-  persist();
-  return listSlots(userId);
-}
-function deleteSlot(userId, slotId) {
-  if (!validSlotId(slotId)) throw slotError("Slot inválido.", 400);
-  const rec = store.get(userId);
-  if (!rec || !rec.slots[slotId]) throw slotError("Esse save não existe.", 404);
-  delete rec.slots[slotId];
-  delete rec.meta[slotId];
-  persist();
-  return listSlots(userId);
-}
-// Quantas carreiras (todas as contas, todos os slots) existem por
-// competição — dado real pro selo "Mais popular" (Cap. 1 / Tela 03).
-function competitionPopularity() {
-  const counts = {};
-  for (const rec of store.values()) {
-    for (const m of Object.values(rec.meta || {})) {
-      if (m && m.competitionId) counts[m.competitionId] = (counts[m.competitionId] || 0) + 1;
-    }
-  }
-  return counts;
-}
-
-module.exports = { getCareer, saveCareer, deleteCareer, listSlots, activateSlot, deleteSlot, competitionPopularity, MAX_SLOTS };
+module.exports = { getCareer, saveCareer, deleteCareer };
