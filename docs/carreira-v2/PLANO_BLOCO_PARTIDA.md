@@ -1,6 +1,6 @@
 # Carreira 2.0 — Plano técnico do bloco da partida
 
-**Data:** 01/11/2026 · **Status:** proposta para aprovação do Murilo. Nenhum código foi escrito.
+**Data:** 01/11/2026 · **Status:** abordagem aprovada em 01/11 (decisões na seção 6). Entregas A1–A4 seguem uma por vez, com aprovação.
 
 **Telas do bloco:** Partida (`referencias_anteriores/partida.png`), Pausa, Substituição em jogo e Eventos (`pranchas/01_partida.png`), e Resultado final (`pranchas/02_resultados.png`, coluna 1).
 
@@ -96,3 +96,11 @@ Aplicar o visual das pranchas ao `#liveMatchOverlay` de `carreira.html`, só HTM
   - opção 2: essas telas também entram na v2 em entregas futuras.
 - **D3 — Controles que existem e não estão nas pranchas:** velocidade 1×/2×, "Pular pro fim" e estatísticas de posse e finalizações. Essas estatísticas são decorativas no motor, e o briefing proíbe estatísticas não verificadas. Ficam, saem ou vão para a versão atual?
 - **D4 — Semente/determinismo:** fica fora (A não muda o motor) ou entra já como B1, isolado e com teste de equivalência?
+
+## 6. Decisões do Murilo (01/11)
+| # | Decisão |
+|---|---|
+| D1 | **Opção A, a ponte com o motor intacto.** B fica como caminho futuro, atrás da porta `MatchGateway`. |
+| D2 | **Depois do Resultado, "Continuar" abre a versão atual** com o que estiver pendente (coletiva, resumo da rodada), funcionando como hoje. |
+| D3 | **Velocidade 1×/2× e "Pular pro fim" entram, de forma discreta.** As estatísticas de posse e finalizações ficam fora da v2. |
+| D4 | **Semente e determinismo ficam fora por enquanto.** Entram na futura etapa B1. |
