@@ -72,7 +72,7 @@ export function Home({ m }: { m: HomeModel }) {
           {(m.position !== null || m.form.length > 0) && (
             <div className="row home-stats">
               {m.position !== null && (
-                <span className="home-pos"><b>{m.position}<sup>º</sup></b><span>na tabela</span></span>
+                <Link className="home-pos" to={`${BASE}/tabela`} aria-label={`${m.position}º na tabela. Ver tabela`}><b>{m.position}<sup>º</sup></b><span>na tabela</span></Link>
               )}
               {m.form.length > 0 && (
                 <span className="home-form">

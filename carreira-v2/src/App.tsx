@@ -8,6 +8,8 @@ import { Lineup } from "./screens/Lineup.tsx";
 import { Substitute } from "./screens/Substitute.tsx";
 import { PreMatch } from "./screens/PreMatch.tsx";
 import { buildPreMatch } from "./domain/prematch.ts";
+import { Table } from "./screens/Table.tsx";
+import { buildCup, buildTable } from "./domain/table.ts";
 import { BASE, goBackTo, navigate, useLocation } from "./ui/router.tsx";
 
 type Data = { career: Career; teamById: (id: string | number) => Team };
@@ -66,6 +68,10 @@ export function App() {
     return <div className="state" role="alert">{state.kind === "error" ? state.message : "Não foi possível carregar."}<button className="state-btn" onClick={load}>Tentar novamente</button></div>;
   }
 
+  if (loc.path === `${BASE}/tabela`) {
+    const division = new URLSearchParams(loc.search).get("divisao");
+    return <Table key={division || "own"} m={buildTable(data.career, data.teamById, division)} cup={buildCup(data.career, data.teamById)} />;
+  }
   if (loc.path === `${BASE}/pre-jogo`) {
     const pm = buildPreMatch(data.career, data.teamById);
     if (!pm.available) {

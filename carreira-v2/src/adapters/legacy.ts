@@ -7,3 +7,5 @@ export type LegacyTarget =
   | "elenco" | "jogos" | "mais" | "proposta";
 
 export const legacyHref = (target: LegacyTarget) => `/carreira#${target}`;
+// Elenco de um clube (legado: openClubRoster; o próprio clube abre a aba Elenco).
+export const legacyClubHref = (clubId: string | number) => `/carreira#clube:${encodeURIComponent(String(clubId))}`;

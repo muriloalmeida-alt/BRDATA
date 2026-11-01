@@ -16885,7 +16885,10 @@ const V2_DEEP_LINKS = {
 };
 function applyV2DeepLink() {
   const key = decodeURIComponent((location.hash || "").slice(1));
-  const action = V2_DEEP_LINKS[key];
+  // #clube:<id> — elenco de um clube tocado na Tabela da v2 (mesmo
+  // openClubRoster do toque no nome do clube na Tabela de sempre).
+  const clubMatch = /^clube:(.+)$/.exec(key);
+  const action = clubMatch ? () => openClubRoster(clubMatch[1]) : V2_DEEP_LINKS[key];
   if (!action) return;
   history.replaceState(null, "", location.pathname + location.search);
   let tries = 0;

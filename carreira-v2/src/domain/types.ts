@@ -52,6 +52,9 @@ export interface Career {
   squad?: Player[];
   activeSchemeId?: string | null;
   updatedAt?: number;
+  otherDivisions?: Record<string, { standings?: Record<string, StandingRow> }>;
+  resultsByRound?: Record<string, { home: string | number; away: string | number; gh: number; ga: number }[]>;
+  cup?: import("./table.ts").Cup;
   recentForm?: number[];
   boardGoal?: { label: string; target?: number };
   finances?: { cash: number };

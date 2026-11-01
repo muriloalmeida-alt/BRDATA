@@ -30,7 +30,7 @@
 .home-list .row { color: inherit; }
 
 .home-stats { cursor: default; gap: 0; padding: 14px 0; }
-.home-pos { display: flex; flex-direction: column; gap: 2px; min-width: 42%; padding-right: 12px; }
+.home-pos { display: flex; flex-direction: column; justify-content: center; gap: 2px; min-width: 42%; min-height: var(--bd-touch); padding-right: 12px; color: inherit; text-decoration: none; }
 .home-pos b { font-family: var(--bd-font-display); font-weight: 700; font-size: 34px; line-height: 1; }
 .home-pos sup { font-size: .62em; vertical-align: .62em; margin-left: 2px; }
 .home-pos span { font-size: 12px; font-weight: 500; color: var(--bd-gold); }

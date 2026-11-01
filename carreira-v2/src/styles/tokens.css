@@ -16,6 +16,10 @@
   --bd-danger: #ef5c62;
   --bd-neutral-chip: #3a4049;
   --bd-line: #2b333f;
+  /* Zonas da tabela — mesmas cores da versão atual (decisão de 01/11) */
+  --bd-zone-top: var(--bd-gold);
+  --bd-zone-mid: #5aa9e6;
+  --bd-zone-reb: var(--bd-danger);
 
   --bd-font-display: "Barlow Condensed", "Arial Narrow", sans-serif;
   --bd-font-text: "Barlow", "Inter", system-ui, sans-serif;
