@@ -50,7 +50,8 @@ async function pickClub(page, base) {
   const wizardOpenBefore = await page.evaluate(() => document.getElementById("startupWizardOverlay").classList.contains("open"));
   check("1) Tutorial de navegação abre primeiro (assistente ainda não, sobrepostos nunca):", onboardOpen && !wizardOpenBefore);
   await page.click("#btnOnboardSkip");
-  await page.waitForTimeout(400);
+  // Espera o assistente de fato (era um sleep fixo de 400 ms — curto no CI).
+  await page.waitForFunction(() => document.getElementById("startupWizardOverlay").classList.contains("open") && !!document.getElementById("wizardStepTitle").textContent, null, { timeout: 8000 }).catch(() => {});
   const wizardOpenAfter = await page.evaluate(() => document.getElementById("startupWizardOverlay").classList.contains("open"));
   const step1 = await page.evaluate(() => ({
     title: document.getElementById("wizardStepTitle").textContent,
