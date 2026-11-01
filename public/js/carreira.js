@@ -16917,6 +16917,12 @@ function ponteEstado() {
       titulares: CAREER.lineup.starters.map(ponteJogador),
       banco: CAREER.lineup.bench.map(ponteJogador).filter(Boolean),
     },
+    tatica: {
+      formacao: CAREER.lineup.formation,
+      eixos: TACTIC_AXES.map((ax) => ({ id: ax.id, nome: ax.label, baixo: ax.lowLabel, alto: ax.highLabel, nivel: (CAREER.lineup.tactics || {})[ax.id] || 3 })),
+      formacoes: Object.keys(FORMATIONS),
+      penalidadeBlocos: lm.formationPenaltyChunksLeft || 0,
+    },
     eventos: lm.events.map((e) => ({
       minuto: e.minute, tipo: e.type, meu: e.mine === true,
       jogador: e.player || null, assistencia: e.assistPlayer || null, entra: e.entra || null, sai: e.saiu || null, penalti: !!e.penalty,
@@ -16942,6 +16948,43 @@ if (V2_PONTE) {
     continuarIntervalo() { if (LIVE_MATCH && LIVE_MATCH.halftime) continueFromHalftime(); },
     velocidade(v) { if (LIVE_MATCH) { LIVE_MATCH.speed = v === 2 ? 2 : 1; ponteAvisar(); } },
     pularParaFim() { if (LIVE_MATCH && !LIVE_MATCH.finished) skipLiveMatch(); },
+    // Substituição: valida como a tela atual e executa o MESMO
+    // confirmLiveSub (que retoma o jogo — a ponte repausa: na v2 a troca
+    // é feita com a partida parada na Pausa).
+    substituir(saiId, entraId) {
+      const lm = LIVE_MATCH;
+      if (!lm || lm.finished) return { ok: false, motivo: "sem-partida" };
+      if (lm.subsUsed >= MAX_SUBS_PER_MATCH + lm.subsBonus) return { ok: false, motivo: "sem-substituicoes" };
+      if (!CAREER.lineup.starters.includes(saiId)) return { ok: false, motivo: "nao-esta-em-campo" };
+      const entra = CAREER.squad.find((p) => p.id === entraId);
+      if (!entra || !CAREER.lineup.bench.includes(entraId) || entra.status !== "ok") return { ok: false, motivo: "reserva-indisponivel" };
+      const wasHalftime = !!lm.halftime;
+      openLiveSubModal();
+      document.getElementById("liveSubOutSelect").value = saiId;
+      document.getElementById("liveSubInSelect").value = entraId;
+      confirmLiveSub();
+      if (!wasHalftime) pauseLiveMatch();
+      ponteAvisar();
+      return { ok: true };
+    },
+    // Tática: mesma rotina de confirmLiveTactics (custo de familiaridade
+    // ao trocar esquema incluso); a ponte repausa depois, como acima.
+    aplicarTatica({ formacao, eixos }) {
+      const lm = LIVE_MATCH;
+      if (!lm || lm.finished) return { ok: false, motivo: "sem-partida" };
+      if (!FORMATIONS[formacao]) return { ok: false, motivo: "formacao-invalida" };
+      const wasHalftime = !!lm.halftime;
+      openLiveTacticsModal();
+      document.getElementById("liveTacticsFormation").value = formacao;
+      document.querySelectorAll("#liveTacticAxisRows .m3-instr-row").forEach((row) => {
+        const v = eixos && eixos[row.dataset.axis];
+        if (v >= 1 && v <= 5) row.dataset.level = String(Math.round(v));
+      });
+      confirmLiveTactics();
+      if (!wasHalftime) pauseLiveMatch();
+      ponteAvisar();
+      return { ok: true };
+    },
   };
 }
 const V2_DEEP_LINKS = {

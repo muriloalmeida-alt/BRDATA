@@ -1,7 +1,7 @@
 // Testes do domínio da Partida: node --test --experimental-strip-types
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { buildLiveLineup, buildMatch } from "./match.ts";
+import { buildLiveLineup, buildMatch, buildSubs } from "./match.ts";
 import type { MatchSnapshot } from "../adapters/match.ts";
 
 const ev = (minuto: number, tipo: string, meu: boolean, extra = {}) => ({ minuto, tipo, meu, jogador: null, assistencia: null, entra: null, sai: null, penalti: false, ...extra });
@@ -75,4 +75,16 @@ test("Revisar time: escalação ao vivo da ponte no campo da Escalação (forma�
   assert.equal(l.rows.flat().find((x) => x.index === 7)!.player, null);
   assert.deepEqual(l.bench.map((b) => b.player.id), ["b1"]);
   assert.equal(buildLiveLineup({ fase: "jogando" }), null);
+});
+
+test("substituição: sai = titulares em campo; entra = só reservas com status ok; limite real", () => {
+  const s = snap();
+  const P = (id: string, status = "ok") => ({ id, nome: `Nome ${id}`, grupo: "M" as const, overall: 70, status, voltaRodada: null, condicao: 61 });
+  s.escalacao = { formacao: "4-4-2", titulares: [P("a"), null, P("c", "contundido")], banco: [P("r1"), P("r2", "suspenso"), P("r3")] };
+  s.substituicoes = { usadas: 4, total: 6 };
+  const m = buildSubs(s)!;
+  assert.deepEqual(m.starters.map((x) => x.id), ["a", "c"]);
+  assert.deepEqual(m.bench.map((x) => x.id), ["r1", "r3"]);
+  assert.deepEqual([m.used, m.total, m.left], [4, 6, 2]);
+  assert.equal(m.starters[0].short, "N. a");
 });

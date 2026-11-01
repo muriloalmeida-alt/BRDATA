@@ -87,7 +87,9 @@ export function App() {
   if (loc.path === `${BASE}/partida`) {
     const q = new URLSearchParams(loc.search);
     const tela = q.get("tela");
-    return <Match startNow={q.get("iniciar") === "1"} sub={tela === "pausa" || tela === "time" ? tela : null} competitionId={data.career.competitionId} teamById={data.teamById} onFinished={reloadCareer} />;
+    const SUBS = ["pausa", "time", "sai", "entra", "tatica", "lances"] as const;
+    const sub = (SUBS as readonly string[]).includes(tela || "") ? (tela as (typeof SUBS)[number]) : null;
+    return <Match startNow={q.get("iniciar") === "1"} sub={sub} outId={q.get("sai")} competitionId={data.career.competitionId} teamById={data.teamById} onFinished={reloadCareer} />;
   }
   if (loc.path === `${BASE}/financas`) {
     return <Finance m={buildFinance(data.career)} />;

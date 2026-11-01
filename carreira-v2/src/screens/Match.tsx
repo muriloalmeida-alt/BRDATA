@@ -3,13 +3,15 @@
 // opção A). A1: placar, minuto, último evento, lances, velocidade e
 // "Pular para o fim" (decisões de 01/11). A2: Pausa (CAP04-T03) — aberta por
 // Pausar/Ajustes e sozinha no intervalo — e "Revisar time" (escalação ao
-// vivo). As vistas são ?tela=pausa|time na MESMA rota: a sessão da ponte
-// continua viva e o voltar do sistema retorna à partida. Substituir e
-// Ajustar tática chegam na A3; o Resultado na A4. Até a A4, o Pré-jogo
+// vivo). A3: Substituir (?tela=sai → entra), Ajustar tática (?tela=tatica)
+// e Lances (?tela=lances), abertos pela Pausa. As vistas ficam na MESMA rota: a sessão da ponte
+// continua viva e o voltar do sistema retorna à partida. O Resultado vem na
+// A4. Até a A4, o Pré-jogo
 // segue abrindo a partida na versão atual.
 import { useEffect, useRef, useState } from "react";
 import { openMatchSession, type MatchSession } from "../adapters/match.ts";
-import { buildLiveLineup, buildMatch, type MatchModel } from "../domain/match.ts";
+import { buildLiveLineup, buildMatch, buildSubs, type MatchModel } from "../domain/match.ts";
+import { EventsView, SubInView, SubOutView, TacticsView } from "./MatchAdjust.tsx";
 import type { MatchSnapshot } from "../adapters/match.ts";
 import type { LineupModel } from "../domain/lineup.ts";
 import type { Team } from "../domain/types.ts";
@@ -25,11 +27,11 @@ import "./home.css";
 import "./match.css";
 
 type View = { kind: "loading" } | { kind: "error"; message: string } | { kind: "none"; message: string } | { kind: "live"; m: MatchModel; snap: MatchSnapshot };
-export type MatchSub = "pausa" | "time" | null;
+export type MatchSub = "pausa" | "time" | "sai" | "entra" | "tatica" | "lances" | null;
 const PARTIDA = `${BASE}/partida`;
 
-export function Match({ startNow, sub, competitionId, teamById, onFinished }: {
-  startNow: boolean; sub: MatchSub; competitionId?: string; teamById: (id: string | number) => Team; onFinished: () => void;
+export function Match({ startNow, sub, outId, competitionId, teamById, onFinished }: {
+  startNow: boolean; sub: MatchSub; outId?: string | null; competitionId?: string; teamById: (id: string | number) => Team; onFinished: () => void;
 }) {
   // Só a 1ª montagem decide se começa: trocar de vista (?tela=) não reinicia.
   const startOnce = useRef(startNow);
@@ -87,8 +89,26 @@ export function Match({ startNow, sub, competitionId, teamById, onFinished }: {
   function openPause() { s.pause(); navigate(`${PARTIDA}?tela=pausa`); }
   const resumeAndBack = () => { if (m.phase === "intervalo") s.continueHalftime(); else s.resume(); goBackTo(PARTIDA); };
 
-  if (sub === "pausa" && !ended) return <PauseView m={m} teamById={teamById} onResume={resumeAndBack} />;
+  const PAUSA = `${PARTIDA}?tela=pausa`;
+  // Volta à Pausa a partir de uma vista aberta por ela (n passos atrás no
+  // histórico quando a cadeia é a esperada; senão substitui).
+  const backToPause = (steps: number) => {
+    if (history.state && typeof history.state.v2from === "string" && history.state.v2from.startsWith(PARTIDA)) history.go(-steps);
+    else navigate(PAUSA, { replace: true });
+  };
+  const subs = buildSubs(view.snap);
+  if (!ended && sub === "pausa") return <PauseView m={m} teamById={teamById} onResume={resumeAndBack} />;
   if (sub === "time") return <TeamView lineup={buildLiveLineup(view.snap)} />;
+  if (!ended && sub === "sai" && subs) return <SubOutView m={m} subs={subs} teamById={teamById} onBack={() => backToPause(1)} onPick={(id) => navigate(`${PARTIDA}?tela=entra&sai=${encodeURIComponent(id)}`)} />;
+  if (!ended && sub === "entra" && subs && outId) return (
+    <SubInView key={outId} m={m} subs={subs} outId={outId} teamById={teamById} onCancel={() => backToPause(2)}
+      onConfirm={(inId) => { const r = s.substitute(outId, inId); if (r.ok) backToPause(2); return r; }} />
+  );
+  if (!ended && sub === "tatica" && view.snap.tatica) return (
+    <TacticsView m={m} tatica={view.snap.tatica} teamById={teamById} onCancel={() => backToPause(1)}
+      onApply={(f, a) => { const r = s.applyTactics(f, a); if (r.ok) backToPause(1); return r; }} />
+  );
+  if (sub === "lances") return <EventsView m={m} teamById={teamById} onBack={() => backToPause(1)} />;
 
   return (
     <div className="mt">
@@ -179,14 +199,28 @@ function PauseView({ m, teamById, onResume }: { m: MatchModel; teamById: (id: st
           <span className="row-body"><span className="row-title">Revisar time</span><span className="row-sub">Veja a escalação em campo.</span></span>
           <IconChevron className="row-chevron" />
         </a>
-        <div className="row pz-row is-soon" aria-disabled="true">
-          <IconSwap className="row-icon pz-ico" />
-          <span className="row-body"><span className="row-title">Substituir jogador</span><span className="row-sub">{`${m.subs.used} de ${m.subs.total} usadas · disponível na próxima entrega`}</span></span>
-        </div>
-        <div className="row pz-row is-soon" aria-disabled="true">
+        {m.subs.used < m.subs.total ? (
+          <a className="row pz-row" href={`${PARTIDA}?tela=sai`} onClick={(e) => { e.preventDefault(); navigate(`${PARTIDA}?tela=sai`); }}>
+            <IconSwap className="row-icon pz-ico" />
+            <span className="row-body"><span className="row-title">Substituir jogador</span><span className="row-sub">{`Troque jogadores em campo · ${m.subs.used} de ${m.subs.total}`}</span></span>
+            <IconChevron className="row-chevron" />
+          </a>
+        ) : (
+          <div className="row pz-row is-soon" aria-disabled="true">
+            <IconSwap className="row-icon pz-ico" />
+            <span className="row-body"><span className="row-title">Substituir jogador</span><span className="row-sub">{`Sem substituições disponíveis · ${m.subs.used} de ${m.subs.total}`}</span></span>
+          </div>
+        )}
+        <a className="row pz-row" href={`${PARTIDA}?tela=tatica`} onClick={(e) => { e.preventDefault(); navigate(`${PARTIDA}?tela=tatica`); }}>
           <IconTactic className="row-icon pz-ico" />
-          <span className="row-body"><span className="row-title">Ajustar tática</span><span className="row-sub">Formação e instruções · disponível na próxima entrega</span></span>
-        </div>
+          <span className="row-body"><span className="row-title">Ajustar tática</span><span className="row-sub">Altere a formação e instruções.</span></span>
+          <IconChevron className="row-chevron" />
+        </a>
+        <a className="row pz-row" href={`${PARTIDA}?tela=lances`} onClick={(e) => { e.preventDefault(); navigate(`${PARTIDA}?tela=lances`); }}>
+          <IconBall className="row-icon pz-ico" />
+          <span className="row-body"><span className="row-title">Lances da partida</span><span className="row-sub">Gols, cartões e substituições até agora.</span></span>
+          <IconChevron className="row-chevron" />
+        </a>
       </nav>
       <div className="mt-foot pz-foot">
         <button type="button" className="cta mt-primary" onClick={onResume}><IconPlay className="mt-btn-ico" />{half ? "Começar 2º tempo" : "Retomar partida"}</button>

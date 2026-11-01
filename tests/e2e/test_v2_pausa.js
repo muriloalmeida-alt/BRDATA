@@ -47,8 +47,8 @@ const { skipPreseason } = require("./_calendar_skip");
     rows: [...document.querySelectorAll(".pz-row .row-title")].map((r) => r.textContent), soon: document.querySelectorAll(".pz-row[aria-disabled='true']").length, cta: document.querySelector(".pz-foot .mt-primary").textContent }));
   await v2.waitForTimeout(2500);
   const min2 = await v2.locator(".pz-min").textContent();
-  check("1) Pausar abre a Pausa (?tela=pausa) com Revisar time / Substituir / Ajustar tática e 'Retomar partida'; minuto parado:",
-    p1.search === "?tela=pausa" && p1.title === "Partida pausada" && JSON.stringify(p1.rows) === JSON.stringify(["Revisar time", "Substituir jogador", "Ajustar tática"]) && p1.soon === 2 && /Retomar partida/.test(p1.cta) && min2 === p1.min, JSON.stringify({ p1, min2 }));
+  check("1) Pausar abre a Pausa (?tela=pausa) com Revisar time / Substituir / Ajustar tática / Lances (A3) e 'Retomar partida'; minuto parado:",
+    p1.search === "?tela=pausa" && p1.title === "Partida pausada" && JSON.stringify(p1.rows) === JSON.stringify(["Revisar time", "Substituir jogador", "Ajustar tática", "Lances da partida"]) && p1.soon === 0 && /Retomar partida/.test(p1.cta) && min2 === p1.min, JSON.stringify({ p1, min2 }));
 
   // 2) Revisar time: escalação ao vivo = a do save antes do jogo.
   await v2.click(".pz-row[href$='tela=time']");

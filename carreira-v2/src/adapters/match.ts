@@ -20,7 +20,10 @@ export interface MatchSnapshot {
   substituicoes?: { usadas: number; total: number };
   eventos?: MatchEvent[];
   escalacao?: { formacao: string; titulares: (LivePlayer | null)[]; banco: LivePlayer[] };
+  tatica?: { formacao: string; eixos: TacticAxis[]; formacoes: string[]; penalidadeBlocos: number };
 }
+export interface TacticAxis { id: string; nome: string; baixo: string; alto: string; nivel: number }
+export type CommandResult = { ok: boolean; motivo?: string };
 export interface LivePlayer { id: string; nome: string; grupo: "G" | "D" | "M" | "F"; overall: number; status: string; voltaRodada: number | null; condicao: number | null }
 interface PonteApi {
   estado(): MatchSnapshot;
@@ -28,6 +31,8 @@ interface PonteApi {
   iniciar(): { ok: boolean; aoVivo?: boolean; motivo?: string };
   pausar(): void; retomar(): void; continuarIntervalo(): void;
   velocidade(v: 1 | 2): void; pularParaFim(): void;
+  substituir(saiId: string, entraId: string): CommandResult;
+  aplicarTatica(t: { formacao: string; eixos: Record<string, number> }): CommandResult;
 }
 
 export interface MatchSession {
@@ -36,6 +41,8 @@ export interface MatchSession {
   start(): { ok: boolean; motivo?: string };
   pause(): void; resume(): void; continueHalftime(): void;
   speed(v: 1 | 2): void; skip(): void;
+  substitute(outId: string, inId: string): CommandResult;
+  applyTactics(formation: string, axes: Record<string, number>): CommandResult;
   destroy(): void;
 }
 
@@ -65,6 +72,8 @@ export function openMatchSession(): Promise<MatchSession> {
           start: () => p.iniciar(),
           pause: () => p.pausar(), resume: () => p.retomar(), continueHalftime: () => p.continuarIntervalo(),
           speed: (v) => p.velocidade(v), skip: () => p.pularParaFim(),
+          substitute: (o, i) => p.substituir(o, i),
+          applyTactics: (f, a) => p.aplicarTatica({ formacao: f, eixos: a }),
           destroy,
         });
         return;

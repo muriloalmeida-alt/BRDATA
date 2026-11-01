@@ -100,3 +100,19 @@ export function buildLiveLineup(s: MatchSnapshot): LineupModel | null {
   };
   return buildLineup(career);
 }
+
+// Substituição ao vivo — mesmos universos da tela atual (openLiveSubModal):
+// sai = qualquer titular em campo; entra = reserva com status "ok".
+export interface SubPlayer { id: string; name: string; short: string; group: "G" | "D" | "M" | "F"; overall: number; condition: number | null; status: string }
+export interface SubModel { used: number; total: number; left: number; starters: SubPlayer[]; bench: SubPlayer[] }
+export function buildSubs(s: MatchSnapshot): SubModel | null {
+  const esc = s.escalacao;
+  if (!esc) return null;
+  const map = (p: NonNullable<typeof esc.titulares[number]>): SubPlayer => ({ id: p.id, name: p.nome, short: shortName(p.nome), group: p.grupo, overall: p.overall, condition: p.condicao, status: p.status });
+  const used = s.substituicoes?.usadas || 0, total = s.substituicoes?.total || 5;
+  return {
+    used, total, left: Math.max(0, total - used),
+    starters: esc.titulares.filter((p): p is NonNullable<typeof p> => !!p).map(map),
+    bench: esc.banco.filter((p) => p.status === "ok").map(map),
+  };
+}

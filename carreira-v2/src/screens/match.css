@@ -71,3 +71,44 @@
 .pz-bench-name { flex: 1; font-family: var(--bd-font-display); font-weight: 600; font-size: 17px; }
 .pz-bench-out { font-size: 13px; color: var(--bd-danger); }
 .pz-pad { margin: 16px var(--bd-gutter); }
+
+/* ---- A3: substituição, tática e lances ---- */
+.sb-count { margin: 14px var(--bd-gutter) 0; font-size: 15px; color: var(--bd-muted); }
+.sb-list { margin: 6px var(--bd-gutter) 24px; padding: 0; list-style: none; }
+.sb-opt { padding-left: 4px; }
+.sb-out-tag { flex-shrink: 0; font-family: var(--bd-font-display); font-weight: 700; font-size: 16px; color: var(--bd-danger); }
+.sb-pair { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; margin: 18px var(--bd-gutter) 0; padding-bottom: 16px; border-bottom: 1px solid var(--bd-line); }
+.sb-side { display: flex; flex-direction: column; align-items: center; gap: 4px; min-width: 0; text-align: center; }
+.sb-label { font-family: var(--bd-font-display); font-weight: 700; font-size: 22px; }
+.sb-label.is-out { color: var(--bd-danger); }
+.sb-label.is-in { color: var(--bd-accent); }
+.sb-name { font-family: var(--bd-font-display); font-weight: 700; font-size: 22px; line-height: 1.1; overflow-wrap: anywhere; }
+.sb-meta { font-size: 15px; color: var(--bd-muted); }
+.sb-swap { width: 46px; height: 46px; color: var(--bd-accent); }
+.sb-bench { margin: 16px var(--bd-gutter) 0; padding-bottom: 12px; }
+.sb-bench-title { margin: 0 0 4px; font-family: var(--bd-font-display); font-weight: 600; font-size: 19px; }
+.sb-foot { display: flex; flex-direction: column; gap: 10px; }
+
+.tk-sec { margin: 18px var(--bd-gutter) 0; }
+.tk-forms { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 8px; margin-top: 8px; }
+.tk-form { position: relative; display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: var(--bd-touch); border: 1px solid var(--bd-line); border-radius: var(--bd-radius-sm); background: none; color: var(--bd-text); font-family: var(--bd-font-display); font-weight: 600; font-size: 18px; cursor: pointer; }
+.tk-form.is-on { border-color: var(--bd-accent); color: var(--bd-accent); }
+.tk-check { width: 18px; height: 18px; }
+.tk-note { margin: 10px 0 0; font-size: 14px; color: var(--bd-gold); }
+.tk-axis { margin: 0; font-family: var(--bd-font-display); font-weight: 600; font-size: 19px; }
+.tk-seg { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; margin-top: 8px; }
+.tk-step { min-height: var(--bd-touch); border: 1px solid var(--bd-line); border-radius: 6px; background: none; color: var(--bd-muted); font-family: var(--bd-font-display); font-weight: 600; font-size: 17px; cursor: pointer; }
+.tk-step.is-fill { background: #1f2a1a; border-color: #4d6a24; color: var(--bd-text); }
+.tk-step.is-on { background: var(--bd-accent); border-color: var(--bd-accent); color: var(--bd-on-accent); }
+.tk-ends { display: flex; justify-content: space-between; margin-top: 4px; font-size: 13px; color: var(--bd-muted); }
+
+.ev-list { margin: 8px var(--bd-gutter) 24px; padding: 0; list-style: none; }
+.ev-item { display: grid; grid-template-columns: 48px 40px 1fr; align-items: center; min-height: 64px; padding: 8px 0; border-bottom: 1px solid var(--bd-line); }
+.ev-min { font-family: var(--bd-font-display); font-weight: 700; font-size: 20px; color: var(--bd-gold); }
+.ev-ico { width: 28px; height: 28px; color: #d7d9dd; }
+.ev-ico.is-mine { color: var(--bd-accent); }
+.ev-dot { width: 10px; height: 10px; margin-left: 9px; border-radius: 50%; background: #5b6676; }
+.ev-dot.is-start { background: transparent; border: 2px solid #d7d9dd; width: 14px; height: 14px; margin-left: 7px; }
+.ev-body { display: flex; flex-direction: column; min-width: 0; }
+.ev-body b { font-family: var(--bd-font-display); font-weight: 600; font-size: 19px; }
+.ev-body span { font-size: 15px; color: var(--bd-muted); }
