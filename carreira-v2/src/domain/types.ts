@@ -64,6 +64,8 @@ export interface Career {
   cup?: import("./table.ts").Cup;
   recentForm?: number[];
   boardGoal?: { label: string; target?: number };
+  objectives?: { season?: { title: string; status?: string; target?: number; currentProgress?: number }[] };
+  seasonHistory?: { year: number; position: number; points?: number; goalLabel: string; goalWasMet: boolean }[];
   finances?: { cash: number };
   newsFeed?: NewsItem[];
   clubProposals?: { clubName: string }[];

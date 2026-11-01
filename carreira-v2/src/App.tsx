@@ -15,6 +15,8 @@ import { buildCalendar } from "./domain/calendar.ts";
 import { Squad } from "./screens/Squad.tsx";
 import { Profile } from "./screens/Profile.tsx";
 import { buildProfile, buildSquad } from "./domain/squad.ts";
+import { Board } from "./screens/Board.tsx";
+import { buildBoard } from "./domain/board.ts";
 import { BASE, goBackTo, navigate, useLocation } from "./ui/router.tsx";
 
 type Data = { career: Career; teamById: (id: string | number) => Team };
@@ -73,6 +75,9 @@ export function App() {
     return <div className="state" role="alert">{state.kind === "error" ? state.message : "Não foi possível carregar."}<button className="state-btn" onClick={load}>Tentar novamente</button></div>;
   }
 
+  if (loc.path === `${BASE}/diretoria`) {
+    return <Board m={buildBoard(data.career)} />;
+  }
   if (loc.path === `${BASE}/elenco`) {
     return <Squad m={buildSquad(data.career)} />;
   }

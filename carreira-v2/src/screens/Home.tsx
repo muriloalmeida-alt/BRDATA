@@ -86,10 +86,10 @@ export function Home({ m }: { m: HomeModel }) {
           )}
 
           {m.objective && (
-            <a className="row" href={legacyHref("diretoria")}>
+            <Link className="row" to={`${BASE}/diretoria`}>
               <span className="row-body"><span className="row-kicker">Objetivo</span><span className="row-title">{m.objective}</span></span>
               <IconChevron className="row-chevron" />
-            </a>
+            </Link>
           )}
           {m.cash && (
             <a className="row" href={legacyHref("financas")}>
