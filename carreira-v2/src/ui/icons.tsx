@@ -15,3 +15,7 @@ export const IconMail = (p: P) => <S {...p}><rect x="3" y="5.5" width="18" heigh
 export const IconBack = (p: P) => <S {...p}><path d="m15 5-7 7 7 7" /></S>;
 export const IconDown = (p: P) => <S {...p}><path d="m6 9 6 6 6-6" /></S>;
 export const IconCheck = (p: P) => <S {...p}><path d="m5.5 12.5 4.2 4 8.8-9" /></S>;
+export const IconPause = (p: P) => <svg className={p.className} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="6" y="4.5" width="4" height="15" rx="1" /><rect x="14" y="4.5" width="4" height="15" rx="1" /></svg>;
+export const IconPlay = (p: P) => <svg className={p.className} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 4.8v14.4a1 1 0 0 0 1.5.86l11.5-7.2a1 1 0 0 0 0-1.72L8.5 3.94A1 1 0 0 0 7 4.8Z" /></svg>;
+export const IconSliders = (p: P) => <S {...p}><path d="M4 7h10M18 7h2M4 17h4M12 17h8" /><circle cx="16" cy="7" r="2.2" /><circle cx="10" cy="17" r="2.2" /><path d="M4 12h2M10 12h10" /><circle cx="8" cy="12" r="2.2" /></S>;
+export const IconBall = (p: P) => <svg className={p.className} viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="currentColor" /><path d="m12 7.2 3.6 2.6-1.4 4.2H9.8L8.4 9.8Z" fill="var(--bd-bg)" /><path d="M12 7.2V3.5M15.6 9.8l3.5-1.2M14.2 14l2.2 3.1M9.8 14l-2.2 3.1M8.4 9.8 4.9 8.6" stroke="var(--bd-bg)" strokeWidth="1.4" /></svg>;

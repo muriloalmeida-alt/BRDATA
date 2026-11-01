@@ -1,0 +1,86 @@
+// Partida ao vivo (CAP04-T02 / referencias_anteriores/partida.png) — o que
+// a tela mostra a partir do estado da ponte (adapters/match.ts). Rótulos
+// fixos por tipo de evento ("Gol · B. Santos"), como a prancha — não o
+// texto sorteado do feed atual. Só exibição: nenhuma regra de jogo aqui.
+import type { MatchEvent, MatchSnapshot } from "../adapters/match.ts";
+import { COMPETITION_NAME } from "./home.ts";
+import { CUP_PHASE_LABEL } from "./table.ts";
+import { shortName } from "./lineup.ts";
+
+export interface TimelineItem { key: string; minute: number; title: string; sub: string; kind: "gol-meu" | "gol" | "neutro" | "inicio" }
+export interface MatchModel {
+  phase: MatchSnapshot["fase"];
+  saved: boolean | null;
+  kicker: string;
+  home: { id: string; name: string }; away: { id: string; name: string };
+  gh: number; ga: number;
+  minute: string; period: string;
+  last: null | { minute: number; title: string; sub: string; goal: boolean; mine: boolean };
+  timeline: TimelineItem[];
+  speed: 1 | 2;
+  subs: { used: number; total: number };
+}
+
+// Lances que contam como "último evento", por importância: no mesmo
+// minuto (o motor resolve 15' de cada vez), o gol vem antes do cartão.
+const KEY_RANK: Record<string, number> = { gol: 6, vermelho: 5, penalty_missed: 4, lesao: 3, amarelo: 2, substituicao: 1 };
+const rank = (t: string) => KEY_RANK[t] || 0;
+const nm = (s: string | null) => (s ? shortName(s) : "");
+
+function describe(e: MatchEvent, team: string): { title: string; sub: string } {
+  switch (e.tipo) {
+    case "gol": return { title: `${e.penalti ? "Gol de pênalti" : "Gol"} · ${nm(e.jogador)}`, sub: e.assistencia ? `${team} · assistência de ${nm(e.assistencia)}` : team };
+    case "amarelo": return { title: `Cartão amarelo · ${nm(e.jogador)}`, sub: team };
+    case "vermelho": return { title: `Cartão vermelho · ${nm(e.jogador)}`, sub: team };
+    case "lesao": return { title: `Lesão · ${nm(e.jogador)}`, sub: team };
+    case "substituicao": return { title: "Substituição", sub: `${team} · entra ${nm(e.entra)}, sai ${nm(e.sai)}` };
+    case "chance_perdida": return { title: `Chance perdida · ${nm(e.jogador)}`, sub: team };
+    case "defesa": return { title: `Finalização defendida · ${nm(e.jogador)}`, sub: team };
+    case "penalty_awarded": return { title: "Pênalti marcado", sub: team };
+    case "penalty_missed": return { title: `Pênalti perdido · ${nm(e.jogador)}`, sub: team };
+    case "var_check": return { title: "Revisão do VAR", sub: team };
+    default: return { title: "Lance", sub: team };
+  }
+}
+
+export function buildMatch(s: MatchSnapshot, competitionId?: string): MatchModel | null {
+  if (!s.mandante || !s.visitante) return null;
+  const mine = s.souMandante ? s.mandante : s.visitante;
+  const opp = s.souMandante ? s.visitante : s.mandante;
+  const kicker = s.contexto === "copa" && s.copa
+    ? `Copa do Brasil · ${CUP_PHASE_LABEL[s.copa.fase] || s.copa.fase} · ${s.copa.perna === 2 ? "Volta" : "Ida"}`
+    : s.contexto === "amistoso" ? "Amistoso"
+    : `${COMPETITION_NAME[competitionId || "brasileirao"] || "Competição"} · Rodada ${s.rodada}`;
+  const events = s.eventos || [];
+  const teamOf = (e: MatchEvent) => (e.meu ? mine.nome : opp.nome);
+  // Mais recente primeiro; no mesmo minuto, o mais importante primeiro.
+  const ordered = events.map((e, i) => ({ e, i })).sort((a, b) => (b.e.minuto - a.e.minuto) || (rank(b.e.tipo) - rank(a.e.tipo)) || (b.i - a.i));
+  const timeline: TimelineItem[] = ordered.map(({ e, i }) => {
+    const d = describe(e, teamOf(e));
+    const kind: TimelineItem["kind"] = e.tipo === "gol" ? (e.meu ? "gol-meu" : "gol") : "neutro";
+    return { key: `e${i}`, minute: e.minuto, ...d, kind };
+  });
+  timeline.push({ key: "inicio", minute: 0, title: "Início da partida", sub: `${s.mandante.nome} × ${s.visitante.nome}`, kind: "inicio" });
+  const lastKey = ordered.find(({ e }) => rank(e.tipo) > 0)?.e;
+  const last = lastKey ? (() => {
+    const team = teamOf(lastKey);
+    const d = describe(lastKey, team);
+    const goal = lastKey.tipo === "gol";
+    return {
+      minute: lastKey.minuto, goal, mine: lastKey.meu,
+      title: goal ? `Gol do ${team}` : d.title.split(" · ")[0],
+      sub: goal ? nm(lastKey.jogador) + (lastKey.penalti ? " (pênalti)" : "") : lastKey.tipo === "substituicao" ? `Entra ${nm(lastKey.entra)}, sai ${nm(lastKey.sai)}` : `${nm(lastKey.jogador)} · ${team}`,
+    };
+  })() : null;
+  const phase = s.fase;
+  return {
+    phase, saved: s.gravada ?? null, kicker,
+    home: { id: s.mandante.id, name: s.mandante.nome }, away: { id: s.visitante.id, name: s.visitante.nome },
+    gh: s.gh || 0, ga: s.ga || 0,
+    minute: `${s.minuto || 0}’`,
+    period: phase === "encerrada" ? "Encerrado" : phase === "intervalo" ? "Intervalo" : s.segundoTempo ? "2º tempo" : "1º tempo",
+    last, timeline,
+    speed: s.velocidade === 2 ? 2 : 1,
+    subs: { used: s.substituicoes?.usadas || 0, total: s.substituicoes?.total || 5 },
+  };
+}

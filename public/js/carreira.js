@@ -220,6 +220,15 @@ function subPositionOf(p) {
 function squadSortKey(p) { return (SUBPOS_ORDER[subPositionOf(p)] ?? 9) * 1000 - p.overall; }
 
 /* ---------- Estado ---------- */
+// Carreira 2.0 — "modo ponte" (docs/carreira-v2/PLANO_BLOCO_PARTIDA.md,
+// opção A): a v2 abre esta página num quadro invisível com ?ponte=partida
+// e conduz a partida pela API BRDATA_PONTE (ver ponteEstado). Motor,
+// regras e gravação são os de sempre; nesse modo a página só não abre os
+// modais de entrada nem toca sons (decisão de 01/11: partida em silêncio).
+const V2_PONTE = new URLSearchParams(location.search).get("ponte") === "partida";
+// Estado só da ponte (nunca salvo): última partida vista (LIVE_MATCH vira
+// null no fim), resultado da gravação final e quem está ouvindo.
+const PONTE = { pronta: false, ultimo: null, fim: null, ouvintes: new Set() };
 let LIVE_MODE = false;
 let LIVE_SEASON = new Date().getFullYear();
 let LEAGUE_TEAMS = []; // 20 clubes ativos (real ou DEMO_TEAMS — ver loadLeague)
@@ -2342,7 +2351,7 @@ function setSfxEnabled(v) {
 // de dentro do próprio jogo ao vivo já aberto por um clique, então
 // nunca esbarra na trava de "sem gesto do usuário".
 function sfxCtx() {
-  if (!SFX_ENABLED) return null;
+  if (!SFX_ENABLED || V2_PONTE) return null;
   if (!SFX_CTX) {
     const AC = window.AudioContext || window.webkitAudioContext;
     if (!AC) return null;
@@ -9460,6 +9469,7 @@ async function finishLiveMatch() {
   document.getElementById("liveMatchOverlay").classList.remove("open");
   LIVE_MATCH = null;
   const saved = await persistCareer();
+  ponteFim(saved);
   const btn = document.getElementById("btnSimulate");
   if (!saved) { if (btn) btn.disabled = false; return; }
   renderAll();
@@ -9538,7 +9548,7 @@ async function finishCupLegLive() {
   if (leg === 2) finalResult = finalizeCupPhaseExpanded(phase, lm.round, false);
   document.getElementById("liveMatchOverlay").classList.remove("open");
   LIVE_MATCH = null;
-  await persistCareer();
+  ponteFim(await persistCareer());
   renderAll();
   // Explicabilidade (CLAUDE.md §45) — resumo por toast em vez de um
   // modal dedicado (fora de escopo — "não misturar engine com redesign
@@ -9675,6 +9685,8 @@ function renderLiveMatch() {
   // intervalo, ver resumeLiveMatch (não libera o 2º tempo sozinho
   // enquanto lm.halftime for true).
   document.getElementById("liveHalftimeBanner").classList.toggle("hidden", !lm.halftime);
+  PONTE.ultimo = lm;
+  ponteAvisar();
 }
 // ---- Sub-modal: substituição ----
 function openLiveSubModal() {
@@ -12537,7 +12549,7 @@ async function finishFriendlyLive() {
   LIVE_MATCH = null;
   // O amistoso é o jogo da semana — fecha a semana (treino, prazos, mês).
   runCalendarOffWeek();
-  await persistCareer();
+  ponteFim(await persistCareer());
   renderAll();
   toast({ title: `Amistoso: ${lm.gh} x ${lm.ga}`, detail: `Contra o ${opp.name} — não vale pontos${injuriesKept ? `; ${injuriesKept} lesão confirmada` : ""}. Semana concluída.` }, { type: lm.gh >= lm.ga ? "pos" : "info" });
 }
@@ -15034,6 +15046,9 @@ function showGameScreen() {
   // renderAll() (que já monta HTML lendo os tokens --m3-* via CSS).
   applyClubPalette(teamById(CAREER.clubId));
   renderAll();
+  // Modo ponte: sem onboarding/assistente (ficam para a próxima abertura
+  // normal — nada é marcado como visto); avisa a v2 que está pronta.
+  if (V2_PONTE) { PONTE.pronta = true; ponteAvisar(); return; }
   // Onboarding (pedido do usuário: "tutorial curtinho na primeira
   // carreira") — só na 1ª vez que a CONTA entra numa carreira; o
   // login diário (linha de baixo) fica na fila logo atrás, só abre
@@ -16859,6 +16874,65 @@ function migrateCareerDefaults() {
 // via fragmento: /carreira#elenco, #preparar etc. Só depois que o tutorial,
 // o assistente e o login diário (que abrem sozinhos ao entrar) fecharem;
 // o fragmento é limpo pra um recarregamento não repetir a ação.
+/* ---------- Carreira 2.0 — API da ponte (modo ?ponte=partida) ----------
+   Só leitura do estado da partida + os MESMOS comandos dos botões da
+   tela Ao Vivo (pauseLiveMatch, resumeLiveMatch, continueFromHalftime,
+   skipLiveMatch, velocidade 1×/2×). Nenhuma regra nova: a v2 desenha, o
+   motor é este. Os eventos saem com dados (tipo, minuto, jogador), não
+   com o texto sorteado do feed (pickCommentary sorteia a cada desenho). */
+function ponteAvisar() {
+  if (!V2_PONTE) return;
+  PONTE.ouvintes.forEach((cb) => { try { cb(); } catch (err) { console.error("[ponte]", err); } });
+}
+function ponteFim(salvo) {
+  if (!V2_PONTE) return;
+  PONTE.fim = { salvo: !!salvo };
+  ponteAvisar();
+}
+function ponteEstado() {
+  const lm = LIVE_MATCH || PONTE.ultimo;
+  if (!PONTE.pronta) return { fase: "carregando" };
+  if (!lm) return { fase: "sem-partida" };
+  const n = LIVE_MATCH_CHUNK_MINUTES.length;
+  const minuto = lm.chunkIndex === 0 ? 0 : LIVE_MATCH_CHUNK_MINUTES[Math.min(lm.chunkIndex, n) - 1];
+  const encerrada = lm.finished || lm !== LIVE_MATCH;
+  return {
+    fase: encerrada ? "encerrada" : lm.halftime ? "intervalo" : lm.paused ? "pausada" : "jogando",
+    gravada: encerrada ? (PONTE.fim ? PONTE.fim.salvo : null) : null,
+    minuto, segundoTempo: minuto > 45,
+    contexto: lm.cupContext ? "copa" : lm.friendlyContext ? "amistoso" : "liga",
+    rodada: lm.round,
+    copa: lm.cupContext ? { fase: lm.cupContext.phase, perna: lm.cupContext.leg } : null,
+    mandante: { id: String(lm.home.id), nome: lm.home.name }, visitante: { id: String(lm.away.id), nome: lm.away.name },
+    souMandante: !!lm.isHome, gh: lm.gh, ga: lm.ga, velocidade: lm.speed === 2 ? 2 : 1,
+    substituicoes: { usadas: lm.subsUsed, total: MAX_SUBS_PER_MATCH + lm.subsBonus },
+    eventos: lm.events.map((e) => ({
+      minuto: e.minute, tipo: e.type, meu: e.mine === true,
+      jogador: e.player || null, assistencia: e.assistPlayer || null, entra: e.entra || null, sai: e.saiu || null, penalti: !!e.penalty,
+    })),
+  };
+}
+if (V2_PONTE) {
+  window.BRDATA_PONTE = {
+    estado: ponteEstado,
+    aoMudar(cb) { PONTE.ouvintes.add(cb); return () => PONTE.ouvintes.delete(cb); },
+    // Mesmo caminho do "Ir para o jogo" (goToMatch) — só em semana de jogo.
+    iniciar() {
+      if (!PONTE.pronta) return { ok: false, motivo: "carregando" };
+      if (LIVE_MATCH) return { ok: false, motivo: "em-andamento" };
+      const w = calendarWeek();
+      if ((w && !w.r) || CAREER.currentRound > 38) return { ok: false, motivo: "sem-jogo" };
+      PONTE.ultimo = null; PONTE.fim = null;
+      goToMatch();
+      return { ok: true, aoVivo: !!LIVE_MATCH };
+    },
+    pausar() { if (LIVE_MATCH && !LIVE_MATCH.finished) { pauseLiveMatch(); ponteAvisar(); } },
+    retomar() { if (LIVE_MATCH && !LIVE_MATCH.finished && !LIVE_MATCH.halftime) { resumeLiveMatch(); ponteAvisar(); } },
+    continuarIntervalo() { if (LIVE_MATCH && LIVE_MATCH.halftime) continueFromHalftime(); },
+    velocidade(v) { if (LIVE_MATCH) { LIVE_MATCH.speed = v === 2 ? 2 : 1; ponteAvisar(); } },
+    pularParaFim() { if (LIVE_MATCH && !LIVE_MATCH.finished) skipLiveMatch(); },
+  };
+}
 const V2_DEEP_LINKS = {
   preparar: () => { switchToPanel("central"); document.getElementById("btnSimulate").click(); },
   // "Iniciar partida" do Pré-jogo da v2 (decisão de 01/11): mesma função de

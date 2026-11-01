@@ -19,6 +19,7 @@ import { Board } from "./screens/Board.tsx";
 import { buildBoard } from "./domain/board.ts";
 import { Finance } from "./screens/Finance.tsx";
 import { buildFinance } from "./domain/finance.ts";
+import { Match } from "./screens/Match.tsx";
 import { BASE, goBackTo, navigate, useLocation } from "./ui/router.tsx";
 
 type Data = { career: Career; teamById: (id: string | number) => Team };
@@ -67,6 +68,12 @@ export function App() {
     }
   }, []);
 
+  // Depois da partida (gravada pela ponte), relê o save sem trocar de tela.
+  const reloadCareer = useCallback(async () => {
+    const fresh = await CareerGateway.loadActive().catch(() => null);
+    if (fresh) setState((s) => s.kind === "ready" ? { kind: "ready", data: { ...s.data, career: fresh } } : s);
+  }, []);
+
   const data = state.kind === "ready" ? state.data : null;
   const home = useMemo(() => data && buildHome(data.career, data.teamById), [data]);
 
@@ -77,6 +84,9 @@ export function App() {
     return <div className="state" role="alert">{state.kind === "error" ? state.message : "Não foi possível carregar."}<button className="state-btn" onClick={load}>Tentar novamente</button></div>;
   }
 
+  if (loc.path === `${BASE}/partida`) {
+    return <Match startNow={new URLSearchParams(loc.search).get("iniciar") === "1"} competitionId={data.career.competitionId} teamById={data.teamById} onFinished={reloadCareer} />;
+  }
   if (loc.path === `${BASE}/financas`) {
     return <Finance m={buildFinance(data.career)} />;
   }
