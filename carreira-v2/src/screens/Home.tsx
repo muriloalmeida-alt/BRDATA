@@ -5,6 +5,7 @@ import type { HomeModel } from "../domain/home.ts";
 import { Crest, TabBar, Wordmark } from "../ui/components.tsx";
 import { IconArrow, IconCalendar, IconChevron, IconPitch, IconAlert } from "../ui/icons.tsx";
 import { legacyHref } from "../adapters/legacy.ts";
+import { BASE, Link } from "../ui/router.tsx";
 import "./home.css";
 
 const FORM_WORD = { V: "Vitória", E: "Empate", D: "Derrota" } as const;
@@ -47,18 +48,21 @@ export function Home({ m }: { m: HomeModel }) {
         <a className="cta" href={legacyHref(m.cta.action)}>{m.cta.label}<IconArrow className="cta-arrow" /></a>
 
         <nav className="home-list" aria-label="Ações">
-          {m.alerts.map((a) => (
-            <a key={a.id} className="row" href={legacyHref(a.id)}>
+          {m.alerts.map((a) => {
+            const body = (<>
               <IconAlert className="row-icon" />
               <span className="row-body"><span className="row-title">{a.title}</span><span className="row-sub">{a.sub}</span></span>
               <IconChevron className="row-chevron" />
-            </a>
-          ))}
-          <a className="row" href={legacyHref("escalacao")}>
+            </>);
+            return a.id === "escalacao"
+              ? <Link key={a.id} className="row" to={`${BASE}/escalacao`}>{body}</Link>
+              : <a key={a.id} className="row" href={legacyHref(a.id)}>{body}</a>;
+          })}
+          <Link className="row" to={`${BASE}/escalacao`}>
             <IconPitch className="row-icon" />
             <span className="row-body"><span className="row-title">Ajustar escalação</span><span className="row-sub">Escolha quem entra em campo</span></span>
             <IconChevron className="row-chevron" />
-          </a>
+          </Link>
           <a className="row" href={legacyHref("calendario")}>
             <IconCalendar className="row-icon" />
             <span className="row-body"><span className="row-title">Ver calendário</span></span>

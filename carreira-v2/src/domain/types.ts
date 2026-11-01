@@ -1,7 +1,8 @@
 // Recorte TIPADO do estado CAREER que a v2 lê (contrato real mapeado em
-// docs/IMPLEMENTACAO_INVENTARIO_REAL.md §4). Só leitura: a v2 nunca
-// grava o save nesta entrega. Campos ausentes em saves antigos são
-// opcionais aqui de propósito.
+// docs/IMPLEMENTACAO_INVENTARIO_REAL.md §4). A única escrita da v2 é a
+// escalação (formation/starters/bench/activeSchemeId — ver
+// adapters/gateways.ts, CareerGateway.updateLineup); o resto do save é
+// devolvido intacto. Campos ausentes em saves antigos são opcionais.
 
 export interface Team {
   id: string | number;
@@ -20,6 +21,22 @@ export interface Friendly { wi: number; optional?: boolean; opp?: string | numbe
 
 export interface NewsItem { type?: string; mine?: boolean; texto: string; round?: number; seasonYear?: number }
 
+export type PlayerGroup = "G" | "D" | "M" | "F";
+export interface Player {
+  id: string;
+  name: string;
+  group: PlayerGroup;
+  overall: number;
+  status?: "ok" | "contundido" | "suspenso" | string;
+  outUntilRound?: number | null;
+}
+export interface Lineup {
+  formation?: string;
+  starters: (string | null)[];
+  bench?: string[];
+  tactics?: Record<string, number>;
+}
+
 export interface Career {
   clubId: string;
   clubName: string;
@@ -30,7 +47,10 @@ export interface Career {
   currentRound: number;
   schedule: Record<string, Fixture[]>;
   standings: Record<string, StandingRow>;
-  lineup?: { starters: (string | null)[] };
+  lineup?: Lineup;
+  squad?: Player[];
+  activeSchemeId?: string | null;
+  updatedAt?: number;
   recentForm?: number[];
   boardGoal?: { label: string; target?: number };
   finances?: { cash: number };

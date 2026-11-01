@@ -51,3 +51,47 @@ a { color: inherit; }
 @media (prefers-reduced-motion: reduce) {
   .state-line::after { animation: none; width: 100%; opacity: .5; }
 }
+
+/* ---- Entrega 02: peças compartilhadas de telas internas ---- */
+/* Topo de tela interna: voltar · wordmark centralizado · contexto */
+.sub-head { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; padding: calc(var(--bd-safe-top) + 20px) var(--bd-gutter) 0; }
+.sub-head .wordmark { font-size: 23px; }
+.sub-head-ctx { justify-self: end; font-family: var(--bd-font-display); font-weight: 600; font-size: 13px; letter-spacing: .1em; text-transform: uppercase; color: var(--bd-muted); max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sub-head-ctx--gold { color: var(--bd-gold); }
+.back-btn { justify-self: start; display: inline-flex; align-items: center; justify-content: center; width: var(--bd-touch); height: var(--bd-touch); margin-left: -6px; padding: 0; border: 0; background: none; color: var(--bd-text); cursor: pointer; }
+.back-box { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border: 1px solid var(--bd-line); border-radius: var(--bd-radius-sm); background: rgba(255, 255, 255, .02); }
+.back-box svg { width: 18px; height: 18px; }
+.back-btn--bare svg { width: 26px; height: 26px; }
+
+.screen-title { margin: 20px var(--bd-gutter) 0; font-family: var(--bd-font-display); font-weight: 700; font-size: 37px; line-height: 1.05; }
+.screen-sub { margin: 3px var(--bd-gutter) 0; font-size: 15px; color: var(--bd-muted); }
+.kicker-caps { margin: 0; font-family: var(--bd-font-display); font-weight: 600; font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: var(--bd-gold); }
+.inline-error { margin: 10px 0 0; font-size: 15px; color: var(--bd-danger); }
+
+/* CTA com a seta logo após o texto (pranchas de escalação/troca) */
+.cta--inline { gap: 10px; padding: 0 20px; }
+.cta--inline .cta-arrow { position: static; }
+.cta:disabled { opacity: .4; cursor: default; }
+.text-btn { display: block; width: 100%; min-height: var(--bd-touch); border: 0; background: none; color: var(--bd-muted); font-family: var(--bd-font-display); font-weight: 600; font-size: 19px; cursor: pointer; }
+
+/* Camisa neutra */
+.jersey { display: block; overflow: visible; }
+.jersey-body { fill: #2b2f36; stroke: #6a717c; stroke-width: 1.4; stroke-linejoin: round; }
+.jersey-collar { fill: none; stroke: #8b929c; stroke-width: 1.4; }
+.jersey text { fill: #fff; font-family: var(--bd-font-display); font-weight: 700; font-size: 21px; }
+.jersey--gk .jersey-body { fill: #24733f; stroke: #4fa46a; }
+.jersey--gk .jersey-collar { stroke: var(--bd-accent); }
+.jersey--sel .jersey-body { stroke: var(--bd-accent); stroke-width: 3; }
+.jersey--empty .jersey-body { fill: rgba(255, 255, 255, .03); stroke: #6a717c; stroke-dasharray: 4 3; }
+.jersey--empty .jersey-collar { stroke: transparent; }
+.jersey--empty text { fill: var(--bd-muted); font-size: 24px; font-weight: 500; }
+
+/* Bottom sheet (superfície escura) */
+.sheet-scrim { position: fixed; inset: 0; z-index: 40; display: flex; align-items: flex-end; background: rgba(3, 7, 12, .66); }
+.sheet { width: 100%; max-height: 82dvh; display: flex; flex-direction: column; padding: 8px var(--bd-gutter) calc(8px + var(--bd-safe-bottom)); border-radius: 16px 16px 0 0; background: #0e1724; border-top: 1px solid var(--bd-line); }
+.sheet-grip { width: 36px; height: 4px; margin: 2px auto 10px; border-radius: 2px; background: #3a4452; }
+.sheet-title { margin: 0 0 4px; font-family: var(--bd-font-display); font-weight: 700; font-size: 24px; }
+.sheet-list { overflow-y: auto; margin: 4px 0; }
+.sheet-opt { display: flex; align-items: center; justify-content: space-between; width: 100%; min-height: 52px; padding: 0 2px; border: 0; border-bottom: 1px solid var(--bd-line); background: none; color: var(--bd-text); font-family: var(--bd-font-display); font-weight: 600; font-size: 20px; text-align: left; cursor: pointer; }
+.sheet-opt.is-on { color: var(--bd-accent); }
+.sheet-check { width: 22px; height: 22px; }

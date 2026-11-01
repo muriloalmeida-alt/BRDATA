@@ -12,3 +12,6 @@ export const IconUsers = (p: P) => <S {...p}><circle cx="12" cy="8" r="3" /><pat
 export const IconMore = (p: P) => <S {...p}><circle cx="5" cy="12" r="1.3" fill="currentColor" /><circle cx="12" cy="12" r="1.3" fill="currentColor" /><circle cx="19" cy="12" r="1.3" fill="currentColor" /></S>;
 export const IconAlert = (p: P) => <S {...p}><path d="M12 4 2.5 20h19Z" /><path d="M12 10v4.5M12 17.5h.01" /></S>;
 export const IconMail = (p: P) => <S {...p}><rect x="3" y="5.5" width="18" height="13" rx="2" /><path d="m3.5 7 8.5 6 8.5-6" /></S>;
+export const IconBack = (p: P) => <S {...p}><path d="m15 5-7 7 7 7" /></S>;
+export const IconDown = (p: P) => <S {...p}><path d="m6 9 6 6 6-6" /></S>;
+export const IconCheck = (p: P) => <S {...p}><path d="m5.5 12.5 4.2 4 8.8-9" /></S>;

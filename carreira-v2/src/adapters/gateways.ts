@@ -1,15 +1,18 @@
 // Camada anticorrupção (docs/carreira-v2/docs/04): a v2 conversa com o
-// servidor existente só por estas portas. Nesta entrega são SÓ LEITURA —
-// nenhuma escrita no save (o servidor ainda não tem controle de conflito
-// entre a v2 e a tela atual; ver inventário R2).
+// servidor existente só por estas portas. Única escrita: a escalação
+// (decisão de 01/11), pelo MESMO PUT /api/career da versão atual — sem
+// API, schema ou formato novos. Antes de gravar, relê o save do servidor
+// e aplica só a mudança de escalação por cima dele (o servidor não tem
+// controle de conflito; ver inventário R2).
 import type { Career, Team } from "../domain/types.ts";
+import { applyLineupChange, type LineupChange } from "../domain/lineup.ts";
 
 export class HttpError extends Error {
   constructor(public status: number, message: string) { super(message); }
 }
 
 async function getJSON<T>(url: string): Promise<T> {
-  const res = await fetch(url, { credentials: "same-origin", headers: { Accept: "application/json" } });
+  const res = await fetch(url, { credentials: "same-origin", cache: "no-store", headers: { Accept: "application/json" } });
   const body = await res.json().catch(() => ({}));
   if (!res.ok) throw new HttpError(res.status, (body && body.error) || `Erro ${res.status}`);
   return body as T;
@@ -29,6 +32,20 @@ export const CareerGateway = {
   async loadActive(): Promise<Career | null> {
     const r = await getJSON<{ career: Career | null }>("/api/career");
     return r.career;
+  },
+  // Relê → aplica a mudança → grava (mesmo corpo e mesmo campo updatedAt
+  // que persistCareer() do legado). Devolve a carreira gravada, ou o
+  // motivo do conflito (nada gravado).
+  async updateLineup(change: LineupChange): Promise<{ career: Career } | { conflict: string }> {
+    const fresh = await this.loadActive();
+    if (!fresh) throw new HttpError(404, "Carreira não encontrada.");
+    const next = applyLineupChange(fresh, change);
+    if ("conflict" in next) return next;
+    next.updatedAt = Date.now();
+    const res = await fetch("/api/career", { method: "PUT", credentials: "same-origin", headers: { "Content-Type": "application/json", Accept: "application/json" }, body: JSON.stringify(next) });
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) throw new HttpError(res.status, (body && body.error) || `Erro ${res.status}`);
+    return { career: next };
   },
 };
 

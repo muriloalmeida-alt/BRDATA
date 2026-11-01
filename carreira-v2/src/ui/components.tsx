@@ -2,6 +2,7 @@ import type { Team } from "../domain/types.ts";
 import { crestSrc } from "../adapters/gateways.ts";
 import { IconHome, IconUsers, IconCalendar, IconMore } from "./icons.tsx";
 import { legacyHref } from "../adapters/legacy.ts";
+import { Link } from "./router.tsx";
 
 export function Wordmark() {
   return <span className="wordmark" role="img" aria-label="BRDATA">BR<b>DATA</b></span>;
@@ -31,8 +32,25 @@ export function TabBar({ current }: { current: "inicio" | "elenco" | "jogos" | "
   return (
     <nav className="tabbar" aria-label="Navegação principal">
       {tabs.map(({ id, label, href, Icon }) => (
-        <a key={id} className="tab" href={href} aria-current={id === current ? "page" : undefined}><Icon />{label}</a>
+        id === "inicio"
+          ? <Link key={id} className="tab" to={href} aria-current={id === current ? "page" : undefined}><Icon />{label}</Link>
+          : <a key={id} className="tab" href={href} aria-current={id === current ? "page" : undefined}><Icon />{label}</a>
       ))}
     </nav>
+  );
+}
+
+// Camisa neutra (desenho próprio, não extraído das pranchas). Dentro vai o
+// OVERALL real do jogador — o jogo não tem número de camisa (decisão de
+// 01/11). Goleiro em verde; selecionado com contorno lima; vaga vazia
+// tracejada com "+".
+export function Jersey({ value, gk, selected, empty, size = 46 }: { value?: number | string; gk?: boolean; selected?: boolean; empty?: boolean; size?: number }) {
+  const cls = `jersey${gk ? " jersey--gk" : ""}${selected ? " jersey--sel" : ""}${empty ? " jersey--empty" : ""}`;
+  return (
+    <svg className={cls} width={size} height={Math.round(size * 0.9)} viewBox="0 0 64 58" aria-hidden="true">
+      <path className="jersey-body" d="M22 3 12 7 2.5 16.5l7.5 9.5 5.5-4V55h33V22l5.5 4 7.5-9.5L52 7 42 3c-2 4-5.8 6-10 6s-8-2-10-6Z" />
+      <path className="jersey-collar" d="M22 3c2 4 5.8 6 10 6s8-2 10-6" />
+      <text x="32" y="39" textAnchor="middle">{empty ? "+" : value}</text>
+    </svg>
   );
 }
