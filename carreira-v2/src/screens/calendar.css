@@ -1,0 +1,27 @@
+/* Calendário — medidas de pranchas/06_clube.png, coluna 3 (≈ fator 2,2).
+   Lista aberta por régua; próximo compromisso com barra lima à esquerda. */
+.cal { min-height: 100dvh; display: flex; flex-direction: column; }
+.cal-title { margin: 22px var(--bd-gutter) 0; font-family: var(--bd-font-display); font-weight: 700; font-size: 34px; letter-spacing: .04em; text-transform: uppercase; line-height: 1.05; }
+.cal-bar { margin-top: 12px; }
+.cal-lead { margin: 18px var(--bd-gutter) 0; font-family: var(--bd-font-display); font-weight: 600; font-size: 26px; line-height: 1.15; }
+
+.cal-more { margin-top: 8px; }
+.cal-list { margin: 10px var(--bd-gutter) 0; padding: 0; list-style: none; border-top: 1px solid var(--bd-line); }
+.cal-more + .cal-list { margin-top: 0; }
+.cal-list + .cal-list { margin-top: 0; border-top: 0; }
+.cal-item { position: relative; display: grid; grid-template-columns: 82px 1fr; align-items: center; column-gap: 12px; min-height: 76px; padding: 12px 0 12px 8px; border-bottom: 1px solid var(--bd-line); }
+.cal-item.is-next::before { content: ""; position: absolute; left: -7px; top: 6px; bottom: 6px; width: 4px; border-radius: 2px; background: var(--bd-accent); }
+.cal-when { display: flex; flex-direction: column; gap: 2px; }
+.cal-when b { font-family: var(--bd-font-display); font-weight: 700; font-size: 22px; letter-spacing: .02em; line-height: 1.05; }
+.cal-when span { font-size: 13px; letter-spacing: .04em; color: var(--bd-muted); }
+.cal-what { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.cal-teams { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: baseline; column-gap: 10px; font-family: var(--bd-font-display); font-weight: 500; font-size: 20px; }
+.cal-team { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cal-x { color: var(--bd-muted); font-size: 16px; }
+.cal-item.is-past .cal-x { color: var(--bd-text); font-weight: 700; font-size: 18px; }
+.cal-comp { font-size: 13px; color: var(--bd-muted); }
+.cal-comp--copa, .cal-comp--amistoso { color: #c9ccd2; }
+.cal-item.is-past { opacity: .82; }
+.cal-empty { margin: 24px var(--bd-gutter) 0; font-size: 16px; color: var(--bd-muted); }
+
+.cal-foot { position: sticky; bottom: 0; margin-top: auto; padding: 16px var(--bd-gutter) calc(10px + var(--bd-safe-bottom)); background: linear-gradient(180deg, rgba(8, 14, 24, 0) 0%, var(--bd-bg) 26%); }

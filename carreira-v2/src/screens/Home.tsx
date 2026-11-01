@@ -63,11 +63,11 @@ export function Home({ m }: { m: HomeModel }) {
             <span className="row-body"><span className="row-title">Ajustar escalação</span><span className="row-sub">Escolha quem entra em campo</span></span>
             <IconChevron className="row-chevron" />
           </Link>
-          <a className="row" href={legacyHref("calendario")}>
+          <Link className="row" to={`${BASE}/calendario`}>
             <IconCalendar className="row-icon" />
             <span className="row-body"><span className="row-title">Ver calendário</span></span>
             <IconChevron className="row-chevron" />
-          </a>
+          </Link>
 
           {(m.position !== null || m.form.length > 0) && (
             <div className="row home-stats">

@@ -9,7 +9,7 @@ export const COMPETITION_NAME: Record<string, string> = {
   serie_b: "Brasileirão Série B",
   serie_c: "Brasileirão Série C",
 };
-const MONTH = ["JAN", "FEV", "MAR", "ABR", "MAI", "JUN", "JUL", "AGO", "SET", "OUT", "NOV", "DEZ"];
+export const MONTH = ["JAN", "FEV", "MAR", "ABR", "MAI", "JUN", "JUL", "AGO", "SET", "OUT", "NOV", "DEZ"];
 const PHASE: Record<CalendarWeek["p"], string> = { ferias: "Férias", pre: "Pré-temporada", temporada: "Temporada", pausa: "Pausa de julho" };
 export const ROUNDS = 38;
 

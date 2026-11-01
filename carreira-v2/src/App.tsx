@@ -10,6 +10,8 @@ import { PreMatch } from "./screens/PreMatch.tsx";
 import { buildPreMatch } from "./domain/prematch.ts";
 import { Table } from "./screens/Table.tsx";
 import { buildCup, buildTable } from "./domain/table.ts";
+import { Calendar } from "./screens/Calendar.tsx";
+import { buildCalendar } from "./domain/calendar.ts";
 import { BASE, goBackTo, navigate, useLocation } from "./ui/router.tsx";
 
 type Data = { career: Career; teamById: (id: string | number) => Team };
@@ -68,6 +70,9 @@ export function App() {
     return <div className="state" role="alert">{state.kind === "error" ? state.message : "Não foi possível carregar."}<button className="state-btn" onClick={load}>Tentar novamente</button></div>;
   }
 
+  if (loc.path === `${BASE}/calendario`) {
+    return <Calendar m={buildCalendar(data.career, data.teamById, home.competition)} cta={home.cta} />;
+  }
   if (loc.path === `${BASE}/tabela`) {
     const division = new URLSearchParams(loc.search).get("divisao");
     return <Table key={division || "own"} m={buildTable(data.career, data.teamById, division)} cup={buildCup(data.career, data.teamById)} />;
