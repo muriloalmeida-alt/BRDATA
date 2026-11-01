@@ -2,8 +2,8 @@
 // Composição da referência; dados reais do save; ações abrem a tela
 // equivalente da versão atual até existirem na v2.
 import type { HomeModel } from "../domain/home.ts";
-import { Crest, TabBar, Wordmark } from "../ui/components.tsx";
-import { IconArrow, IconCalendar, IconChevron, IconPitch, IconAlert } from "../ui/icons.tsx";
+import { CtaLink, Crest, TabBar, Wordmark } from "../ui/components.tsx";
+import { IconCalendar, IconChevron, IconPitch, IconAlert } from "../ui/icons.tsx";
 import { legacyHref } from "../adapters/legacy.ts";
 import { BASE, Link } from "../ui/router.tsx";
 import "./home.css";
@@ -45,7 +45,7 @@ export function Home({ m }: { m: HomeModel }) {
       </section>
 
       <main className="home-main">
-        <a className="cta" href={legacyHref(m.cta.action)}>{m.cta.label}<IconArrow className="cta-arrow" /></a>
+        <CtaLink cta={m.cta} className="cta" />
 
         <nav className="home-list" aria-label="Ações">
           {m.alerts.map((a) => {

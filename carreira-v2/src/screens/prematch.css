@@ -1,0 +1,20 @@
+/* Pré-jogo — medidas de referencias_anteriores/pre_jogo.png (fator 2,19).
+   Foto CEN-02 só na faixa do confronto (mesma do Início); campo dentro
+   das margens e mais baixo que o da Escalação. */
+.pm { min-height: 100dvh; padding-bottom: calc(var(--bd-safe-bottom) + 12px); }
+.pm .screen-title { margin-top: 10px; }
+.pm-match { margin-top: 4px; min-height: 150px; }
+.pm-match .home-match-body { padding-top: 26px; }
+.pm-match .home-date { letter-spacing: .1em; color: var(--bd-muted); }
+
+.pm-lineup-head { display: flex; align-items: center; justify-content: space-between; margin: 6px var(--bd-gutter) 8px; }
+.pm-formation { font-family: var(--bd-font-display); font-weight: 700; font-size: 16px; letter-spacing: .08em; color: #c3c8d0; }
+.lu-pitch.pm-pitch { margin: 0 var(--bd-gutter); aspect-ratio: 358 / 306; background: radial-gradient(120% 80% at 50% 0%, #111d2b 0%, #0b1520 70%); }
+.pm-pitch .lu-name { font-size: 12px; }
+.pm-pitch .lu-slot { min-height: 56px; }
+
+.pm-foot { margin: 16px var(--bd-gutter) 0; }
+.pm-foot nav { border-top: 1px solid var(--bd-line); }
+.pm-foot nav .row:last-child { border-bottom: 1px solid var(--bd-line); }
+.pm-cta { margin-top: 16px; }
+.pm-foot .text-btn { margin-top: 2px; }

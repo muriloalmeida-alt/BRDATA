@@ -16861,6 +16861,15 @@ function migrateCareerDefaults() {
 // o fragmento é limpo pra um recarregamento não repetir a ação.
 const V2_DEEP_LINKS = {
   preparar: () => { switchToPanel("central"); document.getElementById("btnSimulate").click(); },
+  // "Iniciar partida" do Pré-jogo da v2 (decisão de 01/11): mesma função de
+  // "Ir para o jogo" da confirmação (goToMatch). Fora de semana de jogo
+  // (link antigo, semana já avançada) cai no botão principal de sempre.
+  iniciar: () => {
+    switchToPanel("central");
+    const w = calendarWeek();
+    if ((w && !w.r) || CAREER.currentRound > 38) { document.getElementById("btnSimulate").click(); return; }
+    goToMatch();
+  },
   "avancar-semana": () => { switchToPanel("central"); document.getElementById("btnSimulate").click(); },
   amistoso: () => { switchToPanel("central"); document.getElementById("btnSimulate").click(); },
   "proxima-temporada": () => { switchToPanel("central"); document.getElementById("btnAdvanceSeason").click(); },

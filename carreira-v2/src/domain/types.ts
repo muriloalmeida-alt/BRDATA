@@ -29,6 +29,7 @@ export interface Player {
   overall: number;
   status?: "ok" | "contundido" | "suspenso" | string;
   outUntilRound?: number | null;
+  condition?: number | null;
 }
 export interface Lineup {
   formation?: string;

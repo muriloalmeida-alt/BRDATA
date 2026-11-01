@@ -4,50 +4,14 @@
 // instruções, escalação automática e esquemas continuam na versão atual
 // (linha "Tática e instruções", decisão de 01/11).
 import { useEffect, useRef, useState } from "react";
-import { FORMATION_IDS, shortName, type LineupModel, type PitchSlot } from "../domain/lineup.ts";
+import { FORMATION_IDS, shortName, type LineupModel } from "../domain/lineup.ts";
+import { PitchPlayers } from "../ui/pitch.tsx";
 import type { HomeModel } from "../domain/home.ts";
-import { Jersey, TabBar, Wordmark } from "../ui/components.tsx";
+import { CtaLink, Jersey, TabBar, Wordmark } from "../ui/components.tsx";
 import { IconArrow, IconBack, IconCheck, IconChevron, IconDown } from "../ui/icons.tsx";
-import { BASE, Link, goBackTo } from "../ui/router.tsx";
+import { BASE, Link, goBack } from "../ui/router.tsx";
 import { legacyHref } from "../adapters/legacy.ts";
 import "./lineup.css";
-
-// Centro horizontal (%) de cada camisa, pelo nº de jogadores na linha —
-// medido na referência (3: 23/50/77; 4: 15/38/62/85).
-const STEP: Record<number, number> = { 1: 0, 2: 30, 3: 27, 4: 23.5, 5: 18.5 };
-const ROW_Y = [21, 45, 67, 89]; // ataque → goleiro (% da altura do campo)
-
-function Slot({ s, x, y }: { s: PitchSlot; x: number; y: number }) {
-  const label = s.player
-    ? `${s.label}: ${s.player.name}, overall ${s.player.overall}${s.out ? `, ${s.out.toLowerCase()}` : ""}. Trocar`
-    : `${s.label}: vaga vazia. Escolher jogador`;
-  return (
-    <Link to={`${BASE}/escalacao/trocar?vaga=${s.index}`} className="lu-slot" style={{ left: `${x}%`, top: `${y}%` }} aria-label={label}>
-      <span className="lu-jersey">
-        <Jersey value={s.player?.overall} gk={s.group === "G"} empty={!s.player} />
-        {s.out && <span className="lu-out" aria-hidden="true">!</span>}
-      </span>
-      <span className="lu-name">{s.player ? shortName(s.player.name) : s.label}</span>
-    </Link>
-  );
-}
-
-function Pitch() {
-  return (
-    <svg className="lu-lines" viewBox="0 0 390 414" preserveAspectRatio="none" aria-hidden="true">
-      <path d="M32 9H358L390 414H0Z" />
-      <path d="M172 9V0h46v9" />
-      <path d="M104 9v53h182V9M145 9v23h100V9" />
-      <path d="M166 62a40 14 0 0 0 58 0" />
-      <path d="M17 182h356" />
-      <ellipse cx="195" cy="182" rx="53" ry="43" />
-      <path d="M87 414v-80h216v80M133 414v-38h123v38" />
-      <path d="M160 334a45 22 0 0 1 70 0" />
-      <path d="M166 414v13h58v-13" />
-      <path d="M32 18a9 9 0 0 0 9-9M349 9a9 9 0 0 0 9 9M0 404a10 10 0 0 1 10 10M380 414a10 10 0 0 1 10-10" />
-    </svg>
-  );
-}
 
 function FormationSheet({ current, busy, error, onPick, onClose }: { current: string; busy: boolean; error: string | null; onPick: (f: string) => void; onClose: () => void }) {
   const first = useRef<HTMLButtonElement>(null);
@@ -94,7 +58,7 @@ export function Lineup({ m, cta, onFormation }: { m: LineupModel; cta: HomeModel
   return (
     <div className="lu">
       <header className="sub-head">
-        <button type="button" className="back-btn" onClick={() => goBackTo(`${BASE}/`)} aria-label="Voltar ao início"><span className="back-box"><IconBack /></span></button>
+        <button type="button" className="back-btn" onClick={() => goBack(`${BASE}/`)} aria-label="Voltar"><span className="back-box"><IconBack /></span></button>
         <Wordmark />
         <span className="sub-head-ctx sub-head-ctx--gold">{m.clubName.toUpperCase()}</span>
       </header>
@@ -109,10 +73,7 @@ export function Lineup({ m, cta, onFormation }: { m: LineupModel; cta: HomeModel
       </div>
 
       <section className="lu-pitch" aria-label={`Titulares, formação ${m.formation}`}>
-        <Pitch />
-        {m.rows.map((row, ri) => row.map((s, i) => (
-          <Slot key={s.index} s={s} x={50 + (i - (row.length - 1) / 2) * (STEP[row.length] ?? 18)} y={ROW_Y[ri + (4 - m.rows.length)] ?? 50} />
-        )))}
+        <PitchPlayers rows={m.rows} slotHref={(i) => `${BASE}/escalacao/trocar?vaga=${i}`} />
       </section>
 
       <section className="lu-bench" aria-labelledby="lu-bench-title">
@@ -137,7 +98,7 @@ export function Lineup({ m, cta, onFormation }: { m: LineupModel; cta: HomeModel
       </section>
 
       <div className="lu-foot">
-        <a className="cta cta--inline" href={legacyHref(cta.action)}>{cta.label}<IconArrow className="cta-arrow" /></a>
+        <CtaLink cta={cta} className="cta cta--inline" />
         <a className="row lu-legacy" href={legacyHref("escalacao")}>
           <span className="row-body"><span className="row-title">Tática e instruções</span><span className="row-sub">Ritmo, pressão, instruções, escalação automática e esquemas</span></span>
           <IconChevron className="row-chevron" />

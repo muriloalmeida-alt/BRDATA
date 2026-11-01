@@ -1,8 +1,9 @@
 import type { Team } from "../domain/types.ts";
 import { crestSrc } from "../adapters/gateways.ts";
-import { IconHome, IconUsers, IconCalendar, IconMore } from "./icons.tsx";
+import { IconArrow, IconHome, IconUsers, IconCalendar, IconMore } from "./icons.tsx";
+import type { HomeModel } from "../domain/home.ts";
 import { legacyHref } from "../adapters/legacy.ts";
-import { Link } from "./router.tsx";
+import { BASE, Link } from "./router.tsx";
 
 export function Wordmark() {
   return <span className="wordmark" role="img" aria-label="BRDATA">BR<b>DATA</b></span>;
@@ -53,4 +54,14 @@ export function Jersey({ value, gk, selected, empty, size = 46 }: { value?: numb
       <text x="32" y="39" textAnchor="middle">{empty ? "+" : value}</text>
     </svg>
   );
+}
+
+// CTA principal da semana. "Preparar partida" abre o Pré-jogo da v2; os
+// demais (avançar semana, amistoso, próxima temporada) seguem na versão
+// atual.
+export function CtaLink({ cta, className }: { cta: HomeModel["cta"]; className: string }) {
+  const inner = <>{cta.label}<IconArrow className="cta-arrow" /></>;
+  return cta.action === "preparar"
+    ? <Link className={className} to={`${BASE}/pre-jogo`}>{inner}</Link>
+    : <a className={className} href={legacyHref(cta.action)}>{inner}</a>;
 }

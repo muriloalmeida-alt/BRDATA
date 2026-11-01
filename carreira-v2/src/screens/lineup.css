@@ -59,3 +59,7 @@
   .lu-name { max-width: 70px; font-size: 14px; }
   .lu-slot { min-width: 58px; }
 }
+
+/* Campo só leitura (Pré-jogo) */
+.lu-ro-list { position: absolute; inset: 0; }
+.lu-slot--ro { cursor: default; }

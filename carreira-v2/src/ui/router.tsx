@@ -24,6 +24,13 @@ export function goBackTo(to: string) {
   else navigate(to, { replace: true });
 }
 
+// Voltar para a tela anterior da v2, qualquer que seja; aberta direto (sem
+// histórico da v2), vai para `fallback`.
+export function goBack(fallback: string) {
+  if (history.state && history.state.v2from) history.back();
+  else navigate(fallback, { replace: true });
+}
+
 export function useLocation() {
   const read = () => ({ path: location.pathname.replace(/\/+$/, "") || "/", search: location.search });
   const [loc, setLoc] = useState(read);

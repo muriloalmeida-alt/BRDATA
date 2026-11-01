@@ -6,7 +6,9 @@ import type { Career, Team } from "./domain/types.ts";
 import { Home } from "./screens/Home.tsx";
 import { Lineup } from "./screens/Lineup.tsx";
 import { Substitute } from "./screens/Substitute.tsx";
-import { BASE, goBackTo, useLocation } from "./ui/router.tsx";
+import { PreMatch } from "./screens/PreMatch.tsx";
+import { buildPreMatch } from "./domain/prematch.ts";
+import { BASE, goBackTo, navigate, useLocation } from "./ui/router.tsx";
 
 type Data = { career: Career; teamById: (id: string | number) => Team };
 type State = { kind: "loading" } | { kind: "error"; message: string } | { kind: "ready"; data: Data };
@@ -64,6 +66,15 @@ export function App() {
     return <div className="state" role="alert">{state.kind === "error" ? state.message : "Não foi possível carregar."}<button className="state-btn" onClick={load}>Tentar novamente</button></div>;
   }
 
+  if (loc.path === `${BASE}/pre-jogo`) {
+    const pm = buildPreMatch(data.career, data.teamById);
+    if (!pm.available) {
+      // Fora da semana de jogo (link antigo, semana já avançada): Início.
+      queueMicrotask(() => navigate(`${BASE}/`, { replace: true }));
+      return null;
+    }
+    return <PreMatch m={pm} />;
+  }
   if (loc.path === `${BASE}/escalacao`) {
     return <Lineup m={buildLineup(data.career)} cta={home.cta} onFormation={(formation) => save({ kind: "formation", formation })} />;
   }

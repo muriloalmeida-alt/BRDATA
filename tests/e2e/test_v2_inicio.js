@@ -77,8 +77,8 @@ const { skipPreseason } = require("./_calendar_skip");
   await v2.reload({ waitUntil: "domcontentloaded" });
   await v2.waitForSelector(".home", { timeout: 15000 });
   const match = await v2.evaluate(() => ({ cta: document.querySelector(".cta").textContent.trim(), href: document.querySelector(".cta").getAttribute("href"), line: document.querySelector(".home-date").textContent, phase: !!document.querySelector(".home-phase") }));
-  check("4) Semana de jogo: Preparar partida → /carreira#preparar, data + RODADA 1, sem linha de fase:",
-    match.cta === "Preparar partida" && match.href === "/carreira#preparar" && /^\d{2} [A-Z]{3} · RODADA 1$/.test(match.line) && !match.phase, JSON.stringify(match));
+  check("4) Semana de jogo: Preparar partida → Pré-jogo da v2, data + RODADA 1, sem linha de fase:",
+    match.cta === "Preparar partida" && match.href === "/carreira-v2/pre-jogo" && /^\d{2} [A-Z]{3} · RODADA 1$/.test(match.line) && !match.phase, JSON.stringify(match));
   check("5) A v2 não gravou nada no save (só leitura):", writes.length === 0, JSON.stringify(writes));
 
   // 6) Acessibilidade e 360 px: zoom liberado, sem rolagem horizontal, alvos ≥ 44 px.
