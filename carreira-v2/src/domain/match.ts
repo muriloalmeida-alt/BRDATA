@@ -5,7 +5,8 @@
 import type { MatchEvent, MatchSnapshot } from "../adapters/match.ts";
 import { COMPETITION_NAME } from "./home.ts";
 import { CUP_PHASE_LABEL } from "./table.ts";
-import { shortName } from "./lineup.ts";
+import { buildLineup, shortName, type LineupModel } from "./lineup.ts";
+import type { Career } from "./types.ts";
 
 export interface TimelineItem { key: string; minute: number; title: string; sub: string; kind: "gol-meu" | "gol" | "neutro" | "inicio" }
 export interface MatchModel {
@@ -83,4 +84,19 @@ export function buildMatch(s: MatchSnapshot, competitionId?: string): MatchModel
     speed: s.velocidade === 2 ? 2 : 1,
     subs: { used: s.substituicoes?.usadas || 0, total: s.substituicoes?.total || 5 },
   };
+}
+
+// "Revisar time" (Pausa): a escalação AO VIVO vinda da ponte, desenhada
+// pelo mesmo campo da Escalação (buildLineup) — só leitura.
+
+export function buildLiveLineup(s: MatchSnapshot): LineupModel | null {
+  const esc = s.escalacao;
+  if (!esc || s.rodada == null) return null;
+  const players = [...esc.titulares, ...esc.banco].filter((p): p is NonNullable<typeof p> => !!p);
+  const career: Career = {
+    clubId: "", clubName: "", seasonYear: 0, currentRound: s.rodada, schedule: {}, standings: {},
+    squad: players.map((p) => ({ id: p.id, name: p.nome, group: p.grupo, overall: p.overall, status: p.status, outUntilRound: p.voltaRodada, condition: p.condicao })),
+    lineup: { formation: esc.formacao, starters: esc.titulares.map((p) => (p ? p.id : null)), bench: esc.banco.map((p) => p.id) },
+  };
+  return buildLineup(career);
 }

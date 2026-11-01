@@ -3,8 +3,8 @@
    Uso: node tools/capture/capture-v2-partida.js <baseUrl> <saída> [rodadas] [w×h,...]
    Cria conta, cria carreira (Flamengo, Série A) pela tela atual, joga N
    rodadas pela interface (mesmo caminho dos testes E2E) e fotografa
-   /carreira-v2/partida?iniciar=1 na 1ª rodada: rodando, intervalo, pausada
-   e encerrada (depois de "Pular para o fim"). */
+   /carreira-v2/partida?iniciar=1 na 1ª rodada: rodando, intervalo (Pausa
+   abre sozinha), Revisar time, Pausa no 2º tempo e encerrada (depois de "Pular para o fim"). */
 const path = require("path");
 const fs = require("fs");
 const { chromium } = require("playwright");
@@ -49,16 +49,26 @@ fs.mkdirSync(out, { recursive: true });
     // rodando: espera o 1º lance importante (ou 30')
     await p.waitForFunction(() => document.querySelector(".mt-last-row") || /^(30|45)/.test(document.querySelector(".mt-min")?.textContent || ""), null, { timeout: 30000 }).catch(() => {});
     await p.screenshot({ path: path.join(out, `partida-rodando-${w}x${h}.png`) });
-    await p.waitForFunction(() => document.querySelector(".mt-period")?.textContent === "Intervalo", null, { timeout: 40000 });
+    // intervalo: a Pausa abre sozinha (A2)
+    await p.waitForSelector(".pz-title", { timeout: 40000 });
     await p.waitForTimeout(300);
-    await p.screenshot({ path: path.join(out, `partida-intervalo-${w}x${h}.png`) });
-    await p.screenshot({ path: path.join(out, `partida-intervalo-full-${w}x${h}.png`), fullPage: true });
-    await p.click(".mt-primary"); // Começar 2º tempo
+    await p.screenshot({ path: path.join(out, `pausa-intervalo-${w}x${h}.png`) });
+    await p.click(".pz-row[href$='tela=time']");
+    await p.waitForSelector(".pm-pitch", { timeout: 10000 });
+    await p.waitForTimeout(300);
+    await p.screenshot({ path: path.join(out, `revisar-time-${w}x${h}.png`) });
+    await p.screenshot({ path: path.join(out, `revisar-time-full-${w}x${h}.png`), fullPage: true });
+    await p.goBack();
+    await p.waitForSelector(".pz-title", { timeout: 10000 });
+    await p.click(".pz-foot .mt-primary"); // Começar 2º tempo
+    await p.waitForSelector(".mt-score", { timeout: 10000 });
     await p.waitForFunction(() => /^(60|75)/.test(document.querySelector(".mt-min")?.textContent || ""), null, { timeout: 30000 });
-    await p.click(".mt-primary"); // Pausar
-    await p.waitForTimeout(400);
-    await p.screenshot({ path: path.join(out, `partida-pausada-${w}x${h}.png`) });
-    await p.click(".mt-primary"); // Retomar
+    await p.click(".mt-actions .mt-primary"); // Pausar → Pausa
+    await p.waitForSelector(".pz-title", { timeout: 10000 });
+    await p.waitForTimeout(300);
+    await p.screenshot({ path: path.join(out, `pausa-${w}x${h}.png`) });
+    await p.click(".pz-foot .mt-primary"); // Retomar partida
+    await p.waitForSelector(".mt-score", { timeout: 10000 });
     await p.click(".mt-skip");
     await p.waitForFunction(() => document.querySelector(".mt-period")?.textContent === "Encerrado", null, { timeout: 30000 });
     await p.waitForTimeout(800);

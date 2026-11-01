@@ -16889,6 +16889,10 @@ function ponteFim(salvo) {
   PONTE.fim = { salvo: !!salvo };
   ponteAvisar();
 }
+function ponteJogador(id) {
+  const p = id ? CAREER.squad.find((x) => x.id === id) : null;
+  return p ? { id: p.id, nome: p.name, grupo: p.group, overall: p.overall, status: p.status || "ok", voltaRodada: p.outUntilRound ?? null, condicao: p.condition ?? null } : null;
+}
 function ponteEstado() {
   const lm = LIVE_MATCH || PONTE.ultimo;
   if (!PONTE.pronta) return { fase: "carregando" };
@@ -16906,6 +16910,13 @@ function ponteEstado() {
     mandante: { id: String(lm.home.id), nome: lm.home.name }, visitante: { id: String(lm.away.id), nome: lm.away.name },
     souMandante: !!lm.isHome, gh: lm.gh, ga: lm.ga, velocidade: lm.speed === 2 ? 2 : 1,
     substituicoes: { usadas: lm.subsUsed, total: MAX_SUBS_PER_MATCH + lm.subsBonus },
+    // Escalação AO VIVO (pode diferir do save: substituições e troca de
+    // esquema feitas durante o jogo só são gravadas no fim).
+    escalacao: {
+      formacao: CAREER.lineup.formation,
+      titulares: CAREER.lineup.starters.map(ponteJogador),
+      banco: CAREER.lineup.bench.map(ponteJogador).filter(Boolean),
+    },
     eventos: lm.events.map((e) => ({
       minuto: e.minute, tipo: e.type, meu: e.mine === true,
       jogador: e.player || null, assistencia: e.assistPlayer || null, entra: e.entra || null, sai: e.saiu || null, penalti: !!e.penalty,

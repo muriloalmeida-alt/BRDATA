@@ -59,22 +59,24 @@ const { skipPreseason } = require("./_calendar_skip");
   check("2) Partida começa pela ponte: endereço sem ?iniciar, cabeçalho da rodada, minuto avança e lances terminam em 'Início da partida':",
     url2.pathname === "/carreira-v2/partida" && url2.search === "" && r2.kicker === `Brasileirão Série A · Rodada ${before.round}` && r2.items >= 1 && /Início da partida/.test(r2.start), JSON.stringify({ search: url2.search, r2 }));
 
-  // 3) Pausar segura o minuto; Retomar volta; velocidade 2×.
-  await v2.click(".mt-primary");
-  await v2.waitForFunction(() => document.querySelector(".mt-primary").textContent.includes("Retomar"), null, { timeout: 5000 });
-  const m1 = await v2.locator(".mt-min").textContent();
+  // 3) Pausar segura o minuto (abre a Pausa — A2); voltar mostra 'Retomar'; velocidade 2×.
+  await v2.click(".mt-actions .mt-primary");
+  await v2.waitForSelector(".pz-title", { timeout: 5000 });
+  const m1 = await v2.locator(".pz-min").textContent();
   await v2.waitForTimeout(2500);
-  const m2 = await v2.locator(".mt-min").textContent();
+  const m2 = await v2.locator(".pz-min").textContent();
+  await v2.goBack();
+  await v2.waitForFunction(() => document.querySelector(".mt-actions .mt-primary")?.textContent.includes("Retomar"), null, { timeout: 5000 });
   await v2.click(".mt-speed-btn:has-text('2×')");
   const sp = await v2.locator(".mt-speed-btn.is-on").textContent();
-  await v2.click(".mt-primary");
-  check("3) Pausar segura o minuto (botão vira 'Retomar'); velocidade 2× marcada; Retomar continua:", m1 === m2 && sp === "2×", JSON.stringify({ m1, m2, sp }));
+  await v2.click(".mt-actions .mt-primary");
+  check("3) Pausar segura o minuto; de volta à partida o botão é 'Retomar'; velocidade 2× marcada; Retomar continua:", m1 === m2 && sp === "2×", JSON.stringify({ m1, m2, sp }));
 
-  // 4) Intervalo para sozinho no 45' até 'Começar 2º tempo'.
-  await v2.waitForFunction(() => document.querySelector(".mt-period")?.textContent === "Intervalo", null, { timeout: 30000 });
+  // 4) Intervalo para sozinho no 45' (Pausa abre sozinha) até 'Começar 2º tempo'.
+  await v2.waitForFunction(() => document.querySelector(".pz-title")?.textContent === "Intervalo", null, { timeout: 30000 });
   await v2.waitForTimeout(2000);
-  const ht = await v2.evaluate(() => ({ period: document.querySelector(".mt-period").textContent, btn: document.querySelector(".mt-primary").textContent }));
-  await v2.click(".mt-primary");
+  const ht = await v2.evaluate(() => ({ period: document.querySelector(".pz-min").textContent, btn: document.querySelector(".pz-foot .mt-primary").textContent }));
+  await v2.click(".pz-foot .mt-primary");
   await v2.waitForFunction(() => document.querySelector(".mt-period")?.textContent === "2º tempo", null, { timeout: 20000 });
   check("4) Intervalo segura a partida até 'Começar 2º tempo'; depois segue no 2º tempo:", ht.period === "Intervalo" && /Começar 2º tempo/.test(ht.btn), JSON.stringify(ht));
 

@@ -85,7 +85,9 @@ export function App() {
   }
 
   if (loc.path === `${BASE}/partida`) {
-    return <Match startNow={new URLSearchParams(loc.search).get("iniciar") === "1"} competitionId={data.career.competitionId} teamById={data.teamById} onFinished={reloadCareer} />;
+    const q = new URLSearchParams(loc.search);
+    const tela = q.get("tela");
+    return <Match startNow={q.get("iniciar") === "1"} sub={tela === "pausa" || tela === "time" ? tela : null} competitionId={data.career.competitionId} teamById={data.teamById} onFinished={reloadCareer} />;
   }
   if (loc.path === `${BASE}/financas`) {
     return <Finance m={buildFinance(data.career)} />;

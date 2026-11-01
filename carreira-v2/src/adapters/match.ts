@@ -19,7 +19,9 @@ export interface MatchSnapshot {
   souMandante?: boolean; gh?: number; ga?: number; velocidade?: 1 | 2;
   substituicoes?: { usadas: number; total: number };
   eventos?: MatchEvent[];
+  escalacao?: { formacao: string; titulares: (LivePlayer | null)[]; banco: LivePlayer[] };
 }
+export interface LivePlayer { id: string; nome: string; grupo: "G" | "D" | "M" | "F"; overall: number; status: string; voltaRodada: number | null; condicao: number | null }
 interface PonteApi {
   estado(): MatchSnapshot;
   aoMudar(cb: () => void): () => void;
