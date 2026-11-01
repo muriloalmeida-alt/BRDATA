@@ -93,7 +93,7 @@
 .bd-chips{ display:flex; gap:8px; overflow-x:auto; scrollbar-width:none; padding:2px 0 4px; margin:0 0 14px; -webkit-overflow-scrolling:touch; }
 .bd-chips::-webkit-scrollbar{ display:none; }
 .bd-chip{
-  flex:0 0 auto; display:inline-flex; align-items:center; gap:6px; min-height:40px; padding:0 16px;
+  flex:0 0 auto; display:inline-flex; align-items:center; gap:6px; min-height:44px; padding:0 16px;
   border-radius:999px; border:1px solid var(--bd-line); background:var(--bd-glass); color:#C9D5E2;
   font-family:var(--font); font-weight:600; font-size:13.5px; cursor:pointer; white-space:nowrap;
 }
