@@ -151,6 +151,11 @@ function normalizeRecord(entry) {
     return entry;
   }
   const data = decompressEnvelope(entry);
+  // Portado do PR #54 (main): registro de slots que a versão do PR #46
+  // recomprimiu inteiro como { __gz } — desembrulha e trata como slots,
+  // senão o "slot s1" passaria a guardar o registro inteiro em vez da
+  // carreira ("Sem conexão" ao abrir).
+  if (entry.__gz && data && typeof data === "object" && data.slots && typeof data.slots === "object") return normalizeRecord(data);
   const env = entry.__gz ? entry : compressToEnvelope(entry).envelope;
   return { active: "s1", slots: { s1: env }, meta: { s1: metaOf(data) } };
 }
@@ -199,7 +204,8 @@ load();
 function getCareer(userId) {
   const rec = store.get(userId);
   if (!rec || !rec.active) return null;
-  return decompressEnvelope(rec.slots[rec.active]);
+  const env = rec.slots[rec.active];
+  return env ? decompressEnvelope(env) : null; // slot ativo vazio (registro de slots sem carreira)
 }
 
 // Validação BEM rasa de propósito (ver aviso no topo: o cliente é dono

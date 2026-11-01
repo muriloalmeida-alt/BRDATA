@@ -115,4 +115,14 @@ function randomIncompressible(bytes) {
   check("8) Save em slots (#52): lê a carreira ativa, grava nela; API de slots não existe mais:",
     active.clubId === "goi" && careerStore.getCareer("u_slots").seasonYear === 2027 && typeof careerStore.listSlots === "undefined" && typeof careerStore.activateSlot === "undefined");
 
+  // 9) Portado do PR #54 (main): registro de slots cru OU recomprimido
+  // inteiro como { __gz } pela versão do PR #46 -> carreira do slot ativo;
+  // slot ativo vazio -> sem carreira (null), sem quebrar.
+  const activeCareer = { clubId: "ativo", squad: [{ id: "p1" }] };
+  const slotRec = { active: "s2", slots: { s1: env({ clubId: "velho", squad: [] }), s2: env(activeCareer) }, meta: {} };
+  careerStore = freshStore({ u9a: slotRec, u9b: env(slotRec), u9c: { active: "s1", slots: {}, meta: {} } });
+  check("9) Registro de slots cru e recomprimido (#54) -> carreira do slot ativo; slot vazio -> null:",
+    JSON.stringify(careerStore.getCareer("u9a")) === JSON.stringify(activeCareer) && JSON.stringify(careerStore.getCareer("u9b")) === JSON.stringify(activeCareer)
+      && careerStore.getCareer("u9c") === null);
+
 })().catch((e) => { console.error("FATAL:", e); process.exit(1); });
