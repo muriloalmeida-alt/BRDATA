@@ -9,3 +9,5 @@ export type LegacyTarget =
 export const legacyHref = (target: LegacyTarget) => `/carreira#${target}`;
 // Elenco de um clube (legado: openClubRoster; o próprio clube abre a aba Elenco).
 export const legacyClubHref = (clubId: string | number) => `/carreira#clube:${encodeURIComponent(String(clubId))}`;
+// Ficha completa de um jogador seu (legado: openDetail — contrato e ações).
+export const legacyPlayerHref = (playerId: string) => `/carreira#jogador:${encodeURIComponent(playerId)}`;

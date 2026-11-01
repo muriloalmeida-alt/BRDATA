@@ -16888,7 +16888,12 @@ function applyV2DeepLink() {
   // #clube:<id> — elenco de um clube tocado na Tabela da v2 (mesmo
   // openClubRoster do toque no nome do clube na Tabela de sempre).
   const clubMatch = /^clube:(.+)$/.exec(key);
-  const action = clubMatch ? () => openClubRoster(clubMatch[1]) : V2_DEEP_LINKS[key];
+  // #jogador:<id> — "Contrato e ações do jogador" no Perfil da v2: abre a
+  // mesma ficha (openDetail) do toque no jogador no Elenco de sempre.
+  const playerMatch = /^jogador:(.+)$/.exec(key);
+  const action = clubMatch ? () => openClubRoster(clubMatch[1])
+    : playerMatch ? () => { switchToPanel("elenco"); openDetail(playerMatch[1]); }
+    : V2_DEEP_LINKS[key];
   if (!action) return;
   history.replaceState(null, "", location.pathname + location.search);
   let tries = 0;

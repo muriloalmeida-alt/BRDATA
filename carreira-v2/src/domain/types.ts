@@ -30,6 +30,12 @@ export interface Player {
   status?: "ok" | "contundido" | "suspenso" | string;
   outUntilRound?: number | null;
   condition?: number | null;
+  origin?: "principal" | "loan" | "base" | string;
+  atk?: number; def?: number; phys?: number;
+  morale?: number | null;
+  apps?: number; goalsSeason?: number; goalsCareer?: number;
+  wantsTransfer?: boolean;
+  contractUntil?: number;
 }
 export interface Lineup {
   formation?: string;

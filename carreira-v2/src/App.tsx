@@ -12,6 +12,9 @@ import { Table } from "./screens/Table.tsx";
 import { buildCup, buildTable } from "./domain/table.ts";
 import { Calendar } from "./screens/Calendar.tsx";
 import { buildCalendar } from "./domain/calendar.ts";
+import { Squad } from "./screens/Squad.tsx";
+import { Profile } from "./screens/Profile.tsx";
+import { buildProfile, buildSquad } from "./domain/squad.ts";
 import { BASE, goBackTo, navigate, useLocation } from "./ui/router.tsx";
 
 type Data = { career: Career; teamById: (id: string | number) => Team };
@@ -70,6 +73,18 @@ export function App() {
     return <div className="state" role="alert">{state.kind === "error" ? state.message : "Não foi possível carregar."}<button className="state-btn" onClick={load}>Tentar novamente</button></div>;
   }
 
+  if (loc.path === `${BASE}/elenco`) {
+    return <Squad m={buildSquad(data.career)} />;
+  }
+  if (loc.path === `${BASE}/elenco/jogador`) {
+    const pr = buildProfile(data.career, new URLSearchParams(loc.search).get("id") || "");
+    if (!pr) {
+      // Jogador que não está mais no elenco (vendido, link antigo): Elenco.
+      queueMicrotask(() => navigate(`${BASE}/elenco`, { replace: true }));
+      return null;
+    }
+    return <Profile key={pr.player.id} m={pr} />;
+  }
   if (loc.path === `${BASE}/calendario`) {
     return <Calendar m={buildCalendar(data.career, data.teamById, home.competition)} cta={home.cta} />;
   }

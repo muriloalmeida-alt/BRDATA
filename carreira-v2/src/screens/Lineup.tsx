@@ -79,7 +79,7 @@ export function Lineup({ m, cta, onFormation }: { m: LineupModel; cta: HomeModel
       <section className="lu-bench" aria-labelledby="lu-bench-title">
         <div className="lu-bench-head">
           <h2 className="kicker-caps" id="lu-bench-title">Banco de reservas</h2>
-          <a className="lu-more" href={legacyHref("elenco")}>Ver elenco<IconArrow /></a>
+          <Link className="lu-more" to={`${BASE}/elenco`}>Ver elenco<IconArrow /></Link>
         </div>
         {m.bench.length ? (
           <div className="lu-bench-grid">
