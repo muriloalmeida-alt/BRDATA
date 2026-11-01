@@ -36,6 +36,7 @@ export interface Player {
   apps?: number; goalsSeason?: number; goalsCareer?: number;
   wantsTransfer?: boolean;
   contractUntil?: number;
+  wage?: number;
 }
 export interface Lineup {
   formation?: string;
@@ -66,7 +67,8 @@ export interface Career {
   boardGoal?: { label: string; target?: number };
   objectives?: { season?: { title: string; status?: string; target?: number; currentProgress?: number }[] };
   seasonHistory?: { year: number; position: number; points?: number; goalLabel: string; goalWasMet: boolean }[];
-  finances?: { cash: number };
+  finances?: { cash: number; wageCap?: number };
+  financeLedger?: { round: number; type: string; label: string; amount: number }[];
   newsFeed?: NewsItem[];
   clubProposals?: { clubName: string }[];
   calendar?: { year: number; idx: number; weeks: CalendarWeek[]; friendlies?: Friendly[] };

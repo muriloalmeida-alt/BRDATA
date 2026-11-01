@@ -16874,6 +16874,7 @@ const V2_DEEP_LINKS = {
   amistoso: () => { switchToPanel("central"); document.getElementById("btnSimulate").click(); },
   "proxima-temporada": () => { switchToPanel("central"); document.getElementById("btnAdvanceSeason").click(); },
   escalacao: () => switchToPanel("escalacao"),
+  mercado: () => switchToPanel("mercado"),
   elenco: () => switchToPanel("elenco"),
   calendario: () => switchToPanel("jogos"),
   jogos: () => switchToPanel("jogos"),

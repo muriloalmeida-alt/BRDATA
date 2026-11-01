@@ -92,11 +92,11 @@ export function Home({ m }: { m: HomeModel }) {
             </Link>
           )}
           {m.cash && (
-            <a className="row" href={legacyHref("financas")}>
+            <Link className="row" to={`${BASE}/financas`}>
               <span className="row-body"><span className="row-title">Finanças</span></span>
               <span className="row-value">{m.cash}</span>
               <IconChevron className="row-chevron" />
-            </a>
+            </Link>
           )}
           {m.news && (
             <a className="row" href={legacyHref("noticias")}>

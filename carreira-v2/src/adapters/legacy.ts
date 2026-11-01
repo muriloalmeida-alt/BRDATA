@@ -4,7 +4,7 @@
 export type LegacyTarget =
   | "preparar" | "avancar-semana" | "amistoso" | "proxima-temporada"
   | "escalacao" | "calendario" | "financas" | "diretoria" | "noticias"
-  | "elenco" | "jogos" | "mais" | "proposta";
+  | "elenco" | "jogos" | "mais" | "proposta" | "mercado";
 
 export const legacyHref = (target: LegacyTarget) => `/carreira#${target}`;
 // Elenco de um clube (legado: openClubRoster; o próprio clube abre a aba Elenco).
