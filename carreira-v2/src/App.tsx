@@ -87,9 +87,11 @@ export function App() {
   if (loc.path === `${BASE}/partida`) {
     const q = new URLSearchParams(loc.search);
     const tela = q.get("tela");
-    const SUBS = ["pausa", "time", "sai", "entra", "tatica", "lances"] as const;
+    const SUBS = ["pausa", "time", "sai", "entra", "tatica", "lances", "tabela"] as const;
     const sub = (SUBS as readonly string[]).includes(tela || "") ? (tela as (typeof SUBS)[number]) : null;
-    return <Match startNow={q.get("iniciar") === "1"} sub={sub} outId={q.get("sai")} competitionId={data.career.competitionId} teamById={data.teamById} onFinished={reloadCareer} />;
+    return <Match startNow={q.get("iniciar") === "1"} sub={sub} outId={q.get("sai")} competitionId={data.career.competitionId} competitionName={home.competition}
+      teamById={data.teamById} onFinished={reloadCareer}
+      renderTable={(onBack) => <Table m={buildTable(data.career, data.teamById, null)} cup={buildCup(data.career, data.teamById)} onBack={onBack} />} />;
   }
   if (loc.path === `${BASE}/financas`) {
     return <Finance m={buildFinance(data.career)} />;

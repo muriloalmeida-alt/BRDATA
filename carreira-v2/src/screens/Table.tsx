@@ -24,14 +24,16 @@ function Row({ r, zoneLabel }: { r: TableRow; zoneLabel: string | null }) {
   );
 }
 
-export function Table({ m, cup }: { m: TableModel; cup: CupModel }) {
+// onBack: aberta pelo Resultado da partida (A4) — voltar retorna a ele, sem
+// sair da partida (a sessão da ponte guarda o pós-jogo pendente).
+export function Table({ m, cup, onBack }: { m: TableModel; cup: CupModel; onBack?: () => void }) {
   const [full, setFull] = useState(false);
   const rows = full ? m.rows : m.excerpt;
   const legendOf = (z: TableRow["zone"]) => (z ? m.legend.find((l) => l.zone === z)?.label || null : null);
   return (
     <div className="tb">
       <header className="sub-head">
-        <button type="button" className="back-btn back-btn--bare" onClick={() => goBack(`${BASE}/`)} aria-label="Voltar"><IconBack /></button>
+        <button type="button" className="back-btn back-btn--bare" onClick={() => (onBack ? onBack() : goBack(`${BASE}/`))} aria-label="Voltar"><IconBack /></button>
         <Wordmark />
         <span className="sub-head-ctx">Tabela</span>
       </header>
@@ -103,7 +105,9 @@ export function Table({ m, cup }: { m: TableModel; cup: CupModel }) {
       </section>
 
       <div className="tb-foot">
-        <button type="button" className="cta" onClick={() => goBackTo(`${BASE}/`)}>Voltar ao clube<IconChevron className="cta-arrow" /></button>
+        {onBack
+          ? <button type="button" className="cta" onClick={onBack}>Voltar ao resultado<IconChevron className="cta-arrow" /></button>
+          : <button type="button" className="cta" onClick={() => goBackTo(`${BASE}/`)}>Voltar ao clube<IconChevron className="cta-arrow" /></button>}
       </div>
     </div>
   );

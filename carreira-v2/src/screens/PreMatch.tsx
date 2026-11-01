@@ -1,8 +1,8 @@
 // CAP04-T01 — Pré-jogo (referencias_anteriores/pre_jogo.png).
 // Confronto, titulares (campo só leitura, com nome — decisão de 01/11),
 // avisos da confirmação atual como linhas de alerta, "Revisar escalação"
-// (v2) e "Iniciar partida", que roda o jogo na versão atual (#iniciar)
-// enquanto a Partida não existe na v2.
+// (v2) e "Iniciar partida", que abre a Partida da v2 (A4; antes, #iniciar
+// na versão atual).
 import type { PreMatchModel } from "../domain/prematch.ts";
 import { Crest, Wordmark } from "../ui/components.tsx";
 import { IconAlert, IconArrow, IconBack, IconChevron, IconPitch } from "../ui/icons.tsx";
@@ -64,7 +64,7 @@ export function PreMatch({ m }: { m: PreMatchModel }) {
             <IconChevron className="row-chevron" />
           </Link>
         </nav>
-        <a className="cta pm-cta" href="/carreira#iniciar">Iniciar partida<IconArrow className="cta-arrow" /></a>
+        <Link className="cta pm-cta" to={`${BASE}/partida?iniciar=1`}>Iniciar partida<IconArrow className="cta-arrow" /></Link>
         <button type="button" className="text-btn" onClick={back}>Voltar</button>
       </div>
     </div>

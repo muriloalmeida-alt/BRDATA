@@ -228,7 +228,7 @@ function squadSortKey(p) { return (SUBPOS_ORDER[subPositionOf(p)] ?? 9) * 1000 -
 const V2_PONTE = new URLSearchParams(location.search).get("ponte") === "partida";
 // Estado só da ponte (nunca salvo): última partida vista (LIVE_MATCH vira
 // null no fim), resultado da gravação final e quem está ouvindo.
-const PONTE = { pronta: false, ultimo: null, fim: null, ouvintes: new Set() };
+const PONTE = { pronta: false, ultimo: null, fim: null, ouvintes: new Set(), resumo: null, posJogo: false };
 let LIVE_MODE = false;
 let LIVE_SEASON = new Date().getFullYear();
 let LEAGUE_TEAMS = []; // 20 clubes ativos (real ou DEMO_TEAMS — ver loadLeague)
@@ -9473,6 +9473,10 @@ async function finishLiveMatch() {
   const btn = document.getElementById("btnSimulate");
   if (!saved) { if (btn) btn.disabled = false; return; }
   renderAll();
+  // Modo ponte: a v2 mostra o Resultado; o detalhe e a sequência de
+  // sempre (coletiva, notícias, rodada, Copa, proposta, tabela) só seguem
+  // quando ela pedir (BRDATA_PONTE.continuarPosJogo).
+  if (V2_PONTE) { PONTE.resumo = summary; ponteAvisar(); return; }
   showMatchDetailModal(summary);
 }
 // GE-COPA-001 (issue #28) — abre a perna do SEU confronto de Copa como
@@ -16896,6 +16900,13 @@ function ponteJogador(id) {
 function ponteEstado() {
   const lm = LIVE_MATCH || PONTE.ultimo;
   if (!PONTE.pronta) return { fase: "carregando" };
+  // Pós-jogo (depois de "Continuar" na v2): a sequência de sempre roda nesta
+  // página; termina quando não há mais modal aberto nem partida ao vivo
+  // (a perna da Copa, se houver, também é jogada aqui, como hoje).
+  if (PONTE.posJogo) {
+    const aberto = !!LIVE_MATCH || [...document.querySelectorAll(".ct-modal-overlay.open")].some((o) => o.id !== "actionLoadingOverlay");
+    return { fase: "pos-jogo", posJogo: aberto ? "em-andamento" : "concluido" };
+  }
   if (!lm) return { fase: "sem-partida" };
   const n = LIVE_MATCH_CHUNK_MINUTES.length;
   const minuto = lm.chunkIndex === 0 ? 0 : LIVE_MATCH_CHUNK_MINUTES[Math.min(lm.chunkIndex, n) - 1];
@@ -16903,6 +16914,7 @@ function ponteEstado() {
   return {
     fase: encerrada ? "encerrada" : lm.halftime ? "intervalo" : lm.paused ? "pausada" : "jogando",
     gravada: encerrada ? (PONTE.fim ? PONTE.fim.salvo : null) : null,
+    resultadoPronto: encerrada && !!PONTE.resumo,
     minuto, segundoTempo: minuto > 45,
     contexto: lm.cupContext ? "copa" : lm.friendlyContext ? "amistoso" : "liga",
     rodada: lm.round,
@@ -16948,6 +16960,17 @@ if (V2_PONTE) {
     continuarIntervalo() { if (LIVE_MATCH && LIVE_MATCH.halftime) continueFromHalftime(); },
     velocidade(v) { if (LIVE_MATCH) { LIVE_MATCH.speed = v === 2 ? 2 : 1; ponteAvisar(); } },
     pularParaFim() { if (LIVE_MATCH && !LIVE_MATCH.finished) skipLiveMatch(); },
+    // "Continuar" do Resultado da v2: mesmo caminho do botão Continuar do
+    // detalhe da partida (btnMatchDetailContinue) — coletiva pendente,
+    // notícias, resultados da rodada, Copa, proposta e tabela.
+    continuarPosJogo() {
+      if (!PONTE.resumo || PONTE.posJogo) return { ok: false, motivo: "sem-resumo" };
+      PONTE.posJogo = true;
+      showMatchDetailModal(PONTE.resumo);
+      document.getElementById("btnMatchDetailContinue").click();
+      ponteAvisar();
+      return { ok: true };
+    },
     // Substituição: valida como a tela atual e executa o MESMO
     // confirmLiveSub (que retoma o jogo — a ponte repausa: na v2 a troca
     // é feita com a partida parada na Pausa).

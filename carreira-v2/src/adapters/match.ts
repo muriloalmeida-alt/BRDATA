@@ -4,7 +4,7 @@
 // de sempre (API window.BRDATA_PONTE em public/js/carreira.js). Se um dia
 // o motor virar módulo comum (opção B), só esta porta muda.
 
-export type MatchPhase = "carregando" | "sem-partida" | "jogando" | "pausada" | "intervalo" | "encerrada";
+export type MatchPhase = "carregando" | "sem-partida" | "jogando" | "pausada" | "intervalo" | "encerrada" | "pos-jogo";
 export interface MatchEvent {
   minuto: number; tipo: string; meu: boolean;
   jogador: string | null; assistencia: string | null; entra: string | null; sai: string | null; penalti: boolean;
@@ -12,6 +12,8 @@ export interface MatchEvent {
 export interface MatchSnapshot {
   fase: MatchPhase;
   gravada?: boolean | null;
+  resultadoPronto?: boolean;
+  posJogo?: "em-andamento" | "concluido";
   minuto?: number; segundoTempo?: boolean;
   contexto?: "liga" | "copa" | "amistoso";
   rodada?: number; copa?: { fase: string; perna: number } | null;
@@ -33,6 +35,7 @@ interface PonteApi {
   velocidade(v: 1 | 2): void; pularParaFim(): void;
   substituir(saiId: string, entraId: string): CommandResult;
   aplicarTatica(t: { formacao: string; eixos: Record<string, number> }): CommandResult;
+  continuarPosJogo(): CommandResult;
 }
 
 export interface MatchSession {
@@ -43,10 +46,15 @@ export interface MatchSession {
   speed(v: 1 | 2): void; skip(): void;
   substitute(outId: string, inId: string): CommandResult;
   applyTactics(formation: string, axes: Record<string, number>): CommandResult;
+  // Pós-jogo (decisão D2): mostra a sessão da versão atual em tela cheia e
+  // segue a sequência de sempre; reveal(false) esconde de novo.
+  continuePostMatch(): CommandResult;
+  reveal(on: boolean): void;
   destroy(): void;
 }
 
 const READY_TIMEOUT_MS = 30000;
+const HIDDEN = "position:fixed;width:1px;height:1px;left:-9999px;top:0;border:0;opacity:0;pointer-events:none;";
 
 // Abre a ponte e espera o motor ficar pronto (carreira carregada).
 export function openMatchSession(): Promise<MatchSession> {
@@ -56,7 +64,7 @@ export function openMatchSession(): Promise<MatchSession> {
     frame.title = "Motor da partida";
     frame.setAttribute("aria-hidden", "true");
     frame.tabIndex = -1;
-    frame.style.cssText = "position:fixed;width:1px;height:1px;left:-9999px;top:0;border:0;opacity:0;pointer-events:none;";
+    frame.style.cssText = HIDDEN;
     document.body.appendChild(frame);
     const started = Date.now();
     const api = (): PonteApi | null => {
@@ -74,6 +82,14 @@ export function openMatchSession(): Promise<MatchSession> {
           speed: (v) => p.velocidade(v), skip: () => p.pularParaFim(),
           substitute: (o, i) => p.substituir(o, i),
           applyTactics: (f, a) => p.aplicarTatica({ formacao: f, eixos: a }),
+          continuePostMatch: () => p.continuarPosJogo(),
+          reveal: (on) => {
+            frame.style.cssText = on
+              ? "position:fixed;inset:0;width:100%;height:100%;border:0;z-index:100;background:#080e18;"
+              : HIDDEN;
+            if (on) { frame.removeAttribute("aria-hidden"); frame.tabIndex = 0; frame.focus(); }
+            else { frame.setAttribute("aria-hidden", "true"); frame.tabIndex = -1; }
+          },
           destroy,
         });
         return;

@@ -21,3 +21,4 @@ export const IconSliders = (p: P) => <S {...p}><path d="M4 7h10M18 7h2M4 17h4M12
 export const IconBall = (p: P) => <svg className={p.className} viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="currentColor" /><path d="m12 7.2 3.6 2.6-1.4 4.2H9.8L8.4 9.8Z" fill="var(--bd-bg)" /><path d="M12 7.2V3.5M15.6 9.8l3.5-1.2M14.2 14l2.2 3.1M9.8 14l-2.2 3.1M8.4 9.8 4.9 8.6" stroke="var(--bd-bg)" strokeWidth="1.4" /></svg>;
 export const IconSwap = (p: P) => <S {...p}><path d="M4 8h15M15 4l4 4-4 4M20 16H5M9 12l-4 4 4 4" /></S>;
 export const IconTactic = (p: P) => <S {...p}><path d="m4 4 4 4M8 4 4 8" /><circle cx="17" cy="19" r="2.3" /><path d="M17 3v6c0 2-1.5 3-3.5 3H9c-2 0-3 1.2-3 3v2" /><path d="m14.5 5.5 2.5-2.5 2.5 2.5M3.5 15l2.5 2.5L8.5 15" /></S>;
+export const IconList = (p: P) => <S {...p}><rect x="3.5" y="4" width="17" height="16" rx="2" /><path d="M8 9h9M8 13h9M8 17h9" /><path d="M6 9h.01M6 13h.01M6 17h.01" strokeWidth="2.4" /></S>;

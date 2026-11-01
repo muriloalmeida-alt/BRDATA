@@ -2,7 +2,7 @@
 // Início → Preparar partida → Pré-jogo com confronto, rodada e titulares do
 // save; avisos da confirmação atual como linhas; Revisar escalação e volta;
 // fora da semana de jogo volta ao Início; nada gravado ao abrir; "Iniciar
-// partida" roda o jogo na versão atual (#iniciar → partida ao vivo).
+// partida" abre a Partida da v2 (A4; antes, #iniciar na versão atual).
 const { chromium } = require("playwright-core");
 const { check } = require("./_check");
 const { passCareerSetup, enterGame, waitForBoot } = require("./_startup");
@@ -68,7 +68,7 @@ const { skipPreseason } = require("./_calendar_skip");
   check("2) Início → Pré-jogo: confronto, competição + rodada, data sem horário, 11 titulares só leitura com overall real:",
     pm.path === "/carreira-v2/pre-jogo" && pm.title === "É hora de jogar." && pm.sub === `Brasileirão Série A · Rodada ${legacy.round}` && pm.teams[0] === legacy.home && pm.teams[1] === legacy.away
       && /^\d{2} [A-Z]{3}$/.test(pm.date) && pm.formation === `Formação ${legacy.formation}` && pm.slots === 11 && pm.links === 0 && pm.gk === String(legacy.gk)
-      && pm.alerts === 1 && pm.cta === "/carreira#iniciar" && pm.ctx === "Pré-jogo", JSON.stringify({ pm, legacy }));
+      && pm.alerts === 1 && pm.cta === "/carreira-v2/partida?iniciar=1" && pm.ctx === "Pré-jogo", JSON.stringify({ pm, legacy }));
 
   // 3) Revisar escalação → Escalação v2; voltar retorna ao Pré-jogo.
   await v2.click('.pm-foot a.row[href="/carreira-v2/escalacao"]');
@@ -99,14 +99,12 @@ const { skipPreseason } = require("./_calendar_skip");
   }));
   check("6) 360 px sem rolagem horizontal e alvos ≥ 44 px:", a.overflow <= 0 && a.small.length === 0, JSON.stringify(a));
 
-  // 7) Iniciar partida: versão atual começa a partida ao vivo e limpa o fragmento.
+  // 7) Iniciar partida (A4): abre a Partida da v2 e o jogo começa pela ponte.
   await page.goto("about:blank");
   await v2.click(".pm-cta");
-  await v2.waitForURL(/\/carreira(#.*)?$/, { timeout: 10000 });
-  await waitForBoot(v2);
-  await v2.waitForFunction(() => document.getElementById("liveMatchOverlay").classList.contains("open"), null, { timeout: 20000 }).catch(() => {});
-  const live = await v2.evaluate(() => ({ open: document.getElementById("liveMatchOverlay").classList.contains("open"), hash: location.hash }));
-  check("7) Iniciar partida abre a partida ao vivo na versão atual (#iniciar) e limpa o fragmento:", live.open && live.hash === "", JSON.stringify(live));
+  await v2.waitForSelector(".mt-score", { timeout: 40000 });
+  const live = await v2.evaluate(() => ({ path: location.pathname, search: location.search, kicker: document.querySelector(".mt-kicker").textContent }));
+  check("7) Iniciar partida abre a Partida da v2 (endereço limpo) com a rodada atual:", live.path === "/carreira-v2/partida" && live.search === "" && /Rodada/.test(live.kicker), JSON.stringify(live));
 
   await browser.close();
 })();

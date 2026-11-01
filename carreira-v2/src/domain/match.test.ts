@@ -1,7 +1,7 @@
 // Testes do domínio da Partida: node --test --experimental-strip-types
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { buildLiveLineup, buildMatch, buildSubs } from "./match.ts";
+import { buildLiveLineup, buildMatch, buildResult, buildSubs } from "./match.ts";
 import type { MatchSnapshot } from "../adapters/match.ts";
 
 const ev = (minuto: number, tipo: string, meu: boolean, extra = {}) => ({ minuto, tipo, meu, jogador: null, assistencia: null, entra: null, sai: null, penalti: false, ...extra });
@@ -87,4 +87,17 @@ test("substituição: sai = titulares em campo; entra = só reservas com status 
   assert.deepEqual(m.bench.map((x) => x.id), ["r1", "r3"]);
   assert.deepEqual([m.used, m.total, m.left], [4, 6, 2]);
   assert.equal(m.starters[0].short, "N. a");
+});
+
+test("resultado: título e frase pelo placar (pontos só na liga) e gols em ordem de minuto", () => {
+  const s = snap(); s.fase = "encerrada"; s.gh = 2; s.ga = 1;
+  s.eventos = [ev(60, "gol", false, { jogador: "Endrick Felipe" }), ev(30, "gol", true, { jogador: "Bruno Henrique" }), ev(75, "gol", true, { jogador: "Gerson Santos", penalti: true })];
+  const r = buildResult(s, "Brasileirão Série A")!;
+  assert.equal(r.title, "Vitória do Flamengo.");
+  assert.equal(r.line, "O Flamengo venceu o Palmeiras e somou três pontos no Brasileirão Série A.");
+  assert.deepEqual(r.goals.map((g) => [g.minute, g.scorer, g.team, g.mine, g.penalty]), [[30, "B. Henrique", "Flamengo", true, false], [60, "E. Felipe", "Palmeiras", false, false], [75, "G. Santos", "Flamengo", true, true]]);
+  s.souMandante = false; // agora o "meu" time é o Palmeiras (visitante), placar 2-1 para o mandante
+  assert.equal(buildResult(s, "x")!.title, "Derrota do Palmeiras.");
+  s.ga = 2; assert.equal(buildResult(s, "x")!.line, "Palmeiras e Flamengo empataram: um ponto para cada lado.");
+  s.contexto = "copa"; assert.equal(buildResult(s, "x")!.line, "Palmeiras e Flamengo empataram.");
 });

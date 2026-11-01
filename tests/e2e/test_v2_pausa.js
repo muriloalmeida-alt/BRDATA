@@ -88,7 +88,7 @@ const { skipPreseason } = require("./_calendar_skip");
   await v2.click(".pz-foot .mt-primary");
   await v2.waitForSelector(".mt-score", { timeout: 10000 });
   await v2.click(".mt-skip");
-  await v2.waitForFunction(() => document.querySelector(".mt-period")?.textContent === "Encerrado", null, { timeout: 30000 });
+  await v2.waitForSelector(".rs-title", { timeout: 30000 }); // Resultado (A4)
   await v2.waitForTimeout(1500);
   const after = await v2.evaluate(async () => (await (await fetch("/api/career", { cache: "no-store" })).json()).career.currentRound);
   check("5) Pausa em 360 px sem rolagem horizontal e alvos ≥ 44 px; partida termina e a rodada é gravada:", a.overflow <= 0 && a.small.length === 0 && after === saved.round + 1, JSON.stringify({ a, after }));

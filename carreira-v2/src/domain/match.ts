@@ -116,3 +116,27 @@ export function buildSubs(s: MatchSnapshot): SubModel | null {
     bench: esc.banco.filter((p) => p.status === "ok").map(map),
   };
 }
+
+// Resultado final (CAP04-T06, pranchas/02_resultados.png col. 1). Título e
+// frase a partir do placar (sem avaliação de desempenho inventada); gols
+// da partida em ordem de minuto.
+export interface ResultModel {
+  title: string; line: string;
+  goals: { minute: number; scorer: string; team: string; mine: boolean; penalty: boolean }[];
+}
+export function buildResult(s: MatchSnapshot, competitionName: string): ResultModel | null {
+  if (!s.mandante || !s.visitante) return null;
+  const mine = s.souMandante ? s.mandante : s.visitante;
+  const opp = s.souMandante ? s.visitante : s.mandante;
+  const my = s.souMandante ? s.gh || 0 : s.ga || 0;
+  const their = s.souMandante ? s.ga || 0 : s.gh || 0;
+  const pts = s.contexto === "liga";
+  const title = my > their ? `Vitória do ${mine.nome}.` : my < their ? `Derrota do ${mine.nome}.` : "Empate.";
+  const line = my > their ? (pts ? `O ${mine.nome} venceu o ${opp.nome} e somou três pontos no ${competitionName}.` : `O ${mine.nome} venceu o ${opp.nome}.`)
+    : my < their ? (pts ? `O ${mine.nome} perdeu para o ${opp.nome} e não pontuou nesta rodada.` : `O ${mine.nome} perdeu para o ${opp.nome}.`)
+    : (pts ? `${mine.nome} e ${opp.nome} empataram: um ponto para cada lado.` : `${mine.nome} e ${opp.nome} empataram.`);
+  const goals = (s.eventos || []).filter((e) => e.tipo === "gol")
+    .map((e) => ({ minute: e.minuto, scorer: e.jogador ? shortName(e.jogador) : "", team: e.meu ? mine.nome : opp.nome, mine: e.meu, penalty: e.penalti }))
+    .sort((a, b) => a.minute - b.minute);
+  return { title, line, goals };
+}

@@ -112,3 +112,25 @@
 .ev-body { display: flex; flex-direction: column; min-width: 0; }
 .ev-body b { font-family: var(--bd-font-display); font-weight: 600; font-size: 19px; }
 .ev-body span { font-size: 15px; color: var(--bd-muted); }
+
+/* ---- A4: Resultado (pranchas/02_resultados.png, coluna 1) ---- */
+.rs-title { margin-top: 24px; }
+.rs .tb-bar { margin-top: 10px; }
+.rs-line { margin-top: 12px; font-size: 17px; }
+.rs-band { margin-top: 10px; min-height: 250px; }
+.rs-kicker { margin-top: 26px; }
+.rs-min { margin-top: 8px; font-family: var(--bd-font-display); font-weight: 600; font-size: 20px; color: #e2e2e4; }
+.rs-tag { margin-top: 6px; padding: 3px 10px; border-radius: 4px; background: #233041; font-family: var(--bd-font-display); font-weight: 600; font-size: 14px; letter-spacing: .08em; text-transform: uppercase; color: #c9d1db; }
+.rs-goals { margin: 14px var(--bd-gutter) 0; padding-top: 12px; border-top: 1px solid var(--bd-line); }
+.rs-goals ul { margin: 0; padding: 0; list-style: none; }
+.rs-goal { display: grid; grid-template-columns: 46px 34px 1fr; align-items: center; min-height: 44px; }
+.rs-goal-min { font-family: var(--bd-font-display); font-weight: 700; font-size: 19px; }
+.rs-goal-ico { width: 24px; height: 24px; color: #d7d9dd; }
+.rs-goal-ico.is-mine { color: var(--bd-accent); }
+.rs-goal-body { display: flex; flex-direction: column; min-width: 0; }
+.rs-goal-body b { font-family: var(--bd-font-display); font-weight: 600; font-size: 18px; }
+.rs-goal-body span { font-size: 13px; color: var(--bd-muted); }
+.rs-links { margin: 12px var(--bd-gutter) 0; border-top: 1px solid var(--bd-line); }
+.rs-links .row:last-child { border-bottom: 1px solid var(--bd-line); }
+.rs-ico { width: 30px; height: 30px; }
+.lv-text { margin: 4px 0 14px; color: var(--bd-muted); font-size: 16px; }

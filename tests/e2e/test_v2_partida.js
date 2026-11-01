@@ -1,5 +1,5 @@
 // Carreira 2.0 — Entrega A1 (ponte + Partida, /carreira-v2/partida). Pela UI
-// real: Pré-jogo ainda abre a versão atual (liga só na A4); sem partida em
+// real: Pré-jogo abre a Partida da v2 (ligado na A4); sem partida em
 // andamento; ?iniciar=1 começa a partida pelo motor da versão atual (ponte
 // invisível), placar/minuto/lances; Pausar/Retomar; intervalo; velocidade;
 // Pular para o fim; rodada gravada como sempre (rodada avança, matchLog e
@@ -47,8 +47,8 @@ const { skipPreseason } = require("./_calendar_skip");
   await v2.waitForSelector(".state", { timeout: 40000 });
   await v2.waitForFunction(() => /Nenhuma partida/.test(document.querySelector(".state")?.textContent || ""), null, { timeout: 40000 }).catch(() => {});
   const none = await v2.locator(".state").textContent();
-  check("1) Pré-jogo segue abrindo a versão atual (#iniciar) até a A4; /partida sem início não começa partida; versão atual normal sem a ponte:",
-    preHref === "/carreira#iniciar" && /Nenhuma partida em andamento/.test(none) && noPonte, JSON.stringify({ preHref, none, noPonte }));
+  check("1) Pré-jogo abre a Partida da v2 (?iniciar=1, ligado na A4); /partida sem início não começa partida; versão atual normal sem a ponte:",
+    preHref === "/carreira-v2/partida?iniciar=1" && /Nenhuma partida em andamento/.test(none) && noPonte, JSON.stringify({ preHref, none, noPonte }));
 
   // 2) ?iniciar=1 começa a partida pela ponte; endereço limpo; placar e lances.
   await v2.goto(base + "/carreira-v2/partida?iniciar=1", { waitUntil: "domcontentloaded" });
@@ -82,15 +82,15 @@ const { skipPreseason } = require("./_calendar_skip");
 
   // 5) Pular para o fim → Encerrado; rodada gravada como sempre.
   await v2.click(".mt-skip");
-  await v2.waitForFunction(() => document.querySelector(".mt-period")?.textContent === "Encerrado", null, { timeout: 30000 });
+  await v2.waitForSelector(".rs-title", { timeout: 30000 }); // Resultado (A4)
   await v2.waitForTimeout(1500);
   const shown = await v2.evaluate(() => document.querySelector(".mt-goals").textContent.split(" - ").map(Number));
   const after = await v2.evaluate(async () => (await (await fetch("/api/career", { cache: "no-store" })).json()).career);
   const last = after.matchLog[0];
   const myRow = after.standings[before.me];
-  check("5) Pular para o fim → Encerrado; rodada gravada pelo motor de sempre (rodada +1, matchLog e tabela com o placar mostrado):",
+  check("5) Pular para o fim → Resultado; rodada gravada pelo motor de sempre (rodada +1, matchLog e tabela com o placar mostrado):",
     after.currentRound === before.round + 1 && after.matchLog.length === before.log + 1 && last.round === before.round && last.gh === shown[0] && last.ga === shown[1] && myRow.j === 1
-      && (await v2.locator(".mt-primary").textContent()).includes("Continuar"), JSON.stringify({ shown, last, round: after.currentRound, j: myRow.j }));
+      && (await v2.locator(".pz-foot .cta").textContent()).includes("Continuar"), JSON.stringify({ shown, last, round: after.currentRound, j: myRow.j }));
 
   // 6) Modo ponte: sem som e sem marcar onboarding/assistente.
   const frame = v2.frames().find((f) => f.url().includes("ponte=partida"));
