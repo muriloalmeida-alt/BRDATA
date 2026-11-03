@@ -481,6 +481,9 @@ const MIME = {
   ".json": "application/json; charset=utf-8",
   ".svg": "image/svg+xml",
   ".png": "image/png",
+  // Cenas da Carreira 2.0 (public/carreira/assets-scene/*.webp) — antes saíam
+  // como application/octet-stream (AUD-01, conferência de content-type).
+  ".webp": "image/webp",
 };
 
 // Sem framework de HTML nenhum nesse projeto (zero-dependência de
@@ -875,6 +878,15 @@ function serveStatic(req, res) {
 
   fs.readFile(filePath, (err, data) => {
     if (err) {
+      // Carreira 2.0 (AUD-01): arquivo do bundle que não existe (ex.: um JS
+      // com hash de um deploy anterior) é 404 de verdade — nunca o HTML do
+      // portal, que o navegador tentaria rodar como módulo (tela em branco).
+      // Rotas da v2 SEM extensão já foram atendidas antes (index da SPA).
+      const reqPath = decodeURIComponent(req.url.split("?")[0]);
+      if (reqPath.startsWith("/carreira/") && path.extname(reqPath)) {
+        res.writeHead(404, { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-cache" });
+        return res.end("Not found");
+      }
       // fallback SPA: qualquer rota desconhecida cai no index.html
       fs.readFile(path.join(PUBLIC_DIR, "index.html"), (e2, data2) => {
         if (e2) { res.writeHead(404); return res.end("Not found"); }
@@ -1639,7 +1651,27 @@ const server = http.createServer(async (req, res) => {
     // verdade é o login obrigatório de /api/career/* (ver guard mais
     // abaixo). noindex sempre — é uma ferramenta atrás de login, não
     // conteúdo pra indexar.
-    if (pathname === "/carreira") {
+    // Carreira 2.0 (frontend novo, React — fonte em carreira-v2/, build
+    // versionado em public/carreira/). Desde 01/11/2026 é ela que responde
+    // em /carreira; a versão anterior (carreira.html) passou para
+    // /carreira-old (que a v2 também usa para as telas que ainda não tem e
+    // para a ponte da partida). Qualquer subrota SEM extensão serve o index
+    // da SPA (deep link); arquivos (assets/…, *.webp) caem no estático normal.
+    if (pathname === "/carreira" || (pathname.startsWith("/carreira/") && !path.extname(pathname))) {
+      return fs.readFile(path.join(PUBLIC_DIR, "carreira", "index.html"), (err, data) => {
+        if (err) { res.writeHead(404); return res.end("Not found"); }
+        res.writeHead(200, { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-cache" });
+        res.end(data.toString("utf8").replace("</head>", `<meta name="robots" content="noindex, nofollow">\n</head>`));
+      });
+    }
+    // Endereço antigo da v2 (links e favoritos de antes da troca): mesmo
+    // caminho, já na rota nova.
+    if (pathname === "/carreira-v2" || pathname.startsWith("/carreira-v2/")) {
+      const qs = req.url.includes("?") ? req.url.slice(req.url.indexOf("?")) : "";
+      res.writeHead(302, { Location: "/carreira" + pathname.slice("/carreira-v2".length) + qs });
+      return res.end();
+    }
+    if (pathname === "/carreira-old") {
       return fs.readFile(path.join(PUBLIC_DIR, "carreira.html"), (err, data) => {
         if (err) { res.writeHead(404); return res.end("Not found"); }
         res.writeHead(200, { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-cache" });
@@ -2248,7 +2280,6 @@ const server = http.createServer(async (req, res) => {
       careerStore.deleteCareer(req.authUser.id);
       return sendJSON(res, 200, { ok: true });
     }
-
     // ================= Retenção/Engajamento (BRDataRetencaoEspecificacao) =================
     // Login diário com streak — ligado à CONTA (users.js), não à
     // carreira (ver comentário lá). `localDate` ("YYYY-MM-DD") vem do

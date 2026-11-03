@@ -1,0 +1,389 @@
+[
+  {
+    "path": "assets/provisorios/cenarios/centro-treinamento.webp",
+    "bytes": 6626,
+    "sha256": "cb0d8c65c4b1e68c899e65911b3a97bf3f1ee36f997c14ba49851a538e3ef2df",
+    "width": 184,
+    "height": 134,
+    "mode": "RGB",
+    "status": "PROVISORIO_NAO_PRODUCAO"
+  },
+  {
+    "path": "assets/provisorios/cenarios/diretoria.webp",
+    "bytes": 9226,
+    "sha256": "2f1721272ebab8b90ebe8737c2f0275ae4a5c8f2d36ac960e57b1e1086034eab",
+    "width": 171,
+    "height": 134,
+    "mode": "RGB",
+    "status": "PROVISORIO_NAO_PRODUCAO"
+  },
+  {
+    "path": "assets/provisorios/cenarios/estadio-lateral.webp",
+    "bytes": 10194,
+    "sha256": "339376f8142bc7bafbb5e155357cb5594bd933b3cd3a5a6eb09f61ff7bdcb220",
+    "width": 187,
+    "height": 134,
+    "mode": "RGB",
+    "status": "PROVISORIO_NAO_PRODUCAO"
+  },
+  {
+    "path": "assets/provisorios/cenarios/estadio-principal.webp",
+    "bytes": 19362,
+    "sha256": "ea34e292ab3871385644b4e00d5fcc409a3b5f6c9a00726ad043b495c96f8801",
+    "width": 294,
+    "height": 134,
+    "mode": "RGB",
+    "status": "PROVISORIO_NAO_PRODUCAO"
+  },
+  {
+    "path": "assets/provisorios/cenarios/sala-imprensa.webp",
+    "bytes": 6110,
+    "sha256": "d2723107c06aff671b05634cf0f9523eeb1f65a1e2d0ed9de57f8e2e7be15699",
+    "width": 169,
+    "height": 134,
+    "mode": "RGB",
+    "status": "PROVISORIO_NAO_PRODUCAO"
+  },
+  {
+    "path": "assets/provisorios/cenarios/sala-tatica.webp",
+    "bytes": 7046,
+    "sha256": "c7272a9c92d204cabf3a25e6007e9a412aec02c1f59809ea7319bffb0b70a49f",
+    "width": 183,
+    "height": 134,
+    "mode": "RGB",
+    "status": "PROVISORIO_NAO_PRODUCAO"
+  },
+  {
+    "path": "assets/provisorios/cenarios/tunel-estadio.webp",
+    "bytes": 6462,
+    "sha256": "2b7bc988e1152df16d48c16fa45bf78108f85e4f187dc89e9c9d37c317824d69",
+    "width": 141,
+    "height": 134,
+    "mode": "RGB",
+    "status": "PROVISORIO_NAO_PRODUCAO"
+  },
+  {
+    "path": "assets/provisorios/cenarios/vestiario.webp",
+    "bytes": 9242,
+    "sha256": "07d04c674837c80686ee664c19bb5770cd3010e38cb500d53d3be461643a42b0",
+    "width": 184,
+    "height": 134,
+    "mode": "RGB",
+    "status": "PROVISORIO_NAO_PRODUCAO"
+  },
+  {
+    "path": "assets/provisorios/elementos/apito.webp",
+    "bytes": 1988,
+    "sha256": "14a40402bc73587cdf7a56c40e48b0305cbb9258e383043d67f5ae2041493070",
+    "width": 125,
+    "height": 72,
+    "mode": "RGB",
+    "status": "PROVISORIO_NAO_PRODUCAO"
+  },
+  {
+    "path": "assets/provisorios/elementos/bola.webp",
+    "bytes": 1944,
+    "sha256": "dd787423ad961c939615cfb4ad893a04f761d2c9787171216dea420c8b32d144",
+    "width": 88,
+    "height": 72,
+    "mode": "RGB",
+    "status": "PROVISORIO_NAO_PRODUCAO"
+  },
+  {
+    "path": "assets/provisorios/elementos/brush-branco.webp",
+    "bytes": 3502,
+    "sha256": "6482e676fce8c1c262b0d9593ce38d12da81cbe0bb7f5c9861bc0b168123ff63",
+    "width": 164,
+    "height": 72,
+    "mode": "RGB",
+    "status": "PROVISORIO_NAO_PRODUCAO"
+  },
+  {
+    "path": "assets/provisorios/elementos/brush-preto.webp",
+    "bytes": 3920,
+    "sha256": "b0d5d7ded8f08cad0b2b647a402c605a9472aadb71c7e93d74aa879f2e63eaff",
+    "width": 161,
+    "height": 72,
+    "mode": "RGB",
+    "status": "PROVISORIO_NAO_PRODUCAO"
+  },
+  {
+    "path": "assets/provisorios/elementos/brush-verde.webp",
+    "bytes": 2780,
+    "sha256": "134af6c47e3d579bbaf020504f6acb37bec86dc5415504ff1c9fdf25427b7010",
+    "width": 164,
+    "height": 72,
+    "mode": "RGB",
+    "status": "PROVISORIO_NAO_PRODUCAO"
+  },
+  {
+    "path": "assets/provisorios/elementos/brush-vermelho.webp",
+    "bytes": 3614,
+    "sha256": "0f331bea154acbb14d48118d92cea89777b41739950e6cd5b5b5ae404856d233",
+    "width": 164,
+    "height": 72,
+    "mode": "RGB",
+    "status": "PROVISORIO_NAO_PRODUCAO"
+  },
+  {
+    "path": "assets/provisorios/elementos/cartoes.webp",
+    "bytes": 1606,
+    "sha256": "14f05651adcd4d01d3330a73f676a7067d7a44a1b3bdb5655dfa71d632961b16",
+    "width": 110,
+    "height": 72,
+    "mode": "RGB",
+    "status": "PROVISORIO_NAO_PRODUCAO"
+  },
+  {
+    "path": "assets/provisorios/elementos/coroa.webp",
+    "bytes": 1226,
+    "sha256": "ed11cccae96fba5b587583358a190033b7041bcb3ba2e1cee209cbc1a567a24a",
+    "width": 90,
+    "height": 72,
+    "mode": "RGB",
+    "status": "PROVISORIO_NAO_PRODUCAO"
+  },
+  {
+    "path": "assets/provisorios/elementos/tatica-desenho.webp",
+    "bytes": 3886,
+    "sha256": "5d82625dbb4eb3342b6bbe0a5725c5d6f1c5dd76496b8aaf8da6daf93c039ced",
+    "width": 167,
+    "height": 72,
+    "mode": "RGB",
+    "status": "PROVISORIO_NAO_PRODUCAO"
+  },
+  {
+    "path": "assets/provisorios/elementos/trave-rede.webp",
+    "bytes": 2278,
+    "sha256": "6dcf8fa158cc8a0e3b6afa4aaadd8dc9841b14b4941a5dd3658b9b7ae71228e9",
+    "width": 113,
+    "height": 72,
+    "mode": "RGB",
+    "status": "PROVISORIO_NAO_PRODUCAO"
+  },
+  {
+    "path": "assets/provisorios/elementos/trofeu-libertadores.webp",
+    "bytes": 1830,
+    "sha256": "5ea64b18f538e28bc961ac03df1a3144464d64efe8175fd38be373b47e266800",
+    "width": 82,
+    "height": 72,
+    "mode": "RGB",
+    "status": "PROVISORIO_NAO_PRODUCAO"
+  },
+  {
+    "path": "assets/provisorios/elementos/trofeu.webp",
+    "bytes": 1764,
+    "sha256": "7ca12afb4eb3a4628b98c76fef19e9d5d82b4712d8469b7ac259f11189f0aeea",
+    "width": 85,
+    "height": 72,
+    "mode": "RGB",
+    "status": "PROVISORIO_NAO_PRODUCAO"
+  },
+  {
+    "path": "assets/provisorios/personagens/arbitro.webp",
+    "bytes": 7422,
+    "sha256": "06defd51911c0b92449b9b81687a3b2e9769daa12d1777e97f57b9773cbc1ae2",
+    "width": 158,
+    "height": 134,
+    "mode": "RGB",
+    "status": "PROVISORIO_NAO_PRODUCAO"
+  },
+  {
+    "path": "assets/provisorios/personagens/bandeira.webp",
+    "bytes": 4410,
+    "sha256": "f9832ebf4d9a11f8018809b02968f525839fc9d585147baa595d3479c0c8e968",
+    "width": 152,
+    "height": 134,
+    "mode": "RGB",
+    "status": "PROVISORIO_NAO_PRODUCAO"
+  },
+  {
+    "path": "assets/provisorios/personagens/goleiro-defesa.webp",
+    "bytes": 4756,
+    "sha256": "393c00b587e7163ac06c637c508f85f0d6f907968ab3cf38d3e7c65aabeb8f88",
+    "width": 184,
+    "height": 134,
+    "mode": "RGB",
+    "status": "PROVISORIO_NAO_PRODUCAO"
+  },
+  {
+    "path": "assets/provisorios/personagens/jogador-comemorando.webp",
+    "bytes": 5364,
+    "sha256": "071ea9588fe837f33515f4c774101859212960ca0632eec605c8992e2d3ee351",
+    "width": 165,
+    "height": 134,
+    "mode": "RGB",
+    "status": "PROVISORIO_NAO_PRODUCAO"
+  },
+  {
+    "path": "assets/provisorios/personagens/jogadores-comemoracao.webp",
+    "bytes": 9022,
+    "sha256": "a15fef75f88fbe6529dd8f10e08b3e3e7b222d001cebb7279fc62829164d83ac",
+    "width": 184,
+    "height": 134,
+    "mode": "RGB",
+    "status": "PROVISORIO_NAO_PRODUCAO"
+  },
+  {
+    "path": "assets/provisorios/personagens/torcida-fumaca.webp",
+    "bytes": 8646,
+    "sha256": "eb66321dc25d1ec6a9ca6815de221a0856a47fee0313609e092a2b1a941d5e5d",
+    "width": 158,
+    "height": 134,
+    "mode": "RGB",
+    "status": "PROVISORIO_NAO_PRODUCAO"
+  },
+  {
+    "path": "assets/provisorios/personagens/torcida.webp",
+    "bytes": 10170,
+    "sha256": "db44d2eff75bfd5c00d531e7d107380affa338e13dddea8503dba9bac3608ad6",
+    "width": 170,
+    "height": 134,
+    "mode": "RGB",
+    "status": "PROVISORIO_NAO_PRODUCAO"
+  },
+  {
+    "path": "assets/provisorios/personagens/treinador-costas.webp",
+    "bytes": 3912,
+    "sha256": "3ebd95866bb45c334e63f42ac43baa2449db6a3972696da843112871c4d8de7a",
+    "width": 168,
+    "height": 134,
+    "mode": "RGB",
+    "status": "PROVISORIO_NAO_PRODUCAO"
+  },
+  {
+    "path": "assets/provisorios/personagens/treinador-perfil.webp",
+    "bytes": 6764,
+    "sha256": "68d0e36ee4b8de28938d31cbbe3f962ce855dcbcd23fee55c89c9c08c3b2334a",
+    "width": 174,
+    "height": 134,
+    "mode": "RGB",
+    "status": "PROVISORIO_NAO_PRODUCAO"
+  },
+  {
+    "path": "assets/provisorios/texturas/fumaca.webp",
+    "bytes": 3428,
+    "sha256": "900b8b55ec711ba34daf56d9aec28c0d6bed5ed809fb650d10f0730a8ea77655",
+    "width": 159,
+    "height": 79,
+    "mode": "RGB",
+    "status": "PROVISORIO_NAO_PRODUCAO"
+  },
+  {
+    "path": "assets/provisorios/texturas/luzes-bokeh.webp",
+    "bytes": 3936,
+    "sha256": "67d4ed53a1964a4ab2d5866cb4bbdb2f1eb0af05cdb0032ae7ff09ff8a42ca79",
+    "width": 163,
+    "height": 79,
+    "mode": "RGB",
+    "status": "PROVISORIO_NAO_PRODUCAO"
+  },
+  {
+    "path": "assets/provisorios/texturas/overlay-lateral.webp",
+    "bytes": 2768,
+    "sha256": "8dbca0d3eca82c86a2ef08974530bef2b60cdd8a789cfdea112464ffdc8c1fcf",
+    "width": 161,
+    "height": 79,
+    "mode": "RGB",
+    "status": "PROVISORIO_NAO_PRODUCAO"
+  },
+  {
+    "path": "assets/provisorios/texturas/overlay-topo.webp",
+    "bytes": 1230,
+    "sha256": "b2f4f4289edffaf0ade3402fdc7ab5f384d11c95bb9fc705adfe91bb65293497",
+    "width": 172,
+    "height": 79,
+    "mode": "RGB",
+    "status": "PROVISORIO_NAO_PRODUCAO"
+  },
+  {
+    "path": "assets/provisorios/texturas/particulas.webp",
+    "bytes": 4186,
+    "sha256": "25e159ab9182260344d8e20e1cdb323987dce7c38bb57179d6c1246d0ee081e4",
+    "width": 163,
+    "height": 79,
+    "mode": "RGB",
+    "status": "PROVISORIO_NAO_PRODUCAO"
+  },
+  {
+    "path": "assets/provisorios/texturas/rasgo-papel.webp",
+    "bytes": 4684,
+    "sha256": "c753d1b30b4222fda573b5c4c651c7fbeffe3526252e99bc04b685c1aad69f0c",
+    "width": 170,
+    "height": 79,
+    "mode": "RGB",
+    "status": "PROVISORIO_NAO_PRODUCAO"
+  },
+  {
+    "path": "assets/provisorios/texturas/tecido-bandeira.webp",
+    "bytes": 2968,
+    "sha256": "0bdc732b1c1ff647ca9642b2878826a437605b8845a4acc577382376a1cf8562",
+    "width": 205,
+    "height": 79,
+    "mode": "RGB",
+    "status": "PROVISORIO_NAO_PRODUCAO"
+  },
+  {
+    "path": "assets/provisorios/texturas/textura-grama.webp",
+    "bytes": 7482,
+    "sha256": "05181398507aafe04eb2f38f2ad4391de3c97f617d6cafee8cd8bfe98357e660",
+    "width": 162,
+    "height": 79,
+    "mode": "RGB",
+    "status": "PROVISORIO_NAO_PRODUCAO"
+  },
+  {
+    "path": "assets/provisorios/texturas/textura-rede.webp",
+    "bytes": 3854,
+    "sha256": "5c754f0f336c880a5c274e93aa09c7c7077b335c6508b493f56f534005934a8c",
+    "width": 158,
+    "height": 79,
+    "mode": "RGB",
+    "status": "PROVISORIO_NAO_PRODUCAO"
+  },
+  {
+    "path": "assets/qa/dashboard_hml_reprovado_2026-10-27.jpeg",
+    "bytes": 186644,
+    "sha256": "22476f93ca0b289de0ad0e71b06ede93b66a22ca54e8793b795d7482bc10a28b",
+    "width": 710,
+    "height": 1536,
+    "mode": "RGB",
+    "status": "REFERENCIA_NAO_USAR_EM_PRODUCAO"
+  },
+  {
+    "path": "assets/referencias/capitulo02_prancha.png",
+    "bytes": 2001784,
+    "sha256": "6917c6cf8c9f693dc462ba3ee63e22a6b05e83c8cb241c2a95dad8731cd5ab89",
+    "width": 1536,
+    "height": 1024,
+    "mode": "RGB",
+    "status": "REFERENCIA_NAO_USAR_EM_PRODUCAO"
+  },
+  {
+    "path": "assets/referencias/dashboard_conceito.png",
+    "bytes": 1906962,
+    "sha256": "e3e775b8ac44d6a065228de39cdeef0d20857b247dfe3016a566c4322e917ca6",
+    "width": 941,
+    "height": 1672,
+    "mode": "RGB",
+    "status": "REFERENCIA_NAO_USAR_EM_PRODUCAO"
+  },
+  {
+    "path": "assets/referencias/login_aprovado.png",
+    "bytes": 1898501,
+    "sha256": "61d463d1ed1b41f69f3a1d3a35032d8cc944372904117e8b8252ece14bbc6e31",
+    "width": 941,
+    "height": 1672,
+    "mode": "RGB",
+    "status": "REFERENCIA_NAO_USAR_EM_PRODUCAO"
+  },
+  {
+    "path": "assets/referencias/splash_aprovado.png",
+    "bytes": 1924745,
+    "sha256": "670b4230eb7b8205960ee31363853834a9de59bb77c26327aa5e5dc045ad02f1",
+    "width": 941,
+    "height": 1672,
+    "mode": "RGB",
+    "status": "REFERENCIA_NAO_USAR_EM_PRODUCAO"
+  }
+]

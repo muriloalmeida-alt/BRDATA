@@ -24,7 +24,8 @@ const { check } = require("./_check");
   // 2) Avatar "Entrar" continua abrindo o gate na view de LOGIN (não
   // cadastro) -- comportamento de sempre, não deveria ter mudado.
   await page.click("#avatarBtn");
-  await page.waitForTimeout(300);
+  // Espera o gate de fato (era um sleep fixo de 300 ms — curto no CI).
+  await page.waitForFunction(() => document.getElementById("gateLoginView").style.display === "block", null, { timeout: 8000 }).catch(() => {});
   const loginView = await page.evaluate(() => document.getElementById("gateLoginView").style.display);
   const signupView = await page.evaluate(() => document.getElementById("gateSignupView").style.display);
   check("2) Avatar 'Entrar' abre o gate na view de login:", loginView === "block" && signupView === "none");

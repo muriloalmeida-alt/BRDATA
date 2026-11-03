@@ -1,0 +1,17 @@
+/* Finanças — pranchas/06_clube.png, coluna 2 (≈ fator 2,2). */
+.fn { min-height: 100dvh; display: flex; flex-direction: column; }
+.fn-cash dd { font-size: 54px; line-height: 1.05; color: var(--bd-accent); letter-spacing: -.005em; }
+.fn-cash dd.is-neg { color: var(--bd-danger); }
+.fn-wage span { font-family: var(--bd-font-text); font-weight: 500; font-size: 16px; color: var(--bd-muted); }
+.fn-over { color: var(--bd-danger) !important; }
+.fn-links .bd-link { border-bottom: 1px solid var(--bd-line); }
+.fn-ledger { margin: 6px 0 0; padding: 0; list-style: none; border-top: 1px solid var(--bd-line); }
+.fn-round { padding: 12px 0 4px; font-size: 13px; color: var(--bd-muted); }
+.fn-tx { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 52px; padding: 6px 0; border-bottom: 1px solid var(--bd-line); }
+.fn-tx-body { display: flex; flex-direction: column; min-width: 0; }
+.fn-tx-label { font-family: var(--bd-font-display); font-weight: 600; font-size: 18px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fn-tx-round { font-size: 13px; color: var(--bd-muted); }
+.fn-tx-val { flex-shrink: 0; font-family: var(--bd-font-display); font-weight: 700; font-size: 18px; color: var(--bd-accent); font-variant-numeric: tabular-nums; }
+.fn-tx-val.is-neg { color: var(--bd-danger); }
+.fn-empty { margin: 8px 0 0; font-size: 15px; color: var(--bd-muted); }
+.fn-legacy { margin: 16px var(--bd-gutter) 0; width: auto; border-top: 1px solid var(--bd-line); }

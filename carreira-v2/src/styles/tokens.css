@@ -1,0 +1,37 @@
+/* BRDATA Carreira 2.0 — tokens (Entrega 00 · Fundação).
+   Fonte: pacote mobile (pranchas + referências anteriores) e
+   docs/carreira-v2/docs/02_DESIGN_SYSTEM.md. Cores amostradas da
+   referência inicio.png; lima #B4E64B fixo para todos os clubes; dourado
+   = destaque editorial (rótulos), nunca alerta/sucesso. Tipografia
+   decidida pelo Murilo (31/10/2026): Barlow Condensed (títulos, números,
+   wordmark em texto) + Barlow (apoio) — fontes livres (OFL). */
+:root {
+  --bd-bg: #080e18;
+  --bd-bg-deep: #070f18;
+  --bd-text: #f5f7fa;
+  --bd-muted: #a9aeb7;
+  --bd-gold: #f0c35a;
+  --bd-accent: #b4e64b;
+  --bd-on-accent: #0b1508;
+  --bd-danger: #ef5c62;
+  --bd-neutral-chip: #3a4049;
+  --bd-line: #2b333f;
+  /* Zonas da tabela — mesmas cores da versão atual (decisão de 01/11) */
+  --bd-zone-top: var(--bd-gold);
+  --bd-zone-mid: #5aa9e6;
+  --bd-zone-reb: var(--bd-danger);
+
+  --bd-font-display: "Barlow Condensed", "Arial Narrow", sans-serif;
+  --bd-font-text: "Barlow", "Inter", system-ui, sans-serif;
+
+  --bd-gutter: 16px;
+  --bd-space-1: 4px; --bd-space-2: 8px; --bd-space-3: 12px; --bd-space-4: 16px;
+  --bd-space-6: 24px; --bd-space-8: 32px;
+  --bd-radius-sm: 8px; --bd-radius: 12px;
+
+  --bd-touch: 44px;
+  --bd-cta-h: 48px;
+  --bd-nav-h: 64px;
+  --bd-safe-top: env(safe-area-inset-top, 0px);
+  --bd-safe-bottom: env(safe-area-inset-bottom, 0px);
+}

@@ -9,6 +9,7 @@
 // rodando ANTES dele na 1ª carreira.
 const { chromium } = require("playwright-core");
 const { check } = require("./_check");
+const { passCareerSetup } = require("./_startup");
 
 async function newAccount(page, base, email) {
   await page.goto(base + "/", { waitUntil: "load" });
@@ -24,6 +25,7 @@ async function pickClub(page, base) {
   await page.click(".m3-club-row");
   await page.waitForTimeout(150);
   await page.click("#btnConfirmClub");
+  await passCareerSetup(page); // Cap. 1 T05/T06 (redesign)
 }
 
 (async () => {
@@ -48,7 +50,8 @@ async function pickClub(page, base) {
   const wizardOpenBefore = await page.evaluate(() => document.getElementById("startupWizardOverlay").classList.contains("open"));
   check("1) Tutorial de navegação abre primeiro (assistente ainda não, sobrepostos nunca):", onboardOpen && !wizardOpenBefore);
   await page.click("#btnOnboardSkip");
-  await page.waitForTimeout(400);
+  // Espera o assistente de fato (era um sleep fixo de 400 ms — curto no CI).
+  await page.waitForFunction(() => document.getElementById("startupWizardOverlay").classList.contains("open") && !!document.getElementById("wizardStepTitle").textContent, null, { timeout: 8000 }).catch(() => {});
   const wizardOpenAfter = await page.evaluate(() => document.getElementById("startupWizardOverlay").classList.contains("open"));
   const step1 = await page.evaluate(() => ({
     title: document.getElementById("wizardStepTitle").textContent,
@@ -182,6 +185,7 @@ async function pickClub(page, base) {
     await page.click(".m3-club-row");
     await page.waitForTimeout(150);
     await page.click("#btnConfirmClub");
+    await passCareerSetup(page); // Cap. 1 T05/T06 (redesign)
     await page.waitForTimeout(600);
     const secondCareer = await page.evaluate(() => ({
       onboardOpen: document.getElementById("onboardingOverlay").classList.contains("open"),

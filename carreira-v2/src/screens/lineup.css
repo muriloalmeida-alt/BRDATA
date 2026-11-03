@@ -1,0 +1,65 @@
+/* Escalação e Quem entra? — medidas de referencias_anteriores/escalacao.png
+   e escolher_substituto.png (853 px ≈ 390 CSS px; fator 2,19). Fundo navy
+   liso, sem fotografia (LEIA_PRIMEIRO dos backgrounds). */
+.lu { min-height: 100dvh; padding-bottom: calc(var(--bd-nav-h) + var(--bd-safe-bottom) + 12px); }
+.lu .screen-title { margin-top: 18px; }
+
+.lu-formation { position: relative; z-index: 1; display: flex; align-items: center; justify-content: space-between; margin: 12px var(--bd-gutter) -10px; }
+.lu-form-btn { display: inline-flex; align-items: center; gap: 8px; min-height: var(--bd-touch); margin-right: -6px; padding: 0 6px; border: 0; background: none; color: var(--bd-text); font-family: var(--bd-font-display); font-weight: 500; font-size: 19px; cursor: pointer; }
+.lu-form-btn svg { width: 20px; height: 20px; }
+
+/* Campo: largura total, perspectiva leve (trapézio), linhas finas */
+.lu-pitch { position: relative; margin-top: 0; aspect-ratio: 390 / 414; background: radial-gradient(120% 70% at 50% 0%, #142334 0%, #0b1520 60%, #09121b 100%); overflow: visible; }
+.lu-lines { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.lu-lines path, .lu-lines ellipse { fill: none; stroke: rgba(150, 180, 205, .38); stroke-width: 1.3; vector-effect: non-scaling-stroke; }
+
+.lu-slot, .lu-res { display: flex; flex-direction: column; align-items: center; gap: 1px; min-width: 64px; min-height: 60px; padding: 2px; color: var(--bd-text); text-decoration: none; -webkit-tap-highlight-color: transparent; }
+.lu-slot { position: absolute; transform: translate(-50%, -32%); }
+.lu-jersey { position: relative; display: block; filter: drop-shadow(0 3px 6px rgba(0, 0, 0, .55)); }
+.lu-out { position: absolute; top: -3px; right: -5px; width: 18px; height: 18px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: var(--bd-danger); color: #fff; font: 700 12px/1 var(--bd-font-text); }
+.lu-name { max-width: 82px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: var(--bd-font-display); font-weight: 600; font-size: 13px; line-height: 1.15; text-shadow: 0 1px 4px rgba(0, 0, 0, .8); }
+.lu-slot:focus-visible, .lu-res:focus-visible { outline-offset: 0; border-radius: 6px; }
+
+.lu-bench { margin: 8px var(--bd-gutter) 0; }
+.lu-bench-head { display: flex; align-items: center; justify-content: space-between; }
+.lu-more { display: inline-flex; align-items: center; gap: 6px; min-height: var(--bd-touch); color: var(--bd-muted); font-size: 15px; text-decoration: none; }
+.lu-more svg { width: 16px; height: 16px; }
+.lu-bench-grid { display: grid; grid-template-columns: repeat(3, 1fr); row-gap: 6px; margin-top: -6px; }
+.lu-res { justify-self: center; }
+.lu-empty { margin: 8px 0 0; color: var(--bd-muted); font-size: 16px; }
+
+.lu-foot { margin: 12px var(--bd-gutter) 0; }
+.lu-legacy { margin-top: 10px; border-bottom: 0; }
+
+/* ---- Quem entra? ---- */
+.qs { min-height: 100dvh; display: flex; flex-direction: column; }
+.qs .screen-title { margin-top: 18px; }
+.qs-out { margin: 18px var(--bd-gutter) 0; padding-bottom: 10px; border-bottom: 1px solid var(--bd-line); }
+.qs-out-row { display: flex; align-items: center; gap: 16px; margin-top: 6px; }
+.qs-body { display: flex; flex-direction: column; min-width: 0; flex: 1; }
+.qs-name { font-family: var(--bd-font-display); font-weight: 600; font-size: 19px; line-height: 1.15; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.qs-pos { font-size: 14px; color: var(--bd-muted); }
+.qs-out .qs-name { font-size: 21px; }
+
+.qs-list { flex: 1; margin: 22px var(--bd-gutter) 0; }
+.qs-hint { margin: 4px 0 4px; font-size: 15px; color: var(--bd-muted); }
+.qs-opt { position: relative; display: flex; align-items: center; gap: 20px; width: 100%; min-height: 66px; padding: 9px 0 9px 8px; border: 0; border-bottom: 1px solid var(--bd-line); background: none; color: var(--bd-text); text-align: left; cursor: pointer; font: inherit; }
+.qs-opt.is-on::before { content: ""; position: absolute; left: -7px; top: -1px; bottom: -1px; width: 4px; border-radius: 2px; background: var(--bd-accent); }
+.qs-opt.is-on .qs-name { color: var(--bd-accent); }
+.qs-radio { flex-shrink: 0; width: 26px; height: 26px; border: 2px solid #9aa0a8; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: var(--bd-on-accent); }
+.qs-opt.is-on .qs-radio { border-color: var(--bd-accent); background: var(--bd-accent); }
+.qs-radio svg { width: 18px; height: 18px; stroke-width: 2.6; }
+
+.qs-foot { position: sticky; bottom: 0; margin-top: 8px; padding: 12px var(--bd-gutter) calc(4px + var(--bd-safe-bottom)); background: linear-gradient(180deg, rgba(8, 14, 24, 0) 0%, var(--bd-bg) 18%); }
+.qs-summary { display: flex; align-items: center; justify-content: center; gap: 10px; margin: 0 0 10px; font-family: var(--bd-font-display); font-weight: 600; font-size: 20px; }
+.qs-summary svg { width: 20px; height: 20px; }
+.qs-foot .text-btn { margin-top: 4px; }
+
+@media (max-width: 360px) {
+  .lu-name { max-width: 70px; font-size: 14px; }
+  .lu-slot { min-width: 58px; }
+}
+
+/* Campo só leitura (Pré-jogo) */
+.lu-ro-list { position: absolute; inset: 0; }
+.lu-slot--ro { cursor: default; }

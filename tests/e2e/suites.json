@@ -35,7 +35,10 @@
       "test_tickets_form.js",
       "test_loan_advanced.js",
       "test_noticias_fullscreen_fluxo.js",
-      "test_patrocinio.js"
+      "test_patrocinio.js",
+      "test_v2_foco.js",
+      "test_v2_tabela_partida.js",
+      "test_v2_gravacao.js"
     ]
   },
   "exclusive": {

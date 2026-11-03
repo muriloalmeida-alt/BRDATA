@@ -57,7 +57,9 @@ function randomIncompressible(bytes) {
     try { onDisk = JSON.parse(fs.readFileSync(DATA_FILE, "utf8")); if (onDisk.u1) break; } catch (_) { /* ainda escrevendo */ }
   }
   onDisk = onDisk || {};
-  check("2) Arquivo em disco guarda { __gz } comprimido, não o JSON cru:", !!onDisk.u1 && !!onDisk.u1.__gz && typeof onDisk.u1.__gz === "string");
+  // Cap. 7 / Tela 02: o registro da conta agora é de slots — o envelope
+  // comprimido mora em slots.<ativo>.
+  check("2) Arquivo em disco guarda { __gz } comprimido (no slot ativo), não o JSON cru:", !!onDisk.u1 && !!onDisk.u1.slots && onDisk.u1.active === "s1" && typeof onDisk.u1.slots.s1.__gz === "string");
 
   // 3) Migração transparente: save ANTIGO (pré-compressão, objeto cru
   // no arquivo) é migrado ao carregar, sem perder dado nem exigir
@@ -95,18 +97,32 @@ function randomIncompressible(bytes) {
   try { careerStore.saveCareer("u6", { foo: "bar" }); } catch (e) { threw6 = true; status6 = e.status; }
   check("6) Formato de save inválido continua rejeitado com 400 (regra preservada):", threw6 && status6 === 400);
 
-  // 7) Disco gravado pelo redesign (PRs #47-#52, revertidos) no formato
-  // de slots { active, slots: { sN: { __gz } }, meta } — cru OU já
-  // recomprimido como { __gz } pelo load() antigo. getCareer precisa
-  // devolver a carreira do slot ativo, não o registro de slots.
+  // 7) Save no formato pré-slots ({__gz} direto) segue legível (vira o
+  // registro interno de um slot ativo).
+  const envOnly = (() => { const zlib = require("zlib"); return { __gz: zlib.gzipSync(Buffer.from(JSON.stringify(legacy))).toString("base64") }; })();
+  careerStore = freshStore({ u_env: envOnly });
+  check("7) Save pré-slots ({__gz}) continua legível:", JSON.stringify(careerStore.getCareer("u_env")) === JSON.stringify(legacy));
+
+  // 8) Save gravado no formato de slots do PR #52 (2 carreiras) continua
+  // legível: devolve a ATIVA; a outra fica preservada, sem API de troca
+  // (uma carreira por conta, decisão de 31/10/2026).
   const zlib = require("zlib");
-  const gz = (o) => ({ __gz: zlib.gzipSync(Buffer.from(JSON.stringify(o), "utf8")).toString("base64") });
+  const env = (o) => ({ __gz: zlib.gzipSync(Buffer.from(JSON.stringify(o))).toString("base64") });
+  const fla = { clubId: "fla", clubName: "Flamengo", squad: [] }, goi = { clubId: "goi", clubName: "Goiás", squad: [] };
+  careerStore = freshStore({ u_slots: { active: "s2", slots: { s1: env(fla), s2: env(goi) }, meta: {} } });
+  const active = careerStore.getCareer("u_slots");
+  careerStore.saveCareer("u_slots", { ...goi, seasonYear: 2027 });
+  check("8) Save em slots (#52): lê a carreira ativa, grava nela; API de slots não existe mais:",
+    active.clubId === "goi" && careerStore.getCareer("u_slots").seasonYear === 2027 && typeof careerStore.listSlots === "undefined" && typeof careerStore.activateSlot === "undefined");
+
+  // 9) Portado do PR #54 (main): registro de slots cru OU recomprimido
+  // inteiro como { __gz } pela versão do PR #46 -> carreira do slot ativo;
+  // slot ativo vazio -> sem carreira (null), sem quebrar.
   const activeCareer = { clubId: "ativo", squad: [{ id: "p1" }] };
-  const slotRec = { active: "s2", slots: { s1: gz({ clubId: "velho", squad: [] }), s2: gz(activeCareer) }, meta: {} };
-  careerStore = freshStore({ u7a: slotRec, u7b: gz(slotRec), u7c: { active: "s1", slots: {}, meta: {} } });
-  const g7a = careerStore.getCareer("u7a"), g7b = careerStore.getCareer("u7b");
-  check("7) Registro de slots do redesign (cru e recomprimido) -> devolve a carreira do slot ativo:",
-    JSON.stringify(g7a) === JSON.stringify(activeCareer) && JSON.stringify(g7b) === JSON.stringify(activeCareer)
-      && careerStore.getCareer("u7c") === null);
+  const slotRec = { active: "s2", slots: { s1: env({ clubId: "velho", squad: [] }), s2: env(activeCareer) }, meta: {} };
+  careerStore = freshStore({ u9a: slotRec, u9b: env(slotRec), u9c: { active: "s1", slots: {}, meta: {} } });
+  check("9) Registro de slots cru e recomprimido (#54) -> carreira do slot ativo; slot vazio -> null:",
+    JSON.stringify(careerStore.getCareer("u9a")) === JSON.stringify(activeCareer) && JSON.stringify(careerStore.getCareer("u9b")) === JSON.stringify(activeCareer)
+      && careerStore.getCareer("u9c") === null);
 
 })().catch((e) => { console.error("FATAL:", e); process.exit(1); });

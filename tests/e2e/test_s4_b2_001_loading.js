@@ -26,20 +26,22 @@ const { check } = require("./_check");
   const loadingState = await page.evaluate(() => {
     const el = document.getElementById("screenLoading");
     const cs = getComputedStyle(el);
-    const spinner = el.querySelector(".ct-spinner");
+    // Redesign Cap. 1 T01: barra de progresso (etapas reais do boot) no
+    // lugar do spinner.
+    const spinner = el.querySelector(".bd-progress-fill");
     const spinnerCs = spinner ? getComputedStyle(spinner) : null;
     return {
       bgColor: cs.backgroundColor,
       hasCrest: !!el.querySelector(".mt-splash-crest"),
       hasText: !!el.querySelector("p"),
-      spinnerBorderTopColor: spinnerCs?.borderTopColor,
+      spinnerBorderTopColor: spinnerCs?.backgroundColor,
     };
   });
-  // --m3-surface-dim (tema padrão "Verde de Campo") é #100F0E = rgb(16,15,14);
-  // --m3-primary é #6DDB94 = rgb(109,219,148).
+  // Paleta do redesign (carreira.html): --m3-surface-dim é #050B15 =
+  // rgb(5,11,21); --m3-primary é #B4E64B = rgb(180,230,75).
   check("1) Estado 'carregamento' com tokens --m3-* aplicados (bg/spinner):",
     loadingState.hasCrest && loadingState.hasText &&
-    loadingState.bgColor === "rgb(16, 15, 14)" && loadingState.spinnerBorderTopColor === "rgb(109, 219, 148)",
+    /* --br-bg #03101D */ loadingState.bgColor === "rgb(3, 16, 29)" && loadingState.spinnerBorderTopColor === "rgb(180, 230, 75)",
     JSON.stringify(loadingState));
 
   // 2) Regra morta "#screenLoading h1" removida (nenhum dos 3 estados
@@ -76,9 +78,9 @@ const { check } = require("./_check");
   // rgb(231,226,222); --m3-on-surface-variant é #CBC5BE = rgb(203,197,190).
   check("3) Estado 'erro' com tokens --m3-* corretos (ícone/título/subtítulo/detalhe) e botão de retry:",
     errorState.iconColor === "rgb(255, 84, 73)" &&
-    errorState.titleColor === "rgb(231, 226, 222)" &&
-    errorState.subColor === "rgb(203, 197, 190)" &&
-    errorState.detailColor === "rgb(203, 197, 190)" &&
+    errorState.titleColor === "rgb(232, 238, 246)" &&
+    errorState.subColor === "rgb(159, 176, 198)" &&
+    errorState.detailColor === "rgb(159, 176, 198)" &&
     errorState.detailText.includes("Erro de teste") &&
     errorState.hasRetryButton && errorState.retryButtonText === "Tentar novamente",
     JSON.stringify(errorState));

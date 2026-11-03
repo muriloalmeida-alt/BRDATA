@@ -32,7 +32,9 @@ const SEM_ESCUDO = ["Athletico Paranaense", "Coritiba", "Chapecoense", "Remo", "
       const cards = [...document.querySelectorAll(".m3-club-row")];
       const card = cards.find((c) => c.textContent.includes(name));
       if (!card) return "não achado";
-      const hasImg = !!card.querySelector(".ct-crest img");
+      // Redesign Cap. 1 T04: na grade da escolha de clube o escudo oficial
+      // vem direto como <img class="bd-crest"> (sem a chapinha .ct-crest).
+      const hasImg = !!card.querySelector(".ct-crest img, img.bd-crest");
       const hasMono = !!card.querySelector(".ct-crest .ct-crest-mono");
       return hasImg ? "imagem" : hasMono ? "monograma" : "nenhum";
     }

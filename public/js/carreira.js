@@ -220,6 +220,15 @@ function subPositionOf(p) {
 function squadSortKey(p) { return (SUBPOS_ORDER[subPositionOf(p)] ?? 9) * 1000 - p.overall; }
 
 /* ---------- Estado ---------- */
+// Carreira 2.0 — "modo ponte" (docs/carreira-v2/PLANO_BLOCO_PARTIDA.md,
+// opção A): a v2 abre esta página num quadro invisível com ?ponte=partida
+// e conduz a partida pela API BRDATA_PONTE (ver ponteEstado). Motor,
+// regras e gravação são os de sempre; nesse modo a página só não abre os
+// modais de entrada nem toca sons (decisão de 01/11: partida em silêncio).
+const V2_PONTE = new URLSearchParams(location.search).get("ponte") === "partida";
+// Estado só da ponte (nunca salvo): última partida vista (LIVE_MATCH vira
+// null no fim), resultado da gravação final e quem está ouvindo.
+const PONTE = { pronta: false, ultimo: null, fim: null, ouvintes: new Set(), resumo: null, posJogo: false, salvando: false, erroGravacao: null };
 let LIVE_MODE = false;
 let LIVE_SEASON = new Date().getFullYear();
 let LEAGUE_TEAMS = []; // 20 clubes ativos (real ou DEMO_TEAMS — ver loadLeague)
@@ -339,10 +348,13 @@ function contrastRatio(hexA, hexB) {
 // tela sem clube "dono" (login, escolha de clube/campeonato, telas de
 // sistema) e como fallback de acessibilidade quando a cor derivada de
 // um clube não atinge contraste mínimo.
+// Redesign (referência visual aprovada, 10/2026) — lima/ciano no lugar
+// do "Verde de Campo"; mesmos valores do bloco :root do redesign em
+// carreira.html.
 const M3_DEFAULT_PALETTE = {
-  primary: "#6DDB94", onPrimary: "#00391A", primaryContainer: "#005226", onPrimaryContainer: "#89F8AF",
+  primary: "#B4E64B", onPrimary: "#13200A", primaryContainer: "#1D3324", onPrimaryContainer: "#D9F5A0",
   secondary: "#E3C16C", onSecondary: "#3F2E00", secondaryContainer: "#5A4400", onSecondaryContainer: "#FFDF9D",
-  tertiary: "#9ECAFF", onTertiary: "#00325B", tertiaryContainer: "#00497F", onTertiaryContainer: "#D2E4FF",
+  tertiary: "#6CC6E8", onTertiary: "#00344A", tertiaryContainer: "#0E3A52", onTertiaryContainer: "#C6ECFA",
 };
 function deriveClubPalette(seedHex) {
   const rgb = hexToRgb(seedHex);
@@ -400,9 +412,11 @@ function applyM3Palette(palette) {
 // jogador (teamById(CAREER.clubId)). Telas sem carreira ativa (login,
 // escolha de clube/campeonato, telas de sistema) nunca chamam isso —
 // ficam nos valores literais do tema padrão já escritos no <style>.
-function applyClubPalette(club) {
-  const derived = club && club.c1 ? deriveClubPalette(club.c1) : null;
-  applyM3Palette(derived || M3_DEFAULT_PALETTE);
+// Redesign (decisão do Murilo, 10/2026): destaque lima FIXO pra todo
+// clube, como na referência visual — a cor do clube fica só no escudo.
+// deriveClubPalette continua existindo (e testado), só não pinta mais a UI.
+function applyClubPalette() {
+  applyM3Palette(M3_DEFAULT_PALETTE);
 }
 // Chamado ao sair de uma carreira ativa (Reiniciar, Escolher outro
 // clube, logout) -- devolve as superfícies dinâmicas pro tema padrão
@@ -654,6 +668,67 @@ function openM3Dialog(opts) { return m3OpenOverlay("dialog", opts); }
 function closeM3Dialog(id) { closeM3Overlay(id); }
 function openM3BottomSheet(opts) { return m3OpenOverlay("sheet", opts); }
 function closeM3BottomSheet(id) { closeM3Overlay(id); }
+
+// Acessibilidade das modais (P1 da S4-B5-QA-001): as .ct-modal-overlay
+// fixas abrem/fecham trocando a classe "open" em dezenas de lugares —
+// em vez de mexer em cada um, um observador por overlay dá a elas o
+// mesmo comportamento das m3-* acima: papel de diálogo com o título
+// ligado, foco levado pra dentro ao abrir, Tab preso na modal de cima e
+// foco devolvido a quem abriu ao fechar. Esc NÃO fecha: cada modal tem
+// fechamento com efeito próprio (ex.: o X da partida ao vivo encerra o
+// jogo), então fechar continua sendo só pelos botões dela.
+const CT_MODAL_LAST_FOCUS = new Map(); // overlay -> elemento focado antes de abrir
+function ctTopOpenModal() {
+  const open = [...document.querySelectorAll(".ct-modal-overlay.open")];
+  return open[open.length - 1] || null; // última no HTML = a de cima (mesma convenção do app)
+}
+function initModalA11y() {
+  document.querySelectorAll(".ct-modal-overlay").forEach((overlay, i) => {
+    const card = overlay.querySelector(".ct-modal");
+    if (!card) return;
+    card.setAttribute("role", "dialog");
+    card.setAttribute("aria-modal", "true");
+    card.setAttribute("tabindex", "-1");
+    // Religa o título a cada abertura: algumas modais redesenham o
+    // cabeçalho (ex.: passos do onboarding) e o id ligado no boot some.
+    const linkTitle = () => {
+      const title = card.querySelector("h3, h2, .ct-modal-title");
+      if (!title) return;
+      if (!title.id) title.id = `${overlay.id || `ctModal${i}`}Title`;
+      card.setAttribute("aria-labelledby", title.id);
+    };
+    linkTitle();
+    new MutationObserver(() => {
+      const isOpen = overlay.classList.contains("open");
+      if (isOpen && !CT_MODAL_LAST_FOCUS.has(overlay)) {
+        linkTitle();
+        CT_MODAL_LAST_FOCUS.set(overlay, document.activeElement);
+        // Só move o foco se quem abriu já não focou algo dentro (ex.:
+        // campo de busca); foca o próprio diálogo, não um campo, pra não
+        // abrir o teclado do celular sozinho.
+        requestAnimationFrame(() => {
+          if (overlay.classList.contains("open") && !card.contains(document.activeElement)) card.focus({ preventScroll: true });
+        });
+      } else if (!isOpen && CT_MODAL_LAST_FOCUS.has(overlay)) {
+        const prev = CT_MODAL_LAST_FOCUS.get(overlay);
+        CT_MODAL_LAST_FOCUS.delete(overlay);
+        if (prev && prev !== document.body && document.body.contains(prev) && isRendered(prev)) prev.focus({ preventScroll: true });
+      }
+    }).observe(overlay, { attributes: true, attributeFilter: ["class"] });
+  });
+  document.addEventListener("keydown", (e) => {
+    if (e.key !== "Tab" || m3OpenOverlays.length) return; // diálogos m3-* já prendem o próprio Tab
+    const top = ctTopOpenModal();
+    const card = top && top.querySelector(".ct-modal");
+    if (!card) return;
+    const items = m3FocusableIn(card);
+    if (!items.length) { e.preventDefault(); card.focus(); return; }
+    const first = items[0], last = items[items.length - 1];
+    if (!card.contains(document.activeElement)) { e.preventDefault(); (e.shiftKey ? last : first).focus(); }
+    else if (e.shiftKey && (document.activeElement === first || document.activeElement === card)) { e.preventDefault(); last.focus(); }
+    else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+  });
+}
 // Primitiva de loading estrutural (S3_2_COMPONENTES_E_CONTRATOS.md §18).
 // Retorna HTML puro (não gerencia estado) — quem chama decide quando
 // trocar pelo conteúdo real, mesmo padrão de qualquer outra *HTML()
@@ -677,8 +752,38 @@ function m3SkeletonHTML({ lines = 3, avatar = false } = {}) {
 // o Modo Técnico). "Tentar novamente" recarrega a página — mais
 // confiável que tentar re-executar boot() no meio de um estado de
 // erro desconhecido.
+// Cap. 1 · Tela 01 — splash cinematográfica (ver #screenLoading em
+// carreira.html). Mesma marcação do HTML estático, regerada a cada
+// etapa longa (troca de competição, retomada de carreira). `text` vira
+// a legenda acessível; a barra mostra o progresso REAL das etapas (ver
+// setBootProgress) — sem etapa informada fica indeterminada, nunca uma
+// porcentagem simulada.
 function splashLoadingHTML(text) {
-  return `<div class="mt-splash-crest"><img src="img/brand-icon.png" alt=""></div><div class="ct-spinner"></div><p>${escapeHtml(text)}</p>`;
+  return `
+  <div class="bd-splash">
+    <div class="bd-brand" role="img" aria-label="BRDATA — Futebol, gestão, resultados">
+      <div class="mt-splash-crest bd-brand-mark"><img src="img/brand-icon.png" alt=""></div>
+      <div class="bd-brand-sig" aria-hidden="true">Futebol · Gestão · Resultados</div>
+    </div>
+    <p class="bd-splash-msg">O clube é seu.<br><span>A estratégia, também.</span></p>
+    <div class="bd-progress is-indeterminate" id="splashProgress" role="progressbar" aria-label="${escapeHtml(text)}" aria-valuemin="0" aria-valuemax="100"><span class="bd-progress-fill"></span></div>
+    <p class="bd-progress-label" aria-live="polite">${escapeHtml(text)}</p>
+  </div>`;
+}
+// Etapas reais do carregamento (sessão → save → competição → demais
+// divisões → montagem). `done`/`total` vêm de quem chama; a barra só
+// avança quando uma etapa de fato termina.
+function setBootProgress(done, total, label) {
+  const bar = document.getElementById("splashProgress");
+  if (!bar) return;
+  const pct = Math.max(0, Math.min(100, Math.round((done / total) * 100)));
+  bar.classList.remove("is-indeterminate");
+  bar.setAttribute("aria-valuenow", String(pct));
+  bar.querySelector(".bd-progress-fill").style.width = pct + "%";
+  if (label) {
+    const l = bar.parentElement.querySelector(".bd-progress-label");
+    if (l) l.textContent = label;
+  }
 }
 function splashErrorHTML(detail) {
   return `<div class="mt-error-screen">
@@ -690,7 +795,7 @@ function splashErrorHTML(detail) {
   </div>`;
 }
 function show(name) {
-  ["screenLoading", "screenLoginRequired", "screenCompetitionPicker", "screenPicker", "screenGame"].forEach((id) => {
+  ["screenLoading", "screenLoginRequired", "screenCompetitionPicker", "screenPicker", "screenSetup", "screenFirstEntry", "screenGame"].forEach((id) => {
     document.getElementById(id).classList.toggle("hidden", id !== name);
   });
   // BUG CORRIGIDO: trocar de tela (ex.: escolher um clube mais pra
@@ -708,7 +813,9 @@ function show(name) {
   if (name !== "screenGame") resetToDefaultM3Palette();
 }
 function applyStoredTheme() {
-  try { document.documentElement.setAttribute("data-theme", localStorage.getItem("brdata_theme") || "light"); } catch {}
+  // Redesign: a carreira é só tema escuro (decisão do Murilo, 10/2026) —
+  // a preferência de tema do site principal não vale aqui.
+  document.documentElement.setAttribute("data-theme", "dark");
 }
 
 /* ---------- Times ativos (ao vivo com o mesmo fornecedor do BR Data, ou modo Exemplo) ---------- */
@@ -934,11 +1041,24 @@ function teamById(id) {
 // um monograma dentro do próprio hexágono como fallback. Hierarquia
 // agora é: escudo real (t.logo) > sigla (monograma) > nunca mais o
 // hexágono liso de cor só.
+// Redesign capítulos 1–7 — escudos oficiais SEMPRE do repositório: os
+// 19 clubes da Série A com SVG em img/teams/<id>.svg (ver README da
+// pasta) não tinham `logo` no catálogo de exemplo (DEMO_TEAMS) e caíam
+// no monograma em todo o Modo Técnico. Mesmos ids do LOCAL_CREST_MAP de
+// app.js. Logo vindo do fornecedor (dado ao vivo) ou do catálogo
+// (Série B, *_b.png) continua tendo prioridade.
+const CAREER_LOCAL_CRESTS = new Set(["fla", "pal", "bot", "for", "int", "sao", "cor", "cap", "cam", "flu", "san", "bra", "juv", "cui", "gre", "cru", "bah", "vas", "vit"]);
+function teamLogoSrc(t) {
+  if (!t) return null;
+  if (t.logo) return t.logo;
+  return t.id != null && CAREER_LOCAL_CRESTS.has(String(t.id)) ? `img/teams/${t.id}.svg` : null;
+}
 function crestImg(t, size = 40) {
   const c1 = t?.c1 || "#8892A0", c2 = t?.c2 || "#333";
-  const hasLogo = !!(t && t.logo);
+  const logo = teamLogoSrc(t);
+  const hasLogo = !!logo;
   const inner = hasLogo
-    ? `<img src="${t.logo}" alt="" style="height:${Math.round(size * 0.62)}px;width:${Math.round(size * 0.62)}px;object-fit:contain;">`
+    ? `<img src="${logo}" alt="" style="height:${Math.round(size * 0.62)}px;width:${Math.round(size * 0.62)}px;object-fit:contain;">`
     : t?.short
       ? `<span class="ct-crest-mono" style="font-size:${Math.round(size * 0.34)}px;">${escapeHtml(t.short)}</span>`
       : "";
@@ -2099,7 +2219,13 @@ function renderCoachProfile() {
         <p class="ct-sub">${h.seasons} temporada(s) · ${h.titles} título(s) · posição média ${h.avgPosition}º${h.reason === "dismissed" ? " · saiu por demissão" : h.reason === "accepted_proposal" ? " · saiu por proposta de outro clube" : ""}</p>
       </div>`).join("")
     : `<p class="ct-empty">Nenhuma passagem anterior ainda — esse é seu primeiro clube.</p>`;
+  // Redesign Cap. 6 · T01 — identidade do treinador (conta) no topo.
   document.getElementById("coachProfileBody").innerHTML = `
+    <div class="bd-player-hero mt-player-hero">
+      ${coachAvatarHTML(ME, "bd-avatar--lg")}
+      <div class="mt-player-hero-info"><b>${escapeHtml((ME && ME.name) || "Treinador")}</b><span>Treinador do ${escapeHtml(CAREER.clubName)}</span></div>
+      <button type="button" class="bd-btn-ghost" id="btnCoachEditProfile">Editar</button>
+    </div>
     <div class="mt-stat-grid" style="margin-bottom:14px;">
       ${kpiHTML("Reputação", rep, "gold")}
       <div class="mt-stat-block"><div class="num" style="font-size:17px;">${escapeHtml(reputationLabel(rep))}</div><div class="lbl">Status</div></div>
@@ -2107,6 +2233,7 @@ function renderCoachProfile() {
     </div>
     <p class="ct-sub" style="margin-bottom:14px;">Clube atual: <b>${escapeHtml(CAREER.clubName)}</b> — ${(CAREER.seasonHistory || []).length} temporada(s) aqui até agora.</p>
     ${historyHTML}`;
+  document.getElementById("btnCoachEditProfile").addEventListener("click", openEditProfileScreen);
 }
 function openCoachProfileScreen() {
   renderCoachProfile();
@@ -2224,7 +2351,7 @@ function setSfxEnabled(v) {
 // de dentro do próprio jogo ao vivo já aberto por um clique, então
 // nunca esbarra na trava de "sem gesto do usuário".
 function sfxCtx() {
-  if (!SFX_ENABLED) return null;
+  if (!SFX_ENABLED || V2_PONTE) return null;
   if (!SFX_CTX) {
     const AC = window.AudioContext || window.webkitAudioContext;
     if (!AC) return null;
@@ -2385,11 +2512,11 @@ function renderSettingsScreen() {
     ${settingsToggleRowHTML("lesao", "🩹", "Alertas de lesão", settings.lesao)}
     <div class="m3-card-title">Notificações push</div>
     <p class="mt-card-sub" style="margin:-4px 0 8px;">${pushOk ? "Um lembrete se você estiver perto de perder sua sequência de login diário — mesmo com o app fechado." : "Seu navegador não suporta notificações push."}</p>
-    <div class="mt-setting-row"><div class="mt-setting-icon">🔔</div><div class="mt-setting-label">Ativar notificações push</div><button type="button" class="mt-setting-toggle${pushOn ? " on" : ""}" id="settingsPushToggleBtn" ${pushOk ? "" : "disabled"}><span class="mt-setting-toggle-dot"></span></button></div>
+    <div class="mt-setting-row"><div class="mt-setting-icon">🔔</div><div class="mt-setting-label">Ativar notificações push</div><button type="button" class="mt-setting-toggle${pushOn ? " on" : ""}" id="settingsPushToggleBtn" role="switch" aria-checked="${pushOn}" aria-label="Ativar notificações push" ${pushOk ? "" : "disabled"}><span class="mt-setting-toggle-dot"></span></button></div>
     <div class="mt-setting-row${pushOn ? "" : " hidden"}" id="settingsRowPushTest"><div class="mt-setting-icon">🧪</div><div class="mt-setting-label">Enviar notificação de teste</div><span class="mt-setting-chev">›</span></div>
     <div class="m3-card-title">Áudio</div>
     <p class="mt-card-sub" style="margin:-4px 0 8px;">Apito de início/fim de jogo, som de gol e torcida ambiente durante a partida ao vivo.</p>
-    <div class="mt-setting-row"><div class="mt-setting-icon">🔊</div><div class="mt-setting-label">Efeitos sonoros</div><button type="button" class="mt-setting-toggle${SFX_ENABLED ? " on" : ""}" id="settingsSfxToggleBtn"><span class="mt-setting-toggle-dot"></span></button></div>
+    <div class="mt-setting-row"><div class="mt-setting-icon">🔊</div><div class="mt-setting-label">Efeitos sonoros</div><button type="button" class="mt-setting-toggle${SFX_ENABLED ? " on" : ""}" id="settingsSfxToggleBtn" role="switch" aria-checked="${!!SFX_ENABLED}" aria-label="Efeitos sonoros"><span class="mt-setting-toggle-dot"></span></button></div>
     <div class="m3-card-title">Conta</div>
     <div class="mt-setting-row" id="settingsRowEditProfile"><div class="mt-setting-icon">✎</div><div class="mt-setting-label">Editar perfil</div><span class="mt-setting-chev">›</span></div>
     <div class="mt-setting-row" id="settingsRowPurchaseHistory"><div class="mt-setting-icon">🧾</div><div class="mt-setting-label">Histórico de compras</div><span class="mt-setting-chev">›</span></div>
@@ -2437,7 +2564,7 @@ function renderSettingsScreen() {
   updateNotificationBadge();
 }
 function settingsToggleRowHTML(key, icon, label, on) {
-  return `<div class="mt-setting-row" data-toggle-key="${key}"><div class="mt-setting-icon">${icon}</div><div class="mt-setting-label">${escapeHtml(label)}</div><button type="button" class="mt-setting-toggle${on ? " on" : ""}"><span class="mt-setting-toggle-dot"></span></button></div>`;
+  return `<div class="mt-setting-row" data-toggle-key="${key}"><div class="mt-setting-icon">${icon}</div><div class="mt-setting-label">${escapeHtml(label)}</div><button type="button" class="mt-setting-toggle${on ? " on" : ""}" role="switch" aria-checked="${!!on}" aria-label="${escapeHtml(label)}"><span class="mt-setting-toggle-dot"></span></button></div>`;
 }
 function openSettingsScreen() {
   renderSettingsScreen();
@@ -3995,9 +4122,11 @@ function closeNotificationsSheet() {
   document.getElementById("notificationsSheetOverlay").classList.remove("open");
 }
 function updateNotificationBadge() {
+  const n = unreadNotificationCount();
+  const top = document.getElementById("topbarNotifBadge");
+  if (top) { top.hidden = !n; top.textContent = n > 9 ? "9+" : String(n || ""); }
   const badge = document.getElementById("settingsBellBadge");
   if (!badge) return;
-  const n = unreadNotificationCount();
   badge.textContent = n > 9 ? "9+" : String(n);
   badge.classList.toggle("hidden", n === 0);
 }
@@ -5292,7 +5421,13 @@ async function persistCareer() {
     // Loga o motivo real no console pra dar pra investigar sem precisar
     // acesso ao servidor, e distingue sessão expirada do resto.
     console.error("[carreira] falha ao salvar progresso:", err.status, err.message);
-    if (err.status === 401) {
+    // Carreira 2.0 (AUD-02): a ponte informa à v2 se foi sessão expirada
+    // ou outra falha. No modo ponte esta página é um quadro invisível — a
+    // tela de login daqui não seria vista; a v2 mostra o próprio aviso.
+    PONTE.erroGravacao = err.status === 401 ? "sessao" : "falha";
+    if (err.status === 401 && V2_PONTE) {
+      // (sem toast/troca de tela: ver acima)
+    } else if (err.status === 401) {
       toast("Sua sessão expirou — faça login de novo pra continuar salvando.", { type: "warn" });
       show("screenLoginRequired");
     } else if (err.status === 413) {
@@ -5341,26 +5476,67 @@ async function persistCareer() {
 // motor de pontos corridos deste app — ver aviso em
 // server/src/competitions.js) até ganhar um motor próprio.
 const CAREER_COMPETITIONS = [
-  { id: "brasileirao", flag: "🇧🇷", name: "Brasileirão Série A", sub: "20 clubes — a elite do futebol brasileiro" },
-  { id: "serie_b", flag: "🇧🇷", name: "Brasileirão Série B", sub: "20 clubes — acesso e disputa direta pela Série A" },
-  { id: "serie_c", flag: "🇧🇷", name: "Brasileirão Série C", sub: "20 clubes — a base da pirâmide do futebol nacional" },
+  { id: "brasileirao", name: "Brasileirão Série A", sub: "20 clubes — a elite do futebol brasileiro", country: "Brasil", countryCode: "BR", category: "Brasil" },
+  { id: "serie_b", name: "Brasileirão Série B", sub: "20 clubes — acesso e disputa direta pela Série A", country: "Brasil", countryCode: "BR", category: "Brasil" },
+  { id: "serie_c", name: "Brasileirão Série C", sub: "20 clubes — a base da pirâmide do futebol nacional", country: "Brasil", countryCode: "BR", category: "Brasil" },
 ];
 // Rótulo curto de cada divisão (selo no Mercado — ver renderMercado)
 // — mesmas 3 competições de CAREER_COMPETITIONS acima, sem o prefixo
 // "Brasileirão" (não cabe numa pílula pequena ao lado do time).
 const COMPETITION_SHORT = { brasileirao: "Série A", serie_b: "Série B", serie_c: "Série C" };
+// Bandeiras vetoriais (identidade do PAÍS da competição, não de clube —
+// escudos de clube continuam vindo só de img/teams/). Só os países que
+// têm competição jogável.
+const COUNTRY_FLAG_SVG = {
+  BR: `<svg viewBox="0 0 28 20" aria-hidden="true"><rect width="28" height="20" rx="2" fill="#1E9A48"/><path d="M14 2.6 25.2 10 14 17.4 2.8 10Z" fill="#F7D417"/><circle cx="14" cy="10" r="4.6" fill="#1D3E8C"/><path d="M9.6 9.1c2.9-.5 6.1.1 8.8 1.6" stroke="#fff" stroke-width=".9" fill="none"/></svg>`,
+};
+function countryFlagHTML(code) {
+  return `<span class="bd-flag">${COUNTRY_FLAG_SVG[code] || `<span class="bd-flag-code">${escapeHtml(code || "?")}</span>`}</span>`;
+}
+function competitionName(id) {
+  return (CAREER_COMPETITIONS.find((c) => c.id === id) || {}).name || "Competição";
+}
+
+/* ---------- Cap. 1 · Tela 03 — Seleção da competição ----------
+   Lista contínua das competições REAIS do jogo. Abas de categoria só
+   aparecem com 2+ categorias (hoje todas são do Brasil). */
+let COMPETITION_CATEGORY = null;
 function renderCompetitionPicker() {
-  document.getElementById("competitionList").innerHTML = CAREER_COMPETITIONS.map((c) => `
-    <button class="mt-competition-card" data-competition="${escapeHtml(c.id)}">
-      <span class="mt-competition-flag">${c.flag}</span>
+  const cats = [...new Set(CAREER_COMPETITIONS.map((c) => c.category))];
+  const catBar = document.getElementById("competitionCategories");
+  if (cats.length > 1) {
+    if (!cats.includes(COMPETITION_CATEGORY)) COMPETITION_CATEGORY = cats[0];
+    catBar.hidden = false;
+    catBar.innerHTML = cats.map((c) => `<button type="button" role="tab" class="bd-chip${c === COMPETITION_CATEGORY ? " active" : ""}" aria-selected="${c === COMPETITION_CATEGORY}" data-cat="${escapeHtml(c)}">${escapeHtml(c)}</button>`).join("");
+    catBar.querySelectorAll("[data-cat]").forEach((b) => b.addEventListener("click", () => { COMPETITION_CATEGORY = b.dataset.cat; renderCompetitionPicker(); }));
+  } else {
+    COMPETITION_CATEGORY = cats[0] || null;
+    catBar.hidden = true;
+    catBar.innerHTML = "";
+  }
+  const list = CAREER_COMPETITIONS.filter((c) => !COMPETITION_CATEGORY || c.category === COMPETITION_CATEGORY);
+  document.getElementById("competitionList").innerHTML = list.length ? list.map((c) => `
+    <button class="mt-competition-card bd-comp-row" data-competition="${escapeHtml(c.id)}">
+      ${countryFlagHTML(c.countryCode)}
       <span class="mt-competition-body">
-        <div class="mt-competition-title">${escapeHtml(c.name)}</div>
-        <div class="mt-competition-sub">${escapeHtml(c.sub)}</div>
+        <span class="mt-competition-title">${escapeHtml(c.name)}</span>
+        <span class="mt-competition-sub bd-comp-country">${escapeHtml(c.country)}</span>
+        <span class="bd-comp-desc">${escapeHtml(c.sub)}</span>
       </span>
-      <svg class="mt-competition-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
-    </button>`).join("");
+      <svg class="mt-competition-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 18 15 12 9 6"/></svg>
+    </button>`).join("") : `<div class="bd-empty"><p>Nenhuma competição disponível nesta categoria.</p></div>`;
   document.querySelectorAll(".mt-competition-card").forEach((btn) => {
-    btn.addEventListener("click", () => chooseCompetition(btn.dataset.competition));
+    btn.addEventListener("click", () => {
+      if (btn.disabled) return;
+      document.querySelectorAll(".mt-competition-card").forEach((b) => { b.disabled = true; });
+      btn.classList.add("selected");
+      chooseCompetition(btn.dataset.competition).catch((err) => {
+        console.error("[carreira] falha ao carregar competição:", err);
+        renderCompetitionPicker();
+        show("screenCompetitionPicker");
+        toast("Não foi possível carregar essa competição. Tente de novo.");
+      });
+    });
   });
 }
 // Escolhida a divisão, carrega o campeonato certo (real, se disponível
@@ -5368,66 +5544,163 @@ function renderCompetitionPicker() {
 // Escolha do Clube, agora restrita aos times DESSA divisão.
 async function chooseCompetition(competitionId) {
   show("screenLoading");
-  document.getElementById("screenLoading").innerHTML = splashLoadingHTML("Carregando o Modo Técnico...");
+  document.getElementById("screenLoading").innerHTML = splashLoadingHTML("Carregando os clubes...");
   await loadLeague(competitionId);
+  setBootProgress(1, 1);
   renderClubPicker();
   show("screenPicker");
 }
-// Redesign (mockup brtreinadorbloco1inicio.html, tela 1 — Onboarding) —
-// fluxo de 2 passos: clicar numa linha só seleciona (marca com check +
-// fundo na cor do clube), só o FAB "Confirmar clube" chama startCareer()
-// de fato. PICKER_SELECTED_CLUB é resetado a cada renderClubPicker() —
-// nunca sobrevive de uma visita pra outra da tela.
+
+/* ---------- Cap. 1 · Tela 04 — Seleção do clube ----------
+   Grade de escudos oficiais (img/teams/ via t.logo; sem logo, o
+   monograma de crestImg). Clicar seleciona; "Continuar" leva
+   pra configuração da carreira (ou direto pro novo clube, no fluxo de
+   proposta aceita — filterIds). PICKER_SELECTED_CLUB é resetado a cada
+   renderClubPicker(). */
 let PICKER_SELECTED_CLUB = null;
+let PICKER_CONTEXT_IDS = null;
+function crestLarge(t, size = 64) {
+  const logo = teamLogoSrc(t);
+  if (logo) return `<img class="bd-crest" src="${escapeHtml(logo)}" alt="" width="${size}" height="${size}" loading="lazy" style="width:${size}px;height:${size}px;">`;
+  return crestImg(t, size);
+}
+function pickerTeams() {
+  return (PICKER_CONTEXT_IDS ? LEAGUE_TEAMS.filter((t) => PICKER_CONTEXT_IDS.some((id) => String(id) === String(t.id))) : LEAGUE_TEAMS.slice())
+    .sort((a, b) => a.name.localeCompare(b.name, "pt-BR"));
+}
+function normalizeSearch(str) {
+  return String(str || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().trim();
+}
 function renderClubPicker(filterIds, bannerText) {
   const banner = document.getElementById("pickerContextBanner");
   if (bannerText) { banner.textContent = bannerText; banner.hidden = false; }
   else { banner.textContent = ""; banner.hidden = true; }
-  // AJUSTE (pedido do usuário: "clubes em ordem alfabética") — LEAGUE_TEAMS
-  // vem na ordem do fornecedor de dados (não alfabética); .slice() antes
-  // de ordenar pra não embaralhar o array original (usado por sorteio,
-  // tabela etc. em outros lugares do jogo).
-  const teams = (filterIds ? LEAGUE_TEAMS.filter((t) => filterIds.some((id) => String(id) === String(t.id))) : LEAGUE_TEAMS.slice())
-    .sort((a, b) => a.name.localeCompare(b.name, "pt-BR"));
-  const grid = document.getElementById("clubGrid");
+  PICKER_CONTEXT_IDS = filterIds || null;
   PICKER_SELECTED_CLUB = null;
-  // BUG CORRIGIDO: startCareer() desabilita o FAB (evita duplo clique
-  // enquanto a carreira carrega) mas nunca o reabilitava — reabrir a
-  // Escolha do Clube (ex.: "Reiniciar") herdava o botão travado pra
-  // sempre depois da 1ª carreira criada. Reseta aqui, toda vez que a
-  // tela é (re)montada.
+  // Fluxo de proposta aceita (filterIds): não há "voltar" pra escolha
+  // de competição — o destino já está definido.
+  document.getElementById("btnPickerBack").hidden = !!filterIds;
+  document.getElementById("pickerCompetitionLabel").textContent = filterIds
+    ? "Confirme o clube que você vai comandar."
+    : `Escolha o time que você vai comandar no ${competitionName(CURRENT_COMPETITION_ID)}.`;
+  // BUG CORRIGIDO: startCareer() desabilita o botão (evita duplo clique
+  // enquanto a carreira carrega) — reabilita toda vez que a tela é
+  // (re)montada.
   const confirmBtn = document.getElementById("btnConfirmClub");
   confirmBtn.classList.add("hidden");
   confirmBtn.disabled = false;
+  const grid = document.getElementById("clubGrid");
   grid.style.opacity = "";
   grid.style.pointerEvents = "";
-  // Meta line "Série A · Curitiba, PR" — uf só existe no catálogo demo
-  // (DEMO_TEAMS); dado real (ver mapTeam() em sportmonks.js/frozen.js)
-  // só tem venue.city, sem UF — degrada pra só cidade nesse caso, sem
-  // quebrar nem inventar estado.
+  renderClubGrid();
+}
+function renderClubGrid() {
   const compLabel = COMPETITION_SHORT[CURRENT_COMPETITION_ID] || "Brasileirão";
+  const teams = pickerTeams();
+  const grid = document.getElementById("clubGrid");
+  // Seleção que saiu do filtro deixa de valer (o "Continuar" some junto).
+  if (PICKER_SELECTED_CLUB && !teams.some((t) => String(t.id) === String(PICKER_SELECTED_CLUB))) {
+    PICKER_SELECTED_CLUB = null;
+    document.getElementById("btnConfirmClub").classList.add("hidden");
+  }
   grid.innerHTML = teams.map((t) => {
+    const id = String(t.id);
     const city = t.venue?.city ? `${t.venue.city}${t.uf ? ", " + t.uf : ""}` : "";
-    return `<div class="m3-club-row" data-id="${escapeHtml(String(t.id))}">
-      ${crestImg(t, 36)}
-      <div class="m3-club-body">
-        <div class="m3-club-name">${escapeHtml(t.name)}</div>
-        <div class="m3-club-meta">${escapeHtml(compLabel)}${city ? " · " + escapeHtml(city) : ""}</div>
-      </div>
-      <svg class="m3-club-check hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+    const sel = id === String(PICKER_SELECTED_CLUB);
+    return `<div class="m3-club-row bd-club-tile${sel ? " selected" : ""}" role="option" tabindex="0" aria-selected="${sel}" data-id="${escapeHtml(id)}" aria-label="${escapeHtml(t.name)}${city ? ", " + escapeHtml(city) : ""}">
+      <span class="bd-club-crest">${crestLarge(t, 52)}</span>
+      <span class="m3-club-body">
+        <span class="m3-club-name">${escapeHtml(t.name)}</span>
+        <span class="m3-club-meta">${escapeHtml(city || compLabel)}</span>
+      </span>
+      <svg class="m3-club-check${sel ? "" : " hidden"}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>
     </div>`;
   }).join("");
-  grid.querySelectorAll(".m3-club-row").forEach((el) => el.addEventListener("click", () => selectClubRow(el.dataset.id)));
+  grid.querySelectorAll(".m3-club-row").forEach((el) => {
+    el.addEventListener("click", () => selectClubRow(el.dataset.id));
+    el.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); selectClubRow(el.dataset.id); } });
+  });
 }
 function selectClubRow(clubId) {
   PICKER_SELECTED_CLUB = clubId;
   document.querySelectorAll("#clubGrid .m3-club-row").forEach((row) => {
     const isSel = row.dataset.id === String(clubId);
     row.classList.toggle("selected", isSel);
+    row.setAttribute("aria-selected", String(isSel));
     row.querySelector(".m3-club-check").classList.toggle("hidden", !isSel);
   });
   document.getElementById("btnConfirmClub").classList.remove("hidden");
 }
+
+/* ---------- Cap. 1 · Tela 05 — Configurar carreira ----------
+   Só o nome do treinador (conta, PUT /api/account/name) — nacionalidade
+   e foto retiradas por decisão de Produto (31/10/2026). */
+let SETUP_CLUB_ID = null;
+function coachAvatarHTML(user, extraClass = "") {
+  return `<span class="bd-avatar bd-avatar--mono ${extraClass}">${escapeHtml(initialsFor((user && user.name) || "?"))}</span>`;
+}
+function openSetupScreen(clubId) {
+  SETUP_CLUB_ID = clubId;
+  const t = LEAGUE_TEAMS.find((x) => String(x.id) === String(clubId));
+  document.getElementById("setupClubSummary").innerHTML = t
+    ? `${crestLarge(t, 36)}<span><b>${escapeHtml(t.name)}</b><small>${escapeHtml(competitionName(CURRENT_COMPETITION_ID))}</small></span>`
+    : "";
+  document.getElementById("setupCoachName").value = (ME && ME.name) || "";
+  document.getElementById("setupError").style.display = "none";
+  const btn = document.getElementById("btnStartCareer");
+  btn.disabled = false; btn.textContent = "Iniciar carreira";
+  show("screenSetup");
+}
+async function submitSetup(e) {
+  e.preventDefault();
+  const err = document.getElementById("setupError");
+  err.style.display = "none";
+  const name = document.getElementById("setupCoachName").value.trim();
+  if (!name) { err.textContent = "Informe o nome do treinador."; err.style.display = "block"; document.getElementById("setupCoachName").focus(); return; }
+  const btn = document.getElementById("btnStartCareer");
+  if (btn.disabled) return; // toque repetido
+  btn.disabled = true; btn.textContent = "Salvando...";
+  try {
+    if (name !== ME.name) {
+      const r = await fetchJSON("/api/account/name", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name }) });
+      ME.name = r.user.name;
+    }
+  } catch (ex) {
+    err.textContent = ex.message || "Não foi possível salvar seu perfil. Tente de novo.";
+    err.style.display = "block";
+    btn.disabled = false; btn.textContent = "Iniciar carreira";
+    return;
+  }
+  show("screenLoading");
+  document.getElementById("screenLoading").innerHTML = splashLoadingHTML("Criando sua carreira...");
+  try {
+    await startCareer(SETUP_CLUB_ID);
+  } catch (ex) {
+    console.error("[carreira] falha ao criar carreira:", ex);
+    show("screenSetup");
+    err.textContent = "Não foi possível iniciar a carreira. Verifique sua conexão e tente de novo.";
+    err.style.display = "block";
+    btn.disabled = false; btn.textContent = "Iniciar carreira";
+  }
+}
+
+/* ---------- Cap. 1 · Tela 06 — Primeira entrada ----------
+   Só logo depois de startCareer (carreira nova ou novo clube). */
+function openFirstEntry() {
+  const t = teamById(CAREER.clubId) || { name: CAREER.clubName, logo: CAREER.clubLogo, short: CAREER.clubShort };
+  const isNewClubInCareer = (CAREER.clubHistory || []).length > 0;
+  document.getElementById("firstEntryTitle").textContent = isNewClubInCareer ? "Bem-vindo ao seu novo desafio!" : "Bem-vindo ao seu clube!";
+  document.getElementById("firstEntrySub").textContent = `Você agora comanda o ${CAREER.clubName}, no ${competitionName(CAREER.competitionId)}.`;
+  document.getElementById("firstEntryCrest").innerHTML = crestLarge(t, 112);
+  const scene = document.getElementById("screenFirstEntry");
+  const c = CAREER.clubColors || {};
+  scene.style.setProperty("--club-c1", c.c1 || "#B4E64B");
+  scene.style.setProperty("--club-c2", c.c2 || "#0E1B2D");
+  document.getElementById("btnFirstEntryGo").disabled = false;
+  show("screenFirstEntry");
+  document.getElementById("btnFirstEntryGo").focus({ preventScroll: true });
+}
+
 async function startCareer(clubId) {
   const club = LEAGUE_TEAMS.find((t) => String(t.id) === String(clubId));
   if (!club) return;
@@ -5471,7 +5744,7 @@ async function startCareer(clubId) {
       // String() dos dois lados em todo lugar, então não muda nada além
       // de deixar de quebrar o save).
       clubId: String(club.id), clubName: club.name, clubShort: club.short || club.name.slice(0, 3).toUpperCase(),
-      clubLogo: club.logo || null, clubColors: { c1: club.c1, c2: club.c2, c3: club.c3 },
+      clubLogo: teamLogoSrc(club), clubColors: { c1: club.c1, c2: club.c2, c3: club.c3 },
       // AJUSTE (pedido do usuário: "acrescentar a Série B, C [ao Modo
       // Carreira] com dados reais") — grava em qual campeonato essa
       // carreira nasceu (ver renderCompetitionPicker/CURRENT_COMPETITION_ID)
@@ -5655,7 +5928,7 @@ async function startCareer(clubId) {
     // esportivo (ver initSponsorship).
     initSponsorship();
     await persistCareer();
-    showGameScreen();
+    openFirstEntry();
   } finally {
     document.getElementById("clubGrid").style.opacity = "";
     document.getElementById("clubGrid").style.pointerEvents = "";
@@ -9201,10 +9474,19 @@ async function finishLiveMatch() {
   if (trigger) firePressConference(trigger.id, lm.round, true);
   document.getElementById("liveMatchOverlay").classList.remove("open");
   LIVE_MATCH = null;
+  // Modo ponte: o resumo fica guardado ANTES da gravação, mesmo que ela
+  // falhe — "Tentar salvar novamente" na v2 (BRDATA_PONTE.salvarDeNovo)
+  // só repete o PUT deste mesmo save, sem simular nem aplicar nada de novo.
+  if (V2_PONTE) PONTE.resumo = summary;
   const saved = await persistCareer();
+  ponteFim(saved);
   const btn = document.getElementById("btnSimulate");
   if (!saved) { if (btn) btn.disabled = false; return; }
   renderAll();
+  // Modo ponte: a v2 mostra o Resultado; o detalhe e a sequência de
+  // sempre (coletiva, notícias, rodada, Copa, proposta, tabela) só seguem
+  // quando ela pedir (BRDATA_PONTE.continuarPosJogo).
+  if (V2_PONTE) { ponteAvisar(); return; }
   showMatchDetailModal(summary);
 }
 // GE-COPA-001 (issue #28) — abre a perna do SEU confronto de Copa como
@@ -9280,7 +9562,7 @@ async function finishCupLegLive() {
   if (leg === 2) finalResult = finalizeCupPhaseExpanded(phase, lm.round, false);
   document.getElementById("liveMatchOverlay").classList.remove("open");
   LIVE_MATCH = null;
-  await persistCareer();
+  ponteFim(await persistCareer());
   renderAll();
   // Explicabilidade (CLAUDE.md §45) — resumo por toast em vez de um
   // modal dedicado (fora de escopo — "não misturar engine com redesign
@@ -9417,6 +9699,8 @@ function renderLiveMatch() {
   // intervalo, ver resumeLiveMatch (não libera o 2º tempo sozinho
   // enquanto lm.halftime for true).
   document.getElementById("liveHalftimeBanner").classList.toggle("hidden", !lm.halftime);
+  PONTE.ultimo = lm;
+  ponteAvisar();
 }
 // ---- Sub-modal: substituição ----
 function openLiveSubModal() {
@@ -9496,15 +9780,25 @@ function renderTopbarIdentity() {
   // moldura da sigla (sem escudo real); com logo de verdade, o quadrado
   // só competiria com a marca oficial.
   const topbarCrest = document.getElementById("topbarClubCrest");
-  topbarCrest.classList.toggle("has-logo", !!club?.logo);
-  topbarCrest.innerHTML = club?.logo
-    ? `<img src="${club.logo}" alt="">`
+  const clubLogo = teamLogoSrc(club);
+  topbarCrest.classList.toggle("has-logo", !!clubLogo);
+  topbarCrest.innerHTML = clubLogo
+    ? `<img src="${clubLogo}" alt="">`
     : escapeHtml(club?.short || "?");
+  document.getElementById("btnTopbarCoach").innerHTML = coachAvatarHTML(ME, "bd-avatar--sm");
+  const unread = unreadNotificationCount();
+  const badge = document.getElementById("topbarNotifBadge");
+  badge.hidden = !unread;
+  badge.textContent = unread > 9 ? "9+" : String(unread || "");
+  document.getElementById("btnTopbarNotifications").setAttribute("aria-label", unread ? `Notificações (${unread} não lida${unread === 1 ? "" : "s"})` : "Notificações");
   document.getElementById("topbarClubName").textContent = club?.name || "";
-  document.getElementById("topbarClubSub").textContent = `Temporada ${CAREER.seasonYear} · ${COMPETITION_SHORT[CAREER.competitionId] || "Brasileirão"}`;
+  document.getElementById("topbarClubSub").textContent = `${competitionName(CAREER.competitionId)} · Temporada ${CAREER.seasonYear}`;
   const rows = Object.values(CAREER.standings).sort((a, b) => (b.pts - a.pts) || (b.v - a.v) || (b.sg - a.sg) || (b.gp - a.gp));
   const pos = rows.findIndex((r) => String(r.id) === String(CAREER.clubId)) + 1;
-  document.getElementById("topbarPositionChip").textContent = pos > 0 ? `${pos}º lugar` : "";
+  // Posição só depois de jogo real — antes disso a ordem da tabela é
+  // alfabética/aleatória e "1º lugar" seria informação falsa.
+  const played = (CAREER.standings[CAREER.clubId] || {}).j || 0;
+  document.getElementById("topbarPositionChip").textContent = pos > 0 && played ? `${pos}º lugar` : CAREER.currentRound > 38 ? "Temporada encerrada" : "Pré-jogo";
 }
 
 /* ---------- Renderização: Central ---------- */
@@ -9563,6 +9857,207 @@ function openH2H(opponentId) {
 function closeH2H() {
   document.getElementById("h2hOverlay").classList.remove("open");
 }
+const FORM_LETTER = { 3: "V", 1: "E", 0: "D" };
+const FORM_WORD = { 3: "Vitória", 1: "Empate", 0: "Derrota" };
+function greetingFor(date = new Date()) {
+  const h = date.getHours();
+  return h < 5 ? "Boa noite" : h < 12 ? "Bom dia" : h < 18 ? "Boa tarde" : "Boa noite";
+}
+// Início (Cap. 1 · T07 / Cap. 2 · T01) — só dado real de CAREER/ME.
+function renderHomeDashboard() {
+  const firstName = String((ME && ME.name) || "").trim().split(/\s+/)[0] || "treinador";
+  document.getElementById("homeGreeting").innerHTML = `${escapeHtml(greetingFor())},<br><span>${escapeHtml(firstName)}!</span>`;
+  document.getElementById("homeGreetingSub").textContent = `Aqui está a situação do ${CAREER.clubName} e os próximos passos da sua gestão.`;
+
+  // Faixa de desempenho — só depois de jogos reais.
+  const row = CAREER.standings[CAREER.clubId] || { j: 0, v: 0, e: 0, d: 0, gp: 0, gc: 0 };
+  const pos = myLeaguePosition();
+  const stats = document.getElementById("homeStats");
+  if (!row.j) {
+    stats.innerHTML = `<p class="bd-empty-inline">As estatísticas da temporada ${CAREER.seasonYear} aparecem depois do 1º jogo do ${escapeHtml(competitionName(CAREER.competitionId))}.</p>`;
+  } else {
+    const perGame = (n) => (n / row.j).toFixed(1).replace(".", ",");
+    stats.innerHTML = [
+      { icon: "trophy", num: `${pos}º`, lbl: "Posição", sub: escapeHtml(COMPETITION_SHORT[CAREER.competitionId] || "Liga") },
+      { icon: "ball", num: row.j, lbl: "Jogos", sub: `V ${row.v} · E ${row.e} · D ${row.d}` },
+      { icon: "goal", num: row.gp, lbl: "Gols marcados", sub: `${perGame(row.gp)} por jogo` },
+      { icon: "shield", num: row.gc, lbl: "Gols sofridos", sub: `${perGame(row.gc)} por jogo` },
+    ].map((x) => `<div class="bd-stat">${homeIcon(x.icon)}<b>${x.num}</b><span>${x.lbl}</span><small>${x.sub}</small></div>`).join("");
+  }
+
+  // Desempenho recente (V/E/D com texto, nunca só cor)
+  const form = (CAREER.recentForm || []).slice(-5);
+  document.getElementById("homeFormCard").innerHTML = `<span class="bd-panel-h">Desempenho recente</span>` + (form.length
+    ? `<div class="bd-form" role="list" aria-label="Últimos ${form.length} jogos, do mais antigo ao mais recente">${form.map((pts) => `<span class="bd-form-item" role="listitem"><span class="bd-form-bar bd-form-bar--${pts}" style="height:${pts === 3 ? 44 : pts === 1 ? 26 : 34}px"></span><span class="bd-form-chip bd-form-chip--${pts}" aria-label="${FORM_WORD[pts]}">${FORM_LETTER[pts]}</span></span>`).join("")}</div>`
+    : `<p class="bd-empty-inline">Sem jogos ainda nesta temporada.</p>`);
+
+  // Objetivos da temporada (meta real da diretoria + metas de temporada
+  // do sistema de objetivos, quando existirem)
+  const goal = CAREER.boardGoal;
+  const seasonObjs = ((CAREER.objectives && Array.isArray(CAREER.objectives.season) && CAREER.objectives.season) || []).slice(0, 3);
+  const goalLines = [];
+  if (goal) goalLines.push({ done: pos > 0 && CAREER.currentRound > 38 && boardGoalMet(pos, goal), text: goal.label, sub: pos > 0 && CAREER.currentRound > 1 ? `Hoje: ${pos}º` : "Aguardando a 1ª rodada" });
+  seasonObjs.forEach((o) => goalLines.push({ done: o.status === "completed" || o.status === "claimed", text: o.title || "", sub: o.target > 1 ? `${Math.min(o.currentProgress || 0, o.target)}/${o.target}` : "" }));
+  document.getElementById("homeGoalsCard").innerHTML = `<span class="bd-panel-h">Objetivos da temporada</span>` + (goalLines.length
+    ? `<ul class="bd-goals">${goalLines.filter((g) => g.text).map((g) => `<li class="${g.done ? "done" : ""}"><span class="bd-goal-dot" aria-label="${g.done ? "Cumprido" : "Em andamento"}"></span><span>${escapeHtml(g.text)}${g.sub ? `<small>${escapeHtml(g.sub)}</small>` : ""}</span></li>`).join("")}</ul>`
+    : `<p class="bd-empty-inline">A diretoria ainda não definiu objetivos.</p>`);
+
+  // Destaques do elenco — 4 maiores overalls do elenco principal disponível
+  const top = CAREER.squad.filter((p) => p.origin === "principal").slice().sort((a, b) => b.overall - a.overall).slice(0, 4);
+  document.getElementById("homeHighlights").innerHTML = top.length ? top.map((p) => `
+    <button type="button" class="bd-hl" data-player="${escapeHtml(String(p.id))}" aria-label="${escapeHtml(p.name)}, ${escapeHtml(subPositionOf(p))}, nota ${p.overall}">
+      <span class="bd-avatar bd-avatar--mono bd-hl-avatar">${escapeHtml(initialsFor(p.name))}</span>
+      <span class="bd-hl-ovr">${p.overall}</span>
+      <span class="bd-hl-name">${escapeHtml(abbreviateName(p.name))}</span>
+      <span class="bd-hl-pos">${escapeHtml(subPositionOf(p))}${p.status && p.status !== "ok" ? ` · ${escapeHtml(p.status)}` : ""}</span>
+    </button>`).join("") : `<p class="bd-empty-inline">Elenco vazio.</p>`;
+  document.querySelectorAll("#homeHighlights [data-player]").forEach((b) => b.addEventListener("click", () => openPlayerCard(b.dataset.player)));
+
+  // Notícia do clube (real; sem notícia, estado vazio útil)
+  const news = (CAREER.newsFeed || []).find((n) => n.mine) || (CAREER.newsFeed || [])[0];
+  document.getElementById("homeNews").innerHTML = news
+    ? `<button type="button" class="bd-news" id="homeNewsItem"><span class="bd-news-kicker">${news.mine ? "Seu clube" : "Liga"} · ${news.round ? `${news.round}ª rodada` : `Temporada ${news.seasonYear || CAREER.seasonYear}`}</span><span class="bd-news-title">${escapeHtml(news.texto)}</span></button>`
+    : `<p class="bd-empty-inline">As notícias do clube aparecem depois da 1ª rodada.</p>`;
+  const ni = document.getElementById("homeNewsItem");
+  if (ni) ni.addEventListener("click", () => openNewsScreen());
+
+  // Mini tabela: 4 primeiros + o seu clube, se estiver fora
+  const rows = Object.values(CAREER.standings).sort((a, b) => (b.pts - a.pts) || (b.v - a.v) || (b.sg - a.sg) || (b.gp - a.gp));
+  const show = rows.slice(0, 4);
+  const mineIdx = rows.findIndex((r) => String(r.id) === String(CAREER.clubId));
+  if (mineIdx >= 4) show.push(rows[mineIdx]);
+  document.getElementById("homeMiniTable").innerHTML = `<table class="bd-mini-table"><caption class="sr-only">Classificação — ${escapeHtml(competitionName(CAREER.competitionId))}</caption>
+    <thead><tr><th scope="col">#</th><th scope="col">Clube</th><th scope="col" title="Pontos">P</th><th scope="col" title="Jogos">J</th><th scope="col" title="Vitórias">V</th><th scope="col" title="Saldo de gols">SG</th></tr></thead>
+    <tbody>${show.map((r) => { const t = teamById(r.id); const i = rows.indexOf(r) + 1; return `<tr class="${String(r.id) === String(CAREER.clubId) ? "mine" : ""}"><td>${i}</td><td><span class="bd-mini-club">${crestImg(t, 22)}<span>${escapeHtml(t?.name || "")}</span></span></td><td><b>${r.pts}</b></td><td>${r.j}</td><td>${r.v}</td><td>${r.sg}</td></tr>`; }).join("")}</tbody></table>`;
+}
+const HOME_ICONS = {
+  trophy: '<path d="M8 21h8M12 17v4M7 4h10v4a5 5 0 0 1-10 0V4Z"/><path d="M7 5H4v2a4 4 0 0 0 3 4M17 5h3v2a4 4 0 0 1-3 4"/>',
+  ball: '<circle cx="12" cy="12" r="9"/><path d="m12 7 4 3-1.5 4.5h-5L8 10Z"/>',
+  goal: '<path d="M3 7h18v12M3 7v12M7 7v12M11 7v12M15 7v12M19 7v12M3 11h18M3 15h18"/>',
+  shield: '<path d="M12 3 4 6v6c0 4.5 3.4 8 8 9 4.6-1 8-4.5 8-9V6Z"/>',
+};
+function homeIcon(name) { return `<svg class="bd-stat-ico" viewBox="0 0 24 24" aria-hidden="true">${HOME_ICONS[name]}</svg>`; }
+
+// Bottom sheet de conteúdo + ações (Cap. 7 · T04: sheet pra interação
+// contextual). Cada ação fecha a sheet antes de rodar.
+function openFixtureDialog(title, bodyHTML, actions = []) {
+  const acts = actions.length ? `<div class="bd-sheet-actions">${actions.map((a, i) => `<button type="button" class="${a.primary ? "bd-btn-primary" : "bd-btn-ghost"}" data-sheet-act="${i}">${escapeHtml(a.label)}</button>`).join("")}</div>` : "";
+  const id = openM3BottomSheet({ title, bodyHTML: bodyHTML + acts });
+  const ov = document.getElementById(id);
+  ov.querySelectorAll("[data-sheet-act]").forEach((b) => b.addEventListener("click", () => { closeM3BottomSheet(id); actions[Number(b.dataset.sheetAct)].onClick(); }));
+  return id;
+}
+/* ---------- Jogos (Cap. 2 · Tela 07) ----------
+   Lista de jogos do clube a partir do calendário real (CAREER.calendar:
+   rodada no domingo da semana, Copa do Brasil na quarta) + resultados
+   reais (resultsByRound / chaveamento da Copa). Saves antigos sem
+   calendário: lista por rodada, sem data. */
+let JOGOS_STATE = { tab: "mes", comp: "all", month: null };
+function humanFixtures() {
+  const me = String(CAREER.clubId);
+  const out = [];
+  const cal = calendarOn() ? CAREER.calendar : null;
+  const weekOfRound = (r) => cal ? cal.weeks.find((w) => w.r === r) : null;
+  const dateOf = (w, plus) => { if (!w) return null; const [m, d] = w.d.split("-").map(Number); return new Date(Date.UTC(cal.year, m - 1, d + plus)); };
+  for (let r = 1; r <= 38; r++) {
+    const fx = (CAREER.schedule[r] || []).find((m) => String(m.home) === me || String(m.away) === me);
+    if (!fx) continue;
+    const res = (CAREER.resultsByRound[r] || []).find((m) => String(m.home) === me || String(m.away) === me);
+    const w = weekOfRound(r);
+    out.push({ key: `liga-${r}`, comp: "liga", compLabel: competitionName(CAREER.competitionId), stage: `${r}ª rodada`, round: r, date: dateOf(w, 6), home: fx.home, away: fx.away, gh: res ? res.gh : null, ga: res ? res.ga : null, events: res ? res.events : null, played: !!res });
+  }
+  const cup = CAREER.cup;
+  if (cup && cup.ties) {
+    const STAGE = { r16: "Oitavas", qf: "Quartas", sf: "Semifinal", final: "Final" };
+    Object.entries(cup.ties).forEach(([phase, ties]) => (ties || []).forEach((t) => {
+      const legs = t.leg1 ? [["leg1", "ida"], ["leg2", "volta"]] : [[null, null]];
+      legs.forEach(([legKey, legName]) => {
+        const leg = legKey ? t[legKey] : t;
+        if (!leg || (String(leg.home) !== me && String(leg.away) !== me)) return;
+        const round = legKey && typeof CUP_ROUNDS_EXPANDED !== "undefined" && CUP_ROUNDS_EXPANDED[phase] ? CUP_ROUNDS_EXPANDED[phase][legName] : (typeof CUP_ROUNDS !== "undefined" ? CUP_ROUNDS[phase] : null);
+        out.push({ key: `copa-${phase}-${legName || "unico"}`, comp: "copa", compLabel: "Copa do Brasil", stage: `${STAGE[phase] || phase}${legName ? ` · ${legName}` : ""}`, round, date: round ? dateOf(weekOfRound(round), 2) : null, home: leg.home, away: leg.away, gh: leg.gh, ga: leg.ga, events: null, played: leg.gh != null });
+      });
+    }));
+  }
+  return out.sort((a, b) => (a.date && b.date ? a.date - b.date : (a.round || 99) - (b.round || 99)));
+}
+function fixtureOutcome(f) {
+  if (!f.played) return null;
+  const mine = String(f.home) === String(CAREER.clubId) ? f.gh : f.ga;
+  const opp = String(f.home) === String(CAREER.clubId) ? f.ga : f.gh;
+  return mine > opp ? 3 : mine === opp ? 1 : 0;
+}
+function fixtureRowHTML(f) {
+  const home = teamById(f.home), away = teamById(f.away);
+  const out = fixtureOutcome(f);
+  const venue = home?.venue?.name ? escapeHtml(home.venue.name) : "";
+  const dayLabel = f.date ? `${["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"][f.date.getUTCDay()]}, ${String(f.date.getUTCDate()).padStart(2, "0")}/${MONTH_SHORT[f.date.getUTCMonth()]}` : f.stage;
+  const isNext = !f.played && f.comp === "liga" && f.round === CAREER.currentRound;
+  return `<button type="button" class="bd-fixture${f.played ? " played" : ""}${isNext ? " next" : ""}" data-fixture="${escapeHtml(f.key)}">
+    <span class="bd-fx-top"><span class="bd-fx-day">${escapeHtml(dayLabel)}</span>${out != null ? `<span class="bd-res bd-res--${out}" aria-label="${FORM_WORD[out]}">${FORM_LETTER[out]}</span>` : isNext ? `<span class="bd-badge">Próximo</span>` : ""}</span>
+    <span class="bd-fx-teams">
+      <span class="bd-fx-team">${crestImg(home, 28)}<span>${escapeHtml(home?.name || "")}</span></span>
+      <span class="bd-fx-score">${f.played ? `${f.gh} × ${f.ga}` : "vs"}</span>
+      <span class="bd-fx-team bd-fx-team--away"><span>${escapeHtml(away?.name || "")}</span>${crestImg(away, 28)}</span>
+    </span>
+    <span class="bd-fx-meta">${escapeHtml(f.compLabel)} · ${escapeHtml(f.stage)}${venue ? ` · ${venue}` : ""}</span>
+  </button>`;
+}
+function renderJogos() {
+  const all = humanFixtures().filter((f) => JOGOS_STATE.comp === "all" || f.comp === JOGOS_STATE.comp);
+  document.querySelectorAll("#jogosTabs [data-jogos-tab]").forEach((b) => { const on = b.dataset.jogosTab === JOGOS_STATE.tab; b.classList.toggle("active", on); b.setAttribute("aria-selected", String(on)); });
+  document.querySelectorAll("#jogosCompFilter [data-jogos-comp]").forEach((b) => { const on = b.dataset.jogosComp === JOGOS_STATE.comp; b.classList.toggle("active", on); b.setAttribute("aria-pressed", String(on)); });
+  const list = document.getElementById("jogosList");
+  const nav = document.getElementById("jogosMonthNav");
+  let items = all;
+  const dated = all.filter((f) => f.date);
+  if (JOGOS_STATE.tab === "resultados") {
+    nav.hidden = true;
+    items = all.filter((f) => f.played).reverse();
+  } else if (JOGOS_STATE.tab === "mes" && dated.length) {
+    nav.hidden = false;
+    const months = [...new Set(dated.map((f) => f.date.getUTCMonth()))].sort((a, b) => a - b);
+    if (JOGOS_STATE.month == null || !months.includes(JOGOS_STATE.month)) {
+      const next = dated.find((f) => !f.played);
+      JOGOS_STATE.month = next ? next.date.getUTCMonth() : months[months.length - 1];
+    }
+    const mi = months.indexOf(JOGOS_STATE.month);
+    document.getElementById("jogosMonthLabel").textContent = `${MONTH_LONG[JOGOS_STATE.month][0].toUpperCase()}${MONTH_LONG[JOGOS_STATE.month].slice(1)} ${CAREER.calendar.year}`;
+    document.getElementById("btnJogosPrev").disabled = mi <= 0;
+    document.getElementById("btnJogosNext").disabled = mi >= months.length - 1;
+    items = dated.filter((f) => f.date.getUTCMonth() === JOGOS_STATE.month);
+  } else {
+    nav.hidden = true;
+  }
+  list.innerHTML = items.length ? items.map(fixtureRowHTML).join("")
+    : `<div class="bd-empty"><p>${JOGOS_STATE.tab === "resultados" ? "Nenhum jogo disputado ainda nesta temporada." : "Nenhum jogo neste período."}</p>${JOGOS_STATE.comp !== "all" ? `<button type="button" class="bd-btn-ghost" data-jogos-clear>Mostrar todas as competições</button>` : ""}</div>`;
+  list.querySelectorAll("[data-fixture]").forEach((b) => b.addEventListener("click", () => openFixtureSheet(all.find((f) => f.key === b.dataset.fixture))));
+  const clear = list.querySelector("[data-jogos-clear]");
+  if (clear) clear.addEventListener("click", () => { JOGOS_STATE.comp = "all"; renderJogos(); });
+}
+// Detalhe do jogo em bottom sheet (diálogo dinâmico m3OpenOverlay).
+function openFixtureSheet(f) {
+  if (!f) return;
+  const home = teamById(f.home), away = teamById(f.away);
+  const out = fixtureOutcome(f);
+  const isNext = !f.played && f.comp === "liga" && f.round === CAREER.currentRound;
+  const body = `<div class="bd-sheet-match">
+      <div class="bd-fx-teams bd-fx-teams--lg">
+        <span class="bd-fx-team">${crestLarge(home, 52)}<span>${escapeHtml(home?.name || "")}</span></span>
+        <span class="bd-fx-score">${f.played ? `${f.gh} × ${f.ga}` : "vs"}</span>
+        <span class="bd-fx-team bd-fx-team--away"><span>${escapeHtml(away?.name || "")}</span>${crestLarge(away, 52)}</span>
+      </div>
+      <p class="bd-sheet-meta">${escapeHtml(f.compLabel)} · ${escapeHtml(f.stage)}${f.date ? ` · ${String(f.date.getUTCDate()).padStart(2, "0")}/${MONTH_SHORT[f.date.getUTCMonth()]}` : ""}${home?.venue?.name ? ` · ${escapeHtml(home.venue.name)}` : ""}</p>
+      ${out != null ? `<p class="bd-sheet-result bd-res-text--${out}">${FORM_WORD[out]}</p>` : ""}
+      ${f.played ? (f.events && f.events.length ? matchEventsSummaryHTML(f.events) : `<p class="bd-empty-inline">Sem lances registrados para este jogo.</p>`) : `<p class="bd-empty-inline">${String(f.home) === String(CAREER.clubId) ? "Jogo em casa." : "Jogo fora de casa."} ${isNext ? "É o próximo compromisso do clube." : ""}</p>`}
+    </div>`;
+  const actions = [];
+  const opp = String(f.home) === String(CAREER.clubId) ? f.away : f.home;
+  actions.push({ label: "Histórico de confrontos", onClick: () => openH2H(opp) });
+  if (isNext) actions.push({ label: "Ir para o jogo", primary: true, onClick: () => { switchToPanel("central"); document.getElementById("btnSimulate").click(); } });
+  openFixtureDialog(`${home?.short || ""} × ${away?.short || ""}`, body, actions);
+}
+
 function renderCentral() {
   refreshAvailability();
   // FASE 4 (item 4) — card só aparece quando há proposta pendente (ver
@@ -9766,6 +10261,9 @@ function renderCentral() {
   } else {
     lastCard.style.display = "none";
   }
+  renderHomeDashboard();
+  renderFinanceFlow();
+  if (document.getElementById("panel-jogos").classList.contains("active")) renderJogos();
 }
 // Bloco 4 — mini-gráfico de barras do card Financeiro (ver
 // CAREER.cashHistory/pushCashSnapshot). Altura relativa ao maior valor
@@ -9845,6 +10343,12 @@ function boardGoalProgressPct(goal, position) {
   return clamp((20 - position) / (20 - goal.target), 0, 1);
 }
 function renderBoardGoalsScreen() {
+  // Objetivos extras da temporada (sistema de objetivos existente).
+  const objs = ((CAREER.objectives && Array.isArray(CAREER.objectives.season) && CAREER.objectives.season) || []);
+  document.getElementById("boardObjectivesList").innerHTML = objs.length ? objs.map((o) => {
+    const done = o.status === "completed" || o.status === "claimed";
+    return `<div class="m3-list-item" style="cursor:default;"><div class="m3-li-body"><div class="m3-li-name">${escapeHtml(o.title)}</div><div class="m3-li-meta"><span class="m3-mini-chip">${done ? "Cumprido" : "Em andamento"}${o.target > 1 ? ` · ${Math.min(o.currentProgress || 0, o.target)}/${o.target}` : ""}</span></div></div></div>`;
+  }).join("") : `<p class="m3-empty">Sem objetivos extras nesta temporada.</p>`;
   const pos = myLeaguePosition();
   const pct = Math.round(boardGoalProgressPct(CAREER.boardGoal, pos) * 100);
   document.getElementById("boardGoalsHeroLabel").textContent = `META DA TEMPORADA ${CAREER.seasonYear}`;
@@ -9886,8 +10390,45 @@ const EXTRATO_FILTERS = [
 ];
 const LEDGER_ICON = { tv: "📺", salario: "👥", patrocinio: "🏦", parcela: "📄", bilheteria: "🎟️", transferencia: "💰", premiacao: "🏆", estadio: "🏗️", diretoria: "🏛️" };
 let EXTRATO_FILTER = "todos";
+// Redesign Cap. 2 · T06 — todas as categorias que de fato aparecem no
+// extrato viram filtro (as 4 fixas acima + as demais, só se existirem).
+const LEDGER_LABEL = { tv: "Cota de TV", salario: "Salários", patrocinio: "Patrocínio", parcela: "Parcelas", bilheteria: "Bilheteria", transferencia: "Transferências", premiacao: "Premiações", estadio: "Estádio", diretoria: "Diretoria" };
+function extratoFilters() {
+  const present = new Set((CAREER.financeLedger || []).map((tx) => tx.type));
+  const extra = Object.keys(LEDGER_LABEL).filter((t) => present.has(t) && !EXTRATO_FILTERS.some((f) => f.id === t)).map((t) => ({ id: t, label: LEDGER_LABEL[t] }));
+  return EXTRATO_FILTERS.concat(extra);
+}
+function renderFinanceFlow() {
+  const ledger = CAREER.financeLedger || [];
+  const box = document.getElementById("financeFlowChart");
+  const period = document.getElementById("financeFlowPeriod");
+  if (!ledger.length) {
+    period.textContent = "";
+    box.innerHTML = `<p class="bd-empty-inline">Sem lançamentos ainda — salários, patrocínio e bilheteria aparecem aqui conforme a temporada avança.</p>`;
+    return;
+  }
+  const rounds = ledger.map((tx) => tx.round).filter((r) => r != null);
+  period.textContent = `Últimos ${ledger.length} lançamentos${rounds.length ? ` (rodadas ${Math.min(...rounds)}–${Math.max(...rounds)})` : ""} · valores em R$`;
+  const byType = new Map();
+  ledger.forEach((tx) => {
+    const cur = byType.get(tx.type) || { in: 0, out: 0 };
+    if (tx.amount >= 0) cur.in += tx.amount; else cur.out += -tx.amount;
+    byType.set(tx.type, cur);
+  });
+  const rows = [...byType.entries()].map(([type, v]) => ({ type, ...v })).sort((a, b) => (b.in + b.out) - (a.in + a.out));
+  const max = Math.max(1, ...rows.map((r) => Math.max(r.in, r.out)));
+  const totIn = rows.reduce((a, r) => a + r.in, 0), totOut = rows.reduce((a, r) => a + r.out, 0);
+  box.innerHTML = `<div class="bd-flow-totals"><div><span>Receitas</span><b class="pos">${fmtBRL(totIn)}</b></div><div><span>Despesas</span><b class="neg">${fmtBRL(totOut)}</b></div><div><span>Saldo do período</span><b class="${totIn - totOut >= 0 ? "pos" : "neg"}">${fmtBRL(totIn - totOut)}</b></div></div>
+    <ul class="bd-flow-list">${rows.map((r) => `<li><button type="button" class="bd-flow-row" data-ledger-type="${escapeHtml(r.type)}" aria-label="${escapeHtml(LEDGER_LABEL[r.type] || r.type)}: receitas ${fmtBRL(r.in)}, despesas ${fmtBRL(r.out)}. Abrir extrato.">
+      <span class="bd-flow-name">${escapeHtml(LEDGER_LABEL[r.type] || r.type)}</span>
+      <span class="bd-flow-bars" aria-hidden="true">${r.in ? `<span class="bd-flow-bar in" style="width:${Math.max(3, Math.round(r.in / max * 100))}%"></span>` : ""}${r.out ? `<span class="bd-flow-bar out" style="width:${Math.max(3, Math.round(r.out / max * 100))}%"></span>` : ""}</span>
+      <span class="bd-flow-val">${r.in ? `<span class="pos">+${fmtBRLShort(r.in)}</span>` : ""}${r.out ? `<span class="neg">−${fmtBRLShort(r.out)}</span>` : ""}</span>
+    </button></li>`).join("")}</ul>`;
+  box.querySelectorAll("[data-ledger-type]").forEach((b) => b.addEventListener("click", () => { EXTRATO_FILTER = b.dataset.ledgerType; openExtratoScreen(); }));
+  document.getElementById("clubCommissionSub").textContent = CAREER.technicalStaff && CAREER.technicalStaff.hired ? `Contratada · ${fmtBRL(technicalStaffMonthlyCost())}/mês` : "Não contratada";
+}
 function renderExtratoScreen() {
-  document.getElementById("extratoFilterRow").innerHTML = EXTRATO_FILTERS.map((f) =>
+  document.getElementById("extratoFilterRow").innerHTML = extratoFilters().map((f) =>
     `<button class="m3-filter-chip${EXTRATO_FILTER === f.id ? " on" : ""}" data-filter="${f.id}">${f.label}</button>`).join("");
   document.querySelectorAll("#extratoFilterRow .m3-filter-chip").forEach((btn) => {
     btn.addEventListener("click", () => { EXTRATO_FILTER = btn.dataset.filter; renderExtratoScreen(); });
@@ -10402,12 +10943,26 @@ function groupedListHTML(players, rowFn, emptyMsg) {
 // navegação, não dado de carreira), reseta pro padrão "todos" a cada
 // reload como o resto da UI.
 let ELENCO_FILTER = "todos";
+let ELENCO_SEARCH = "";
+let ELENCO_SORT = "posicao";
+// Redesign Cap. 2 · T02 — filtros por posição (GOL/DEF/MEI/ATA, os 4
+// grupos reais do dado) somados aos de sempre.
 const ELENCO_FILTERS = [
   { id: "todos", label: "Todos" },
+  { id: "GOL", label: "Goleiros" },
+  { id: "DEF", label: "Defensores" },
+  { id: "MEI", label: "Meio-campistas" },
+  { id: "ATA", label: "Atacantes" },
   { id: "titulares", label: "Titulares" },
   { id: "lesionados", label: "Lesionados" },
   { id: "base", label: "Base" },
 ];
+const ELENCO_SORTERS = {
+  posicao: (a, b) => squadSortKey(a) - squadSortKey(b),
+  overall: (a, b) => b.overall - a.overall,
+  idade: (a, b) => a.age - b.age || b.overall - a.overall,
+  condicao: (a, b) => (b.condition ?? 100) - (a.condition ?? 100),
+};
 function renderElenco() {
   refreshAvailability();
   // AJUSTE (feedback do usuário: "a meta da diretoria pode sair da
@@ -10441,17 +10996,34 @@ function renderElenco() {
   // colunas diferentes (potencial/confiança do olheiro só existe na
   // base). O filtro só decide QUAIS cards aparecem e, dentro do
   // principal, quais jogadores.
-  let mainData = principal, showMain = true, showBase = true;
+  const avail = principal.filter((p) => p.status === "ok").length;
+  document.getElementById("elencoSummary").innerHTML = [
+    [principal.length, "Jogadores"], [avail, "Aptos"],
+    [principal.filter((p) => p.status === "contundido").length, "Lesionados"],
+    [principal.filter((p) => p.status === "suspenso").length, "Suspensos"],
+  ].map(([n, l]) => `<div class="bd-stat"><b>${n}</b><span>${l}</span></div>`).join("");
+
+  let mainData = principal, baseData = base, showMain = true, showBase = true;
   if (ELENCO_FILTER === "titulares") { mainData = principal.filter((p) => CAREER.lineup.starters.includes(p.id)); showBase = false; }
   else if (ELENCO_FILTER === "lesionados") { mainData = principal.filter((p) => p.status !== "ok"); showBase = false; }
   else if (ELENCO_FILTER === "base") { showMain = false; }
+  else if (SUBPOS_ORDER[ELENCO_FILTER] != null) {
+    mainData = principal.filter((p) => subPositionOf(p) === ELENCO_FILTER);
+    baseData = base.filter((p) => subPositionOf(p) === ELENCO_FILTER);
+  }
+  const q = normalizeSearch(ELENCO_SEARCH);
+  if (q) { mainData = mainData.filter((p) => normalizeSearch(p.name).includes(q)); baseData = baseData.filter((p) => normalizeSearch(p.name).includes(q)); }
+  const sorter = ELENCO_SORTERS[ELENCO_SORT] || ELENCO_SORTERS.posicao;
+  mainData = mainData.slice().sort(sorter); baseData = baseData.slice().sort(sorter);
+  if (q && !baseData.length && ELENCO_FILTER !== "base") showBase = false;
   document.getElementById("squadMainCard").classList.toggle("hidden", !showMain);
   document.getElementById("squadBaseCard").classList.toggle("hidden", !showBase);
 
   const mainList = document.getElementById("squadMainList");
-  mainList.innerHTML = groupedListHTML(mainData, playerRow, ELENCO_FILTER === "titulares" ? "Nenhum titular escalado ainda." : ELENCO_FILTER === "lesionados" ? "Ninguém no departamento médico." : "Sem jogadores.");
+  const listFn = ELENCO_SORT === "posicao" ? groupedListHTML : (players, rowFn, empty) => players.length ? players.map(rowFn).join("") : `<p class="ct-empty">${empty}</p>`;
+  mainList.innerHTML = listFn(mainData, playerRow, q ? `Nenhum jogador encontrado para “${escapeHtml(ELENCO_SEARCH)}”.` : ELENCO_FILTER === "titulares" ? "Nenhum titular escalado ainda." : ELENCO_FILTER === "lesionados" ? "Ninguém no departamento médico." : "Sem jogadores.");
   const baseList = document.getElementById("squadBaseList");
-  baseList.innerHTML = groupedListHTML(base, baseRow, "Sem jogadores.");
+  baseList.innerHTML = listFn(baseData, baseRow, "Sem jogadores.");
   [mainList, baseList].forEach((list) => list.querySelectorAll("[data-id]").forEach((row) => row.addEventListener("click", () => openDetail(row.dataset.id))));
 }
 /* ---------- FASE 1 (item 1) — renovação de contrato ----------
@@ -10685,7 +11257,12 @@ function externalPlayerActionsHTML(p, club) {
       ${closedReason ? `<p class="mt-card-sub" style="margin:0;">${closedReason} Vender continua liberado.</p>` : ""}
     </div>`;
 }
+// Aba ativa do Perfil do jogador — volta pra "Visão geral" ao trocar de
+// atleta; persiste enquanto o mesmo perfil é re-renderizado após uma ação.
+let DETAIL_TAB = "geral";
+let DETAIL_LAST_ID = null;
 function openDetail(id) {
+  if (id !== DETAIL_LAST_ID) { DETAIL_TAB = "geral"; DETAIL_LAST_ID = id; }
   const p = CAREER.squad.find((x) => x.id === id);
   if (!p) return;
   const inStarters = CAREER.lineup.starters.includes(id);
@@ -10733,53 +11310,55 @@ function openDetail(id) {
   const trend = p.attrTrend || {};
   const trendArrow = (attr) => trend[attr] > 0 ? ` <span style="color:var(--brd-green);" title="Evoluindo desde a última checagem">▲</span>`
     : trend[attr] < 0 ? ` <span style="color:var(--brd-red);" title="Regredindo desde a última checagem">▼</span>` : "";
+  // Redesign Cap. 2 · Tela 03 — herói (avatar neutro: o jogo não tem
+  // foto de atleta), faixa de atributos do motor e abas de conteúdo. As
+  // AÇÕES ficam sempre visíveis abaixo das abas (não dependem da aba).
+  const dTab = (id) => DETAIL_TAB === id;
   document.getElementById("detailBody").innerHTML = `
-    <div class="mt-player-hero">
-      <div class="mt-ovr-badge sz-lg ${ovrTierClass(p.overall)}">${p.overall}</div>
+    <div class="mt-player-hero bd-player-hero">
+      <span class="bd-avatar bd-avatar--mono bd-avatar--lg">${escapeHtml(initialsFor(p.name))}</span>
       <div class="mt-player-hero-info">
-        <b>${escapeHtml(p.name.toUpperCase())}</b>
+        <b>${escapeHtml(p.name)}</b>
         <span>${heroSub}</span>
       </div>
+      <div class="mt-ovr-badge sz-lg ${ovrTierClass(p.overall)}" aria-label="Nota geral ${p.overall}">${p.overall}</div>
     </div>
-    <div class="m3-attr-bars">
-      ${attrBarHTML("Geral", p.overall, "gold", trendArrow("overall"))}
-      ${attrBarHTML("Ataque", p.atk, null, trendArrow("atk"))}
-      ${attrBarHTML("Defesa", p.def, null, trendArrow("def"))}
-      ${attrBarHTML("Físico", p.phys, null, trendArrow("phys"))}
-      ${attrBarHTML("Moral", morale, moraleVariant, "")}
+    <div class="bd-attr-strip" aria-label="Atributos">
+      <div><b>${p.atk}</b><span>Ataque</span></div>
+      <div><b>${p.def}</b><span>Defesa</span></div>
+      <div><b>${p.phys}</b><span>Físico</span></div>
+      <div><b>${morale}</b><span>Moral</span></div>
     </div>
-    ${potRange ? `<p class="mt-badge-gold" style="display:flex;">🔭 Avaliação do olheiro: potencial entre ${potRange.lo} e ${potRange.hi}.</p>` : ""}
-    ${seasonEvolutionLineHTML(p)}
-    ${mtConditionBarHTML(p.condition)}
-    <p class="mt-info-line">Condição: ${conditionRating(p.condition)}/5 (${CONDITION_RATING_LABEL[conditionRating(p.condition)]}) · Jogos: ${p.apps || 0} · Gols na carreira: ${p.goalsCareer || 0} · Cartões amarelos (ciclo atual): ${p.yellowCards || 0}</p>
-    ${playerSeasonHistoryHTML(p)}
-    <!-- FASE 4 (item 1) — seção "Relacionamento" pedida no documento:
-         motivo atual + tendência da moral (ver applyMoraleAfterMatch);
-         "pede transferência" vira o mt-badge-alert de destaque abaixo,
-         não fica escondido no meio do texto. -->
-    <p class="mt-info-line">Relacionamento: ${escapeHtml(p.moraleReason || "Neutro no clube")}${moraleTrendArrowHTML(p)}</p>
-    ${p.wantsTransfer ? `<p class="mt-badge-alert" style="display:flex;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" style="width:14px;height:14px;"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="6 11 12 5 18 11"/></svg>Insatisfeito — pede transferência</p>` : ""}
-    <p class="mt-info-line">Salário: ${fmtBRL(p.wage)}/mês · Contrato até: ${p.contractUntil} · Valor de mercado: ${fmtBRL(p.value)}</p>
-    <!-- FASE 1 (item 1 da especificação "BR Data Treinador") — pedido
-         do usuário: aviso visível de final de contrato, com
-         antecedência, direto no card do jogador (ver
-         isContractExpiring/openRenewModal em carreira.js). Sem essa
-         janela de aviso o vencimento pegava o treinador de surpresa —
-         hoje o jogador só saía de graça na virada de temporada
-         (renewHumanSquad, Fase 3c), sem chance nenhuma de segurar
-         antes disso. -->
-    ${isContractExpiring(p) ? `<p class="mt-badge-gold" style="display:flex;">⚠️ Contrato até ${CAREER.seasonYear} — sai de graça se a temporada acabar sem renovar.</p>` : ""}
-    <!-- FASE 1 (item 4) — mesmo padrão do aviso de contrato acima:
-         destaque no detalhe pra quem tá fora de combate (ver
-         INJURY_SEVERITY em carreira.js). -->
-    ${p.status === "contundido" ? `<p class="mt-badge-alert" style="display:flex;">🩹 Lesão ${injurySeverityLabel(p.injurySeverity)} — de volta na rodada ${p.outUntilRound}.</p>` : ""}
-    ${p.status === "suspenso" ? `<p class="mt-badge-alert" style="display:flex;">🟥 Suspenso — de volta na rodada ${p.outUntilRound}.</p>` : ""}
-    <!-- AJUSTE (refatoração completa, Tela 5) — botões empilhados em
-         coluna cheia, com a hierarquia de cor do mockup:
-         .mt-btn-primary-gold pras ações que avançam contrato/dinheiro
-         (renovar/promover/vender), .mt-btn-ghost pra gestão de rotina
-         do elenco, .mt-btn-danger-outline só pra dispensar (a única
-         ação irreversível de verdade aqui). -->
+    <div class="bd-chips bd-tabs" role="tablist" aria-label="Seções do perfil">
+      ${[["geral", "Visão geral"], ["atributos", "Atributos"], ["evolucao", "Evolução"], ["contrato", "Contrato"]].map(([id, l]) => `<button type="button" role="tab" class="bd-chip${dTab(id) ? " active" : ""}" aria-selected="${dTab(id)}" data-detail-tab="${id}">${l}</button>`).join("")}
+    </div>
+    <div class="bd-tabpanel" data-tabpanel="geral" ${dTab("geral") ? "" : "hidden"}>
+      ${mtConditionBarHTML(p.condition)}
+      <p class="mt-info-line">Condição: ${conditionRating(p.condition)}/5 (${CONDITION_RATING_LABEL[conditionRating(p.condition)]}) · Jogos: ${p.apps || 0} · Gols na carreira: ${p.goalsCareer || 0} · Cartões amarelos (ciclo atual): ${p.yellowCards || 0}</p>
+      <p class="mt-info-line">Relacionamento: ${escapeHtml(p.moraleReason || "Neutro no clube")}${moraleTrendArrowHTML(p)}</p>
+      ${p.wantsTransfer ? `<p class="mt-badge-alert" style="display:flex;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" style="width:14px;height:14px;"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="6 11 12 5 18 11"/></svg>Insatisfeito — pede transferência</p>` : ""}
+      ${p.status === "contundido" ? `<p class="mt-badge-alert" style="display:flex;">Lesão ${injurySeverityLabel(p.injurySeverity)} — de volta na rodada ${p.outUntilRound}.</p>` : ""}
+      ${p.status === "suspenso" ? `<p class="mt-badge-alert" style="display:flex;">Suspenso — de volta na rodada ${p.outUntilRound}.</p>` : ""}
+    </div>
+    <div class="bd-tabpanel" data-tabpanel="atributos" ${dTab("atributos") ? "" : "hidden"}>
+      <div class="m3-attr-bars">
+        ${attrBarHTML("Geral", p.overall, "gold", trendArrow("overall"))}
+        ${attrBarHTML("Ataque", p.atk, null, trendArrow("atk"))}
+        ${attrBarHTML("Defesa", p.def, null, trendArrow("def"))}
+        ${attrBarHTML("Físico", p.phys, null, trendArrow("phys"))}
+        ${attrBarHTML("Moral", morale, moraleVariant, "")}
+      </div>
+      ${potRange ? `<p class="mt-badge-gold" style="display:flex;">Avaliação do olheiro: potencial entre ${potRange.lo} e ${potRange.hi}.</p>` : `<p class="mt-info-line">Potencial não avaliado por olheiro.</p>`}
+    </div>
+    <div class="bd-tabpanel" data-tabpanel="evolucao" ${dTab("evolucao") ? "" : "hidden"}>
+      ${seasonEvolutionLineHTML(p) || `<p class="mt-info-line">Sem evolução registrada nesta temporada.</p>`}
+      ${playerSeasonHistoryHTML(p) || `<p class="mt-info-line">Sem temporadas anteriores no clube.</p>`}
+    </div>
+    <div class="bd-tabpanel" data-tabpanel="contrato" ${dTab("contrato") ? "" : "hidden"}>
+      <p class="mt-info-line">Salário: ${fmtBRL(p.wage)}/mês · Contrato até: ${p.contractUntil} · Valor de mercado: ${fmtBRL(p.value)}</p>
+      ${isContractExpiring(p) ? `<p class="mt-badge-gold" style="display:flex;">Contrato até ${CAREER.seasonYear} — sai de graça se a temporada acabar sem renovar.</p>` : ""}
+      ${p.origin === "loan" ? `<p class="mt-info-line">Emprestado — o contrato pertence ao clube de origem.</p>` : ""}
+    </div>
     <div class="mt-action-list">
       ${canTalkTo(p) ? `<button class="mt-btn-ghost" data-act="talk">💬 Conversar</button>` : ""}
       <!-- Nova feature (mockup brtreinadorbloco1pendentes.html — Comparar
@@ -10808,6 +11387,11 @@ function openDetail(id) {
   document.getElementById("detailBody").querySelectorAll("[data-act]").forEach((btn) => {
     btn.addEventListener("click", () => handlePlayerAction(p.id, btn.dataset.act));
   });
+  document.getElementById("detailBody").querySelectorAll("[data-detail-tab]").forEach((btn) => btn.addEventListener("click", () => {
+    DETAIL_TAB = btn.dataset.detailTab;
+    document.querySelectorAll("#detailBody [data-detail-tab]").forEach((b) => { const on = b === btn; b.classList.toggle("active", on); b.setAttribute("aria-selected", String(on)); });
+    document.querySelectorAll("#detailBody [data-tabpanel]").forEach((pn) => { pn.hidden = pn.dataset.tabpanel !== DETAIL_TAB; });
+  }));
   document.getElementById("detailOverlay").classList.add("open");
   // FASE 3 (item 4) — acabou de "checar" esse jogador (setas acima já
   // desenhadas com o valor de ANTES de zerar) — some até a próxima
@@ -11123,7 +11707,43 @@ function applyTacticalScheme(id) {
   CAREER.lineup.bench = [...scheme.bench];
   CAREER.lineup.tactics = { ...scheme.tactics };
   CAREER.activeSchemeId = scheme.id;
+  // Redesign Cap. 3 · T04 — "data de uso" real (campo opcional: esquemas
+  // salvos antes disto ficam sem e mostram só a rodada em que foram salvos).
+  scheme.lastUsedRound = CAREER.currentRound;
+  scheme.lastUsedSeason = CAREER.seasonYear;
   return true;
+}
+// Cap. 3 · T04 — renomear: 1–30 caracteres, sem repetir nome (sem
+// diferenciar maiúsculas). Devolve { ok, error }.
+function renameTacticalScheme(id, rawName) {
+  const scheme = CAREER.tacticalSchemes.find((s) => s.id === id);
+  if (!scheme) return { ok: false, error: "Esquema não encontrado." };
+  const name = String(rawName || "").trim().replace(/\s+/g, " ");
+  if (!name) return { ok: false, error: "Dê um nome ao esquema." };
+  if (name.length > 30) return { ok: false, error: "Use no máximo 30 caracteres." };
+  if (CAREER.tacticalSchemes.some((s) => s.id !== id && s.name.toLowerCase() === name.toLowerCase())) return { ok: false, error: "Já existe um esquema com esse nome." };
+  scheme.name = name;
+  return { ok: true, scheme };
+}
+function openRenameSchemeSheet(id) {
+  const scheme = CAREER.tacticalSchemes.find((s) => s.id === id);
+  if (!scheme) return;
+  const sheetId = openM3BottomSheet({ title: "Renomear esquema", bodyHTML: `<form class="bd-sheet-form" id="renameSchemeForm" novalidate>
+      <div class="bd-form-field"><label for="renameSchemeInput">Nome</label><input type="text" id="renameSchemeInput" maxlength="30" value="${escapeHtml(scheme.name)}" autocomplete="off"></div>
+      <p class="mt-form-error" id="renameSchemeError" role="alert" style="display:none;"></p>
+      <div class="bd-sheet-actions"><button type="submit" class="bd-btn-primary">Salvar nome</button></div>
+    </form>` });
+  const ov = document.getElementById(sheetId);
+  ov.querySelector("#renameSchemeForm").addEventListener("submit", (e) => {
+    e.preventDefault();
+    const r = renameTacticalScheme(id, ov.querySelector("#renameSchemeInput").value);
+    const err = ov.querySelector("#renameSchemeError");
+    if (!r.ok) { err.textContent = r.error; err.style.display = "block"; return; }
+    closeM3BottomSheet(sheetId);
+    renderSchemesScreen();
+    persistCareer();
+    toast(`Esquema renomeado para "${r.scheme.name}".`, { type: "pos" });
+  });
 }
 function deleteTacticalScheme(id) {
   CAREER.tacticalSchemes = CAREER.tacticalSchemes.filter((s) => s.id !== id);
@@ -11134,7 +11754,8 @@ function deleteTacticalScheme(id) {
 // guarda: quantos titulares tinha quando foi salvo + em que rodada.
 function schemeSummary(s) {
   const filled = s.starters.filter(Boolean).length;
-  return `Salvo na rodada ${s.createdRound} · ${filled}/11 titulares`;
+  const used = s.lastUsedRound != null ? ` · usado na rodada ${s.lastUsedRound}${s.lastUsedSeason && s.lastUsedSeason !== CAREER.seasonYear ? ` de ${s.lastUsedSeason}` : ""}` : "";
+  return `Salvo na rodada ${s.createdRound} · ${filled}/11 titulares${used}`;
 }
 function schemeRowHTML(s) {
   const isActive = s.id === CAREER.activeSchemeId;
@@ -11145,6 +11766,7 @@ function schemeRowHTML(s) {
       <div class="m3-scheme-meta">${escapeHtml(schemeSummary(s))}</div>
     </div>
     ${isActive ? `<span class="m3-scheme-badge">ATIVO</span>` : ""}
+    <button class="m3-scheme-delete" data-rename="${s.id}" aria-label="Renomear esquema ${escapeHtml(s.name)}" title="Renomear"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button>
     <button class="m3-scheme-delete" data-delete="${s.id}" aria-label="Apagar esquema" title="Apagar esquema"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
   </div>`;
 }
@@ -11156,7 +11778,7 @@ function renderSchemesScreen() {
     : `<p class="ct-empty">Nenhum esquema salvo ainda — monte a escalação/tática que quiser na aba Tática e toque em "Novo esquema".</p>`;
   document.querySelectorAll("#schemesList .m3-scheme-row").forEach((row) => {
     row.addEventListener("click", (e) => {
-      if (e.target.closest("[data-delete]")) return;
+      if (e.target.closest("[data-delete], [data-rename]")) return;
       applyTacticalScheme(row.dataset.id);
       renderSchemesScreen();
       renderEscalacao();
@@ -11164,12 +11786,13 @@ function renderSchemesScreen() {
       toast(`Esquema "${CAREER.tacticalSchemes.find((s) => s.id === row.dataset.id)?.name}" aplicado.`, { type: "pos" });
     });
   });
+  document.querySelectorAll("#schemesList [data-rename]").forEach((btn) => btn.addEventListener("click", (e) => { e.stopPropagation(); openRenameSchemeSheet(btn.dataset.rename); }));
   document.querySelectorAll("#schemesList [data-delete]").forEach((btn) => {
     btn.addEventListener("click", async (e) => {
       e.stopPropagation();
       const scheme = CAREER.tacticalSchemes.find((s) => s.id === btn.dataset.delete);
       if (!scheme) return;
-      if (!(await confirmModal(`Apagar o esquema "${scheme.name}"?`, "Apagar"))) return;
+      if (!(await confirmModal(`Apagar o esquema "${scheme.name}"?`, "Apagar", { danger: true }))) return;
       deleteTacticalScheme(scheme.id);
       renderSchemesScreen();
       persistCareer();
@@ -11635,7 +12258,7 @@ async function confirmHireCommission() {
   toast("Comissão técnica contratada — as sugestões já estão disponíveis.", { type: "pos" });
 }
 async function confirmFireCommission() {
-  if (!(await confirmModal("Demitir a comissão técnica? As sugestões deixam de aparecer.", "Demitir"))) return;
+  if (!(await confirmModal("Demitir a comissão técnica? As sugestões deixam de aparecer.", "Demitir", { danger: true }))) return;
   fireTechnicalStaff();
   renderCommissionScreen();
   renderCommissionSummaryCard(); // mesmo motivo do hire acima
@@ -11940,7 +12563,7 @@ async function finishFriendlyLive() {
   LIVE_MATCH = null;
   // O amistoso é o jogo da semana — fecha a semana (treino, prazos, mês).
   runCalendarOffWeek();
-  await persistCareer();
+  ponteFim(await persistCareer());
   renderAll();
   toast({ title: `Amistoso: ${lm.gh} x ${lm.ga}`, detail: `Contra o ${opp.name} — não vale pontos${injuriesKept ? `; ${injuriesKept} lesão confirmada` : ""}. Semana concluída.` }, { type: lm.gh >= lm.ga ? "pos" : "info" });
 }
@@ -13441,7 +14064,7 @@ async function fireScout(scoutId) {
     toast("Esse olheiro está em missão — espere ele voltar antes de dispensar.", { type: "warn" });
     return;
   }
-  if (!(await confirmModal(`Dispensar ${scout.name}?`, "Dispensar"))) return;
+  if (!(await confirmModal(`Dispensar ${scout.name}?`, "Dispensar", { danger: true }))) return;
   CAREER.scouts = CAREER.scouts.filter((s) => s.id !== scoutId);
   persistCareer();
   renderScoutingScreen();
@@ -14437,6 +15060,9 @@ function showGameScreen() {
   // renderAll() (que já monta HTML lendo os tokens --m3-* via CSS).
   applyClubPalette(teamById(CAREER.clubId));
   renderAll();
+  // Modo ponte: sem onboarding/assistente (ficam para a próxima abertura
+  // normal — nada é marcado como visto); avisa a v2 que está pronta.
+  if (V2_PONTE) { PONTE.pronta = true; ponteAvisar(); return; }
   // Onboarding (pedido do usuário: "tutorial curtinho na primeira
   // carreira") — só na 1ª vez que a CONTA entra numa carreira; o
   // login diário (linha de baixo) fica na fila logo atrás, só abre
@@ -14476,6 +15102,10 @@ function switchToPanel(name) {
   // pontos (fácil esquecer um).
   if (name === "objetivos") renderObjetivos();
   if (name === "conquistas") renderConquistas();
+  if (name === "jogos") renderJogos();
+  // Aba contextual ativa sempre visível (a faixa rola na horizontal).
+  const tab = document.querySelector(`.bd-ctx-tabs [data-panel="${name}"]`);
+  if (tab && tab.scrollIntoView) tab.scrollIntoView({ block: "nearest", inline: "center" });
   // Loja — mesmo raciocínio: lê CAREER.finances.cash/ME.creditsBR ao
   // vivo, que podem ter mudado em qualquer outra tela desde a última
   // vez que a Loja foi aberta.
@@ -14534,7 +15164,7 @@ function shareLoadImage(src) {
   });
 }
 async function shareDrawCrest(ctx, team, cx, cy, r) {
-  const img = team && team.logo ? await shareLoadImage(team.logo) : null;
+  const img = teamLogoSrc(team) ? await shareLoadImage(teamLogoSrc(team)) : null;
   shareHexPath(ctx, cx, cy, r);
   ctx.save();
   ctx.clip();
@@ -15086,13 +15716,17 @@ function showDismissalModal(result) {
 // cancelou ou fechou clicando fora) no lugar do valor síncrono que
 // confirm() devolvia — por isso todo chamador precisa de "await" na
 // frente agora (ver buyPlayer/sellPlayer/btnRestart/btnAdvanceSeason).
-function confirmModal(text, okLabel = "Confirmar") {
+// danger: ação destrutiva/irreversível — botão de confirmar em vermelho
+// (--m3-error), como pede a direção visual do redesign (vermelho só pra
+// risco/destruição).
+function confirmModal(text, okLabel = "Confirmar", { danger = false } = {}) {
   return new Promise((resolve) => {
     const overlay = document.getElementById("confirmOverlay");
     const okBtn = document.getElementById("confirmOkBtn");
     const cancelBtn = document.getElementById("confirmCancelBtn");
     document.getElementById("confirmText").textContent = text;
     okBtn.textContent = okLabel;
+    okBtn.classList.toggle("danger", danger);
     overlay.classList.add("open");
     function cleanup(result) {
       overlay.classList.remove("open");
@@ -15427,7 +16061,7 @@ function wireStaticListeners() {
   document.getElementById("boardGoalSummaryRow").addEventListener("click", openBoardGoalsScreen);
   document.getElementById("boardGoalsClose").addEventListener("click", closeBoardGoalsScreen);
   document.getElementById("boardGoalsOverlay").addEventListener("click", (e) => { if (e.target.id === "boardGoalsOverlay") closeBoardGoalsScreen(); });
-  document.getElementById("btnOpenExtrato").addEventListener("click", openExtratoScreen);
+  document.getElementById("btnOpenExtrato").addEventListener("click", () => { EXTRATO_FILTER = "todos"; openExtratoScreen(); });
   document.getElementById("extratoClose").addEventListener("click", closeExtratoScreen);
   document.getElementById("extratoOverlay").addEventListener("click", (e) => { if (e.target.id === "extratoOverlay") closeExtratoScreen(); });
   document.getElementById("btnNewSponsorFab").addEventListener("click", openAnySponsorProposal);
@@ -15449,7 +16083,7 @@ function wireStaticListeners() {
   document.getElementById("btnRestart").addEventListener("click", async () => {
     document.getElementById("topbarMenu").classList.remove("open");
     if (!CAREER) return;
-    if (!(await confirmModal(`Isso vai apagar sua carreira atual no ${CAREER.clubName} e começar do zero. Continuar?`, "Apagar e reiniciar"))) return;
+    if (!(await confirmModal(`Isso vai apagar sua carreira atual no ${CAREER.clubName} e começar do zero. Continuar?`, "Apagar e reiniciar", { danger: true }))) return;
     await fetchJSON("/api/career", { method: "DELETE" }).catch(() => {});
     CAREER = null;
     // AJUSTE (pedido do usuário: "acrescentar a Série B, C [ao Modo
@@ -15684,8 +16318,57 @@ function wireStaticListeners() {
   });
   // Fluxo de 2 passos (ver renderClubPicker/selectClubRow) — só inicia
   // a carreira quando o técnico já escolheu E confirmou.
+  // Cap. 1 · Tela 04 → 05: carreira nova passa pela configuração do
+  // treinador; no fluxo de proposta aceita (PICKER_CONTEXT_IDS) a
+  // identidade já existe — vai direto pro novo clube.
   document.getElementById("btnConfirmClub").addEventListener("click", () => {
-    if (PICKER_SELECTED_CLUB) startCareer(PICKER_SELECTED_CLUB);
+    if (!PICKER_SELECTED_CLUB) return;
+    if (PICKER_CONTEXT_IDS) {
+      show("screenLoading");
+      document.getElementById("screenLoading").innerHTML = splashLoadingHTML("Preparando o novo clube...");
+      startCareer(PICKER_SELECTED_CLUB).catch((err) => { console.error(err); show("screenPicker"); toast("Não foi possível assumir o clube. Tente de novo."); });
+    } else {
+      openSetupScreen(PICKER_SELECTED_CLUB);
+    }
+  });
+  document.getElementById("btnPickerBack").addEventListener("click", () => { renderCompetitionPicker(); show("screenCompetitionPicker"); });
+  document.getElementById("btnSetupBack").addEventListener("click", () => { show("screenPicker"); });
+  document.getElementById("setupForm").addEventListener("submit", submitSetup);
+  document.getElementById("btnFirstEntryGo").addEventListener("click", (e) => {
+    if (e.currentTarget.disabled) return;
+    e.currentTarget.disabled = true; // toque repetido
+    showGameScreen();
+  });
+  // Redesign Cap. 2 — topo (notificações/perfil), atalhos do Início e Jogos.
+  document.getElementById("btnTopbarNotifications").addEventListener("click", openNotificationsSheet);
+  document.getElementById("btnTopbarCoach").addEventListener("click", openCoachProfileScreen);
+  document.querySelectorAll("[data-quick]").forEach((b) => b.addEventListener("click", () => switchToPanel(b.dataset.quick)));
+  document.getElementById("btnHomeSquad").addEventListener("click", () => switchToPanel("elenco"));
+  document.getElementById("btnHomeNews").addEventListener("click", () => openNewsScreen());
+  document.getElementById("btnHomeTable").addEventListener("click", () => switchToPanel("tabela"));
+  document.getElementById("homeGoalsCard").addEventListener("click", openBoardGoalsScreen);
+  document.querySelectorAll("#jogosTabs [data-jogos-tab]").forEach((b) => b.addEventListener("click", () => {
+    if (b.dataset.jogosTab === "semanas") { openCalendarScreen(); return; }
+    JOGOS_STATE.tab = b.dataset.jogosTab; renderJogos();
+  }));
+  document.querySelectorAll("#jogosCompFilter [data-jogos-comp]").forEach((b) => b.addEventListener("click", () => { JOGOS_STATE.comp = b.dataset.jogosComp; renderJogos(); }));
+  const stepMonth = (dir) => {
+    const months = [...new Set(humanFixtures().filter((f) => f.date).map((f) => f.date.getUTCMonth()))].sort((a, b) => a - b);
+    const i = months.indexOf(JOGOS_STATE.month) + dir;
+    if (i >= 0 && i < months.length) { JOGOS_STATE.month = months[i]; renderJogos(); }
+  };
+  document.getElementById("btnJogosPrev").addEventListener("click", () => stepMonth(-1));
+  document.getElementById("btnJogosNext").addEventListener("click", () => stepMonth(1));
+  document.getElementById("elencoSearch").addEventListener("input", (e) => { ELENCO_SEARCH = e.target.value; renderElenco(); });
+  document.getElementById("elencoSort").addEventListener("change", (e) => { ELENCO_SORT = e.target.value; renderElenco(); });
+  document.getElementById("btnClubCommission").addEventListener("click", openCommissionScreen);
+  // Cap. 1 · Tela 02 — mostrar/ocultar senha.
+  document.getElementById("btnTogglePassword").addEventListener("click", (e) => {
+    const input = document.getElementById("ctLoginPassword");
+    const show_ = input.type === "password";
+    input.type = show_ ? "text" : "password";
+    e.currentTarget.setAttribute("aria-pressed", String(show_));
+    e.currentTarget.setAttribute("aria-label", show_ ? "Ocultar senha" : "Mostrar senha");
   });
   // Mesmo botão/ação da Escolha do Clube, agora também na Escolha de
   // Campeonato (novo 1º passo, ver renderCompetitionPicker) — mesmo
@@ -16201,9 +16884,224 @@ function migrateCareerDefaults() {
 // (CAREER.competitionId), não sempre Série A. Sem carreira salva, quem
 // decide o campeonato é o novo seletor (ver renderCompetitionPicker) —
 // loadLeague só roda depois que ele escolher.
+// Carreira 2.0 — a v2 (/carreira) abre aqui as telas que ainda não tem,
+// via fragmento: /carreira-old#elenco, #preparar etc. Só depois que o tutorial,
+// o assistente e o login diário (que abrem sozinhos ao entrar) fecharem;
+// o fragmento é limpo pra um recarregamento não repetir a ação.
+/* ---------- Carreira 2.0 — API da ponte (modo ?ponte=partida) ----------
+   Só leitura do estado da partida + os MESMOS comandos dos botões da
+   tela Ao Vivo (pauseLiveMatch, resumeLiveMatch, continueFromHalftime,
+   skipLiveMatch, velocidade 1×/2×). Nenhuma regra nova: a v2 desenha, o
+   motor é este. Os eventos saem com dados (tipo, minuto, jogador), não
+   com o texto sorteado do feed (pickCommentary sorteia a cada desenho). */
+function ponteAvisar() {
+  if (!V2_PONTE) return;
+  PONTE.ouvintes.forEach((cb) => { try { cb(); } catch (err) { console.error("[ponte]", err); } });
+}
+function ponteFim(salvo) {
+  if (!V2_PONTE) return;
+  PONTE.fim = { salvo: !!salvo, erro: salvo ? null : (PONTE.erroGravacao || "falha") };
+  ponteAvisar();
+}
+function ponteJogador(id) {
+  const p = id ? CAREER.squad.find((x) => x.id === id) : null;
+  return p ? { id: p.id, nome: p.name, grupo: p.group, overall: p.overall, status: p.status || "ok", voltaRodada: p.outUntilRound ?? null, condicao: p.condition ?? null } : null;
+}
+function ponteEstado() {
+  const lm = LIVE_MATCH || PONTE.ultimo;
+  if (!PONTE.pronta) return { fase: "carregando" };
+  // Pós-jogo (depois de "Continuar" na v2): a sequência de sempre roda nesta
+  // página; termina quando não há mais modal aberto nem partida ao vivo
+  // (a perna da Copa, se houver, também é jogada aqui, como hoje).
+  if (PONTE.posJogo) {
+    const aberto = !!LIVE_MATCH || [...document.querySelectorAll(".ct-modal-overlay.open")].some((o) => o.id !== "actionLoadingOverlay");
+    return { fase: "pos-jogo", posJogo: aberto ? "em-andamento" : "concluido" };
+  }
+  if (!lm) return { fase: "sem-partida" };
+  const n = LIVE_MATCH_CHUNK_MINUTES.length;
+  const minuto = lm.chunkIndex === 0 ? 0 : LIVE_MATCH_CHUNK_MINUTES[Math.min(lm.chunkIndex, n) - 1];
+  const encerrada = lm.finished || lm !== LIVE_MATCH;
+  return {
+    fase: encerrada ? "encerrada" : lm.halftime ? "intervalo" : lm.paused ? "pausada" : "jogando",
+    gravada: encerrada ? (PONTE.fim ? PONTE.fim.salvo : null) : null,
+    // AUD-02: motivo da falha ("sessao" | "outra-conta" | "falha") e se uma
+    // nova tentativa está em curso.
+    erroGravacao: encerrada && PONTE.fim && !PONTE.fim.salvo ? PONTE.fim.erro : null,
+    salvando: !!PONTE.salvando,
+    resultadoPronto: encerrada && !!PONTE.resumo,
+    minuto, segundoTempo: minuto > 45,
+    contexto: lm.cupContext ? "copa" : lm.friendlyContext ? "amistoso" : "liga",
+    rodada: lm.round,
+    copa: lm.cupContext ? { fase: lm.cupContext.phase, perna: lm.cupContext.leg } : null,
+    mandante: { id: String(lm.home.id), nome: lm.home.name }, visitante: { id: String(lm.away.id), nome: lm.away.name },
+    souMandante: !!lm.isHome, gh: lm.gh, ga: lm.ga, velocidade: lm.speed === 2 ? 2 : 1,
+    substituicoes: { usadas: lm.subsUsed, total: MAX_SUBS_PER_MATCH + lm.subsBonus },
+    // Escalação AO VIVO (pode diferir do save: substituições e troca de
+    // esquema feitas durante o jogo só são gravadas no fim).
+    escalacao: {
+      formacao: CAREER.lineup.formation,
+      titulares: CAREER.lineup.starters.map(ponteJogador),
+      banco: CAREER.lineup.bench.map(ponteJogador).filter(Boolean),
+    },
+    tatica: {
+      formacao: CAREER.lineup.formation,
+      eixos: TACTIC_AXES.map((ax) => ({ id: ax.id, nome: ax.label, baixo: ax.lowLabel, alto: ax.highLabel, nivel: (CAREER.lineup.tactics || {})[ax.id] || 3 })),
+      formacoes: Object.keys(FORMATIONS),
+      penalidadeBlocos: lm.formationPenaltyChunksLeft || 0,
+    },
+    eventos: lm.events.map((e) => ({
+      minuto: e.minute, tipo: e.type, meu: e.mine === true,
+      jogador: e.player || null, assistencia: e.assistPlayer || null, entra: e.entra || null, sai: e.saiu || null, penalti: !!e.penalty,
+    })),
+  };
+}
+if (V2_PONTE) {
+  window.BRDATA_PONTE = {
+    estado: ponteEstado,
+    aoMudar(cb) { PONTE.ouvintes.add(cb); return () => PONTE.ouvintes.delete(cb); },
+    // Mesmo caminho do "Ir para o jogo" (goToMatch) — só em semana de jogo.
+    iniciar() {
+      if (!PONTE.pronta) return { ok: false, motivo: "carregando" };
+      if (LIVE_MATCH) return { ok: false, motivo: "em-andamento" };
+      const w = calendarWeek();
+      if ((w && !w.r) || CAREER.currentRound > 38) return { ok: false, motivo: "sem-jogo" };
+      PONTE.ultimo = null; PONTE.fim = null;
+      goToMatch();
+      return { ok: true, aoVivo: !!LIVE_MATCH };
+    },
+    pausar() { if (LIVE_MATCH && !LIVE_MATCH.finished) { pauseLiveMatch(); ponteAvisar(); } },
+    retomar() { if (LIVE_MATCH && !LIVE_MATCH.finished && !LIVE_MATCH.halftime) { resumeLiveMatch(); ponteAvisar(); } },
+    continuarIntervalo() { if (LIVE_MATCH && LIVE_MATCH.halftime) continueFromHalftime(); },
+    velocidade(v) { if (LIVE_MATCH) { LIVE_MATCH.speed = v === 2 ? 2 : 1; ponteAvisar(); } },
+    pularParaFim() { if (LIVE_MATCH && !LIVE_MATCH.finished) skipLiveMatch(); },
+    // "Continuar" do Resultado da v2: mesmo caminho do botão Continuar do
+    // detalhe da partida (btnMatchDetailContinue) — coletiva pendente,
+    // notícias, resultados da rodada, Copa, proposta e tabela.
+    continuarPosJogo() {
+      if (!PONTE.resumo || PONTE.posJogo) return { ok: false, motivo: "sem-resumo" };
+      if (!PONTE.fim || !PONTE.fim.salvo) return { ok: false, motivo: "nao-salvo" };
+      PONTE.posJogo = true;
+      showMatchDetailModal(PONTE.resumo);
+      document.getElementById("btnMatchDetailContinue").click();
+      ponteAvisar();
+      return { ok: true };
+    },
+    // Conta dona desta sessão da ponte (a do save em memória).
+    conta() { return ME && ME.id != null ? String(ME.id) : null; },
+    // AUD-02 — "Tentar salvar novamente": repete SÓ a gravação do save que
+    // já está em memória (o resultado foi aplicado uma vez, no fim da
+    // partida). O PUT substitui o save inteiro, então repetir depois de
+    // uma resposta perdida grava o mesmo conteúdo, sem efeito em dobro.
+    // Antes, confere a sessão: expirada → "sessao"; outra conta logada →
+    // "outra-conta" e NÃO grava (o save é desta conta).
+    async salvarDeNovo() {
+      if (!PONTE.fim) return { ok: false, motivo: "sem-partida" };
+      if (PONTE.fim.salvo) return { ok: true };
+      if (PONTE.salvando) return { ok: false, motivo: "em-andamento" };
+      PONTE.salvando = true; PONTE.erroGravacao = null; ponteAvisar();
+      let ok = false;
+      try {
+        let me = null;
+        try { me = await fetchJSON("/api/auth/me"); } catch (err) { PONTE.erroGravacao = err.status === 401 ? "sessao" : "falha"; }
+        if (me && !me.authenticated) PONTE.erroGravacao = "sessao";
+        else if (me && String(me.user.id) !== String(ME && ME.id)) PONTE.erroGravacao = "outra-conta";
+        else if (me) ok = await persistCareer();
+      } finally {
+        PONTE.salvando = false;
+        ponteFim(ok);
+      }
+      if (ok) renderAll();
+      return ok ? { ok: true } : { ok: false, motivo: PONTE.fim.erro };
+    },
+    // Substituição: valida como a tela atual e executa o MESMO
+    // confirmLiveSub (que retoma o jogo — a ponte repausa: na v2 a troca
+    // é feita com a partida parada na Pausa).
+    substituir(saiId, entraId) {
+      const lm = LIVE_MATCH;
+      if (!lm || lm.finished) return { ok: false, motivo: "sem-partida" };
+      if (lm.subsUsed >= MAX_SUBS_PER_MATCH + lm.subsBonus) return { ok: false, motivo: "sem-substituicoes" };
+      if (!CAREER.lineup.starters.includes(saiId)) return { ok: false, motivo: "nao-esta-em-campo" };
+      const entra = CAREER.squad.find((p) => p.id === entraId);
+      if (!entra || !CAREER.lineup.bench.includes(entraId) || entra.status !== "ok") return { ok: false, motivo: "reserva-indisponivel" };
+      const wasHalftime = !!lm.halftime;
+      openLiveSubModal();
+      document.getElementById("liveSubOutSelect").value = saiId;
+      document.getElementById("liveSubInSelect").value = entraId;
+      confirmLiveSub();
+      if (!wasHalftime) pauseLiveMatch();
+      ponteAvisar();
+      return { ok: true };
+    },
+    // Tática: mesma rotina de confirmLiveTactics (custo de familiaridade
+    // ao trocar esquema incluso); a ponte repausa depois, como acima.
+    aplicarTatica({ formacao, eixos }) {
+      const lm = LIVE_MATCH;
+      if (!lm || lm.finished) return { ok: false, motivo: "sem-partida" };
+      if (!FORMATIONS[formacao]) return { ok: false, motivo: "formacao-invalida" };
+      const wasHalftime = !!lm.halftime;
+      openLiveTacticsModal();
+      document.getElementById("liveTacticsFormation").value = formacao;
+      document.querySelectorAll("#liveTacticAxisRows .m3-instr-row").forEach((row) => {
+        const v = eixos && eixos[row.dataset.axis];
+        if (v >= 1 && v <= 5) row.dataset.level = String(Math.round(v));
+      });
+      confirmLiveTactics();
+      if (!wasHalftime) pauseLiveMatch();
+      ponteAvisar();
+      return { ok: true };
+    },
+  };
+}
+const V2_DEEP_LINKS = {
+  preparar: () => { switchToPanel("central"); document.getElementById("btnSimulate").click(); },
+  // "Iniciar partida" do Pré-jogo da v2 (decisão de 01/11): mesma função de
+  // "Ir para o jogo" da confirmação (goToMatch). Fora de semana de jogo
+  // (link antigo, semana já avançada) cai no botão principal de sempre.
+  iniciar: () => {
+    switchToPanel("central");
+    const w = calendarWeek();
+    if ((w && !w.r) || CAREER.currentRound > 38) { document.getElementById("btnSimulate").click(); return; }
+    goToMatch();
+  },
+  "avancar-semana": () => { switchToPanel("central"); document.getElementById("btnSimulate").click(); },
+  amistoso: () => { switchToPanel("central"); document.getElementById("btnSimulate").click(); },
+  "proxima-temporada": () => { switchToPanel("central"); document.getElementById("btnAdvanceSeason").click(); },
+  escalacao: () => switchToPanel("escalacao"),
+  mercado: () => switchToPanel("mercado"),
+  elenco: () => switchToPanel("elenco"),
+  calendario: () => switchToPanel("jogos"),
+  jogos: () => switchToPanel("jogos"),
+  financas: () => switchToPanel("clube"),
+  diretoria: () => openBoardGoalsScreen(),
+  noticias: () => openNewsScreen(),
+  proposta: () => openClubProposalModal(),
+  mais: () => document.getElementById("btnBottomMenu").click(),
+};
+function applyV2DeepLink() {
+  const key = decodeURIComponent((location.hash || "").slice(1));
+  // #clube:<id> — elenco de um clube tocado na Tabela da v2 (mesmo
+  // openClubRoster do toque no nome do clube na Tabela de sempre).
+  const clubMatch = /^clube:(.+)$/.exec(key);
+  // #jogador:<id> — "Contrato e ações do jogador" no Perfil da v2: abre a
+  // mesma ficha (openDetail) do toque no jogador no Elenco de sempre.
+  const playerMatch = /^jogador:(.+)$/.exec(key);
+  const action = clubMatch ? () => openClubRoster(clubMatch[1])
+    : playerMatch ? () => { switchToPanel("elenco"); openDetail(playerMatch[1]); }
+    : V2_DEEP_LINKS[key];
+  if (!action) return;
+  history.replaceState(null, "", location.pathname + location.search);
+  let tries = 0;
+  const run = () => {
+    const blocking = [...document.querySelectorAll(".ct-modal-overlay.open")].some((o) => o.id !== "actionLoadingOverlay");
+    if (blocking && tries++ < 120) { setTimeout(run, 250); return; }
+    if (!blocking) action();
+  };
+  setTimeout(run, 0);
+}
 async function enterAfterAuth() {
   show("screenLoading");
   document.getElementById("screenLoading").innerHTML = splashLoadingHTML("Carregando o Modo Técnico...");
+  setBootProgress(1, 5);
   // Item 5 da lista de melhorias — ME já está garantidamente setado
   // aqui (tanto vindo de boot() quanto de submitCtLogin()), então é o
   // ponto único certo pra consumir um convite por link pendente (ver
@@ -16213,6 +17111,7 @@ async function enterAfterAuth() {
   // Checkout Pro do Mercado Pago (ver handleLojaReturnIfAny).
   await handleLojaReturnIfAny();
   const saved = await fetchJSON("/api/career").catch(() => ({ career: null }));
+  setBootProgress(2, 5, "Carregando sua carreira...");
   if (saved && saved.career) {
     // forceDemo só quando a carreira JÁ GRAVOU explicitamente que nasceu
     // em Modo Exemplo (liveMode === false) -- carreira bem antiga, de
@@ -16221,6 +17120,7 @@ async function enterAfterAuth() {
     // faltar chave), sem mudança de risco pra quem nunca teve esse bug.
     const homeCompetitionId = saved.career.competitionId || "brasileirao";
     await loadLeague(homeCompetitionId, { forceDemo: saved.career.liveMode === false });
+    setBootProgress(3, 5, "Carregando a competição...");
     // AJUSTE (pedido do usuário: "o mercado deve trazer jogadores das
     // 3 ligas") — carreira "multi" (ver startCareer) também recarrega
     // os times das outras 2 competições ao retomar, mesma trava de
@@ -16236,6 +17136,7 @@ async function enterAfterAuth() {
       ALL_COMPETITIONS_ORDER.forEach((c) => { if (lm[c] === false) forceDemoMap[c] = true; });
       await loadOtherCompetitionsTeams(homeCompetitionId, forceDemoMap);
     }
+    setBootProgress(4, 5, "Preparando o clube...");
     CAREER = saved.career;
     migrateCareerDefaults();
     // Nova feature (pedido do usuário: "reinicie o tema do
@@ -16250,8 +17151,11 @@ async function enterAfterAuth() {
       ALL_TEAMS_FLAT = ALL_COMPETITIONS_ORDER.flatMap((id) => CAREER.divisionTeams[id]);
     }
     persistCareer(); // grava os campos novos pra não migrar de novo (e de novo) a cada load
+    setBootProgress(5, 5);
     showGameScreen();
+    applyV2DeepLink();
   } else {
+    setBootProgress(5, 5);
     renderCompetitionPicker();
     show("screenCompetitionPicker");
   }
@@ -16285,6 +17189,7 @@ async function boot() {
   capturePendingInviteFromUrl();
   applyStoredTheme();
   wireStaticListeners();
+  initModalA11y();
   wireModalScrollResetObserver();
   try {
     const me = await fetchJSON("/api/auth/me").catch(() => ({ authenticated: false }));

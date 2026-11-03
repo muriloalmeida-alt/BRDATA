@@ -1,0 +1,17 @@
+/* Diretoria — pranchas/06_clube.png, coluna 1 (≈ fator 2,2). */
+.bd { min-height: 100dvh; display: flex; flex-direction: column; }
+.bd-list { margin: 22px var(--bd-gutter) 0; border-top: 1px solid var(--bd-line); }
+.bd-item { padding: 16px 0 14px; border-bottom: 1px solid var(--bd-line); }
+.bd-item dt { font-size: 15px; color: var(--bd-muted); }
+.bd-item dd { margin: 2px 0 0; font-family: var(--bd-font-display); font-weight: 700; font-size: 24px; line-height: 1.15; }
+.bd-item dd.bd-note { margin-top: 4px; font-family: var(--bd-font-text); font-weight: 500; font-size: 15px; color: var(--bd-accent); }
+.bd-link { margin: 0 var(--bd-gutter); width: auto; min-height: 64px; }
+.bd-link .row-title { font-size: 21px; }
+.bd-chev { color: var(--bd-accent); }
+.bd-sec { margin: 22px var(--bd-gutter) 0; }
+.bd-sec ul { margin: 6px 0 0; padding: 0; list-style: none; border-top: 1px solid var(--bd-line); }
+.bd-row { display: flex; flex-direction: column; gap: 2px; padding: 11px 0; border-bottom: 1px solid var(--bd-line); }
+.bd-row-title { font-family: var(--bd-font-display); font-weight: 600; font-size: 19px; }
+.bd-row-sub { font-size: 14px; color: var(--bd-muted); }
+.bd-row-sub.is-done, .bd-row-sub .is-done { color: var(--bd-accent); }
+.bd-row-sub .is-miss { color: var(--bd-danger); }

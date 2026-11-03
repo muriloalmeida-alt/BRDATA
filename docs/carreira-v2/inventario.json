@@ -1,0 +1,3188 @@
+{
+  "geradoEm": "2026-10-27T10:43:56.308Z",
+  "arquivos": {
+    "server/server.js": 2905,
+    "public/js/carreira.js": 17267,
+    "public/carreira.html": 6130
+  },
+  "rotasServidor": [
+    "* /api/admin/snapshot",
+    "* /api/admin/snapshot-capture",
+    "* /api/admin/users",
+    "* /api/adminpanel/analytics",
+    "* /api/adminpanel/content/plans",
+    "* /api/adminpanel/integrations",
+    "* /api/adminpanel/overview",
+    "* /api/adminpanel/revenue",
+    "* /api/adminpanel/users",
+    "* /api/auth/me",
+    "* /api/broadcast",
+    "* /api/career/standings",
+    "* /api/career/teams",
+    "* /api/competitions",
+    "* /api/fixtures",
+    "* /api/health",
+    "* /api/leagues/search",
+    "* /api/livescores",
+    "* /api/news",
+    "* /api/players/leaders",
+    "* /api/standings",
+    "* /api/support/plans",
+    "* /api/support/status",
+    "* /api/support/webhook",
+    "* /api/teams",
+    "DELETE /api/career",
+    "GET /api/career",
+    "GET /api/career/competition-popularity",
+    "GET /api/career/slots",
+    "GET /api/daily-login",
+    "GET /api/friends",
+    "GET /api/leaderboard",
+    "GET /api/push/vapid-public-key",
+    "POST /api/account/favorite-club",
+    "POST /api/account/onboarding-seen",
+    "POST /api/adminpanel/promote",
+    "POST /api/auth/login",
+    "POST /api/auth/logout",
+    "POST /api/auth/signup",
+    "POST /api/daily-login/claim",
+    "POST /api/friends/add",
+    "POST /api/leaderboard/publish",
+    "POST /api/loja/checkout",
+    "POST /api/loja/spend-credits",
+    "POST /api/push/subscribe",
+    "POST /api/push/test",
+    "POST /api/push/unsubscribe",
+    "POST /api/support/checkout",
+    "POST /api/track",
+    "PREFIX /api/admin/",
+    "PREFIX /api/adminpanel/",
+    "PREFIX /api/auth/",
+    "PREFIX /api/career",
+    "PREFIX /api/daily-login",
+    "PREFIX /api/friends",
+    "PREFIX /api/leaderboard",
+    "PREFIX /api/loja",
+    "PREFIX /api/push",
+    "PREFIX /api/support/",
+    "PUT /api/account/career-favorites",
+    "PUT /api/account/coach-profile",
+    "PUT /api/account/name",
+    "PUT /api/career",
+    "REGEX /api\\"
+  ],
+  "chamadasCliente": [
+    {
+      "chamada": "DELETE /api/career",
+      "ocorrencias": 2
+    },
+    {
+      "chamada": "DELETE /api/career/slots/",
+      "ocorrencias": 1
+    },
+    {
+      "chamada": "GET /api/auth/me",
+      "ocorrencias": 2
+    },
+    {
+      "chamada": "GET /api/career",
+      "ocorrencias": 1
+    },
+    {
+      "chamada": "GET /api/career/competition-popularity",
+      "ocorrencias": 1
+    },
+    {
+      "chamada": "GET /api/career/slots",
+      "ocorrencias": 2
+    },
+    {
+      "chamada": "GET /api/career/standings",
+      "ocorrencias": 1
+    },
+    {
+      "chamada": "GET /api/career/teams",
+      "ocorrencias": 1
+    },
+    {
+      "chamada": "GET /api/career/teams/",
+      "ocorrencias": 1
+    },
+    {
+      "chamada": "GET /api/health",
+      "ocorrencias": 2
+    },
+    {
+      "chamada": "GET /api/leaderboard",
+      "ocorrencias": 1
+    },
+    {
+      "chamada": "GET /api/push/vapid-public-key",
+      "ocorrencias": 1
+    },
+    {
+      "chamada": "POST /api/account/onboarding-seen",
+      "ocorrencias": 1
+    },
+    {
+      "chamada": "POST /api/auth/login",
+      "ocorrencias": 1
+    },
+    {
+      "chamada": "POST /api/auth/logout",
+      "ocorrencias": 3
+    },
+    {
+      "chamada": "POST /api/career/slots/",
+      "ocorrencias": 1
+    },
+    {
+      "chamada": "POST /api/daily-login/claim",
+      "ocorrencias": 1
+    },
+    {
+      "chamada": "POST /api/friends/add",
+      "ocorrencias": 2
+    },
+    {
+      "chamada": "POST /api/leaderboard/publish",
+      "ocorrencias": 1
+    },
+    {
+      "chamada": "POST /api/loja/checkout",
+      "ocorrencias": 1
+    },
+    {
+      "chamada": "POST /api/loja/spend-credits",
+      "ocorrencias": 1
+    },
+    {
+      "chamada": "POST /api/push/subscribe",
+      "ocorrencias": 1
+    },
+    {
+      "chamada": "POST /api/push/test",
+      "ocorrencias": 1
+    },
+    {
+      "chamada": "POST /api/push/unsubscribe",
+      "ocorrencias": 1
+    },
+    {
+      "chamada": "PUT /api/account/career-favorites",
+      "ocorrencias": 1
+    },
+    {
+      "chamada": "PUT /api/account/coach-profile",
+      "ocorrencias": 2
+    },
+    {
+      "chamada": "PUT /api/career",
+      "ocorrencias": 1
+    }
+  ],
+  "camposCareer": [
+    {
+      "campo": "squad",
+      "referencias": 153,
+      "migrado": false
+    },
+    {
+      "campo": "clubId",
+      "referencias": 142,
+      "migrado": false
+    },
+    {
+      "campo": "lineup",
+      "referencias": 141,
+      "migrado": false
+    },
+    {
+      "campo": "currentRound",
+      "referencias": 86,
+      "migrado": false
+    },
+    {
+      "campo": "finances",
+      "referencias": 64,
+      "migrado": true
+    },
+    {
+      "campo": "seasonYear",
+      "referencias": 45,
+      "migrado": true
+    },
+    {
+      "campo": "careerTotals",
+      "referencias": 43,
+      "migrado": true
+    },
+    {
+      "campo": "leagueSquads",
+      "referencias": 40,
+      "migrado": true
+    },
+    {
+      "campo": "standings",
+      "referencias": 33,
+      "migrado": false
+    },
+    {
+      "campo": "calendar",
+      "referencias": 33,
+      "migrado": false
+    },
+    {
+      "campo": "cup",
+      "referencias": 29,
+      "migrado": false
+    },
+    {
+      "campo": "pendingOffersOut",
+      "referencias": 25,
+      "migrado": true
+    },
+    {
+      "campo": "reputation",
+      "referencias": 22,
+      "migrado": true
+    },
+    {
+      "campo": "scouts",
+      "referencias": 21,
+      "migrado": true
+    },
+    {
+      "campo": "objectives",
+      "referencias": 21,
+      "migrado": false
+    },
+    {
+      "campo": "teamStats",
+      "referencias": 20,
+      "migrado": true
+    },
+    {
+      "campo": "divisionTeams",
+      "referencias": 20,
+      "migrado": false
+    },
+    {
+      "campo": "clubName",
+      "referencias": 19,
+      "migrado": false
+    },
+    {
+      "campo": "pendingListings",
+      "referencias": 19,
+      "migrado": true
+    },
+    {
+      "campo": "seasonHistory",
+      "referencias": 17,
+      "migrado": true
+    },
+    {
+      "campo": "teamWinlessStreak",
+      "referencias": 17,
+      "migrado": true
+    },
+    {
+      "campo": "scoutSuggestions",
+      "referencias": 17,
+      "migrado": true
+    },
+    {
+      "campo": "boardGoal",
+      "referencias": 16,
+      "migrado": true
+    },
+    {
+      "campo": "technicalStaff",
+      "referencias": 16,
+      "migrado": true
+    },
+    {
+      "campo": "pendingOffer",
+      "referencias": 16,
+      "migrado": true
+    },
+    {
+      "campo": "trainingPlan",
+      "referencias": 16,
+      "migrado": true
+    },
+    {
+      "campo": "recentForm",
+      "referencias": 14,
+      "migrado": true
+    },
+    {
+      "campo": "achievements",
+      "referencias": 14,
+      "migrado": true
+    },
+    {
+      "campo": "schedule",
+      "referencias": 13,
+      "migrado": false
+    },
+    {
+      "campo": "clubProposals",
+      "referencias": 13,
+      "migrado": true
+    },
+    {
+      "campo": "manMarking",
+      "referencias": 13,
+      "migrado": true
+    },
+    {
+      "campo": "newsFeed",
+      "referencias": 13,
+      "migrado": true
+    },
+    {
+      "campo": "tacticalSchemes",
+      "referencias": 13,
+      "migrado": true
+    },
+    {
+      "campo": "seasonAwards",
+      "referencias": 12,
+      "migrado": true
+    },
+    {
+      "campo": "otherDivisions",
+      "referencias": 12,
+      "migrado": false
+    },
+    {
+      "campo": "competitionId",
+      "referencias": 11,
+      "migrado": true
+    },
+    {
+      "campo": "resultsByRound",
+      "referencias": 11,
+      "migrado": false
+    },
+    {
+      "campo": "transferLog",
+      "referencias": 11,
+      "migrado": true
+    },
+    {
+      "campo": "financeLedger",
+      "referencias": 11,
+      "migrado": true
+    },
+    {
+      "campo": "scoutMissionProspects",
+      "referencias": 11,
+      "migrado": true
+    },
+    {
+      "campo": "sponsorship",
+      "referencias": 10,
+      "migrado": false
+    },
+    {
+      "campo": "serieDPool",
+      "referencias": 10,
+      "migrado": false
+    },
+    {
+      "campo": "notifications",
+      "referencias": 10,
+      "migrado": true
+    },
+    {
+      "campo": "currentUnbeatenStreak",
+      "referencias": 10,
+      "migrado": true
+    },
+    {
+      "campo": "sponsorProposals",
+      "referencias": 9,
+      "migrado": false
+    },
+    {
+      "campo": "notificationSettings",
+      "referencias": 9,
+      "migrado": true
+    },
+    {
+      "campo": "titlesWonCopa",
+      "referencias": 9,
+      "migrado": true
+    },
+    {
+      "campo": "negativeSeasonsStreak",
+      "referencias": 9,
+      "migrado": true
+    },
+    {
+      "campo": "leagueChampions",
+      "referencias": 9,
+      "migrado": true
+    },
+    {
+      "campo": "cashHistory",
+      "referencias": 9,
+      "migrado": true
+    },
+    {
+      "campo": "matchLog",
+      "referencias": 9,
+      "migrado": true
+    },
+    {
+      "campo": "activeSchemeId",
+      "referencias": 9,
+      "migrado": true
+    },
+    {
+      "campo": "pendingReceivables",
+      "referencias": 9,
+      "migrado": true
+    },
+    {
+      "campo": "stadium",
+      "referencias": 8,
+      "migrado": true
+    },
+    {
+      "campo": "trainingSchemeId",
+      "referencias": 8,
+      "migrado": true
+    },
+    {
+      "campo": "purchaseHistory",
+      "referencias": 8,
+      "migrado": true
+    },
+    {
+      "campo": "pendingInstallments",
+      "referencias": 8,
+      "migrado": true
+    },
+    {
+      "campo": "clubHistory",
+      "referencias": 7,
+      "migrado": true
+    },
+    {
+      "campo": "currentWinStreak",
+      "referencias": 7,
+      "migrado": true
+    },
+    {
+      "campo": "pressLog",
+      "referencias": 7,
+      "migrado": true
+    },
+    {
+      "campo": "seasonTeamGoals",
+      "referencias": 6,
+      "migrado": true
+    },
+    {
+      "campo": "seasonTeamFouls",
+      "referencias": 6,
+      "migrado": true
+    },
+    {
+      "campo": "marketScope",
+      "referencias": 5,
+      "migrado": true
+    },
+    {
+      "campo": "lastBoardRequestRound",
+      "referencias": 5,
+      "migrado": true
+    },
+    {
+      "campo": "boardDecision",
+      "referencias": 5,
+      "migrado": true
+    },
+    {
+      "campo": "titlesWonNacional",
+      "referencias": 5,
+      "migrado": true
+    },
+    {
+      "campo": "trainingAppliedForRound",
+      "referencias": 5,
+      "migrado": true
+    },
+    {
+      "campo": "baseRevealedCount",
+      "referencias": 5,
+      "migrado": true
+    },
+    {
+      "campo": "startupWizardSeen",
+      "referencias": 5,
+      "migrado": true
+    },
+    {
+      "campo": "recentDeclines",
+      "referencias": 4,
+      "migrado": false
+    },
+    {
+      "campo": "metaRiskWarnedSeason",
+      "referencias": 4,
+      "migrado": true
+    },
+    {
+      "campo": "trainingFocus",
+      "referencias": 3,
+      "migrado": false
+    },
+    {
+      "campo": "nextSigningDiscountPct",
+      "referencias": 3,
+      "migrado": false
+    },
+    {
+      "campo": "lastScoutSearchRound",
+      "referencias": 2,
+      "migrado": true
+    },
+    {
+      "campo": "liveModeByCompetition",
+      "referencias": 1,
+      "migrado": false
+    },
+    {
+      "campo": "updatedAt",
+      "referencias": 1,
+      "migrado": false
+    },
+    {
+      "campo": "clubLogo",
+      "referencias": 1,
+      "migrado": false
+    },
+    {
+      "campo": "clubShort",
+      "referencias": 1,
+      "migrado": false
+    },
+    {
+      "campo": "clubColors",
+      "referencias": 1,
+      "migrado": false
+    },
+    {
+      "campo": "altKitOwned",
+      "referencias": 1,
+      "migrado": false
+    }
+  ],
+  "telas": {
+    "screens": [
+      "screenLoading",
+      "screenLoginRequired",
+      "screenCompetitionPicker",
+      "screenPicker",
+      "screenSetup",
+      "screenFirstEntry",
+      "screenGame"
+    ],
+    "panels": [
+      "central",
+      "jogos",
+      "clube",
+      "elenco",
+      "escalacao",
+      "tabela",
+      "treinos",
+      "estatisticas",
+      "mercado",
+      "objetivos",
+      "conquistas",
+      "ranking",
+      "loja"
+    ],
+    "overlays": [
+      {
+        "id": "onboardingOverlay",
+        "fullscreen": true,
+        "title": "Recompensa diária"
+      },
+      {
+        "id": "startupWizardOverlay",
+        "fullscreen": true,
+        "title": ""
+      },
+      {
+        "id": "achievementDetailOverlay",
+        "fullscreen": false,
+        "title": ""
+      },
+      {
+        "id": "pickerOverlay",
+        "fullscreen": false,
+        "title": "Escolher jogador"
+      },
+      {
+        "id": "detailOverlay",
+        "fullscreen": true,
+        "title": ""
+      },
+      {
+        "id": "renewOverlay",
+        "fullscreen": false,
+        "title": "Renovar contrato"
+      },
+      {
+        "id": "talkOverlay",
+        "fullscreen": false,
+        "title": "Conversa individual"
+      },
+      {
+        "id": "pressOverlay",
+        "fullscreen": false,
+        "title": "Coletiva de imprensa"
+      },
+      {
+        "id": "myOffersOverlay",
+        "fullscreen": true,
+        "title": "Minhas propostas"
+      },
+      {
+        "id": "contratosOverlay",
+        "fullscreen": true,
+        "title": "Contratos"
+      },
+      {
+        "id": "offerCompareOverlay",
+        "fullscreen": true,
+        "title": "Comparar propostas"
+      },
+      {
+        "id": "listOverlay",
+        "fullscreen": false,
+        "title": "Colocar à venda"
+      },
+      {
+        "id": "mySalesOverlay",
+        "fullscreen": true,
+        "title": "Minhas vendas"
+      },
+      {
+        "id": "scoutSuggestionsOverlay",
+        "fullscreen": true,
+        "title": "Indicações dos olheiros"
+      },
+      {
+        "id": "calendarOverlay",
+        "fullscreen": true,
+        "title": "Calendário"
+      },
+      {
+        "id": "transferHistoryOverlay",
+        "fullscreen": true,
+        "title": "Histórico de negociações"
+      },
+      {
+        "id": "fatigueHistoryOverlay",
+        "fullscreen": true,
+        "title": "Histórico de fadiga"
+      },
+      {
+        "id": "loanOverlay",
+        "fullscreen": false,
+        "title": "Empréstimo"
+      },
+      {
+        "id": "sponsorProposalsOverlay",
+        "fullscreen": false,
+        "title": "Propostas de patrocínio"
+      },
+      {
+        "id": "stadiumOverlay",
+        "fullscreen": true,
+        "title": "Estádio"
+      },
+      {
+        "id": "savesOverlay",
+        "fullscreen": true,
+        "title": "Meus saves"
+      },
+      {
+        "id": "boardGoalsOverlay",
+        "fullscreen": true,
+        "title": "Diretoria"
+      },
+      {
+        "id": "extratoOverlay",
+        "fullscreen": true,
+        "title": "Extrato financeiro"
+      },
+      {
+        "id": "purchaseConfirmOverlay",
+        "fullscreen": false,
+        "title": "Confirmar compra"
+      },
+      {
+        "id": "liveMatchOverlay",
+        "fullscreen": true,
+        "title": "Substituição"
+      },
+      {
+        "id": "liveTacticsOverlay",
+        "fullscreen": false,
+        "title": "Ajustar tática"
+      },
+      {
+        "id": "preMatchOverlay",
+        "fullscreen": true,
+        "title": "Confirmar escalação"
+      },
+      {
+        "id": "adjustLineupOverlay",
+        "fullscreen": true,
+        "title": "Ajustar escalação"
+      },
+      {
+        "id": "matchDetailOverlay",
+        "fullscreen": true,
+        "title": "Seu jogo"
+      },
+      {
+        "id": "matchReplayOverlay",
+        "fullscreen": false,
+        "title": "Rever lances"
+      },
+      {
+        "id": "roundResultsOverlay",
+        "fullscreen": true,
+        "title": "Resultados da rodada"
+      },
+      {
+        "id": "rodadaOverlay",
+        "fullscreen": true,
+        "title": "Resumo da rodada"
+      },
+      {
+        "id": "schemesOverlay",
+        "fullscreen": true,
+        "title": "Meus esquemas"
+      },
+      {
+        "id": "newSchemeSheet",
+        "fullscreen": false,
+        "title": "Novo esquema"
+      },
+      {
+        "id": "markingOverlay",
+        "fullscreen": true,
+        "title": "Marcação individual"
+      },
+      {
+        "id": "sectorOverlay",
+        "fullscreen": true,
+        "title": "Instruções por setor"
+      },
+      {
+        "id": "commissionOverlay",
+        "fullscreen": true,
+        "title": "Comissão Técnica"
+      },
+      {
+        "id": "scoutingOverlay",
+        "fullscreen": true,
+        "title": "Base e Olheiros"
+      },
+      {
+        "id": "scoutMissionSheet",
+        "fullscreen": false,
+        "title": "Nova missão"
+      },
+      {
+        "id": "scoutProspectSheet",
+        "fullscreen": false,
+        "title": ""
+      },
+      {
+        "id": "scoutMarketOverlay",
+        "fullscreen": true,
+        "title": "Contratar olheiro"
+      },
+      {
+        "id": "baseCategoriesOverlay",
+        "fullscreen": true,
+        "title": "Categorias de base"
+      },
+      {
+        "id": "tabelaModalOverlay",
+        "fullscreen": true,
+        "title": "Tabela da carreira"
+      },
+      {
+        "id": "awardsOverlay",
+        "fullscreen": true,
+        "title": "Premiações"
+      },
+      {
+        "id": "newsOverlay",
+        "fullscreen": true,
+        "title": "Notícias"
+      },
+      {
+        "id": "settingsOverlay",
+        "fullscreen": true,
+        "title": "Configurações"
+      },
+      {
+        "id": "editProfileOverlay",
+        "fullscreen": true,
+        "title": "Editar perfil"
+      },
+      {
+        "id": "purchaseHistoryOverlay",
+        "fullscreen": true,
+        "title": "Histórico de compras"
+      },
+      {
+        "id": "helpCenterOverlay",
+        "fullscreen": true,
+        "title": "Central de ajuda"
+      },
+      {
+        "id": "notificationsSheetOverlay",
+        "fullscreen": false,
+        "title": "Notificações"
+      },
+      {
+        "id": "clubRosterOverlay",
+        "fullscreen": true,
+        "title": ""
+      },
+      {
+        "id": "coachProfileOverlay",
+        "fullscreen": true,
+        "title": "Perfil do Técnico"
+      },
+      {
+        "id": "compareOverlay",
+        "fullscreen": true,
+        "title": "Comparar jogadores"
+      },
+      {
+        "id": "clubProposalOverlay",
+        "fullscreen": false,
+        "title": "Proposta de outro clube"
+      },
+      {
+        "id": "playerOfferOverlay",
+        "fullscreen": false,
+        "title": "Proposta por um jogador"
+      },
+      {
+        "id": "seasonOverlay",
+        "fullscreen": false,
+        "title": "Nova temporada!"
+      },
+      {
+        "id": "dismissalOverlay",
+        "fullscreen": false,
+        "title": "Fim de carreira"
+      },
+      {
+        "id": "confirmOverlay",
+        "fullscreen": false,
+        "title": "Confirmar"
+      }
+    ],
+    "openFns": [
+      "openM3Dialog",
+      "openM3BottomSheet",
+      "openTalkModal",
+      "openSponsorProposalsModal",
+      "openClubProposalModal",
+      "openCoachProfileScreen",
+      "openSettingsScreen",
+      "openEditProfileScreen",
+      "openHelpCenterScreen",
+      "openAwardsScreen",
+      "openNotificationsSheet",
+      "openLoanOutModal",
+      "openLoanInModal",
+      "openSetupScreen",
+      "openSavesScreen",
+      "openFirstEntry",
+      "openFatigueHistoryScreen",
+      "openAchievementDetail",
+      "openOnboardingOverlay",
+      "openStartupWizard",
+      "openPurchaseConfirm",
+      "openPurchaseHistoryScreen",
+      "openNewsScreen",
+      "openPressConferenceModal",
+      "openLiveSubModal",
+      "openLiveTacticsModal",
+      "openH2H",
+      "openFixtureDialog",
+      "openFixtureSheet",
+      "openStadiumScreen",
+      "openBoardGoalsScreen",
+      "openExtratoScreen",
+      "openAnySponsorProposal",
+      "openContratosScreen",
+      "openRenewModal",
+      "openClubRoster",
+      "openPlayerCard",
+      "openDetail",
+      "openCompareWithExternal",
+      "openComparePicker",
+      "openRenameSchemeSheet",
+      "openSchemesScreen",
+      "openNewSchemeSheet",
+      "openManMarkingScreen",
+      "openSectorScreen",
+      "openCommissionSuggestionDialog",
+      "openCommissionScreen",
+      "openPreMatchConfirm",
+      "openAdjustLineupModal",
+      "openCalendarScreen",
+      "openPicker",
+      "openTabelaModal",
+      "openMarketFiltersSheet",
+      "openOfferModal",
+      "openListModal",
+      "openMySalesScreen",
+      "openScoutingScreen",
+      "openMissionSheet",
+      "openProspectSheet",
+      "openScoutMarketScreen",
+      "openBaseCategoriesScreen",
+      "openScoutSuggestionsScreen",
+      "openTransferHistoryScreen",
+      "openMyOffersScreen",
+      "openOfferCompareScreen",
+      "openPlayerOfferModal",
+      "openMatchReplay",
+      "openRodadaScreen"
+    ]
+  },
+  "funcoes": {
+    "total": 728,
+    "tocamDOM": 269,
+    "persistem": [
+      "applyTalkOption",
+      "signSponsorProposal",
+      "askBoard",
+      "declineClubProposal",
+      "renderSettingsScreen",
+      "startStadiumUpgrade",
+      "openNotificationsSheet",
+      "confirmLoanFromModal",
+      "switchSaveSlot",
+      "startCareer",
+      "renderTrainingDayPanel",
+      "stepTrainingDuration",
+      "applyTrainingScheme",
+      "claimObjective",
+      "claimDailyLoginNow",
+      "finishStartupWizard",
+      "confirmPurchaseNow",
+      "applyPressAnswer",
+      "finishLiveMatch",
+      "finishCupLegLive",
+      "proposeRenewal",
+      "handlePlayerAction",
+      "autoFillLineup",
+      "openRenameSchemeSheet",
+      "renderSchemesScreen",
+      "confirmNewScheme",
+      "applyManMarking",
+      "removeManMarking",
+      "renderSectorScreen",
+      "hireTechnicalStaff",
+      "fireTechnicalStaff",
+      "suggestLineup",
+      "suggestTactics",
+      "pickFriendlyOpponent",
+      "finishFriendlyLive",
+      "advanceCalendarFromUI",
+      "goToMatch",
+      "pickerChoose",
+      "confirmOfferFromModal",
+      "increaseOffer",
+      "withdrawOffer",
+      "acceptCounterOffer",
+      "confirmListFromModal",
+      "rejectListingOffer",
+      "cancelListing",
+      "acceptListingOffer",
+      "hireScout",
+      "fireScout",
+      "startScoutMission",
+      "recruitProspectToBase",
+      "rejectScoutSuggestion",
+      "acceptScoutSuggestion",
+      "acceptOffer",
+      "declineOffer",
+      "wireStaticListeners",
+      "enterAfterAuth"
+    ],
+    "usamRede": [
+      "resetToDefaultM3Palette",
+      "fetchJSON",
+      "fetchCompetitionTeams",
+      "loadLeague",
+      "loadOtherCompetitionsTeams",
+      "fetchRealPlayers",
+      "enablePushNotifications",
+      "disablePushNotifications",
+      "testPushNotification",
+      "saveProfileName",
+      "persistCareer",
+      "renderCompetitionPicker",
+      "toggleCareerFavorite",
+      "submitSetup",
+      "renderSavesScreen",
+      "switchSaveSlot",
+      "refreshRankingList",
+      "renderRanking",
+      "submitAddFriend",
+      "consumePendingInviteIfAny",
+      "handleLojaReturnIfAny",
+      "closeOnboardingOverlay",
+      "claimDailyLoginNow",
+      "confirmPurchaseNow",
+      "wireStaticListeners",
+      "submitCtLogin",
+      "enterAfterAuth",
+      "boot"
+    ],
+    "usamMathRandom": [
+      "weightedPick",
+      "attributeTrainingGain",
+      "generateSponsorProposals",
+      "evaluateBoardRequest",
+      "sfxNoiseBuffer",
+      "simulateCupTie",
+      "resolveCupPhaseLegacy",
+      "finalizeCupPhaseExpanded",
+      "applyPromotionRelegation",
+      "pushNotification",
+      "pickRandomOtherClub",
+      "pickWeightedByScore",
+      "findInterestedBuyer",
+      "shouldExerciseBuyOption",
+      "simulateAiTransfers",
+      "maybeGenerateOffer",
+      "applyNaturalAgingEvolution",
+      "applyDailyLoginReward",
+      "rollInjurySeverity",
+      "attributeGoals",
+      "applyMatchWearChunk",
+      "attributeChances",
+      "attributePenaltyMisses",
+      "applyConditionRecovery",
+      "determineMatchPressTrigger",
+      "pickCommentary",
+      "resolveLiveChunk",
+      "saveTacticalScheme",
+      "confirmOfferFromModal",
+      "maybeSpawnRivalOffer",
+      "resolvePendingOffersOutRound",
+      "maybeSpawnListingOffer",
+      "confirmListFromModal"
+    ],
+    "candidatasPuras": [
+      {
+        "nome": "tacticAxisMod",
+        "linhas": 10,
+        "escreveCareer": false
+      },
+      {
+        "nome": "combinedTacticMod",
+        "linhas": 51,
+        "escreveCareer": false
+      },
+      {
+        "nome": "defaultSectorTactics",
+        "linhas": 9,
+        "escreveCareer": false
+      },
+      {
+        "nome": "combinedSectorTacticMod",
+        "linhas": 37,
+        "escreveCareer": false
+      },
+      {
+        "nome": "subPositionOf",
+        "linhas": 4,
+        "escreveCareer": false
+      },
+      {
+        "nome": "squadSortKey",
+        "linhas": 37,
+        "escreveCareer": true
+      },
+      {
+        "nome": "clamp",
+        "linhas": 2,
+        "escreveCareer": false
+      },
+      {
+        "nome": "avg",
+        "linhas": 2,
+        "escreveCareer": false
+      },
+      {
+        "nome": "escapeHtml",
+        "linhas": 4,
+        "escreveCareer": false
+      },
+      {
+        "nome": "weightedPick",
+        "linhas": 30,
+        "escreveCareer": false
+      },
+      {
+        "nome": "hexToRgb",
+        "linhas": 7,
+        "escreveCareer": false
+      },
+      {
+        "nome": "rgbToHsl",
+        "linhas": 15,
+        "escreveCareer": false
+      },
+      {
+        "nome": "hslToRgb",
+        "linhas": 11,
+        "escreveCareer": false
+      },
+      {
+        "nome": "rgbToHex",
+        "linhas": 8,
+        "escreveCareer": false
+      },
+      {
+        "nome": "relativeLuminance",
+        "linhas": 7,
+        "escreveCareer": false
+      },
+      {
+        "nome": "contrastRatio",
+        "linhas": 18,
+        "escreveCareer": false
+      },
+      {
+        "nome": "deriveClubPalette",
+        "linhas": 49,
+        "escreveCareer": false
+      },
+      {
+        "nome": "applyClubPalette",
+        "linhas": 7,
+        "escreveCareer": false
+      },
+      {
+        "nome": "isRendered",
+        "linhas": 6,
+        "escreveCareer": false
+      },
+      {
+        "nome": "toastStatHTML",
+        "linhas": 9,
+        "escreveCareer": false
+      },
+      {
+        "nome": "m3EscapeCloseHandler",
+        "linhas": 6,
+        "escreveCareer": false
+      },
+      {
+        "nome": "openM3Dialog",
+        "linhas": 2,
+        "escreveCareer": false
+      },
+      {
+        "nome": "closeM3Dialog",
+        "linhas": 2,
+        "escreveCareer": false
+      },
+      {
+        "nome": "openM3BottomSheet",
+        "linhas": 2,
+        "escreveCareer": false
+      },
+      {
+        "nome": "closeM3BottomSheet",
+        "linhas": 12,
+        "escreveCareer": false
+      },
+      {
+        "nome": "m3SkeletonHTML",
+        "linhas": 24,
+        "escreveCareer": false
+      },
+      {
+        "nome": "splashLoadingHTML",
+        "linhas": 16,
+        "escreveCareer": false
+      },
+      {
+        "nome": "splashErrorHTML",
+        "linhas": 10,
+        "escreveCareer": false
+      },
+      {
+        "nome": "calibrateStrengths",
+        "linhas": 20,
+        "escreveCareer": false
+      },
+      {
+        "nome": "normalizeNameForColor",
+        "linhas": 4,
+        "escreveCareer": false
+      },
+      {
+        "nome": "realTeamColor",
+        "linhas": 88,
+        "escreveCareer": false
+      },
+      {
+        "nome": "teamById",
+        "linhas": 36,
+        "escreveCareer": false
+      },
+      {
+        "nome": "teamLogoSrc",
+        "linhas": 6,
+        "escreveCareer": false
+      },
+      {
+        "nome": "crestImg",
+        "linhas": 33,
+        "escreveCareer": false
+      },
+      {
+        "nome": "rrTeamCellHTML",
+        "linhas": 6,
+        "escreveCareer": false
+      },
+      {
+        "nome": "lastNameOf",
+        "linhas": 10,
+        "escreveCareer": false
+      },
+      {
+        "nome": "abbreviateName",
+        "linhas": 9,
+        "escreveCareer": false
+      },
+      {
+        "nome": "fmtBRL",
+        "linhas": 7,
+        "escreveCareer": false
+      },
+      {
+        "nome": "fmtBRLShort",
+        "linhas": 26,
+        "escreveCareer": false
+      },
+      {
+        "nome": "mapPositionGroup",
+        "linhas": 29,
+        "escreveCareer": false
+      },
+      {
+        "nome": "computeContractFields",
+        "linhas": 42,
+        "escreveCareer": false
+      },
+      {
+        "nome": "fairWageFor",
+        "linhas": 13,
+        "escreveCareer": false
+      },
+      {
+        "nome": "moraleFactor",
+        "linhas": 18,
+        "escreveCareer": false
+      },
+      {
+        "nome": "playerComplaintFactor",
+        "linhas": 18,
+        "escreveCareer": false
+      },
+      {
+        "nome": "applyMoraleAfterMatch",
+        "linhas": 60,
+        "escreveCareer": false
+      },
+      {
+        "nome": "canTalkTo",
+        "linhas": 6,
+        "escreveCareer": false
+      },
+      {
+        "nome": "moraleTrendArrowHTML",
+        "linhas": 6,
+        "escreveCareer": false
+      },
+      {
+        "nome": "applySeasonMoraleReset",
+        "linhas": 40,
+        "escreveCareer": false
+      },
+      {
+        "nome": "derivePotentialForAdult",
+        "linhas": 22,
+        "escreveCareer": false
+      },
+      {
+        "nome": "attributeTrainingGain",
+        "linhas": 30,
+        "escreveCareer": false
+      },
+      {
+        "nome": "seasonGainBaseCap",
+        "linhas": 9,
+        "escreveCareer": false
+      },
+      {
+        "nome": "playTimeGainFactor",
+        "linhas": 6,
+        "escreveCareer": false
+      },
+      {
+        "nome": "seasonGainCap",
+        "linhas": 6,
+        "escreveCareer": false
+      },
+      {
+        "nome": "seasonGainRoom",
+        "linhas": 5,
+        "escreveCareer": false
+      },
+      {
+        "nome": "recordSeasonGain",
+        "linhas": 8,
+        "escreveCareer": false
+      },
+      {
+        "nome": "highBandGainFactor",
+        "linhas": 6,
+        "escreveCareer": false
+      },
+      {
+        "nome": "potentialDeclineFor",
+        "linhas": 9,
+        "escreveCareer": false
+      },
+      {
+        "nome": "youthPotentialRoll",
+        "linhas": 9,
+        "escreveCareer": false
+      },
+      {
+        "nome": "applyCpuAnnualEvolution",
+        "linhas": 19,
+        "escreveCareer": false
+      },
+      {
+        "nome": "seasonEvolutionLineHTML",
+        "linhas": 19,
+        "escreveCareer": false
+      },
+      {
+        "nome": "backfillPlayerPotential",
+        "linhas": 5,
+        "escreveCareer": false
+      },
+      {
+        "nome": "buildRealPlayer",
+        "linhas": 44,
+        "escreveCareer": false
+      },
+      {
+        "nome": "buildBasePlayer",
+        "linhas": 44,
+        "escreveCareer": false
+      },
+      {
+        "nome": "scoutedPotentialRange",
+        "linhas": 37,
+        "escreveCareer": false
+      },
+      {
+        "nome": "buildGeneratedProPlayer",
+        "linhas": 42,
+        "escreveCareer": false
+      },
+      {
+        "nome": "buildSquad",
+        "linhas": 23,
+        "escreveCareer": false
+      },
+      {
+        "nome": "wageBillOf",
+        "linhas": 6,
+        "escreveCareer": false
+      },
+      {
+        "nome": "initialFinances",
+        "linhas": 11,
+        "escreveCareer": false
+      },
+      {
+        "nome": "technicalStaffMonthlyCost",
+        "linhas": 7,
+        "escreveCareer": false
+      },
+      {
+        "nome": "scoutsMonthlyCost",
+        "linhas": 26,
+        "escreveCareer": false
+      },
+      {
+        "nome": "sponsorshipTier",
+        "linhas": 14,
+        "escreveCareer": false
+      },
+      {
+        "nome": "generateSponsorProposals",
+        "linhas": 19,
+        "escreveCareer": false
+      },
+      {
+        "nome": "initSponsorship",
+        "linhas": 13,
+        "escreveCareer": true
+      },
+      {
+        "nome": "advanceSponsorshipSeason",
+        "linhas": 15,
+        "escreveCareer": true
+      },
+      {
+        "nome": "sponsorshipSeasonTotal",
+        "linhas": 14,
+        "escreveCareer": false
+      },
+      {
+        "nome": "evaluateBoardRequest",
+        "linhas": 26,
+        "escreveCareer": false
+      },
+      {
+        "nome": "averageOverall",
+        "linhas": 13,
+        "escreveCareer": false
+      },
+      {
+        "nome": "computeBoardGoal",
+        "linhas": 12,
+        "escreveCareer": false
+      },
+      {
+        "nome": "boardGoalMet",
+        "linhas": 45,
+        "escreveCareer": false
+      },
+      {
+        "nome": "countTitlesThisSeason",
+        "linhas": 7,
+        "escreveCareer": false
+      },
+      {
+        "nome": "applySeasonReputationDelta",
+        "linhas": 7,
+        "escreveCareer": true
+      },
+      {
+        "nome": "reputationLabel",
+        "linhas": 19,
+        "escreveCareer": false
+      },
+      {
+        "nome": "endCurrentClubStint",
+        "linhas": 21,
+        "escreveCareer": false
+      },
+      {
+        "nome": "maybeGenerateClubProposals",
+        "linhas": 27,
+        "escreveCareer": true
+      },
+      {
+        "nome": "acceptClubProposal",
+        "linhas": 14,
+        "escreveCareer": false
+      },
+      {
+        "nome": "initialsFor",
+        "linhas": 6,
+        "escreveCareer": false
+      },
+      {
+        "nome": "maskEmail",
+        "linhas": 17,
+        "escreveCareer": false
+      },
+      {
+        "nome": "urlBase64ToUint8Array",
+        "linhas": 7,
+        "escreveCareer": false
+      },
+      {
+        "nome": "pushSupported",
+        "linhas": 4,
+        "escreveCareer": false
+      },
+      {
+        "nome": "setSfxEnabled",
+        "linhas": 11,
+        "escreveCareer": false
+      },
+      {
+        "nome": "sfxCtx",
+        "linhas": 13,
+        "escreveCareer": false
+      },
+      {
+        "nome": "sfxNoiseBuffer",
+        "linhas": 13,
+        "escreveCareer": false
+      },
+      {
+        "nome": "playWhistle",
+        "linhas": 22,
+        "escreveCareer": false
+      },
+      {
+        "nome": "playCrowdPop",
+        "linhas": 20,
+        "escreveCareer": false
+      },
+      {
+        "nome": "playGoal",
+        "linhas": 39,
+        "escreveCareer": false
+      },
+      {
+        "nome": "startCrowdAmbience",
+        "linhas": 19,
+        "escreveCareer": false
+      },
+      {
+        "nome": "stopCrowdAmbience",
+        "linhas": 16,
+        "escreveCareer": false
+      },
+      {
+        "nome": "settingsToggleRowHTML",
+        "linhas": 4,
+        "escreveCareer": false
+      },
+      {
+        "nome": "squadAvgOverallOf",
+        "linhas": 5,
+        "escreveCareer": false
+      },
+      {
+        "nome": "shuffleWithRng",
+        "linhas": 21,
+        "escreveCareer": false
+      },
+      {
+        "nome": "setupCup",
+        "linhas": 4,
+        "escreveCareer": false
+      },
+      {
+        "nome": "setupCupLegacy",
+        "linhas": 46,
+        "escreveCareer": true
+      },
+      {
+        "nome": "setupCupExpanded",
+        "linhas": 40,
+        "escreveCareer": true
+      },
+      {
+        "nome": "freshCupTie",
+        "linhas": 12,
+        "escreveCareer": false
+      },
+      {
+        "nome": "simulateCupLeg",
+        "linhas": 24,
+        "escreveCareer": false
+      },
+      {
+        "nome": "simulateCupTie",
+        "linhas": 20,
+        "escreveCareer": false
+      },
+      {
+        "nome": "resolveCupPhase",
+        "linhas": 14,
+        "escreveCareer": false
+      },
+      {
+        "nome": "settleCupTieOutcome",
+        "linhas": 37,
+        "escreveCareer": true
+      },
+      {
+        "nome": "resolveCupPhaseLegacy",
+        "linhas": 49,
+        "escreveCareer": true
+      },
+      {
+        "nome": "resolveCupPhaseExpanded",
+        "linhas": 37,
+        "escreveCareer": false
+      },
+      {
+        "nome": "finalizeCupPhaseExpanded",
+        "linhas": 67,
+        "escreveCareer": true
+      },
+      {
+        "nome": "stadiumCapacityFor",
+        "linhas": 11,
+        "escreveCareer": false
+      },
+      {
+        "nome": "avgTicketPriceFor",
+        "linhas": 4,
+        "escreveCareer": false
+      },
+      {
+        "nome": "currentAttendancePct",
+        "linhas": 11,
+        "escreveCareer": false
+      },
+      {
+        "nome": "pushRecentForm",
+        "linhas": 8,
+        "escreveCareer": true
+      },
+      {
+        "nome": "computeTicketRevenue",
+        "linhas": 27,
+        "escreveCareer": false
+      },
+      {
+        "nome": "initialStadium",
+        "linhas": 4,
+        "escreveCareer": false
+      },
+      {
+        "nome": "tickStadiumUpgrade",
+        "linhas": 32,
+        "escreveCareer": false
+      },
+      {
+        "nome": "snapshotPlayerSeasonHistory",
+        "linhas": 17,
+        "escreveCareer": false
+      },
+      {
+        "nome": "playerSeasonHistoryHTML",
+        "linhas": 30,
+        "escreveCareer": false
+      },
+      {
+        "nome": "renewLeagueSquad",
+        "linhas": 43,
+        "escreveCareer": false
+      },
+      {
+        "nome": "renewHumanSquad",
+        "linhas": 54,
+        "escreveCareer": true
+      },
+      {
+        "nome": "computeSeasonAwards",
+        "linhas": 42,
+        "escreveCareer": false
+      },
+      {
+        "nome": "awardPodiumHTML",
+        "linhas": 8,
+        "escreveCareer": false
+      },
+      {
+        "nome": "awardStatTileHTML",
+        "linhas": 9,
+        "escreveCareer": false
+      },
+      {
+        "nome": "applySeasonAwardMoraleBoost",
+        "linhas": 9,
+        "escreveCareer": false
+      },
+      {
+        "nome": "advanceSeason",
+        "linhas": 202,
+        "escreveCareer": true
+      },
+      {
+        "nome": "buildLeagueSquad",
+        "linhas": 32,
+        "escreveCareer": false
+      },
+      {
+        "nome": "buildLeagueSquads",
+        "linhas": 19,
+        "escreveCareer": false
+      },
+      {
+        "nome": "ensureUniquePlayerIds",
+        "linhas": 38,
+        "escreveCareer": true
+      },
+      {
+        "nome": "leagueSquadFor",
+        "linhas": 10,
+        "escreveCareer": false
+      },
+      {
+        "nome": "pickCpuXI",
+        "linhas": 50,
+        "escreveCareer": false
+      },
+      {
+        "nome": "freshDivisionRound",
+        "linhas": 12,
+        "escreveCareer": false
+      },
+      {
+        "nome": "initDivisionSystem",
+        "linhas": 16,
+        "escreveCareer": true
+      },
+      {
+        "nome": "divisionStandingsFor",
+        "linhas": 5,
+        "escreveCareer": false
+      },
+      {
+        "nome": "sortedDivisionRows",
+        "linhas": 11,
+        "escreveCareer": false
+      },
+      {
+        "nome": "resolveOtherDivisionsRound",
+        "linhas": 22,
+        "escreveCareer": false
+      },
+      {
+        "nome": "relegationZoneIds",
+        "linhas": 10,
+        "escreveCareer": false
+      },
+      {
+        "nome": "accessZoneIds",
+        "linhas": 39,
+        "escreveCareer": false
+      },
+      {
+        "nome": "applyTraditionReprieve",
+        "linhas": 53,
+        "escreveCareer": false
+      },
+      {
+        "nome": "divisionStrengthScale",
+        "linhas": 13,
+        "escreveCareer": false
+      },
+      {
+        "nome": "repositionArrivals",
+        "linhas": 17,
+        "escreveCareer": false
+      },
+      {
+        "nome": "applyPromotionRelegation",
+        "linhas": 120,
+        "escreveCareer": true
+      },
+      {
+        "nome": "pushTransferLog",
+        "linhas": 19,
+        "escreveCareer": true
+      },
+      {
+        "nome": "pushNotification",
+        "linhas": 9,
+        "escreveCareer": true
+      },
+      {
+        "nome": "unreadNotificationCount",
+        "linhas": 4,
+        "escreveCareer": false
+      },
+      {
+        "nome": "timeAgoLabel",
+        "linhas": 10,
+        "escreveCareer": false
+      },
+      {
+        "nome": "pushLedger",
+        "linhas": 11,
+        "escreveCareer": true
+      },
+      {
+        "nome": "pushCashSnapshot",
+        "linhas": 42,
+        "escreveCareer": true
+      },
+      {
+        "nome": "buildSeasonCalendar",
+        "linhas": 20,
+        "escreveCareer": false
+      },
+      {
+        "nome": "calendarOn",
+        "linhas": 2,
+        "escreveCareer": false
+      },
+      {
+        "nome": "calendarWeek",
+        "linhas": 2,
+        "escreveCareer": false
+      },
+      {
+        "nome": "calendarWeekMonth",
+        "linhas": 2,
+        "escreveCareer": false
+      },
+      {
+        "nome": "calendarDateLabel",
+        "linhas": 9,
+        "escreveCareer": false
+      },
+      {
+        "nome": "calendarTurnKey",
+        "linhas": 4,
+        "escreveCareer": false
+      },
+      {
+        "nome": "calendarWeekIndexOfRound",
+        "linhas": 6,
+        "escreveCareer": false
+      },
+      {
+        "nome": "syncCalendarToRound",
+        "linhas": 8,
+        "escreveCareer": true
+      },
+      {
+        "nome": "applyCalendarMonthlyFinances",
+        "linhas": 24,
+        "escreveCareer": false
+      },
+      {
+        "nome": "advanceCalendarWeek",
+        "linhas": 21,
+        "escreveCareer": false
+      },
+      {
+        "nome": "runCalendarOffWeek",
+        "linhas": 31,
+        "escreveCareer": false
+      },
+      {
+        "nome": "transferWindowStatus",
+        "linhas": 34,
+        "escreveCareer": false
+      },
+      {
+        "nome": "marketTeamsPool",
+        "linhas": 5,
+        "escreveCareer": false
+      },
+      {
+        "nome": "pickRandomOtherClub",
+        "linhas": 25,
+        "escreveCareer": false
+      },
+      {
+        "nome": "isOwnDivisionTeam",
+        "linhas": 4,
+        "escreveCareer": false
+      },
+      {
+        "nome": "maxSquadSizeFor",
+        "linhas": 4,
+        "escreveCareer": false
+      },
+      {
+        "nome": "minSquadSizeFor",
+        "linhas": 28,
+        "escreveCareer": false
+      },
+      {
+        "nome": "idealCountForGroup",
+        "linhas": 8,
+        "escreveCareer": false
+      },
+      {
+        "nome": "groupDeficitScore",
+        "linhas": 20,
+        "escreveCareer": false
+      },
+      {
+        "nome": "qualityDeficitScore",
+        "linhas": 15,
+        "escreveCareer": false
+      },
+      {
+        "nome": "squadSizeNeedFactor",
+        "linhas": 23,
+        "escreveCareer": false
+      },
+      {
+        "nome": "necessidadeScore",
+        "linhas": 13,
+        "escreveCareer": false
+      },
+      {
+        "nome": "overallFitCurve",
+        "linhas": 8,
+        "escreveCareer": false
+      },
+      {
+        "nome": "adequacaoScore",
+        "linhas": 16,
+        "escreveCareer": false
+      },
+      {
+        "nome": "clubBudgetProxy",
+        "linhas": 24,
+        "escreveCareer": false
+      },
+      {
+        "nome": "affordabilityRatio",
+        "linhas": 6,
+        "escreveCareer": false
+      },
+      {
+        "nome": "financeiroScore",
+        "linhas": 17,
+        "escreveCareer": false
+      },
+      {
+        "nome": "clubPositionFactor",
+        "linhas": 8,
+        "escreveCareer": false
+      },
+      {
+        "nome": "clubAmbitionFactor",
+        "linhas": 12,
+        "escreveCareer": false
+      },
+      {
+        "nome": "contextoScore",
+        "linhas": 10,
+        "escreveCareer": false
+      },
+      {
+        "nome": "transferScore",
+        "linhas": 15,
+        "escreveCareer": false
+      },
+      {
+        "nome": "pickWeightedByScore",
+        "linhas": 21,
+        "escreveCareer": false
+      },
+      {
+        "nome": "offerProbabilityFromScore",
+        "linhas": 27,
+        "escreveCareer": false
+      },
+      {
+        "nome": "transferValuation",
+        "linhas": 82,
+        "escreveCareer": false
+      },
+      {
+        "nome": "squadForClub",
+        "linhas": 18,
+        "escreveCareer": false
+      },
+      {
+        "nome": "calculateSellerReservationValue",
+        "linhas": 34,
+        "escreveCareer": false
+      },
+      {
+        "nome": "calculateCounterOffer",
+        "linhas": 12,
+        "escreveCareer": false
+      },
+      {
+        "nome": "sellerNegotiationDecision",
+        "linhas": 34,
+        "escreveCareer": false
+      },
+      {
+        "nome": "buyerHardCap",
+        "linhas": 6,
+        "escreveCareer": false
+      },
+      {
+        "nome": "buyerNegotiationDecision",
+        "linhas": 23,
+        "escreveCareer": false
+      },
+      {
+        "nome": "negotiateOffer",
+        "linhas": 31,
+        "escreveCareer": false
+      },
+      {
+        "nome": "findInterestedBuyer",
+        "linhas": 78,
+        "escreveCareer": false
+      },
+      {
+        "nome": "isLoanOutRefused",
+        "linhas": 10,
+        "escreveCareer": false
+      },
+      {
+        "nome": "loanOutBtnAttrs",
+        "linhas": 13,
+        "escreveCareer": false
+      },
+      {
+        "nome": "shouldExerciseBuyOption",
+        "linhas": 9,
+        "escreveCareer": false
+      },
+      {
+        "nome": "settleLoanOut",
+        "linhas": 20,
+        "escreveCareer": true
+      },
+      {
+        "nome": "settleLoanIn",
+        "linhas": 41,
+        "escreveCareer": true
+      },
+      {
+        "nome": "checkMidSeasonLoanReturns",
+        "linhas": 15,
+        "escreveCareer": false
+      },
+      {
+        "nome": "resolveLoanReturns",
+        "linhas": 10,
+        "escreveCareer": false
+      },
+      {
+        "nome": "finalizeLoanOut",
+        "linhas": 36,
+        "escreveCareer": true
+      },
+      {
+        "nome": "finalizeLoanIn",
+        "linhas": 34,
+        "escreveCareer": true
+      },
+      {
+        "nome": "simulateAiTransfers",
+        "linhas": 90,
+        "escreveCareer": false
+      },
+      {
+        "nome": "pruneRecentDeclines",
+        "linhas": 9,
+        "escreveCareer": true
+      },
+      {
+        "nome": "wasRecentlyDeclined",
+        "linhas": 4,
+        "escreveCareer": false
+      },
+      {
+        "nome": "recordDecline",
+        "linhas": 13,
+        "escreveCareer": false
+      },
+      {
+        "nome": "urgencyMultiplier",
+        "linhas": 11,
+        "escreveCareer": false
+      },
+      {
+        "nome": "maybeGenerateOffer",
+        "linhas": 46,
+        "escreveCareer": true
+      },
+      {
+        "nome": "autoLineup",
+        "linhas": 47,
+        "escreveCareer": false
+      },
+      {
+        "nome": "countryFlagHTML",
+        "linhas": 4,
+        "escreveCareer": false
+      },
+      {
+        "nome": "competitionName",
+        "linhas": 13,
+        "escreveCareer": false
+      },
+      {
+        "nome": "crestLarge",
+        "linhas": 6,
+        "escreveCareer": false
+      },
+      {
+        "nome": "pickerTeams",
+        "linhas": 5,
+        "escreveCareer": false
+      },
+      {
+        "nome": "normalizeSearch",
+        "linhas": 4,
+        "escreveCareer": false
+      },
+      {
+        "nome": "careerFavorites",
+        "linhas": 4,
+        "escreveCareer": false
+      },
+      {
+        "nome": "nationalityName",
+        "linhas": 5,
+        "escreveCareer": false
+      },
+      {
+        "nome": "coachAvatarHTML",
+        "linhas": 7,
+        "escreveCareer": false
+      },
+      {
+        "nome": "refreshAvailability",
+        "linhas": 21,
+        "escreveCareer": false
+      },
+      {
+        "nome": "autoFixLineup",
+        "linhas": 26,
+        "escreveCareer": true
+      },
+      {
+        "nome": "computeHumanStrength",
+        "linhas": 60,
+        "escreveCareer": false
+      },
+      {
+        "nome": "applyNaturalAgingEvolution",
+        "linhas": 89,
+        "escreveCareer": false
+      },
+      {
+        "nome": "isProtectedTrainingDay",
+        "linhas": 89,
+        "escreveCareer": false
+      },
+      {
+        "nome": "defaultTrainingPlan",
+        "linhas": 23,
+        "escreveCareer": false
+      },
+      {
+        "nome": "trainingTargets",
+        "linhas": 14,
+        "escreveCareer": false
+      },
+      {
+        "nome": "applyWeeklyTraining",
+        "linhas": 105,
+        "escreveCareer": true
+      },
+      {
+        "nome": "segGroupHTML",
+        "linhas": 10,
+        "escreveCareer": false
+      },
+      {
+        "nome": "trainingSchemeCardHTML",
+        "linhas": 20,
+        "escreveCareer": false
+      },
+      {
+        "nome": "projectWeekPeakFatigue",
+        "linhas": 17,
+        "escreveCareer": false
+      },
+      {
+        "nome": "fatigueHistoryPlayerOptionsHTML",
+        "linhas": 5,
+        "escreveCareer": false
+      },
+      {
+        "nome": "localDateStr",
+        "linhas": 4,
+        "escreveCareer": false
+      },
+      {
+        "nome": "localWeekStartStr",
+        "linhas": 22,
+        "escreveCareer": false
+      },
+      {
+        "nome": "freshObjectiveList",
+        "linhas": 4,
+        "escreveCareer": false
+      },
+      {
+        "nome": "freshObjectivesState",
+        "linhas": 11,
+        "escreveCareer": false
+      },
+      {
+        "nome": "ensureObjectivesFresh",
+        "linhas": 17,
+        "escreveCareer": true
+      },
+      {
+        "nome": "trailingWinStreak",
+        "linhas": 13,
+        "escreveCareer": false
+      },
+      {
+        "nome": "bumpObjective",
+        "linhas": 17,
+        "escreveCareer": false
+      },
+      {
+        "nome": "applyObjectiveReward",
+        "linhas": 14,
+        "escreveCareer": false
+      },
+      {
+        "nome": "freshAchievementsState",
+        "linhas": 4,
+        "escreveCareer": false
+      },
+      {
+        "nome": "achievementProgressFor",
+        "linhas": 5,
+        "escreveCareer": false
+      },
+      {
+        "nome": "setAchievementProgress",
+        "linhas": 17,
+        "escreveCareer": true
+      },
+      {
+        "nome": "evaluateAlwaysCheckableAchievements",
+        "linhas": 22,
+        "escreveCareer": true
+      },
+      {
+        "nome": "evaluateSeasonEndAchievements",
+        "linhas": 11,
+        "escreveCareer": true
+      },
+      {
+        "nome": "timeUntilNextMidnight",
+        "linhas": 8,
+        "escreveCareer": false
+      },
+      {
+        "nome": "objectiveResetLabel",
+        "linhas": 6,
+        "escreveCareer": false
+      },
+      {
+        "nome": "objectiveCardHTML",
+        "linhas": 15,
+        "escreveCareer": false
+      },
+      {
+        "nome": "achievementBadgeHTML",
+        "linhas": 10,
+        "escreveCareer": false
+      },
+      {
+        "nome": "computeLeaderboardScore",
+        "linhas": 6,
+        "escreveCareer": false
+      },
+      {
+        "nome": "hoursAgoLabel",
+        "linhas": 6,
+        "escreveCareer": false
+      },
+      {
+        "nome": "rankingRowHTML",
+        "linhas": 8,
+        "escreveCareer": false
+      },
+      {
+        "nome": "capturePendingInviteFromUrl",
+        "linhas": 17,
+        "escreveCareer": false
+      },
+      {
+        "nome": "shareInviteLink",
+        "linhas": 26,
+        "escreveCareer": false
+      },
+      {
+        "nome": "captureLojaReturnStatus",
+        "linhas": 18,
+        "escreveCareer": false
+      },
+      {
+        "nome": "applyDailyLoginReward",
+        "linhas": 37,
+        "escreveCareer": false
+      },
+      {
+        "nome": "dailyLoginDayCellHTML",
+        "linhas": 9,
+        "escreveCareer": false
+      },
+      {
+        "nome": "checkDailyLoginOnBoot",
+        "linhas": 6,
+        "escreveCareer": false
+      },
+      {
+        "nome": "maybeOpenStartupWizard",
+        "linhas": 8,
+        "escreveCareer": false
+      },
+      {
+        "nome": "wizardAdvance",
+        "linhas": 15,
+        "escreveCareer": false
+      },
+      {
+        "nome": "wizardSkipStep",
+        "linhas": 6,
+        "escreveCareer": false
+      },
+      {
+        "nome": "fmtBRLPrice",
+        "linhas": 6,
+        "escreveCareer": false
+      },
+      {
+        "nome": "packageCardHTML",
+        "linhas": 13,
+        "escreveCareer": false
+      },
+      {
+        "nome": "boostCardHTML",
+        "linhas": 12,
+        "escreveCareer": false
+      },
+      {
+        "nome": "applyBoostEffect",
+        "linhas": 39,
+        "escreveCareer": true
+      },
+      {
+        "nome": "pushPurchaseHistory",
+        "linhas": 6,
+        "escreveCareer": true
+      },
+      {
+        "nome": "dateLabelFor",
+        "linhas": 4,
+        "escreveCareer": false
+      },
+      {
+        "nome": "injurySeverityLabel",
+        "linhas": 12,
+        "escreveCareer": false
+      },
+      {
+        "nome": "conditionRating",
+        "linhas": 14,
+        "escreveCareer": false
+      },
+      {
+        "nome": "rollInjurySeverity",
+        "linhas": 16,
+        "escreveCareer": false
+      },
+      {
+        "nome": "injuryChanceFor",
+        "linhas": 33,
+        "escreveCareer": false
+      },
+      {
+        "nome": "attributeGoals",
+        "linhas": 61,
+        "escreveCareer": false
+      },
+      {
+        "nome": "applyMatchWearChunk",
+        "linhas": 74,
+        "escreveCareer": false
+      },
+      {
+        "nome": "attributeChances",
+        "linhas": 26,
+        "escreveCareer": false
+      },
+      {
+        "nome": "attributePenaltyMisses",
+        "linhas": 11,
+        "escreveCareer": false
+      },
+      {
+        "nome": "simulatePlayerEvents",
+        "linhas": 26,
+        "escreveCareer": false
+      },
+      {
+        "nome": "freshMatchBucket",
+        "linhas": 2,
+        "escreveCareer": false
+      },
+      {
+        "nome": "freshTeamStats",
+        "linhas": 8,
+        "escreveCareer": false
+      },
+      {
+        "nome": "freshCareerTotals",
+        "linhas": 19,
+        "escreveCareer": false
+      },
+      {
+        "nome": "bumpMatchBucket",
+        "linhas": 13,
+        "escreveCareer": false
+      },
+      {
+        "nome": "tallyMatchOutcomeStats",
+        "linhas": 61,
+        "escreveCareer": true
+      },
+      {
+        "nome": "opponentMotivationMod",
+        "linhas": 9,
+        "escreveCareer": false
+      },
+      {
+        "nome": "tallyTeamStats",
+        "linhas": 21,
+        "escreveCareer": true
+      },
+      {
+        "nome": "applyConditionRecovery",
+        "linhas": 11,
+        "escreveCareer": false
+      },
+      {
+        "nome": "sortedStandings",
+        "linhas": 5,
+        "escreveCareer": false
+      },
+      {
+        "nome": "myLeaguePosition",
+        "linhas": 9,
+        "escreveCareer": false
+      },
+      {
+        "nome": "positionInStandings",
+        "linhas": 10,
+        "escreveCareer": false
+      },
+      {
+        "nome": "applyResultToStandings",
+        "linhas": 10,
+        "escreveCareer": false
+      },
+      {
+        "nome": "cloneStandings",
+        "linhas": 34,
+        "escreveCareer": false
+      },
+      {
+        "nome": "rankByPoints",
+        "linhas": 11,
+        "escreveCareer": false
+      },
+      {
+        "nome": "updateWinlessStreaks",
+        "linhas": 10,
+        "escreveCareer": true
+      },
+      {
+        "nome": "generateRoundNews",
+        "linhas": 107,
+        "escreveCareer": false
+      },
+      {
+        "nome": "newsCardHTML",
+        "linhas": 21,
+        "escreveCareer": false
+      },
+      {
+        "nome": "teamStatusNewsRowHTML",
+        "linhas": 5,
+        "escreveCareer": false
+      },
+      {
+        "nome": "pressLibraryEntry",
+        "linhas": 31,
+        "escreveCareer": false
+      },
+      {
+        "nome": "isBigClub",
+        "linhas": 12,
+        "escreveCareer": false
+      },
+      {
+        "nome": "determineMatchPressTrigger",
+        "linhas": 66,
+        "escreveCareer": true
+      },
+      {
+        "nome": "firePressConference",
+        "linhas": 7,
+        "escreveCareer": false
+      },
+      {
+        "nome": "resolveCpuFixture",
+        "linhas": 33,
+        "escreveCareer": true
+      },
+      {
+        "nome": "finishRoundTail",
+        "linhas": 174,
+        "escreveCareer": true
+      },
+      {
+        "nome": "resolveRoundInstant",
+        "linhas": 21,
+        "escreveCareer": false
+      },
+      {
+        "nome": "simulateRound",
+        "linhas": 145,
+        "escreveCareer": false
+      },
+      {
+        "nome": "pickCommentary",
+        "linhas": 20,
+        "escreveCareer": false
+      },
+      {
+        "nome": "scheduleNextChunk",
+        "linhas": 11,
+        "escreveCareer": false
+      },
+      {
+        "nome": "pauseLiveMatch",
+        "linhas": 6,
+        "escreveCareer": false
+      },
+      {
+        "nome": "resumeLiveMatch",
+        "linhas": 17,
+        "escreveCareer": false
+      },
+      {
+        "nome": "continueFromHalftime",
+        "linhas": 8,
+        "escreveCareer": false
+      },
+      {
+        "nome": "resolveLiveChunk",
+        "linhas": 124,
+        "escreveCareer": false
+      },
+      {
+        "nome": "updateLiveStats",
+        "linhas": 22,
+        "escreveCareer": false
+      },
+      {
+        "nome": "queueGoalHighlights",
+        "linhas": 7,
+        "escreveCareer": false
+      },
+      {
+        "nome": "maybeStartPendingCupLegLive",
+        "linhas": 18,
+        "escreveCareer": false
+      },
+      {
+        "nome": "liveEventLabel",
+        "linhas": 34,
+        "escreveCareer": false
+      },
+      {
+        "nome": "liveEventDot",
+        "linhas": 16,
+        "escreveCareer": false
+      },
+      {
+        "nome": "boardConfidence",
+        "linhas": 28,
+        "escreveCareer": false
+      },
+      {
+        "nome": "ringHTML",
+        "linhas": 16,
+        "escreveCareer": false
+      },
+      {
+        "nome": "homeIcon",
+        "linhas": 5,
+        "escreveCareer": false
+      },
+      {
+        "nome": "humanFixtures",
+        "linhas": 29,
+        "escreveCareer": false
+      },
+      {
+        "nome": "fixtureOutcome",
+        "linhas": 7,
+        "escreveCareer": false
+      },
+      {
+        "nome": "fixtureRowHTML",
+        "linhas": 17,
+        "escreveCareer": false
+      },
+      {
+        "nome": "financeCashBarsHTML",
+        "linhas": 14,
+        "escreveCareer": false
+      },
+      {
+        "nome": "boardGoalProgressPct",
+        "linhas": 5,
+        "escreveCareer": false
+      },
+      {
+        "nome": "extratoFilters",
+        "linhas": 6,
+        "escreveCareer": false
+      },
+      {
+        "nome": "openAnySponsorProposal",
+        "linhas": 30,
+        "escreveCareer": false
+      },
+      {
+        "nome": "playerLinkHTML",
+        "linhas": 7,
+        "escreveCareer": false
+      },
+      {
+        "nome": "matchEventsSummaryHTML",
+        "linhas": 38,
+        "escreveCareer": false
+      },
+      {
+        "nome": "posDividerHTML",
+        "linhas": 6,
+        "escreveCareer": false
+      },
+      {
+        "nome": "ovrTierClass",
+        "linhas": 7,
+        "escreveCareer": false
+      },
+      {
+        "nome": "mtConditionBarHTML",
+        "linhas": 64,
+        "escreveCareer": false
+      },
+      {
+        "nome": "playerRow",
+        "linhas": 93,
+        "escreveCareer": false
+      },
+      {
+        "nome": "transferCardHTML",
+        "linhas": 52,
+        "escreveCareer": false
+      },
+      {
+        "nome": "contractCardHTML",
+        "linhas": 31,
+        "escreveCareer": false
+      },
+      {
+        "nome": "contractRowHTML",
+        "linhas": 12,
+        "escreveCareer": false
+      },
+      {
+        "nome": "matchCardHTML",
+        "linhas": 24,
+        "escreveCareer": false
+      },
+      {
+        "nome": "baseRow",
+        "linhas": 25,
+        "escreveCareer": false
+      },
+      {
+        "nome": "groupedListHTML",
+        "linhas": 38,
+        "escreveCareer": false
+      },
+      {
+        "nome": "isContractExpiring",
+        "linhas": 11,
+        "escreveCareer": false
+      },
+      {
+        "nome": "suggestedRenewalWage",
+        "linhas": 7,
+        "escreveCareer": false
+      },
+      {
+        "nome": "attrBarHTML",
+        "linhas": 21,
+        "escreveCareer": false
+      },
+      {
+        "nome": "externalPlayerActionsHTML",
+        "linhas": 18,
+        "escreveCareer": false
+      },
+      {
+        "nome": "compareBasePlayer",
+        "linhas": 4,
+        "escreveCareer": false
+      },
+      {
+        "nome": "openCompareWithExternal",
+        "linhas": 4,
+        "escreveCareer": false
+      },
+      {
+        "nome": "compareRowHTML",
+        "linhas": 11,
+        "escreveCareer": false
+      },
+      {
+        "nome": "tacticAxisRowHTML",
+        "linhas": 8,
+        "escreveCareer": false
+      },
+      {
+        "nome": "renderEscalacao",
+        "linhas": 15,
+        "escreveCareer": false
+      },
+      {
+        "nome": "commitLineupTactics",
+        "linhas": 17,
+        "escreveCareer": true
+      },
+      {
+        "nome": "markLineupDirty",
+        "linhas": 4,
+        "escreveCareer": true
+      },
+      {
+        "nome": "saveTacticalScheme",
+        "linhas": 20,
+        "escreveCareer": true
+      },
+      {
+        "nome": "applyTacticalScheme",
+        "linhas": 17,
+        "escreveCareer": true
+      },
+      {
+        "nome": "renameTacticalScheme",
+        "linhas": 11,
+        "escreveCareer": false
+      },
+      {
+        "nome": "deleteTacticalScheme",
+        "linhas": 8,
+        "escreveCareer": true
+      },
+      {
+        "nome": "schemeSummary",
+        "linhas": 6,
+        "escreveCareer": false
+      },
+      {
+        "nome": "schemeRowHTML",
+        "linhas": 14,
+        "escreveCareer": false
+      },
+      {
+        "nome": "nextOpponentId",
+        "linhas": 11,
+        "escreveCareer": false
+      },
+      {
+        "nome": "activeManMarkingSuppression",
+        "linhas": 6,
+        "escreveCareer": false
+      },
+      {
+        "nome": "markingSelRowHTML",
+        "linhas": 6,
+        "escreveCareer": false
+      },
+      {
+        "nome": "suggestTraining",
+        "linhas": 25,
+        "escreveCareer": false
+      },
+      {
+        "nome": "suggestMarket",
+        "linhas": 57,
+        "escreveCareer": false
+      },
+      {
+        "nome": "commissionAreaCardHTML",
+        "linhas": 9,
+        "escreveCareer": false
+      },
+      {
+        "nome": "confirmHireCommission",
+        "linhas": 14,
+        "escreveCareer": false
+      },
+      {
+        "nome": "confirmFireCommission",
+        "linhas": 16,
+        "escreveCareer": false
+      },
+      {
+        "nome": "pitchPieceHTML",
+        "linhas": 15,
+        "escreveCareer": false
+      },
+      {
+        "nome": "preMatchStarterRowHTML",
+        "linhas": 11,
+        "escreveCareer": false
+      },
+      {
+        "nome": "buildFriendlySlots",
+        "linhas": 19,
+        "escreveCareer": false
+      },
+      {
+        "nome": "friendlySlotThisWeek",
+        "linhas": 5,
+        "escreveCareer": false
+      },
+      {
+        "nome": "friendlyInvitesHTML",
+        "linhas": 11,
+        "escreveCareer": false
+      },
+      {
+        "nome": "calendarWeekRowHTML",
+        "linhas": 26,
+        "escreveCareer": false
+      },
+      {
+        "nome": "locateInLineup",
+        "linhas": 11,
+        "escreveCareer": false
+      },
+      {
+        "nome": "placeAt",
+        "linhas": 7,
+        "escreveCareer": true
+      },
+      {
+        "nome": "renderTabelaPanel",
+        "linhas": 6,
+        "escreveCareer": false
+      },
+      {
+        "nome": "kpiHTML",
+        "linhas": 36,
+        "escreveCareer": false
+      },
+      {
+        "nome": "statsRecordBucket",
+        "linhas": 13,
+        "escreveCareer": false
+      },
+      {
+        "nome": "statsDisciplineSource",
+        "linhas": 4,
+        "escreveCareer": false
+      },
+      {
+        "nome": "resetMarketPaging",
+        "linhas": 6,
+        "escreveCareer": false
+      },
+      {
+        "nome": "allMarketPlayers",
+        "linhas": 55,
+        "escreveCareer": false
+      },
+      {
+        "nome": "pendingOfferOutFor",
+        "linhas": 14,
+        "escreveCareer": false
+      },
+      {
+        "nome": "closeOfferModal",
+        "linhas": 6,
+        "escreveCareer": false
+      },
+      {
+        "nome": "finalizeIncomingPurchase",
+        "linhas": 65,
+        "escreveCareer": true
+      },
+      {
+        "nome": "maybeSpawnRivalOffer",
+        "linhas": 34,
+        "escreveCareer": false
+      },
+      {
+        "nome": "offerEffectiveValue",
+        "linhas": 14,
+        "escreveCareer": false
+      },
+      {
+        "nome": "resolvePendingOffersOutRound",
+        "linhas": 59,
+        "escreveCareer": true
+      },
+      {
+        "nome": "processPendingInstallments",
+        "linhas": 42,
+        "escreveCareer": true
+      },
+      {
+        "nome": "listingFor",
+        "linhas": 32,
+        "escreveCareer": false
+      },
+      {
+        "nome": "maybeSpawnListingOffer",
+        "linhas": 56,
+        "escreveCareer": false
+      },
+      {
+        "nome": "resolvePendingListingsRound",
+        "linhas": 6,
+        "escreveCareer": false
+      },
+      {
+        "nome": "processPendingReceivables",
+        "linhas": 15,
+        "escreveCareer": true
+      },
+      {
+        "nome": "mySalesOfferRowHTML",
+        "linhas": 13,
+        "escreveCareer": false
+      },
+      {
+        "nome": "mySalesListingHTML",
+        "linhas": 14,
+        "escreveCareer": false
+      },
+      {
+        "nome": "scoutingAvailableRegions",
+        "linhas": 5,
+        "escreveCareer": false
+      },
+      {
+        "nome": "initials",
+        "linhas": 4,
+        "escreveCareer": false
+      },
+      {
+        "nome": "starsHTML",
+        "linhas": 34,
+        "escreveCareer": false
+      },
+      {
+        "nome": "migrateScoutsToNational",
+        "linhas": 9,
+        "escreveCareer": false
+      },
+      {
+        "nome": "scoutAllowedRegions",
+        "linhas": 4,
+        "escreveCareer": false
+      },
+      {
+        "nome": "scoutPotentialRange",
+        "linhas": 8,
+        "escreveCareer": false
+      },
+      {
+        "nome": "scoutReport",
+        "linhas": 28,
+        "escreveCareer": false
+      },
+      {
+        "nome": "generateScoutProspect",
+        "linhas": 27,
+        "escreveCareer": false
+      },
+      {
+        "nome": "pushScoutProspects",
+        "linhas": 7,
+        "escreveCareer": true
+      },
+      {
+        "nome": "tickScoutMissions",
+        "linhas": 40,
+        "escreveCareer": false
+      },
+      {
+        "nome": "scoutMarketFinds",
+        "linhas": 37,
+        "escreveCareer": true
+      },
+      {
+        "nome": "missionChipsHTML",
+        "linhas": 4,
+        "escreveCareer": false
+      },
+      {
+        "nome": "baseCategoryOf",
+        "linhas": 6,
+        "escreveCareer": false
+      },
+      {
+        "nome": "searchScoutSuggestions",
+        "linhas": 11,
+        "escreveCareer": false
+      },
+      {
+        "nome": "scoutSuggestionRowHTML",
+        "linhas": 18,
+        "escreveCareer": false
+      },
+      {
+        "nome": "transferLogIcon",
+        "linhas": 18,
+        "escreveCareer": false
+      },
+      {
+        "nome": "transferLogItemHTML",
+        "linhas": 9,
+        "escreveCareer": false
+      },
+      {
+        "nome": "myOffersRowHTML",
+        "linhas": 28,
+        "escreveCareer": false
+      },
+      {
+        "nome": "offerCompareAnalysisText",
+        "linhas": 15,
+        "escreveCareer": false
+      },
+      {
+        "nome": "increaseOfferFromCompare",
+        "linhas": 10,
+        "escreveCareer": false
+      },
+      {
+        "nome": "acceptOfferFromModal",
+        "linhas": 5,
+        "escreveCareer": false
+      },
+      {
+        "nome": "declineOfferFromModal",
+        "linhas": 17,
+        "escreveCareer": false
+      },
+      {
+        "nome": "renderAll",
+        "linhas": 15,
+        "escreveCareer": false
+      },
+      {
+        "nome": "showGameScreen",
+        "linhas": 24,
+        "escreveCareer": false
+      },
+      {
+        "nome": "shareHexPath",
+        "linhas": 14,
+        "escreveCareer": false
+      },
+      {
+        "nome": "shareLoadImage",
+        "linhas": 10,
+        "escreveCareer": false
+      },
+      {
+        "nome": "shareMatchResultCard",
+        "linhas": 43,
+        "escreveCareer": false
+      },
+      {
+        "nome": "shareTitleCard",
+        "linhas": 26,
+        "escreveCareer": false
+      },
+      {
+        "nome": "shareAchievementCard",
+        "linhas": 25,
+        "escreveCareer": false
+      },
+      {
+        "nome": "wrapCanvasText",
+        "linhas": 17,
+        "escreveCareer": false
+      },
+      {
+        "nome": "matchStatsBarsHTML",
+        "linhas": 28,
+        "escreveCareer": false
+      },
+      {
+        "nome": "cupRoundResultsHTML",
+        "linhas": 55,
+        "escreveCareer": false
+      },
+      {
+        "nome": "humanDivisionMove",
+        "linhas": 9,
+        "escreveCareer": false
+      },
+      {
+        "nome": "divisionMoveSummaryHTML",
+        "linhas": 17,
+        "escreveCareer": false
+      },
+      {
+        "nome": "migrateCareerDefaults",
+        "linhas": 265,
+        "escreveCareer": true
+      }
+    ]
+  }
+}
