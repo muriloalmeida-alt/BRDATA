@@ -8,12 +8,12 @@
 // continua viva e o voltar do sistema retorna à partida. O Resultado vem na
 // A4. Até a A4, o Pré-jogo
 // segue abrindo a partida na versão atual.
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState } from "react";
 import { type MatchSession, type SaveError } from "../adapters/match.ts";
 import { engine } from "../adapters/engine.ts";
-import { SessionGateway } from "../adapters/gateways.ts";
 import type { TableMatchContext } from "./Table.tsx";
 import { Sheet } from "../ui/dialog.tsx";
+import { LoginSheet } from "../ui/session.tsx";
 import { buildLiveLineup, buildMatch, buildResult, buildSubs, type MatchModel, type ResultModel } from "../domain/match.ts";
 import { EventsView, SubInView, SubOutView, TacticsView } from "./MatchAdjust.tsx";
 import type { MatchSnapshot } from "../adapters/match.ts";
@@ -211,7 +211,7 @@ export function Match({ startNow, sub, outId, competitionId, competitionName, te
         onFinished();
         navigate(`${BASE}/`, { replace: true });
       }} />}
-      {login && <LoginSheet account={s.account()} onClose={() => setLogin(false)} onLoggedIn={() => { setLogin(false); retry(); }} />}
+      {login && <LoginSheet account={s.account()} title="Entre para salvar" lead="Use a mesma conta em que a partida foi jogada. O resultado continua guardado aqui." submitLabel="Entrar e salvar" onClose={() => setLogin(false)} onLoggedIn={() => { setLogin(false); retry(); }} />}
     </>
   );
   return <>{content}{sheets}</>;
@@ -351,47 +351,6 @@ function LeaveSheet({ leave, saved, onStay, onLeave }: { leave: Leave; saved: bo
   );
 }
 
-// Novo login para salvar o resultado (AUD-02). Só aceita a MESMA conta em
-// que a partida foi jogada: com outra, avisa e não grava nada.
-function LoginSheet({ account, onClose, onLoggedIn }: { account: string | null; onClose: () => void; onLoggedIn: () => void }) {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const submit = async (e: FormEvent) => {
-    e.preventDefault();
-    if (busy) return;
-    if (!email.trim() || !password) { setError("Informe e-mail e senha."); return; }
-    setBusy(true); setError(null);
-    try {
-      const r = await SessionGateway.login(email.trim(), password);
-      if ("error" in r) { setError(r.error); return; }
-      if (!account || r.user.id !== account) { setError("Esta partida foi jogada em outra conta. Entre com a conta em que ela foi jogada para salvar o resultado."); return; }
-      onLoggedIn();
-    } catch {
-      setError("Sem conexão com o servidor. Tente de novo.");
-    } finally {
-      setBusy(false);
-    }
-  };
-  return (
-    <Sheet labelledBy="lg-t" describedBy="lg-d" onDismiss={busy ? undefined : onClose}>
-      <h2 id="lg-t" className="sheet-title">Entre para salvar</h2>
-      <p id="lg-d" className="lv-text">Use a mesma conta em que a partida foi jogada. O resultado continua guardado aqui.</p>
-      <form className="lg-form" onSubmit={submit} noValidate>
-        <label className="lg-field"><span>E-mail</span>
-          <input type="email" inputMode="email" autoComplete="username" autoCapitalize="off" spellCheck={false} value={email} onChange={(e) => setEmail(e.target.value)} data-autofocus />
-        </label>
-        <label className="lg-field"><span>Senha</span>
-          <input type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} />
-        </label>
-        {error && <p className="inline-error" role="alert">{error}</p>}
-        <button type="submit" className="cta" disabled={busy}>{busy ? "Entrando…" : "Entrar e salvar"}</button>
-      </form>
-      <button type="button" className="text-btn" disabled={busy} onClick={onClose}>Cancelar</button>
-    </Sheet>
-  );
-}
 
 // CAP04-T03 — Pausa / Ajustes (pranchas/01_partida.png, coluna 1). No
 // intervalo é a mesma tela, com "Intervalo" e "Começar 2º tempo".

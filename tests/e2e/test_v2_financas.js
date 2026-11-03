@@ -5,6 +5,7 @@
 // Ver elenco (v2) / Ver mercado (versão atual); nada gravado; 360 px.
 const { chromium } = require("playwright-core");
 const { check } = require("./_check");
+const { ensureDailyClaimed } = require("./_v2_match");
 const { passCareerSetup, enterGame, waitForBoot } = require("./_startup");
 const { skipPreseason } = require("./_calendar_skip");
 const { playRound, closeLeftoverTabela } = require("./_round");
@@ -30,6 +31,7 @@ const { playRound, closeLeftoverTabela } = require("./_round");
   await page.click("#btnConfirmClub");
   await passCareerSetup(page);
   await enterGame(page);
+  await ensureDailyClaimed(page);
   await skipPreseason(page);
   const declineOffer = () => page.evaluate(() => { const o = document.getElementById("playerOfferOverlay"); if (o && o.classList.contains("open")) document.getElementById("btnPlayerOfferDecline").click(); });
   for (let i = 0; i < 2; i++) { await closeLeftoverTabela(page); await declineOffer(); await page.waitForTimeout(150); await playRound(page); }

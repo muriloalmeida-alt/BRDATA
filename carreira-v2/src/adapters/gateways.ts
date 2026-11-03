@@ -18,12 +18,16 @@ async function getJSON<T>(url: string): Promise<T> {
   return body as T;
 }
 
-export interface SessionUser { id: string; name: string }
+export interface SessionUser {
+  id: string; name: string;
+  // Login diário (recompensa): dia da sequência e data local da última coleta.
+  dailyLogin?: { currentStreakDay: number; lastClaimDate: string | null };
+}
 
 export const SessionGateway = {
   async current(): Promise<SessionUser | null> {
     const me = await getJSON<{ authenticated: boolean; user?: SessionUser }>("/api/auth/me");
-    return me.authenticated && me.user ? me.user : null;
+    return me.authenticated && me.user ? { ...me.user, id: String(me.user.id) } : null;
   },
   // Novo login no meio da partida (AUD-02, sessão expirada ao gravar o
   // resultado). Mesmo POST /api/auth/login do formulário da versão atual
@@ -36,6 +40,14 @@ export const SessionGateway = {
     if (!user) return { error: "Não foi possível entrar. Tente de novo." };
     if (user.planStatus && user.planStatus !== "active") return { error: "Sua conta tem um pagamento pendente — finalize na página inicial para liberar o acesso." };
     return { user: { id: String(user.id), name: user.name } };
+  },
+  // Nome do treinador (configurar carreira) — mesmo PUT /api/account/name
+  // da versão anterior (submitSetup).
+  async updateName(name: string): Promise<SessionUser> {
+    const res = await fetch("/api/account/name", { method: "PUT", credentials: "same-origin", headers: { "Content-Type": "application/json", Accept: "application/json" }, body: JSON.stringify({ name }) });
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) throw new HttpError(res.status, (body && body.error) || "Não foi possível salvar seu nome.");
+    return body.user as SessionUser;
   },
 };
 

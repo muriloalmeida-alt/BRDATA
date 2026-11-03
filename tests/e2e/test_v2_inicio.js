@@ -5,6 +5,7 @@
 // estado de erro com "Tentar novamente".
 const { chromium } = require("playwright-core");
 const { check } = require("./_check");
+const { ensureDailyClaimed } = require("./_v2_match");
 const { passCareerSetup, enterGame, waitForBoot } = require("./_startup");
 const { skipPreseason } = require("./_calendar_skip");
 
@@ -16,10 +17,11 @@ const { skipPreseason } = require("./_calendar_skip");
   page.on("pageerror", (err) => console.log("PAGE ERROR:", err.message));
   const base = "http://localhost:8787";
 
-  // 1) Sem sessão: a v2 manda pra versão atual (que tem o login).
+  // 1) Sem sessão: login da própria v2 (fase 2), sem sair de /carreira.
   await page.goto(base + "/carreira/", { waitUntil: "domcontentloaded" });
-  await page.waitForURL(/\/carreira-old$/, { timeout: 10000 }).catch(() => {});
-  check("1) Sem sessão, /carreira/ redireciona para /carreira-old:", /\/carreira-old$/.test(page.url()), page.url());
+  await page.waitForSelector(".ac-form", { timeout: 10000 }).catch(() => {});
+  const l1 = await page.evaluate(() => ({ path: location.pathname, title: document.querySelector("h1")?.textContent || "" }));
+  check("1) Sem sessão, /carreira/ mostra o login da v2 (sem ir para /carreira-old):", l1.path === "/carreira/" && l1.title === "Volte para o jogo.", JSON.stringify(l1));
 
   const email = `v2inicio${Date.now()}@teste.com`;
   await page.evaluate(async ({ email }) => {
@@ -27,10 +29,12 @@ const { skipPreseason } = require("./_calendar_skip");
     await fetch("/api/auth/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, password: "senha123" }) });
   }, { email });
 
-  // 2) Com sessão e sem carreira: idem (criação ainda é da versão atual).
+  // 2) Com sessão e sem carreira: criação de carreira da própria v2 (fase 2).
   await page.goto(base + "/carreira/", { waitUntil: "domcontentloaded" });
-  await page.waitForURL(/\/carreira-old$/, { timeout: 10000 }).catch(() => {});
-  check("2) Sem carreira, /carreira/ redireciona para /carreira-old:", /\/carreira-old$/.test(page.url()), page.url());
+  await page.waitForURL(/\/carreira\/nova$/, { timeout: 10000 }).catch(() => {});
+  check("2) Sem carreira, /carreira/ abre a criação de carreira da v2 (/carreira/nova):", /\/carreira\/nova$/.test(page.url()), page.url());
+  // O resto deste teste cria a carreira pela versão anterior, como antes.
+  await page.goto(base + "/carreira-old", { waitUntil: "domcontentloaded" });
 
   await waitForBoot(page);
   await page.click('.mt-competition-card[data-competition="brasileirao"]');
@@ -39,6 +43,7 @@ const { skipPreseason } = require("./_calendar_skip");
   await page.click("#btnConfirmClub");
   await passCareerSetup(page);
   await enterGame(page);
+  await ensureDailyClaimed(page);
   await page.evaluate(() => persistCareer());
   const legacy = await page.evaluate(() => ({ cash: fmtBRLShort(CAREER.finances.cash), goal: CAREER.boardGoal.label }));
 

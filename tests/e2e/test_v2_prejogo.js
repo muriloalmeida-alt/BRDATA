@@ -5,6 +5,7 @@
 // partida" abre a Partida da v2 (A4; antes, #iniciar na versão atual).
 const { chromium } = require("playwright-core");
 const { check } = require("./_check");
+const { ensureDailyClaimed } = require("./_v2_match");
 const { passCareerSetup, enterGame, waitForBoot } = require("./_startup");
 const { skipPreseason } = require("./_calendar_skip");
 
@@ -29,6 +30,7 @@ const { skipPreseason } = require("./_calendar_skip");
   await page.click("#btnConfirmClub");
   await passCareerSetup(page);
   await enterGame(page);
+  await ensureDailyClaimed(page);
 
   // 1) Fora da semana de jogo (pré-temporada): /pre-jogo volta ao Início.
   await page.evaluate(() => persistCareer());

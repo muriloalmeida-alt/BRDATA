@@ -16912,6 +16912,7 @@ function ponteJogador(id) {
 function ponteEstado() {
   const lm = LIVE_MATCH || PONTE.ultimo;
   if (!PONTE.pronta) return { fase: "carregando" };
+  if (!CAREER) return { fase: "sem-carreira" };
   // Pós-jogo (depois de "Continuar" na v2): a sequência de sempre roda nesta
   // página; termina quando não há mais modal aberto nem partida ao vivo
   // (a perna da Copa, se houver, também é jogada aqui, como hoje).
@@ -17002,6 +17003,68 @@ if (V2_PONTE) {
       PONTE.ultimo = null; PONTE.fim = null; PONTE.resumo = null; PONTE.posJogo = false; PONTE.erroGravacao = null;
       ponteAvisar();
       return { ok: true };
+    },
+    // Fase 2 — acesso (Carreira 2.0). Mesmas funções da tela de sempre
+    // (CAREER_COMPETITIONS, loadLeague/chooseCompetition, startCareer,
+    // claimDailyLoginNow), sem regra nova.
+    competicoes() {
+      return CAREER_COMPETITIONS.map((c) => ({ id: c.id, nome: c.name, sub: c.sub }));
+    },
+    // Carrega a competição (dado real ou exemplo, como hoje) e devolve os
+    // clubes em ordem alfabética, com escudo e cidade.
+    async escolherCompeticao(id) {
+      if (CAREER) return { ok: false, motivo: "ja-tem-carreira" };
+      if (!CAREER_COMPETITIONS.some((c) => c.id === id)) return { ok: false, motivo: "competicao-invalida" };
+      await loadLeague(id);
+      const clubes = LEAGUE_TEAMS.slice().sort((a, b) => a.name.localeCompare(b.name, "pt-BR")).map((t) => ({
+        id: String(t.id), nome: t.name, sigla: t.short || null, escudo: teamLogoSrc(t) || null,
+        cidade: t.venue && t.venue.city ? `${t.venue.city}${t.uf ? ", " + t.uf : ""}` : null,
+      }));
+      return { ok: true, competicao: id, clubes };
+    },
+    // Cria a carreira no clube escolhido (mesmo startCareer de sempre, que
+    // grava). Confere a gravação com um 2º PUT do mesmo save (idempotente)
+    // para devolver se o servidor guardou de fato.
+    async criarCarreira(clubId) {
+      if (CAREER) return { ok: false, motivo: "ja-tem-carreira" };
+      if (!LEAGUE_TEAMS.some((t) => String(t.id) === String(clubId))) return { ok: false, motivo: "clube-invalido" };
+      if (PONTE.criando) return { ok: false, motivo: "em-andamento" };
+      PONTE.criando = true;
+      try {
+        await startCareer(clubId);
+        if (!CAREER) return { ok: false, motivo: "falha" };
+        const salvo = await persistCareer();
+        return salvo ? { ok: true } : { ok: false, motivo: PONTE.erroGravacao || "falha" };
+      } finally {
+        PONTE.criando = false;
+      }
+    },
+    // Recompensa diária: estado (dia da sequência, se já recebeu hoje) e
+    // o ciclo de 7 dias, para a v2 desenhar.
+    recompensa() {
+      const today = localDateStr();
+      const dl = (ME && ME.dailyLogin) || {};
+      const recebidaHoje = dl.lastClaimDate === today;
+      const dia = recebidaHoje ? (dl.currentStreakDay || 1) : (((dl.currentStreakDay || 0) % 7) + 1);
+      return { dia, recebidaHoje, ciclo: DAILY_LOGIN_CYCLE.map((d) => ({ dia: d.day, tipo: d.reward.type, valor: d.reward.amount == null ? null : d.reward.amount })) };
+    },
+    // Recebe a recompensa do dia: mesmo caminho de claimDailyLoginNow
+    // (servidor decide o dia; o jogo aplica o efeito e grava).
+    async receberRecompensa() {
+      if (!CAREER) return { ok: false, motivo: "sem-carreira" };
+      if (PONTE.recebendo) return { ok: false, motivo: "em-andamento" };
+      PONTE.recebendo = true;
+      try {
+        const result = await fetchJSON("/api/daily-login/claim", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ localDate: localDateStr() }) });
+        ME.dailyLogin = { currentStreakDay: result.currentStreakDay, lastClaimDate: localDateStr() };
+        const { detail } = applyDailyLoginReward(result.reward);
+        const salvo = await persistCareer();
+        return { ok: salvo, motivo: salvo ? undefined : (PONTE.erroGravacao || "falha"), dia: result.currentStreakDay, tipo: result.reward.type, detalhe: detail };
+      } catch (err) {
+        return { ok: false, motivo: err.status === 409 ? "ja-recebida" : err.status === 401 ? "sessao" : "falha", mensagem: err.message || null };
+      } finally {
+        PONTE.recebendo = false;
+      }
     },
     // Fase 1 — porta única de comandos: executar("nome", ...args) chama o
     // comando de mesmo nome desta API. Comandos novos (semana, mercado,
@@ -17186,6 +17249,9 @@ async function enterAfterAuth() {
     setBootProgress(5, 5);
     renderCompetitionPicker();
     show("screenCompetitionPicker");
+    // Fase 2 (Carreira 2.0): sem carreira, o motor também fica pronto — a
+    // v2 cria a carreira pelos comandos escolherCompeticao/criarCarreira.
+    if (V2_PONTE) { PONTE.pronta = true; ponteAvisar(); }
   }
 }
 // Pedido do usuário: "ao trocar de tela sempre colocar foco no topo" —

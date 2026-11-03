@@ -6,6 +6,7 @@
 // navegação Elenco ↔ Perfil ↔ Escalação; nada gravado; 360 px.
 const { chromium } = require("playwright-core");
 const { check } = require("./_check");
+const { ensureDailyClaimed } = require("./_v2_match");
 const { passCareerSetup, enterGame, waitForBoot } = require("./_startup");
 const { skipPreseason } = require("./_calendar_skip");
 
@@ -30,6 +31,7 @@ const { skipPreseason } = require("./_calendar_skip");
   await page.click("#btnConfirmClub");
   await passCareerSetup(page);
   await enterGame(page);
+  await ensureDailyClaimed(page);
   await skipPreseason(page);
   // Um titular lesionado para conferir a situação real.
   const fx = await page.evaluate(() => {

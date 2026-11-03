@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { CareerGateway, ClubCatalogGateway, HttpError, SessionGateway } from "./adapters/gateways.ts";
+import { CareerGateway, ClubCatalogGateway, HttpError, SessionGateway, type SessionUser } from "./adapters/gateways.ts";
 import { buildHome } from "./domain/home.ts";
 import { buildLineup, buildSubstitute, currentLineup, type LineupChange, type SwapTarget } from "./domain/lineup.ts";
 import type { Career, Team } from "./domain/types.ts";
@@ -22,15 +22,23 @@ import { buildFinance } from "./domain/finance.ts";
 import { Match } from "./screens/Match.tsx";
 import { BASE, goBackTo, navigate, useLocation, useScreenFocus } from "./ui/router.tsx";
 import { engine } from "./adapters/engine.ts";
+import { ClubScreen, CompetitionScreen, FirstEntryScreen, LoginScreen, NEW, SetupScreen, Splash } from "./screens/Access.tsx";
+import { DailyReward } from "./screens/DailyReward.tsx";
+import { LoginSheet } from "./ui/session.tsx";
+import { rewardPending } from "./domain/reward.ts";
 
-type Data = { career: Career; teamById: (id: string | number) => Team };
-type State = { kind: "loading" } | { kind: "error"; message: string } | { kind: "ready"; data: Data };
+// Recompensa diária: abre sozinha no máximo uma vez por carregamento da v2.
+let rewardShown = false;
+
+type Data = { career: Career; teamById: (id: string | number) => Team; user: SessionUser };
+type State = { kind: "loading" } | { kind: "error"; message: string } | { kind: "login" } | { kind: "nova"; user: SessionUser } | { kind: "ready"; data: Data };
 
 const SAVE_ERROR = "Não foi possível salvar. Tente de novo.";
 
-// Sessão → carreira ativa → tela da rota. Sem sessão ou sem carreira, a v2
-// ainda não tem login/criação próprios: volta para a versão atual, que
-// trata os dois casos.
+// Sessão → carreira ativa → tela da rota. Fase 2 (plano de independência):
+// sem sessão, o login é da própria v2; sem carreira, a criação também
+// (/carreira/nova…). Sessão que expira durante o uso abre a folha de login
+// sobre a tela atual. Nada mais manda para /carreira-old.
 export function App() {
   const [state, setState] = useState<State>({ kind: "loading" });
   const loc = useLocation();
@@ -38,17 +46,18 @@ export function App() {
   // Tabela não é troca de tela: o foco fica na aba escolhida.
   useScreenFocus(loc.path + loc.search.replace(/[?&]divisao=[^&]*/, ""));
 
+  const [expired, setExpired] = useState(false);
   const load = useCallback(async () => {
     setState({ kind: "loading" });
     try {
       const user = await SessionGateway.current();
-      if (!user) { location.replace("/carreira-old"); return; }
+      if (!user) { setState({ kind: "login" }); return; }
       const career = await CareerGateway.loadActive();
-      if (!career) { location.replace("/carreira-old"); return; }
+      if (!career) { setState({ kind: "nova", user }); return; }
       const teamById = await ClubCatalogGateway.forCareer(career);
-      setState({ kind: "ready", data: { career, teamById } });
+      setState({ kind: "ready", data: { career, teamById, user } });
     } catch (e) {
-      if (e instanceof HttpError && e.status === 401) { location.replace("/carreira-old"); return; }
+      if (e instanceof HttpError && e.status === 401) { setState({ kind: "login" }); return; }
       setState({ kind: "error", message: "Não foi possível carregar." });
     }
   }, []);
@@ -67,7 +76,9 @@ export function App() {
       setState((s) => s.kind === "ready" ? { kind: "ready", data: { ...s.data, career: r.career } } : s);
       return null;
     } catch (e) {
-      if (e instanceof HttpError && e.status === 401) { location.replace("/carreira-old"); return null; }
+      // Sessão expirada: a folha de login da v2 abre sobre a tela; a tela
+      // fecha a própria folha (null) para não empilhar duas. Nada foi gravado.
+      if (e instanceof HttpError && e.status === 401) { setExpired(true); return null; }
       return SAVE_ERROR;
     }
   }, []);
@@ -78,9 +89,29 @@ export function App() {
     if (fresh) setState((s) => s.kind === "ready" ? { kind: "ready", data: { ...s.data, career: fresh } } : s);
   }, []);
 
+  // Recompensa recebida: relê a sessão (dia da sequência) e o save.
+  const refreshAfterReward = useCallback(async () => {
+    const user = await SessionGateway.current().catch(() => null);
+    const fresh = await CareerGateway.loadActive().catch(() => null);
+    setState((s) => s.kind === "ready" ? { kind: "ready", data: { ...s.data, career: fresh || s.data.career, user: user || s.data.user } } : s);
+  }, []);
+
+  // Recompensa diária (decisão de 03/11): abre sozinha ao entrar, uma vez
+  // por carregamento, se ainda não foi recebida hoje — fora da criação de
+  // carreira e da partida.
+  const readyUser = state.kind === "ready" ? state.data.user : null;
+  useEffect(() => {
+    if (!readyUser || rewardShown) return;
+    if (loc.path.startsWith(NEW) || loc.path === `${BASE}/partida` || loc.path === `${BASE}/recompensa`) return;
+    if (!rewardPending(readyUser.dailyLogin)) return;
+    rewardShown = true;
+    navigate(`${BASE}/recompensa`);
+  }, [readyUser, loc.path]);
+
   // Fase 1: com a carreira carregada, o motor começa a abrir em segundo
   // plano (a 1ª partida não espera a carga da página do motor). Uma vez só.
-  const ready = state.kind === "ready";
+  // Fase 2: também na criação de carreira (o motor cria a carreira).
+  const ready = state.kind === "ready" || state.kind === "nova";
   useEffect(() => {
     if (!ready) return;
     const t = setTimeout(() => engine.preload(), 1500);
@@ -90,13 +121,33 @@ export function App() {
   const data = state.kind === "ready" ? state.data : null;
   const home = useMemo(() => data && buildHome(data.career, data.teamById), [data]);
 
-  if (state.kind === "loading") {
-    return <div className="state" role="status" aria-live="polite"><div className="state-line" />Carregando…</div>;
+  if (state.kind === "loading") return <Splash />;
+  if (state.kind === "login") return <LoginScreen onLoggedIn={load} />;
+  if (state.kind === "nova") {
+    // Sem carreira: criação pela v2 (CAP01-T03 a T05).
+    const q = new URLSearchParams(loc.search);
+    if (loc.path === `${NEW}/clube` && q.get("comp")) return <ClubScreen key={q.get("comp")!} competitionId={q.get("comp")!} />;
+    if (loc.path === `${NEW}/treinador` && q.get("comp") && q.get("clube")) {
+      return <SetupScreen competitionId={q.get("comp")!} clubId={q.get("clube")!} coachName={state.user.name || ""} onCreated={load} />;
+    }
+    if (loc.path !== NEW) { queueMicrotask(() => navigate(NEW, { replace: true })); return null; }
+    return <CompetitionScreen />;
   }
   if (state.kind === "error" || !data || !home) {
     return <div className="state" role="alert">{state.kind === "error" ? state.message : "Não foi possível carregar."}<button className="state-btn" onClick={load}>Tentar novamente</button></div>;
   }
 
+  const sessionSheet = expired && (
+    <LoginSheet account={data.user.id} onLoggedIn={() => { setExpired(false); reloadCareer(); }} />
+  );
+  if (loc.path === `${NEW}/pronto`) return <FirstEntryScreen home={home} />;
+  if (loc.path.startsWith(NEW)) { queueMicrotask(() => navigate(`${BASE}/`, { replace: true })); return null; }
+  if (loc.path === `${BASE}/recompensa`) return <DailyReward onClaimed={refreshAfterReward} />;
+  return <>{route()}{sessionSheet}</>;
+
+  // Telas com carreira (a folha de sessão expirada fica por cima de qualquer uma).
+  function route(): JSX.Element | null {
+  if (!data || !home) return null;
   if (loc.path === `${BASE}/partida`) {
     const q = new URLSearchParams(loc.search);
     const tela = q.get("tela");
@@ -166,5 +217,6 @@ export function App() {
       }} />
     );
   }
-  return <Home m={home} />;
+  return <Home m={home} reward={{ pending: rewardPending(data.user.dailyLogin) }} />;
+  }
 }

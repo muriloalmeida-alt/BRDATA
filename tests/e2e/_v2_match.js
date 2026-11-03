@@ -27,6 +27,7 @@ async function newCareer(page, email, club = "fla") {
   await enterGame(page);
   await skipPreseason(page);
   await page.evaluate(() => persistCareer());
+  await ensureDailyClaimed(page);
 }
 
 async function serverCareer(page) {
@@ -77,3 +78,16 @@ function sameSave(a, b) {
 }
 
 module.exports = { base, signup, newCareer, serverCareer, playV2MatchToEnd, ponteFrame, continueToHome, sameSave };
+
+// Fase 2: a v2 abre a recompensa diária sozinha se ela não foi recebida
+// hoje. enterGame() da versão anterior só a recebe se o modal abrir em 3 s;
+// para os testes que não são da recompensa, garante pelo servidor (409 =
+// já recebida). Testes da recompensa usam conta nova e não chamam isto.
+async function ensureDailyClaimed(page) {
+  await page.evaluate(async () => {
+    const d = new Date();
+    const localDate = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    await fetch("/api/daily-login/claim", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ localDate }) }).catch(() => {});
+  });
+}
+module.exports.ensureDailyClaimed = ensureDailyClaimed;

@@ -5,6 +5,7 @@
 // marcado e fora da lista, resto do save intacto, 360 px e acessibilidade.
 const { chromium } = require("playwright-core");
 const { check } = require("./_check");
+const { ensureDailyClaimed } = require("./_v2_match");
 const { passCareerSetup, enterGame } = require("./_startup");
 const { skipPreseason } = require("./_calendar_skip");
 
@@ -31,6 +32,7 @@ const strip = (c) => { const x = JSON.parse(JSON.stringify(c)); delete x.lineup;
   await page.click("#btnConfirmClub");
   await passCareerSetup(page);
   await enterGame(page);
+  await ensureDailyClaimed(page);
   await skipPreseason(page);
   await page.evaluate(() => { CAREER.lineup.formation = "4-3-3"; CAREER.activeSchemeId = "scheme_teste"; return persistCareer(); });
   const api = {
