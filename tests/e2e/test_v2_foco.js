@@ -128,7 +128,7 @@ const { newCareer, serverCareer } = require("./_v2_match");
   const ctx3 = await browser.newContext({ viewport: { width: 390, height: 844 }, serviceWorkers: "block", storageState: await ctx.storageState() });
   const v3 = await ctx3.newPage();
   let hang = true;
-  await v3.route((u) => { const x = new URL(u); return x.pathname === "/carreira-old" && x.searchParams.get("ponte") === "partida"; }, async (route) => {
+  await v3.route((u) => { const x = new URL(u); return x.pathname === "/carreira/motor"; }, async (route) => {
     if (hang) return; // nunca responde: o documento fica carregando
     return route.continue();
   });

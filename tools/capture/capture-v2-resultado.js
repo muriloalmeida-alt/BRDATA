@@ -61,7 +61,7 @@ fs.mkdirSync(out, { recursive: true });
     await p.click(".tb-foot .cta"); await p.waitForSelector(".rs-title");
     await p.click(".pz-foot .cta"); // Continuar
     await p.waitForTimeout(1500); await shot("posjogo-versao-atual");
-    const frame = p.frames().find((f) => f.url().includes("ponte=partida"));
+    const frame = p.frames().find((f) => f.url().includes("/carreira/motor"));
     for (let k = 0; k < 40; k++) {
       if (await p.locator(".home").count()) break;
       await frame.evaluate(() => {

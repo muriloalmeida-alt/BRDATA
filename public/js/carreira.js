@@ -225,7 +225,9 @@ function squadSortKey(p) { return (SUBPOS_ORDER[subPositionOf(p)] ?? 9) * 1000 -
 // e conduz a partida pela API BRDATA_PONTE (ver ponteEstado). Motor,
 // regras e gravação são os de sempre; nesse modo a página só não abre os
 // modais de entrada nem toca sons (decisão de 01/11: partida em silêncio).
-const V2_PONTE = new URLSearchParams(location.search).get("ponte") === "partida";
+// Fase 1 do plano de independência: o motor também atende em /carreira/motor
+// (endereço próprio da v2); ?ponte=partida segue valendo por compatibilidade.
+const V2_PONTE = new URLSearchParams(location.search).get("ponte") === "partida" || location.pathname === "/carreira/motor";
 // Estado só da ponte (nunca salvo): última partida vista (LIVE_MATCH vira
 // null no fim), resultado da gravação final e quem está ouvindo.
 const PONTE = { pronta: false, ultimo: null, fim: null, ouvintes: new Set(), resumo: null, posJogo: false, salvando: false, erroGravacao: null };
@@ -16965,7 +16967,7 @@ if (V2_PONTE) {
       if (LIVE_MATCH) return { ok: false, motivo: "em-andamento" };
       const w = calendarWeek();
       if ((w && !w.r) || CAREER.currentRound > 38) return { ok: false, motivo: "sem-jogo" };
-      PONTE.ultimo = null; PONTE.fim = null;
+      PONTE.ultimo = null; PONTE.fim = null; PONTE.resumo = null; PONTE.posJogo = false; PONTE.erroGravacao = null;
       goToMatch();
       return { ok: true, aoVivo: !!LIVE_MATCH };
     },
@@ -16988,6 +16990,27 @@ if (V2_PONTE) {
     },
     // Conta dona desta sessão da ponte (a do save em memória).
     conta() { return ME && ME.id != null ? String(ME.id) : null; },
+    // Fase 1 — versão do save em memória (o updatedAt da última gravação ou
+    // leitura). A v2 compara com o do servidor antes de cada comando: se
+    // diferem (ex.: a v2 gravou a escalação), ela recarrega o motor.
+    versaoSave() { return CAREER && CAREER.updatedAt != null ? CAREER.updatedAt : null; },
+    // Fase 1 — esquece a última partida já encerrada (resultado gravado ou
+    // pós-jogo concluído), para o motor reaproveitado não reapresentá-la.
+    // Não age com partida em andamento.
+    descartar() {
+      if (LIVE_MATCH) return { ok: false, motivo: "em-andamento" };
+      PONTE.ultimo = null; PONTE.fim = null; PONTE.resumo = null; PONTE.posJogo = false; PONTE.erroGravacao = null;
+      ponteAvisar();
+      return { ok: true };
+    },
+    // Fase 1 — porta única de comandos: executar("nome", ...args) chama o
+    // comando de mesmo nome desta API. Comandos novos (semana, mercado,
+    // temporada…) entram aqui como métodos e já ficam acessíveis à v2.
+    executar(nome, ...args) {
+      const fn = typeof nome === "string" && nome !== "executar" ? window.BRDATA_PONTE[nome] : null;
+      if (typeof fn !== "function") return { ok: false, motivo: "comando-desconhecido" };
+      return fn.apply(window.BRDATA_PONTE, args);
+    },
     // AUD-02 — "Tentar salvar novamente": repete SÓ a gravação do save que
     // já está em memória (o resultado foi aplicado uma vez, no fim da
     // partida). O PUT substitui o save inteiro, então repetir depois de
@@ -17150,7 +17173,12 @@ async function enterAfterAuth() {
       LEAGUE_TEAMS = CAREER.divisionTeams[CURRENT_COMPETITION_ID];
       ALL_TEAMS_FLAT = ALL_COMPETITIONS_ORDER.flatMap((id) => CAREER.divisionTeams[id]);
     }
-    persistCareer(); // grava os campos novos pra não migrar de novo (e de novo) a cada load
+    // Modo ponte (motor escondido da v2): NÃO grava ao abrir. O motor pode
+    // ficar aberto enquanto a v2 grava a escalação; uma gravação de abertura
+    // atrasada sobrescreveria essa mudança com o save antigo. A migração em
+    // memória acima é idempotente e volta a rodar na próxima abertura; o
+    // save migrado é gravado no primeiro comando que grava (fim de partida).
+    if (!V2_PONTE) persistCareer(); // grava os campos novos pra não migrar de novo (e de novo) a cada load
     setBootProgress(5, 5);
     showGameScreen();
     applyV2DeepLink();

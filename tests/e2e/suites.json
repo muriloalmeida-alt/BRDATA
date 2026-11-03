@@ -38,7 +38,8 @@
       "test_patrocinio.js",
       "test_v2_foco.js",
       "test_v2_tabela_partida.js",
-      "test_v2_gravacao.js"
+      "test_v2_gravacao.js",
+      "test_v2_motor.js"
     ]
   },
   "exclusive": {

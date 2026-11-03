@@ -1654,9 +1654,23 @@ const server = http.createServer(async (req, res) => {
     // Carreira 2.0 (frontend novo, React — fonte em carreira-v2/, build
     // versionado em public/carreira/). Desde 01/11/2026 é ela que responde
     // em /carreira; a versão anterior (carreira.html) passou para
-    // /carreira-old (que a v2 também usa para as telas que ainda não tem e
-    // para a ponte da partida). Qualquer subrota SEM extensão serve o index
+    // /carreira-old (que a v2 ainda usa para as telas que não tem; o motor
+    // da partida fica em /carreira/motor, acima). Qualquer subrota SEM extensão serve o index
     // da SPA (deep link); arquivos (assets/…, *.webp) caem no estático normal.
+    // Motor da Carreira 2.0 (plano de independência, fase 1): a mesma página
+    // da versão anterior, em modo ponte, num endereço próprio — a v2 não
+    // aponta mais para /carreira-old. A página usa caminhos relativos
+    // (css/…, js/…), então ganha <base href="/"> para resolver a partir da
+    // raiz. Só é aberta escondida, por dentro da v2.
+    if (pathname === "/carreira/motor") {
+      return fs.readFile(path.join(PUBLIC_DIR, "carreira.html"), (err, data) => {
+        if (err) { res.writeHead(404); return res.end("Not found"); }
+        res.writeHead(200, { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-cache" });
+        res.end(data.toString("utf8")
+          .replace("<head>", `<head>\n<base href="/">`)
+          .replace("</head>", `<meta name="robots" content="noindex, nofollow">\n</head>`));
+      });
+    }
     if (pathname === "/carreira" || (pathname.startsWith("/carreira/") && !path.extname(pathname))) {
       return fs.readFile(path.join(PUBLIC_DIR, "carreira", "index.html"), (err, data) => {
         if (err) { res.writeHead(404); return res.end("Not found"); }

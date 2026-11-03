@@ -92,9 +92,9 @@ const { newCareer, signup, serverCareer, playV2MatchToEnd, ponteFrame, continueT
       && s3.matchLog.length === before.matchLog.length + 1 && (await btn()).text === "Continuar",
     JSON.stringify({ round: s3.currentRound, cash: [before.finances.cash, s3.finances.cash], ledger: [(before.financeLedger || []).length, (s3.financeLedger || []).length], score, log: log && [log.gh, log.ga] }));
   const steps3 = await continueToHome(v2);
-  const home3 = await v2.evaluate(() => ({ line: document.querySelector(".home-date")?.textContent || "", frames: document.querySelectorAll("iframe").length }));
-  check("3b) 'Continuar' segue o pós-jogo até o Início na rodada seguinte, sem a ponte:",
-    steps3.length >= 1 && home3.line.endsWith(`RODADA ${before.currentRound + 1}`) && home3.frames === 0, JSON.stringify({ steps3, home3 }));
+  const home3 = await v2.evaluate(() => ({ line: document.querySelector(".home-date")?.textContent || "", frames: document.querySelectorAll("iframe").length, shown: [...document.querySelectorAll("iframe")].filter((f) => f.getBoundingClientRect().width > 1 || f.getAttribute("aria-hidden") !== "true").length }));
+  check("3b) 'Continuar' segue o pós-jogo até o Início na rodada seguinte, com o motor escondido (no máximo um, reaproveitado):",
+    steps3.length >= 1 && home3.line.endsWith(`RODADA ${before.currentRound + 1}`) && home3.frames <= 1 && home3.shown === 0, JSON.stringify({ steps3, home3 }));
 
   // 4) Resposta perdida depois de o servidor gravar.
   const before4 = await serverCareer(v2);

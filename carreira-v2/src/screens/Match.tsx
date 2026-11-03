@@ -9,7 +9,8 @@
 // A4. Até a A4, o Pré-jogo
 // segue abrindo a partida na versão atual.
 import { useEffect, useRef, useState, type FormEvent } from "react";
-import { openMatchSession, type MatchSession, type SaveError } from "../adapters/match.ts";
+import { type MatchSession, type SaveError } from "../adapters/match.ts";
+import { engine } from "../adapters/engine.ts";
 import { SessionGateway } from "../adapters/gateways.ts";
 import type { TableMatchContext } from "./Table.tsx";
 import { Sheet } from "../ui/dialog.tsx";
@@ -67,11 +68,14 @@ export function Match({ startNow, sub, outId, competitionId, competitionName, te
   useEffect(() => {
     let alive = true;
     let unsub: (() => void) | null = null;
-    // AUD-06: sair da tela antes de a ponte ficar pronta cancela a abertura.
+    // AUD-06: sair da tela antes de a ponte ficar pronta cancela a espera.
+    // Fase 1: a sessão do motor é compartilhada (adapters/engine.ts) e não é
+    // destruída ao sair da tela; get() já confere se o save é o do servidor.
     const ac = new AbortController();
     setView({ kind: "loading" });
-    openMatchSession({ signal: ac.signal, onFocusEscaped: refocusIfLost }).then((s) => {
-      if (!alive) { s.destroy(); return; }
+    engine.setFocusHandler(refocusIfLost);
+    engine.get(ac.signal).then((s) => {
+      if (!alive) return;
       session.current = s;
       const apply = () => {
         const snap = s.snapshot();
@@ -81,7 +85,9 @@ export function Match({ startNow, sub, outId, competitionId, competitionName, te
           // Duas leituras seguidas (≥ 0,6 s) sem modal aberto: evita fechar
           // na troca de um modal para o próximo da sequência.
           doneReads.current = snap.posJogo === "concluido" ? doneReads.current + 1 : 0;
-          if (doneReads.current >= 2) { s.reveal(false); onFinished(); navigate(`${BASE}/`, { replace: true }); }
+          // Fase 1: o motor fica aberto; descarta a partida encerrada para não
+          // reapresentá-la na próxima abertura da Partida.
+          if (doneReads.current >= 2) { s.reveal(false); s.discard(); onFinished(); navigate(`${BASE}/`, { replace: true }); }
           return;
         }
         const m = buildMatch(snap, competitionId);
@@ -107,13 +113,38 @@ export function Match({ startNow, sub, outId, competitionId, competitionName, te
         if (!r.ok) setView({ kind: "none", message: r.motivo === "sem-jogo" ? "Não há jogo do seu clube nesta semana." : "Não foi possível iniciar a partida." });
         else apply();
       } else {
+        // Sem ?iniciar: com o motor reaproveitado, uma partida em andamento
+        // (ex.: voltou à tela no meio do jogo) continua de onde está. Partida
+        // já encerrada não é reapresentada: gravada, é descartada; não
+        // gravada (saiu sem salvar), o motor é recarregado, que é o mesmo que
+        // a tela antiga fazia ao destruir a sessão.
+        const fase = s.snapshot().fase;
+        if (fase === "jogando" || fase === "pausada" || fase === "intervalo") { apply(); return; }
+        // Pós-jogo interrompido (modais da versão anterior ainda abertos no
+        // motor) também recarrega: o próximo jogo começa de um motor limpo.
+        if (fase === "pos-jogo" || (fase === "encerrada" && s.snapshot().gravada !== true)) engine.reset();
+        else s.discard();
         setView({ kind: "none", message: "Nenhuma partida em andamento." });
       }
     }).catch(() => { if (alive && !ac.signal.aborted) setView({ kind: "error", message: "Não foi possível preparar a partida." }); });
     // Durante o pós-jogo os modais da versão atual abrem e fecham sem avisar
     // a ponte: confere de tempos em tempos se a sequência terminou.
     const poll = setInterval(() => { const ss = session.current; if (ss && ss.snapshot().fase === "pos-jogo") applyRef.current?.(); }, 600);
-    return () => { alive = false; ac.abort(); clearInterval(poll); if (unsub) unsub(); session.current?.destroy(); session.current = null; };
+    return () => {
+      alive = false; ac.abort(); clearInterval(poll); if (unsub) unsub();
+      // Nunca deixa o motor visível ao sair da tela; a sessão continua viva,
+      // mas sem resto de partida: encerrada e gravada → descartada; pós-jogo
+      // interrompido ou resultado não gravado → motor recarregado (como a
+      // tela fazia antes, ao destruir a sessão). Partida em andamento segue.
+      const ss = session.current;
+      if (ss) {
+        ss.reveal(false);
+        const snap = ss.snapshot();
+        if (snap.fase === "pos-jogo" || (snap.fase === "encerrada" && snap.gravada !== true)) engine.reset();
+        else if (snap.fase === "encerrada") ss.discard();
+      }
+      session.current = null;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [attempt]);
 
@@ -144,7 +175,7 @@ export function Match({ startNow, sub, outId, competitionId, competitionName, te
   useEffect(() => { refocusIfLost(); }, [viewKey]);
 
   if (view.kind === "loading") return <div className="state" role="status" aria-live="polite"><div className="state-line" />Preparando a partida…</div>;
-  if (view.kind === "error") return <div className="state" role="alert">{view.message}<button className="state-btn" onClick={() => setAttempt((n) => n + 1)}>Tentar novamente</button></div>;
+  if (view.kind === "error") return <div className="state" role="alert">{view.message}<button className="state-btn" onClick={() => { engine.reset(); setAttempt((n) => n + 1); }}>Tentar novamente</button></div>;
   if (view.kind === "none") return <div className="state">{view.message}<button className="state-btn" onClick={() => navigate(`${BASE}/`, { replace: true })}>Ir para o início</button></div>;
 
   const m = view.m;
