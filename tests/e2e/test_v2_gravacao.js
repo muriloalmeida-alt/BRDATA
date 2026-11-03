@@ -53,6 +53,14 @@ const { newCareer, signup, serverCareer, playV2MatchToEnd, ponteFrame, continueT
   await playV2MatchToEnd(v2);
   await v2.waitForSelector('.pz-foot .cta[data-save="failed"]', { timeout: 20000 });
   const b1 = await btn();
+  const fail360 = await (async () => {
+    await v2.setViewportSize({ width: 360, height: 780 });
+    await v2.waitForTimeout(100);
+    const r = await v2.evaluate(() => ({ overflow: document.documentElement.scrollWidth - innerWidth, btnH: document.querySelector(".pz-foot .cta").getBoundingClientRect().height }));
+    await v2.setViewportSize({ width: 390, height: 844 });
+    return r;
+  })();
+  check("1b) Rodapé de falha em 360 px sem rolagem horizontal e botão ≥ 44 px:", fail360.overflow <= 0 && fail360.btnH >= 44, JSON.stringify(fail360));
   const s1 = await serverCareer(v2);
   const mem1 = await frameCareer();
   const blocked = await ponteFrame(v2).evaluate(() => BRDATA_PONTE.continuarPosJogo());
@@ -121,6 +129,21 @@ const { newCareer, signup, serverCareer, playV2MatchToEnd, ponteFrame, continueT
   await v2.click(".pz-foot .cta"); // Entrar para salvar
   await v2.waitForSelector('[role="dialog"] input[type="email"]', { timeout: 5000 });
   const sheet = await v2.evaluate(() => ({ focusEmail: document.activeElement?.type === "email", rootInert: document.getElementById("root").hasAttribute("inert"), title: document.querySelector("#lg-t")?.textContent }));
+  // 360 e 430 px: folha de login e rodapé de falha sem rolagem horizontal e
+  // com alvos de toque ≥ 44 px.
+  const sizes = {};
+  for (const w of [360, 430]) {
+    await v2.setViewportSize({ width: w, height: 780 });
+    await v2.waitForTimeout(100);
+    sizes[w] = await v2.evaluate(() => ({
+      overflow: document.documentElement.scrollWidth - innerWidth,
+      small: [...document.querySelectorAll('[role="dialog"] a, [role="dialog"] button, [role="dialog"] input')].filter((el) => { const r = el.getBoundingClientRect(); return r.height && (r.height < 44 || r.width < 44); }).map((el) => el.className || el.type),
+      sheetFits: document.querySelector('[role="dialog"]').getBoundingClientRect().width <= innerWidth,
+    }));
+  }
+  await v2.setViewportSize({ width: 390, height: 844 });
+  check("5) Folha de login em 360 e 430 px: sem rolagem horizontal, cabe na tela e alvos ≥ 44 px:",
+    [360, 430].every((w) => sizes[w].overflow <= 0 && sizes[w].small.length === 0 && sizes[w].sheetFits), JSON.stringify(sizes));
   // Outra conta: recusada, e nada é gravado nela.
   await v2.fill('[role="dialog"] input[type="email"]', emailB);
   await v2.fill('[role="dialog"] input[type="password"]', "senha123");
