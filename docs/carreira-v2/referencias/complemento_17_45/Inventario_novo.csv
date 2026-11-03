@@ -1,0 +1,88 @@
+﻿id;tela;arquivo;coluna;status
+CAP04-N01;Semana concluída;17_carreira_2_0.png;1;VALIDAR NO CÓDIGO
+CAP04-N02;Pré-jogo de amistoso;17_carreira_2_0.png;2;VALIDAR NO CÓDIGO
+CAP04-N03;Coletiva de imprensa;17_carreira_2_0.png;3;VALIDAR NO CÓDIGO
+CAP04-N04;Resultados da rodada;18_carreira_2_0.png;1;VALIDAR NO CÓDIGO
+CAP05-T05;Proposta recebida — Rolagem 1/2;18_carreira_2_0.png;2;VALIDAR NO CÓDIGO
+CAP05-T05;Proposta recebida — Rolagem 2/2;18_carreira_2_0.png;3;VALIDAR NO CÓDIGO
+CAP04-N05;Partida da Copa do Brasil — Ida;19_carreira_2_0.png;1;VALIDAR NO CÓDIGO
+CAP04-N05;Partida da Copa do Brasil — Volta;19_carreira_2_0.png;2;VALIDAR NO CÓDIGO
+CAP04-N05;Partida da Copa do Brasil — Pênaltis;19_carreira_2_0.png;3;VALIDAR NO CÓDIGO
+CAP01-N01;Recompensa diária — Disponível;20_carreira_2_0.png;1;VALIDAR NO CÓDIGO
+CAP01-N01;Recompensa diária — Já recebida hoje;20_carreira_2_0.png;2;VALIDAR NO CÓDIGO
+CAP07-T06;Sessão expirada — Reautenticação;20_carreira_2_0.png;3;COMPONENTE
+CAP07-T06;Sessão expirada — Conta incorreta;21_carreira_2_0.png;1;COMPONENTE
+CAP04-N06;Nova temporada;21_carreira_2_0.png;2;VALIDAR NO CÓDIGO
+CAP06-T04;Proposta ao treinador;21_carreira_2_0.png;3;VALIDAR NO CÓDIGO
+CAP06-T04;Confirmar mudança de clube — Confirmação;22_carreira_2_0.png;1;COMPONENTE
+CAP06-T08;Fim de carreira / demissão;22_carreira_2_0.png;2;VALIDAR NO CÓDIGO
+CAP06-T05;Histórico e conquistas;22_carreira_2_0.png;3;VALIDAR NO CÓDIGO
+CAP06-T05;Histórico e conquistas — Sem conquistas;23_carreira_2_0.png;1;VALIDAR NO CÓDIGO
+CAP03-T03;Instruções táticas;23_carreira_2_0.png;2;VALIDAR NO CÓDIGO
+CAP03-N01;Instruções por setor — Defesa · Rolagem 1/2;23_carreira_2_0.png;3;VALIDAR NO CÓDIGO
+CAP03-N01;Instruções por setor — Defesa · Rolagem 2/2;24_carreira_2_0.png;1;VALIDAR NO CÓDIGO
+CAP03-N01;Instruções por setor — Meio · Rolagem 1/2;24_carreira_2_0.png;2;VALIDAR NO CÓDIGO
+CAP03-N01;Instruções por setor — Meio · Rolagem 2/2;24_carreira_2_0.png;3;VALIDAR NO CÓDIGO
+CAP03-N01;Instruções por setor — Ataque · Rolagem 1/2;25_carreira_2_0.png;1;VALIDAR NO CÓDIGO
+CAP03-N01;Instruções por setor — Ataque · Rolagem 2/2;25_carreira_2_0.png;2;VALIDAR NO CÓDIGO
+CAP03-T04;Esquemas salvos;25_carreira_2_0.png;3;VALIDAR NO CÓDIGO
+CAP03-T04;Esquemas salvos — Vazio;26_carreira_2_0.png;1;VALIDAR NO CÓDIGO
+CAP03-T04;Salvar esquema atual — Nome;26_carreira_2_0.png;2;COMPONENTE
+CAP03-N02;Marcação individual;26_carreira_2_0.png;3;VALIDAR NO CÓDIGO
+CAP03-T05;Treinamento semanal;27_carreira_2_0.png;1;VALIDAR NO CÓDIGO
+CAP03-T05;Editar treino do dia — Dia;27_carreira_2_0.png;2;COMPONENTE
+CAP03-T05;Condição no treinamento — Condição;27_carreira_2_0.png;3;VALIDAR NO CÓDIGO
+CAP03-T06;Evolução e condição física;28_carreira_2_0.png;1;VALIDAR NO CÓDIGO
+CAP03-T06;Evolução e condição física — Sem histórico;28_carreira_2_0.png;2;VALIDAR NO CÓDIGO
+CAP02-N01;Filtros do elenco;28_carreira_2_0.png;3;COMPONENTE
+CAP02-N02;Ficha completa do jogador — Rolagem 1/2;29_carreira_2_0.png;1;VALIDAR NO CÓDIGO
+CAP02-N02;Ficha completa do jogador — Rolagem 2/2;29_carreira_2_0.png;2;VALIDAR NO CÓDIGO
+CAP02-N02;Ficha completa do jogador — Continuação · Rolagem 1/2;29_carreira_2_0.png;3;VALIDAR NO CÓDIGO
+CAP02-N02;Ficha completa do jogador — Continuação · Rolagem 2/2;30_carreira_2_0.png;1;VALIDAR NO CÓDIGO
+CAP05-T06;Contratos;30_carreira_2_0.png;2;VALIDAR NO CÓDIGO
+CAP05-N01;Renovar contrato;30_carreira_2_0.png;3;COMPONENTE
+CAP05-N01;Resposta à renovação — Aceita;31_carreira_2_0.png;1;COMPONENTE
+CAP05-N01;Resposta à renovação — Recusa;31_carreira_2_0.png;2;COMPONENTE
+CAP06-T03;Conversa individual;31_carreira_2_0.png;3;VALIDAR NO CÓDIGO
+CAP06-T03;Reação do jogador — Reação;32_carreira_2_0.png;1;VALIDAR NO CÓDIGO
+CAP02-N03;Comparar jogadores;32_carreira_2_0.png;2;VALIDAR NO CÓDIGO
+CAP02-N04;Elenco de outro clube;32_carreira_2_0.png;3;VALIDAR NO CÓDIGO
+CAP05-T01;Mercado — Janela aberta;33_carreira_2_0.png;1;VALIDAR NO CÓDIGO
+CAP05-T01;Mercado — Janela fechada;33_carreira_2_0.png;2;VALIDAR NO CÓDIGO
+CAP05-T01;Filtros do mercado — Filtros;33_carreira_2_0.png;3;COMPONENTE
+CAP05-T02;Perfil do alvo;34_carreira_2_0.png;1;VALIDAR NO CÓDIGO
+CAP05-T03;Fazer proposta;34_carreira_2_0.png;2;VALIDAR NO CÓDIGO
+CAP05-T04;Negociação e contraproposta;34_carreira_2_0.png;3;VALIDAR NO CÓDIGO
+CAP05-N02;Minhas propostas;35_carreira_2_0.png;1;VALIDAR NO CÓDIGO
+CAP05-N03;Comparar propostas;35_carreira_2_0.png;2;VALIDAR NO CÓDIGO
+CAP05-N04;Colocar à venda;35_carreira_2_0.png;3;COMPONENTE
+CAP05-N05;Minhas vendas;36_carreira_2_0.png;1;VALIDAR NO CÓDIGO
+CAP05-N06;Empréstimo — Entrada;36_carreira_2_0.png;2;VALIDAR NO CÓDIGO
+CAP05-N06;Empréstimo — Saída;36_carreira_2_0.png;3;VALIDAR NO CÓDIGO
+CAP05-N07;Confirmar compra;37_carreira_2_0.png;1;COMPONENTE
+CAP05-T07;Histórico de negociações;37_carreira_2_0.png;2;VALIDAR NO CÓDIGO
+CAP05-T07;Histórico de negociações — Vazio;37_carreira_2_0.png;3;VALIDAR NO CÓDIGO
+CAP02-T04;Comissão técnica;38_carreira_2_0.png;1;VALIDAR NO CÓDIGO
+CAP06-T07;Estádio e infraestrutura;38_carreira_2_0.png;2;VALIDAR NO CÓDIGO
+CAP06-T07;Obras e melhorias — Obras;38_carreira_2_0.png;3;VALIDAR NO CÓDIGO
+CAP06-N01;Propostas de patrocínio;39_carreira_2_0.png;1;VALIDAR NO CÓDIGO
+CAP02-N05;Extrato financeiro;39_carreira_2_0.png;2;VALIDAR NO CÓDIGO
+CAP05-T08;Olheiros e missões;39_carreira_2_0.png;3;VALIDAR NO CÓDIGO
+CAP05-T09;Relatórios e prospectos;40_carreira_2_0.png;1;VALIDAR NO CÓDIGO
+CAP05-T10;Categorias de base;40_carreira_2_0.png;2;VALIDAR NO CÓDIGO
+CAP04-N07;Copa do Brasil — Em disputa;40_carreira_2_0.png;3;VALIDAR NO CÓDIGO
+CAP04-N07;Copa do Brasil — Eliminado;41_carreira_2_0.png;1;VALIDAR NO CÓDIGO
+CAP04-N07;Copa do Brasil — Campeão;41_carreira_2_0.png;2;VALIDAR NO CÓDIGO
+CAP04-N08;Estatísticas — Meu Time;41_carreira_2_0.png;3;VALIDAR NO CÓDIGO
+CAP04-N08;Estatísticas — Campeonato;42_carreira_2_0.png;1;VALIDAR NO CÓDIGO
+CAP04-N08;Estatísticas — Temporada Atual;42_carreira_2_0.png;2;VALIDAR NO CÓDIGO
+CAP04-N08;Estatísticas — Histórico;42_carreira_2_0.png;3;VALIDAR NO CÓDIGO
+CAP04-N09;Retrospecto H2H;43_carreira_2_0.png;1;VALIDAR NO CÓDIGO
+CAP07-T01;Mais / menu;43_carreira_2_0.png;2;VALIDAR NO CÓDIGO
+CAP07-N01;Editar perfil;43_carreira_2_0.png;3;VALIDAR NO CÓDIGO
+CAP07-N02;Ranking — Todos;44_carreira_2_0.png;1;VALIDAR NO CÓDIGO
+CAP07-N02;Ranking — Amigos;44_carreira_2_0.png;2;VALIDAR NO CÓDIGO
+CAP07-N03;Loja;44_carreira_2_0.png;3;VALIDAR NO CÓDIGO
+CAP07-N03;Histórico de compras — Histórico;45_carreira_2_0.png;1;VALIDAR NO CÓDIGO
+CAP07-N04;Premiações;45_carreira_2_0.png;2;VALIDAR NO CÓDIGO
+CAP07-T03;Central de ajuda;45_carreira_2_0.png;3;VALIDAR NO CÓDIGO

@@ -1,7 +1,8 @@
 # Carreira 2.0: plano para separar `/carreira` de `/carreira-old`
 
 - **Data:** 03/11/2026.
-- **Status:** proposta, aguardando as decisões D1 a D4.
+- **Status:** proposta, aguardando as decisões D1 a D4 e as pendências P1 a P8 (seção 6).
+- **Atualização de 03/11:** chegou o pacote complementar do GPT, com as pranchas 17 a 45 (`referencias/complemento_17_45/`). Veja a seção 6.
 - **Objetivo** (pedido do Murilo, 03/11): `/carreira` (v2) e `/carreira-old` (versão anterior) **100% independentes**, sem nenhuma transição entre a jornada nova e a antiga.
 
 ## 1. Onde a v2 depende hoje da versão anterior
@@ -181,3 +182,94 @@ Monólito → extrair função → testar → extrair módulo → testar → mig
 - **Motor invisível (A):** a v2 continua carregando o código antigo por baixo. O tempo de carga e o consumo no celular precisam ser medidos na fase 1.
 - **Mesmo save (D1 = a):** gravações simultâneas em duas abas ou nas duas versões. É risco já conhecido; nenhuma migração será feita sem aprovação.
 - **Escopo:** é praticamente o jogo inteiro. Cada fase tem entrega e aprovação próprias, para não virar um "reescrever tudo".
+
+## 6. Pacote complementar do GPT (03/11): o que chegou e o que falta
+
+**O que veio** (está em `referencias/complemento_17_45/`):
+- 29 pranchas (17 a 45), com 87 telas e variantes;
+- `Briefings_visuais.md`;
+- `Inventario_novo.csv`, idêntico ao anexo enviado à parte.
+
+**Cobertura:** todas as telas pedidas no prompt (seções A a H), mais as duas decisões herdadas (seção I).
+
+### 6.1 Decisões de estilo que o GPT trouxe
+1. **Wordmark:** BRDATA em texto, com "BR" branco e "DATA" lima. É o mesmo da v2, então não muda nada.
+2. **"Voltar ao …" vira ação secundária em texto.** O lima fica só para progressão e confirmação (Continuar, Salvar, Receber, Confirmar, Iniciar amistoso).
+3. **Telas de leitura não ganham botão principal inventado.** Respostas e ações por item fazem o papel de ação principal.
+4. **Confirmação obrigatória só na mudança de clube.**
+5. **Acessibilidade:**
+   - controles interativos com borda e foco em `#A9AEB7`;
+   - campos e segmentos com 44 a 48 px;
+   - safe areas pelo `env()`;
+   - rodapé sem cobrir conteúdo.
+
+### 6.2 O que eu resolvo sozinho, conferindo no código
+| Dúvida do GPT | O que o jogo tem |
+|---|---|
+| Rótulos das pontas dos 4 eixos | Ritmo: Muito paciente ↔ Muito direto; Pressão: Baixa ↔ Alta; Linha: Recuada ↔ Adiantada; Passe: Curto ↔ Bola longa |
+| Opções das instruções por setor | Cada instrução é uma escala de 5 níveis com rótulos nas pontas (ex.: Compactação: Aberta ↔ Compacta), e não uma lista de opções. Ver P4 |
+| Máximo de parcelas | À vista (1x), 2x, 3x, 4x |
+| Ida e volta na Copa | Todas as fases são em ida e volta (`CUP_ROUNDS_EXPANDED`) |
+| Placar dos pênaltis | O jogo só registra que houve pênaltis e quem venceu; não há placar da disputa. Ver P5 |
+| Contato da central de ajuda | O jogo só tem o texto "Não encontrou? Fale com o suporte pelo site."; não há canal próprio |
+| Ação de iniciar obra no estádio | Existe (`startStadiumUpgrade`), com custo e prazo reais por melhoria |
+| Nomes, overall e valores marcados "—" | Vêm do save, como em todas as telas da v2 |
+
+### 6.3 Pendências que precisam da sua resposta
+**P1. "Voltar ao …" como texto nas telas já aprovadas?**
+A regra nova põe "Voltar ao …" como ação secundária em texto. Nas telas já aprovadas ele é **botão lima**: Tabela ("Voltar ao clube"), Lances ("Voltar à partida" / "Voltar ao resultado") e Tabela pelo Resultado.
+- (a) Aplicar a regra também às telas aprovadas (recomendo, pela consistência).
+- (b) Valer só para as telas novas.
+
+**P2. Topo com "CARREIRA 2.0" à direita?**
+As pranchas novas põem "CARREIRA 2.0" à direita do topo. As telas aprovadas mostram ali o contexto da tela ("Partida", "Resultado", "Tabela").
+- Recomendo manter o contexto.
+
+**P3. Margens laterais.**
+O pacote pede 24 px (20 px em 360). A v2 aprovada usa 16 px.
+- (a) Manter 16 px (recomendo, porque é o que você aprovou e cabe mais conteúdo).
+- (b) Passar tudo para 24/20 px.
+
+**P4. Instruções por setor.**
+A prancha desenha campos "Selecionar", com lista de opções. No jogo, cada uma das 15 instruções é uma escala de 1 a 5 com rótulos nas pontas.
+- Recomendo usar o mesmo controle de 5 passos da tela "Instruções táticas" (CAP03-T03), mantendo abas, títulos e rodapé da prancha.
+
+**P5. Pênaltis na Copa (CAP04-N05).**
+A prancha mostra um placar dos pênaltis, que o jogo não tem.
+- Recomendo trocar a linha por "Decidido nos pênaltis · Classificado: <clube>".
+
+**P6. Partida da Copa (CAP04-N05).**
+A prancha redesenha o topo da partida sem a faixa com a foto do estádio, que você aprovou na A1.
+- Recomendo manter a faixa aprovada e acrescentar só o contexto: o kicker "COPA DO BRASIL · OITAVAS · VOLTA" e a linha do agregado na volta.
+
+**P7. Navegação: de onde se chega a cada tela nova.**
+O pacote desenha as telas, mas não os pontos de entrada. Hoje a v2 tem Início, Elenco, Jogos e Mais. Faltam:
+- **Jogos:** uma tela de entrada que reúna Calendário (já existe), Tabela (já existe), Copa do Brasil, Estatísticas e Retrospecto.
+- **Clube:** as pranchas dizem "Voltar ao clube", mas a v2 não tem uma tela "Clube". Ela precisa reunir Diretoria, Finanças e Extrato, Comissão, Estádio, Patrocínios, Olheiros e Base, Mercado e Contratos.
+
+Opções:
+- (a) Pedir ao GPT as duas telas de entrada (Jogos e Clube) e o mapa de navegação (recomendo).
+- (b) Eu desenho as duas no padrão das listas da v2 (como o Início) e te mostro antes.
+
+**P8. Telas que ainda não têm prancha.**
+Estes fluxos não foram pedidos nem desenhados:
+- contratar comissão técnica (lista de candidatos);
+- contratar olheiro, nova missão e indicações dos olheiros;
+- detalhe de melhoria do estádio com "Iniciar obra";
+- confirmação de compra na loja;
+- detalhe de conquista;
+- conteúdo de Configurações;
+- notificações (sino);
+- primeira entrada e tutorial (assistente de início).
+
+Opções:
+- (a) Mandar ao GPT num segundo lote curto (o prompt fica pronto se você quiser).
+- (b) Eu sigo o padrão da v2 (folhas e listas), sempre mostrando a você antes de implementar (D4 b).
+
+### 6.4 Efeito no plano
+- **Fases 3 a 10:** agora têm prancha para quase todas as telas. A coluna "sem prancha" das tabelas da seção 3 passa a apontar para `complemento_17_45`, exceto os itens de P7 e P8.
+- **Contagem:** 87 telas e variantes novas, mais as cerca de 10 do pacote anterior (acesso, notícias, encerramento, perfil do treinador, menu e saves).
+- **O que pode começar logo:**
+  - a fase 1 (motor invisível), sem depender de nenhuma resposta;
+  - a fase 2 (acesso), assim que D1 a D4 estiverem respondidas.
+- **P1 e P3 afetam telas já aprovadas.** Qualquer ajuste nelas vira uma entrega própria, com comparação e aprovação.
