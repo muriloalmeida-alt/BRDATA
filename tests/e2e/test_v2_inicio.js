@@ -127,10 +127,16 @@ const { skipPreseason } = require("./_calendar_skip");
     const old = await (await fetch("/carreira-old")).text();
     const red = await fetch("/carreira-v2/tabela?divisao=b", { redirect: "manual" });
     const fol = await fetch("/carreira-v2/tabela?divisao=b");
-    return { v2: v2.includes('id="root"') && v2.includes("/carreira/assets/") && v2.includes("noindex"), old: old.includes("btnConfirmClub") && old.includes("noindex"), red: red.type === "opaqueredirect" || red.status === 302, fol: new URL(fol.url).pathname + new URL(fol.url).search };
+    // Bundle (AUD-01): tipos certos e, para arquivo inexistente, 404 — nunca
+    // o HTML do portal no lugar de um JS.
+    const js = v2.match(/\/carreira\/assets\/[^"]+\.js/)[0], css = v2.match(/\/carreira\/assets\/[^"]+\.css/)[0];
+    const type = async (u) => { const r = await fetch(u, { cache: "no-store" }); return `${r.status} ${(r.headers.get("content-type") || "").split(";")[0]}`; };
+    const types = { js: await type(js), css: await type(css), webp: await type("/carreira/assets-scene/cen-02-estadio-header.webp"), missing: await type("/carreira/assets/nao-existe-123.js") };
+    return { v2: v2.includes('id="root"') && v2.includes("/carreira/assets/") && v2.includes("noindex"), old: old.includes("btnConfirmClub") && old.includes("noindex"), red: red.type === "opaqueredirect" || red.status === 302, fol: new URL(fol.url).pathname + new URL(fol.url).search, types };
   });
-  check("9) /carreira serve a v2, /carreira-old a versão anterior e /carreira-v2/… redireciona para /carreira/…:",
-    r9.v2 && r9.old && r9.red && r9.fol === "/carreira/tabela?divisao=b", JSON.stringify(r9));
+  check("9) /carreira serve a v2, /carreira-old a versão anterior e /carreira-v2/… redireciona para /carreira/…; JS/CSS/webp com o tipo certo e arquivo inexistente do bundle = 404:",
+    r9.v2 && r9.old && r9.red && r9.fol === "/carreira/tabela?divisao=b" && r9.types.js === "200 application/javascript" && r9.types.css === "200 text/css"
+      && r9.types.webp === "200 image/webp" && r9.types.missing === "404 text/plain", JSON.stringify(r9));
 
   await browser.close();
 })();

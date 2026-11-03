@@ -481,6 +481,9 @@ const MIME = {
   ".json": "application/json; charset=utf-8",
   ".svg": "image/svg+xml",
   ".png": "image/png",
+  // Cenas da Carreira 2.0 (public/carreira/assets-scene/*.webp) — antes saíam
+  // como application/octet-stream (AUD-01, conferência de content-type).
+  ".webp": "image/webp",
 };
 
 // Sem framework de HTML nenhum nesse projeto (zero-dependência de
@@ -875,6 +878,15 @@ function serveStatic(req, res) {
 
   fs.readFile(filePath, (err, data) => {
     if (err) {
+      // Carreira 2.0 (AUD-01): arquivo do bundle que não existe (ex.: um JS
+      // com hash de um deploy anterior) é 404 de verdade — nunca o HTML do
+      // portal, que o navegador tentaria rodar como módulo (tela em branco).
+      // Rotas da v2 SEM extensão já foram atendidas antes (index da SPA).
+      const reqPath = decodeURIComponent(req.url.split("?")[0]);
+      if (reqPath.startsWith("/carreira/") && path.extname(reqPath)) {
+        res.writeHead(404, { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-cache" });
+        return res.end("Not found");
+      }
       // fallback SPA: qualquer rota desconhecida cai no index.html
       fs.readFile(path.join(PUBLIC_DIR, "index.html"), (e2, data2) => {
         if (e2) { res.writeHead(404); return res.end("Not found"); }
