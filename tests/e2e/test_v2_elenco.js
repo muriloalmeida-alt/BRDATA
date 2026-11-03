@@ -89,7 +89,7 @@ const { skipPreseason } = require("./_calendar_skip");
   await v2.click('.pf-foot a.cta[href="/carreira/escalacao"]');
   await v2.waitForSelector(".lu-pitch", { timeout: 10000 });
   await v2.goBack(); await v2.waitForSelector(".pf-hero", { timeout: 10000 });
-  await v2.click(".pf-foot .btn-secondary");
+  await v2.click(".pf-foot .link-back");
   await v2.waitForSelector(".sq-row", { timeout: 10000 });
   const navOk = new URL(v2.url()).pathname === "/carreira/elenco";
   await v2.click('.cal-foot a.cta[href="/carreira/escalacao"]');

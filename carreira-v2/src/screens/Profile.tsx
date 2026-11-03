@@ -43,7 +43,7 @@ export function Profile({ m }: { m: ProfileModel }) {
 
       <div className="pf-foot">
         <Link className="cta" to={`${BASE}/escalacao`}>Ver escalação</Link>
-        <button type="button" className="btn-secondary" onClick={() => goBackTo(`${BASE}/elenco`)}>Voltar ao elenco</button>
+        <button type="button" className="link-back" onClick={() => goBackTo(`${BASE}/elenco`)}>Voltar ao elenco</button>
       </div>
     </div>
   );

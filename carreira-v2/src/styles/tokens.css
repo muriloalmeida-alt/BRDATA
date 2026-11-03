@@ -24,7 +24,8 @@
   --bd-font-display: "Barlow Condensed", "Arial Narrow", sans-serif;
   --bd-font-text: "Barlow", "Inter", system-ui, sans-serif;
 
-  --bd-gutter: 16px;
+  /* P3 (03/11): margens laterais 24 px; 20 px em telas de até 360 px (abaixo). */
+  --bd-gutter: 24px;
   --bd-space-1: 4px; --bd-space-2: 8px; --bd-space-3: 12px; --bd-space-4: 16px;
   --bd-space-6: 24px; --bd-space-8: 32px;
   --bd-radius-sm: 8px; --bd-radius: 12px;
@@ -34,4 +35,8 @@
   --bd-nav-h: 64px;
   --bd-safe-top: env(safe-area-inset-top, 0px);
   --bd-safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+@media (max-width: 360px) {
+  :root { --bd-gutter: 20px; }
 }

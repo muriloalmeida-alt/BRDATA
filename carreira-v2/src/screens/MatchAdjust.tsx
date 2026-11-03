@@ -181,7 +181,7 @@ export function EventsView({ m, teamById, onBack }: { m: MatchModel; teamById: T
         ))}
       </ol>
       <div className="mt-foot pz-foot">
-        <button type="button" className="cta" onClick={onBack}><IconBack className="mt-btn-ico" />{m.phase === "encerrada" ? "Voltar ao resultado" : "Voltar à partida"}</button>
+        <button type="button" className="link-back" onClick={onBack}>{m.phase === "encerrada" ? "Voltar ao resultado" : "Voltar à partida"}</button>
       </div>
     </div>
   );

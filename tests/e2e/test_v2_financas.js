@@ -103,7 +103,7 @@ const { playRound, closeLeftoverTabela } = require("./_round");
   const mk = await v2.evaluate(() => ({ active: document.getElementById("panel-mercado").classList.contains("active"), hash: location.hash }));
   await v2.goto(base + "/carreira/financas", { waitUntil: "domcontentloaded" });
   await v2.waitForSelector(".fn-cash", { timeout: 15000 });
-  await v2.click(".cal-foot .cta");
+  await v2.click(".cal-foot .link-back");
   await v2.waitForSelector(".home", { timeout: 10000 });
   check("5) 'Ver mercado' abre o Mercado da versão atual (#mercado) e limpa o fragmento; 'Voltar ao clube' → Início:",
     mk.active && mk.hash === "" && new URL(v2.url()).pathname === "/carreira/", JSON.stringify({ mk, url: v2.url() }));
