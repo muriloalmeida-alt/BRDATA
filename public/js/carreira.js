@@ -7120,6 +7120,14 @@ const DAILY_LOGIN_REWARD_LABEL = { coins: "moedas do clube", boost: "moral do el
 // novo); "premium_pack" (dia 7) empilha moedas + moral + recuperação
 // de condição, igual o reward "premium" dos objetivos de temporada.
 function applyDailyLoginReward(reward) {
+  // BUG CORRIGIDO (dia 7, 03/11/2026): o servidor (users.js) manda o
+  // "pacote de elite" sem `amount` ({ type: "premium_pack", id: … }) e o
+  // caixa virava NaN (gravado como null no save). Sem valor válido vindo
+  // do servidor, usa o do ciclo deste mesmo arquivo (DAILY_LOGIN_CYCLE).
+  if (!Number.isFinite(reward.amount)) {
+    const fromCycle = (DAILY_LOGIN_CYCLE.find((d) => d.reward.type === reward.type) || {}).reward;
+    reward = { ...reward, amount: fromCycle && Number.isFinite(fromCycle.amount) ? fromCycle.amount : 0 };
+  }
   if (reward.type === "coins") {
     CAREER.finances.cash += reward.amount;
     pushPurchaseHistory(DAILY_LOGIN_REWARD_ICON.coins, "Recompensa diária: moedas do clube", "Login diário", `+${fmtBRL(reward.amount)}`, "credit");

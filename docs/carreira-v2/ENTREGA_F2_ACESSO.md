@@ -65,12 +65,18 @@ O E2E novo percorre o caminho inteiro de uma conta nova e confere que **nenhuma 
 - **Tutorial de boas-vindas** (4 telas, 1ª conta) e **assistente de início** (a cada carreira nova): entram com o P8. Até lá, quem cria carreira pela v2 não vê esses dois.
 - **Os botões que ainda abrem telas da versão anterior** (D3) continuam até cada tela ser refeita.
 
-## Achado durante a fase: bug do dia 7, na versão anterior (preciso da sua decisão)
-**O que acontece:** no dia 7 da recompensa ("pacote de elite"), o servidor manda o prêmio **sem valor** (`server/src/users.js`: `{ type: "premium_pack", id: "weekly_elite" }`). O jogo faz `caixa += reward.amount` com valor indefinido. O caixa vira `NaN` e é gravado como `null` no save.
+## Bug do dia 7 na versão anterior: corrigido (aprovado em 03/11)
+**O que acontecia:** no dia 7 da recompensa ("pacote de elite"), o servidor mandava o prêmio **sem valor**. O `server/src/users.js` devolve `{ type: "premium_pack", id: "weekly_elite" }`. O jogo fazia `caixa += reward.amount` com valor indefinido, então o caixa virava `NaN` e era gravado como `null` no save. A v2 usava a mesma função, então também era afetada.
 
-**Onde está:** o bug existe hoje na versão anterior. A v2 usa a mesma função, então também é afetada.
+**A correção (em `public/js/carreira.js`, `applyDailyLoginReward`):** quando o servidor não manda um valor válido, o jogo usa o valor do ciclo do próprio jogo (`DAILY_LOGIN_CYCLE`, R$ 3.000 no dia 7). O servidor não muda.
 
-**Correção mínima proposta:** no cliente, usar o valor do ciclo do próprio jogo (R$ 3.000) quando o servidor não manda valor, sem mexer no servidor. **Não apliquei sem a sua aprovação.**
+**Teste novo `test_recompensa_dia7.js`,** com o formato exato que o servidor manda:
+1. aplicar o prêmio do dia 7 dá caixa numérico com +R$ 3.000, moral em alta e o detalhe com o valor;
+2. a coleta real do dia 7, com a resposta do servidor, grava o save com caixa numérico e +R$ 3.000.
+
+**Reprodução sem a correção:** as duas verificações falham, com caixa `null` e detalhe "+R$ 0".
+
+Também passaram os testes que tocam a recompensa: `test_engajamento`, `test_onboarding` e `test_v2_acesso`.
 
 ## Testes
 - **Unitários:** 67/67. São 2 novos, da recompensa: textos pelo tipo real e a regra de "pendente hoje".
