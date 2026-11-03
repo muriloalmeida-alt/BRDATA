@@ -1,6 +1,6 @@
 // MatchGateway — porta da v2 para a partida ao vivo (plano do bloco da
 // partida, opção A). Atrás dela, a "ponte": a versão atual aberta num
-// quadro invisível em /carreira?ponte=partida, com o motor e a gravação
+// quadro invisível em /carreira-old?ponte=partida, com o motor e a gravação
 // de sempre (API window.BRDATA_PONTE em public/js/carreira.js). Se um dia
 // o motor virar módulo comum (opção B), só esta porta muda.
 
@@ -60,7 +60,7 @@ const HIDDEN = "position:fixed;width:1px;height:1px;left:-9999px;top:0;border:0;
 export function openMatchSession(): Promise<MatchSession> {
   return new Promise((resolve, reject) => {
     const frame = document.createElement("iframe");
-    frame.src = "/carreira?ponte=partida";
+    frame.src = "/carreira-old?ponte=partida";
     frame.title = "Motor da partida";
     frame.setAttribute("aria-hidden", "true");
     frame.tabIndex = -1;

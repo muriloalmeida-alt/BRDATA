@@ -26,7 +26,7 @@ fs.mkdirSync(out, { recursive: true });
     await fetch("/api/auth/signup", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: "Murilo Almeida", email, password: "senha123", phone: "11999999999", plan: "freemium" }) });
     await fetch("/api/auth/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, password: "senha123" }) });
   }, email);
-  await page.goto(base + "/carreira", { waitUntil: "domcontentloaded" });
+  await page.goto(base + "/carreira-old", { waitUntil: "domcontentloaded" });
   await page.click('.mt-competition-card[data-competition="brasileirao"]');
   await page.waitForSelector(".m3-club-row", { timeout: 20000 });
   await page.click('.m3-club-row[data-id="fla"]');
@@ -41,7 +41,7 @@ fs.mkdirSync(out, { recursive: true });
   for (const [w, h] of sizes) {
     const p = await ctx.newPage();
     await p.setViewportSize({ width: w, height: h });
-    await p.goto(base + "/carreira-v2/escalacao", { waitUntil: "networkidle" });
+    await p.goto(base + "/carreira/escalacao", { waitUntil: "networkidle" });
     await p.waitForSelector(".lu-pitch", { timeout: 15000 });
     await p.waitForTimeout(500);
     await p.screenshot({ path: path.join(out, `escalacao-${w}x${h}.png`) });

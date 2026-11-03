@@ -1,4 +1,4 @@
-// Carreira 2.0 — Entrega 04 (Tabela, /carreira-v2/tabela). Pela UI real,
+// Carreira 2.0 — Entrega 04 (Tabela, /carreira/tabela). Pela UI real,
 // depois de 2 rodadas jogadas: Início → Tabela; trecho de 6 linhas ao redor
 // do seu clube e tabela completa iguais à classificação da versão atual;
 // zonas; resultados da última rodada; outras divisões; Copa do Brasil sem
@@ -24,7 +24,7 @@ const { playRound, closeLeftoverTabela } = require("./_round");
     await fetch("/api/auth/signup", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: "Murilo Almeida", email, password: "senha123", phone: "11999999999", plan: "freemium" }) });
     await fetch("/api/auth/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, password: "senha123" }) });
   }, { email });
-  await page.goto(base + "/carreira", { waitUntil: "domcontentloaded" });
+  await page.goto(base + "/carreira-old", { waitUntil: "domcontentloaded" });
   await page.click('.mt-competition-card[data-competition="brasileirao"]');
   await page.waitForSelector(".m3-club-row", { timeout: 20000 });
   await page.click('.m3-club-row[data-id="fla"]');
@@ -53,9 +53,9 @@ const { playRound, closeLeftoverTabela } = require("./_round");
   const v2 = await ctx.newPage();
   const writes = [];
   v2.on("request", (r) => { if (r.url().includes("/api/career") && r.method() !== "GET") writes.push(r.method()); });
-  await v2.goto(base + "/carreira-v2/", { waitUntil: "domcontentloaded" });
+  await v2.goto(base + "/carreira/", { waitUntil: "domcontentloaded" });
   await v2.waitForSelector(".home", { timeout: 15000 });
-  await v2.click('a.home-pos[href="/carreira-v2/tabela"]');
+  await v2.click('a.home-pos[href="/carreira/tabela"]');
   await v2.waitForSelector(".tb-table", { timeout: 10000 });
   const read = () => v2.evaluate(() => [...document.querySelectorAll(".tb-row")].map((r) => ({
     pos: Number(r.querySelector(".tb-pos").textContent), name: r.querySelector(".tb-name").textContent,
@@ -66,7 +66,7 @@ const { playRound, closeLeftoverTabela } = require("./_round");
   const head = await v2.evaluate(() => ({ title: document.querySelector(".screen-title").textContent, round: document.querySelector(".tb-round").textContent, comp: document.querySelector(".tb-comp").textContent }));
   const meRow = ex.find((r) => r.me);
   check("1) Início → Tabela: trecho de 6 linhas com seu clube destacado na posição real, rodada da última disputada:",
-    new URL(v2.url()).pathname === "/carreira-v2/tabela" && head.title === "A disputa continua." && head.round === `Rodada ${legacy.last}` && head.comp === "Brasileirão Série A"
+    new URL(v2.url()).pathname === "/carreira/tabela" && head.title === "A disputa continua." && head.round === `Rodada ${legacy.last}` && head.comp === "Brasileirão Série A"
       && ex.length === 6 && meRow && meRow.pos === legacy.myPos && ex.every((r) => { const l = legacy.rows[r.pos - 1]; return l.name === r.name && l.pts === r.pts && l.j === r.j; }), JSON.stringify({ head, ex, myPos: legacy.myPos }));
 
   // 2) Tabela completa igual à da versão atual; zonas da Série A.
@@ -111,15 +111,15 @@ const { playRound, closeLeftoverTabela } = require("./_round");
   // 7) Voltar ao clube → Início.
   await v2.click(".tb-foot .cta");
   await v2.waitForSelector(".home", { timeout: 10000 });
-  check("7) 'Voltar ao clube' leva ao Início:", new URL(v2.url()).pathname === "/carreira-v2/", v2.url());
+  check("7) 'Voltar ao clube' leva ao Início:", new URL(v2.url()).pathname === "/carreira/", v2.url());
 
   // 8) Toque num clube adversário → elenco dele na versão atual.
-  await v2.goto(base + "/carreira-v2/tabela", { waitUntil: "domcontentloaded" });
+  await v2.goto(base + "/carreira/tabela", { waitUntil: "domcontentloaded" });
   await v2.waitForSelector(".tb-row", { timeout: 15000 });
   const other = v2.locator(".tb-row:not(.is-me)").first();
   const otherName = await other.locator(".tb-name").textContent();
   await other.click();
-  await v2.waitForURL(/\/carreira(#.*)?$/, { timeout: 10000 });
+  await v2.waitForURL(/\/carreira-old(#.*)?$/, { timeout: 10000 });
   await waitForBoot(v2);
   await v2.waitForFunction(() => document.getElementById("clubRosterOverlay").classList.contains("open"), null, { timeout: 15000 }).catch(() => {});
   const roster = await v2.evaluate(() => ({ open: document.getElementById("clubRosterOverlay").classList.contains("open"), name: document.getElementById("clubRosterName").textContent, hash: location.hash }));

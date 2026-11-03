@@ -14,7 +14,7 @@
 /* Faixa do confronto: fotografia CEN-02 (estádio, recorte de cabeçalho)
    só nesta região, com proteção de gradiente para o texto. */
 .home-match { position: relative; margin-top: 10px; min-height: 150px; isolation: isolate; }
-.home-match-photo { position: absolute; inset: 0 0 -6px; z-index: -1; background: url("/carreira-v2/assets-scene/cen-02-estadio-header.webp") center 38% / cover no-repeat; }
+.home-match-photo { position: absolute; inset: 0 0 -6px; z-index: -1; background: url("/carreira/assets-scene/cen-02-estadio-header.webp") center 38% / cover no-repeat; }
 .home-match-photo::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, var(--bd-bg) 0%, rgba(8, 14, 24, .05) 22%, rgba(8, 14, 24, .1) 72%, var(--bd-bg) 100%); }
 .home-match-body { position: relative; padding: 16px var(--bd-gutter) 4px; display: flex; flex-direction: column; align-items: center; }
 .home-teams { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; width: 100%; max-width: 340px; }

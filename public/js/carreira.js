@@ -16874,8 +16874,8 @@ function migrateCareerDefaults() {
 // (CAREER.competitionId), não sempre Série A. Sem carreira salva, quem
 // decide o campeonato é o novo seletor (ver renderCompetitionPicker) —
 // loadLeague só roda depois que ele escolher.
-// Carreira 2.0 — a v2 (/carreira-v2) abre aqui as telas que ainda não tem,
-// via fragmento: /carreira#elenco, #preparar etc. Só depois que o tutorial,
+// Carreira 2.0 — a v2 (/carreira) abre aqui as telas que ainda não tem,
+// via fragmento: /carreira-old#elenco, #preparar etc. Só depois que o tutorial,
 // o assistente e o login diário (que abrem sozinhos ao entrar) fecharem;
 // o fragmento é limpo pra um recarregamento não repetir a ação.
 /* ---------- Carreira 2.0 — API da ponte (modo ?ponte=partida) ----------

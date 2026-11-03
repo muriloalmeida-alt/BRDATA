@@ -1,4 +1,4 @@
-// Carreira 2.0 — Entrega 07 (Diretoria, /carreira-v2/diretoria). Pela UI
+// Carreira 2.0 — Entrega 07 (Diretoria, /carreira/diretoria). Pela UI
 // real: Início → Objetivo → Diretoria; meta igual à da versão atual;
 // pré-temporada sem posição; depois de 1 rodada, posição e "Dentro da
 // meta" com o critério da versão atual (boardGoalMet); outros objetivos;
@@ -23,7 +23,7 @@ const { playRound, closeLeftoverTabela } = require("./_round");
     await fetch("/api/auth/signup", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: "Murilo Almeida", email, password: "senha123", phone: "11999999999", plan: "freemium" }) });
     await fetch("/api/auth/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, password: "senha123" }) });
   }, { email });
-  await page.goto(base + "/carreira", { waitUntil: "domcontentloaded" });
+  await page.goto(base + "/carreira-old", { waitUntil: "domcontentloaded" });
   await page.click('.mt-competition-card[data-competition="brasileirao"]');
   await page.waitForSelector(".m3-club-row", { timeout: 20000 });
   await page.click('.m3-club-row[data-id="fla"]');
@@ -45,13 +45,13 @@ const { playRound, closeLeftoverTabela } = require("./_round");
   }));
 
   // 1) Pré-temporada: Início → Objetivo → Diretoria, meta real, sem posição.
-  await v2.goto(base + "/carreira-v2/", { waitUntil: "domcontentloaded" });
+  await v2.goto(base + "/carreira/", { waitUntil: "domcontentloaded" });
   await v2.waitForSelector(".home", { timeout: 15000 });
-  await v2.click('a.row[href="/carreira-v2/diretoria"]');
+  await v2.click('a.row[href="/carreira/diretoria"]');
   await v2.waitForSelector(".bd-list", { timeout: 10000 });
   const pre = await read();
   check("1) Início → Diretoria (pré-temporada): meta igual à da versão atual e 'Temporada ainda não começou', sem barra nem %:",
-    pre.path === "/carreira-v2/diretoria" && pre.title === "Diretoria" && pre.lead === "O que o clube espera." && pre.items[0][0] === goal
+    pre.path === "/carreira/diretoria" && pre.title === "Diretoria" && pre.lead === "O que o clube espera." && pre.items[0][0] === goal
       && pre.items[1][0] === "Temporada ainda não começou" && pre.items[1].length === 1 && !/%|confian/i.test(pre.text), JSON.stringify(pre.items));
 
   // 2) Depois de 1 rodada: posição e "Dentro da meta" pelo critério da versão atual.
@@ -86,7 +86,7 @@ const { playRound, closeLeftoverTabela } = require("./_round");
     r2.history.length === 2 && /· 7º lugar/.test(r2.history[0]) && /Terminar entre os 10 primeiros · Cumprida$/.test(r2.history[0]) && /Não cumprida$/.test(r2.history[1]), JSON.stringify(r2.history));
 
   // 4) Ver classificação → Tabela; voltar; 360 px; Voltar ao clube; nada gravado.
-  await v2.click('.bd-link[href="/carreira-v2/tabela"]');
+  await v2.click('.bd-link[href="/carreira/tabela"]');
   await v2.waitForSelector(".tb-table", { timeout: 10000 });
   await v2.goBack(); await v2.waitForSelector(".bd-list", { timeout: 10000 });
   await v2.setViewportSize({ width: 360, height: 780 });
@@ -97,7 +97,7 @@ const { playRound, closeLeftoverTabela } = require("./_round");
   await v2.click(".cal-foot .cta");
   await v2.waitForSelector(".home", { timeout: 10000 });
   check("4) Ver classificação abre a Tabela; 360 px sem rolagem horizontal e alvos ≥ 44 px; Voltar ao clube → Início; nada gravado:",
-    a.overflow <= 0 && a.small.length === 0 && new URL(v2.url()).pathname === "/carreira-v2/" && writes.length === 0, JSON.stringify({ a, writes, url: v2.url() }));
+    a.overflow <= 0 && a.small.length === 0 && new URL(v2.url()).pathname === "/carreira/" && writes.length === 0, JSON.stringify({ a, writes, url: v2.url() }));
 
   await browser.close();
 })();

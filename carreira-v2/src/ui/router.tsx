@@ -1,12 +1,12 @@
 // Navegação interna da v2 (History API, sem dependência nova). Rotas:
-//   /carreira-v2/                       Início
-//   /carreira-v2/escalacao              Escalação
-//   /carreira-v2/escalacao/trocar?…     Quem entra? (vaga=N | reserva=id)
+//   /carreira/                       Início
+//   /carreira/escalacao              Escalação
+//   /carreira/escalacao/trocar?…     Quem entra? (vaga=N | reserva=id)
 // O servidor devolve o index.html para qualquer caminho sem extensão
-// abaixo de /carreira-v2/ (server.js), então recarregar funciona.
+// abaixo de /carreira/ (server.js), então recarregar funciona.
 import { useEffect, useState, type AnchorHTMLAttributes, type MouseEvent } from "react";
 
-export const BASE = "/carreira-v2";
+export const BASE = "/carreira";
 const EVT = "bd:navigate";
 
 export function navigate(to: string, opts: { replace?: boolean } = {}) {

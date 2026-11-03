@@ -1640,17 +1640,26 @@ const server = http.createServer(async (req, res) => {
     // abaixo). noindex sempre — é uma ferramenta atrás de login, não
     // conteúdo pra indexar.
     // Carreira 2.0 (frontend novo, React — fonte em carreira-v2/, build
-    // versionado em public/carreira-v2/). Rota paralela: /carreira segue
-    // intacta. Qualquer subrota SEM extensão serve o index da SPA (deep
-    // link); arquivos (assets/…, *.webp) caem no estático normal.
-    if (pathname === "/carreira-v2" || (pathname.startsWith("/carreira-v2/") && !path.extname(pathname))) {
-      return fs.readFile(path.join(PUBLIC_DIR, "carreira-v2", "index.html"), (err, data) => {
+    // versionado em public/carreira/). Desde 01/11/2026 é ela que responde
+    // em /carreira; a versão anterior (carreira.html) passou para
+    // /carreira-old (que a v2 também usa para as telas que ainda não tem e
+    // para a ponte da partida). Qualquer subrota SEM extensão serve o index
+    // da SPA (deep link); arquivos (assets/…, *.webp) caem no estático normal.
+    if (pathname === "/carreira" || (pathname.startsWith("/carreira/") && !path.extname(pathname))) {
+      return fs.readFile(path.join(PUBLIC_DIR, "carreira", "index.html"), (err, data) => {
         if (err) { res.writeHead(404); return res.end("Not found"); }
         res.writeHead(200, { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-cache" });
         res.end(data.toString("utf8").replace("</head>", `<meta name="robots" content="noindex, nofollow">\n</head>`));
       });
     }
-    if (pathname === "/carreira") {
+    // Endereço antigo da v2 (links e favoritos de antes da troca): mesmo
+    // caminho, já na rota nova.
+    if (pathname === "/carreira-v2" || pathname.startsWith("/carreira-v2/")) {
+      const qs = req.url.includes("?") ? req.url.slice(req.url.indexOf("?")) : "";
+      res.writeHead(302, { Location: "/carreira" + pathname.slice("/carreira-v2".length) + qs });
+      return res.end();
+    }
+    if (pathname === "/carreira-old") {
       return fs.readFile(path.join(PUBLIC_DIR, "carreira.html"), (err, data) => {
         if (err) { res.writeHead(404); return res.end("Not found"); }
         res.writeHead(200, { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-cache" });

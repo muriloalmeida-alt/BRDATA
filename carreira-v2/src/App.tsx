@@ -38,13 +38,13 @@ export function App() {
     setState({ kind: "loading" });
     try {
       const user = await SessionGateway.current();
-      if (!user) { location.replace("/carreira"); return; }
+      if (!user) { location.replace("/carreira-old"); return; }
       const career = await CareerGateway.loadActive();
-      if (!career) { location.replace("/carreira"); return; }
+      if (!career) { location.replace("/carreira-old"); return; }
       const teamById = await ClubCatalogGateway.forCareer(career);
       setState({ kind: "ready", data: { career, teamById } });
     } catch (e) {
-      if (e instanceof HttpError && e.status === 401) { location.replace("/carreira"); return; }
+      if (e instanceof HttpError && e.status === 401) { location.replace("/carreira-old"); return; }
       setState({ kind: "error", message: "Não foi possível carregar." });
     }
   }, []);
@@ -63,7 +63,7 @@ export function App() {
       setState((s) => s.kind === "ready" ? { kind: "ready", data: { ...s.data, career: r.career } } : s);
       return null;
     } catch (e) {
-      if (e instanceof HttpError && e.status === 401) { location.replace("/carreira"); return null; }
+      if (e instanceof HttpError && e.status === 401) { location.replace("/carreira-old"); return null; }
       return SAVE_ERROR;
     }
   }, []);

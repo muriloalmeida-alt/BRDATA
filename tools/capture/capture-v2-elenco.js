@@ -3,7 +3,7 @@
    Uso: node tools/capture/capture-v2-elenco.js <baseUrl> <saída> [rodadas] [w×h,...]
    Cria conta, cria carreira (Flamengo, Série A) pela tela atual, joga N
    rodadas pela interface (mesmo caminho dos testes E2E) e fotografa
-   /carreira-v2/elenco e o perfil de um atacante titular, depois de N
+   /carreira/elenco e o perfil de um atacante titular, depois de N
    rodadas (situações reais: titular, reserva, lesões). */
 const path = require("path");
 const fs = require("fs");
@@ -29,7 +29,7 @@ fs.mkdirSync(out, { recursive: true });
     await fetch("/api/auth/signup", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: "Murilo Almeida", email, password: "senha123", phone: "11999999999", plan: "freemium" }) });
     await fetch("/api/auth/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, password: "senha123" }) });
   }, email);
-  await page.goto(base + "/carreira", { waitUntil: "domcontentloaded" });
+  await page.goto(base + "/carreira-old", { waitUntil: "domcontentloaded" });
   await page.click('.mt-competition-card[data-competition="brasileirao"]');
   await page.waitForSelector(".m3-club-row", { timeout: 20000 });
   await page.click('.m3-club-row[data-id="fla"]');
@@ -49,12 +49,12 @@ fs.mkdirSync(out, { recursive: true });
   for (const [w, h] of sizes) {
     const p = await ctx.newPage();
     await p.setViewportSize({ width: w, height: h });
-    await p.goto(base + "/carreira-v2/elenco", { waitUntil: "networkidle" });
+    await p.goto(base + "/carreira/elenco", { waitUntil: "networkidle" });
     await p.waitForSelector(".sq-row", { timeout: 15000 });
     await p.waitForTimeout(500);
     await p.screenshot({ path: path.join(out, `elenco-${w}x${h}.png`) });
     await p.screenshot({ path: path.join(out, `elenco-full-${w}x${h}.png`), fullPage: true });
-    await p.goto(base + "/carreira-v2/elenco/jogador?id=" + encodeURIComponent(striker), { waitUntil: "networkidle" });
+    await p.goto(base + "/carreira/elenco/jogador?id=" + encodeURIComponent(striker), { waitUntil: "networkidle" });
     await p.waitForSelector(".pf-hero", { timeout: 15000 });
     await p.waitForTimeout(400);
     await p.screenshot({ path: path.join(out, `perfil-${w}x${h}.png`) });

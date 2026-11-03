@@ -1,7 +1,7 @@
-// Carreira 2.0 — Entrega 01 (Início, /carreira-v2/). Pela UI real:
+// Carreira 2.0 — Entrega 01 (Início, /carreira/). Pela UI real:
 // redirecionamentos sem sessão/carreira, dados do save (pré-temporada e
 // semana de jogo), escudo oficial, NENHUMA escrita no save pela v2, links
-// diretos para a versão atual (/carreira#acao), acessibilidade/360 px e
+// diretos para a versão atual (/carreira-old#acao), acessibilidade/360 px e
 // estado de erro com "Tentar novamente".
 const { chromium } = require("playwright-core");
 const { check } = require("./_check");
@@ -17,9 +17,9 @@ const { skipPreseason } = require("./_calendar_skip");
   const base = "http://localhost:8787";
 
   // 1) Sem sessão: a v2 manda pra versão atual (que tem o login).
-  await page.goto(base + "/carreira-v2/", { waitUntil: "domcontentloaded" });
-  await page.waitForURL(/\/carreira$/, { timeout: 10000 }).catch(() => {});
-  check("1) Sem sessão, /carreira-v2/ redireciona para /carreira:", /\/carreira$/.test(page.url()), page.url());
+  await page.goto(base + "/carreira/", { waitUntil: "domcontentloaded" });
+  await page.waitForURL(/\/carreira-old$/, { timeout: 10000 }).catch(() => {});
+  check("1) Sem sessão, /carreira/ redireciona para /carreira-old:", /\/carreira-old$/.test(page.url()), page.url());
 
   const email = `v2inicio${Date.now()}@teste.com`;
   await page.evaluate(async ({ email }) => {
@@ -28,9 +28,9 @@ const { skipPreseason } = require("./_calendar_skip");
   }, { email });
 
   // 2) Com sessão e sem carreira: idem (criação ainda é da versão atual).
-  await page.goto(base + "/carreira-v2/", { waitUntil: "domcontentloaded" });
-  await page.waitForURL(/\/carreira$/, { timeout: 10000 }).catch(() => {});
-  check("2) Sem carreira, /carreira-v2/ redireciona para /carreira:", /\/carreira$/.test(page.url()), page.url());
+  await page.goto(base + "/carreira/", { waitUntil: "domcontentloaded" });
+  await page.waitForURL(/\/carreira-old$/, { timeout: 10000 }).catch(() => {});
+  check("2) Sem carreira, /carreira/ redireciona para /carreira-old:", /\/carreira-old$/.test(page.url()), page.url());
 
   await waitForBoot(page);
   await page.click('.mt-competition-card[data-competition="brasileirao"]');
@@ -46,7 +46,7 @@ const { skipPreseason } = require("./_calendar_skip");
   const v2 = await ctx.newPage();
   const writes = [];
   v2.on("request", (r) => { if (r.url().includes("/api/career") && r.method() !== "GET") writes.push(`${r.method()} ${r.url()}`); });
-  await v2.goto(base + "/carreira-v2/", { waitUntil: "domcontentloaded" });
+  await v2.goto(base + "/carreira/", { waitUntil: "domcontentloaded" });
   await v2.waitForSelector(".home", { timeout: 15000 });
   const pre = await v2.evaluate(() => ({
     title: document.querySelector(".home-title").textContent,
@@ -65,8 +65,8 @@ const { skipPreseason } = require("./_calendar_skip");
   check("3a) Topo, título e competição reais:", pre.title === "Vamos para o jogo." && pre.comp === "Brasileirão Série A" && pre.club === "FLAMENGO", JSON.stringify(pre));
   check("3b) Confronto real com escudo oficial, data + rodada e fase da pré-temporada:",
     pre.teams.includes("Flamengo") && pre.crest && pre.crest.startsWith("/img/teams/") && /RODADA 1$/.test(pre.line) && /^Pré-temporada · semana \d+ de \d+$/.test(pre.phase), JSON.stringify(pre));
-  check("3c) CTA real da semana sem jogo (Avançar semana → /carreira#avancar-semana) e sem posição/forma inventadas:",
-    pre.cta === "Avançar semana" && pre.ctaHref === "/carreira#avancar-semana" && !pre.stats, JSON.stringify(pre));
+  check("3c) CTA real da semana sem jogo (Avançar semana → /carreira-old#avancar-semana) e sem posição/forma inventadas:",
+    pre.cta === "Avançar semana" && pre.ctaHref === "/carreira-old#avancar-semana" && !pre.stats, JSON.stringify(pre));
   check("3d) Objetivo e finanças iguais aos da versão atual; navegação Início/Elenco/Jogos/Mais:",
     pre.rows.includes(legacy.goal) && pre.value === legacy.cash && JSON.stringify(pre.tabs) === JSON.stringify(["Início", "Elenco", "Jogos", "Mais"]), JSON.stringify({ pre, legacy }));
 
@@ -78,7 +78,7 @@ const { skipPreseason } = require("./_calendar_skip");
   await v2.waitForSelector(".home", { timeout: 15000 });
   const match = await v2.evaluate(() => ({ cta: document.querySelector(".cta").textContent.trim(), href: document.querySelector(".cta").getAttribute("href"), line: document.querySelector(".home-date").textContent, phase: !!document.querySelector(".home-phase") }));
   check("4) Semana de jogo: Preparar partida → Pré-jogo da v2, data + RODADA 1, sem linha de fase:",
-    match.cta === "Preparar partida" && match.href === "/carreira-v2/pre-jogo" && /^\d{2} [A-Z]{3} · RODADA 1$/.test(match.line) && !match.phase, JSON.stringify(match));
+    match.cta === "Preparar partida" && match.href === "/carreira/pre-jogo" && /^\d{2} [A-Z]{3} · RODADA 1$/.test(match.line) && !match.phase, JSON.stringify(match));
   check("5) A v2 não gravou nada no save (só leitura):", writes.length === 0, JSON.stringify(writes));
 
   // 6) Acessibilidade e 360 px: zoom liberado, sem rolagem horizontal, alvos ≥ 44 px.
@@ -97,11 +97,11 @@ const { skipPreseason } = require("./_calendar_skip");
   // Vindo da v2 é sempre um carregamento completo da página (não uma troca
   // de fragmento no mesmo documento) — reproduz isso saindo da página antes.
   await page.goto("about:blank");
-  await page.goto(base + "/carreira#escalacao", { waitUntil: "domcontentloaded" });
+  await page.goto(base + "/carreira-old#escalacao", { waitUntil: "domcontentloaded" });
   await waitForBoot(page);
   await page.waitForFunction(() => document.getElementById("panel-escalacao").classList.contains("active"), null, { timeout: 10000 }).catch(() => {});
   const deep = await page.evaluate(() => ({ active: document.getElementById("panel-escalacao").classList.contains("active"), hash: location.hash }));
-  check("7) /carreira#escalacao abre a escalação e limpa o fragmento:", deep.active && deep.hash === "", JSON.stringify(deep));
+  check("7) /carreira-old#escalacao abre a escalação e limpa o fragmento:", deep.active && deep.hash === "", JSON.stringify(deep));
 
   // 8) Erro de rede ao carregar a carreira: estado de erro com retry
   // funcional. Contexto sem service worker (o SW da raiz, registrado pela
@@ -111,7 +111,7 @@ const { skipPreseason } = require("./_calendar_skip");
   const ep = await errCtx.newPage();
   let failNext = true;
   await ep.route((u) => new URL(u).pathname === "/api/career", (r) => (failNext ? r.abort() : r.continue()));
-  await ep.goto(base + "/carreira-v2/", { waitUntil: "domcontentloaded" });
+  await ep.goto(base + "/carreira/", { waitUntil: "domcontentloaded" });
   await ep.waitForSelector('[role="alert"] .state-btn', { timeout: 15000 }).catch(() => {});
   const err = await ep.evaluate(() => document.querySelector('[role="alert"]')?.textContent || "");
   failNext = false;
@@ -119,6 +119,18 @@ const { skipPreseason } = require("./_calendar_skip");
   const recovered = await ep.waitForSelector(".home", { timeout: 15000 }).then(() => true, () => false);
   check("8) Falha ao carregar mostra erro com 'Tentar novamente', e tentar de novo recupera:", err.includes("Não foi possível carregar.") && recovered, err);
   await errCtx.close();
+
+  // 9) Troca de rotas (01/11): /carreira é a v2, /carreira-old a versão
+  // anterior, e o endereço antigo da v2 leva ao mesmo caminho na rota nova.
+  const r9 = await page.evaluate(async () => {
+    const v2 = await (await fetch("/carreira")).text();
+    const old = await (await fetch("/carreira-old")).text();
+    const red = await fetch("/carreira-v2/tabela?divisao=b", { redirect: "manual" });
+    const fol = await fetch("/carreira-v2/tabela?divisao=b");
+    return { v2: v2.includes('id="root"') && v2.includes("/carreira/assets/") && v2.includes("noindex"), old: old.includes("btnConfirmClub") && old.includes("noindex"), red: red.type === "opaqueredirect" || red.status === 302, fol: new URL(fol.url).pathname + new URL(fol.url).search };
+  });
+  check("9) /carreira serve a v2, /carreira-old a versão anterior e /carreira-v2/… redireciona para /carreira/…:",
+    r9.v2 && r9.old && r9.red && r9.fol === "/carreira/tabela?divisao=b", JSON.stringify(r9));
 
   await browser.close();
 })();

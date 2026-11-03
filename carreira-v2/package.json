@@ -2,7 +2,7 @@
   "name": "brdata-carreira-v2",
   "private": true,
   "version": "0.1.0",
-  "description": "BRDATA Carreira 2.0 — frontend mobile isolado (rota /carreira-v2). Build versionado em public/carreira-v2/.",
+  "description": "BRDATA Carreira 2.0 — frontend mobile isolado (rota /carreira). Build versionado em public/carreira/.",
   "type": "module",
   "scripts": {
     "dev": "vite",

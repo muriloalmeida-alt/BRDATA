@@ -3,7 +3,7 @@
    Uso: node tools/capture/capture-v2-ajustes.js <baseUrl> <saída> [rodadas] [w×h,...]
    Cria conta, cria carreira (Flamengo, Série A) pela tela atual, joga N
    rodadas pela interface (mesmo caminho dos testes E2E) e fotografa
-   /carreira-v2/partida?iniciar=1: Pausa → Substituir (quem sai, Sai ⇄ Entra),
+   /carreira/partida?iniciar=1: Pausa → Substituir (quem sai, Sai ⇄ Entra),
    Ajustar tática e Lances da partida. */
 const path = require("path");
 const fs = require("fs");
@@ -29,7 +29,7 @@ fs.mkdirSync(out, { recursive: true });
     await fetch("/api/auth/signup", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: "Murilo Almeida", email, password: "senha123", phone: "11999999999", plan: "freemium" }) });
     await fetch("/api/auth/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, password: "senha123" }) });
   }, email);
-  await page.goto(base + "/carreira", { waitUntil: "domcontentloaded" });
+  await page.goto(base + "/carreira-old", { waitUntil: "domcontentloaded" });
   await page.click('.mt-competition-card[data-competition="brasileirao"]');
   await page.waitForSelector(".m3-club-row", { timeout: 20000 });
   await page.click('.m3-club-row[data-id="fla"]');
@@ -45,7 +45,7 @@ fs.mkdirSync(out, { recursive: true });
     const p = await ctx.newPage();
     await p.setViewportSize({ width: w, height: h });
     const shot = (n) => p.screenshot({ path: path.join(out, `${n}-${w}x${h}.png`) });
-    await p.goto(base + "/carreira-v2/partida?iniciar=1", { waitUntil: "domcontentloaded" });
+    await p.goto(base + "/carreira/partida?iniciar=1", { waitUntil: "domcontentloaded" });
     await p.waitForSelector(".mt-score", { timeout: 40000 });
     await p.waitForFunction(() => /^(15|30)/.test(document.querySelector(".mt-min")?.textContent || ""), null, { timeout: 30000 });
     await p.click(".mt-actions .mt-primary");
