@@ -23,7 +23,7 @@ const { skipPreseason } = require("./_calendar_skip");
     await fetch("/api/auth/signup", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: "Murilo Almeida", email, password: "senha123", phone: "11999999999", plan: "freemium" }) });
     await fetch("/api/auth/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, password: "senha123" }) });
   }, { email });
-  await page.goto(base + "/carreira", { waitUntil: "domcontentloaded" });
+  await page.goto(base + "/carreira-old", { waitUntil: "domcontentloaded" });
   await page.click('.mt-competition-card[data-competition="brasileirao"]');
   await page.waitForSelector(".m3-club-row", { timeout: 20000 });
   await page.click('.m3-club-row[data-id="fla"]');
@@ -36,7 +36,7 @@ const { skipPreseason } = require("./_calendar_skip");
   await page.goto("about:blank");
 
   const v2 = await ctx.newPage();
-  await v2.goto(base + "/carreira-v2/partida?iniciar=1", { waitUntil: "domcontentloaded" });
+  await v2.goto(base + "/carreira/partida?iniciar=1", { waitUntil: "domcontentloaded" });
   await v2.waitForSelector(".mt-score", { timeout: 40000 });
   await v2.waitForFunction(() => /^(15|30)/.test(document.querySelector(".mt-min")?.textContent || ""), null, { timeout: 20000 });
 

@@ -24,7 +24,7 @@ const { skipPreseason } = require("./_calendar_skip");
     await fetch("/api/auth/signup", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: "Murilo Almeida", email, password: "senha123", phone: "11999999999", plan: "freemium" }) });
     await fetch("/api/auth/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, password: "senha123" }) });
   }, { email });
-  await page.goto(base + "/carreira", { waitUntil: "domcontentloaded" });
+  await page.goto(base + "/carreira-old", { waitUntil: "domcontentloaded" });
   await page.click('.mt-competition-card[data-competition="brasileirao"]');
   await page.waitForSelector(".m3-club-row", { timeout: 20000 });
   await page.click('.m3-club-row[data-id="fla"]');
@@ -38,7 +38,7 @@ const { skipPreseason } = require("./_calendar_skip");
 
   const v2 = await ctx.newPage();
   // 1) Pré-jogo → Iniciar partida (v2); voltar no meio do jogo pergunta.
-  await v2.goto(base + "/carreira-v2/", { waitUntil: "domcontentloaded" });
+  await v2.goto(base + "/carreira/", { waitUntil: "domcontentloaded" });
   await v2.waitForSelector(".home", { timeout: 15000 });
   await v2.click(".home-main .cta"); // Preparar partida
   await v2.waitForSelector(".pm-cta", { timeout: 10000 });
@@ -52,14 +52,14 @@ const { skipPreseason } = require("./_calendar_skip");
   const m1 = await v2.locator(".mt-min").textContent();
   await v2.waitForFunction((m) => document.querySelector(".mt-min")?.textContent !== m, m1, { timeout: 15000 });
   check("1) Pré-jogo abre a Partida da v2; o voltar do sistema no meio do jogo pergunta 'Sair da partida?' e 'Continuar jogando' segue o jogo:",
-    ask.path === "/carreira-v2/partida" && ask.title === "Sair da partida?" && !(await v2.locator('[role="alertdialog"]').count()), JSON.stringify({ ask, m1 }));
+    ask.path === "/carreira/partida" && ask.title === "Sair da partida?" && !(await v2.locator('[role="alertdialog"]').count()), JSON.stringify({ ask, m1 }));
 
   // 2) Voltar de novo → 'Sair e simular o resto' → Resultado gravado.
   await v2.goBack();
   await v2.waitForSelector('[role="alertdialog"]', { timeout: 5000 });
   await v2.click('[role="alertdialog"] .cta');
   await v2.waitForSelector(".rs-title", { timeout: 30000 });
-  await v2.waitForFunction(() => !document.querySelector(".pz-foot .cta").disabled, null, { timeout: 20000 });
+  await v2.waitForSelector('.pz-foot .cta[data-save="saved"]:not([aria-disabled])', { timeout: 20000 });
   const r = await v2.evaluate(() => ({ title: document.querySelector(".rs-title").textContent, line: document.querySelector(".rs-line").textContent, score: document.querySelector(".mt-goals").textContent.split(" - ").map(Number),
     goals: document.querySelectorAll(".rs-goal").length, tag: document.querySelector(".rs-tag").textContent, home: document.querySelector(".mt-team b").textContent }));
   const saved = await v2.evaluate(async () => (await (await fetch("/api/career", { cache: "no-store" })).json()).career);
@@ -111,7 +111,7 @@ const { skipPreseason } = require("./_calendar_skip");
   await v2.waitForSelector(".home", { timeout: 20000 });
   const home = await v2.evaluate(() => ({ path: location.pathname, line: document.querySelector(".home-date")?.textContent || "", frames: document.querySelectorAll("iframe").length }));
   check("5) Continuar mostra a sessão da versão atual em tela cheia com a sequência de sempre (notícias, rodada, tabela…) e, ao terminar, volta ao Início na rodada seguinte, sem a ponte:",
-    frameBox && frameBox.w === 390 && frameBox.h === 844 && firstModal.length >= 1 && steps >= 1 && home.path === "/carreira-v2/" && home.line.endsWith(`RODADA ${before.round + 1}`) && home.frames === 0,
+    frameBox && frameBox.w === 390 && frameBox.h === 844 && firstModal.length >= 1 && steps >= 1 && home.path === "/carreira/" && home.line.endsWith(`RODADA ${before.round + 1}`) && home.frames === 0,
     JSON.stringify({ frameBox, firstModal, steps, home }));
 
   await browser.close();

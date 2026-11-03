@@ -25,7 +25,7 @@ export function Crest({ team, size }: { team: Team; size: number }) {
 // tela equivalente na versão atual (decisão de 31/10).
 export function TabBar({ current }: { current: "inicio" | "elenco" | "jogos" | "mais" }) {
   const tabs = [
-    { id: "inicio", label: "Início", href: "/carreira-v2/", Icon: IconHome },
+    { id: "inicio", label: "Início", href: "/carreira/", Icon: IconHome },
     { id: "elenco", label: "Elenco", href: `${BASE}/elenco`, Icon: IconUsers },
     { id: "jogos", label: "Jogos", href: legacyHref("jogos"), Icon: IconCalendar },
     { id: "mais", label: "Mais", href: legacyHref("mais"), Icon: IconMore },

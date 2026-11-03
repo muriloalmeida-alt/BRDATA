@@ -95,3 +95,8 @@ a { color: inherit; }
 .sheet-opt { display: flex; align-items: center; justify-content: space-between; width: 100%; min-height: 52px; padding: 0 2px; border: 0; border-bottom: 1px solid var(--bd-line); background: none; color: var(--bd-text); font-family: var(--bd-font-display); font-weight: 600; font-size: 20px; text-align: left; cursor: pointer; }
 .sheet-opt.is-on { color: var(--bd-accent); }
 .sheet-check { width: 22px; height: 22px; }
+
+/* Foco programático (AUD-04/05): título da tela e a própria folha recebem
+   foco por programa; o contorno fica só para quem navega por teclado. */
+[data-screen-title]:focus:not(:focus-visible), h1[tabindex="-1"]:focus:not(:focus-visible), .sheet:focus:not(:focus-visible) { outline: none; }
+.sheet:focus { outline: none; }

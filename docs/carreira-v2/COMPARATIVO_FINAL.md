@@ -10,21 +10,23 @@ As imagens ficam em `evidencias/comparativo-final/`:
 - `telas/`: as 19 capturas soltas, para comparar com o publicado.
 - `sem-prancha.png`: as telas que não têm prancha.
 
-Para comparar com o publicado, basta abrir os mesmos endereços em `https://<domínio>/carreira-v2/…`. É preciso estar logado e ter carreira; sem isso, a v2 manda para `/carreira`.
+Para comparar com o publicado, basta abrir os mesmos endereços em `https://<domínio>/carreira/…`. É preciso estar logado e ter carreira; sem isso, a v2 manda para `/carreira-old`.
+
+**Rotas (desde 01/11/2026):** `/carreira` é a v2 e `/carreira-old` é a versão anterior. Endereços antigos `/carreira-v2/…` redirecionam para o mesmo caminho em `/carreira/…`. O arquivo `/carreira.html` continua abrindo a versão anterior (app instalado, notificações e volta do pagamento).
 
 | # | Tela | Endereço | Previsto | Principais diferenças (todas decididas nas entregas) |
 |---|---|---|---|---|
-| 01 | Início | `/carreira-v2/` | `referencias_anteriores/inicio.png` | Data sem horário ("26 MAR · RODADA 3"). Escudos oficiais. Barlow nos textos de apoio. |
-| 02 | Escalação | `/carreira-v2/escalacao` | `referencias_anteriores/escalacao.png` | Overall na camisa (o jogo não tem número de camisa). Banco completo. Linha "Tática e instruções". |
+| 01 | Início | `/carreira/` | `referencias_anteriores/inicio.png` | Data sem horário ("26 MAR · RODADA 3"). Escudos oficiais. Barlow nos textos de apoio. |
+| 02 | Escalação | `/carreira/escalacao` | `referencias_anteriores/escalacao.png` | Overall na camisa (o jogo não tem número de camisa). Banco completo. Linha "Tática e instruções". |
 | 03 | Quem entra? | `…/escalacao/trocar?vaga=N` | `referencias_anteriores/escolher_substituto.png` | Mesma posição primeiro. Marca "Titular" e "No banco". |
-| 04 | Pré-jogo | `/carreira-v2/pre-jogo` | `referencias_anteriores/pre_jogo.png` | Nomes sob as camisas. Avisos como linhas. Sem destaque lima. |
-| 05 | Tabela | `/carreira-v2/tabela` | `02_resultados`, coluna 2 | Trecho de 6 linhas e "Ver tabela completa". Zonas. Seletor A/B/C. Copa do Brasil. |
-| 06 | Calendário | `/carreira-v2/calendario` | `06_clube`, coluna 3 | Dia e mando no lugar do horário. Linha da competição. "Ver anteriores". |
-| 07 | Elenco | `/carreira-v2/elenco` | `05_elenco`, coluna 1 | Overall na camisa. Situação no lugar da posição específica. Seção Base. |
-| 08 | Perfil do jogador | `/carreira-v2/elenco/jogador?id=…` | `05_elenco`, coluna 2 | Dados esportivos (sem idade nem salário). "Contrato e ações" abre a versão atual. |
-| 09 | Diretoria | `/carreira-v2/diretoria` | `06_clube`, coluna 1 | "Dentro da meta". Outros objetivos e temporadas anteriores. |
-| 10 | Finanças | `/carreira-v2/financas` | `06_clube`, coluna 2 | Folha × teto e últimas movimentações. Vermelho quando o saldo é negativo. |
-| 11 | Partida | `/carreira-v2/partida` (aberta pelo Pré-jogo) | `referencias_anteriores/partida.png` | Velocidade 1×/2× e "Pular para o fim". Lances com rótulos fixos. |
+| 04 | Pré-jogo | `/carreira/pre-jogo` | `referencias_anteriores/pre_jogo.png` | Nomes sob as camisas. Avisos como linhas. Sem destaque lima. |
+| 05 | Tabela | `/carreira/tabela` | `02_resultados`, coluna 2 | Trecho de 6 linhas e "Ver tabela completa". Zonas. Seletor A/B/C. Copa do Brasil. |
+| 06 | Calendário | `/carreira/calendario` | `06_clube`, coluna 3 | Dia e mando no lugar do horário. Linha da competição. "Ver anteriores". |
+| 07 | Elenco | `/carreira/elenco` | `05_elenco`, coluna 1 | Overall na camisa. Situação no lugar da posição específica. Seção Base. |
+| 08 | Perfil do jogador | `/carreira/elenco/jogador?id=…` | `05_elenco`, coluna 2 | Dados esportivos (sem idade nem salário). "Contrato e ações" abre a versão atual. |
+| 09 | Diretoria | `/carreira/diretoria` | `06_clube`, coluna 1 | "Dentro da meta". Outros objetivos e temporadas anteriores. |
+| 10 | Finanças | `/carreira/financas` | `06_clube`, coluna 2 | Folha × teto e últimas movimentações. Vermelho quando o saldo é negativo. |
+| 11 | Partida | `/carreira/partida` (aberta pelo Pré-jogo) | `referencias_anteriores/partida.png` | Velocidade 1×/2× e "Pular para o fim". Lances com rótulos fixos. |
 | 12 | Pausa | `…/partida?tela=pausa` | `01_partida`, coluna 1 | Linha extra "Lances da partida". |
 | 15 | Substituição | `…/partida?tela=entra&sai=…` | `01_partida`, coluna 2 | Etapa anterior "Quem sai". Condição física. "N de M". |
 | 17 | Lances da partida | `…/partida?tela=lances` | `01_partida`, coluna 3 | Inclui chances e defesas. O início aparece com um círculo. |
@@ -32,7 +34,7 @@ Para comparar com o publicado, basta abrir os mesmos endereços em `https://<dom
 | — | Revisar time / Quem sai / Ajustar tática / Intervalo | `?tela=time`, `?tela=sai`, `?tela=tatica` | sem prancha | Seguem o visual da v2. O Intervalo é a própria Pausa, com "Começar 2º tempo". |
 
 ## O que continua na versão atual
-Destinos que ainda abrem `/carreira`:
+Destinos que ainda abrem `/carreira-old`:
 - **Pelas linhas das telas da v2:**
   - Tática e instruções;
   - Filtros e ordenação do Elenco;

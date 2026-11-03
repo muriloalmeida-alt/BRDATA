@@ -25,6 +25,18 @@ export const SessionGateway = {
     const me = await getJSON<{ authenticated: boolean; user?: SessionUser }>("/api/auth/me");
     return me.authenticated && me.user ? me.user : null;
   },
+  // Novo login no meio da partida (AUD-02, sessão expirada ao gravar o
+  // resultado). Mesmo POST /api/auth/login do formulário da versão atual
+  // (submitCtLogin), com a mesma regra de pagamento pendente.
+  async login(email: string, password: string): Promise<{ user: SessionUser } | { error: string }> {
+    const res = await fetch("/api/auth/login", { method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json", Accept: "application/json" }, body: JSON.stringify({ email, password }) });
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) return { error: (body && body.error) || "E-mail ou senha incorretos." };
+    const user = body && body.user;
+    if (!user) return { error: "Não foi possível entrar. Tente de novo." };
+    if (user.planStatus && user.planStatus !== "active") return { error: "Sua conta tem um pagamento pendente — finalize na página inicial para liberar o acesso." };
+    return { user: { id: String(user.id), name: user.name } };
+  },
 };
 
 export const CareerGateway = {

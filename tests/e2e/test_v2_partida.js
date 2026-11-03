@@ -1,4 +1,4 @@
-// Carreira 2.0 — Entrega A1 (ponte + Partida, /carreira-v2/partida). Pela UI
+// Carreira 2.0 — Entrega A1 (ponte + Partida, /carreira/partida). Pela UI
 // real: Pré-jogo abre a Partida da v2 (ligado na A4); sem partida em
 // andamento; ?iniciar=1 começa a partida pelo motor da versão atual (ponte
 // invisível), placar/minuto/lances; Pausar/Retomar; intervalo; velocidade;
@@ -24,7 +24,7 @@ const { skipPreseason } = require("./_calendar_skip");
     await fetch("/api/auth/signup", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: "Murilo Almeida", email, password: "senha123", phone: "11999999999", plan: "freemium" }) });
     await fetch("/api/auth/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, password: "senha123" }) });
   }, { email });
-  await page.goto(base + "/carreira", { waitUntil: "domcontentloaded" });
+  await page.goto(base + "/carreira-old", { waitUntil: "domcontentloaded" });
   await page.click('.mt-competition-card[data-competition="brasileirao"]');
   await page.waitForSelector(".m3-club-row", { timeout: 20000 });
   await page.click('.m3-club-row[data-id="fla"]');
@@ -40,24 +40,24 @@ const { skipPreseason } = require("./_calendar_skip");
 
   // 1) Pré-jogo ainda abre a versão atual; /partida sem início não começa nada.
   const v2 = await ctx.newPage();
-  await v2.goto(base + "/carreira-v2/pre-jogo", { waitUntil: "domcontentloaded" });
+  await v2.goto(base + "/carreira/pre-jogo", { waitUntil: "domcontentloaded" });
   await v2.waitForSelector(".pm-cta", { timeout: 15000 });
   const preHref = await v2.locator(".pm-cta").getAttribute("href");
-  await v2.goto(base + "/carreira-v2/partida", { waitUntil: "domcontentloaded" });
+  await v2.goto(base + "/carreira/partida", { waitUntil: "domcontentloaded" });
   await v2.waitForSelector(".state", { timeout: 40000 });
   await v2.waitForFunction(() => /Nenhuma partida/.test(document.querySelector(".state")?.textContent || ""), null, { timeout: 40000 }).catch(() => {});
   const none = await v2.locator(".state").textContent();
   check("1) Pré-jogo abre a Partida da v2 (?iniciar=1, ligado na A4); /partida sem início não começa partida; versão atual normal sem a ponte:",
-    preHref === "/carreira-v2/partida?iniciar=1" && /Nenhuma partida em andamento/.test(none) && noPonte, JSON.stringify({ preHref, none, noPonte }));
+    preHref === "/carreira/partida?iniciar=1" && /Nenhuma partida em andamento/.test(none) && noPonte, JSON.stringify({ preHref, none, noPonte }));
 
   // 2) ?iniciar=1 começa a partida pela ponte; endereço limpo; placar e lances.
-  await v2.goto(base + "/carreira-v2/partida?iniciar=1", { waitUntil: "domcontentloaded" });
+  await v2.goto(base + "/carreira/partida?iniciar=1", { waitUntil: "domcontentloaded" });
   await v2.waitForSelector(".mt-score", { timeout: 40000 });
   const url2 = new URL(v2.url());
   await v2.waitForFunction(() => /^(15|30)/.test(document.querySelector(".mt-min")?.textContent || ""), null, { timeout: 20000 });
   const r2 = await v2.evaluate(() => ({ kicker: document.querySelector(".mt-kicker").textContent, items: document.querySelectorAll(".mt-tl-item").length, start: [...document.querySelectorAll(".mt-tl-item")].pop().textContent }));
   check("2) Partida começa pela ponte: endereço sem ?iniciar, cabeçalho da rodada, minuto avança e lances terminam em 'Início da partida':",
-    url2.pathname === "/carreira-v2/partida" && url2.search === "" && r2.kicker === `Brasileirão Série A · Rodada ${before.round}` && r2.items >= 1 && /Início da partida/.test(r2.start), JSON.stringify({ search: url2.search, r2 }));
+    url2.pathname === "/carreira/partida" && url2.search === "" && r2.kicker === `Brasileirão Série A · Rodada ${before.round}` && r2.items >= 1 && /Início da partida/.test(r2.start), JSON.stringify({ search: url2.search, r2 }));
 
   // 3) Pausar segura o minuto (abre a Pausa — A2); voltar mostra 'Retomar'; velocidade 2×.
   await v2.click(".mt-actions .mt-primary");

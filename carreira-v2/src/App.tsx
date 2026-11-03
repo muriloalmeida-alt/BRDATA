@@ -20,7 +20,7 @@ import { buildBoard } from "./domain/board.ts";
 import { Finance } from "./screens/Finance.tsx";
 import { buildFinance } from "./domain/finance.ts";
 import { Match } from "./screens/Match.tsx";
-import { BASE, goBackTo, navigate, useLocation } from "./ui/router.tsx";
+import { BASE, goBackTo, navigate, useLocation, useScreenFocus } from "./ui/router.tsx";
 
 type Data = { career: Career; teamById: (id: string | number) => Team };
 type State = { kind: "loading" } | { kind: "error"; message: string } | { kind: "ready"; data: Data };
@@ -33,18 +33,21 @@ const SAVE_ERROR = "Não foi possível salvar. Tente de novo.";
 export function App() {
   const [state, setState] = useState<State>({ kind: "loading" });
   const loc = useLocation();
+  // AUD-05: foco no título a cada troca de tela. Trocar só a divisão da
+  // Tabela não é troca de tela: o foco fica na aba escolhida.
+  useScreenFocus(loc.path + loc.search.replace(/[?&]divisao=[^&]*/, ""));
 
   const load = useCallback(async () => {
     setState({ kind: "loading" });
     try {
       const user = await SessionGateway.current();
-      if (!user) { location.replace("/carreira"); return; }
+      if (!user) { location.replace("/carreira-old"); return; }
       const career = await CareerGateway.loadActive();
-      if (!career) { location.replace("/carreira"); return; }
+      if (!career) { location.replace("/carreira-old"); return; }
       const teamById = await ClubCatalogGateway.forCareer(career);
       setState({ kind: "ready", data: { career, teamById } });
     } catch (e) {
-      if (e instanceof HttpError && e.status === 401) { location.replace("/carreira"); return; }
+      if (e instanceof HttpError && e.status === 401) { location.replace("/carreira-old"); return; }
       setState({ kind: "error", message: "Não foi possível carregar." });
     }
   }, []);
@@ -63,7 +66,7 @@ export function App() {
       setState((s) => s.kind === "ready" ? { kind: "ready", data: { ...s.data, career: r.career } } : s);
       return null;
     } catch (e) {
-      if (e instanceof HttpError && e.status === 401) { location.replace("/carreira"); return null; }
+      if (e instanceof HttpError && e.status === 401) { location.replace("/carreira-old"); return null; }
       return SAVE_ERROR;
     }
   }, []);
@@ -89,9 +92,12 @@ export function App() {
     const tela = q.get("tela");
     const SUBS = ["pausa", "time", "sai", "entra", "tatica", "lances", "tabela"] as const;
     const sub = (SUBS as readonly string[]).includes(tela || "") ? (tela as (typeof SUBS)[number]) : null;
+    // AUD-03: a Tabela aberta pelo Resultado fica na rota da partida
+    // (?tela=tabela&divisao=…), para a sessão da ponte — que guarda o
+    // pós-jogo — continuar montada ao trocar de divisão.
     return <Match startNow={q.get("iniciar") === "1"} sub={sub} outId={q.get("sai")} competitionId={data.career.competitionId} competitionName={home.competition}
       teamById={data.teamById} onFinished={reloadCareer}
-      renderTable={(onBack) => <Table m={buildTable(data.career, data.teamById, null)} cup={buildCup(data.career, data.teamById)} onBack={onBack} />} />;
+      renderTable={(ctx) => <Table m={buildTable(data.career, data.teamById, q.get("divisao"))} cup={buildCup(data.career, data.teamById)} match={ctx} />} />;
   }
   if (loc.path === `${BASE}/financas`) {
     return <Finance m={buildFinance(data.career)} />;
@@ -116,7 +122,7 @@ export function App() {
   }
   if (loc.path === `${BASE}/tabela`) {
     const division = new URLSearchParams(loc.search).get("divisao");
-    return <Table key={division || "own"} m={buildTable(data.career, data.teamById, division)} cup={buildCup(data.career, data.teamById)} />;
+    return <Table m={buildTable(data.career, data.teamById, division)} cup={buildCup(data.career, data.teamById)} />;
   }
   if (loc.path === `${BASE}/pre-jogo`) {
     const pm = buildPreMatch(data.career, data.teamById);

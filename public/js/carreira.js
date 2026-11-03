@@ -228,7 +228,7 @@ function squadSortKey(p) { return (SUBPOS_ORDER[subPositionOf(p)] ?? 9) * 1000 -
 const V2_PONTE = new URLSearchParams(location.search).get("ponte") === "partida";
 // Estado só da ponte (nunca salvo): última partida vista (LIVE_MATCH vira
 // null no fim), resultado da gravação final e quem está ouvindo.
-const PONTE = { pronta: false, ultimo: null, fim: null, ouvintes: new Set(), resumo: null, posJogo: false };
+const PONTE = { pronta: false, ultimo: null, fim: null, ouvintes: new Set(), resumo: null, posJogo: false, salvando: false, erroGravacao: null };
 let LIVE_MODE = false;
 let LIVE_SEASON = new Date().getFullYear();
 let LEAGUE_TEAMS = []; // 20 clubes ativos (real ou DEMO_TEAMS — ver loadLeague)
@@ -5421,7 +5421,13 @@ async function persistCareer() {
     // Loga o motivo real no console pra dar pra investigar sem precisar
     // acesso ao servidor, e distingue sessão expirada do resto.
     console.error("[carreira] falha ao salvar progresso:", err.status, err.message);
-    if (err.status === 401) {
+    // Carreira 2.0 (AUD-02): a ponte informa à v2 se foi sessão expirada
+    // ou outra falha. No modo ponte esta página é um quadro invisível — a
+    // tela de login daqui não seria vista; a v2 mostra o próprio aviso.
+    PONTE.erroGravacao = err.status === 401 ? "sessao" : "falha";
+    if (err.status === 401 && V2_PONTE) {
+      // (sem toast/troca de tela: ver acima)
+    } else if (err.status === 401) {
       toast("Sua sessão expirou — faça login de novo pra continuar salvando.", { type: "warn" });
       show("screenLoginRequired");
     } else if (err.status === 413) {
@@ -9468,6 +9474,10 @@ async function finishLiveMatch() {
   if (trigger) firePressConference(trigger.id, lm.round, true);
   document.getElementById("liveMatchOverlay").classList.remove("open");
   LIVE_MATCH = null;
+  // Modo ponte: o resumo fica guardado ANTES da gravação, mesmo que ela
+  // falhe — "Tentar salvar novamente" na v2 (BRDATA_PONTE.salvarDeNovo)
+  // só repete o PUT deste mesmo save, sem simular nem aplicar nada de novo.
+  if (V2_PONTE) PONTE.resumo = summary;
   const saved = await persistCareer();
   ponteFim(saved);
   const btn = document.getElementById("btnSimulate");
@@ -9476,7 +9486,7 @@ async function finishLiveMatch() {
   // Modo ponte: a v2 mostra o Resultado; o detalhe e a sequência de
   // sempre (coletiva, notícias, rodada, Copa, proposta, tabela) só seguem
   // quando ela pedir (BRDATA_PONTE.continuarPosJogo).
-  if (V2_PONTE) { PONTE.resumo = summary; ponteAvisar(); return; }
+  if (V2_PONTE) { ponteAvisar(); return; }
   showMatchDetailModal(summary);
 }
 // GE-COPA-001 (issue #28) — abre a perna do SEU confronto de Copa como
@@ -16874,8 +16884,8 @@ function migrateCareerDefaults() {
 // (CAREER.competitionId), não sempre Série A. Sem carreira salva, quem
 // decide o campeonato é o novo seletor (ver renderCompetitionPicker) —
 // loadLeague só roda depois que ele escolher.
-// Carreira 2.0 — a v2 (/carreira-v2) abre aqui as telas que ainda não tem,
-// via fragmento: /carreira#elenco, #preparar etc. Só depois que o tutorial,
+// Carreira 2.0 — a v2 (/carreira) abre aqui as telas que ainda não tem,
+// via fragmento: /carreira-old#elenco, #preparar etc. Só depois que o tutorial,
 // o assistente e o login diário (que abrem sozinhos ao entrar) fecharem;
 // o fragmento é limpo pra um recarregamento não repetir a ação.
 /* ---------- Carreira 2.0 — API da ponte (modo ?ponte=partida) ----------
@@ -16890,7 +16900,7 @@ function ponteAvisar() {
 }
 function ponteFim(salvo) {
   if (!V2_PONTE) return;
-  PONTE.fim = { salvo: !!salvo };
+  PONTE.fim = { salvo: !!salvo, erro: salvo ? null : (PONTE.erroGravacao || "falha") };
   ponteAvisar();
 }
 function ponteJogador(id) {
@@ -16914,6 +16924,10 @@ function ponteEstado() {
   return {
     fase: encerrada ? "encerrada" : lm.halftime ? "intervalo" : lm.paused ? "pausada" : "jogando",
     gravada: encerrada ? (PONTE.fim ? PONTE.fim.salvo : null) : null,
+    // AUD-02: motivo da falha ("sessao" | "outra-conta" | "falha") e se uma
+    // nova tentativa está em curso.
+    erroGravacao: encerrada && PONTE.fim && !PONTE.fim.salvo ? PONTE.fim.erro : null,
+    salvando: !!PONTE.salvando,
     resultadoPronto: encerrada && !!PONTE.resumo,
     minuto, segundoTempo: minuto > 45,
     contexto: lm.cupContext ? "copa" : lm.friendlyContext ? "amistoso" : "liga",
@@ -16965,11 +16979,39 @@ if (V2_PONTE) {
     // notícias, resultados da rodada, Copa, proposta e tabela.
     continuarPosJogo() {
       if (!PONTE.resumo || PONTE.posJogo) return { ok: false, motivo: "sem-resumo" };
+      if (!PONTE.fim || !PONTE.fim.salvo) return { ok: false, motivo: "nao-salvo" };
       PONTE.posJogo = true;
       showMatchDetailModal(PONTE.resumo);
       document.getElementById("btnMatchDetailContinue").click();
       ponteAvisar();
       return { ok: true };
+    },
+    // Conta dona desta sessão da ponte (a do save em memória).
+    conta() { return ME && ME.id != null ? String(ME.id) : null; },
+    // AUD-02 — "Tentar salvar novamente": repete SÓ a gravação do save que
+    // já está em memória (o resultado foi aplicado uma vez, no fim da
+    // partida). O PUT substitui o save inteiro, então repetir depois de
+    // uma resposta perdida grava o mesmo conteúdo, sem efeito em dobro.
+    // Antes, confere a sessão: expirada → "sessao"; outra conta logada →
+    // "outra-conta" e NÃO grava (o save é desta conta).
+    async salvarDeNovo() {
+      if (!PONTE.fim) return { ok: false, motivo: "sem-partida" };
+      if (PONTE.fim.salvo) return { ok: true };
+      if (PONTE.salvando) return { ok: false, motivo: "em-andamento" };
+      PONTE.salvando = true; PONTE.erroGravacao = null; ponteAvisar();
+      let ok = false;
+      try {
+        let me = null;
+        try { me = await fetchJSON("/api/auth/me"); } catch (err) { PONTE.erroGravacao = err.status === 401 ? "sessao" : "falha"; }
+        if (me && !me.authenticated) PONTE.erroGravacao = "sessao";
+        else if (me && String(me.user.id) !== String(ME && ME.id)) PONTE.erroGravacao = "outra-conta";
+        else if (me) ok = await persistCareer();
+      } finally {
+        PONTE.salvando = false;
+        ponteFim(ok);
+      }
+      if (ok) renderAll();
+      return ok ? { ok: true } : { ok: false, motivo: PONTE.fim.erro };
     },
     // Substituição: valida como a tela atual e executa o MESMO
     // confirmLiveSub (que retoma o jogo — a ponte repausa: na v2 a troca

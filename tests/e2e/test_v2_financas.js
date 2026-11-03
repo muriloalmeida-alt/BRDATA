@@ -1,4 +1,4 @@
-// Carreira 2.0 — Entrega 08 (Finanças, /carreira-v2/financas). Pela UI real:
+// Carreira 2.0 — Entrega 08 (Finanças, /carreira/financas). Pela UI real:
 // Início → Finanças; saldo e folha × teto iguais aos da versão atual;
 // últimas movimentações = extrato da versão atual (mesma ordem) com "Ver
 // extrato completo"; saldo negativo em vermelho e folha acima do teto;
@@ -23,7 +23,7 @@ const { playRound, closeLeftoverTabela } = require("./_round");
     await fetch("/api/auth/signup", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: "Murilo Almeida", email, password: "senha123", phone: "11999999999", plan: "freemium" }) });
     await fetch("/api/auth/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, password: "senha123" }) });
   }, { email });
-  await page.goto(base + "/carreira", { waitUntil: "domcontentloaded" });
+  await page.goto(base + "/carreira-old", { waitUntil: "domcontentloaded" });
   await page.click('.mt-competition-card[data-competition="brasileirao"]');
   await page.waitForSelector(".m3-club-row", { timeout: 20000 });
   await page.click('.m3-club-row[data-id="fla"]');
@@ -53,13 +53,13 @@ const { playRound, closeLeftoverTabela } = require("./_round");
   }));
 
   // 1) Início → Finanças: saldo e folha × teto iguais aos da versão atual.
-  await v2.goto(base + "/carreira-v2/", { waitUntil: "domcontentloaded" });
+  await v2.goto(base + "/carreira/", { waitUntil: "domcontentloaded" });
   await v2.waitForSelector(".home", { timeout: 15000 });
-  await v2.click('a.row[href="/carreira-v2/financas"]');
+  await v2.click('a.row[href="/carreira/financas"]');
   await v2.waitForSelector(".fn-cash", { timeout: 10000 });
   const r1 = await read();
   check("1) Início → Finanças: saldo (lima) e 'folha de teto' iguais aos da versão atual, sem gráficos:",
-    r1.path === "/carreira-v2/financas" && r1.cash === legacy.cash && !r1.neg && r1.wage === `${legacy.bill} de ${legacy.cap}` && !r1.over && !document_hasChart(r1.text), JSON.stringify({ r1: { cash: r1.cash, wage: r1.wage }, legacy: { cash: legacy.cash, bill: legacy.bill, cap: legacy.cap } }));
+    r1.path === "/carreira/financas" && r1.cash === legacy.cash && !r1.neg && r1.wage === `${legacy.bill} de ${legacy.cap}` && !r1.over && !document_hasChart(r1.text), JSON.stringify({ r1: { cash: r1.cash, wage: r1.wage }, legacy: { cash: legacy.cash, bill: legacy.bill, cap: legacy.cap } }));
   function document_hasChart(t) { return /%/.test(t); }
 
   // 2) Últimas movimentações = 5 primeiras do extrato atual; extrato completo.
@@ -88,25 +88,25 @@ const { playRound, closeLeftoverTabela } = require("./_round");
     overflow: document.documentElement.scrollWidth - innerWidth,
     small: [...document.querySelectorAll("a, button")].filter((el) => { const r = el.getBoundingClientRect(); return r.height && (r.height < 44 || r.width < 44); }).map((el) => el.className),
   }));
-  await v2.click('.fn-links a[href="/carreira-v2/elenco"]');
+  await v2.click('.fn-links a[href="/carreira/elenco"]');
   await v2.waitForSelector(".sq-row", { timeout: 10000 });
   await v2.goBack(); await v2.waitForSelector(".fn-cash", { timeout: 10000 });
   check("4) Atalhos (Ver elenco → v2; Ver mercado e Patrocínios/estádio → versão atual); 360 px sem rolagem e alvos ≥ 44 px; nada gravado:",
-    JSON.stringify(r3.links) === JSON.stringify(["/carreira-v2/elenco", "/carreira#mercado", "/carreira#financas"]) && a.overflow <= 0 && a.small.length === 0 && writes.length === 0, JSON.stringify({ links: r3.links, a, writes }));
+    JSON.stringify(r3.links) === JSON.stringify(["/carreira/elenco", "/carreira-old#mercado", "/carreira-old#financas"]) && a.overflow <= 0 && a.small.length === 0 && writes.length === 0, JSON.stringify({ links: r3.links, a, writes }));
 
   // 5) Ver mercado abre o Mercado da versão atual; Voltar ao clube → Início.
   await page.goto("about:blank");
-  await v2.click('.fn-links a[href="/carreira#mercado"]');
-  await v2.waitForURL(/\/carreira(#.*)?$/, { timeout: 10000 });
+  await v2.click('.fn-links a[href="/carreira-old#mercado"]');
+  await v2.waitForURL(/\/carreira-old(#.*)?$/, { timeout: 10000 });
   await waitForBoot(v2);
   await v2.waitForFunction(() => document.getElementById("panel-mercado").classList.contains("active"), null, { timeout: 15000 }).catch(() => {});
   const mk = await v2.evaluate(() => ({ active: document.getElementById("panel-mercado").classList.contains("active"), hash: location.hash }));
-  await v2.goto(base + "/carreira-v2/financas", { waitUntil: "domcontentloaded" });
+  await v2.goto(base + "/carreira/financas", { waitUntil: "domcontentloaded" });
   await v2.waitForSelector(".fn-cash", { timeout: 15000 });
   await v2.click(".cal-foot .cta");
   await v2.waitForSelector(".home", { timeout: 10000 });
   check("5) 'Ver mercado' abre o Mercado da versão atual (#mercado) e limpa o fragmento; 'Voltar ao clube' → Início:",
-    mk.active && mk.hash === "" && new URL(v2.url()).pathname === "/carreira-v2/", JSON.stringify({ mk, url: v2.url() }));
+    mk.active && mk.hash === "" && new URL(v2.url()).pathname === "/carreira/", JSON.stringify({ mk, url: v2.url() }));
 
   await browser.close();
 })();
