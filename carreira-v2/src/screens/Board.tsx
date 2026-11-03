@@ -65,7 +65,7 @@ export function Board({ m }: { m: BoardModel }) {
         </section>
       )}
 
-      <div className="cal-foot"><button type="button" className="cta" onClick={() => goBackTo(`${BASE}/`)}>Voltar ao clube</button></div>
+      <div className="cal-foot"><button type="button" className="link-back" onClick={() => goBackTo(`${BASE}/`)}>Voltar ao clube</button></div>
     </div>
   );
 }

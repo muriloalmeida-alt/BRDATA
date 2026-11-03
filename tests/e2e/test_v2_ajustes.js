@@ -79,7 +79,7 @@ const { skipPreseason } = require("./_calendar_skip");
   await v2.click(".pz-row[href$='tela=lances']");
   await v2.waitForSelector(".ev-list", { timeout: 10000 });
   const ev = await v2.evaluate(() => [...document.querySelectorAll(".ev-item")].map((i) => i.textContent));
-  await v2.click(".pz-foot .cta"); await v2.waitForSelector(".pz-title", { timeout: 10000 });
+  await v2.click(".pz-foot .link-back"); await v2.waitForSelector(".pz-title", { timeout: 10000 });
   check("3) Revisar time mostra quem entrou em campo e quem saiu no banco; Lances registram a substituição:",
     onPitch.includes(inShort) && !onPitch.includes(outShort) && onBench.includes(outShort) && ev.some((t) => /Substituição/.test(t) && t.includes(`entra ${inShort}`) && t.includes(`sai ${outShort}`)) && /Início da partida/.test(ev[ev.length - 1]),
     JSON.stringify({ onPitch, onBench: onBench.slice(0, 3), ev: ev.slice(0, 3) }));

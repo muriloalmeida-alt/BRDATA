@@ -74,7 +74,7 @@ fs.mkdirSync(out, { recursive: true });
     await p.click(".pz-row[href$='tela=lances']");
     await p.waitForSelector(".ev-list", { timeout: 10000 });
     await p.waitForTimeout(200); await shot("lances");
-    await p.click(".pz-foot .cta");
+    await p.click(".pz-foot .link-back");
     await p.waitForSelector(".pz-title", { timeout: 10000 });
     await p.waitForTimeout(200); await shot("pausa-depois");
     await p.click(".pz-foot .mt-primary");

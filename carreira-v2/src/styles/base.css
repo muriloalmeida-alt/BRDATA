@@ -100,3 +100,8 @@ a { color: inherit; }
    foco por programa; o contorno fica só para quem navega por teclado. */
 [data-screen-title]:focus:not(:focus-visible), h1[tabindex="-1"]:focus:not(:focus-visible), .sheet:focus:not(:focus-visible) { outline: none; }
 .sheet:focus { outline: none; }
+
+/* P1 (03/11): "Voltar ao …" é ação secundária em texto — o lima fica para
+   progressão e confirmação (Continuar, Salvar, Confirmar…). Alvo ≥ 44 px. */
+.link-back { display: block; width: 100%; min-height: var(--bd-touch); border: 0; background: none; color: var(--bd-text); font-family: var(--bd-font-display); font-weight: 600; font-size: 19px; text-align: center; cursor: pointer; }
+.link-back:focus-visible { outline: 2px solid var(--bd-accent); outline-offset: 2px; border-radius: var(--bd-radius-sm); }

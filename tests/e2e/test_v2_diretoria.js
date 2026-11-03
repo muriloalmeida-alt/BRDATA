@@ -94,7 +94,7 @@ const { playRound, closeLeftoverTabela } = require("./_round");
     overflow: document.documentElement.scrollWidth - innerWidth,
     small: [...document.querySelectorAll("a, button")].filter((el) => { const r = el.getBoundingClientRect(); return r.height && (r.height < 44 || r.width < 44); }).map((el) => el.className),
   }));
-  await v2.click(".cal-foot .cta");
+  await v2.click(".cal-foot .link-back");
   await v2.waitForSelector(".home", { timeout: 10000 });
   check("4) Ver classificação abre a Tabela; 360 px sem rolagem horizontal e alvos ≥ 44 px; Voltar ao clube → Início; nada gravado:",
     a.overflow <= 0 && a.small.length === 0 && new URL(v2.url()).pathname === "/carreira/" && writes.length === 0, JSON.stringify({ a, writes, url: v2.url() }));

@@ -75,12 +75,12 @@ const { playRound, closeLeftoverTabela } = require("./_round");
     JSON.stringify({ ask, after2 }));
 
   // 3) Voltar ao Resultado, Ver lances, voltar do sistema no Resultado.
-  await v2.click(".tb-foot .cta");
+  await v2.click(".tb-foot .link-back");
   await v2.waitForSelector(".rs-title", { timeout: 10000 });
   const score3 = await v2.locator(".mt-goals").textContent();
   await v2.click(".rs-links a[href$='tela=lances']");
   await v2.waitForSelector(".ev-list", { timeout: 10000 });
-  await v2.click(".pz-foot .cta");
+  await v2.click(".pz-foot .link-back");
   await v2.waitForSelector(".rs-title", { timeout: 10000 });
   await v2.goBack();
   await v2.waitForSelector('[role="alertdialog"]', { timeout: 5000 });

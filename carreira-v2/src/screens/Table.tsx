@@ -120,8 +120,8 @@ export function Table({ m, cup, match }: { m: TableModel; cup: CupModel; match?:
 
       <div className="tb-foot">
         {onBack
-          ? <button type="button" className="cta" onClick={onBack}>Voltar ao resultado<IconChevron className="cta-arrow" /></button>
-          : <button type="button" className="cta" onClick={() => goBackTo(`${BASE}/`)}>Voltar ao clube<IconChevron className="cta-arrow" /></button>}
+          ? <button type="button" className="link-back" onClick={onBack}>Voltar ao resultado</button>
+          : <button type="button" className="link-back" onClick={() => goBackTo(`${BASE}/`)}>Voltar ao clube</button>}
       </div>
     </div>
   );

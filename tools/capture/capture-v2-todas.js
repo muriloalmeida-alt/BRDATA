@@ -76,7 +76,7 @@ fs.mkdirSync(out, { recursive: true });
   await p.click(".pz-row[href$='tela=tatica']"); await p.waitForSelector(".tk-forms"); await shot("16-ajustar-tatica");
   await p.click(".sb-foot .btn-secondary"); await p.waitForSelector(".pz-title");
   await p.click(".pz-row[href$='tela=lances']"); await p.waitForSelector(".ev-list"); await shot("17-lances");
-  await p.click(".pz-foot .cta"); await p.waitForSelector(".pz-title");
+  await p.click(".pz-foot .link-back"); await p.waitForSelector(".pz-title");
   await p.click(".pz-foot .mt-primary"); await p.waitForSelector(".mt-score");
   await p.waitForSelector(".pz-title", { timeout: 40000 }); await shot("18-intervalo");
   await p.click(".pz-foot .mt-primary"); await p.waitForSelector(".mt-score");

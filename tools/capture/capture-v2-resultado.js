@@ -56,9 +56,9 @@ fs.mkdirSync(out, { recursive: true });
     await p.waitForTimeout(400); await shot("resultado");
     await p.screenshot({ path: path.join(out, `resultado-full-${w}x${h}.png`), fullPage: true });
     await p.click(".rs-links a[href$='tela=lances']"); await p.waitForSelector(".ev-list"); await p.waitForTimeout(200); await shot("resultado-lances");
-    await p.click(".pz-foot .cta"); await p.waitForSelector(".rs-title");
+    await p.click(".pz-foot .link-back"); await p.waitForSelector(".rs-title");
     await p.click(".rs-links a[href$='tela=tabela']"); await p.waitForSelector(".tb-table"); await p.waitForTimeout(300); await shot("resultado-tabela");
-    await p.click(".tb-foot .cta"); await p.waitForSelector(".rs-title");
+    await p.click(".tb-foot .link-back"); await p.waitForSelector(".rs-title");
     await p.click(".pz-foot .cta"); // Continuar
     await p.waitForTimeout(1500); await shot("posjogo-versao-atual");
     const frame = p.frames().find((f) => f.url().includes("/carreira/motor"));

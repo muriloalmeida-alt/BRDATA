@@ -72,12 +72,12 @@ const { skipPreseason } = require("./_calendar_skip");
   // 3) Ver lances e Ver tabela voltam ao Resultado (sem sair da partida).
   await v2.click(".rs-links a[href$='tela=lances']");
   await v2.waitForSelector(".ev-list", { timeout: 10000 });
-  const evBtn = await v2.locator(".pz-foot .cta").textContent();
-  await v2.click(".pz-foot .cta"); await v2.waitForSelector(".rs-title", { timeout: 10000 });
+  const evBtn = await v2.locator(".pz-foot .link-back").textContent();
+  await v2.click(".pz-foot .link-back"); await v2.waitForSelector(".rs-title", { timeout: 10000 });
   await v2.click(".rs-links a[href$='tela=tabela']");
   await v2.waitForSelector(".tb-table", { timeout: 10000 });
-  const tb = await v2.evaluate(() => ({ cta: document.querySelector(".tb-foot .cta").textContent, me: document.querySelector(".tb-row.is-me .tb-num").textContent, round: document.querySelector(".tb-round").textContent }));
-  await v2.click(".tb-foot .cta"); await v2.waitForSelector(".rs-title", { timeout: 10000 });
+  const tb = await v2.evaluate(() => ({ cta: document.querySelector(".tb-foot .link-back").textContent, me: document.querySelector(".tb-row.is-me .tb-num").textContent, round: document.querySelector(".tb-round").textContent }));
+  await v2.click(".tb-foot .link-back"); await v2.waitForSelector(".rs-title", { timeout: 10000 });
   check("3) Ver lances ('Voltar ao resultado') e Ver tabela (já com a rodada jogada, 'Voltar ao resultado') voltam ao Resultado:",
     /Voltar ao resultado/.test(evBtn) && /Voltar ao resultado/.test(tb.cta) && tb.round === `Rodada ${before.round}`, JSON.stringify({ evBtn, tb }));
 

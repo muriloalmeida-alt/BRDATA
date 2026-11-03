@@ -109,7 +109,7 @@ const { playRound, closeLeftoverTabela } = require("./_round");
   check("6) A Tabela não grava nada no save:", writes.length === 0, JSON.stringify(writes));
 
   // 7) Voltar ao clube → Início.
-  await v2.click(".tb-foot .cta");
+  await v2.click(".tb-foot .link-back");
   await v2.waitForSelector(".home", { timeout: 10000 });
   check("7) 'Voltar ao clube' leva ao Início:", new URL(v2.url()).pathname === "/carreira/", v2.url());
 
