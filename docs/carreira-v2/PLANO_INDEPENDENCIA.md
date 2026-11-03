@@ -1,7 +1,7 @@
 # Carreira 2.0: plano para separar `/carreira` de `/carreira-old`
 
 - **Data:** 03/11/2026.
-- **Status:** proposta, aguardando as decisões D1 a D4 e as pendências P1 a P8 (seção 6).
+- **Status:** decisões D1 a D4 e P1 a P8 tomadas pelo Murilo em 03/11 (seção 7). Pronto para começar pela fase 1.
 - **Atualização de 03/11:** chegou o pacote complementar do GPT, com as pranchas 17 a 45 (`referencias/complemento_17_45/`). Veja a seção 6.
 - **Objetivo** (pedido do Murilo, 03/11): `/carreira` (v2) e `/carreira-old` (versão anterior) **100% independentes**, sem nenhuma transição entre a jornada nova e a antiga.
 
@@ -273,3 +273,29 @@ Opções:
   - a fase 1 (motor invisível), sem depender de nenhuma resposta;
   - a fase 2 (acesso), assim que D1 a D4 estiverem respondidas.
 - **P1 e P3 afetam telas já aprovadas.** Qualquer ajuste nelas vira uma entrega própria, com comparação e aprovação.
+
+## 7. Decisões do Murilo (03/11)
+| # | Decisão |
+|---|---|
+| D1 | **Mesma carreira** nas duas versões. A independência é de telas e navegação |
+| D2 | **Motor escondido agora** (quadro invisível em rota própria, `/carreira/motor`), **extração em etapas depois** (fase 12) |
+| D3 | **Só homologação** até a v2 ficar completa. Em homologação, os pontos ainda não refeitos continuam abrindo `/carreira-old` |
+| D4 | Telas com prancha do pacote complementar seguem a prancha. As que faltam (P7, P8) são desenhadas pelo Claude no padrão v2 e mostradas antes de implementar |
+| P1 | "Voltar ao …" vira **ação secundária em texto em todas as telas**, inclusive nas já aprovadas (Tabela, Lances, Tabela pelo Resultado) |
+| P2 | O topo mantém o **contexto da tela** à direita ("Partida", "Tabela"…), não "CARREIRA 2.0" |
+| P3 | **Margens laterais de 24 px (20 px em 360)** em toda a v2, inclusive nas telas aprovadas, no lugar dos 16 px |
+| P4 | Instruções por setor com a **escala de 5 passos** e os rótulos reais, igual às Instruções táticas |
+| P5 | Pênaltis na Copa: "**Decidido nos pênaltis · Classificado: <clube>**", sem placar |
+| P6 | Partida da Copa: a **faixa aprovada** (estádio, escudos, placar) ganha o kicker de fase, ida/volta e a linha do agregado |
+| P7 | As telas de entrada **Jogos** e **Clube** e o mapa de navegação são desenhados pelo **Claude no padrão v2**, com aprovação antes de implementar |
+| P8 | Os fluxos sem prancha também ficam com o **Claude no padrão v2**, com aprovação antes de implementar: contratar comissão; contratar olheiro, nova missão e indicações; obra do estádio; compra na loja; detalhe de conquista; Configurações; notificações; assistente de primeira entrada |
+
+**Efeito no plano:**
+- **P1 e P3 mudam telas já aprovadas.** Entram numa entrega própria, **"Ajustes de sistema"**, logo antes da fase 2: margem de 24/20 px e "Voltar" em texto em todas as telas existentes, com comparativo antes × depois para aprovação.
+- **P7 vira a primeira tela da fase 3:** mapa de navegação, mais as entradas Jogos e Clube. Sem elas, as telas novas não têm por onde ser abertas.
+- **Ordem:**
+  1. fase 1 (motor);
+  2. "Ajustes de sistema" (P1, P3);
+  3. fase 2 (acesso);
+  4. mapa de navegação e entradas (P7);
+  5. fases 3 a 11.
