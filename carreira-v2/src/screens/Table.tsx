@@ -3,7 +3,7 @@
 // completa", zonas discretas, seletor de divisão, resultados da última
 // rodada e Copa do Brasil (decisões de 01/11). Só leitura; tocar num clube
 // abre o elenco dele na versão atual.
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { CupModel, TableModel, TableRow } from "../domain/table.ts";
 import { Crest, Wordmark } from "../ui/components.tsx";
 import { IconBack, IconChevron, IconDown } from "../ui/icons.tsx";
@@ -12,9 +12,11 @@ import { legacyClubHref } from "../adapters/legacy.ts";
 import "./table.css";
 
 
-function Row({ r, zoneLabel }: { r: TableRow; zoneLabel: string | null }) {
+function Row({ r, zoneLabel, onClub }: { r: TableRow; zoneLabel: string | null; onClub?: (href: string, name: string) => void }) {
+  const href = legacyClubHref(r.team.id);
   return (
-    <a className={`tb-row${r.mine ? " is-me" : ""}`} href={legacyClubHref(r.team.id)} role="row"
+    <a className={`tb-row${r.mine ? " is-me" : ""}`} href={href} role="row"
+      onClick={onClub ? (e) => { e.preventDefault(); onClub(href, r.team.name); } : undefined}
       aria-label={`${r.pos}º, ${r.team.name}${r.mine ? " (seu clube)" : ""}, ${r.pts} pontos, ${r.j} jogos${zoneLabel ? `, zona: ${zoneLabel}` : ""}. Ver elenco`}>
       <span className={`tb-pos${r.zone ? ` tb-zone tb-zone--${r.zone}` : ""}`} role="cell">{r.pos}</span>
       <span className="tb-club" role="cell"><Crest team={r.team} size={26} /><span className="tb-name">{r.team.name}</span></span>
@@ -24,10 +26,18 @@ function Row({ r, zoneLabel }: { r: TableRow; zoneLabel: string | null }) {
   );
 }
 
-// onBack: aberta pelo Resultado da partida (A4) — voltar retorna a ele, sem
-// sair da partida (a sessão da ponte guarda o pós-jogo pendente).
-export function Table({ m, cup, onBack }: { m: TableModel; cup: CupModel; onBack?: () => void }) {
+// Aberta pelo Resultado da partida (A4, AUD-03), recebe `match`:
+// - voltar retorna ao Resultado, sem sair da partida (a sessão da ponte
+//   guarda o pós-jogo pendente);
+// - trocar a divisão fica na rota da partida (match.onDivision);
+// - tocar num clube não sai direto: match.onClub pergunta antes.
+export interface TableMatchContext { onBack: () => void; onDivision: (id: string | null) => void; onClub: (href: string, name: string) => void }
+
+export function Table({ m, cup, match }: { m: TableModel; cup: CupModel; match?: TableMatchContext }) {
+  const onBack = match?.onBack;
   const [full, setFull] = useState(false);
+  // Outra divisão começa no trecho (a tela não remonta: o foco fica na aba).
+  useEffect(() => { setFull(false); }, [m.division]);
   const rows = full ? m.rows : m.excerpt;
   const legendOf = (z: TableRow["zone"]) => (z ? m.legend.find((l) => l.zone === z)?.label || null : null);
   return (
@@ -46,7 +56,11 @@ export function Table({ m, cup, onBack }: { m: TableModel; cup: CupModel; onBack
         <div className="tb-switch" role="tablist" aria-label="Divisão">
           {m.switcher.map((d) => (
             <button key={d.id} type="button" role="tab" aria-selected={d.id === m.division} className={`tb-seg${d.id === m.division ? " is-on" : ""}`}
-              onClick={() => navigate(d.id === m.ownDivision ? `${BASE}/tabela` : `${BASE}/tabela?divisao=${d.id}`, { replace: true })}>
+              onClick={() => {
+                if (d.id === m.division) return;
+                if (match) match.onDivision(d.id === m.ownDivision ? null : d.id);
+                else navigate(d.id === m.ownDivision ? `${BASE}/tabela` : `${BASE}/tabela?divisao=${d.id}`, { replace: true });
+              }}>
               {d.label}
             </button>
           ))}
@@ -61,7 +75,7 @@ export function Table({ m, cup, onBack }: { m: TableModel; cup: CupModel; onBack
             <span role="columnheader">Pos</span><span role="columnheader">Clube</span>
             <span role="columnheader" className="tb-num" aria-label="Pontos">P</span><span role="columnheader" className="tb-num" aria-label="Jogos">J</span>
           </div>
-          <div role="rowgroup">{rows.map((r) => <Row key={String(r.team.id)} r={r} zoneLabel={legendOf(r.zone)} />)}</div>
+          <div role="rowgroup">{rows.map((r) => <Row key={String(r.team.id)} r={r} zoneLabel={legendOf(r.zone)} onClub={match?.onClub} />)}</div>
         </div>
         {m.rows.length > 6 && (
           <button type="button" className="tb-more" aria-expanded={full} onClick={() => setFull(!full)}>

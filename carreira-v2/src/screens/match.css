@@ -134,3 +134,11 @@
 .rs-links .row:last-child { border-bottom: 1px solid var(--bd-line); }
 .rs-ico { width: 30px; height: 30px; }
 .lv-text { margin: 4px 0 14px; color: var(--bd-muted); font-size: 16px; }
+
+/* "Entre para salvar" (AUD-02) — campos simples na folha escura. */
+.lg-form { display: flex; flex-direction: column; gap: var(--bd-space-3); margin-bottom: var(--bd-space-2); }
+.lg-field { display: flex; flex-direction: column; gap: var(--bd-space-1); color: var(--bd-muted); font-size: 15px; }
+.lg-field input { min-height: var(--bd-cta-h); padding: 0 var(--bd-space-3); border: 1px solid var(--bd-line); border-radius: var(--bd-radius-sm); background: var(--bd-bg-deep); color: var(--bd-text); font: 17px var(--bd-font-text); }
+.lg-field input:focus-visible { outline: 2px solid var(--bd-accent); outline-offset: 1px; }
+.lg-form .cta { margin-top: var(--bd-space-1); }
+.cta[aria-disabled="true"] { opacity: .5; cursor: default; }

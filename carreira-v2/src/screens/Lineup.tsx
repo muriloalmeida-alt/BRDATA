@@ -3,7 +3,7 @@
 // hora, como no legado) e toque no jogador → "Quem entra?". Tática,
 // instruções, escalação automática e esquemas continuam na versão atual
 // (linha "Tática e instruções", decisão de 01/11).
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState, type KeyboardEvent } from "react";
 import { FORMATION_IDS, shortName, type LineupModel } from "../domain/lineup.ts";
 import { PitchPlayers } from "../ui/pitch.tsx";
 import type { HomeModel } from "../domain/home.ts";
@@ -11,34 +11,48 @@ import { CtaLink, Jersey, TabBar, Wordmark } from "../ui/components.tsx";
 import { IconArrow, IconBack, IconCheck, IconChevron, IconDown } from "../ui/icons.tsx";
 import { BASE, Link, goBack } from "../ui/router.tsx";
 import { legacyHref } from "../adapters/legacy.ts";
+import { Sheet } from "../ui/dialog.tsx";
 import "./lineup.css";
 
+// Folha de formação (AUD-04): diálogo da ui/dialog.tsx e radiogroup com
+// foco "roving" — só a opção marcada entra no Tab; as setas (↑↓←→, Home,
+// End) movem o foco entre as opções e Enter/Espaço escolhe. As setas não
+// escolhem sozinhas porque escolher grava na hora (como no legado): passar
+// por 13 formações não pode virar 13 gravações. Durante a gravação a folha
+// não fecha por Escape nem pelo fundo.
 function FormationSheet({ current, busy, error, onPick, onClose }: { current: string; busy: boolean; error: string | null; onPick: (f: string) => void; onClose: () => void }) {
-  const first = useRef<HTMLButtonElement>(null);
-  useEffect(() => { first.current?.focus(); }, []);
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
+  const [focusIdx, setFocusIdx] = useState(Math.max(0, FORMATION_IDS.indexOf(current)));
+  const opts = useRef<(HTMLButtonElement | null)[]>([]);
+  const move = (i: number) => {
+    const n = FORMATION_IDS.length;
+    const next = ((i % n) + n) % n;
+    setFocusIdx(next);
+    opts.current[next]?.focus();
+  };
+  const onKey = (e: KeyboardEvent) => {
+    const k = e.key;
+    if (k === "ArrowDown" || k === "ArrowRight") { e.preventDefault(); move(focusIdx + 1); }
+    else if (k === "ArrowUp" || k === "ArrowLeft") { e.preventDefault(); move(focusIdx - 1); }
+    else if (k === "Home") { e.preventDefault(); move(0); }
+    else if (k === "End") { e.preventDefault(); move(FORMATION_IDS.length - 1); }
+  };
   return (
-    <div className="sheet-scrim" onClick={onClose}>
-      <div className="sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-title" onClick={(e) => e.stopPropagation()}>
-        <div className="sheet-grip" aria-hidden="true" />
-        <h2 id="sheet-title" className="sheet-title">Formação</h2>
-        {error && <p className="inline-error" role="alert">{error}</p>}
-        <div className="sheet-list" role="radiogroup" aria-labelledby="sheet-title">
-          {FORMATION_IDS.map((f) => (
-            <button key={f} ref={f === current ? first : undefined} type="button" role="radio" aria-checked={f === current}
-              className={`sheet-opt${f === current ? " is-on" : ""}`} disabled={busy} onClick={() => onPick(f)}>
-              <span>{f}</span>
-              {f === current && <IconCheck className="sheet-check" />}
-            </button>
-          ))}
-        </div>
-        <button type="button" className="text-btn" onClick={onClose}>Cancelar</button>
+    <Sheet labelledBy="sheet-title" onDismiss={busy ? undefined : onClose}>
+      <h2 id="sheet-title" className="sheet-title">Formação</h2>
+      {error && <p className="inline-error" role="alert">{error}</p>}
+      <div className="sheet-list" role="radiogroup" aria-labelledby="sheet-title" aria-busy={busy} onKeyDown={onKey}>
+        {FORMATION_IDS.map((f, i) => (
+          <button key={f} ref={(el) => { opts.current[i] = el; }} type="button" role="radio" aria-checked={f === current}
+            tabIndex={i === focusIdx ? 0 : -1} data-autofocus={f === current ? "" : undefined}
+            className={`sheet-opt${f === current ? " is-on" : ""}`} aria-disabled={busy || undefined}
+            onFocus={() => setFocusIdx(i)} onClick={() => { if (!busy) onPick(f); }}>
+            <span>{f}</span>
+            {f === current && <IconCheck className="sheet-check" />}
+          </button>
+        ))}
       </div>
-    </div>
+      <button type="button" className="text-btn" disabled={busy} onClick={onClose}>Cancelar</button>
+    </Sheet>
   );
 }
 

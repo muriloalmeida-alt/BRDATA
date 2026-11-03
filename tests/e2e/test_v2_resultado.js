@@ -59,7 +59,7 @@ const { skipPreseason } = require("./_calendar_skip");
   await v2.waitForSelector('[role="alertdialog"]', { timeout: 5000 });
   await v2.click('[role="alertdialog"] .cta');
   await v2.waitForSelector(".rs-title", { timeout: 30000 });
-  await v2.waitForFunction(() => !document.querySelector(".pz-foot .cta").disabled, null, { timeout: 20000 });
+  await v2.waitForSelector('.pz-foot .cta[data-save="saved"]:not([aria-disabled])', { timeout: 20000 });
   const r = await v2.evaluate(() => ({ title: document.querySelector(".rs-title").textContent, line: document.querySelector(".rs-line").textContent, score: document.querySelector(".mt-goals").textContent.split(" - ").map(Number),
     goals: document.querySelectorAll(".rs-goal").length, tag: document.querySelector(".rs-tag").textContent, home: document.querySelector(".mt-team b").textContent }));
   const saved = await v2.evaluate(async () => (await (await fetch("/api/career", { cache: "no-store" })).json()).career);

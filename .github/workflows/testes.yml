@@ -6,6 +6,7 @@
 #   (run_parallel.js --shard=I/4 — a divisão é a mesma em qualquer máquina,
 #   ver suites.json → durationsMs). Cada máquina sobe seu próprio servidor
 #   isolado com dados vazios (--isolated-server).
+# - "Carreira 2.0": unitários, tipos e build da v2 (ver o job).
 # Nada aqui pula teste nem repete teste que falhou: o código de saída de
 # cada script é o veredito (ver tests/e2e/README.md).
 name: Testes
@@ -29,6 +30,35 @@ env:
   PLAYWRIGHT_BROWSERS_PATH: ${{ github.workspace }}/.pw-browsers
 
 jobs:
+  # Carreira 2.0 (AUD-07): o frontend React em carreira-v2/ é servido a partir
+  # do build versionado em public/carreira/ (o Dockerfile só copia public/).
+  # Aqui: dependências travadas (npm ci), testes unitários, checagem de
+  # tipos e a garantia de que o build versionado é exatamente o da fonte —
+  # assim os E2E abaixo, que usam public/carreira/, testam a fonte certa.
+  carreira-v2:
+    name: Carreira 2.0 (unitários, tipos e build)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          # 22: os unitários usam --experimental-strip-types (Node ≥ 22.6).
+          node-version: 22
+          cache: npm
+          cache-dependency-path: carreira-v2/package-lock.json
+      - name: Dependências
+        working-directory: carreira-v2
+        run: npm ci
+      - name: Testes unitários
+        working-directory: carreira-v2
+        run: npm test
+      - name: Checagem de tipos
+        working-directory: carreira-v2
+        run: npm run typecheck
+      - name: Build versionado = build da fonte
+        run: .github/scripts/verificar-bundle-v2.sh
+
   rapida:
     name: Rota rápida
     runs-on: ubuntu-latest
