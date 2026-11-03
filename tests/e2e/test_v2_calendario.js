@@ -5,6 +5,7 @@
 // registro de partidas; CTA da semana; nada gravado; 360 px.
 const { chromium } = require("playwright-core");
 const { check } = require("./_check");
+const { ensureDailyClaimed } = require("./_v2_match");
 const { passCareerSetup, enterGame } = require("./_startup");
 const { skipPreseason } = require("./_calendar_skip");
 const { playRound, closeLeftoverTabela } = require("./_round");
@@ -30,6 +31,7 @@ const { playRound, closeLeftoverTabela } = require("./_round");
   await page.click("#btnConfirmClub");
   await passCareerSetup(page);
   await enterGame(page);
+  await ensureDailyClaimed(page);
   await page.evaluate(() => persistCareer());
 
   const v2 = await ctx.newPage();

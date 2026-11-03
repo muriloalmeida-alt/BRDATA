@@ -7,6 +7,7 @@
 // onboarding; versão atual normal sem a ponte; 360 px.
 const { chromium } = require("playwright-core");
 const { check } = require("./_check");
+const { ensureDailyClaimed } = require("./_v2_match");
 const { passCareerSetup, enterGame, waitForBoot } = require("./_startup");
 const { skipPreseason } = require("./_calendar_skip");
 
@@ -31,6 +32,7 @@ const { skipPreseason } = require("./_calendar_skip");
   await page.click("#btnConfirmClub");
   await passCareerSetup(page);
   await enterGame(page);
+  await ensureDailyClaimed(page);
   await skipPreseason(page);
   await page.evaluate(() => persistCareer());
   const noPonte = await page.evaluate(() => typeof window.BRDATA_PONTE === "undefined" && !V2_PONTE);

@@ -3,14 +3,14 @@
 // equivalente da versão atual até existirem na v2.
 import type { HomeModel } from "../domain/home.ts";
 import { CtaLink, Crest, TabBar, Wordmark } from "../ui/components.tsx";
-import { IconCalendar, IconChevron, IconPitch, IconAlert } from "../ui/icons.tsx";
+import { IconCalendar, IconChevron, IconPitch, IconAlert, IconGift } from "../ui/icons.tsx";
 import { legacyHref } from "../adapters/legacy.ts";
 import { BASE, Link } from "../ui/router.tsx";
 import "./home.css";
 
 const FORM_WORD = { V: "Vitória", E: "Empate", D: "Derrota" } as const;
 
-export function Home({ m }: { m: HomeModel }) {
+export function Home({ m, reward }: { m: HomeModel; reward?: { pending: boolean } }) {
   const title = m.state === "ended" ? "Temporada encerrada." : "Vamos para o jogo.";
   return (
     <div className="home">
@@ -63,6 +63,13 @@ export function Home({ m }: { m: HomeModel }) {
             <span className="row-body"><span className="row-title">Ajustar escalação</span><span className="row-sub">Escolha quem entra em campo</span></span>
             <IconChevron className="row-chevron" />
           </Link>
+          {reward && (
+            <Link className="row" to={`${BASE}/recompensa`}>
+              <IconGift className="row-icon" />
+              <span className="row-body"><span className="row-title">Recompensa diária</span><span className="row-sub">{reward.pending ? "Disponível hoje" : "Recebida hoje"}</span></span>
+              <IconChevron className="row-chevron" />
+            </Link>
+          )}
           <Link className="row" to={`${BASE}/calendario`}>
             <IconCalendar className="row-icon" />
             <span className="row-body"><span className="row-title">Ver calendário</span></span>

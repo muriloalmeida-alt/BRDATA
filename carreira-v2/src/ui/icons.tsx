@@ -22,3 +22,8 @@ export const IconBall = (p: P) => <svg className={p.className} viewBox="0 0 24 2
 export const IconSwap = (p: P) => <S {...p}><path d="M4 8h15M15 4l4 4-4 4M20 16H5M9 12l-4 4 4 4" /></S>;
 export const IconTactic = (p: P) => <S {...p}><path d="m4 4 4 4M8 4 4 8" /><circle cx="17" cy="19" r="2.3" /><path d="M17 3v6c0 2-1.5 3-3.5 3H9c-2 0-3 1.2-3 3v2" /><path d="m14.5 5.5 2.5-2.5 2.5 2.5M3.5 15l2.5 2.5L8.5 15" /></S>;
 export const IconList = (p: P) => <S {...p}><rect x="3.5" y="4" width="17" height="16" rx="2" /><path d="M8 9h9M8 13h9M8 17h9" /><path d="M6 9h.01M6 13h.01M6 17h.01" strokeWidth="2.4" /></S>;
+// Fase 2 — competições (CAP01-T03): taça e escudo em traço.
+export const IconTrophy = (p: P) => <S {...p}><path d="M8 4h8v5a4 4 0 0 1-8 0V4Z" /><path d="M8 6H5a3 3 0 0 0 3 4M16 6h3a3 3 0 0 1-3 4" /><path d="M12 13v4M8.5 20h7M10 17h4" /></S>;
+export const IconShield = (p: P) => <S {...p}><path d="M12 3 5 6v5c0 4.5 3 8 7 10 4-2 7-5.5 7-10V6l-7-3Z" /></S>;
+export const IconClose = (p: P) => <S {...p}><path d="M7 7l10 10M17 7 7 17" /></S>;
+export const IconGift = (p: P) => <S {...p}><rect x="3.5" y="9" width="17" height="11" rx="1.5" /><path d="M3.5 13h17M12 9v11" /><path d="M12 9c-1.5-3-5-4-5.5-2S9 9 12 9Zm0 0c1.5-3 5-4 5.5-2S15 9 12 9Z" /></S>;

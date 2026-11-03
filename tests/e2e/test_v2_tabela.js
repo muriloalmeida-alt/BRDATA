@@ -6,6 +6,7 @@
 // clube; nada gravado; 360 px e acessibilidade.
 const { chromium } = require("playwright-core");
 const { check } = require("./_check");
+const { ensureDailyClaimed } = require("./_v2_match");
 const { passCareerSetup, enterGame, waitForBoot } = require("./_startup");
 const { skipPreseason } = require("./_calendar_skip");
 const { playRound, closeLeftoverTabela } = require("./_round");
@@ -31,6 +32,7 @@ const { playRound, closeLeftoverTabela } = require("./_round");
   await page.click("#btnConfirmClub");
   await passCareerSetup(page);
   await enterGame(page);
+  await ensureDailyClaimed(page);
   await skipPreseason(page);
   // Proposta aleatória de outro clube por um jogador pode abrir entre as
   // rodadas (evento do jogo) — recusa, como o técnico faria.

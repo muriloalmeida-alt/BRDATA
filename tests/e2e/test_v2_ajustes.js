@@ -6,6 +6,7 @@
 // partida continua pausada durante os ajustes; 360 px.
 const { chromium } = require("playwright-core");
 const { check } = require("./_check");
+const { ensureDailyClaimed } = require("./_v2_match");
 const { passCareerSetup, enterGame } = require("./_startup");
 const { skipPreseason } = require("./_calendar_skip");
 
@@ -30,6 +31,7 @@ const { skipPreseason } = require("./_calendar_skip");
   await page.click("#btnConfirmClub");
   await passCareerSetup(page);
   await enterGame(page);
+  await ensureDailyClaimed(page);
   await skipPreseason(page);
   await page.evaluate(() => { CAREER.lineup.formation = "4-3-3"; CAREER.lineup.tactics.pressao = 3; return persistCareer(); });
   const before = await page.evaluate(() => ({ round: CAREER.currentRound, outId: CAREER.lineup.starters[9], outName: CAREER.squad.find((p) => p.id === CAREER.lineup.starters[9]).name }));
