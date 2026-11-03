@@ -239,3 +239,7 @@ Sobre o login para salvar:
 - **Login e criação de carreira,** Jogos, Mais, mercado, contratos, filtros e parte do pós-jogo continuam na versão anterior.
 - **Escrita simultânea do save entre abas:** risco já conhecido, sem migração nesta correção.
 - **Pendências visuais** (wordmark em texto × logo final; ênfase dos botões de retorno): não tocadas. Precisam do material atual para reconciliar.
+
+## Suíte completa (servidor isolado, 03/11)
+- **1ª execução, commit `547c733`:** 170/171. A única falha foi a verificação 9 de `test_v2_inicio`. Ela tinha sido ampliada durante a execução, enquanto o servidor ainda era a cópia sem o ajuste do AUD-01: webp saía como `application/octet-stream` e o bundle inexistente vinha como `200 text/html`. Ou seja, a falha reproduziu o achado. Com o servidor corrigido, a v2 (15/15) e os testes de estático e service worker (game2048, push, pwa_manifest, sw_offline_carreira, redesign) passaram.
+- **Execução final, commit `ec7dc25`:** 170/171. A única falha foi `test_h2h.js`, da versão anterior, que não passa pela v2: um clique foi interceptado pelo modal da Tabela da versão anterior com a máquina carregada. Isolado, ele passou 2/2 (13,5 s e 13,7 s). Na 1ª execução completa, também tinha passado.
