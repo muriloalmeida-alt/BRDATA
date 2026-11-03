@@ -21,6 +21,7 @@ import { Finance } from "./screens/Finance.tsx";
 import { buildFinance } from "./domain/finance.ts";
 import { Match } from "./screens/Match.tsx";
 import { BASE, goBackTo, navigate, useLocation, useScreenFocus } from "./ui/router.tsx";
+import { engine } from "./adapters/engine.ts";
 
 type Data = { career: Career; teamById: (id: string | number) => Team };
 type State = { kind: "loading" } | { kind: "error"; message: string } | { kind: "ready"; data: Data };
@@ -76,6 +77,15 @@ export function App() {
     const fresh = await CareerGateway.loadActive().catch(() => null);
     if (fresh) setState((s) => s.kind === "ready" ? { kind: "ready", data: { ...s.data, career: fresh } } : s);
   }, []);
+
+  // Fase 1: com a carreira carregada, o motor começa a abrir em segundo
+  // plano (a 1ª partida não espera a carga da página do motor). Uma vez só.
+  const ready = state.kind === "ready";
+  useEffect(() => {
+    if (!ready) return;
+    const t = setTimeout(() => engine.preload(), 1500);
+    return () => clearTimeout(t);
+  }, [ready]);
 
   const data = state.kind === "ready" ? state.data : null;
   const home = useMemo(() => data && buildHome(data.career, data.teamById), [data]);

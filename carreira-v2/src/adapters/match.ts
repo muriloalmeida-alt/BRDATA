@@ -1,8 +1,9 @@
-// MatchGateway — porta da v2 para a partida ao vivo (plano do bloco da
-// partida, opção A). Atrás dela, a "ponte": a versão atual aberta num
-// quadro invisível em /carreira-old?ponte=partida, com o motor e a gravação
-// de sempre (API window.BRDATA_PONTE em public/js/carreira.js). Se um dia
-// o motor virar módulo comum (opção B), só esta porta muda.
+// MatchGateway — porta da v2 para o motor do jogo (plano do bloco da
+// partida, opção A; plano de independência, fase 1). Atrás dela, a "ponte":
+// a página da versão anterior aberta num quadro invisível em /carreira/motor,
+// com o motor e a gravação de sempre (API window.BRDATA_PONTE em
+// public/js/carreira.js). Quem abre e reaproveita a sessão é adapters/engine.ts.
+// Se um dia o motor virar módulo comum (opção B), só esta porta muda.
 
 export type MatchPhase = "carregando" | "sem-partida" | "jogando" | "pausada" | "intervalo" | "encerrada" | "pos-jogo";
 export interface MatchEvent {
@@ -43,6 +44,9 @@ interface PonteApi {
   continuarPosJogo(): CommandResult;
   conta(): string | null;
   salvarDeNovo(): Promise<CommandResult>;
+  versaoSave(): number | null;
+  descartar(): CommandResult;
+  executar(nome: string, ...args: unknown[]): unknown;
 }
 
 export interface MatchSession {
@@ -60,6 +64,12 @@ export interface MatchSession {
   retrySave(): Promise<CommandResult>;
   // Conta dona do save em memória (para conferir um novo login).
   account(): string | null;
+  // Fase 1 — versão (updatedAt) do save em memória no motor.
+  saveVersion(): number | null;
+  // Fase 1 — esquece a partida já encerrada (motor reaproveitado).
+  discard(): CommandResult;
+  // Fase 1 — porta genérica: run("nomeDoComando", ...args).
+  run<T = unknown>(name: string, ...args: unknown[]): T;
   reveal(on: boolean): void;
   destroy(): void;
 }
@@ -88,7 +98,7 @@ export function openMatchSession(opts: OpenOptions = {}): Promise<MatchSession> 
   return new Promise((resolve, reject) => {
     if (opts.signal?.aborted) { reject(new DOMException("cancelada", "AbortError")); return; }
     const frame = document.createElement("iframe");
-    frame.src = opts.src ?? "/carreira-old?ponte=partida";
+    frame.src = opts.src ?? "/carreira/motor";
     frame.title = "Motor da partida";
     frame.setAttribute("aria-hidden", "true");
     // inert: escondida, a página da ponte não pode receber foco (ela foca os
@@ -149,6 +159,9 @@ export function openMatchSession(opts: OpenOptions = {}): Promise<MatchSession> 
           continuePostMatch: () => p.continuarPosJogo(),
           retrySave: () => p.salvarDeNovo(),
           account: () => p.conta(),
+          saveVersion: () => p.versaoSave(),
+          discard: () => p.descartar(),
+          run: <T,>(name: string, ...args: unknown[]) => p.executar(name, ...args) as T,
           reveal: (on) => {
             frame.style.cssText = on
               ? "position:fixed;inset:0;width:100%;height:100%;border:0;z-index:100;background:#080e18;"

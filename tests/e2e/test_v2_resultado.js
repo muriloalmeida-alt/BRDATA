@@ -93,8 +93,8 @@ const { skipPreseason } = require("./_calendar_skip");
   // 5) Continuar: sequência pós-jogo da versão atual na mesma sessão → Início.
   await v2.click(".pz-foot .cta");
   await v2.waitForTimeout(1200);
-  const frameBox = await v2.evaluate(() => { const f = document.querySelector('iframe[src*="ponte=partida"]'); const r = f && f.getBoundingClientRect(); return r ? { w: Math.round(r.width), h: Math.round(r.height) } : null; });
-  const frame = v2.frames().find((f) => f.url().includes("ponte=partida"));
+  const frameBox = await v2.evaluate(() => { const f = document.querySelector('iframe[src*="/carreira/motor"]'); const r = f && f.getBoundingClientRect(); return r ? { w: Math.round(r.width), h: Math.round(r.height) } : null; });
+  const frame = v2.frames().find((f) => f.url().includes("/carreira/motor"));
   const firstModal = frame ? await frame.evaluate(() => [...document.querySelectorAll(".ct-modal-overlay.open")].map((o) => o.id)) : [];
   let steps = 0;
   for (let k = 0; k < 40; k++) {
@@ -109,9 +109,9 @@ const { skipPreseason } = require("./_calendar_skip");
     await v2.waitForTimeout(500);
   }
   await v2.waitForSelector(".home", { timeout: 20000 });
-  const home = await v2.evaluate(() => ({ path: location.pathname, line: document.querySelector(".home-date")?.textContent || "", frames: document.querySelectorAll("iframe").length }));
-  check("5) Continuar mostra a sessão da versão atual em tela cheia com a sequência de sempre (notícias, rodada, tabela…) e, ao terminar, volta ao Início na rodada seguinte, sem a ponte:",
-    frameBox && frameBox.w === 390 && frameBox.h === 844 && firstModal.length >= 1 && steps >= 1 && home.path === "/carreira/" && home.line.endsWith(`RODADA ${before.round + 1}`) && home.frames === 0,
+  const home = await v2.evaluate(() => ({ path: location.pathname, line: document.querySelector(".home-date")?.textContent || "", frames: document.querySelectorAll("iframe").length, shown: [...document.querySelectorAll("iframe")].filter((f) => f.getBoundingClientRect().width > 1 || f.getAttribute("aria-hidden") !== "true").length }));
+  check("5) Continuar mostra a sessão da versão atual em tela cheia com a sequência de sempre (notícias, rodada, tabela…) e, ao terminar, volta ao Início na rodada seguinte, com o motor escondido (no máximo um, reaproveitado):",
+    frameBox && frameBox.w === 390 && frameBox.h === 844 && firstModal.length >= 1 && steps >= 1 && home.path === "/carreira/" && home.line.endsWith(`RODADA ${before.round + 1}`) && home.frames <= 1 && home.shown === 0,
     JSON.stringify({ frameBox, firstModal, steps, home }));
 
   await browser.close();

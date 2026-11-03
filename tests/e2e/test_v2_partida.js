@@ -93,7 +93,7 @@ const { skipPreseason } = require("./_calendar_skip");
       && (await v2.locator(".pz-foot .cta").textContent()).includes("Continuar"), JSON.stringify({ shown, last, round: after.currentRound, j: myRow.j }));
 
   // 6) Modo ponte: sem som e sem marcar onboarding/assistente.
-  const frame = v2.frames().find((f) => f.url().includes("ponte=partida"));
+  const frame = v2.frames().find((f) => f.url().includes("/carreira/motor"));
   const silent = frame ? await frame.evaluate(() => sfxCtx() === null && V2_PONTE === true) : false;
   const meAfter = await v2.evaluate(async () => (await (await fetch("/api/auth/me")).json()).user);
   check("6) Ponte em silêncio e sem alterar onboarding da conta:", silent && meAfter.onboardingSeen === meBefore.onboardingSeen, JSON.stringify({ silent, before: meBefore.onboardingSeen, after: meAfter.onboardingSeen }));

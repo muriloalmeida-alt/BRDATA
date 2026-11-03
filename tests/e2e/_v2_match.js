@@ -45,7 +45,7 @@ async function playV2MatchToEnd(v2) {
   await v2.waitForSelector(".rs-title", { timeout: 30000 });
 }
 
-const ponteFrame = (v2) => v2.frames().find((f) => f.url().includes("ponte=partida"));
+const ponteFrame = (v2) => v2.frames().find((f) => f.url().includes("/carreira/motor"));
 
 // "Continuar" e a sequência da versão anterior até voltar ao Início.
 // Devolve os passos clicados (ids) — inclui btnLiveSkip quando houve perna
