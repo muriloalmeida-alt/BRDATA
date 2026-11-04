@@ -13,3 +13,4 @@
 .sp-cmp-col span { font-size: 15px; }
 .sp-muted { color: var(--bd-muted); }
 .pr .cal-foot a.link-back { display: flex; align-items: center; justify-content: center; text-decoration: none; }
+.pr .cal-foot:has(.sp-why) { padding-top: 22px; background: linear-gradient(180deg, rgba(8, 14, 24, 0) 0, var(--bd-bg) 16px); }

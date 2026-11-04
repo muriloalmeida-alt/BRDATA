@@ -48,9 +48,11 @@ Ainda abrem a versão anterior (↗), como combinado, até a fase 8 (mercado):
 | **Comparar** ("Compare lado a lado.") | "A temporada em números" → "Comparar", ou jogador de outro clube | <ul><li>Escolha do outro jogador (mesma posição)</li><li>Lado a lado: overall, idade, posição</li><li>Ataque, defesa, físico, salário e valor</li><li>Veredito de custo-benefício (o mesmo da versão anterior)</li></ul> |
 | **Elenco de outro clube** ("Conheça o adversário.") | Tabela → clube | <ul><li>Série e posição na divisão</li><li>Jogadores por posição</li><li>Ficha do jogador só para consulta, com "Comparar com o meu" e "Fazer proposta" (↗, fase 8)</li></ul> |
 
-**Capturas** (pasta `evidencias/F7-elenco/`, 390×844): de `01-elenco-busca-filtros.png` a `19-dispensar-confirmacao.png`.
+**Capturas** (pasta `evidencias/F7-elenco/`, 390×844): 22 arquivos, de `01-elenco-busca-filtros.png` a `19-dispensar-confirmacao.png`.
 
-**Comparativos** (prancha × v2): de `comparativo-01-filtros.png` a `comparativo-12-outro-clube.png`.
+**Comparativos** (prancha × v2): 13 arquivos, de `comparativo-01-filtros.png` a `comparativo-12-outro-clube.png`.
+
+**Ajuste visual feito durante as capturas:** o motivo acima de "Renovar contrato" ficava sobre a última linha da lista; agora o rodapé tem fundo sólido atrás dele.
 
 ## Motor (ponte)
 Os comandos novos usam as funções de sempre, sem regra nova:
@@ -71,8 +73,10 @@ Os comandos novos usam as funções de sempre, sem regra nova:
 3. **Renovar** mostra também o salário atual, além do sugerido da prancha.
 4. **Renovação recusada:** o botão é "Continuar" (vai para a coletiva), não "Voltar aos contratos". Na aceita, é "Voltar aos contratos" ou "Voltar ao jogador", conforme a origem.
 5. **"Voltar":** a ficha e a conversa voltam ao jogador; o outro clube volta à tabela.
-6. **Camisa:** os jogadores aparecem com a camisa sem número da v2 (escura), não a branca da prancha.
-7. **Barra inferior:** como nas fases anteriores, as telas internas não têm barra.
+6. **Filtros:** cada grupo é uma fileira de botões (um toque escolhe), não um campo "Selecionar" como na prancha. O botão de baixo é "Limpar filtros", não "Cancelar"; fechar a folha cancela.
+7. **Comparar:** a v2 mostra ataque, defesa, físico, salário e valor, mais o veredito; "Trocar jogador" escolhe outro.
+8. **Camisa:** os jogadores aparecem com a camisa sem número da v2 (escura), não a branca da prancha.
+9. **Barra inferior:** como nas fases anteriores, as telas internas não têm barra.
 
 ## Testes
 - **Unitários:** 100/100 (`domain/squadplus.test.ts`, novo, com 6 testes).
@@ -90,4 +94,4 @@ Os comandos novos usam as funções de sempre, sem regra nova:
 - **Ajustados:**
   - `test_v2_tabela.js` 8: o clube agora abre "Conheça o adversário." na v2;
   - `test_v2_elenco.js`: "Contrato e ações" agora abre a ficha da v2.
-- **Suíte completa:** SUITE_RESULT.
+- **Suíte completa:** **181/181** (0 falhas, 0 retries).
