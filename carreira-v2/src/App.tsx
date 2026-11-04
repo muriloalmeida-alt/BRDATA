@@ -37,6 +37,8 @@ import { TacticsAxes, TacticsHub, TacticsMarking, TacticsSchemes, TacticsSectors
 import { Evolution, TrainingCondition, TrainingWeek } from "./screens/Training.tsx";
 import { PrepGateway } from "./adapters/prep.ts";
 import { ClubRoster, Compare, Contracts, Ficha, PressStandalone, Talk } from "./screens/SquadPlus.tsx";
+import { AwardsScreen, CupScreen, H2HScreen, StatsScreen } from "./screens/Games.tsx";
+import { AchievementsScreen, BudgetScreen, EditProfileScreen, HelpScreen, PurchaseHistoryScreen, RankingScreen, SavesScreen, SettingsScreen, ShopScreen } from "./screens/More.tsx";
 import { BaseScreen, HireScoutScreen, LedgerScreen, MissionScreen, ProspectsScreen, ScoutsScreen, SponsorsScreen, StadiumScreen, StaffScreen, SuggestionsScreen } from "./screens/Club.tsx";
 import { History as MarketHistory, Loan, Market, MyOffers, MySales, Negotiation, PendingOffer, Propose, SaleOffers, Target } from "./screens/Market.tsx";
 
@@ -179,6 +181,24 @@ export function App() {
       teamById={data.teamById} onFinished={reloadCareer}
       renderTable={(ctx) => <Table m={buildTable(data.career, data.teamById, q.get("divisao"))} cup={buildCup(data.career, data.teamById)} match={ctx} />} />;
   }
+  // Fase 10 — abas Jogos e Mais.
+  {
+    const q = new URLSearchParams(loc.search);
+    const c = data.career, tb = data.teamById;
+    if (loc.path === `${BASE}/copa`) return <CupScreen career={c} teamById={tb} phase={q.get("fase")} />;
+    if (loc.path === `${BASE}/estatisticas`) return <StatsScreen career={c} teamById={tb} scope={q.get("escopo") === "campeonato" ? "campeonato" : "time"} period={q.get("periodo") === "historico" ? "historico" : "temporada"} />;
+    if (loc.path === `${BASE}/retrospecto`) return <H2HScreen key={q.get("id") || ""} career={c} teamById={tb} oppId={q.get("id") || ""} back={q.get("volta") || `${BASE}/pre-jogo`} />;
+    if (loc.path === `${BASE}/premiacoes`) return <AwardsScreen career={c} teamById={tb} year={q.get("ano") ? Number(q.get("ano")) : null} />;
+    if (loc.path === `${BASE}/conquistas`) return <AchievementsScreen />;
+    if (loc.path === `${BASE}/ranking`) return <RankingScreen key={loc.search} tab={q.get("aba") === "amigos" ? "friends" : "all"} />;
+    if (loc.path === `${BASE}/loja`) return <ShopScreen onChanged={reloadCareer} />;
+    if (loc.path === `${BASE}/loja/historico`) return <PurchaseHistoryScreen />;
+    if (loc.path === `${BASE}/configuracoes`) return <SettingsScreen career={c} />;
+    if (loc.path === `${BASE}/configuracoes/perfil`) return <EditProfileScreen />;
+    if (loc.path === `${BASE}/ajuda`) return <HelpScreen />;
+    if (loc.path === `${BASE}/saves`) return <SavesScreen career={c} />;
+    if (loc.path === `${BASE}/diretoria/orcamento`) return <BudgetScreen onChanged={reloadCareer} />;
+  }
   // Fase 9 — clube.
   {
     const q = new URLSearchParams(loc.search);
@@ -314,7 +334,7 @@ export function App() {
       queueMicrotask(() => navigate(`${BASE}/`, { replace: true }));
       return null;
     }
-    return <PreMatch m={pm} />;
+    return <PreMatch m={pm} myId={String(data.career.clubId)} />;
   }
   if (loc.path === `${BASE}/escalacao`) {
     return <Lineup m={buildLineup(data.career)} cta={home.cta} onFormation={(formation) => save({ kind: "formation", formation })}

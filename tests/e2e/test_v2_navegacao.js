@@ -1,8 +1,8 @@
 // Carreira 2.0 — P7 (mapa de navegação): telas de entrada Jogos, Clube e
 // Mais, pela UI real.
 //  1) As 4 abas da barra são telas da v2 (nenhuma abre /carreira-old).
-//  2) Jogos: Calendário e Tabela (v2), Copa do Brasil e Estatísticas (↗,
-//     versão anterior, D3).
+//  2) Jogos: Calendário, Tabela, Copa do Brasil e Estatísticas, todas na
+//     v2 (fase 10).
 //  3) Clube: aberta pela linha "Clube" e pelo escudo do Início; seções
 //     Gestão / Elenco e mercado / Estrutura; "Voltar ao clube" da Diretoria
 //     volta para a tela Clube.
@@ -62,8 +62,8 @@ const { newCareer } = require("./_v2_match");
   await v2.setViewportSize({ width: 360, height: 780 }); sizes.jogos = await small(); await v2.setViewportSize({ width: 390, height: 844 });
   await v2.locator(".hb-row", { hasText: "Calendário" }).click();
   await v2.waitForURL(/\/carreira\/calendario$/);
-  check("2) Jogos: Calendário e Tabela da v2; Copa do Brasil e Estatísticas pela versão anterior (↗); aba Jogos ativa; Calendário abre:",
-    jogos.h1 === "Seus jogos." && jogos.current === "Jogos" && JSON.stringify(jogos.rows) === JSON.stringify([["Calendário", "/carreira/calendario"], ["Tabela", "/carreira/tabela"], ["Copa do Brasil", "/carreira-old#copa"], ["Estatísticas", "/carreira-old#estatisticas"]]),
+  check("2) Jogos: Calendário, Tabela, Copa do Brasil e Estatísticas na v2 (fase 10); aba Jogos ativa; Calendário abre:",
+    jogos.h1 === "Seus jogos." && jogos.current === "Jogos" && JSON.stringify(jogos.rows) === JSON.stringify([["Calendário", "/carreira/calendario"], ["Tabela", "/carreira/tabela"], ["Copa do Brasil", "/carreira/copa"], ["Estatísticas", "/carreira/estatisticas"]]),
     JSON.stringify(jogos));
 
   // 3) Clube.

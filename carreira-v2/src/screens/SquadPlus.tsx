@@ -396,6 +396,7 @@ export function ClubRoster({ career, clubId, clubName, player }: { career: Caree
       <span className="tb-bar" aria-hidden="true" />
       <p className="screen-sub">Consulte os jogadores do clube.</p>
       <section className="wk-sec"><Rows rows={[{ label: m.name, value: m.division || "" }, { label: "Posição na divisão", value: m.position }]} /></section>
+      <nav className="wk-sec" aria-label="Retrospecto"><Link className="row pr-row" to={`${BASE}/retrospecto?id=${encodeURIComponent(clubId)}&volta=${encodeURIComponent(`${BASE}/clube-elenco?id=${clubId}`)}`}><span className="row-body"><span className="row-title">Histórico do duelo</span><span className="row-sub">Seus jogos contra o {m.name} nesta carreira</span></span><IconChevron className="row-chevron" /></Link></nav>
       <section className="wk-sec" aria-labelledby="cr-e"><h2 className="kicker-caps" id="cr-e">Elenco</h2>
         {m.players.length ? m.players.map((x) => (
           <Link key={x.id} className="row sp-player" to={`${BASE}/clube-elenco/jogador?id=${encodeURIComponent(clubId)}&jogador=${encodeURIComponent(x.id)}`}>

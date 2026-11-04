@@ -37,6 +37,10 @@ export function Board({ m }: { m: BoardModel }) {
         <span className="row-body"><span className="row-title">Ver classificação</span></span>
         <IconChevron className="row-chevron bd-chev" />
       </Link>
+      <Link className="row bd-link" to={`${BASE}/diretoria/orcamento`}>
+        <span className="row-body"><span className="row-title">Pedir mais orçamento</span></span>
+        <IconChevron className="row-chevron bd-chev" />
+      </Link>
 
       {m.objectives.length > 0 && (
         <section className="bd-sec" aria-labelledby="bd-obj">

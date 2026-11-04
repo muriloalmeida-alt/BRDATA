@@ -12,7 +12,8 @@ import "./home.css";
 import "./lineup.css";
 import "./prematch.css";
 
-export function PreMatch({ m }: { m: PreMatchModel }) {
+export function PreMatch({ m, myId }: { m: PreMatchModel; myId: string }) {
+  const opp = m.next ? (String(m.next.home.id) === String(myId) ? m.next.away : m.next.home) : null;
   const back = () => goBack(`${BASE}/`);
   return (
     <div className="pm">
@@ -63,6 +64,12 @@ export function PreMatch({ m }: { m: PreMatchModel }) {
             <span className="row-body"><span className="row-title">Revisar escalação</span></span>
             <IconChevron className="row-chevron" />
           </Link>
+          {opp && (
+            <Link className="row" to={`${BASE}/retrospecto?id=${encodeURIComponent(String(opp.id))}`}>
+              <span className="row-body"><span className="row-title">Histórico do duelo</span><span className="row-sub">Seus jogos contra o {opp.name} nesta carreira</span></span>
+              <IconChevron className="row-chevron" />
+            </Link>
+          )}
         </nav>
         <Link className="cta pm-cta" to={`${BASE}/partida?iniciar=1`}>Iniciar partida<IconArrow className="cta-arrow" /></Link>
         <button type="button" className="text-btn" onClick={back}>Voltar</button>

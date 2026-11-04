@@ -84,8 +84,8 @@ export function buildTable(career: Career, teamById: (id: string | number) => Te
 }
 
 // ---- Copa do Brasil (legado: renderCopa) ----
-const CUP_PHASES = ["r16", "qf", "sf", "final"];
-const CUP_PHASES_EXPANDED = ["fase1", "r32", "r16", "qf", "sf", "final"];
+export const CUP_PHASES = ["r16", "qf", "sf", "final"];
+export const CUP_PHASES_EXPANDED = ["fase1", "r32", "r16", "qf", "sf", "final"];
 const CUP_ROUNDS: Record<string, number> = { r16: 6, qf: 14, sf: 22, final: 30 };
 const CUP_ROUNDS_EXPANDED: Record<string, { ida: number; volta: number }> = {
   fase1: { ida: 3, volta: 6 }, r32: { ida: 9, volta: 12 }, r16: { ida: 15, volta: 18 },

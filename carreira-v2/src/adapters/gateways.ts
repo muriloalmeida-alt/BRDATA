@@ -83,10 +83,19 @@ export const CareerGateway = {
 // monograma (sigla) quando não há escudo.
 const LOCAL_CRESTS = new Set(["fla", "pal", "bot", "for", "int", "sao", "cor", "cap", "cam", "flu", "san", "bra", "juv", "cui", "gre", "cru", "bah", "vas", "vit"]);
 
+// Escudos com leitura ruim sobre o fundo escuro da v2 (contorno com
+// contraste abaixo de 2:1 contra #080E18): a v2 usa a versão negativa
+// (tons neutros invertidos, cores do clube mantidas), em public/img/teams/*_neg.*.
+// A versão anterior desenha o escudo sobre uma chapinha clara e segue com o original.
+export const NEGATIVE_CRESTS = new Set(["atc_b", "bot", "cri_b", "fla", "gre", "nvz_b", "ope_b", "san", "sao", "vas", "vit"]);
+export function negativeCrest(src: string): string {
+  const m = /^(\/img\/teams\/)([a-z0-9_]+)\.(svg|png)$/.exec(src);
+  return m && NEGATIVE_CRESTS.has(m[2]) ? `${m[1]}${m[2]}_neg.${m[3]}` : src;
+}
 export function crestSrc(t: Team | undefined): string | null {
   if (!t) return null;
-  if (t.logo) return t.logo.startsWith("http") || t.logo.startsWith("/") ? t.logo : `/${t.logo}`;
-  return LOCAL_CRESTS.has(String(t.id)) ? `/img/teams/${t.id}.svg` : null;
+  if (t.logo) return t.logo.startsWith("http") ? t.logo : negativeCrest(t.logo.startsWith("/") ? t.logo : `/${t.logo}`);
+  return LOCAL_CRESTS.has(String(t.id)) ? negativeCrest(`/img/teams/${t.id}.svg`) : null;
 }
 
 type DemoGlobals = Record<string, Team[] | undefined>;

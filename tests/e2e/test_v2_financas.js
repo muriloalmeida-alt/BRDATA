@@ -97,8 +97,8 @@ const { playRound, closeLeftoverTabela } = require("./_round");
   await v2.click('.fn-links a[href="/carreira/elenco"]');
   await v2.waitForSelector(".sq-row", { timeout: 10000 });
   await v2.goBack(); await v2.waitForSelector(".fn-cash", { timeout: 10000 });
-  check("4) Atalhos (elenco, mercado, patrocínios, estádio e comissão → v2; pedido de orçamento → versão atual); 360 px sem rolagem e alvos ≥ 44 px; nada gravado:",
-    JSON.stringify(r3.links) === JSON.stringify(["/carreira/elenco", "/carreira/mercado", "/carreira/patrocinios", "/carreira/estadio", "/carreira/comissao", "/carreira-old#financas"]) && a.overflow <= 0 && a.small.length === 0 && writes.length === 0, JSON.stringify({ links: r3.links, a, writes }));
+  check("4) Atalhos (elenco, mercado, patrocínios, estádio, comissão e pedido de orçamento, todos na v2); 360 px sem rolagem e alvos ≥ 44 px; nada gravado:",
+    JSON.stringify(r3.links) === JSON.stringify(["/carreira/elenco", "/carreira/mercado", "/carreira/patrocinios", "/carreira/estadio", "/carreira/comissao", "/carreira/diretoria/orcamento"]) && a.overflow <= 0 && a.small.length === 0 && writes.length === 0, JSON.stringify({ links: r3.links, a, writes }));
 
   // 5) Ver mercado abre o Mercado da v2 (fase 8); Voltar ao clube → tela Clube.
   await page.goto("about:blank");
