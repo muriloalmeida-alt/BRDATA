@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 64 64">
+<title>BRDATA — Escudo de Campo</title>
+<rect width="64" height="64" fill="#080E18"/>
+<path d="M0 47 47 0H64V16L16 64H0Z" fill="#111D28"/>
+<path d="M13 12 46 12 53 19 47 44 30 55 12 44 9 28Z" fill="#080E18" stroke="#B4E64B" stroke-width="2.7" stroke-linejoin="round"/>
+<path d="M82 0H410C494 0 553 16 605 53C657 91 697 150 711 212C714 227 716 242 716 255C716 310 696 348 645 388C722 438 762 501 762 571C762 610 747 649 722 676C686 712 636 729 562 729H237ZM325 439 360 604H524C579 604 603 591 611 558C612 553 613 548 613 542C613 517 603 490 585 471C563 446 541 439 489 439ZM259 125 299 314H477C529 314 555 300 565 269C567 261 568 253 568 245C568 220 559 192 545 171C522 137 494 125 437 125Z" transform="matrix(.043 0 0 -.043 13.5 46)" fill="#B4E64B"/>
+<path d="M27 20h13m-16 17h13" stroke="#F5F7FA" stroke-width="2" stroke-linecap="round"/>
+</svg>

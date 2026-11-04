@@ -63,14 +63,14 @@ const { skipPreseason } = require("./_calendar_skip");
     slots: document.querySelectorAll(".pm-pitch .lu-slot").length,
     links: document.querySelectorAll(".pm-pitch a").length,
     gk: [...document.querySelectorAll(".pm-pitch .lu-slot")].pop().querySelector("text").textContent,
-    alerts: document.querySelectorAll(".pm-foot nav .row").length,
+    alerts: document.querySelectorAll(".pm-foot nav .row").length, h2h: !!document.querySelector('.pm-foot nav a.row[href^="/carreira/retrospecto?id="]'),
     cta: document.querySelector(".pm-cta").getAttribute("href"),
     ctx: document.querySelector(".sub-head-ctx").textContent,
   }));
-  check("2) Início → Pré-jogo: confronto, competição + rodada, data sem horário, 11 titulares só leitura com overall real:",
+  check("2) Início → Pré-jogo: confronto, competição + rodada, data sem horário, 11 titulares só leitura com overall real; 'Histórico do duelo' (fase 10):",
     pm.path === "/carreira/pre-jogo" && pm.title === "É hora de jogar." && pm.sub === `Brasileirão Série A · Rodada ${legacy.round}` && pm.teams[0] === legacy.home && pm.teams[1] === legacy.away
       && /^\d{2} [A-Z]{3}$/.test(pm.date) && pm.formation === `Formação ${legacy.formation}` && pm.slots === 11 && pm.links === 0 && pm.gk === String(legacy.gk)
-      && pm.alerts === 1 && pm.cta === "/carreira/partida?iniciar=1" && pm.ctx === "Pré-jogo", JSON.stringify({ pm, legacy }));
+      && pm.alerts === 2 && pm.h2h && pm.cta === "/carreira/partida?iniciar=1" && pm.ctx === "Pré-jogo", JSON.stringify({ pm, legacy }));
 
   // 3) Revisar escalação → Escalação v2; voltar retorna ao Pré-jogo.
   await v2.click('.pm-foot a.row[href="/carreira/escalacao"]');
@@ -90,7 +90,7 @@ const { skipPreseason } = require("./_calendar_skip");
   await v2.waitForSelector(".pm-pitch", { timeout: 15000 });
   const al = await v2.evaluate(() => [...document.querySelectorAll(".pm-foot nav .row")].map((r) => r.textContent));
   check("4) Avisos como linhas no estilo do Início (incompleta 10/11, titular lesionado):",
-    al.length === 3 && /Escalação incompleta10\/11 titulares/.test(al[0]) && al[1].startsWith("Titular indisponível") && al[1].includes("(lesionado)"), JSON.stringify(al));
+    al.length === 4 && /Histórico do duelo/.test(al[3]) && /Escalação incompleta10\/11 titulares/.test(al[0]) && al[1].startsWith("Titular indisponível") && al[1].includes("(lesionado)"), JSON.stringify(al));
   check("5) Abrir o Pré-jogo não grava nada no save:", writes.length === 0, JSON.stringify(writes));
 
   // 6) 360 px: sem rolagem horizontal, alvos ≥ 44 px.
