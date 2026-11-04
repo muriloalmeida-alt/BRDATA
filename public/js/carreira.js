@@ -3158,6 +3158,10 @@ function snapshotPlayerSeasonHistory(p, clubName) {
   p.seasonHistory.unshift({
     year: CAREER.seasonYear, clubName,
     apps: p.appsSeason || 0, goals: p.goalsSeason || 0, assists: p.assistsSeason || 0,
+    // Carreira 2.0, fase 6 (decisão de 04/11): overall ao fim da temporada,
+    // para "Overall por temporada" na Evolução. Campo novo e opcional:
+    // entradas antigas ficam sem ele (a tela mostra só as que têm).
+    overall: p.overall,
   });
   if (p.seasonHistory.length > MAX_PLAYER_SEASON_HISTORY) p.seasonHistory.length = MAX_PLAYER_SEASON_HISTORY;
 }
@@ -16985,6 +16989,12 @@ function ponteEstado() {
     })),
   };
 }
+// Grava o save do motor e devolve { ok } ou o motivo da falha (fase 6).
+async function ponteGravar() {
+  const salvo = await persistCareer();
+  if (salvo) renderAll();
+  return salvo ? { ok: true } : { ok: false, motivo: PONTE.erroGravacao || "falha" };
+}
 // Fase 4 — contexto da perna de Copa para a faixa da Partida da v2 (P6):
 // placar da ida do seu ponto de vista (só na volta, para o agregado) e,
 // encerrada a volta, se foi nos pênaltis e quem passou (P5).
@@ -17202,6 +17212,154 @@ if (V2_PONTE) {
       } finally {
         PONTE.recebendo = false;
       }
+    },
+    // Fase 6 — tática e treino (Carreira 2.0). Mesmas regras e funções da
+    // versão anterior: TACTIC_AXES/SECTOR_INSTRUCTIONS, saveTacticalScheme,
+    // applyTacticalScheme, renameTacticalScheme, deleteTacticalScheme,
+    // autoLineup, CAREER.manMarking (applyManMarking), defaultTrainingPlan,
+    // applyWeeklyTraining e projectWeekPeakFatigue. Cada comando grava.
+    tatica() {
+      if (!CAREER) return { ok: false, motivo: "sem-carreira" };
+      const t = CAREER.lineup.tactics || {};
+      const st = CAREER.lineup.sectorTactics || defaultSectorTactics();
+      return {
+        ok: true, formacao: CAREER.lineup.formation,
+        eixos: TACTIC_AXES.map((ax) => ({ id: ax.id, nome: ax.label, baixo: ax.lowLabel, alto: ax.highLabel, nivel: t[ax.id] || 3 })),
+        setores: SECTOR_IDS.map((sec) => ({ id: sec, nome: SECTOR_LABEL[sec], instrucoes: SECTOR_INSTRUCTIONS[sec].map((i) => ({ id: i.id, nome: i.label, baixo: i.lowLabel, alto: i.highLabel, nivel: (st[sec] || {})[i.id] || 3 })) })),
+      };
+    },
+    async salvarTatica(eixos) {
+      if (!CAREER) return { ok: false, motivo: "sem-carreira" };
+      CAREER.lineup.tactics = CAREER.lineup.tactics || {};
+      TACTIC_AXES.forEach((ax) => { const v = Math.round(Number(eixos && eixos[ax.id])); if (v >= 1 && v <= 5) CAREER.lineup.tactics[ax.id] = v; });
+      markLineupDirty();
+      return ponteGravar();
+    },
+    async salvarInstrucoesSetor(setor, valores) {
+      if (!CAREER || !SECTOR_INSTRUCTIONS[setor]) return { ok: false, motivo: "setor-invalido" };
+      if (!CAREER.lineup.sectorTactics) CAREER.lineup.sectorTactics = defaultSectorTactics();
+      SECTOR_INSTRUCTIONS[setor].forEach((i) => { const v = Math.round(Number(valores && valores[i.id])); if (v >= 1 && v <= 5) CAREER.lineup.sectorTactics[setor][i.id] = v; });
+      return ponteGravar();
+    },
+    esquemas() {
+      if (!CAREER) return { ok: false, motivo: "sem-carreira" };
+      return { ok: true, max: MAX_TACTICAL_SCHEMES, ativo: CAREER.activeSchemeId || null, lista: (CAREER.tacticalSchemes || []).map((sc) => ({
+        id: sc.id, nome: sc.name, formacao: sc.formation, titulares: sc.starters.filter(Boolean).length,
+        eixos: TACTIC_AXES.map((ax) => ({ id: ax.id, nome: ax.label, nivel: (sc.tactics || {})[ax.id] || 3 })),
+        criadoRodada: sc.createdRound, usadoRodada: sc.lastUsedRound != null ? sc.lastUsedRound : null,
+      })) };
+    },
+    async salvarEsquema(nome) {
+      if (!CAREER) return { ok: false, motivo: "sem-carreira" };
+      if ((CAREER.tacticalSchemes || []).some((sc) => sc.name.toLowerCase() === String(nome || "").trim().toLowerCase())) return { ok: false, motivo: "nome-repetido", mensagem: "Já existe um esquema com esse nome." };
+      const r = saveTacticalScheme(nome);
+      if (!r.ok) return { ok: false, motivo: "invalido", mensagem: r.reason };
+      return ponteGravar();
+    },
+    async aplicarEsquema(id) {
+      if (!CAREER || !applyTacticalScheme(id)) return { ok: false, motivo: "esquema-invalido" };
+      return ponteGravar();
+    },
+    async renomearEsquema(id, nome) {
+      if (!CAREER) return { ok: false, motivo: "sem-carreira" };
+      const r = renameTacticalScheme(id, nome);
+      if (!r.ok) return { ok: false, motivo: "invalido", mensagem: r.error };
+      return ponteGravar();
+    },
+    async excluirEsquema(id) {
+      if (!CAREER || !(CAREER.tacticalSchemes || []).some((sc) => sc.id === id)) return { ok: false, motivo: "esquema-invalido" };
+      deleteTacticalScheme(id);
+      return ponteGravar();
+    },
+    async escalarAutomaticamente(incluirBase) {
+      if (!CAREER) return { ok: false, motivo: "sem-carreira" };
+      const r = autoLineup(CAREER.squad, CAREER.lineup.formation, !!incluirBase);
+      CAREER.lineup.starters = r.starters;
+      CAREER.lineup.bench = r.bench;
+      markLineupDirty();
+      return ponteGravar();
+    },
+    marcacao() {
+      if (!CAREER) return { ok: false, motivo: "sem-carreira" };
+      const opp = nextOpponentId();
+      if (!opp) return { ok: true, adversario: null };
+      const t = teamById(opp) || {};
+      const mm = CAREER.manMarking && String(CAREER.manMarking.opponentId) === String(opp) ? CAREER.manMarking : null;
+      const meus = CAREER.lineup.starters.map((id) => id && CAREER.squad.find((p) => p.id === id)).filter((p) => p && p.status === "ok" && p.group !== "G")
+        .map((p) => ({ id: p.id, nome: p.name, posicao: SUBPOS_LABEL[subPositionOf(p)] || null }));
+      const rivais = leagueSquadFor(opp).filter((p) => p.group !== "G").sort((a, b) => b.overall - a.overall).slice(0, 5)
+        .map((p) => ({ id: p.id, nome: p.name, posicao: SUBPOS_LABEL[subPositionOf(p)] || null, overall: p.overall }));
+      return { ok: true, adversario: { id: String(opp), nome: t.name || "?", sigla: t.short || null }, meus, rivais, atual: mm ? { meu: mm.myPlayerId, rival: mm.rivalPlayerId } : null };
+    },
+    async salvarMarcacao(meuId, rivalId) {
+      if (!CAREER) return { ok: false, motivo: "sem-carreira" };
+      const opp = nextOpponentId();
+      if (!opp) return { ok: false, motivo: "sem-jogo" };
+      if (meuId == null && rivalId == null) { CAREER.manMarking = null; return ponteGravar(); }
+      const m = this.marcacao();
+      if (!m.meus.some((p) => p.id === meuId) || !m.rivais.some((p) => p.id === rivalId)) return { ok: false, motivo: "jogador-invalido" };
+      CAREER.manMarking = { opponentId: opp, myPlayerId: meuId, rivalPlayerId: rivalId };
+      return ponteGravar();
+    },
+    treino() {
+      if (!CAREER) return { ok: false, motivo: "sem-carreira" };
+      const relevant = CAREER.squad.filter((p) => p.origin === "principal" || p.origin === "loan");
+      const cond = (p) => (p.condition == null ? 100 : p.condition);
+      const projected = projectWeekPeakFatigue();
+      const folgas = [TRAINING_PRE_GAME_DAY, TRAINING_POST_GAME_DAY].filter((d) => { const e = CAREER.trainingPlan[d]; return !e || !e.foco || e.foco === "descanso"; }).length;
+      return {
+        ok: true,
+        dias: CAREER.trainingPlan.map((e, i) => ({
+          dia: i, nome: TRAINING_DAY_NAMES[i], jogo: i === TRAINING_GAME_DAY, protegido: isProtectedTrainingDay(i),
+          foco: e && e.foco ? e.foco : "descanso", intensidade: e && e.intensidade ? e.intensidade : null, grupo: e && e.grupo ? e.grupo : null,
+          duracao: e && e.duracao ? e.duracao : null, jogador: e && e.individualPlayerId ? e.individualPlayerId : null,
+        })),
+        modelo: CAREER.trainingSchemeId || null,
+        modelos: TRAINING_SCHEMES.map((m) => ({ id: m.id, nome: m.name, descricao: m.desc })),
+        aplicado: String(CAREER.trainingAppliedForRound) === calendarTurnKey(),
+        duracao: { min: TRAINING_DURATION_MIN, max: TRAINING_DURATION_MAX, passo: TRAINING_DURATION_STEP, padrao: TRAINING_DURATION_DEFAULT },
+        resumo: {
+          fadigaMedia: relevant.length ? Math.round(relevant.reduce((t, p) => t + (100 - cond(p)), 0) / relevant.length) : 0,
+          moral: relevant.length ? Math.round(relevant.reduce((t, p) => t + (p.morale == null ? 70 : p.morale), 0) / relevant.length) : 0,
+          folgas,
+        },
+        elenco: relevant.map((p) => ({ id: p.id, nome: p.name, posicao: SUBPOS_LABEL[subPositionOf(p)] || null, condicao: Math.round(cond(p)), fadigaProjetada: Math.round(100 - (projected.get(p.id) ?? cond(p))) })),
+      };
+    },
+    // Um dia do plano: as mesmas regras do painel do dia (renderTrainingDayPanel).
+    async salvarDiaTreino(dia, entrada) {
+      if (!CAREER) return { ok: false, motivo: "sem-carreira" };
+      const i = Number(dia);
+      if (!(i >= 0 && i < 7) || i === TRAINING_GAME_DAY) return { ok: false, motivo: "dia-invalido" };
+      const e = entrada || {};
+      if (!["tecnico", "fisico", "tatico", "descanso"].includes(e.foco)) return { ok: false, motivo: "foco-invalido" };
+      if (e.foco === "descanso") CAREER.trainingPlan[i] = { foco: "descanso" };
+      else {
+        const intensidade = TRAINING_INTENSITY_MULT[e.intensidade] ? e.intensidade : "moderada";
+        const grupo = TRAINING_GROUP_LABEL[e.grupo] ? e.grupo : "principal";
+        const duracao = clamp(Math.round((Number(e.duracao) || TRAINING_DURATION_DEFAULT[intensidade]) / TRAINING_DURATION_STEP) * TRAINING_DURATION_STEP, TRAINING_DURATION_MIN, TRAINING_DURATION_MAX);
+        const entry = { foco: e.foco, intensidade, grupo, duracao };
+        if (grupo === "individual") {
+          if (!CAREER.squad.some((p) => p.id === e.jogador)) return { ok: false, motivo: "jogador-invalido" };
+          entry.individualPlayerId = e.jogador;
+        }
+        CAREER.trainingPlan[i] = entry;
+      }
+      CAREER.trainingSchemeId = null;
+      return ponteGravar();
+    },
+    async aplicarModeloTreino(id) {
+      if (!CAREER || !TRAINING_SCHEMES.some((m) => m.id === id)) return { ok: false, motivo: "modelo-invalido" };
+      applyTrainingScheme(id);
+      return ponteGravar();
+    },
+    // "Aplicar treino da semana": applyWeeklyTraining (1x por turno).
+    async aplicarTreino() {
+      if (!CAREER) return { ok: false, motivo: "sem-carreira" };
+      const gains = applyWeeklyTraining();
+      if (!gains) return { ok: false, motivo: "ja-aplicado" };
+      const r = await ponteGravar();
+      return r.ok ? { ok: true, evoluiram: gains.size } : r;
     },
     // Fase 5 — temporada e carreira do treinador (Carreira 2.0). Mesmas
     // funções da versão anterior: advanceSeason, endCurrentClubStint,

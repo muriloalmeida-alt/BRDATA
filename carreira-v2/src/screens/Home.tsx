@@ -6,7 +6,7 @@ import type { HomeModel } from "../domain/home.ts";
 import type { NoticesModel, SkipInfo } from "../domain/week.ts";
 import { NoticesSheet, SkipToMatch } from "./Week.tsx";
 import { CtaLink, Crest, TabBar, Wordmark } from "../ui/components.tsx";
-import { IconCalendar, IconChevron, IconPitch, IconAlert, IconBell, IconGift, IconShield } from "../ui/icons.tsx";
+import { IconCalendar, IconChevron, IconPitch, IconAlert, IconBell, IconGift, IconShield, IconTraining } from "../ui/icons.tsx";
 import { BASE, Link } from "../ui/router.tsx";
 import "./home.css";
 import "./week.css";
@@ -93,6 +93,11 @@ export function Home({ m, reward, skip, notices, onNoticesOpened }: {
               <IconChevron className="row-chevron" />
             </Link>
           )}
+          <Link className="row" to={`${BASE}/treino`}>
+            <IconTraining className="row-icon" />
+            <span className="row-body"><span className="row-title">Treino da semana</span><span className="row-sub">Foco, intensidade e grupo de cada dia</span></span>
+            <IconChevron className="row-chevron" />
+          </Link>
           <Link className="row" to={`${BASE}/clube`}>
             <IconShield className="row-icon" />
             <span className="row-body"><span className="row-title">Clube</span><span className="row-sub">Diretoria, finanças, mercado e estrutura</span></span>

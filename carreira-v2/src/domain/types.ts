@@ -37,6 +37,11 @@ export interface Player {
   wantsTransfer?: boolean;
   contractUntil?: number;
   wage?: number;
+  potential?: number;
+  // Fase 6 (Evolução e condição): históricos do motor.
+  fatigueHistory?: { round: number; fadiga: number }[];
+  injuryHistory?: { round: number; severity?: string; durationRounds: number; fadigaAtInjury?: number }[];
+  seasonHistory?: { year: number; clubName?: string; apps?: number; goals?: number; assists?: number; overall?: number }[];
 }
 export interface Lineup {
   formation?: string;
@@ -72,6 +77,8 @@ export interface Career {
   newsFeed?: NewsItem[];
   clubProposals?: { clubId?: string; clubName: string; reputationRequired?: number; budgetOffered?: number; seasonYear?: number }[];
   reputation?: number;
+  manMarking?: { opponentId: string | number; myPlayerId: string; rivalPlayerId: string } | null;
+  tacticalSchemes?: { id: string; name: string }[];
   negativeSeasonsStreak?: number;
   careerTotals?: { j?: number; v?: number };
   seasonAwards?: { seasonYear: number; brasileirao?: { campeao?: string | number | null }; copaDoBrasil?: { disputou?: boolean; campeao?: string | number | null } }[];

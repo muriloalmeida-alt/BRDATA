@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { CareerGateway, ClubCatalogGateway, HttpError, SessionGateway, type SessionUser } from "./adapters/gateways.ts";
 import { buildHome } from "./domain/home.ts";
-import { buildLineup, buildSubstitute, currentLineup, type LineupChange, type SwapTarget } from "./domain/lineup.ts";
+import { buildLineup, buildSubstitute, currentLineup, shortName, type LineupChange, type SwapTarget } from "./domain/lineup.ts";
 import type { Career, Team } from "./domain/types.ts";
 import { Home } from "./screens/Home.tsx";
 import { Lineup } from "./screens/Lineup.tsx";
@@ -33,6 +33,9 @@ import { WeekGateway } from "./adapters/week.ts";
 import { PostMatch } from "./screens/PostMatch.tsx";
 import { ClubOffer, CoachProfile, Dismissal, History, NewSeason, SeasonEnd } from "./screens/Season.tsx";
 import { buildClubOffer, buildSeasonEnd, dismissalPending, seasonEnded } from "./domain/season.ts";
+import { TacticsAxes, TacticsHub, TacticsMarking, TacticsSchemes, TacticsSectors } from "./screens/Tactics.tsx";
+import { Evolution, TrainingCondition, TrainingWeek } from "./screens/Training.tsx";
+import { PrepGateway } from "./adapters/prep.ts";
 
 // Recompensa diária: abre sozinha no máximo uma vez por carregamento da v2.
 let rewardShown = false;
@@ -173,6 +176,25 @@ export function App() {
       teamById={data.teamById} onFinished={reloadCareer}
       renderTable={(ctx) => <Table m={buildTable(data.career, data.teamById, q.get("divisao"))} cup={buildCup(data.career, data.teamById)} match={ctx} />} />;
   }
+  // Fase 6 — tática (pela Escalação) e treino (pelo Início e pelo Elenco).
+  if (loc.path === `${BASE}/tatica`) {
+    const mm = data.career.manMarking;
+    const squad = data.career.squad || [];
+    const mk = mm ? squad.find((p) => p.id === mm.myPlayerId) : null;
+    return <TacticsHub formation={currentLineup(data.career).formation} schemes={(data.career.tacticalSchemes || []).length}
+      marking={mk ? `${shortName(mk.name)} marca um adversário no próximo jogo` : null} />;
+  }
+  if (loc.path === `${BASE}/tatica/instrucoes`) return <TacticsAxes onSaved={reloadCareer} />;
+  if (loc.path === `${BASE}/tatica/setor`) return <TacticsSectors onSaved={reloadCareer} />;
+  if (loc.path === `${BASE}/tatica/esquemas`) return <TacticsSchemes onSaved={reloadCareer} />;
+  if (loc.path === `${BASE}/tatica/marcacao`) return <TacticsMarking onSaved={reloadCareer} />;
+  if (loc.path === `${BASE}/treino`) return <TrainingWeek onChanged={reloadCareer} />;
+  if (loc.path === `${BASE}/treino/condicao`) return <TrainingCondition onChanged={reloadCareer} />;
+  if (loc.path === `${BASE}/treino/evolucao`) {
+    const pl = (data.career.squad || []).find((p) => p.id === new URLSearchParams(loc.search).get("id"));
+    if (!pl) { queueMicrotask(() => navigate(`${BASE}/treino/condicao`, { replace: true })); return null; }
+    return <Evolution key={pl.id} player={pl} />;
+  }
   // Fase 5 — temporada e carreira do treinador.
   if (loc.path === `${BASE}/temporada` || loc.path === `${BASE}/demissao`) {
     // Demissão decidida e ainda não confirmada: a tela de demissão, sem
@@ -249,7 +271,13 @@ export function App() {
     return <PreMatch m={pm} />;
   }
   if (loc.path === `${BASE}/escalacao`) {
-    return <Lineup m={buildLineup(data.career)} cta={home.cta} onFormation={(formation) => save({ kind: "formation", formation })} />;
+    return <Lineup m={buildLineup(data.career)} cta={home.cta} onFormation={(formation) => save({ kind: "formation", formation })}
+      onAutoLineup={async (includeBase) => {
+        const r = await PrepGateway.autoLineup(includeBase);
+        if (!r.ok) { if (r.motivo === "sessao") setExpired(true); return "Não foi possível escalar. Tente de novo."; }
+        await reloadCareer();
+        return null;
+      }} />;
   }
   if (loc.path === `${BASE}/escalacao/trocar`) {
     const q = new URLSearchParams(loc.search);
