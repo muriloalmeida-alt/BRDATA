@@ -48,9 +48,25 @@ O que ainda leva a `/carreira-old` é só o que a fase 11 vai cortar:
 | **Saves** ("Sua carreira salva.") | Mais ou Configurações | Clube, temporada, rodada, caixa e última gravação; "Reiniciar carreira" pede para digitar REINICIAR, apaga a carreira e abre a criação da v2 |
 | **Pedido de orçamento** ("Peça reforço.") | Diretoria → "Pedir mais orçamento", ou Finanças | Teto e caixa atuais, a última resposta e a regra; "Pedir mais orçamento" mostra a resposta (aprovado: + teto e + caixa) e o intervalo de 4 rodadas |
 
-**Capturas** (pasta `evidencias/F10-jogos-mais/`, 390×844): CAPTURAS.
+**Capturas** (pasta `evidencias/F10-jogos-mais/`, 390×844): 30 arquivos, de `00-jogos.png` a `23-saves-reiniciar.png`. A conta de teste aparece como "Treinador Exemplo" (evidência anonimizada).
 
 **Comparativos** (prancha × v2): 15 arquivos, de `comparativo-01-copa-em-disputa.png` a `comparativo-15-ajuda.png`.
+
+## Pedidos de 04/11 incluídos nesta entrega
+**Favicon "Escudo de Campo"** (pacote `BRDATA_Escudo_de_Campo.zip`):
+- `public/img/icons/` recebeu os novos favicons de 16, 32 e 48 px, o ícone de app de 192 e 512 px, o `apple-touch-icon` (180 px) e o `favicon.svg`. `public/favicon.ico` também foi trocado.
+- As versões maskable (192 e 512 px) foram geradas a partir do SVG, com o escudo dentro da área segura de 80%.
+- Os nomes de arquivo são os mesmos, então o site, a versão anterior e os manifests já usam o ícone novo. A v2 não declarava ícone e passou a declarar (SVG, PNGs e apple-touch).
+- O service worker troca o cache sozinho a cada deploy.
+- Prévia: `favicon-escudo-de-campo-512.png`.
+
+**Contraste dos escudos:**
+- Medi os 30 escudos de `public/img/teams/` sobre o fundo escuro da v2 (#080E18). Prancha: `escudos-todos-fundo-escuro.png`.
+- Em 11 deles o contorno ficava com contraste abaixo de 2:1: Atlético-GO, Botafogo, Criciúma, Flamengo, Grêmio, Novorizontino, Operário, Santos, São Paulo, Vasco e Vitória.
+- Para eles foi gerada uma **versão negativa** (`*_neg.svg` / `*_neg.png`): tons neutros têm a luminosidade invertida (preto vira branco e branco vira preto), e as cores do clube ficam iguais. Os SVGs continuam vetoriais.
+- Depois da troca, nenhum fica abaixo de 2:1. Antes e depois: `escudos-antes-negativa.png`.
+- A v2 usa o negativo automaticamente (`crestSrc` → `negativeCrest`). A versão anterior desenha o escudo sobre uma chapinha clara e continua com o original.
+- **Limitação:** escudos que vêm da API-Sports (modo ao vivo, endereço externo) não recebem o negativo.
 
 ## Motor (ponte)
 Os comandos novos usam as funções de sempre:
@@ -94,4 +110,11 @@ As notificações push usam o mesmo service worker (`/sw.js`). O cartão de conq
   8. pedido de orçamento;
   9. reiniciar carreira;
   10. 360 px e sem `/carreira-old`.
-- **Suíte completa:** SUITE_RESULT.
+- **Ajustados:**
+  - `test_v2_financas.js` 4: o pedido de orçamento agora fica na v2;
+  - `test_v2_prejogo.js` 2 e 4: a linha "Histórico do duelo";
+  - `test_v2_navegacao.js` 2: Copa e Estatísticas na v2.
+- **Suíte completa:** 184 testes.
+  - A primeira rodada parou em 147 de 184, sem nenhuma falha, porque a sessão reiniciou.
+  - Rodei de novo os restantes. Falharam só os 3 testes da v2 acima, que ainda esperavam os links antigos; foram ajustados.
+  - Depois do favicon e dos escudos, os 30 testes da v2 (mais os de escudo e o do service worker) passaram de novo: **30/30**.
