@@ -34,6 +34,11 @@ export function Squad({ m }: { m: SquadModel }) {
       </header>
       <h1 className="cal-title sq-title">Elenco</h1>
       <p className="screen-sub sq-sub">Seu time começa aqui.</p>
+      {/* Fase 6: treino e condição pelo Elenco (decisão de 04/11). */}
+      <nav className="sq-prep" aria-label="Preparação">
+        <Link className="row" to={`${BASE}/treino`}><span className="row-body"><span className="row-title">Treino da semana</span><span className="row-sub">Foco, intensidade e grupo de cada dia</span></span><IconChevron className="row-chevron" /></Link>
+        <Link className="row" to={`${BASE}/treino/condicao`}><span className="row-body"><span className="row-title">Evolução e condição</span><span className="row-sub">Condição física, fadiga e risco de lesão</span></span><IconChevron className="row-chevron" /></Link>
+      </nav>
 
       {m.groups.map((g) => (
         <section key={g.group} className="sq-sec" aria-labelledby={`sq-${g.group}`}>

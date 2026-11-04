@@ -65,7 +65,7 @@ const strip = (c) => { const x = JSON.parse(JSON.stringify(c)); delete x.lineup;
   check("1) Início → Escalação na v2 com formação, titulares (overall/nome) e banco do save:",
     view.path === "/carreira/escalacao" && view.title === "Escale seu time." && view.formation === "4-3-3" && view.slots.length === 11
       && gkSlot && gkSlot.ovr === String(gk.overall) && view.bench === before.lineup.bench.length && view.club === "FLAMENGO"
-      && view.cta === "/carreira/pre-jogo" && view.legacy === "/carreira-old#escalacao" && view.tab === "Elenco", JSON.stringify(view));
+      && view.cta === "/carreira/pre-jogo" && view.legacy === "/carreira/tatica" && view.tab === "Elenco", JSON.stringify(view));
 
   // 2) Quem entra? + Cancelar: volta sem gravar.
   const idx = 6; // meia (4-3-3: VOL, MEI, MEI = 5..7)

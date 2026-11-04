@@ -29,3 +29,5 @@
 .pf-legacy { margin-top: 6px; }
 .pf-foot { position: sticky; bottom: 0; margin-top: auto; padding: 18px var(--bd-gutter) calc(10px + var(--bd-safe-bottom)); display: flex; flex-direction: column; gap: 12px; background: linear-gradient(180deg, rgba(8, 14, 24, 0) 0%, var(--bd-bg) 22%); }
 .btn-secondary { min-height: var(--bd-cta-h); border: 1.5px solid #c9ccd2; border-radius: var(--bd-radius-sm); background: none; color: var(--bd-text); font-family: var(--bd-font-display); font-weight: 600; font-size: 20px; cursor: pointer; }
+.sq-prep { margin: 14px var(--bd-gutter) 0; border-top: 1px solid var(--bd-line); }
+.sq-prep .row { color: inherit; }

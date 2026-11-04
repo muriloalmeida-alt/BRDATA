@@ -1,8 +1,8 @@
 // CAP03-T01 — Escalação (referencias_anteriores/escalacao.png).
 // Campo com a formação real, banco completo, troca de formação (grava na
-// hora, como no legado) e toque no jogador → "Quem entra?". Tática,
-// instruções, escalação automática e esquemas continuam na versão atual
-// (linha "Tática e instruções", decisão de 01/11).
+// hora, como no legado) e toque no jogador → "Quem entra?". Fase 6: "Tática e
+// instruções" abre a tática da v2 e "Escalar automaticamente" (com
+// confirmação) usa a mesma escalação automática do jogo.
 import { useRef, useState, type KeyboardEvent } from "react";
 import { FORMATION_IDS, shortName, type LineupModel } from "../domain/lineup.ts";
 import { PitchPlayers } from "../ui/pitch.tsx";
@@ -10,7 +10,6 @@ import type { HomeModel } from "../domain/home.ts";
 import { CtaLink, Jersey, TabBar, Wordmark } from "../ui/components.tsx";
 import { IconArrow, IconBack, IconCheck, IconChevron, IconDown } from "../ui/icons.tsx";
 import { BASE, Link, goBack } from "../ui/router.tsx";
-import { legacyHref } from "../adapters/legacy.ts";
 import { Sheet } from "../ui/dialog.tsx";
 import "./lineup.css";
 
@@ -56,8 +55,15 @@ function FormationSheet({ current, busy, error, onPick, onClose }: { current: st
   );
 }
 
-export function Lineup({ m, cta, onFormation }: { m: LineupModel; cta: HomeModel["cta"]; onFormation: (f: string) => Promise<string | null> }) {
+export function Lineup({ m, cta, onFormation, onAutoLineup }: {
+  m: LineupModel; cta: HomeModel["cta"]; onFormation: (f: string) => Promise<string | null>;
+  onAutoLineup?: (includeBase: boolean) => Promise<string | null>;
+}) {
   const [sheet, setSheet] = useState(false);
+  const [auto, setAuto] = useState(false);
+  const [autoBase, setAutoBase] = useState(false);
+  const [autoBusy, setAutoBusy] = useState(false);
+  const [autoErr, setAutoErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -113,13 +119,37 @@ export function Lineup({ m, cta, onFormation }: { m: LineupModel; cta: HomeModel
 
       <div className="lu-foot">
         <CtaLink cta={cta} className="cta cta--inline" />
-        <a className="row lu-legacy" href={legacyHref("escalacao")}>
-          <span className="row-body"><span className="row-title">Tática e instruções</span><span className="row-sub">Ritmo, pressão, instruções, escalação automática e esquemas</span></span>
+        <Link className="row lu-legacy" to={`${BASE}/tatica`}>
+          <span className="row-body"><span className="row-title">Tática e instruções</span><span className="row-sub">Ritmo, pressão, setores, esquemas e marcação</span></span>
           <IconChevron className="row-chevron" />
-        </a>
+        </Link>
+        {onAutoLineup && (
+          <button type="button" className="row lu-legacy lu-auto" onClick={() => { setAutoErr(null); setAuto(true); }}>
+            <span className="row-body"><span className="row-title">Escalar automaticamente</span><span className="row-sub">Os melhores por posição na formação {m.formation}</span></span>
+            <IconChevron className="row-chevron" />
+          </button>
+        )}
       </div>
 
       <TabBar current="elenco" />
+      {auto && onAutoLineup && (
+        <Sheet alert labelledBy="au-t" describedBy="au-d" onDismiss={autoBusy ? undefined : () => setAuto(false)}>
+          <h2 id="au-t" className="sheet-title">Escalar automaticamente?</h2>
+          <p id="au-d" className="lu-auto-text">Os titulares e o banco atuais são substituídos pelos melhores overalls por posição na formação {m.formation}.</p>
+          <button type="button" role="checkbox" aria-checked={autoBase} className="lu-auto-check" onClick={() => setAutoBase(!autoBase)}>
+            {autoBase ? <IconCheck className="lu-auto-ico" /> : <span className="lu-auto-box" aria-hidden="true" />}Incluir jovens da base
+          </button>
+          {autoErr && <p className="inline-error" role="alert">{autoErr}</p>}
+          <button type="button" className="cta" aria-disabled={autoBusy || undefined} onClick={async () => {
+            if (autoBusy) return;
+            setAutoBusy(true); setAutoErr(null);
+            const err = await onAutoLineup(autoBase);
+            setAutoBusy(false);
+            if (err) setAutoErr(err); else setAuto(false);
+          }}>{autoBusy ? "Escalando…" : "Escalar"}</button>
+          <button type="button" className="text-btn" data-autofocus disabled={autoBusy} onClick={() => setAuto(false)}>Cancelar</button>
+        </Sheet>
+      )}
       {sheet && <FormationSheet current={m.formation} busy={busy} error={error} onPick={pick} onClose={() => { if (!busy) { setSheet(false); setError(null); } }} />}
     </div>
   );
