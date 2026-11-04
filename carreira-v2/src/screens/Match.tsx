@@ -11,6 +11,7 @@
 import { useEffect, useRef, useState } from "react";
 import { type MatchSession, type SaveError } from "../adapters/match.ts";
 import { engine } from "../adapters/engine.ts";
+import { WeekGateway, weekStore } from "../adapters/week.ts";
 import type { TableMatchContext } from "./Table.tsx";
 import { Sheet } from "../ui/dialog.tsx";
 import { LoginSheet } from "../ui/session.tsx";
@@ -40,12 +41,12 @@ type View = { kind: "loading" } | { kind: "error"; message: string } | { kind: "
 export type MatchSub = "pausa" | "time" | "sai" | "entra" | "tatica" | "lances" | "tabela" | null;
 const PARTIDA = `${BASE}/partida`;
 
-export function Match({ startNow, sub, outId, competitionId, competitionName, teamById, onFinished, renderTable }: {
-  startNow: boolean; sub: MatchSub; outId?: string | null; competitionId?: string; competitionName: string; teamById: (id: string | number) => Team;
+export function Match({ start, sub, outId, competitionId, competitionName, teamById, onFinished, renderTable }: {
+  start: null | "jogo" | "amistoso"; sub: MatchSub; outId?: string | null; competitionId?: string; competitionName: string; teamById: (id: string | number) => Team;
   onFinished: () => void; renderTable: (ctx: TableMatchContext) => JSX.Element;
 }) {
   // Só a 1ª montagem decide se começa: trocar de vista (?tela=) não reinicia.
-  const startOnce = useRef(startNow);
+  const startOnce = useRef(start);
   const halftimeShown = useRef(false);
   const guardPushed = useRef(false);
   const liveRef = useRef(false);
@@ -104,13 +105,15 @@ export function Match({ startNow, sub, outId, competitionId, competitionName, te
       applyRef.current = apply;
       unsub = s.subscribe(apply);
       if (startOnce.current) {
-        startOnce.current = false;
+        const kind = startOnce.current;
+        startOnce.current = null;
         // Tira o ?iniciar da barra: recarregar não começa outra partida.
         // Pelo roteador (não history direto): a rota guardada na v2 precisa
         // saber que a consulta mudou, senão o 1º voltar parece troca de tela.
         navigate(PARTIDA, { replace: true });
-        const r = s.start();
-        if (!r.ok) setView({ kind: "none", message: r.motivo === "sem-jogo" ? "Não há jogo do seu clube nesta semana." : "Não foi possível iniciar a partida." });
+        // Fase 3: o amistoso usa o mesmo motor ao vivo (iniciarAmistoso).
+        const r = kind === "amistoso" ? s.run<{ ok: boolean; motivo?: string }>("iniciarAmistoso") : s.start();
+        if (!r.ok) setView({ kind: "none", message: r.motivo === "sem-jogo" ? "Não há jogo do seu clube nesta semana." : r.motivo === "sem-amistoso" ? "Não há amistoso nesta semana." : "Não foi possível iniciar a partida." });
         else apply();
       } else {
         // Sem ?iniciar: com o motor reaproveitado, uma partida em andamento
@@ -201,7 +204,7 @@ export function Match({ startNow, sub, outId, competitionId, competitionName, te
   const content = screen();
   const sheets = (
     <>
-      {leave && <LeaveSheet leave={leave} saved={m.saved === true} onStay={() => setLeave(null)} onLeave={() => {
+      {leave && <LeaveSheet leave={leave} saved={m.saved === true} friendly={snap.contexto === "amistoso"} onStay={() => setLeave(null)} onLeave={() => {
         const l = leave;
         setLeave(null);
         if (l.kind === "live") { s.skip(); return; }
@@ -246,13 +249,25 @@ export function Match({ startNow, sub, outId, competitionId, competitionName, te
   if (ended) {
     const res = buildResult(snap, competitionName);
     const status = saveStatus(m.saved, snap.erroGravacao ?? null, !!snap.salvando || retrying);
-    const ready = !!snap.resultadoPronto && status === "saved";
+    const friendly = snap.contexto === "amistoso";
+    const ready = (friendly ? !!snap.semanaPronta : !!snap.resultadoPronto) && status === "saved";
     const cont = () => {
       if (!ready || postMatchRef.current) return;
+      if (friendly) {
+        // Fase 3: o amistoso fecha a semana; "Continuar" mostra o resumo
+        // dela (Semana concluída), sem o pós-jogo do campeonato.
+        postMatchRef.current = true; guardRef.current = false;
+        WeekGateway.friendlySummary().then((r) => {
+          weekStore.set(r);
+          s.discard(); onFinished();
+          navigate(r ? `${BASE}/semana` : `${BASE}/`, { replace: true });
+        });
+        return;
+      }
       const r = s.continuePostMatch();
       if (r.ok) { postMatchRef.current = true; guardRef.current = false; setPostMatch(true); s.reveal(true); }
     };
-    return <ResultView m={m} res={res} teamById={teamById} status={status} ready={ready} onContinue={cont} onRetry={retry} onLogin={() => setLogin(true)} />;
+    return <ResultView m={m} res={res} teamById={teamById} status={status} ready={ready} friendly={friendly} onContinue={cont} onRetry={retry} onLogin={() => setLogin(true)} />;
   }
 
   return (
@@ -329,7 +344,7 @@ function saveStatus(saved: boolean | null, err: SaveError | null, busy: boolean)
 
 // Confirmação de saída (AUD-03/04): no jogo, simula o resto; no Resultado,
 // diz o que se perde. O foco começa em ficar — sair é a ação destrutiva.
-function LeaveSheet({ leave, saved, onStay, onLeave }: { leave: Leave; saved: boolean; onStay: () => void; onLeave: () => void }) {
+function LeaveSheet({ leave, saved, friendly, onStay, onLeave }: { leave: Leave; saved: boolean; friendly: boolean; onStay: () => void; onLeave: () => void }) {
   if (leave.kind === "live") return (
     <Sheet alert labelledBy="lv-t" describedBy="lv-d" onDismiss={onStay}>
       <h2 id="lv-t" className="sheet-title">Sair da partida?</h2>
@@ -342,7 +357,9 @@ function LeaveSheet({ leave, saved, onStay, onLeave }: { leave: Leave; saved: bo
   return (
     <Sheet alert labelledBy="lv-t" describedBy="lv-d" onDismiss={onStay}>
       <h2 id="lv-t" className="sheet-title">Sair do resultado?</h2>
-      <p id="lv-d" className="lv-text">{saved
+      <p id="lv-d" className="lv-text">{saved && friendly
+        ? "O amistoso já está salvo. O resumo da semana pode não ser mostrado se você sair agora."
+        : saved
         ? "A rodada já está salva. O que vem em “Continuar” — coletiva, resumo da rodada e jogo de Copa pendente — pode não ser mostrado se você sair agora."
         : "O resultado desta partida ainda não foi salvo. Se você sair agora, ele será perdido."}</p>
       <button type="button" className="cta" data-autofocus onClick={onStay}>{saved ? "Voltar ao resultado" : "Ficar e salvar"}</button>
@@ -449,8 +466,8 @@ const SAVE_COPY: Record<SaveStatus, string | null> = {
   session: "Sua sessão expirou. Entre de novo, com a mesma conta, para salvar o resultado.",
   "other-account": "Outra conta entrou neste navegador. Entre com a conta em que a partida foi jogada para salvar o resultado.",
 };
-function ResultView({ m, res, teamById, status, ready, onContinue, onRetry, onLogin }: {
-  m: MatchModel; res: ResultModel | null; teamById: (id: string | number) => Team; status: SaveStatus; ready: boolean;
+function ResultView({ m, res, teamById, status, ready, friendly, onContinue, onRetry, onLogin }: {
+  m: MatchModel; res: ResultModel | null; teamById: (id: string | number) => Team; status: SaveStatus; ready: boolean; friendly: boolean;
   onContinue: () => void; onRetry: () => void; onLogin: () => void;
 }) {
   const msg = SAVE_COPY[status];
@@ -494,11 +511,13 @@ function ResultView({ m, res, teamById, status, ready, onContinue, onRetry, onLo
           <span className="row-body"><span className="row-title">Ver lances</span></span>
           <IconChevron className="row-chevron" />
         </a>
-        <a className="row" href={`${PARTIDA}?tela=tabela`} onClick={(e) => { e.preventDefault(); navigate(`${PARTIDA}?tela=tabela`); }}>
-          <IconList className="row-icon rs-ico" />
-          <span className="row-body"><span className="row-title">Ver tabela</span></span>
-          <IconChevron className="row-chevron" />
-        </a>
+        {!friendly && (
+          <a className="row" href={`${PARTIDA}?tela=tabela`} onClick={(e) => { e.preventDefault(); navigate(`${PARTIDA}?tela=tabela`); }}>
+            <IconList className="row-icon rs-ico" />
+            <span className="row-body"><span className="row-title">Ver tabela</span></span>
+            <IconChevron className="row-chevron" />
+          </a>
+        )}
       </nav>
       <div className="mt-foot pz-foot">
         <p className="sr-only" role="status" aria-live="polite">{status === "saving" ? "Salvando o resultado…" : status === "saved" ? "Resultado salvo." : ""}</p>

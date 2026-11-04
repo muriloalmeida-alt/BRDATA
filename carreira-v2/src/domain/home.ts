@@ -28,6 +28,9 @@ export interface HomeModel {
   objective: string | null;
   cash: string | null;
   news: string | null;
+  // Fase 3: amistoso opcional (julho) ainda sem convite aceito — linha no
+  // Início que abre o Pré-jogo de amistoso para escolher.
+  optionalFriendly: null | { invites: number };
 }
 
 export function sortedStandings(career: Career) {
@@ -65,6 +68,7 @@ export function buildHome(career: Career, teamById: (id: string | number) => Tea
   let state: HomeModel["state"] = "match";
   let next: HomeModel["next"] = null;
   let cta: HomeModel["cta"] = { label: "Preparar partida", action: "preparar" };
+  let optionalFriendly: HomeModel["optionalFriendly"] = null;
   if (round > ROUNDS) {
     state = "ended";
     cta = { label: "Próxima temporada", action: "proxima-temporada" };
@@ -80,6 +84,7 @@ export function buildHome(career: Career, teamById: (id: string | number) => Tea
       const fr = (cal.friendlies || []).find((f) => f.wi === cal.idx);
       const friendlyOn = !!(fr && !fr.played && (!fr.optional || fr.opp));
       cta = friendlyOn ? { label: "Ir para o amistoso", action: "amistoso" } : { label: "Avançar semana", action: "avancar-semana" };
+      if (fr && !fr.played && fr.optional && !fr.opp) optionalFriendly = { invites: (fr.invites || []).length };
     }
     if (fx) {
       const day = matchDay(career, round);
@@ -104,5 +109,6 @@ export function buildHome(career: Career, teamById: (id: string | number) => Tea
     objective: career.boardGoal?.label || null,
     cash: career.finances ? moneyShort(career.finances.cash) : null,
     news,
+    optionalFriendly,
   };
 }

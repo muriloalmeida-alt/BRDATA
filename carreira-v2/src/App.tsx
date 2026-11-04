@@ -27,6 +27,9 @@ import { DailyReward } from "./screens/DailyReward.tsx";
 import { ClubHub, GamesHub, MoreMenu } from "./screens/Hubs.tsx";
 import { LoginSheet } from "./ui/session.tsx";
 import { rewardPending } from "./domain/reward.ts";
+import { buildFriendly, buildNews, buildNotices, skipInfo } from "./domain/week.ts";
+import { FriendlyPre, News, WeekDone } from "./screens/Week.tsx";
+import { WeekGateway } from "./adapters/week.ts";
 
 // Recompensa diária: abre sozinha no máximo uma vez por carregamento da v2.
 let rewardShown = false;
@@ -161,9 +164,23 @@ export function App() {
     // AUD-03: a Tabela aberta pelo Resultado fica na rota da partida
     // (?tela=tabela&divisao=…), para a sessão da ponte — que guarda o
     // pós-jogo — continuar montada ao trocar de divisão.
-    return <Match startNow={q.get("iniciar") === "1"} sub={sub} outId={q.get("sai")} competitionId={data.career.competitionId} competitionName={home.competition}
+    const start = q.get("iniciar") === "1" ? "jogo" : q.get("iniciar") === "amistoso" ? "amistoso" : null;
+    return <Match start={start} sub={sub} outId={q.get("sai")} competitionId={data.career.competitionId} competitionName={home.competition}
       teamById={data.teamById} onFinished={reloadCareer}
       renderTable={(ctx) => <Table m={buildTable(data.career, data.teamById, q.get("divisao"))} cup={buildCup(data.career, data.teamById)} match={ctx} />} />;
+  }
+  // Fase 3 — a semana.
+  if (loc.path === `${BASE}/semana`) {
+    const a = new URLSearchParams(loc.search).get("avancar");
+    return <WeekDone clubName={data.career.clubName} mode={a === "semana" || a === "jogo" ? a : null} onAdvanced={reloadCareer} onExpired={() => setExpired(true)} />;
+  }
+  if (loc.path === `${BASE}/amistoso`) {
+    const fm = buildFriendly(data.career, data.teamById);
+    if (!fm) { queueMicrotask(() => navigate(`${BASE}/`, { replace: true })); return null; }
+    return <FriendlyPre m={fm} onChanged={reloadCareer} onExpired={() => setExpired(true)} />;
+  }
+  if (loc.path === `${BASE}/noticias`) {
+    return <News m={buildNews(data.career)} />;
   }
   if (loc.path === `${BASE}/financas`) {
     return <Finance m={buildFinance(data.career)} />;
@@ -222,6 +239,8 @@ export function App() {
       }} />
     );
   }
-  return <Home m={home} reward={{ pending: rewardPending(data.user.dailyLogin) }} />;
+  return <Home m={home} reward={{ pending: rewardPending(data.user.dailyLogin) }} skip={skipInfo(data.career)}
+    notices={buildNotices(data.career, Date.now())}
+    onNoticesOpened={() => { WeekGateway.markNoticesRead().then((r) => { if (r.ok) reloadCareer(); }); }} />;
   }
 }

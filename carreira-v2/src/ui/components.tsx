@@ -54,12 +54,17 @@ export function Jersey({ value, gk, selected, empty, size = 46 }: { value?: numb
   );
 }
 
-// CTA principal da semana. "Preparar partida" abre o Pré-jogo da v2; os
-// demais (avançar semana, amistoso, próxima temporada) seguem na versão
-// atual.
+// CTA principal da semana. "Preparar partida" abre o Pré-jogo da v2,
+// "Avançar semana" a Semana concluída e "Ir para o amistoso" o Pré-jogo de
+// amistoso (fase 3); "Próxima temporada" segue na versão atual (fase 5).
 export function CtaLink({ cta, className }: { cta: HomeModel["cta"]; className: string }) {
   const inner = <>{cta.label}<IconArrow className="cta-arrow" /></>;
-  return cta.action === "preparar"
-    ? <Link className={className} to={`${BASE}/pre-jogo`}>{inner}</Link>
+  // Fase 3: avançar semana e amistoso são telas da v2; só a próxima
+  // temporada (fase 5) ainda abre a versão anterior.
+  const to = cta.action === "preparar" ? `${BASE}/pre-jogo`
+    : cta.action === "avancar-semana" ? `${BASE}/semana?avancar=semana`
+    : cta.action === "amistoso" ? `${BASE}/amistoso` : null;
+  return to
+    ? <Link className={className} to={to}>{inner}</Link>
     : <a className={className} href={legacyHref(cta.action)}>{inner}</a>;
 }
