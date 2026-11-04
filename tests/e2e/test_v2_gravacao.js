@@ -63,7 +63,7 @@ const { newCareer, signup, serverCareer, playV2MatchToEnd, ponteFrame, continueT
   check("1b) Rodapé de falha em 360 px sem rolagem horizontal e botão ≥ 44 px:", fail360.overflow <= 0 && fail360.btnH >= 44, JSON.stringify(fail360));
   const s1 = await serverCareer(v2);
   const mem1 = await frameCareer();
-  const blocked = await ponteFrame(v2).evaluate(() => BRDATA_PONTE.continuarPosJogo());
+  const blocked = await ponteFrame(v2).evaluate(() => BRDATA_PONTE.iniciarPosJogo());
   check("1) Falha de rede: Resultado mostra a falha e 'Tentar salvar novamente' (sem 'Continuar'); nada gravado; pós-jogo bloqueado na ponte:",
     b1.text === "Tentar salvar novamente" && /Não foi possível salvar o resultado/.test(b1.err) && s1.currentRound === before.currentRound
       && mem1.currentRound === before.currentRound + 1 && blocked.ok === false && blocked.motivo === "nao-salvo",

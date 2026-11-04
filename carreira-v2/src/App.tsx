@@ -30,6 +30,7 @@ import { rewardPending } from "./domain/reward.ts";
 import { buildFriendly, buildNews, buildNotices, skipInfo } from "./domain/week.ts";
 import { FriendlyPre, News, WeekDone } from "./screens/Week.tsx";
 import { WeekGateway } from "./adapters/week.ts";
+import { PostMatch } from "./screens/PostMatch.tsx";
 
 // Recompensa diária: abre sozinha no máximo uma vez por carregamento da v2.
 let rewardShown = false;
@@ -164,9 +165,16 @@ export function App() {
     // AUD-03: a Tabela aberta pelo Resultado fica na rota da partida
     // (?tela=tabela&divisao=…), para a sessão da ponte — que guarda o
     // pós-jogo — continuar montada ao trocar de divisão.
-    const start = q.get("iniciar") === "1" ? "jogo" : q.get("iniciar") === "amistoso" ? "amistoso" : null;
+    const ini = q.get("iniciar");
+    const start = ini === "1" ? "jogo" : ini === "amistoso" ? "amistoso" : ini === "copa" ? "copa" : null;
     return <Match start={start} sub={sub} outId={q.get("sai")} competitionId={data.career.competitionId} competitionName={home.competition}
       teamById={data.teamById} onFinished={reloadCareer}
+      renderTable={(ctx) => <Table m={buildTable(data.career, data.teamById, q.get("divisao"))} cup={buildCup(data.career, data.teamById)} match={ctx} />} />;
+  }
+  // Fase 4 — pós-jogo pela v2 (etapas; ?tela=tabela = "Ver tabela").
+  if (loc.path === `${BASE}/pos-jogo`) {
+    const q = new URLSearchParams(loc.search);
+    return <PostMatch myId={String(data.career.clubId)} teamById={data.teamById} tela={q.get("tela")} onChanged={reloadCareer} onExpired={() => setExpired(true)}
       renderTable={(ctx) => <Table m={buildTable(data.career, data.teamById, q.get("divisao"))} cup={buildCup(data.career, data.teamById)} match={ctx} />} />;
   }
   // Fase 3 — a semana.

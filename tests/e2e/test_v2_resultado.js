@@ -2,9 +2,9 @@
 // Pela UI real: Pré-jogo → Iniciar partida abre a Partida da v2; o voltar do
 // sistema no meio do jogo pergunta (Continuar jogando / Sair e simular o
 // resto = "Pular para o fim"); Resultado com título pelo placar e gols; Ver
-// lances e Ver tabela voltam ao Resultado; Continuar mostra a sequência
-// pós-jogo da versão atual na própria sessão e, ao terminar, volta ao Início
-// já na rodada seguinte; 360 px.
+// lances e Ver tabela voltam ao Resultado; Continuar segue o pós-jogo nas
+// telas da v2 (fase 4) e, ao terminar, volta ao Início já na rodada
+// seguinte; 360 px.
 const { chromium } = require("playwright-core");
 const { check } = require("./_check");
 const { ensureDailyClaimed } = require("./_v2_match");
@@ -92,29 +92,27 @@ const { skipPreseason } = require("./_calendar_skip");
   check("4) Resultado em 360 px sem rolagem horizontal e alvos ≥ 44 px:", a.overflow <= 0 && a.small.length === 0, JSON.stringify(a));
   await v2.setViewportSize({ width: 390, height: 844 });
 
-  // 5) Continuar: sequência pós-jogo da versão atual na mesma sessão → Início.
+  // 5) Continuar: pós-jogo da v2 (fase 4), etapa por etapa, com o motor
+  // sempre escondido, até o Início na rodada seguinte.
+  const seen = [];
+  const hidden = () => v2.evaluate(() => [...document.querySelectorAll("iframe")].every((f) => f.getBoundingClientRect().width <= 1 && f.getAttribute("aria-hidden") === "true"));
+  let allHidden = true;
   await v2.click(".pz-foot .cta");
-  await v2.waitForTimeout(1200);
-  const frameBox = await v2.evaluate(() => { const f = document.querySelector('iframe[src*="/carreira/motor"]'); const r = f && f.getBoundingClientRect(); return r ? { w: Math.round(r.width), h: Math.round(r.height) } : null; });
-  const frame = v2.frames().find((f) => f.url().includes("/carreira/motor"));
-  const firstModal = frame ? await frame.evaluate(() => [...document.querySelectorAll(".ct-modal-overlay.open")].map((o) => o.id)) : [];
-  let steps = 0;
-  for (let k = 0; k < 40; k++) {
+  for (let k = 0; k < 80; k++) {
     if (await v2.locator(".home").count()) break;
-    const clicked = await frame.evaluate(() => {
-      const vis = (id) => { const el = document.getElementById(id); return el && el.offsetParent !== null; };
-      const press = document.querySelector("#pressOverlay.open [data-press]"); if (press) { press.click(); return "press"; }
-      for (const id of ["btnMatchDetailContinue", "btnNewsContinue", "btnRoundResultsContinue", "btnPlayerOfferDecline", "tabelaModalClose", "btnLiveSkip"]) if (vis(id)) { document.getElementById(id).click(); return id; }
-      return null;
-    }).catch(() => null);
-    if (clicked) steps++;
-    await v2.waitForTimeout(500);
+    const st = await v2.evaluate(() => ({ path: location.pathname, h1: (document.querySelector("h1") || {}).textContent || "", answer: !!document.querySelector(".pj-answer"), effect: !!document.querySelector(".pj-effect"), live: !!document.querySelector(".mt-skip"), ready: !!document.querySelector('.pz-foot .cta[data-save="saved"]:not([aria-disabled])') }));
+    allHidden = allHidden && await hidden();
+    if (st.live) { await v2.click(".mt-skip"); seen.push("copa"); }
+    else if (st.ready) await v2.click(".pz-foot .cta");
+    else if (st.answer) { if (!st.effect) { seen.push("coletiva"); await v2.click(".pj-answer"); } else await v2.click(".pj .cal-foot .cta"); }
+    else if (st.path === "/carreira/pos-jogo" && st.h1) { if (seen[seen.length - 1] !== st.h1) seen.push(st.h1); await v2.click(st.h1 === "Uma oferta chegou." ? ".pj .cal-foot .link-back" : ".pj .cal-foot .cta"); }
+    await v2.waitForTimeout(400);
   }
   await v2.waitForSelector(".home", { timeout: 20000 });
   const home = await v2.evaluate(() => ({ path: location.pathname, line: document.querySelector(".home-date")?.textContent || "", frames: document.querySelectorAll("iframe").length, shown: [...document.querySelectorAll("iframe")].filter((f) => f.getBoundingClientRect().width > 1 || f.getAttribute("aria-hidden") !== "true").length }));
-  check("5) Continuar mostra a sessão da versão atual em tela cheia com a sequência de sempre (notícias, rodada, tabela…) e, ao terminar, volta ao Início na rodada seguinte, com o motor escondido (no máximo um, reaproveitado):",
-    frameBox && frameBox.w === 390 && frameBox.h === 844 && firstModal.length >= 1 && steps >= 1 && home.path === "/carreira/" && home.line.endsWith(`RODADA ${before.round + 1}`) && home.frames <= 1 && home.shown === 0,
-    JSON.stringify({ frameBox, firstModal, steps, home }));
+  check("5) Continuar: pós-jogo nas telas da v2 (notícias da rodada e resultados, mais coletiva/Copa/proposta quando houver), motor sempre escondido; termina no Início na rodada seguinte:",
+    allHidden && seen.includes("Nos bastidores.") && seen.includes("A disputa continua.") && seen.indexOf("Nos bastidores.") < seen.indexOf("A disputa continua.") && home.path === "/carreira/" && home.line.endsWith(`RODADA ${before.round + 1}`) && home.frames <= 1 && home.shown === 0,
+    JSON.stringify({ seen, home, allHidden }));
 
   await browser.close();
 })();

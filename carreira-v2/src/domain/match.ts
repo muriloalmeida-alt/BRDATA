@@ -20,6 +20,8 @@ export interface MatchModel {
   timeline: TimelineItem[];
   speed: 1 | 2;
   subs: { used: number; total: number };
+  // Fase 4 (P6/P5): linha do agregado na volta da Copa e, decidida, quem passou.
+  cup: null | { aggregate: string | null; outcome: string | null };
 }
 
 // Lances que contam como "último evento", por importância: no mesmo
@@ -83,7 +85,16 @@ export function buildMatch(s: MatchSnapshot, competitionId?: string): MatchModel
     last, timeline,
     speed: s.velocidade === 2 ? 2 : 1,
     subs: { used: s.substituicoes?.usadas || 0, total: s.substituicoes?.total || 5 },
+    cup: s.contexto === "copa" && s.copa ? cupLine(s.copa, mine.nome, opp.nome, s.souMandante ? s.gh || 0 : s.ga || 0, s.souMandante ? s.ga || 0 : s.gh || 0) : null,
   };
+}
+
+// Agregado = ida + o placar atual da volta (do seu ponto de vista).
+// P5: o jogo não guarda o placar da disputa de pênaltis, só quem passou.
+function cupLine(c: NonNullable<MatchSnapshot["copa"]>, me: string, opp: string, my: number, their: number) {
+  const aggregate = c.perna === 2 && c.ida ? `Agregado: ${me} ${c.ida.meus + my} × ${c.ida.deles + their} ${opp}` : null;
+  const outcome = c.classificado ? `${c.penaltis ? "Decidido nos pênaltis · " : ""}Classificado: ${c.classificado}` : null;
+  return aggregate || outcome ? { aggregate, outcome } : null;
 }
 
 // "Revisar time" (Pausa): a escalação AO VIVO vinda da ponte, desenhada

@@ -142,3 +142,6 @@
 .lg-field input:focus-visible { outline: 2px solid var(--bd-accent); outline-offset: 1px; }
 .lg-form .cta { margin-top: var(--bd-space-1); }
 .cta[aria-disabled="true"] { opacity: .5; cursor: default; }
+/* Fase 4 (P6/P5): agregado na volta da Copa e quem passou, na faixa aprovada. */
+.mt-cupline { position: relative; margin: 10px var(--bd-gutter) 0; text-align: center; font-family: var(--bd-font-display); font-weight: 600; font-size: 17px; text-shadow: 0 1px 6px rgba(0, 0, 0, .8); }
+.mt-cupline--out { margin-top: 2px; color: var(--bd-accent); }

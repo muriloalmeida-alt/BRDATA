@@ -230,7 +230,7 @@ function squadSortKey(p) { return (SUBPOS_ORDER[subPositionOf(p)] ?? 9) * 1000 -
 const V2_PONTE = new URLSearchParams(location.search).get("ponte") === "partida" || location.pathname === "/carreira/motor";
 // Estado só da ponte (nunca salvo): última partida vista (LIVE_MATCH vira
 // null no fim), resultado da gravação final e quem está ouvindo.
-const PONTE = { pronta: false, ultimo: null, fim: null, ouvintes: new Set(), resumo: null, posJogo: false, salvando: false, erroGravacao: null, semana: null, antesSemana: null };
+const PONTE = { pronta: false, ultimo: null, fim: null, ouvintes: new Set(), resumo: null, posJogo: false, salvando: false, erroGravacao: null, semana: null, antesSemana: null, seq: null };
 let LIVE_MODE = false;
 let LIVE_SEASON = new Date().getFullYear();
 let LEAGUE_TEAMS = []; // 20 clubes ativos (real ou DEMO_TEAMS — ver loadLeague)
@@ -8657,11 +8657,13 @@ function closePressConferenceModal() {
   // pós-jogo (chain=true, tratada acima) nunca chega aqui embaixo.
   finishOperationAndGoHome();
 }
-function applyPressAnswer(letra) {
-  if (!PENDING_PRESS) { closePressConferenceModal(); return; }
-  const { entry, roundPlayed } = PENDING_PRESS;
+// Efeito de uma resposta da coletiva (reputação, moral do elenco e registro
+// no pressLog). Extraído de applyPressAnswer sem mudar nada, para a
+// Carreira 2.0 (fase 4) aplicar o MESMO efeito pela ponte. Devolve null se
+// a letra não existe.
+function applyPressEffects(entry, roundPlayed, letra) {
   const resposta = entry.respostas.find((r) => r.letra === letra);
-  if (!resposta) { closePressConferenceModal(); return; }
+  if (!resposta) return null;
   const repDelta = Math.round(resposta.reputacao * REPUTATION_INTERVIEW_POINTS * REPUTATION_INTERVIEW_WEIGHT);
   CAREER.reputation = clamp((CAREER.reputation == null ? 50 : CAREER.reputation) + repDelta, 0, 100);
   const moralDelta = resposta.moral * MORAL_INTERVIEW_SCALE;
@@ -8673,6 +8675,14 @@ function applyPressAnswer(letra) {
   CAREER.pressLog = CAREER.pressLog || [];
   CAREER.pressLog.unshift({ round: roundPlayed, gatilho: entry.gatilho, pergunta: entry.pergunta, letra, texto: resposta.texto, reputacao: repDelta, moral: moralDelta });
   if (CAREER.pressLog.length > PRESS_LOG_MAX) CAREER.pressLog.length = PRESS_LOG_MAX;
+  return { repDelta, moralDelta };
+}
+function applyPressAnswer(letra) {
+  if (!PENDING_PRESS) { closePressConferenceModal(); return; }
+  const { entry, roundPlayed } = PENDING_PRESS;
+  const fx = applyPressEffects(entry, roundPlayed, letra);
+  if (!fx) { closePressConferenceModal(); return; }
+  const { repDelta, moralDelta } = fx;
   // AJUSTE (pedido do usuário: "gosto da opção 2... todos os textos
   // devem ser bem escritos") — reputação e moral eram espremidas numa
   // frase só ("Reputação +1 · Moral do elenco +3"); agora cada uma
@@ -9590,7 +9600,9 @@ async function finishCupLegLive() {
   toast({ title: `Copa do Brasil — ${leg === 1 ? "Ida" : "Volta"} decidida`, detail }, { type: leg === 2 && String(tie.winner) !== String(CAREER.clubId) ? "warn" : "pos" });
   // Continua a mesma cadeia de sempre depois de "Resultados da rodada"
   // (ver btnRoundResultsContinue) — a perna ao vivo intercala ANTES
-  // dela, não substitui o resto do fluxo.
+  // dela, não substitui o resto do fluxo. Carreira 2.0 (fase 4): no
+  // pós-jogo da v2 a cadeia é da v2 (ponte posJogo), não destes modais.
+  if (V2_PONTE && PONTE.seq) return;
   if (CAREER.pendingOffer) openPlayerOfferModal();
   else openTabelaModal();
 }
@@ -16950,7 +16962,7 @@ function ponteEstado() {
     minuto, segundoTempo: minuto > 45,
     contexto: lm.cupContext ? "copa" : lm.friendlyContext ? "amistoso" : "liga",
     rodada: lm.round,
-    copa: lm.cupContext ? { fase: lm.cupContext.phase, perna: lm.cupContext.leg } : null,
+    copa: lm.cupContext ? ponteCopa(lm) : null,
     mandante: { id: String(lm.home.id), nome: lm.home.name }, visitante: { id: String(lm.away.id), nome: lm.away.name },
     souMandante: !!lm.isHome, gh: lm.gh, ga: lm.ga, velocidade: lm.speed === 2 ? 2 : 1,
     substituicoes: { usadas: lm.subsUsed, total: MAX_SUBS_PER_MATCH + lm.subsBonus },
@@ -16972,6 +16984,79 @@ function ponteEstado() {
       jogador: e.player || null, assistencia: e.assistPlayer || null, entra: e.entra || null, sai: e.saiu || null, penalti: !!e.penalty,
     })),
   };
+}
+// Fase 4 — contexto da perna de Copa para a faixa da Partida da v2 (P6):
+// placar da ida do seu ponto de vista (só na volta, para o agregado) e,
+// encerrada a volta, se foi nos pênaltis e quem passou (P5).
+function ponteCopa(lm) {
+  const { tie, phase, leg } = lm.cupContext;
+  const meHome = String(tie.home) === String(CAREER.clubId);
+  const l1 = tie.leg1 || {};
+  const ida = leg === 2 && l1.gh != null ? { meus: meHome ? l1.gh : l1.ga, deles: meHome ? l1.ga : l1.gh } : null;
+  const decidida = !!lm.finished && leg === 2 && tie.winner != null;
+  return {
+    fase: phase, perna: leg, ida,
+    penaltis: decidida ? !!tie.penalties : false,
+    classificado: decidida ? (teamById(tie.winner) || {}).name || null : null,
+    classificadoSouEu: decidida ? String(tie.winner) === String(CAREER.clubId) : null,
+  };
+}
+// Fase 4 — pós-jogo pela v2. Etapas, na ordem da versão anterior
+// (btnMatchDetailContinue → coletiva → notícias → resultados → perna da
+// Copa → proposta); a Tabela fica no "Ver tabela" dos resultados
+// (decisão de 04/11). Só leitura do estado do motor.
+function ponteEtapaPosJogo() {
+  const seq = PONTE.seq;
+  if (!seq) return { etapa: "nenhuma" };
+  const sm = seq.resumo;
+  if (PENDING_PRESS && !seq.feitas.has("coletiva")) {
+    const { entry } = PENDING_PRESS;
+    return { etapa: "coletiva", pergunta: entry.pergunta, respostas: entry.respostas.map((r) => ({ letra: r.letra, texto: r.texto })) };
+  }
+  if (!seq.feitas.has("noticias")) {
+    const feed = CAREER.newsFeed || [];
+    const manchetes = feed.filter((n) => n.round === sm.round).slice(0, 3).map((n) => ({ texto: n.texto, tipo: n.type || "generico", meu: !!n.mine }));
+    return {
+      etapa: "noticias", rodada: sm.round, manchetes,
+      financas: { salarios: sm.wagePaid || 0, patrocinio: sm.sponsorIncome || 0, parcelasPagas: sm.installmentsPaid || 0, parcelasRecebidas: sm.installmentsReceived || 0, caixa: CAREER.finances.cash },
+    };
+  }
+  if (!seq.feitas.has("resultados")) {
+    const nome = (id) => { const t = teamById(id) || {}; return { id: String(id), nome: t.name || "?" }; };
+    const cup = sm.cup;
+    return {
+      etapa: "resultados", rodada: sm.round,
+      jogos: (sm.allResults || []).map((r) => ({ mandante: nome(r.home), visitante: nome(r.away), gh: r.gh, ga: r.ga })),
+      mudancas: sm.lineupChanges || [],
+      copa: cup ? {
+        fase: cup.phase, perna: CAREER.cup && CAREER.cup.expanded ? cup.leg : null, adiado: !!cup.deferred,
+        jogos: (cup.results || []).filter((t) => !(cup.deferred && (String(t.home) === String(CAREER.clubId) || String(t.away) === String(CAREER.clubId)))).map((t) => {
+          const sc = CAREER.cup && CAREER.cup.expanded ? (cup.leg === 1 ? t.leg1 : t.leg2) : t;
+          return { mandante: nome(t.home), visitante: nome(t.away), gh: sc.gh, ga: sc.ga, penaltis: (!(CAREER.cup && CAREER.cup.expanded) || cup.leg === 2) && !!t.penalties };
+        }),
+      } : null,
+    };
+  }
+  const leg = CAREER.cup && CAREER.cup.pendingLiveLeg;
+  if (leg && !seq.feitas.has("copa")) {
+    const tie = (CAREER.cup.ties[leg.phase] || []).find((t) => String(t.home) === String(CAREER.clubId) || String(t.away) === String(CAREER.clubId));
+    const opp = tie ? teamById(String(tie.home) === String(CAREER.clubId) ? tie.away : tie.home) : null;
+    return { etapa: "copa", fase: leg.phase, perna: leg.leg, adversario: opp ? opp.name : null };
+  }
+  const offer = CAREER.pendingOffer;
+  if (offer && !seq.feitas.has("proposta")) {
+    const p = CAREER.squad.find((x) => x.id === offer.playerId);
+    const club = teamById(offer.clubId) || {};
+    if (p) {
+      return {
+        etapa: "proposta",
+        jogador: { id: p.id, nome: p.name, posicao: SUBPOS_LABEL[subPositionOf(p)] || null, idade: p.age != null ? p.age : null, valorMercado: p.value != null ? p.value : null },
+        clube: { id: String(offer.clubId), nome: offer.clubName, sigla: club.short || null },
+        valor: offer.fee, parcelas: 1,
+      };
+    }
+  }
+  return { etapa: "fim" };
 }
 // Fase 3 (plano de independência) — a semana. Resumo do que a semana
 // mudou, montado com os retornos de runCalendarOffWeek (mesmo turno da
@@ -17117,6 +17202,68 @@ if (V2_PONTE) {
       } finally {
         PONTE.recebendo = false;
       }
+    },
+    // Fase 4 — pós-jogo pela v2. "Continuar" do Resultado chama
+    // iniciarPosJogo (no lugar da tela cheia da versão anterior); a v2 pede
+    // a etapa (posJogo) e responde cada uma com as MESMAS funções de sempre.
+    iniciarPosJogo() {
+      if (!PONTE.resumo || PONTE.posJogo) return { ok: false, motivo: "sem-resumo" };
+      if (!PONTE.fim || !PONTE.fim.salvo) return { ok: false, motivo: "nao-salvo" };
+      PONTE.seq = { resumo: PONTE.resumo, feitas: new Set() };
+      return { ok: true, ...ponteEtapaPosJogo() };
+    },
+    posJogo() { return ponteEtapaPosJogo(); },
+    // Notícias e resultados: só leitura — marcar como vistas.
+    concluirEtapa(nome) {
+      if (!PONTE.seq || !["noticias", "resultados"].includes(nome)) return { ok: false, motivo: "etapa-invalida" };
+      PONTE.seq.feitas.add(nome);
+      return { ok: true, ...ponteEtapaPosJogo() };
+    },
+    // Coletiva: mesmo efeito de applyPressAnswer (applyPressEffects); sem
+    // letra = "Pular" (sem comentário, sem efeito — o X de sempre). Grava.
+    async responderColetiva(letra) {
+      if (!PONTE.seq || !PENDING_PRESS) return { ok: false, motivo: "sem-coletiva" };
+      const { entry, roundPlayed } = PENDING_PRESS;
+      let efeito = null;
+      if (letra != null) {
+        efeito = applyPressEffects(entry, roundPlayed, letra);
+        if (!efeito) return { ok: false, motivo: "resposta-invalida" };
+      }
+      PENDING_PRESS = null;
+      PONTE.seq.feitas.add("coletiva");
+      const salvo = efeito ? await persistCareer() : true;
+      if (!salvo) return { ok: false, motivo: PONTE.erroGravacao || "falha" };
+      return { ok: true, reputacao: efeito ? efeito.repDelta : null, moral: efeito ? efeito.moralDelta : null, ...ponteEtapaPosJogo() };
+    },
+    // Perna da Copa ao vivo (maybeStartPendingCupLegLive); termina em
+    // finishCupLegLive, que grava. A v2 joga na Partida dela.
+    iniciarPernaCopa() {
+      if (!PONTE.seq) return { ok: false, motivo: "sem-pos-jogo" };
+      if (LIVE_MATCH) return { ok: false, motivo: "em-andamento" };
+      PONTE.ultimo = null; PONTE.fim = null; PONTE.resumo = null; PONTE.erroGravacao = null;
+      PONTE.seq.feitas.add("copa");
+      if (!maybeStartPendingCupLegLive()) return { ok: false, motivo: "sem-copa" };
+      return { ok: true, aoVivo: !!LIVE_MATCH };
+    },
+    // Proposta por jogador: acceptOffer / declineOffer de sempre; "depois"
+    // deixa a proposta pendente (o X do modal de sempre). Grava.
+    async responderProposta(decisao) {
+      if (!PONTE.seq) return { ok: false, motivo: "sem-pos-jogo" };
+      if (!CAREER.pendingOffer) { PONTE.seq.feitas.add("proposta"); return { ok: true, ...ponteEtapaPosJogo() }; }
+      if (decisao === "aceitar") acceptOffer();
+      else if (decisao === "recusar") declineOffer();
+      else if (decisao !== "depois") return { ok: false, motivo: "decisao-invalida" };
+      PONTE.seq.feitas.add("proposta");
+      const salvo = decisao === "depois" ? true : await persistCareer();
+      if (!salvo) return { ok: false, motivo: PONTE.erroGravacao || "falha" };
+      return { ok: true, ...ponteEtapaPosJogo() };
+    },
+    encerrarPosJogo() {
+      if (LIVE_MATCH) return { ok: false, motivo: "em-andamento" };
+      PONTE.seq = null; PONTE.ultimo = null; PONTE.fim = null; PONTE.resumo = null; PONTE.posJogo = false; PONTE.erroGravacao = null;
+      PENDING_PRESS = null; PENDING_ROUND_SUMMARY = null;
+      ponteAvisar();
+      return { ok: true };
     },
     // Fase 3 — a semana. Mesmo caminho do "Avançar semana" e do "Pular
     // para o jogo" (advanceCalendarFromUI): sem jogo na semana, roda o turno
