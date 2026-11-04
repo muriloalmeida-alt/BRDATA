@@ -41,6 +41,10 @@ export const SessionGateway = {
     if (user.planStatus && user.planStatus !== "active") return { error: "Sua conta tem um pagamento pendente — finalize na página inicial para liberar o acesso." };
     return { user: { id: String(user.id), name: user.name } };
   },
+  // Sair (menu Mais): mesmo POST /api/auth/logout da versão anterior.
+  async logout(): Promise<void> {
+    await fetch("/api/auth/logout", { method: "POST", credentials: "same-origin" }).catch(() => {});
+  },
   // Nome do treinador (configurar carreira) — mesmo PUT /api/account/name
   // da versão anterior (submitSetup).
   async updateName(name: string): Promise<SessionUser> {

@@ -299,3 +299,70 @@ Opções:
   3. fase 2 (acesso);
   4. mapa de navegação e entradas (P7);
   5. fases 3 a 11.
+
+## 8. Situação em 03/11 (noite)
+
+### Entregue
+| Etapa | Situação | PR | CI |
+|---|---|---|---|
+| Fase 0: decisões D1–D4 e P1–P8, pranchas 17–45 | concluída | dentro do #57 | — |
+| Fase 1: motor invisível (`/carreira/motor`, reaproveitado, save sempre atualizado) | aprovada | #57 → `main` | verde |
+| Ajustes de sistema (P1 "Voltar" em texto; P3 margens 24/20 px) | aprovada | #58 → `fase1-motor` | rodando |
+| Fase 2: acesso (login, criar carreira, primeira entrada, recompensa diária, sessão expirada) e bug do dia 7 corrigido | aprovada | #59 → `ajustes-sistema` | rodando |
+
+Nenhum dos três PRs foi mesclado ainda. Eles estão em pilha, e a ordem de merge é #57 → #58 → #59.
+
+### Pontos de dependência (seção 1)
+| # | Ponto | Situação |
+|---|---|---|
+| 1 | Sem sessão / sem carreira / sessão expirada | **resolvido** (fase 2) |
+| 11 | Motor em `/carreira-old` | **resolvido parcialmente** (fase 1). Agora fica em `/carreira/motor`, mas ainda é a página antiga escondida, até a fase 12 |
+| 2 | Barra: Jogos e Mais | pendente (fase 10) |
+| 3 | Início: Avançar semana, Amistoso, Próxima temporada | pendente (fases 3 e 5) |
+| 4 | Início: avisos e Notícias | pendente (fases 3 e 8) |
+| 5 | Escalação → Tática e instruções | pendente (fase 6) |
+| 6 | Elenco → filtros | pendente (fase 7) |
+| 7 | Perfil → contrato e ações | pendente (fase 7) |
+| 8 | Tabela → elenco de outro clube | pendente (fase 7) |
+| 9 | Finanças → mercado, patrocínio, estádio e orçamento | pendente (fases 8 e 9) |
+| 10 | Pós-jogo em tela cheia da versão anterior | pendente (fase 4) |
+
+**Resumo:** 1 dos 11 pontos resolvido, 1 resolvido em parte e 9 pendentes. Esses 9 continuam abrindo `/carreira-old` só em homologação (D3).
+
+### Próximas entregas, nesta ordem
+1. **Mapa de navegação e telas de entrada "Jogos" e "Clube" (P7).** Desenhadas por mim no padrão da v2 e mostradas antes de implementar. Sem elas, as telas das fases 3 a 10 não têm por onde ser abertas.
+2. **Fase 3, a semana:**
+   - Semana concluída;
+   - pré-jogo de amistoso;
+   - Notícias;
+   - notificações.
+3. **Fase 4, pós-jogo:**
+   - Coletiva;
+   - Resultados da rodada;
+   - Copa ao vivo, com a faixa aprovada mais o contexto (P6) e o "Decidido nos pênaltis" (P5);
+   - Proposta recebida.
+
+   Ela tira a última transição em tela cheia.
+4. **Fase 5,** temporada e carreira do treinador.
+5. **Fase 6,** tática e treino, com a escala de 5 passos nas instruções por setor (P4).
+6. **Fases 7 a 10:** elenco avançado, mercado, clube, Jogos e Mais.
+7. **Fluxos sem prancha (P8),** junto da fase de cada um:
+   - tutorial e assistente de início;
+   - contratar comissão e olheiro;
+   - obra do estádio;
+   - compra na loja;
+   - conquista;
+   - configurações;
+   - notificações.
+8. **Fase 11, o corte:** a v2 sem nenhum link para `/carreira-old`. **Fase 12, opcional:** extrair o motor.
+
+### Pendências em aberto
+- **Merges** dos PRs #57, #58 e #59: só com a sua ordem.
+- **Homologação:**
+  - conferir a publicação pelo SHA;
+  - medir o tempo de abertura do motor no celular (no servidor local, ~0,5 s depois da espera de 1,5 s);
+  - testar Safari/iPhone com VoiceOver (AUD-04/05).
+
+  A rede deste ambiente bloqueia o domínio de homologação.
+- **`/carreira.html`** (app instalado, notificações e volta do pagamento) continua abrindo a versão anterior. O destino final se decide na fase 11.
+- **Até a entrega P8,** quem cria carreira pela v2 não vê o tutorial nem o assistente de início.

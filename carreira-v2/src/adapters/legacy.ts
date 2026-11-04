@@ -4,7 +4,11 @@
 export type LegacyTarget =
   | "preparar" | "avancar-semana" | "amistoso" | "proxima-temporada"
   | "escalacao" | "calendario" | "financas" | "diretoria" | "noticias"
-  | "elenco" | "jogos" | "mais" | "proposta" | "mercado";
+  | "elenco" | "jogos" | "mais" | "proposta" | "mercado"
+  // P7 — entradas Jogos, Clube e Mais (até cada tela existir na v2).
+  | "estatisticas" | "copa" | "contratos" | "comissao" | "estadio" | "patrocinios" | "olheiros"
+  | "extrato" | "historico-negociacoes" | "perfil-treinador" | "conquistas" | "premiacoes"
+  | "ranking" | "loja" | "configuracoes" | "ajuda" | "notificacoes";
 
 export const legacyHref = (target: LegacyTarget) => `/carreira-old#${target}`;
 // Elenco de um clube (legado: openClubRoster; o próprio clube abre a aba Elenco).

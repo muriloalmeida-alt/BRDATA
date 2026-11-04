@@ -86,7 +86,7 @@ export function Finance({ m }: { m: FinanceModel }) {
         <IconChevron className="row-chevron" />
       </a>
 
-      <div className="cal-foot"><button type="button" className="link-back" onClick={() => goBackTo(`${BASE}/`)}>Voltar ao clube</button></div>
+      <div className="cal-foot"><button type="button" className="link-back" onClick={() => goBackTo(`${BASE}/clube`)}>Voltar ao clube</button></div>
     </div>
   );
 }

@@ -3,7 +3,7 @@
 // equivalente da versão atual até existirem na v2.
 import type { HomeModel } from "../domain/home.ts";
 import { CtaLink, Crest, TabBar, Wordmark } from "../ui/components.tsx";
-import { IconCalendar, IconChevron, IconPitch, IconAlert, IconGift } from "../ui/icons.tsx";
+import { IconCalendar, IconChevron, IconPitch, IconAlert, IconGift, IconShield } from "../ui/icons.tsx";
 import { legacyHref } from "../adapters/legacy.ts";
 import { BASE, Link } from "../ui/router.tsx";
 import "./home.css";
@@ -16,10 +16,10 @@ export function Home({ m, reward }: { m: HomeModel; reward?: { pending: boolean 
     <div className="home">
       <header className="home-head">
         <Wordmark />
-        <div className="home-club">
+        <Link className="home-club" to={`${BASE}/clube`} aria-label={`${m.club.name}, temporada ${m.club.season}. Ver clube`}>
           <Crest team={m.club.crest} size={32} />
           <span className="home-club-txt"><b>{m.club.name.toUpperCase()}</b><span>{m.club.season}</span></span>
-        </div>
+        </Link>
       </header>
 
       <h1 className="home-title">{title}</h1>
@@ -70,6 +70,11 @@ export function Home({ m, reward }: { m: HomeModel; reward?: { pending: boolean 
               <IconChevron className="row-chevron" />
             </Link>
           )}
+          <Link className="row" to={`${BASE}/clube`}>
+            <IconShield className="row-icon" />
+            <span className="row-body"><span className="row-title">Clube</span><span className="row-sub">Diretoria, finanças, mercado e estrutura</span></span>
+            <IconChevron className="row-chevron" />
+          </Link>
           <Link className="row" to={`${BASE}/calendario`}>
             <IconCalendar className="row-icon" />
             <span className="row-body"><span className="row-title">Ver calendário</span></span>

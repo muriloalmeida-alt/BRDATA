@@ -17170,6 +17170,25 @@ const V2_DEEP_LINKS = {
   noticias: () => openNewsScreen(),
   proposta: () => openClubProposalModal(),
   mais: () => document.getElementById("btnBottomMenu").click(),
+  // P7 (telas de entrada Jogos, Clube e Mais da v2): áreas que ainda não
+  // têm tela na v2 abrem aqui, pela mesma função de sempre.
+  estatisticas: () => switchToPanel("estatisticas"),
+  copa: () => switchToPanel("jogos"),
+  contratos: () => openContratosScreen(),
+  comissao: () => openCommissionScreen(),
+  estadio: () => openStadiumScreen(),
+  patrocinios: () => openAnySponsorProposal(),
+  olheiros: () => openScoutingScreen(),
+  extrato: () => openExtratoScreen(),
+  "historico-negociacoes": () => openTransferHistoryScreen(),
+  "perfil-treinador": () => openCoachProfileScreen(),
+  conquistas: () => switchToPanel("conquistas"),
+  premiacoes: () => openAwardsScreen(),
+  ranking: () => switchToPanel("ranking"),
+  loja: () => switchToPanel("loja"),
+  configuracoes: () => openSettingsScreen(),
+  ajuda: () => openHelpCenterScreen(),
+  notificacoes: () => openNotificationsSheet(),
 };
 function applyV2DeepLink() {
   const key = decodeURIComponent((location.hash || "").slice(1));
