@@ -100,7 +100,9 @@ const { check } = require("./_check");
     await fetch("/api/auth/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, password: "senha123" }) });
   }, { email });
   await page.goto(base + "/carreira.html", { waitUntil: "domcontentloaded" });
-  await page.waitForTimeout(500);
+  // Espera a próxima tela real (antes: 500 ms fixos, curtos demais com o CI
+  // carregado — a tela de carga ainda estava de pé).
+  await page.waitForFunction(() => document.getElementById("screenLoading").classList.contains("hidden"), null, { timeout: 15000 }).catch(() => {});
   const afterBoot = await page.evaluate(() => ({
     loadingHidden: document.getElementById("screenLoading").classList.contains("hidden"),
     pickerOrGameVisible: !document.getElementById("screenCompetitionPicker").classList.contains("hidden")
