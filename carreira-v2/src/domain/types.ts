@@ -45,6 +45,9 @@ export interface Player {
   fatigueHistory?: { round: number; fadiga: number }[];
   injuryHistory?: { round: number; severity?: string; durationRounds: number; fadigaAtInjury?: number }[];
   seasonHistory?: { year: number; clubName?: string; apps?: number; goals?: number; assists?: number; overall?: number }[];
+  // Fase 8 (mercado): empréstimos.
+  onLoanFromClubId?: string | number; loanFromClubId?: string | number; loanReturnRound?: number | null;
+  loanBuyOption?: { mandatory: boolean; value: number } | null; loanOriginalWage?: number;
 }
 export interface Lineup {
   formation?: string;
@@ -81,7 +84,13 @@ export interface Career {
   clubProposals?: { clubId?: string; clubName: string; reputationRequired?: number; budgetOffered?: number; seasonYear?: number }[];
   reputation?: number;
   leagueSquads?: Record<string, Player[]>;
-  pendingListings?: { playerId: string | number }[];
+  pendingListings?: Listing[];
+  // Fase 8 (mercado)
+  pendingOffersOut?: OfferOut[];
+  pendingOffer?: { playerId: string; playerName: string; clubId: string; clubName: string; fee: number; round?: number } | null;
+  transferLog?: { round: number; text: string }[];
+  nextSigningDiscountPct?: number | null;
+  marketScope?: "multi" | "single" | string;
   manMarking?: { opponentId: string | number; myPlayerId: string; rivalPlayerId: string } | null;
   tacticalSchemes?: { id: string; name: string }[];
   negativeSeasonsStreak?: number;
@@ -90,4 +99,17 @@ export interface Career {
   calendar?: { year: number; idx: number; weeks: CalendarWeek[]; friendlies?: Friendly[] };
   divisionTeams?: Record<string, Team[]>;
   notifications?: import("./week.ts").Notice[];
+}
+
+// Fase 8 (mercado): propostas enviadas e anúncios de venda (carreira.js,
+// pendingOffersOut / pendingListings).
+export interface OfferOut {
+  id: string; playerId: string; playerName: string; clubId: string; clubName: string;
+  marketValue: number; offerValue: number; installments: number; roundsLeft: number;
+  status: "pending" | "countered" | string; counterValue: number | null; submittedRound?: number; counterRounds?: number;
+  rivalOffer?: { clubId: string; clubName: string; offerValue: number; installments: number } | null;
+}
+export interface Listing {
+  id?: string; playerId: string | number; playerName?: string; askingValue?: number; marketValue?: number; listedRound?: number;
+  offers?: { id: string; clubId: string; clubName: string; value: number; installments: number; round?: number }[];
 }

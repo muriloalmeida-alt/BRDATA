@@ -1,0 +1,21 @@
+/* Fase 8 — mercado (listas da fase 3/6/7). */
+.mk-tools { margin-top: 18px; }
+.mk-window { margin: 10px var(--bd-gutter) 0; font-size: 15px; color: var(--bd-muted); }
+.mk-window.is-closed { color: var(--bd-danger); }
+.mk-list { list-style: none; margin: 0; padding: 0; }
+.mk-more { width: 100%; margin-top: 12px; }
+.mk-range { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 10px; color: var(--bd-muted); font-size: 14px; }
+.mk-hint { margin: 6px 0 0; font-size: 14px; color: var(--bd-muted); }
+.mk-big { margin: 4px 0 6px; font-family: var(--bd-font-display); font-weight: 700; font-size: 28px; color: var(--bd-text); }
+.mk-st.is-gold { color: var(--bd-gold); }
+.mk-st.is-neg { color: var(--bd-danger); }
+.mk-offer .row-body { font-family: var(--bd-font-text); }
+.mk-offer .pr-box { display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; flex: none; border: 2px solid var(--bd-muted); border-radius: 50%; }
+.mk-offer.is-on .pr-box { border-color: var(--bd-accent); color: var(--bd-accent); }
+.mk-offer .pr-box svg { width: 14px; height: 14px; }
+.mk-reject { margin-top: 10px; }
+.mk-tabs3 { grid-template-columns: repeat(3, 1fr); }
+.mk-log dt { flex: none; min-width: 92px; color: var(--bd-muted); font-family: var(--bd-font-text); font-weight: 400; font-size: 14px; }
+.mk-log dd { text-align: left; color: var(--bd-text); }
+.pr .cal-foot a.cta { display: flex; align-items: center; justify-content: center; text-decoration: none; }
+.mk-impact { margin-left: 0; margin-right: 0; }

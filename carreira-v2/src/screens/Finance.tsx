@@ -61,10 +61,10 @@ export function Finance({ m }: { m: FinanceModel }) {
           <span className="row-body"><span className="row-title">Ver elenco</span></span>
           <IconChevron className="row-chevron bd-chev" />
         </Link>
-        <a className="row bd-link" href={legacyHref("mercado")}>
+        <Link className="row bd-link" to={`${BASE}/mercado`}>
           <span className="row-body"><span className="row-title">Ver mercado</span></span>
           <IconChevron className="row-chevron bd-chev" />
-        </a>
+        </Link>
       </nav>
 
       <section className="bd-sec" aria-labelledby="fn-mov">

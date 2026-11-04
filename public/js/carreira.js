@@ -13439,34 +13439,46 @@ function closeOfferModal() {
   OFFER_DIALOG_ID = null;
   OFFER_CTX = null;
 }
-function confirmOfferFromModal() {
-  if (!OFFER_CTX) return;
-  const p = leagueSquadFor(OFFER_CTX.clubId).find((x) => x.id === OFFER_CTX.playerId);
-  if (!p) { closeOfferModal(); toast("Esse jogador não está mais disponível.", { type: "warn" }); return; }
-  const value = Math.max(1000, Math.round(Number(document.getElementById("offerValueInput").value) || 0));
-  const installments = Number(document.getElementById("offerInstallmentsSelect").value) || 1;
+// Fase 8 (Carreira 2.0) — validação e criação da proposta extraídas de
+// confirmOfferFromModal sem mudar as regras; devolve o motivo em vez de
+// só mostrar o aviso (a v2 usa pela ponte).
+function submitOfferOut(clubId, playerId, rawValue, rawInstallments) {
+  const p = leagueSquadFor(clubId).find((x) => x.id === playerId);
+  if (!p) return { ok: false, motivo: "indisponivel", texto: "Esse jogador não está mais disponível." };
+  const value = Math.max(1000, Math.round(Number(rawValue) || 0));
+  const installments = Number(rawInstallments) || 1;
   if (wageBillOf(CAREER.squad) + p.wage > CAREER.finances.wageCap) {
-    toast(`Contratar esse jogador estouraria o teto salarial (${fmtBRL(CAREER.finances.wageCap)}).`, { type: "warn" });
-    return;
+    return { ok: false, motivo: "teto", texto: `Contratar esse jogador estouraria o teto salarial (${fmtBRL(CAREER.finances.wageCap)}).` };
   }
-  if (CAREER.squad.length >= MAX_PRINCIPAL + 20) { toast("Elenco já está muito grande — dispense ou venda alguém antes.", { type: "warn" }); return; }
-  const clubName = teamById(OFFER_CTX.clubId).name;
+  if (CAREER.squad.length >= MAX_PRINCIPAL + 20) return { ok: false, motivo: "elenco-grande", texto: "Elenco já está muito grande — dispense ou venda alguém antes." };
+  const clubName = teamById(clubId).name;
   CAREER.pendingOffersOut = CAREER.pendingOffersOut || [];
-  CAREER.pendingOffersOut.push({
+  const offer = {
     id: `offerout_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
-    playerId: p.id, playerName: p.name, clubId: OFFER_CTX.clubId, clubName,
+    playerId: p.id, playerName: p.name, clubId: String(clubId), clubName,
     marketValue: p.value, offerValue: value, installments,
     roundsLeft: OFFER_WAIT_ROUNDS, status: "pending", counterValue: null,
     submittedRound: CAREER.currentRound,
-  });
+  };
+  CAREER.pendingOffersOut.push(offer);
   // Item 7 — "Desconto de Contratação" vale pra UMA proposta só (mesmo
   // texto do boost, "1 janela de transferência" — na prática, a
   // primeira que o técnico realmente enviar depois de comprá-lo).
   CAREER.nextSigningDiscountPct = null;
+  return { ok: true, offer, player: p, value, clubName };
+}
+function confirmOfferFromModal() {
+  if (!OFFER_CTX) return;
+  const r = submitOfferOut(OFFER_CTX.clubId, OFFER_CTX.playerId, document.getElementById("offerValueInput").value, document.getElementById("offerInstallmentsSelect").value);
+  if (!r.ok) {
+    if (r.motivo === "indisponivel") closeOfferModal();
+    toast(r.texto, { type: "warn" });
+    return;
+  }
   closeOfferModal();
   persistCareer();
   renderMercado();
-  toast(`Proposta de ${fmtBRL(value)} por ${abbreviateName(p.name)} enviada ao ${clubName} — acompanhe em Mercado › Minhas propostas.`, { type: "info" });
+  toast(`Proposta de ${fmtBRL(r.value)} por ${abbreviateName(r.player.name)} enviada ao ${r.clubName} — acompanhe em Mercado › Minhas propostas.`, { type: "info" });
   // UX-MERCADO-001 — operação de mercado não tira mais o técnico da tela
   // em que ele estava (pedido: "ao fazer proposta volto pra home").
   renderAll();
@@ -13506,11 +13518,12 @@ function acceptCounterOffer(offerId) {
   if (!o || o.counterValue == null) return;
   o.offerValue = o.counterValue;
   o.counterValue = null;
-  finalizeIncomingPurchase(o);
+  const r = finalizeIncomingPurchase(o);
   CAREER.pendingOffersOut = (CAREER.pendingOffersOut || []).filter((x) => x.id !== offerId);
   persistCareer();
   renderMyOffersScreen();
   renderMercado(); renderElenco(); renderCentral();
+  return r;
 }
 // Fecha a compra de verdade (proposta aceita ou contraproposta
 // aceita) — reaproveita a MESMA validação de teto/tamanho de elenco de
@@ -13523,22 +13536,22 @@ function finalizeIncomingPurchase(o) {
   const idx = squad.findIndex((x) => String(x.id) === String(o.playerId));
   if (idx < 0) {
     toast(`${abbreviateName(o.playerName)} não está mais disponível — negociação cancelada.`, { type: "warn" });
-    return;
+    return { ok: false, texto: `${abbreviateName(o.playerName)} não está mais disponível — negociação cancelada.` };
   }
   const p = squad[idx];
   if (wageBillOf(CAREER.squad) + p.wage > CAREER.finances.wageCap) {
     toast(`${o.clubName} aceitou, mas contratar ${abbreviateName(p.name)} agora estouraria seu teto salarial — negociação cancelada.`, { type: "warn" });
-    return;
+    return { ok: false, texto: `Contratar ${abbreviateName(p.name)} agora estouraria seu teto salarial — negociação cancelada.` };
   }
   if (CAREER.squad.length >= MAX_PRINCIPAL + 20) {
     toast(`${o.clubName} aceitou, mas seu elenco está grande demais agora — negociação cancelada.`, { type: "warn" });
-    return;
+    return { ok: false, texto: "Seu elenco está grande demais agora — negociação cancelada." };
   }
   const perInstallment = Math.round(o.offerValue / o.installments / 1000) * 1000;
   const firstPayment = o.installments === 1 ? o.offerValue : perInstallment;
   if (CAREER.finances.cash < firstPayment) {
     toast(`${o.clubName} aceitou, mas seu caixa não cobre nem a 1ª parcela agora — negociação cancelada.`, { type: "warn" });
-    return;
+    return { ok: false, texto: "Seu caixa não cobre nem a 1ª parcela agora — negociação cancelada." };
   }
   squad.splice(idx, 1);
   CAREER.finances.cash -= firstPayment;
@@ -13553,6 +13566,7 @@ function finalizeIncomingPurchase(o) {
   toast(`${abbreviateName(p.name)} contratado! O ${o.clubName} aceitou sua proposta.`, { type: "pos" });
   ensureObjectivesFresh(); bumpObjective("daily", "obj_market_1_move", 1);
   if (p.overall >= 82) { firePressConference("15", CAREER.currentRound, false); openPressConferenceModal(); }
+  return { ok: true, player: p };
 }
 /* ---------- Bloco 3 (2/4) — concorrência real por um alvo (pedido do
    usuário, mockup brtreinadorbloco3pendentes.html, "Comparar
@@ -13853,17 +13867,24 @@ function closeListModal() {
   document.getElementById("listOverlay").classList.remove("open");
   LIST_CTX = null;
 }
+// Fase 8 (Carreira 2.0) — criação do anúncio extraída de
+// confirmListFromModal, sem mudar as regras.
+function createListing(p, rawValue) {
+  const askingValue = Math.max(1000, Math.round(Number(rawValue) || 0));
+  CAREER.pendingListings = CAREER.pendingListings || [];
+  const listing = {
+    id: `listing_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
+    playerId: p.id, playerName: p.name, askingValue, marketValue: p.value,
+    listedRound: CAREER.currentRound, offers: [],
+  };
+  CAREER.pendingListings.push(listing);
+  return listing;
+}
 function confirmListFromModal() {
   if (!LIST_CTX) return;
   const p = CAREER.squad.find((x) => x.id === LIST_CTX.playerId);
   if (!p) { closeListModal(); toast("Esse jogador não está mais no seu elenco.", { type: "warn" }); return; }
-  const askingValue = Math.max(1000, Math.round(Number(document.getElementById("listValueInput").value) || 0));
-  CAREER.pendingListings = CAREER.pendingListings || [];
-  CAREER.pendingListings.push({
-    id: `listing_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
-    playerId: p.id, playerName: p.name, askingValue, marketValue: p.value,
-    listedRound: CAREER.currentRound, offers: [],
-  });
+  const { askingValue } = createListing(p, document.getElementById("listValueInput").value);
   closeListModal();
   persistCareer();
   renderMercado();
@@ -13900,20 +13921,20 @@ function cancelListing(listingId) {
 // junto — o jogador já foi, não dá mais pra escolher outra.
 function acceptListingOffer(listingId, offerId) {
   const listing = (CAREER.pendingListings || []).find((l) => l.id === listingId);
-  if (!listing) return;
+  if (!listing) return { ok: false, texto: "Anúncio não encontrado." };
   const offer = listing.offers.find((o) => o.id === offerId);
-  if (!offer) return;
+  if (!offer) return { ok: false, texto: "Proposta não encontrada." };
   const p = CAREER.squad.find((x) => x.id === listing.playerId);
   if (!p) {
     toast(`${abbreviateName(listing.playerName)} não está mais no seu elenco — anúncio cancelado.`, { type: "warn" });
     CAREER.pendingListings = (CAREER.pendingListings || []).filter((l) => l.id !== listingId);
     persistCareer(); renderMySalesScreen(); renderMercado();
-    return;
+    return { ok: false, texto: `${abbreviateName(listing.playerName)} não está mais no seu elenco — anúncio cancelado.` };
   }
   const principalCount = CAREER.squad.filter((x) => x.origin === "principal").length;
   if (p.origin === "principal" && principalCount <= 14) {
     toast("O elenco principal não pode ficar com menos de 14 jogadores — não dá pra fechar essa venda agora.", { type: "warn" });
-    return;
+    return { ok: false, texto: "O elenco principal não pode ficar com menos de 14 jogadores — não dá pra fechar essa venda agora." };
   }
   const perInstallment = Math.round(offer.value / offer.installments / 1000) * 1000;
   const firstPayment = offer.installments === 1 ? offer.value : perInstallment;
@@ -13938,6 +13959,7 @@ function acceptListingOffer(listingId, offerId) {
   persistCareer();
   renderMySalesScreen();
   renderMercado(); renderElenco(); renderEscalacao(); renderCentral();
+  return { ok: true, player: p, offer };
 }
 function mySalesOfferRowHTML(listing, offer) {
   return `<div class="mt-sponsor-proposal-row">
@@ -16990,6 +17012,14 @@ function ponteEstado() {
     })),
   };
 }
+// Fase 8 — duração e cláusula do empréstimo como em confirmLoanFromModal.
+function ponteOpcoesEmprestimo(duracao, clausula, valorClausula) {
+  if (!["temporada", "meia"].includes(duracao) || !["nenhuma", "opcional", "obrigatoria"].includes(clausula)) return null;
+  const buyValue = Math.max(0, Math.round(Number(valorClausula) || 0));
+  const buyOption = clausula === "nenhuma" ? null : { mandatory: clausula === "obrigatoria", value: buyValue };
+  const returnRound = duracao === "meia" ? Math.min(CAREER.currentRound + LOAN_HALF_SEASON_ROUNDS, 38) : null;
+  return { returnRound, buyOption };
+}
 // Grava o save do motor e devolve { ok } ou o motivo da falha (fase 6).
 async function ponteGravar() {
   const salvo = await persistCareer();
@@ -17257,6 +17287,167 @@ if (V2_PONTE) {
       if (acao === "promote" && wageBillOf(CAREER.squad) + p.wage > CAREER.finances.wageCap) return { ok: false, motivo: "teto", mensagem: `Promover esse jogador estouraria o teto salarial (${fmtBRL(CAREER.finances.wageCap)}).` };
       if (acao === "release" && p.origin === "principal" && CAREER.squad.filter((x) => x.origin === "principal").length <= 14) return { ok: false, motivo: "minimo", mensagem: "O elenco principal não pode ficar com menos de 14 jogadores." };
       await handlePlayerAction(id, acao);
+      return ponteGravar();
+    },
+    // Fase 8 — mercado (Carreira 2.0). As funções de sempre:
+    // transferWindowStatus, submitOfferOut (confirmOfferFromModal),
+    // increaseOffer, withdrawOffer, acceptCounterOffer, createListing
+    // (confirmListFromModal), acceptListingOffer, rejectListingOffer,
+    // cancelListing, findInterestedBuyer/finalizeLoanOut, finalizeLoanIn,
+    // acceptOffer/declineOffer. As checagens antes de cada comando são as
+    // dos modais da versão anterior; o motivo volta para a v2 em vez do aviso.
+    mercado() {
+      if (!CAREER) return { ok: false, motivo: "sem-carreira" };
+      const w = transferWindowStatus(CAREER.currentRound);
+      const texto = w.open
+        ? (w.closesLabel ? `Janela aberta ${w.closesLabel}` : w.closesAtRound ? `Janela aberta até a rodada ${w.closesAtRound}` : "Janela aberta")
+        : (w.opensLabel ? `Janela fechada · ${w.opensLabel}` : w.opensAtRound ? `Janela fechada · reabre na rodada ${w.opensAtRound}` : "Janela fechada · próxima temporada");
+      const recusaEmprestimo = [];
+      Object.values(CAREER.leagueSquads || {}).forEach((sq) => sq.forEach((p) => { if (isLoanOutRefused(p)) recusaEmprestimo.push(String(p.id)); }));
+      CAREER.squad.forEach((p) => { if (isLoanOutRefused(p)) recusaEmprestimo.push(String(p.id)); });
+      return {
+        ok: true, janela: { aberta: !!w.open, texto }, multi: CAREER.marketScope === "multi",
+        clubes: marketTeamsPool().map((t) => ({ id: String(t.id), nome: t.name, sigla: t.short || null, divisao: t.competitionId || CURRENT_COMPETITION_ID })),
+        desconto: CAREER.nextSigningDiscountPct || 0, parcelas: [1, 2, 3, 4], esperaRodadas: OFFER_WAIT_ROUNDS,
+        recusaEmprestimo,
+      };
+    },
+    async fazerProposta(clubId, playerId, valor, parcelas) {
+      if (!CAREER) return { ok: false, motivo: "sem-carreira" };
+      if (!transferWindowStatus(CAREER.currentRound).open) return { ok: false, motivo: "janela-fechada", mensagem: "Janela de contratações encerrada — não dá pra propor agora." };
+      if (pendingOfferOutFor(playerId)) return { ok: false, motivo: "ja-proposta", mensagem: "Você já tem uma proposta por esse jogador." };
+      if (![1, 2, 3, 4].includes(Number(parcelas))) return { ok: false, motivo: "parcelas-invalidas" };
+      const r = submitOfferOut(String(clubId), playerId, valor, parcelas);
+      if (!r.ok) return { ok: false, motivo: r.motivo, mensagem: r.texto };
+      const g = await ponteGravar();
+      return g.ok ? { ok: true, id: r.offer.id, valor: r.value } : g;
+    },
+    async aumentarProposta(offerId, valor) {
+      const o = CAREER && (CAREER.pendingOffersOut || []).find((x) => x.id === offerId);
+      if (!o) return { ok: false, motivo: "proposta-invalida" };
+      const v = Math.round(Number(valor) || 0);
+      if (v <= o.offerValue) return { ok: false, motivo: "valor-baixo", mensagem: `A nova proposta precisa ser maior que ${fmtBRL(o.offerValue)}.` };
+      increaseOffer(offerId, v);
+      return ponteGravar();
+    },
+    async retirarProposta(offerId) {
+      if (!CAREER || !(CAREER.pendingOffersOut || []).some((x) => x.id === offerId)) return { ok: false, motivo: "proposta-invalida" };
+      withdrawOffer(offerId);
+      return ponteGravar();
+    },
+    // Prévia da folha "Confirme seu reforço": as mesmas contas de
+    // finalizeIncomingPurchase (1ª parcela arredondada, folha com o salário).
+    previaCompra(offerId) {
+      const o = CAREER && (CAREER.pendingOffersOut || []).find((x) => x.id === offerId);
+      if (!o || o.counterValue == null) return { ok: false, motivo: "proposta-invalida" };
+      const p = leagueSquadFor(o.clubId).find((x) => String(x.id) === String(o.playerId));
+      if (!p) return { ok: false, motivo: "indisponivel", mensagem: `${abbreviateName(o.playerName)} não está mais disponível.` };
+      const valor = o.counterValue;
+      const perInstallment = Math.round(valor / o.installments / 1000) * 1000;
+      const primeira = o.installments === 1 ? valor : perInstallment;
+      return { ok: true, valor, parcelas: o.installments, porParcela: perInstallment, primeira, caixaAntes: CAREER.finances.cash, caixaDepois: CAREER.finances.cash - primeira,
+        folhaAntes: wageBillOf(CAREER.squad), folhaDepois: wageBillOf(CAREER.squad) + p.wage, teto: CAREER.finances.wageCap };
+    },
+    async aceitarContraproposta(offerId) {
+      const o = CAREER && (CAREER.pendingOffersOut || []).find((x) => x.id === offerId);
+      if (!o || o.counterValue == null) return { ok: false, motivo: "proposta-invalida" };
+      const r = acceptCounterOffer(offerId) || { ok: false, texto: null };
+      const g = await ponteGravar();
+      if (!g.ok) return g;
+      return { ok: true, comprado: !!r.ok, mensagem: r.ok ? null : r.texto, coletiva: !!(r.ok && PENDING_PRESS) };
+    },
+    async anunciar(playerId, valor) {
+      const p = CAREER && CAREER.squad.find((x) => x.id === playerId);
+      if (!p) return { ok: false, motivo: "jogador-invalido" };
+      if (listingFor(playerId)) return { ok: false, motivo: "ja-anunciado", mensagem: "Esse jogador já está à venda." };
+      if (p.origin !== "principal") return { ok: false, motivo: "nao-principal", mensagem: "Só jogadores do elenco principal podem ser anunciados." };
+      if (CAREER.squad.filter((x) => x.origin === "principal").length <= 14) return { ok: false, motivo: "minimo", mensagem: "O elenco principal não pode ficar com menos de 14 jogadores." };
+      const l = createListing(p, valor);
+      const g = await ponteGravar();
+      return g.ok ? { ok: true, id: l.id, valor: l.askingValue } : g;
+    },
+    async retirarAnuncio(listingId) {
+      if (!CAREER || !(CAREER.pendingListings || []).some((l) => l.id === listingId)) return { ok: false, motivo: "anuncio-invalido" };
+      cancelListing(listingId);
+      return ponteGravar();
+    },
+    previaVenda(listingId, offerId) {
+      const l = CAREER && (CAREER.pendingListings || []).find((x) => x.id === listingId);
+      const o = l && l.offers.find((x) => x.id === offerId);
+      if (!o) return { ok: false, motivo: "proposta-invalida" };
+      const p = CAREER.squad.find((x) => x.id === l.playerId);
+      const perInstallment = Math.round(o.value / o.installments / 1000) * 1000;
+      const primeira = o.installments === 1 ? o.value : perInstallment;
+      return { ok: true, valor: o.value, parcelas: o.installments, porParcela: perInstallment, primeira, caixaAntes: CAREER.finances.cash, caixaDepois: CAREER.finances.cash + primeira,
+        folhaAntes: wageBillOf(CAREER.squad), folhaDepois: wageBillOf(CAREER.squad) - (p ? p.wage || 0 : 0) };
+    },
+    async aceitarOfertaVenda(listingId, offerId) {
+      const r = CAREER ? acceptListingOffer(listingId, offerId) : null;
+      if (!r) return { ok: false, motivo: "sem-carreira" };
+      if (!r.ok && /não encontrad/.test(r.texto)) return { ok: false, motivo: "proposta-invalida" };
+      const g = await ponteGravar();
+      if (!g.ok) return g;
+      return { ok: true, vendido: !!r.ok, mensagem: r.ok ? null : r.texto, coletiva: !!(r.ok && PENDING_PRESS) };
+    },
+    // offerId null = "Recusar todas" (rejectListingOffer em cada uma); o anúncio continua.
+    async recusarOfertaVenda(listingId, offerId) {
+      const l = CAREER && (CAREER.pendingListings || []).find((x) => x.id === listingId);
+      if (!l) return { ok: false, motivo: "anuncio-invalido" };
+      const ids = offerId ? [offerId] : l.offers.map((o) => o.id);
+      if (!ids.length || ids.some((id) => !l.offers.some((o) => o.id === id))) return { ok: false, motivo: "proposta-invalida" };
+      ids.forEach((id) => rejectListingOffer(listingId, id));
+      return ponteGravar();
+    },
+    // Empréstimo de saída: como openLoanOutModal, o clube interessado é
+    // sorteado ao abrir (findInterestedBuyer) e fica guardado até confirmar.
+    prepararEmprestimo(playerId) {
+      if (!CAREER) return { ok: false, motivo: "sem-carreira" };
+      if (!transferWindowStatus(CAREER.currentRound).open) return { ok: false, motivo: "janela-fechada", mensagem: "Janela de contratações encerrada — não dá pra negociar empréstimo agora." };
+      const p = CAREER.squad.find((x) => x.id === playerId);
+      if (!p) return { ok: false, motivo: "jogador-invalido" };
+      if (p.origin !== "principal") return { ok: false, motivo: "nao-principal", mensagem: "Só dá pra emprestar jogador do elenco principal." };
+      if (CAREER.squad.filter((x) => x.origin === "principal").length <= 14) return { ok: false, motivo: "minimo", mensagem: "O elenco principal não pode ficar com menos de 14 jogadores." };
+      if (isLoanOutRefused(p)) return { ok: false, motivo: "recusa", mensagem: `${abbreviateName(p.name)} não aceita ser emprestado — quer continuar brigando por espaço no elenco principal.` };
+      const buyer = findInterestedBuyer(CAREER.clubId, p);
+      if (!buyer) { PONTE.emprestimo = null; return { ok: false, motivo: "sem-interessado", mensagem: `Nenhum time demonstrou interesse em pegar ${abbreviateName(p.name)} emprestado agora.` }; }
+      PONTE.emprestimo = { playerId, buyer };
+      const taxa = (meia) => Math.round((p.value * 0.10 * (meia ? 0.5 : 1)) / 1000) * 1000;
+      return { ok: true, clube: { id: String(buyer.id), nome: buyer.name }, taxaTemporada: taxa(false), taxaMeia: taxa(true), valorMercado: p.value };
+    },
+    async emprestar(playerId, duracao, clausula, valorClausula) {
+      if (!CAREER || !PONTE.emprestimo || PONTE.emprestimo.playerId !== playerId) return { ok: false, motivo: "sem-emprestimo" };
+      if (!transferWindowStatus(CAREER.currentRound).open) return { ok: false, motivo: "janela-fechada", mensagem: "Janela de contratações encerrada — não dá pra negociar empréstimo agora." };
+      const opts = ponteOpcoesEmprestimo(duracao, clausula, valorClausula);
+      if (!opts) return { ok: false, motivo: "opcao-invalida" };
+      const ok = await finalizeLoanOut(playerId, { ...opts, buyer: PONTE.emprestimo.buyer });
+      PONTE.emprestimo = null;
+      if (!ok) return { ok: false, motivo: "recusa", mensagem: "O empréstimo não foi feito." };
+      return ponteGravar();
+    },
+    async pegarEmprestado(clubId, playerId, duracao, percentual, clausula, valorClausula) {
+      if (!CAREER) return { ok: false, motivo: "sem-carreira" };
+      if (!transferWindowStatus(CAREER.currentRound).open) return { ok: false, motivo: "janela-fechada", mensagem: "Janela de contratações encerrada — não dá pra pegar jogador emprestado agora." };
+      const p = leagueSquadFor(String(clubId)).find((x) => x.id === playerId);
+      if (!p) return { ok: false, motivo: "indisponivel", mensagem: "Esse jogador não está mais disponível." };
+      const pct = Number(percentual);
+      if (![50, 75, 100].includes(pct)) return { ok: false, motivo: "opcao-invalida" };
+      const opts = ponteOpcoesEmprestimo(duracao, clausula, valorClausula);
+      if (!opts) return { ok: false, motivo: "opcao-invalida" };
+      if (isLoanOutRefused(p)) return { ok: false, motivo: "recusa", mensagem: `${teamById(clubId).name} recusou emprestar ${abbreviateName(p.name)} — é peça importante demais pro clube.` };
+      const loanWage = Math.round((p.wage * (pct / 100)) / 100) * 100;
+      if (wageBillOf(CAREER.squad) + loanWage > CAREER.finances.wageCap) return { ok: false, motivo: "teto", mensagem: `Pegar esse jogador emprestado estouraria o teto salarial (${fmtBRL(CAREER.finances.wageCap)}).` };
+      if (CAREER.squad.length >= MAX_PRINCIPAL + 20) return { ok: false, motivo: "elenco-grande", mensagem: "Elenco já está muito grande — dispense ou negocie alguém antes." };
+      const ok = await finalizeLoanIn(String(clubId), playerId, { ...opts, wagePct: pct });
+      if (!ok) return { ok: false, motivo: "recusa", mensagem: "O empréstimo não foi feito." };
+      const g = await ponteGravar();
+      return g.ok ? { ok: true, salario: loanWage } : g;
+    },
+    // Proposta por um jogador seu fora do pós-jogo ("Decidir depois").
+    async propostaPendente(decisao) {
+      if (!CAREER || !CAREER.pendingOffer) return { ok: false, motivo: "sem-proposta" };
+      if (decisao === "aceitar") acceptOffer();
+      else if (decisao === "recusar") declineOffer();
+      else return { ok: false, motivo: "decisao-invalida" };
       return ponteGravar();
     },
     // Fase 6 — tática e treino (Carreira 2.0). Mesmas regras e funções da

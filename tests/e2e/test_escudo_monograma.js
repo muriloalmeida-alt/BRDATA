@@ -66,7 +66,9 @@ const { skipPreseason } = require("./_calendar_skip");
   await page.goto(base + "/carreira.html", { waitUntil: "domcontentloaded" });
   await page.waitForTimeout(400);
   await page.click('.mt-competition-card[data-competition="brasileirao"]');
-  await page.waitForTimeout(300);
+  // Espera a lista de clubes renderizar (com o CI carregado, 300 ms fixos
+  // não bastavam).
+  await page.waitForSelector('.m3-club-row[data-id="mir"] .ct-crest-mono', { timeout: 15000 }).catch(() => {});
   const picker = await page.evaluate(() => {
     // Série A agora usa os escudos oficiais de img/teams/ (redesign);
     // o monograma continua sendo o fallback de quem não tem arquivo —

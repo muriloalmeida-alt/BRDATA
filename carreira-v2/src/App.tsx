@@ -37,6 +37,7 @@ import { TacticsAxes, TacticsHub, TacticsMarking, TacticsSchemes, TacticsSectors
 import { Evolution, TrainingCondition, TrainingWeek } from "./screens/Training.tsx";
 import { PrepGateway } from "./adapters/prep.ts";
 import { ClubRoster, Compare, Contracts, Ficha, PressStandalone, Talk } from "./screens/SquadPlus.tsx";
+import { History as MarketHistory, Loan, Market, MyOffers, MySales, Negotiation, PendingOffer, Propose, SaleOffers, Target } from "./screens/Market.tsx";
 
 // Recompensa diária: abre sozinha no máximo uma vez por carregamento da v2.
 let rewardShown = false;
@@ -176,6 +177,22 @@ export function App() {
     return <Match start={start} sub={sub} outId={q.get("sai")} competitionId={data.career.competitionId} competitionName={home.competition}
       teamById={data.teamById} onFinished={reloadCareer}
       renderTable={(ctx) => <Table m={buildTable(data.career, data.teamById, q.get("divisao"))} cup={buildCup(data.career, data.teamById)} match={ctx} />} />;
+  }
+  // Fase 8 — mercado.
+  if (loc.path === `${BASE}/mercado` || loc.path.startsWith(`${BASE}/mercado/`)) {
+    const q = new URLSearchParams(loc.search);
+    const sub = loc.path.slice(`${BASE}/mercado`.length);
+    const id = q.get("id") || "", cl = q.get("clube") || "";
+    if (sub === "") return <Market career={data.career} />;
+    if (sub === "/alvo") return <Target key={cl + id} career={data.career} clubId={cl} id={id} />;
+    if (sub === "/proposta") return <Propose key={cl + id} career={data.career} clubId={cl} id={id} onChanged={reloadCareer} />;
+    if (sub === "/propostas") return <MyOffers career={data.career} />;
+    if (sub === "/negociacao") return <Negotiation key={id} career={data.career} id={id} onChanged={reloadCareer} />;
+    if (sub === "/vendas") return <MySales career={data.career} onChanged={reloadCareer} />;
+    if (sub === "/vendas/propostas") return <SaleOffers key={id} career={data.career} id={id} onChanged={reloadCareer} />;
+    if (sub === "/emprestimo") return <Loan key={cl + id} career={data.career} clubId={cl || null} id={id} onChanged={reloadCareer} />;
+    if (sub === "/historico") return <MarketHistory career={data.career} />;
+    if (sub === "/oferta") return <PendingOffer career={data.career} onChanged={reloadCareer} />;
   }
   // Fase 7 — elenco avançado.
   {

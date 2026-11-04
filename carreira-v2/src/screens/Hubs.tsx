@@ -83,9 +83,9 @@ export function ClubHub({ home, board, finance }: { home: HomeModel; board: Boar
         { title: "Extrato financeiro", sub: "Entradas e saídas por rodada", legacy: "extrato" },
       ]} />
       <Section title="Elenco e mercado" items={[
-        { title: "Mercado", sub: "Compra, venda e empréstimos", legacy: "mercado" },
+        { title: "Mercado", sub: "Compra, venda e empréstimos", to: `${BASE}/mercado` },
         { title: "Contratos", sub: "Salários e prazos do elenco", to: `${BASE}/contratos` },
-        { title: "Histórico de negociações", legacy: "historico-negociacoes" },
+        { title: "Histórico de negociações", to: `${BASE}/mercado/historico` },
         { title: "Base e olheiros", sub: "Missões, relatórios e categorias de base", legacy: "olheiros" },
         { title: "Comissão técnica", legacy: "comissao" },
       ]} />

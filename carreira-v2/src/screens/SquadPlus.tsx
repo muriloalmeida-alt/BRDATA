@@ -9,7 +9,7 @@
 // - /carreira/coletiva?volta=: coletiva avulsa (renovação recusada).
 import { useEffect, useState } from "react";
 import { SquadGateway, type PlayerAction, type RenewResult } from "../adapters/squadplus.ts";
-import { legacyClubHref, legacyPlayerHref } from "../adapters/legacy.ts";
+import { ListSheet } from "./Market.tsx";
 import { pressEffect } from "../domain/postmatch.ts";
 import { buildClubRoster, buildCompare, buildContracts, buildFicha, comparePool, suggestedWage, POSITION, type CmpPlayer } from "../domain/squadplus.ts";
 import { moneyShort } from "../domain/home.ts";
@@ -89,6 +89,7 @@ export function RenewSheets({ player, back, onClose, onDone }: { player: Player;
 export function Ficha({ career, id, tela, onChanged }: { career: Career; id: string; tela: string | null; onChanged: () => Promise<void> | void }) {
   const m = buildFicha(career, id);
   const [renew, setRenew] = useState(false);
+  const [sell, setSell] = useState(false);
   const [ask, setAsk] = useState<null | { id: PlayerAction; label: string; confirm?: string; danger?: boolean }>(null);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
@@ -123,11 +124,18 @@ export function Ficha({ career, id, tela, onChanged }: { career: Career; id: str
       <section className="wk-sec" aria-labelledby="fn-c"><h2 className="kicker-caps" id="fn-c">Histórico de clubes</h2>
         {m.clubs.length ? <Rows rows={m.clubs} /> : <p className="wk-note">O histórico aparece a partir da primeira virada de temporada.</p>}</section>
       <nav className="wk-sec" aria-label="Mercado">
-        {m.sale.loan && <a className="row pr-row" href={legacyPlayerHref(m.player.id)}><span className="row-body"><span className="row-title">{m.sale.listed ? "Ver anúncio de venda" : "Colocar à venda"}</span></span><span className="hb-ext" aria-label="abre a versão anterior">↗</span></a>}
-        {m.sale.loan && <a className="row pr-row" href={legacyPlayerHref(m.player.id)}><span className="row-body"><span className="row-title">Emprestar</span></span><span className="hb-ext" aria-label="abre a versão anterior">↗</span></a>}
+        {m.sale.loan && (m.sale.listed
+          ? <Link className="row pr-row" to={`${BASE}/mercado/vendas`}><span className="row-body"><span className="row-title">Ver anúncio de venda</span></span><IconChevron className="row-chevron" /></Link>
+          : <button type="button" className="row pr-row" onClick={() => setSell(true)}><span className="row-body"><span className="row-title">Colocar à venda</span></span><IconChevron className="row-chevron" /></button>)}
+        {m.sale.loan && <Link className="row pr-row" to={`${BASE}/mercado/emprestimo?id=${encodeURIComponent(m.player.id)}`}><span className="row-body"><span className="row-title">Emprestar</span></span><IconChevron className="row-chevron" /></Link>}
         <Link className="row pr-row" to={`${BASE}/elenco/comparar?a=${encodeURIComponent(id)}`}><span className="row-body"><span className="row-title">Comparar</span></span><IconChevron className="row-chevron" /></Link>
       </nav>
-      <div className="cal-foot"><button type="button" className="link-back" onClick={() => goBackTo(FICHA(id))}>Voltar ao jogador</button></div>
+      <div className="cal-foot">
+        <p className="sr-only" role="status" aria-live="polite">{msg || ""}</p>
+        {msg && <p className="pr-ok" aria-hidden="true">{msg}</p>}
+        <button type="button" className="link-back" onClick={() => goBackTo(FICHA(id))}>Voltar ao jogador</button>
+      </div>
+      {sell && <ListSheet player={m.player} onClose={() => setSell(false)} onDone={(t) => { setSell(false); setMsg(t); onChanged(); }} />}
     </div>
   );
   return (
@@ -376,7 +384,7 @@ export function ClubRoster({ career, clubId, clubName, player }: { career: Caree
       ]} /></section>
       <nav className="wk-sec" aria-label="Ações">
         <Link className="row pr-row" to={`${BASE}/elenco/comparar?ext=${encodeURIComponent(`${clubId}:${p.id}`)}`}><span className="row-body"><span className="row-title">Comparar com o meu</span></span><IconChevron className="row-chevron" /></Link>
-        <a className="row pr-row" href={legacyClubHref(clubId)}><span className="row-body"><span className="row-title">Fazer proposta</span><span className="row-sub">Pelo mercado da versão anterior (fase 8)</span></span><span className="hb-ext" aria-label="abre a versão anterior">↗</span></a>
+        <Link className="row pr-row" to={`${BASE}/mercado/alvo?clube=${encodeURIComponent(clubId)}&id=${encodeURIComponent(p.id)}`}><span className="row-body"><span className="row-title">Fazer proposta</span><span className="row-sub">Pelo mercado</span></span><IconChevron className="row-chevron" /></Link>
       </nav>
       <div className="cal-foot"><button type="button" className="link-back" onClick={() => goBackTo(`${BASE}/clube-elenco?id=${encodeURIComponent(clubId)}`)}>Voltar ao clube</button></div>
     </div>
