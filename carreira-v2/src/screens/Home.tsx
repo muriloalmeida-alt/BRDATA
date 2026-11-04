@@ -7,7 +7,6 @@ import type { NoticesModel, SkipInfo } from "../domain/week.ts";
 import { NoticesSheet, SkipToMatch } from "./Week.tsx";
 import { CtaLink, Crest, TabBar, Wordmark } from "../ui/components.tsx";
 import { IconCalendar, IconChevron, IconPitch, IconAlert, IconBell, IconGift, IconShield } from "../ui/icons.tsx";
-import { legacyHref } from "../adapters/legacy.ts";
 import { BASE, Link } from "../ui/router.tsx";
 import "./home.css";
 import "./week.css";
@@ -72,9 +71,8 @@ export function Home({ m, reward, skip, notices, onNoticesOpened }: {
               <span className="row-body"><span className="row-title">{a.title}</span><span className="row-sub">{a.sub}</span></span>
               <IconChevron className="row-chevron" />
             </>);
-            return a.id === "escalacao"
-              ? <Link key={a.id} className="row" to={`${BASE}/escalacao`}>{body}</Link>
-              : <a key={a.id} className="row" href={legacyHref(a.id)}>{body}</a>;
+            // Fase 5: a proposta de outro clube ao treinador é tela da v2.
+            return <Link key={a.id} className="row" to={a.id === "escalacao" ? `${BASE}/escalacao` : `${BASE}/proposta-clube`}>{body}</Link>;
           })}
           <Link className="row" to={`${BASE}/escalacao`}>
             <IconPitch className="row-icon" />

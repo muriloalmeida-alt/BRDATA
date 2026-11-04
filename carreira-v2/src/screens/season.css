@@ -1,0 +1,26 @@
+/* Fase 5 — temporada e carreira do treinador. Listas da fase 3 (week.css);
+   faixa do Encerramento com a foto aprovada (home-match), sem louros. */
+.se-band { min-height: 220px; padding-bottom: 12px; display: flex; flex-direction: column; align-items: center; }
+.se-kicker { margin-top: 18px; }
+.se-pos { position: relative; margin: 4px 0 0; font-family: var(--bd-font-display); font-weight: 800; font-size: 96px; line-height: .95; text-shadow: 0 2px 14px rgba(0, 0, 0, .7); }
+.se-pos sup { font-size: .42em; vertical-align: top; position: relative; top: .12em; }
+.se-club { position: relative; display: flex; align-items: center; gap: 8px; margin: 6px 0 0; font-family: var(--bd-font-display); font-weight: 700; font-size: 24px; text-shadow: 0 1px 8px rgba(0, 0, 0, .8); }
+.se-goal { cursor: default; }
+.se-met { width: 30px; height: 30px; flex: none; color: var(--bd-accent); }
+.se-miss { width: 28px; height: 28px; flex: none; color: var(--bd-danger); }
+.se-warn { margin: 16px var(--bd-gutter) 0; }
+.se-err { margin: 10px var(--bd-gutter) 0; }
+.se-goal-text { margin: 8px 0 0; font-family: var(--bd-font-display); font-weight: 600; font-size: 20px; line-height: 1.2; }
+.dm-reason { font-family: var(--bd-font-text); font-weight: 400; font-size: 17px; color: var(--bd-muted); }
+.co-club dt { display: flex; align-items: center; gap: 10px; }
+.co-bar { margin-left: 0; }
+.co-leave { margin-top: 12px; }
+.cp-hero { display: flex; flex-direction: column; align-items: center; gap: 4px; margin: 24px var(--bd-gutter) 0; padding-bottom: 18px; border-bottom: 1px solid var(--bd-line); }
+.cp-avatar { display: grid; place-items: center; width: 116px; height: 116px; border: 3px solid var(--bd-gold); border-radius: 50%; font-family: var(--bd-font-display); font-weight: 800; font-size: 56px; }
+.cp-name { margin-top: 10px; font-family: var(--bd-font-display); font-weight: 700; font-size: 30px; }
+.cp-role { font-size: 17px; color: var(--bd-gold); }
+.cp-season { font-size: 15px; color: var(--bd-muted); }
+.hs-line { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.hs-val { flex: none; font-size: 15px; color: var(--bd-muted); }
+.wk .cal-foot a.link-back, .wk .cal-foot button.link-back:disabled { text-decoration: none; }
+.co-club { align-items: center; }
