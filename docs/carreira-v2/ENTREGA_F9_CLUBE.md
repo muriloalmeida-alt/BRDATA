@@ -1,7 +1,7 @@
 # Carreira 2.0: fase 9 do plano de independência (clube)
 
 - **Data:** 04/11/2026.
-- **Branch:** `fase9-clube`, a partir de `fase8-mercado` (PR #66, ainda aberto).
+- **Branch:** `fase9-clube`, a partir de `main` (com o #66, fase 8).
 - **Status:** aguardando aprovação do Murilo. Commit local, sem push e sem PR.
 
 **Referências** (pranchas do complemento):
@@ -38,7 +38,7 @@ O E2E novo passa por todas as telas, confere cada gravação no save, o caixa in
 | **Relatórios** ("Veja os prospectos.") e **prospecto** | Olheiros | Overall e potencial estimado; no prospecto, os atributos, a nota do olheiro e o relatório → "Trazer para a base" |
 | **Categorias de base** ("O futuro está aqui.") | Olheiros | Abas Sub-15, Sub-17 e Sub-20 (com contagem): idade, overall e potencial estimado; tocar abre a ficha |
 
-**Capturas** (pasta `evidencias/F9-clube/`, 390×844): CAPTURAS.
+**Capturas** (pasta `evidencias/F9-clube/`, 390×844): 22 arquivos, de `00-clube.png` a `16-base.png`.
 
 **Comparativos** (prancha × v2): de `comparativo-01-comissao.png` a `comparativo-08-base.png`.
 
@@ -89,4 +89,6 @@ Os comandos novos usam as funções de sempre:
   8. indicações;
   9. 360 px e sem `/carreira-old`.
 - **Ajustado:** `test_v2_financas.js` 2 e 4 ("Ver extrato completo" abre o Extrato da v2; atalhos do Clube nas Finanças).
-- **Suíte completa:** SUITE_RESULT.
+- **Ajustado:** `test_h2h.js`, um teste da versão anterior. Com o CI carregado, a Tabela do pós-jogo abria depois da espera e cobria o clique no próximo jogo; agora o teste fecha a Tabela e tenta de novo.
+- **Suíte completa:** **182/183**, e a falha foi o `test_h2h.js`. Depois do ajuste, ele passa. Os 6 E2E da v2 afetados pela correção do potencial passaram de novo depois dela.
+- **Ajuste visual feito durante as capturas:** os filtros do Extrato quebram a linha, para "Transferências" não ser cortado.
