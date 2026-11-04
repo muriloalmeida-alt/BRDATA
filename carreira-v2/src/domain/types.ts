@@ -39,6 +39,7 @@ export interface Player {
   wage?: number;
   potential?: number;
   // Fase 7 (ficha completa, conversa, contratos)
+  scoutRevealed?: boolean;
   age?: number; value?: number; benchStreak?: number; lastTalkRound?: number; moraleReason?: string;
   yellowCards?: number; assistsSeason?: number; appsSeason?: number;
   // Fase 6 (Evolução e condição): históricos do motor.

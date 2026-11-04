@@ -470,7 +470,7 @@ export function BaseScreen({ career }: { career: Career }) {
       <section className="wk-sec" role="tabpanel">
         {list.length ? list.map((p) => (
           <Link key={p.id} className="row sp-player" to={`${BASE}/elenco/ficha?id=${encodeURIComponent(p.id)}`}>
-            <span className="row-body"><span className="row-title">{p.short}</span><span className="row-sub">{p.position} · {p.age} · overall {p.overall}{p.potential != null ? ` · potencial ${p.potential}` : ""}</span></span><IconChevron className="row-chevron" />
+            <span className="row-body"><span className="row-title">{p.short}</span><span className="row-sub">{p.position} · {p.age} · overall {p.overall}{p.potential ? ` · potencial ${p.potential}` : ""}</span></span><IconChevron className="row-chevron" />
           </Link>
         )) : <p className="wk-note">Nenhum atleta nessa categoria ainda.</p>}
         <p className="wk-note">Na ficha de cada atleta: promover ao profissional ou dispensar.</p>

@@ -10,6 +10,7 @@
 import type { Career, Player, PlayerGroup } from "./types.ts";
 import { moneyShort } from "./home.ts";
 import { shortName, sortKey } from "./lineup.ts";
+import { potentialText } from "./potential.ts";
 
 export const POSITION: Record<PlayerGroup, string> = { G: "Goleiro", D: "Defensor", M: "Meio-campo", F: "Atacante" };
 
@@ -42,7 +43,7 @@ export const BASE_CAT_LABEL: Record<BaseCat, string> = { sub15: "Sub-15", sub17:
 export function baseCategoryOf(p: Player): BaseCat { const a = p.age ?? 99; return a <= 15 ? "sub15" : a <= 17 ? "sub17" : "sub20"; }
 export function baseList(career: Career, cat: BaseCat) {
   return (career.squad || []).filter((p) => p.origin === "base" && baseCategoryOf(p) === cat).sort((a, b) => sortKey(a) - sortKey(b))
-    .map((p) => ({ id: p.id, short: shortName(p.name), position: POSITION[p.group], age: p.age != null ? `${p.age} anos` : "—", overall: p.overall, potential: p.potential ?? null }));
+    .map((p) => ({ id: p.id, short: shortName(p.name), position: POSITION[p.group], age: p.age != null ? `${p.age} anos` : "—", overall: p.overall, potential: potentialText(p) }));
 }
 export function baseCounts(career: Career): Record<BaseCat, number> {
   const c: Record<BaseCat, number> = { sub15: 0, sub17: 0, sub20: 0 };

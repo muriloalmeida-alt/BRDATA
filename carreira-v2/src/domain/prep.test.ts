@@ -35,7 +35,7 @@ test("Evolução: fadiga das últimas 8 rodadas (mais recente primeiro), overall
   assert.equal(m.fatigue.length, 8);
   assert.deepEqual(m.fatigue[0], { label: "Rodada 10", value: "19% de fadiga" });
   assert.deepEqual(m.seasons, [{ label: "Temporada 2025", value: "Overall 72" }]);
-  assert.equal(m.potential, "74 · teto 80");
+  assert.equal(m.potential, "74 · teto estimado 76–84");
   assert.deepEqual(m.injuries, [{ label: "Lesão moderada", value: "Rodada 6 · 2 rodadas" }]);
   assert.equal(m.empty, false);
   const novo = buildEvolution({ id: "x", name: "Ana", group: "G", overall: 60 });
