@@ -49,6 +49,15 @@ const { skipPreseason } = require("./_calendar_skip");
     else if (r.stoppedAt) throw new Error(`rodada ${i + 1} parou numa tela inesperada: ${r.stoppedAt}`);
     await page.waitForTimeout(200);
   }
+  // A Tabela do pós-jogo pode abrir depois dos 150 ms de closeLeftoverTabela
+  // (CI carregado) e ficar por cima do Início: espera não sobrar nenhum
+  // modal aberto, fechando a Tabela se ela aparecer.
+  for (let k = 0, quiet = 0; k < 40 && quiet < 3; k++) {
+    await closeLeftoverTabela(page);
+    const open = await page.evaluate(() => [...document.querySelectorAll(".ct-modal-overlay.open")].some((e) => e.id !== "actionLoadingOverlay"));
+    quiet = open ? 0 : quiet + 1;
+    await page.waitForTimeout(150);
+  }
   if (await page.evaluate(() => !document.getElementById("panel-central").classList.contains("active"))) {
     await page.click(".m3-nav-item[data-panel='central']");
     await page.waitForTimeout(200);
