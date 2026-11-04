@@ -5,7 +5,8 @@
 .cl-sug-btn { margin-top: 8px; }
 .cl-lead { margin-top: 0; font-size: 17px; color: var(--bd-text); }
 .cl-neg { color: var(--bd-danger); }
-.cl-filters { margin: 12px var(--bd-gutter) 0; }
+.cl-filters { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px var(--bd-gutter) 0; }
+.cl-filters .pr-seg-btn { flex: 1 1 auto; padding: 0 14px; }
 .cl-scout { display: flex; align-items: center; gap: 12px; min-height: 64px; padding: 10px 0; border-bottom: 1px solid var(--bd-line); }
 .cl-scout .row-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 .cl-scout .state-btn { flex: none; }
