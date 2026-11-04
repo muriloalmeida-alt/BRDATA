@@ -20,7 +20,7 @@ export interface MatchSnapshot {
   posJogo?: "em-andamento" | "concluido";
   minuto?: number; segundoTempo?: boolean;
   contexto?: "liga" | "copa" | "amistoso";
-  rodada?: number; copa?: { fase: string; perna: number } | null;
+  rodada?: number; copa?: CupLegInfo | null;
   mandante?: { id: string; nome: string }; visitante?: { id: string; nome: string };
   souMandante?: boolean; gh?: number; ga?: number; velocidade?: 1 | 2;
   substituicoes?: { usadas: number; total: number };
@@ -28,6 +28,9 @@ export interface MatchSnapshot {
   escalacao?: { formacao: string; titulares: (LivePlayer | null)[]; banco: LivePlayer[] };
   tatica?: { formacao: string; eixos: TacticAxis[]; formacoes: string[]; penalidadeBlocos: number };
 }
+// Fase 4 (P5/P6): perna de Copa — placar da ida do seu ponto de vista (só na
+// volta) e, decidida a volta, pênaltis e quem passou.
+export interface CupLegInfo { fase: string; perna: number; ida?: { meus: number; deles: number } | null; penaltis?: boolean; classificado?: string | null; classificadoSouEu?: boolean | null }
 // Motivo da falha ao gravar o resultado (AUD-02): sessão expirada, outra
 // conta logada neste navegador, ou qualquer outra falha (rede, servidor).
 export type SaveError = "sessao" | "outra-conta" | "falha";

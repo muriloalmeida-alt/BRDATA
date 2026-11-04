@@ -42,7 +42,7 @@ export type MatchSub = "pausa" | "time" | "sai" | "entra" | "tatica" | "lances" 
 const PARTIDA = `${BASE}/partida`;
 
 export function Match({ start, sub, outId, competitionId, competitionName, teamById, onFinished, renderTable }: {
-  start: null | "jogo" | "amistoso"; sub: MatchSub; outId?: string | null; competitionId?: string; competitionName: string; teamById: (id: string | number) => Team;
+  start: null | "jogo" | "amistoso" | "copa"; sub: MatchSub; outId?: string | null; competitionId?: string; competitionName: string; teamById: (id: string | number) => Team;
   onFinished: () => void; renderTable: (ctx: TableMatchContext) => JSX.Element;
 }) {
   // Só a 1ª montagem decide se começa: trocar de vista (?tela=) não reinicia.
@@ -112,7 +112,9 @@ export function Match({ start, sub, outId, competitionId, competitionName, teamB
         // saber que a consulta mudou, senão o 1º voltar parece troca de tela.
         navigate(PARTIDA, { replace: true });
         // Fase 3: o amistoso usa o mesmo motor ao vivo (iniciarAmistoso).
-        const r = kind === "amistoso" ? s.run<{ ok: boolean; motivo?: string }>("iniciarAmistoso") : s.start();
+        // Fase 4: a perna da Copa do pós-jogo também (iniciarPernaCopa).
+        const r = kind === "amistoso" ? s.run<{ ok: boolean; motivo?: string }>("iniciarAmistoso")
+          : kind === "copa" ? s.run<{ ok: boolean; motivo?: string }>("iniciarPernaCopa") : s.start();
         if (!r.ok) setView({ kind: "none", message: r.motivo === "sem-jogo" ? "Não há jogo do seu clube nesta semana." : r.motivo === "sem-amistoso" ? "Não há amistoso nesta semana." : "Não foi possível iniciar a partida." });
         else apply();
       } else {
@@ -250,7 +252,8 @@ export function Match({ start, sub, outId, competitionId, competitionName, teamB
     const res = buildResult(snap, competitionName);
     const status = saveStatus(m.saved, snap.erroGravacao ?? null, !!snap.salvando || retrying);
     const friendly = snap.contexto === "amistoso";
-    const ready = (friendly ? !!snap.semanaPronta : !!snap.resultadoPronto) && status === "saved";
+    const cupLeg = snap.contexto === "copa";
+    const ready = (friendly ? !!snap.semanaPronta : cupLeg ? true : !!snap.resultadoPronto) && status === "saved";
     const cont = () => {
       if (!ready || postMatchRef.current) return;
       if (friendly) {
@@ -264,10 +267,21 @@ export function Match({ start, sub, outId, competitionId, competitionName, teamB
         });
         return;
       }
-      const r = s.continuePostMatch();
-      if (r.ok) { postMatchRef.current = true; guardRef.current = false; setPostMatch(true); s.reveal(true); }
+      // Fase 4: o pós-jogo é da v2 (/carreira/pos-jogo), etapa por etapa,
+      // com o motor escondido. A perna da Copa volta para a sequência.
+      if (cupLeg) {
+        postMatchRef.current = true; guardRef.current = false;
+        s.discard(); onFinished();
+        navigate(`${BASE}/pos-jogo`, { replace: true });
+        return;
+      }
+      const r = s.run<{ ok: boolean }>("iniciarPosJogo");
+      if (r.ok) {
+        postMatchRef.current = true; guardRef.current = false;
+        navigate(`${BASE}/pos-jogo`, { replace: true });
+      }
     };
-    return <ResultView m={m} res={res} teamById={teamById} status={status} ready={ready} friendly={friendly} onContinue={cont} onRetry={retry} onLogin={() => setLogin(true)} />;
+    return <ResultView m={m} res={res} teamById={teamById} status={status} ready={ready} friendly={friendly} cupLeg={cupLeg} onContinue={cont} onRetry={retry} onLogin={() => setLogin(true)} />;
   }
 
   return (
@@ -290,6 +304,7 @@ export function Match({ start, sub, outId, competitionId, competitionName, teamB
           </span>
           <span className="mt-team"><Crest team={teamById(m.away.id)} size={70} /><b>{m.away.name}</b></span>
         </div>
+        {m.cup?.aggregate && <p className="mt-cupline">{m.cup.aggregate}</p>}
       </section>
 
       <section className="mt-last" aria-labelledby="mt-last-t">
@@ -466,8 +481,8 @@ const SAVE_COPY: Record<SaveStatus, string | null> = {
   session: "Sua sessão expirou. Entre de novo, com a mesma conta, para salvar o resultado.",
   "other-account": "Outra conta entrou neste navegador. Entre com a conta em que a partida foi jogada para salvar o resultado.",
 };
-function ResultView({ m, res, teamById, status, ready, friendly, onContinue, onRetry, onLogin }: {
-  m: MatchModel; res: ResultModel | null; teamById: (id: string | number) => Team; status: SaveStatus; ready: boolean; friendly: boolean;
+function ResultView({ m, res, teamById, status, ready, friendly, cupLeg, onContinue, onRetry, onLogin }: {
+  m: MatchModel; res: ResultModel | null; teamById: (id: string | number) => Team; status: SaveStatus; ready: boolean; friendly: boolean; cupLeg: boolean;
   onContinue: () => void; onRetry: () => void; onLogin: () => void;
 }) {
   const msg = SAVE_COPY[status];
@@ -493,6 +508,8 @@ function ResultView({ m, res, teamById, status, ready, friendly, onContinue, onR
           <span className="mt-center"><span className="mt-goals">{m.gh} - {m.ga}</span><span className="rs-min">90’</span><span className="rs-tag">Encerrado</span></span>
           <span className="mt-team"><Crest team={teamById(m.away.id)} size={66} /><b>{m.away.name}</b></span>
         </div>
+        {m.cup?.aggregate && <p className="mt-cupline">{m.cup.aggregate}</p>}
+        {m.cup?.outcome && <p className="mt-cupline mt-cupline--out">{m.cup.outcome}</p>}
       </section>
       <section className="rs-goals" aria-label="Gols">
         {res && res.goals.length ? (
@@ -511,7 +528,7 @@ function ResultView({ m, res, teamById, status, ready, friendly, onContinue, onR
           <span className="row-body"><span className="row-title">Ver lances</span></span>
           <IconChevron className="row-chevron" />
         </a>
-        {!friendly && (
+        {!friendly && !cupLeg && (
           <a className="row" href={`${PARTIDA}?tela=tabela`} onClick={(e) => { e.preventDefault(); navigate(`${PARTIDA}?tela=tabela`); }}>
             <IconList className="row-icon rs-ico" />
             <span className="row-body"><span className="row-title">Ver tabela</span></span>

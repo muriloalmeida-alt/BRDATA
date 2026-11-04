@@ -48,27 +48,46 @@ async function playV2MatchToEnd(v2) {
 
 const ponteFrame = (v2) => v2.frames().find((f) => f.url().includes("/carreira/motor"));
 
-// "Continuar" e a sequência da versão anterior até voltar ao Início.
-// Devolve os passos clicados (ids) — inclui btnLiveSkip quando houve perna
-// de Copa ao vivo.
-async function continueToHome(v2) {
+// "Continuar" e o pós-jogo da v2 (fase 4) até voltar ao Início. Devolve as
+// etapas atravessadas, na ordem: "coletiva", "noticias", "resultados",
+// "copa" (perna ao vivo na Partida da v2) e "proposta".
+// opts.press: "responder" (1ª resposta, padrão) ou "pular"; opts.offer:
+// "recusar" (padrão), "aceitar" ou "depois".
+async function continueToHome(v2, opts = {}) {
   await v2.click('.pz-foot .cta[data-save="saved"]');
-  await v2.waitForTimeout(800);
-  const frame = ponteFrame(v2);
-  const clicked = [];
-  for (let k = 0; k < 60; k++) {
+  const steps = [];
+  for (let k = 0; k < 120; k++) {
     if (await v2.locator(".home").count()) break;
-    const id = frame ? await frame.evaluate(() => {
-      const vis = (id) => { const el = document.getElementById(id); return el && el.offsetParent !== null; };
-      const press = document.querySelector("#pressOverlay.open [data-press]"); if (press) { press.click(); return "press"; }
-      for (const id of ["btnMatchDetailContinue", "btnNewsContinue", "btnRoundResultsContinue", "btnPlayerOfferDecline", "tabelaModalClose", "btnLiveSkip"]) if (vis(id)) { document.getElementById(id).click(); return id; }
+    const st = await v2.evaluate(() => {
+      const h1 = (document.querySelector("h1") || {}).textContent || "";
+      const ready = document.querySelector('.pz-foot .cta[data-save="saved"]:not([aria-disabled])');
+      if (document.querySelector(".mt-skip")) return "live";
+      if (ready) return "copa-fim";
+      if (document.querySelector(".pj-answer")) return document.querySelector(".pj-effect") ? "coletiva-ok" : "coletiva";
+      if (h1 === "Nos bastidores." && document.querySelector(".pj")) return "noticias";
+      if (h1 === "A disputa continua.") return "resultados";
+      if (h1 === "Uma oferta chegou.") return "proposta";
       return null;
-    }).catch(() => null) : null;
-    if (id) clicked.push(id);
+    }).catch(() => null);
+    if (st === "live") { if (!steps.includes("copa")) steps.push("copa"); await v2.click(".mt-skip").catch(() => {}); }
+    else if (st === "copa-fim") await v2.click(".pz-foot .cta").catch(() => {});
+    else if (st === "coletiva") {
+      steps.push("coletiva");
+      if (opts.press === "pular") await v2.click(".pj .cal-foot .link-back").catch(() => {});
+      else await v2.click(".pj-answer").catch(() => {});
+    } else if (st === "coletiva-ok") await v2.click(".pj .cal-foot .cta").catch(() => {});
+    else if (st === "noticias" || st === "resultados") {
+      if (steps[steps.length - 1] !== st) steps.push(st);
+      await v2.click(".pj .cal-foot .cta").catch(() => {});
+    } else if (st === "proposta") {
+      steps.push("proposta");
+      const which = opts.offer === "aceitar" ? ".pj .cal-foot .cta" : opts.offer === "depois" ? ".pj .cal-foot .text-btn" : ".pj .cal-foot .link-back";
+      await v2.click(which).catch(() => {});
+    }
     await v2.waitForTimeout(400);
   }
   await v2.waitForSelector(".home", { timeout: 30000 });
-  return clicked;
+  return steps;
 }
 
 // Save do servidor × save em memória da ponte, sem o carimbo updatedAt.

@@ -99,7 +99,7 @@ const { playRound, closeLeftoverTabela } = require("./_round");
   const home = await v2.evaluate(() => ({ line: document.querySelector(".home-date")?.textContent || "", frames: document.querySelectorAll("iframe").length, shown: [...document.querySelectorAll("iframe")].filter((f) => f.getBoundingClientRect().width > 1 || f.getAttribute("aria-hidden") !== "true").length }));
   const tie = (saved.cup.ties.fase1 || []).find((t) => String(t.home) === String(saved.clubId) || String(t.away) === String(saved.clubId));
   check("4) Continuar: pós-jogo completo com a perna da Copa ao vivo; Início na rodada 4; ida gravada, nada pendente, motor escondido e único:",
-    steps.includes("btnLiveSkip") && home.line.endsWith("RODADA 4") && home.frames <= 1 && home.shown === 0 && saved.currentRound === 4 && !saved.cup.pendingLiveLeg && tie && tie.leg1.gh != null,
+    steps.includes("copa") && home.line.endsWith("RODADA 4") && home.frames <= 1 && home.shown === 0 && saved.currentRound === 4 && !saved.cup.pendingLiveLeg && tie && tie.leg1.gh != null,
     JSON.stringify({ steps, home, round: saved.currentRound, pending: saved.cup.pendingLiveLeg, leg1: tie && tie.leg1 }));
 
   await browser.close();
