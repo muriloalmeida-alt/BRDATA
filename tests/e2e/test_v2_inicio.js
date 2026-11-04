@@ -70,8 +70,8 @@ const { skipPreseason } = require("./_calendar_skip");
   check("3a) Topo, título e competição reais:", pre.title === "Vamos para o jogo." && pre.comp === "Brasileirão Série A" && pre.club === "FLAMENGO", JSON.stringify(pre));
   check("3b) Confronto real com escudo oficial, data + rodada e fase da pré-temporada:",
     pre.teams.includes("Flamengo") && pre.crest && pre.crest.startsWith("/img/teams/") && /RODADA 1$/.test(pre.line) && /^Pré-temporada · semana \d+ de \d+$/.test(pre.phase), JSON.stringify(pre));
-  check("3c) CTA real da semana sem jogo (Avançar semana → /carreira-old#avancar-semana) e sem posição/forma inventadas:",
-    pre.cta === "Avançar semana" && pre.ctaHref === "/carreira-old#avancar-semana" && !pre.stats, JSON.stringify(pre));
+  check("3c) CTA real da semana sem jogo (Avançar semana → Semana concluída da v2, fase 3) e sem posição/forma inventadas:",
+    pre.cta === "Avançar semana" && pre.ctaHref === "/carreira/semana?avancar=semana" && !pre.stats, JSON.stringify(pre));
   check("3d) Objetivo e finanças iguais aos da versão atual; navegação Início/Elenco/Jogos/Mais:",
     pre.rows.includes(legacy.goal) && pre.value === legacy.cash && JSON.stringify(pre.tabs) === JSON.stringify(["Início", "Elenco", "Jogos", "Mais"]), JSON.stringify({ pre, legacy }));
 

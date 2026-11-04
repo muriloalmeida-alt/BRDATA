@@ -26,4 +26,5 @@ export const IconList = (p: P) => <S {...p}><rect x="3.5" y="4" width="17" heigh
 export const IconTrophy = (p: P) => <S {...p}><path d="M8 4h8v5a4 4 0 0 1-8 0V4Z" /><path d="M8 6H5a3 3 0 0 0 3 4M16 6h3a3 3 0 0 1-3 4" /><path d="M12 13v4M8.5 20h7M10 17h4" /></S>;
 export const IconShield = (p: P) => <S {...p}><path d="M12 3 5 6v5c0 4.5 3 8 7 10 4-2 7-5.5 7-10V6l-7-3Z" /></S>;
 export const IconClose = (p: P) => <S {...p}><path d="M7 7l10 10M17 7 7 17" /></S>;
+export const IconBell = (p: P) => <S {...p}><path d="M6 16.5V11a6 6 0 0 1 12 0v5.5l1.5 2h-15Z" /><path d="M10 20.5a2 2 0 0 0 4 0" /></S>;
 export const IconGift = (p: P) => <S {...p}><rect x="3.5" y="9" width="17" height="11" rx="1.5" /><path d="M3.5 13h17M12 9v11" /><path d="M12 9c-1.5-3-5-4-5.5-2S9 9 12 9Zm0 0c1.5-3 5-4 5.5-2S15 9 12 9Z" /></S>;

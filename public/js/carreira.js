@@ -230,7 +230,7 @@ function squadSortKey(p) { return (SUBPOS_ORDER[subPositionOf(p)] ?? 9) * 1000 -
 const V2_PONTE = new URLSearchParams(location.search).get("ponte") === "partida" || location.pathname === "/carreira/motor";
 // Estado só da ponte (nunca salvo): última partida vista (LIVE_MATCH vira
 // null no fim), resultado da gravação final e quem está ouvindo.
-const PONTE = { pronta: false, ultimo: null, fim: null, ouvintes: new Set(), resumo: null, posJogo: false, salvando: false, erroGravacao: null };
+const PONTE = { pronta: false, ultimo: null, fim: null, ouvintes: new Set(), resumo: null, posJogo: false, salvando: false, erroGravacao: null, semana: null, antesSemana: null };
 let LIVE_MODE = false;
 let LIVE_SEASON = new Date().getFullYear();
 let LEAGUE_TEAMS = []; // 20 clubes ativos (real ou DEMO_TEAMS — ver loadLeague)
@@ -12572,7 +12572,12 @@ async function finishFriendlyLive() {
   document.getElementById("liveMatchOverlay").classList.remove("open");
   LIVE_MATCH = null;
   // O amistoso é o jogo da semana — fecha a semana (treino, prazos, mês).
-  runCalendarOffWeek();
+  const weekTurn = runCalendarOffWeek();
+  // Carreira 2.0 (fase 3): resumo da semana para a tela "Semana concluída".
+  if (V2_PONTE && PONTE.antesSemana) {
+    PONTE.semana = ponteResumoSemana(PONTE.antesSemana, [weekTurn], { amistososPerdidos: 0, amistoso: { adversario: opp.name, gh: lm.gh, ga: lm.ga, lesoes: injuriesKept, bilheteria: ticket } });
+    PONTE.antesSemana = null;
+  }
   ponteFim(await persistCareer());
   renderAll();
   toast({ title: `Amistoso: ${lm.gh} x ${lm.ga}`, detail: `Contra o ${opp.name} — não vale pontos${injuriesKept ? `; ${injuriesKept} lesão confirmada` : ""}. Semana concluída.` }, { type: lm.gh >= lm.ga ? "pos" : "info" });
@@ -16940,6 +16945,8 @@ function ponteEstado() {
     erroGravacao: encerrada && PONTE.fim && !PONTE.fim.salvo ? PONTE.fim.erro : null,
     salvando: !!PONTE.salvando,
     resultadoPronto: encerrada && !!PONTE.resumo,
+    // Fase 3: amistoso encerrado → resumo da semana pronto (resumoSemana()).
+    semanaPronta: encerrada && !!PONTE.semana,
     minuto, segundoTempo: minuto > 45,
     contexto: lm.cupContext ? "copa" : lm.friendlyContext ? "amistoso" : "liga",
     rodada: lm.round,
@@ -16964,6 +16971,43 @@ function ponteEstado() {
       minuto: e.minute, tipo: e.type, meu: e.mine === true,
       jogador: e.player || null, assistencia: e.assistPlayer || null, entra: e.entra || null, sai: e.saiu || null, penalti: !!e.penalty,
     })),
+  };
+}
+// Fase 3 (plano de independência) — a semana. Resumo do que a semana
+// mudou, montado com os retornos de runCalendarOffWeek (mesmo turno da
+// versão anterior) e a condição do elenco antes × depois. Só leitura.
+function ponteFotoSemana() {
+  return {
+    condicao: new Map(CAREER.squad.map((p) => [p.id, p.condition == null ? 100 : p.condition])),
+    janela: transferWindowStatus(CAREER.currentRound).open,
+    caixa: CAREER.finances.cash,
+  };
+}
+function ponteResumoSemana(antes, giros, extra) {
+  const ok = giros.filter(Boolean);
+  const soma = (k) => ok.reduce((t, r) => t + (r[k] || 0), 0);
+  const treinadas = ok.filter((r) => r.phase !== "ferias").length;
+  const sessoes = CAREER.trainingPlan
+    .map((e, i) => (i !== TRAINING_GAME_DAY && e && e.foco ? { foco: e.foco, intensidade: e.foco === "descanso" ? null : (e.intensidade || "moderada") } : null))
+    .filter(Boolean);
+  const jogadores = CAREER.squad.map((p) => {
+    const a = antes.condicao.has(p.id) ? antes.condicao.get(p.id) : null;
+    const d = p.condition == null ? 100 : p.condition;
+    return a == null ? null : { id: p.id, nome: p.name, antes: a, depois: d };
+  }).filter(Boolean);
+  const media = (k) => (jogadores.length ? Math.round(jogadores.reduce((t, j) => t + j[k], 0) / jogadores.length) : null);
+  const win = transferWindowStatus(CAREER.currentRound);
+  const week = calendarWeek();
+  return {
+    semanas: ok.length,
+    agora: week ? { fase: CALENDAR_PHASE_LABEL[week.p], semanaDe: calendarDateLabel(week), temJogo: !!week.r } : null,
+    treino: treinadas ? { semanas: treinadas, sessoes } : null,
+    condicao: { mediaAntes: media("antes"), mediaDepois: media("depois"), jogadores },
+    janela: win.open !== antes.janela ? { aberta: win.open, texto: win.open ? `Aberta ${win.closesLabel}` : `Fechada (${win.opensLabel})` } : null,
+    salarios: soma("wagePaid"), patrocinio: soma("sponsorIncome"),
+    parcelasPagas: soma("installmentsPaid"), parcelasRecebidas: soma("installmentsReceived"),
+    caixa: CAREER.finances.cash,
+    ...extra,
   };
 }
 if (V2_PONTE) {
@@ -17073,6 +17117,75 @@ if (V2_PONTE) {
       } finally {
         PONTE.recebendo = false;
       }
+    },
+    // Fase 3 — a semana. Mesmo caminho do "Avançar semana" e do "Pular
+    // para o jogo" (advanceCalendarFromUI): sem jogo na semana, roda o turno
+    // da semana; ateJogo repete até a semana do próximo jogo, abrindo mão
+    // dos amistosos do caminho (como hoje). Grava e devolve o resumo.
+    async avancarSemana(ateJogo) {
+      if (!PONTE.pronta || !CAREER) return { ok: false, motivo: "carregando" };
+      if (LIVE_MATCH) return { ok: false, motivo: "em-andamento" };
+      const w = calendarWeek();
+      if (!w || w.r || CAREER.currentRound > 38) return { ok: false, motivo: "sem-semana" };
+      const fr = friendlySlotThisWeek();
+      if (!ateJogo && fr && (!fr.optional || fr.opp)) return { ok: false, motivo: "amistoso" };
+      if (PONTE.avancando) return { ok: false, motivo: "em-andamento" };
+      PONTE.avancando = true;
+      try {
+        const antes = ponteFotoSemana();
+        const giros = [];
+        let perdidos = 0;
+        do {
+          const skipped = friendlySlotThisWeek();
+          if (skipped) { if (!skipped.optional || skipped.opp) perdidos++; skipped.played = true; }
+          const r = runCalendarOffWeek();
+          if (!r) break;
+          giros.push(r);
+        } while (ateJogo && !(calendarWeek() || {}).r && giros.length < 60);
+        const resumo = ponteResumoSemana(antes, giros, { amistososPerdidos: perdidos, amistoso: null });
+        const salvo = await persistCareer();
+        if (salvo) renderAll();
+        return salvo ? { ok: true, resumo } : { ok: false, motivo: PONTE.erroGravacao || "falha" };
+      } finally {
+        PONTE.avancando = false;
+      }
+    },
+    // Escolhe o adversário entre os convites do amistoso da semana (mesma
+    // regra de pickFriendlyOpponent) e grava.
+    async escolherAmistoso(clubId) {
+      const slot = friendlySlotThisWeek();
+      if (!slot) return { ok: false, motivo: "sem-amistoso" };
+      if (!slot.invites.includes(String(clubId))) return { ok: false, motivo: "convite-invalido" };
+      slot.opp = String(clubId);
+      const salvo = await persistCareer();
+      return salvo ? { ok: true } : { ok: false, motivo: PONTE.erroGravacao || "falha" };
+    },
+    // Mesmo caminho do "Ir para o amistoso" (startFriendlyLive). Na
+    // pré-temporada, sem escolha vai o 1º convite; em julho só com convite
+    // aceito. O fim do amistoso fecha a semana (finishFriendlyLive) e deixa
+    // o resumo em resumoSemana().
+    iniciarAmistoso() {
+      if (!PONTE.pronta || !CAREER) return { ok: false, motivo: "carregando" };
+      if (LIVE_MATCH) return { ok: false, motivo: "em-andamento" };
+      const slot = friendlySlotThisWeek();
+      if (!slot || (slot.optional && !slot.opp)) return { ok: false, motivo: "sem-amistoso" };
+      PONTE.ultimo = null; PONTE.fim = null; PONTE.resumo = null; PONTE.posJogo = false; PONTE.erroGravacao = null;
+      PONTE.semana = null;
+      PONTE.antesSemana = ponteFotoSemana();
+      startFriendlyLive(slot);
+      return { ok: true, aoVivo: !!LIVE_MATCH };
+    },
+    resumoSemana() { return PONTE.semana || null; },
+    // Avisos (sino): mesmo efeito de abrir a central de notificações
+    // (openNotificationsSheet) — tudo vira lido — e grava.
+    async marcarAvisosLidos() {
+      if (!CAREER) return { ok: false, motivo: "sem-carreira" };
+      const pend = (CAREER.notifications || []).filter((n) => !n.read);
+      if (!pend.length) return { ok: true };
+      pend.forEach((n) => { n.read = true; });
+      const salvo = await persistCareer();
+      if (salvo) updateNotificationBadge();
+      return salvo ? { ok: true } : { ok: false, motivo: PONTE.erroGravacao || "falha" };
     },
     // Fase 1 — porta única de comandos: executar("nome", ...args) chama o
     // comando de mesmo nome desta API. Comandos novos (semana, mercado,

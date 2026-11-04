@@ -17,7 +17,7 @@ export interface Fixture { home: string | number; away: string | number }
 export interface StandingRow { id: string | number; j: number; v: number; e: number; d: number; gp: number; gc: number; sg: number; pts: number }
 
 export interface CalendarWeek { d: string; p: "ferias" | "pre" | "temporada" | "pausa"; r: number | null; c?: number }
-export interface Friendly { wi: number; optional?: boolean; opp?: string | number | null; played?: boolean; result?: { gh: number; ga: number } | null }
+export interface Friendly { wi: number; invites?: (string | number)[]; optional?: boolean; opp?: string | number | null; played?: boolean; result?: { gh: number; ga: number } | null }
 
 export interface NewsItem { type?: string; mine?: boolean; texto: string; round?: number; seasonYear?: number }
 
@@ -73,4 +73,5 @@ export interface Career {
   clubProposals?: { clubName: string }[];
   calendar?: { year: number; idx: number; weeks: CalendarWeek[]; friendlies?: Friendly[] };
   divisionTeams?: Record<string, Team[]>;
+  notifications?: import("./week.ts").Notice[];
 }

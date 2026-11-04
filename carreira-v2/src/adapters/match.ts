@@ -16,6 +16,7 @@ export interface MatchSnapshot {
   erroGravacao?: SaveError | null;
   salvando?: boolean;
   resultadoPronto?: boolean;
+  semanaPronta?: boolean; // fase 3: amistoso encerrado, resumo da semana pronto
   posJogo?: "em-andamento" | "concluido";
   minuto?: number; segundoTempo?: boolean;
   contexto?: "liga" | "copa" | "amistoso";

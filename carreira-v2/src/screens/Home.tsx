@@ -1,21 +1,38 @@
 // CAP01-T07 / CAP02-T01 — Início (referencias_anteriores/inicio.png).
 // Composição da referência; dados reais do save; ações abrem a tela
 // equivalente da versão atual até existirem na v2.
+import { useState } from "react";
 import type { HomeModel } from "../domain/home.ts";
+import type { NoticesModel, SkipInfo } from "../domain/week.ts";
+import { NoticesSheet, SkipToMatch } from "./Week.tsx";
 import { CtaLink, Crest, TabBar, Wordmark } from "../ui/components.tsx";
-import { IconCalendar, IconChevron, IconPitch, IconAlert, IconGift, IconShield } from "../ui/icons.tsx";
+import { IconCalendar, IconChevron, IconPitch, IconAlert, IconBell, IconGift, IconShield } from "../ui/icons.tsx";
 import { legacyHref } from "../adapters/legacy.ts";
 import { BASE, Link } from "../ui/router.tsx";
 import "./home.css";
+import "./week.css";
 
 const FORM_WORD = { V: "Vitória", E: "Empate", D: "Derrota" } as const;
 
-export function Home({ m, reward }: { m: HomeModel; reward?: { pending: boolean } }) {
+export function Home({ m, reward, skip, notices, onNoticesOpened }: {
+  m: HomeModel; reward?: { pending: boolean }; skip?: SkipInfo | null;
+  notices?: NoticesModel; onNoticesOpened?: () => void;
+}) {
+  // A folha guarda os avisos como estavam ao abrir: os novos continuam
+  // destacados mesmo depois de marcados como lidos.
+  const [bell, setBell] = useState<NoticesModel | null>(null);
+  const unread = notices ? notices.unread : 0;
   const title = m.state === "ended" ? "Temporada encerrada." : "Vamos para o jogo.";
   return (
     <div className="home">
       <header className="home-head">
         <Wordmark />
+        {notices && (
+          <button type="button" className="home-bell" aria-label={unread ? `Avisos, ${unread} ${unread === 1 ? "novo" : "novos"}` : "Avisos"}
+            onClick={() => { setBell(notices); if (unread) onNoticesOpened?.(); }}>
+            <IconBell />{unread > 0 && <span className="home-bell-badge" aria-hidden="true">{unread > 9 ? "9+" : unread}</span>}
+          </button>
+        )}
         <Link className="home-club" to={`${BASE}/clube`} aria-label={`${m.club.name}, temporada ${m.club.season}. Ver clube`}>
           <Crest team={m.club.crest} size={32} />
           <span className="home-club-txt"><b>{m.club.name.toUpperCase()}</b><span>{m.club.season}</span></span>
@@ -46,6 +63,7 @@ export function Home({ m, reward }: { m: HomeModel; reward?: { pending: boolean 
 
       <main className="home-main">
         <CtaLink cta={m.cta} className="cta" />
+        {skip && <SkipToMatch info={skip} />}
 
         <nav className="home-list" aria-label="Ações">
           {m.alerts.map((a) => {
@@ -63,6 +81,13 @@ export function Home({ m, reward }: { m: HomeModel; reward?: { pending: boolean 
             <span className="row-body"><span className="row-title">Ajustar escalação</span><span className="row-sub">Escolha quem entra em campo</span></span>
             <IconChevron className="row-chevron" />
           </Link>
+          {m.optionalFriendly && (
+            <Link className="row" to={`${BASE}/amistoso`}>
+              <IconPitch className="row-icon" />
+              <span className="row-body"><span className="row-title">Amistoso desta semana</span><span className="row-sub">Opcional · {m.optionalFriendly.invites} {m.optionalFriendly.invites === 1 ? "convite" : "convites"}</span></span>
+              <IconChevron className="row-chevron" />
+            </Link>
+          )}
           {reward && (
             <Link className="row" to={`${BASE}/recompensa`}>
               <IconGift className="row-icon" />
@@ -110,16 +135,15 @@ export function Home({ m, reward }: { m: HomeModel; reward?: { pending: boolean 
               <IconChevron className="row-chevron" />
             </Link>
           )}
-          {m.news && (
-            <a className="row" href={legacyHref("noticias")}>
-              <span className="row-body"><span className="row-kicker row-kicker--caps">Notícias do clube</span><span className="row-title home-news">{m.news}</span></span>
-              <IconChevron className="row-chevron" />
-            </a>
-          )}
+          <Link className="row" to={`${BASE}/noticias`}>
+            <span className="row-body"><span className="row-kicker row-kicker--caps">Notícias do clube</span><span className={m.news ? "row-title home-news" : "row-sub"}>{m.news || "Nenhuma notícia ainda"}</span></span>
+            <IconChevron className="row-chevron" />
+          </Link>
         </nav>
       </main>
 
       <TabBar current="inicio" />
+      {bell && <NoticesSheet m={bell} onClose={() => setBell(null)} />}
     </div>
   );
 }
