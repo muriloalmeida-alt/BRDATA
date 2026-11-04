@@ -48,7 +48,7 @@ O E2E novo passa por compra, contraproposta, desistência, venda, empréstimos d
 | **Histórico** ("O mercado do clube." / vazio: "Seu histórico começa.") | Mercado, Minhas propostas ou Clube | Abas Compras, Vendas e Empréstimos, com a rodada e a frase de cada negociação |
 | **Proposta pendente** ("Uma oferta chegou.") | Mercado → "Proposta recebida" | Jogador, idade, clube, valor, parcelamento, valor de mercado, diferença; "Aceitar" e "Recusar" |
 
-**Capturas** (pasta `evidencias/F8-mercado/`, 390×844): 27 arquivos, de `01-mercado.png` a `18-proposta-pendente.png`, inclusive a recusa de empréstimo de um jogador de destaque (`16b-emprestimo-saida-recusa.png`).
+**Capturas** (pasta `evidencias/F8-mercado/`, 390×844): 25 arquivos, de `01-mercado.png` a `18-proposta-pendente.png`, inclusive a recusa de empréstimo de um jogador de destaque (`16b-emprestimo-saida-recusa.png`).
 
 **Comparativos** (prancha × v2): 16 arquivos, de `comparativo-01-mercado.png` a `comparativo-16-proposta-pendente.png`.
 
