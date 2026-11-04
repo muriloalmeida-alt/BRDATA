@@ -1,0 +1,7 @@
+/* P7 — telas de entrada (Jogos, Clube, Mais): listas da v2. */
+.hb { min-height: 100dvh; padding-bottom: calc(var(--bd-nav-h) + var(--bd-safe-bottom) + 16px); }
+.hb-sec { margin: 22px var(--bd-gutter) 0; }
+.hb-k { margin: 0 0 4px; }
+.hb-row { width: 100%; border: 0; border-bottom: 1px solid var(--bd-line); background: none; color: var(--bd-text); font: inherit; text-align: left; cursor: pointer; text-decoration: none; }
+.hb-row:first-child { border-top: 1px solid var(--bd-line); }
+.hb-ext { flex: none; width: 24px; text-align: center; color: var(--bd-muted); font-size: 18px; }

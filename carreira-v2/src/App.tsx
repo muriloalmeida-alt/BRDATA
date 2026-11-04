@@ -24,6 +24,7 @@ import { BASE, goBackTo, navigate, useLocation, useScreenFocus } from "./ui/rout
 import { engine } from "./adapters/engine.ts";
 import { ClubScreen, CompetitionScreen, FirstEntryScreen, LoginScreen, NEW, SetupScreen, Splash } from "./screens/Access.tsx";
 import { DailyReward } from "./screens/DailyReward.tsx";
+import { ClubHub, GamesHub, MoreMenu } from "./screens/Hubs.tsx";
 import { LoginSheet } from "./ui/session.tsx";
 import { rewardPending } from "./domain/reward.ts";
 
@@ -143,6 +144,10 @@ export function App() {
   if (loc.path === `${NEW}/pronto`) return <FirstEntryScreen home={home} />;
   if (loc.path.startsWith(NEW)) { queueMicrotask(() => navigate(`${BASE}/`, { replace: true })); return null; }
   if (loc.path === `${BASE}/recompensa`) return <DailyReward onClaimed={refreshAfterReward} />;
+  // P7 — telas de entrada.
+  if (loc.path === `${BASE}/jogos`) return <GamesHub home={home} cup={buildCup(data.career, data.teamById)} />;
+  if (loc.path === `${BASE}/clube`) return <ClubHub home={home} board={buildBoard(data.career)} finance={buildFinance(data.career)} />;
+  if (loc.path === `${BASE}/mais`) return <MoreMenu onLogout={async () => { await SessionGateway.logout(); engine.reset(); navigate(`${BASE}/`, { replace: true }); load(); }} />;
   return <>{route()}{sessionSheet}</>;
 
   // Telas com carreira (a folha de sessão expirada fica por cima de qualquer uma).

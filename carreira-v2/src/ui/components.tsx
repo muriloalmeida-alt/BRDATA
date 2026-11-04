@@ -21,21 +21,19 @@ export function Crest({ team, size }: { team: Team; size: number }) {
   );
 }
 
-// Destinos globais. Início e Elenco são da v2; enquanto Jogos/Mais não existem na v2, abrem a
-// tela equivalente na versão atual (decisão de 31/10).
+// Destinos globais — as quatro abas são telas da v2 (P7: Jogos e Mais
+// passaram a ter tela de entrada própria).
 export function TabBar({ current }: { current: "inicio" | "elenco" | "jogos" | "mais" }) {
   const tabs = [
     { id: "inicio", label: "Início", href: "/carreira/", Icon: IconHome },
     { id: "elenco", label: "Elenco", href: `${BASE}/elenco`, Icon: IconUsers },
-    { id: "jogos", label: "Jogos", href: legacyHref("jogos"), Icon: IconCalendar },
-    { id: "mais", label: "Mais", href: legacyHref("mais"), Icon: IconMore },
+    { id: "jogos", label: "Jogos", href: `${BASE}/jogos`, Icon: IconCalendar },
+    { id: "mais", label: "Mais", href: `${BASE}/mais`, Icon: IconMore },
   ] as const;
   return (
     <nav className="tabbar" aria-label="Navegação principal">
       {tabs.map(({ id, label, href, Icon }) => (
-        id === "inicio" || id === "elenco"
-          ? <Link key={id} className="tab" to={href} aria-current={id === current ? "page" : undefined}><Icon />{label}</Link>
-          : <a key={id} className="tab" href={href} aria-current={id === current ? "page" : undefined}><Icon />{label}</a>
+        <Link key={id} className="tab" to={href} aria-current={id === current ? "page" : undefined}><Icon />{label}</Link>
       ))}
     </nav>
   );
