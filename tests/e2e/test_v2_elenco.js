@@ -85,7 +85,7 @@ const { skipPreseason } = require("./_calendar_skip");
   const short = parts.length > 1 ? `${parts[0][0].toUpperCase()}. ${parts[parts.length - 1]}` : fx.striker.name;
   check("3) Perfil: nome, 'Ataque', 'No elenco do Flamengo', overall/atributos/jogos iguais ao save, sem idade nem salário:",
     pf.name === short && pf.pos === "Ataque" && pf.club === "No elenco do Flamengo" && pf.facts["Overall"] === String(fx.striker.overall) && pf.facts["Ataque"] === String(fx.striker.atk)
-      && pf.facts["Situação"] === "Titular" && pf.facts["Jogos"] === String(fx.striker.apps || 0) && !/anos|Salário|R\$/.test(pf.text) && pf.legacy === `/carreira-old#jogador:${encodeURIComponent(fx.striker.id)}`, JSON.stringify(pf.facts));
+      && pf.facts["Situação"] === "Titular" && pf.facts["Jogos"] === String(fx.striker.apps || 0) && !/anos|Salário|R\$/.test(pf.text) && pf.legacy === `/carreira/elenco/ficha?id=${encodeURIComponent(fx.striker.id)}`, JSON.stringify(pf.facts));
 
   // 4) Navegação: Ver escalação → Escalação v2; voltar; Voltar ao elenco.
   await v2.click('.pf-foot a.cta[href="/carreira/escalacao"]');
@@ -117,14 +117,11 @@ const { skipPreseason } = require("./_calendar_skip");
   check("5) Jogador inexistente volta ao Elenco; 360 px sem rolagem horizontal e alvos ≥ 44 px; situação de lesão em vermelho no Perfil; nada gravado:",
     redirected && [a1, a2].every((a) => a.overflow <= 0 && a.small.length === 0) && hurtSit === "sq-sit--danger" && writes.length === 0, JSON.stringify({ redirected, a1, a2, hurtSit, writes }));
 
-  // 6) "Contrato e ações do jogador" abre a ficha desse jogador na versão atual.
-  await page.goto("about:blank");
+  // 6) "Contrato e ações do jogador" abre a ficha completa da v2 (fase 7).
   await v2.click(".pf-legacy");
-  await v2.waitForURL(/\/carreira-old(#.*)?$/, { timeout: 10000 });
-  await waitForBoot(v2);
-  await v2.waitForFunction(() => document.getElementById("detailOverlay").classList.contains("open"), null, { timeout: 15000 }).catch(() => {});
-  const det = await v2.evaluate(() => ({ open: document.getElementById("detailOverlay").classList.contains("open"), name: document.querySelector("#detailBody .mt-player-hero-info b")?.textContent, hash: location.hash }));
-  check("6) 'Contrato e ações do jogador' abre a ficha do mesmo jogador na versão atual (#jogador:id) e limpa o fragmento:", det.open && !!det.name && det.hash === "", JSON.stringify(det));
+  await v2.waitForFunction(() => (document.querySelector("h1") || {}).textContent === "Conheça seu jogador.", null, { timeout: 15000 });
+  const det = await v2.evaluate(() => ({ path: location.pathname + location.search, name: document.querySelector(".sp-player .row-title")?.textContent }));
+  check("6) 'Contrato e ações do jogador' abre a ficha completa da v2 do mesmo jogador:", det.path.startsWith("/carreira/elenco/ficha?id=") && !!det.name, JSON.stringify(det));
 
   await browser.close();
 })();

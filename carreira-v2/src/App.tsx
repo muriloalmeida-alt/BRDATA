@@ -36,6 +36,7 @@ import { buildClubOffer, buildSeasonEnd, dismissalPending, seasonEnded } from ".
 import { TacticsAxes, TacticsHub, TacticsMarking, TacticsSchemes, TacticsSectors } from "./screens/Tactics.tsx";
 import { Evolution, TrainingCondition, TrainingWeek } from "./screens/Training.tsx";
 import { PrepGateway } from "./adapters/prep.ts";
+import { ClubRoster, Compare, Contracts, Ficha, PressStandalone, Talk } from "./screens/SquadPlus.tsx";
 
 // Recompensa diária: abre sozinha no máximo uma vez por carregamento da v2.
 let rewardShown = false;
@@ -176,6 +177,19 @@ export function App() {
       teamById={data.teamById} onFinished={reloadCareer}
       renderTable={(ctx) => <Table m={buildTable(data.career, data.teamById, q.get("divisao"))} cup={buildCup(data.career, data.teamById)} match={ctx} />} />;
   }
+  // Fase 7 — elenco avançado.
+  {
+    const q = new URLSearchParams(loc.search);
+    if (loc.path === `${BASE}/elenco/ficha`) return <Ficha key={q.get("id") || ""} career={data.career} id={q.get("id") || ""} tela={q.get("tela")} onChanged={reloadCareer} />;
+    if (loc.path === `${BASE}/elenco/conversa`) return <Talk key={q.get("id") || ""} career={data.career} id={q.get("id") || ""} onChanged={reloadCareer} />;
+    if (loc.path === `${BASE}/elenco/comparar`) return <Compare career={data.career} a={q.get("a")} b={q.get("b")} ext={q.get("ext")} />;
+    if (loc.path === `${BASE}/contratos`) return <Contracts career={data.career} onChanged={reloadCareer} />;
+    if (loc.path === `${BASE}/coletiva`) return <PressStandalone back={q.get("volta") || `${BASE}/`} />;
+    if (loc.path === `${BASE}/clube-elenco` || loc.path === `${BASE}/clube-elenco/jogador`) {
+      const cid = q.get("id") || "";
+      return <ClubRoster key={cid + loc.path} career={data.career} clubId={cid} clubName={data.teamById(cid).name} player={loc.path.endsWith("/jogador") ? q.get("jogador") : null} />;
+    }
+  }
   // Fase 6 — tática (pela Escalação) e treino (pelo Início e pelo Elenco).
   if (loc.path === `${BASE}/tatica`) {
     const mm = data.career.manMarking;
@@ -243,7 +257,7 @@ export function App() {
     return <Board m={buildBoard(data.career)} />;
   }
   if (loc.path === `${BASE}/elenco`) {
-    return <Squad m={buildSquad(data.career)} />;
+    return <Squad m={buildSquad(data.career)} career={data.career} />;
   }
   if (loc.path === `${BASE}/elenco/jogador`) {
     const pr = buildProfile(data.career, new URLSearchParams(loc.search).get("id") || "");

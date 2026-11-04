@@ -1,0 +1,16 @@
+/* Fase 7 — elenco avançado (listas da fase 3/6). */
+.sp-player { color: var(--bd-text); }
+.sp-reason { margin: 6px 0; color: var(--bd-muted); font-size: 16px; }
+.sp-sheet-cta { margin-top: 16px; width: 100%; }
+.sp-why { margin: 0 0 6px; text-align: center; font-size: 14px; color: var(--bd-muted); }
+.sp-why--row { text-align: left; margin: 2px 0 8px; }
+.sp-off { opacity: .55; }
+.sp-tabs2 { grid-template-columns: repeat(2, 1fr); }
+.sp-cmp { display: grid; grid-template-columns: 1fr 1fr; margin: 18px var(--bd-gutter) 0; }
+.sp-cmp-col { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 6px; text-align: center; }
+.sp-cmp-col + .sp-cmp-col { border-left: 1px solid var(--bd-line); }
+.sp-cmp-col b { margin-top: 6px; font-family: var(--bd-font-display); font-size: 21px; }
+.sp-cmp-col span { font-size: 15px; }
+.sp-muted { color: var(--bd-muted); }
+.pr .cal-foot a.link-back { display: flex; align-items: center; justify-content: center; text-decoration: none; }
+.pr .cal-foot:has(.sp-why) { padding-top: 22px; background: linear-gradient(180deg, rgba(8, 14, 24, 0) 0, var(--bd-bg) 16px); }
