@@ -154,7 +154,8 @@ const base = "http://localhost:8787";
     /amistosos/.test(sheet.t) && wk5.h1 === "As semanas avançaram." && /amistosos ficaram sem ser jogados/.test(wk5.note || "") && !!s5.calendar.weeks[s5.calendar.idx].r,
     JSON.stringify({ sheet, wk5, idx: s5.calendar.idx }));
 
-  // 6) Notícias.
+  // 6) Notícias (o amistoso do passo 3 pode ter deixado outro lesionado: a
+  // verificação procura o lesionado injetado aqui, sem exigir que seja o único).
   await old.goto(base + "/carreira-old", { waitUntil: "domcontentloaded" });
   await old.waitForFunction(() => typeof CAREER !== "undefined" && CAREER && CAREER.squad, null, { timeout: 20000 });
   await old.evaluate(async () => {
@@ -172,7 +173,7 @@ const base = "http://localhost:8787";
   await v2.click(".cal-foot .link-back");
   await v2.waitForSelector(".home", { timeout: 15000 });
   check("6) Notícias da v2: título, elenco (lesionado com volta) e manchetes; 'Voltar ao clube' → Início:",
-    nw.h1 === "Nos bastidores." && nw.squad.length === 1 && /lesionado · volta na rodada 6/.test(nw.squad[0]) && nw.heads[0] === "Flamengo assume a ponta" && new URL(v2.url()).pathname === "/carreira/",
+    nw.h1 === "Nos bastidores." && nw.squad.some((t) => /lesionado · volta na rodada 6$/.test(t)) && nw.squad.every((t) => /· (lesionado|suspenso)/.test(t)) && nw.heads[0] === "Flamengo assume a ponta" && new URL(v2.url()).pathname === "/carreira/",
     JSON.stringify(nw));
 
   // 7) Sino.

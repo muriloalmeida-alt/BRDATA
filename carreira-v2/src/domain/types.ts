@@ -70,7 +70,11 @@ export interface Career {
   finances?: { cash: number; wageCap?: number };
   financeLedger?: { round: number; type: string; label: string; amount: number }[];
   newsFeed?: NewsItem[];
-  clubProposals?: { clubName: string }[];
+  clubProposals?: { clubId?: string; clubName: string; reputationRequired?: number; budgetOffered?: number; seasonYear?: number }[];
+  reputation?: number;
+  negativeSeasonsStreak?: number;
+  careerTotals?: { j?: number; v?: number };
+  seasonAwards?: { seasonYear: number; brasileirao?: { campeao?: string | number | null }; copaDoBrasil?: { disputou?: boolean; campeao?: string | number | null } }[];
   calendar?: { year: number; idx: number; weeks: CalendarWeek[]; friendlies?: Friendly[] };
   divisionTeams?: Record<string, Team[]>;
   notifications?: import("./week.ts").Notice[];

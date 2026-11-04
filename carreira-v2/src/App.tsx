@@ -31,6 +31,8 @@ import { buildFriendly, buildNews, buildNotices, skipInfo } from "./domain/week.
 import { FriendlyPre, News, WeekDone } from "./screens/Week.tsx";
 import { WeekGateway } from "./adapters/week.ts";
 import { PostMatch } from "./screens/PostMatch.tsx";
+import { ClubOffer, CoachProfile, Dismissal, History, NewSeason, SeasonEnd } from "./screens/Season.tsx";
+import { buildClubOffer, buildSeasonEnd, dismissalPending, seasonEnded } from "./domain/season.ts";
 
 // Recompensa diária: abre sozinha no máximo uma vez por carregamento da v2.
 let rewardShown = false;
@@ -171,6 +173,28 @@ export function App() {
       teamById={data.teamById} onFinished={reloadCareer}
       renderTable={(ctx) => <Table m={buildTable(data.career, data.teamById, q.get("divisao"))} cup={buildCup(data.career, data.teamById)} match={ctx} />} />;
   }
+  // Fase 5 — temporada e carreira do treinador.
+  if (loc.path === `${BASE}/temporada` || loc.path === `${BASE}/demissao`) {
+    // Demissão decidida e ainda não confirmada: a tela de demissão, sem
+    // avançar a temporada de novo.
+    if (dismissalPending(data.career)) {
+      if (loc.path !== `${BASE}/demissao`) { queueMicrotask(() => navigate(`${BASE}/demissao`, { replace: true })); return null; }
+      return <Dismissal career={data.career} onConfirmed={load} onExpired={() => setExpired(true)} />;
+    }
+    if (!seasonEnded(data.career)) { queueMicrotask(() => navigate(`${BASE}/`, { replace: true })); return null; }
+    return <SeasonEnd m={buildSeasonEnd(data.career, data.teamById)} onAdvanced={reloadCareer} onExpired={() => setExpired(true)} />;
+  }
+  if (loc.path === `${BASE}/temporada/nova`) return <NewSeason />;
+  if (loc.path === `${BASE}/proposta-clube`) {
+    const om = buildClubOffer(data.career, data.teamById);
+    if (!om) { queueMicrotask(() => navigate(`${BASE}/`, { replace: true })); return null; }
+    return <ClubOffer m={om} onExpired={() => setExpired(true)} onDone={async (accepted) => {
+      if (accepted) { await load(); navigate(`${NEW}/pronto`, { replace: true }); }
+      else { await reloadCareer(); navigate(`${BASE}/`, { replace: true }); }
+    }} />;
+  }
+  if (loc.path === `${BASE}/perfil`) return <CoachProfile career={data.career} userName={data.user.name || ""} />;
+  if (loc.path === `${BASE}/historico`) return <History />;
   // Fase 4 — pós-jogo pela v2 (etapas; ?tela=tabela = "Ver tabela").
   if (loc.path === `${BASE}/pos-jogo`) {
     const q = new URLSearchParams(loc.search);

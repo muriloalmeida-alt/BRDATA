@@ -17203,6 +17203,98 @@ if (V2_PONTE) {
         PONTE.recebendo = false;
       }
     },
+    // Fase 5 — temporada e carreira do treinador (Carreira 2.0). Mesmas
+    // funções da versão anterior: advanceSeason, endCurrentClubStint,
+    // startCareer, declineClubProposal, reputationLabel.
+    // "Continuar" do Encerramento: o mesmo advanceSeason do botão
+    // "Próxima temporada" (sem o diálogo — decisão de 04/11). Grava.
+    async proximaTemporada() {
+      if (!CAREER || CAREER.currentRound <= 38) return { ok: false, motivo: "temporada-em-andamento" };
+      if (PONTE.avancando) return { ok: false, motivo: "em-andamento" };
+      PONTE.avancando = true;
+      try {
+        const r = await advanceSeason();
+        if (!r) return { ok: false, motivo: "temporada-em-andamento" };
+        const salvo = await persistCareer();
+        if (!salvo) return { ok: false, motivo: PONTE.erroGravacao || "falha" };
+        renderAll();
+        if (r.dismissed) {
+          const t = CAREER.careerTotals || {};
+          const titulos = (CAREER.seasonAwards || []).reduce((n, a) => n + countTitlesThisSeason(a), 0);
+          return { ok: true, demitido: true, clube: CAREER.clubName, ano: r.finishedYear, posicao: r.finishedPos, meta: r.finishedGoal ? r.finishedGoal.label : null, seguidas: r.streak,
+            passagem: { jogos: t.j || 0, vitorias: t.v || 0, titulos } };
+        }
+        const mine = r.promotionRelegation ? humanDivisionMove(r.promotionRelegation) : null;
+        return {
+          ok: true, demitido: false, ano: r.newYear, anoAnterior: r.finishedYear, posicao: r.finishedPos,
+          metaAnterior: r.finishedGoal ? r.finishedGoal.label : null, metaBatida: !!r.goalWasMet,
+          envelhecidos: CAREER.squad.length, saidas: r.humanRenewal.leavingNames.slice(),
+          novosBase: r.humanRenewal.newBaseCount, contratacoes: r.humanRenewal.newPrincipalCount,
+          divisao: mine ? { texto: mine.text, subiu: !!mine.positive } : null,
+          meta: r.newGoal ? r.newGoal.label : null, teto: CAREER.finances.wageCap, caixa: CAREER.finances.cash,
+          propostas: (CAREER.clubProposals || []).length,
+        };
+      } finally {
+        PONTE.avancando = false;
+      }
+    },
+    // "Começar nova carreira" da demissão: o mesmo de btnDismissalContinue
+    // (reputação e passagens seguem no treinador; o save do clube é apagado).
+    // A criação seguinte (criarCarreira) usa este mesmo motor.
+    async demitir() {
+      if (!CAREER || CAREER.currentRound <= 38) return { ok: false, motivo: "sem-demissao" };
+      if ((CAREER.negativeSeasonsStreak || 0) < DISMISSAL_STREAK) return { ok: false, motivo: "sem-demissao" };
+      endCurrentClubStint("dismissed");
+      try { await fetchJSON("/api/career", { method: "DELETE" }); } catch (err) { return { ok: false, motivo: err.status === 401 ? "sessao" : "falha" }; }
+      CAREER = null;
+      return { ok: true };
+    },
+    // Proposta de outro clube ao treinador: aceitar = endCurrentClubStint +
+    // startCareer no novo clube (o que a versão anterior faz pelo seletor
+    // com só esse clube); recusar = declineClubProposal. Gravam.
+    async aceitarPropostaClube() {
+      const p = CAREER && (CAREER.clubProposals || [])[0];
+      if (!p) return { ok: false, motivo: "sem-proposta" };
+      if (!LEAGUE_TEAMS.some((t) => String(t.id) === String(p.clubId))) return { ok: false, motivo: "clube-invalido" };
+      if (PONTE.criando) return { ok: false, motivo: "em-andamento" };
+      PONTE.criando = true;
+      try {
+        endCurrentClubStint("accepted_proposal");
+        await startCareer(p.clubId);
+        if (!CAREER || String(CAREER.clubId) !== String(p.clubId)) return { ok: false, motivo: "falha" };
+        const salvo = await persistCareer();
+        return salvo ? { ok: true } : { ok: false, motivo: PONTE.erroGravacao || "falha" };
+      } finally {
+        PONTE.criando = false;
+      }
+    },
+    async recusarPropostaClube() {
+      if (!CAREER || !(CAREER.clubProposals || []).length) return { ok: false, motivo: "sem-proposta" };
+      CAREER.clubProposals = CAREER.clubProposals.slice(1);
+      const salvo = await persistCareer();
+      return salvo ? { ok: true } : { ok: false, motivo: PONTE.erroGravacao || "falha" };
+    },
+    // Perfil e histórico do treinador: só leitura.
+    historicoTreinador() {
+      if (!CAREER) return { ok: false, motivo: "sem-carreira" };
+      const rep = CAREER.reputation == null ? 50 : CAREER.reputation;
+      const hist = CAREER.seasonHistory || [];
+      const titulos = [];
+      (CAREER.seasonAwards || []).forEach((a) => {
+        if (a.brasileirao && a.brasileirao.campeao != null && String(a.brasileirao.campeao) === String(CAREER.clubId)) titulos.push({ ano: a.seasonYear, competicao: "brasileirao" });
+        if (a.copaDoBrasil && a.copaDoBrasil.disputou && String(a.copaDoBrasil.campeao) === String(CAREER.clubId)) titulos.push({ ano: a.seasonYear, competicao: "copa" });
+      });
+      const conquistas = (CAREER.achievements || []).filter((a) => a.unlockedAt).map((a) => {
+        const tpl = ACHIEVEMENT_CATALOG.find((t) => t.achievementId === a.achievementId);
+        return tpl ? { id: a.achievementId, titulo: tpl.title, data: a.unlockedAt } : null;
+      }).filter(Boolean).sort((x, y) => y.data - x.data);
+      return {
+        ok: true, nome: (ME && ME.name) || null, reputacao: rep, status: reputationLabel(rep), conquistasTotal: ACHIEVEMENT_CATALOG.length,
+        atual: { nome: CAREER.clubName, temporadas: hist.length, melhorPosicao: hist.length ? Math.min(...hist.map((h) => h.position)) : null, titulos: titulos.length },
+        anteriores: (CAREER.clubHistory || []).map((h) => ({ nome: h.clubName, temporadas: h.seasons, titulos: h.titles, posicaoMedia: h.avgPosition, saida: h.reason })),
+        titulos, conquistas,
+      };
+    },
     // Fase 4 — pós-jogo pela v2. "Continuar" do Resultado chama
     // iniciarPosJogo (no lugar da tela cheia da versão anterior); a v2 pede
     // a etapa (posJogo) e responde cada uma com as MESMAS funções de sempre.

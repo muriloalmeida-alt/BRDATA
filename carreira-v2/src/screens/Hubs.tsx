@@ -108,7 +108,7 @@ export function MoreMenu({ onLogout }: { onLogout: () => Promise<void> }) {
       <span className="tb-bar" aria-hidden="true" />
       <p className="screen-sub">Conta, carreira e preferências.</p>
       <Section items={[
-        { title: "Perfil do treinador", legacy: "perfil-treinador" },
+        { title: "Perfil do treinador", sub: "Reputação, histórico e objetivos", to: `${BASE}/perfil` },
         { title: "Conquistas", legacy: "conquistas" },
         { title: "Premiações", legacy: "premiacoes" },
         { title: "Ranking", legacy: "ranking" },
