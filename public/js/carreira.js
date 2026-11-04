@@ -1992,12 +1992,13 @@ function evaluateBoardRequest() {
   const cashBoost = approved ? raise * 3 : 0;
   return { approved, raise, cashBoost, reason, pos };
 }
-function askBoard() {
+// Fase 10 (Carreira 2.0) — a regra do pedido extraída de askBoard, sem
+// mudar nada; devolve o resultado em vez de só mostrar o aviso.
+function boardRequest() {
   const last = CAREER.lastBoardRequestRound;
   if (last != null && CAREER.currentRound - last < BOARD_REQUEST_COOLDOWN) {
     const wait = BOARD_REQUEST_COOLDOWN - (CAREER.currentRound - last);
-    toast(`A diretoria já respondeu recentemente — espere mais ${wait} rodada${wait > 1 ? "s" : ""}.`);
-    return;
+    return { ok: false, motivo: "espera", wait, texto: `A diretoria já respondeu recentemente — espere mais ${wait} rodada${wait > 1 ? "s" : ""}.` };
   }
   const result = evaluateBoardRequest();
   CAREER.lastBoardRequestRound = CAREER.currentRound;
@@ -2006,11 +2007,16 @@ function askBoard() {
     CAREER.finances.cash += result.cashBoost;
     if (result.cashBoost) pushLedger("diretoria", "Reforço de orçamento da diretoria", result.cashBoost, CAREER.currentRound);
     CAREER.boardDecision = `✅ ${result.reason} Teto salarial +${fmtBRLShort(result.raise)}, caixa +${fmtBRLShort(result.cashBoost)}.`;
-    toast("A diretoria aprovou o pedido!", { type: "pos" });
   } else {
     CAREER.boardDecision = `❌ ${result.reason}`;
-    toast("A diretoria negou o pedido.", { type: "warn" });
   }
+  return { ok: true, ...result };
+}
+function askBoard() {
+  const r = boardRequest();
+  if (!r.ok) { toast(r.texto); return; }
+  if (r.approved) toast("A diretoria aprovou o pedido!", { type: "pos" });
+  else toast("A diretoria negou o pedido.", { type: "warn" });
   persistCareer();
   renderCentral();
 }
@@ -17586,6 +17592,87 @@ if (V2_PONTE) {
       CAREER.scoutSuggestions = CAREER.scoutSuggestions.filter((x) => x.id !== id);
       const g = await ponteGravar();
       return g.ok ? { ok: true, alvo: decisao === "propor" ? { clubId: String(s.clubId), playerId: s.playerId } : null } : g;
+    },
+    // Fase 10 — abas Jogos e Mais (Carreira 2.0). As funções de sempre:
+    // boardRequest (askBoard), ACHIEVEMENT_CATALOG/evaluateAlwaysCheckableAchievements,
+    // computeLeaderboardScore, CREDIT_PACKAGES/BOOST_ITEMS/applyBoostEffect/
+    // pushPurchaseHistory (confirmPurchaseNow), notificationSettings e setSfxEnabled.
+    async pedirOrcamento() {
+      if (!CAREER) return { ok: false, motivo: "sem-carreira" };
+      const r = boardRequest();
+      if (!r.ok) return { ok: false, motivo: r.motivo, espera: r.wait, mensagem: r.texto };
+      const g = await ponteGravar();
+      return g.ok ? { ok: true, aprovado: r.approved, aumentoTeto: r.raise, aporte: r.cashBoost, motivoTexto: r.reason, posicao: r.pos } : g;
+    },
+    orcamento() {
+      if (!CAREER) return { ok: false, motivo: "sem-carreira" };
+      const last = CAREER.lastBoardRequestRound;
+      const wait = last != null && CAREER.currentRound - last < BOARD_REQUEST_COOLDOWN ? BOARD_REQUEST_COOLDOWN - (CAREER.currentRound - last) : 0;
+      return { ok: true, espera: wait, decisao: CAREER.boardDecision || null, teto: CAREER.finances.wageCap, caixa: CAREER.finances.cash, intervalo: BOARD_REQUEST_COOLDOWN };
+    },
+    async conquistas() {
+      if (!CAREER) return { ok: false, motivo: "sem-carreira" };
+      const antes = JSON.stringify(CAREER.achievements || null);
+      evaluateAlwaysCheckableAchievements();
+      if (JSON.stringify(CAREER.achievements) !== antes) { const g = await ponteGravar(); if (!g.ok) return g; }
+      return {
+        ok: true, categorias: ACHIEVEMENT_CATEGORY_LABEL,
+        lista: ACHIEVEMENT_CATALOG.map((t) => { const e = achievementProgressFor(t.achievementId); return { id: t.achievementId, titulo: t.title, descricao: t.description, categoria: t.category, nivel: t.tier, meta: t.target, icone: t.icon, progresso: e.currentProgress || 0, desbloqueadaEm: e.unlockedAt || null }; }),
+      };
+    },
+    pontuacaoRanking() {
+      if (!CAREER) return { ok: false, motivo: "sem-carreira" };
+      const { score, breakdown } = computeLeaderboardScore();
+      return { ok: true, pontos: score, detalhe: breakdown, clube: CAREER.clubName };
+    },
+    loja() {
+      if (!CAREER) return { ok: false, motivo: "sem-carreira" };
+      return { ok: true, pacotes: CREDIT_PACKAGES, itens: BOOST_ITEMS, categorias: BOOST_CATEGORY_LABEL, historico: CAREER.purchaseHistory || [] };
+    },
+    // O servidor debita os créditos (preço do catálogo dele); só depois o
+    // efeito é aplicado na carreira, como confirmPurchaseNow.
+    async comprarItem(itemId) {
+      if (!CAREER) return { ok: false, motivo: "sem-carreira" };
+      const item = BOOST_ITEMS.find((b) => b.id === itemId);
+      if (!item) return { ok: false, motivo: "item-invalido" };
+      let data;
+      try {
+        data = await fetchJSON("/api/loja/spend-credits", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ itemId: item.id }) });
+      } catch (err) {
+        return { ok: false, motivo: "compra-recusada", mensagem: err.message || "Não deu pra concluir a compra agora." };
+      }
+      ME.creditsBR = data.creditsBR;
+      const effectLabel = applyBoostEffect(item);
+      pushPurchaseHistory(item.icon, item.name, effectLabel || item.desc, `-${item.priceCredits}`, "debit");
+      const g = await ponteGravar();
+      return g.ok ? { ok: true, creditos: data.creditsBR, efeito: effectLabel || item.desc } : g;
+    },
+    preferencias() {
+      if (!CAREER) return { ok: false, motivo: "sem-carreira" };
+      return { ok: true, notificacoes: CAREER.notificationSettings || { partida: true, loja: false, lesao: true }, som: !!SFX_ENABLED, reputacao: CAREER.reputation == null ? 50 : CAREER.reputation };
+    },
+    async alternarNotificacao(chave) {
+      if (!CAREER || !["partida", "loja", "lesao"].includes(chave)) return { ok: false, motivo: "opcao-invalida" };
+      CAREER.notificationSettings = CAREER.notificationSettings || { partida: true, loja: false, lesao: true };
+      CAREER.notificationSettings[chave] = !CAREER.notificationSettings[chave];
+      return ponteGravar();
+    },
+    somAtivo(ligado) {
+      setSfxEnabled(!!ligado);
+      return { ok: true, som: !!SFX_ENABLED };
+    },
+    // Nome do treinador (conta): mesmo endpoint de saveProfileName.
+    async salvarNome(nome) {
+      const name = String(nome || "").trim();
+      if (!name) return { ok: false, motivo: "nome-vazio", mensagem: "O nome não pode ficar vazio." };
+      try {
+        const result = await fetchJSON("/api/account/name", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name }) });
+        ME.name = result.user.name;
+        renderAll();
+        return { ok: true, nome: ME.name };
+      } catch (err) {
+        return { ok: false, motivo: "nome-recusado", mensagem: err.message || "Não deu pra salvar o nome agora." };
+      }
     },
     // Fase 6 — tática e treino (Carreira 2.0). Mesmas regras e funções da
     // versão anterior: TACTIC_AXES/SECTOR_INSTRUCTIONS, saveTacticalScheme,

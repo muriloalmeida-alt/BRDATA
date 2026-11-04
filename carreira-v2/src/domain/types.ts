@@ -33,7 +33,7 @@ export interface Player {
   origin?: "principal" | "loan" | "base" | string;
   atk?: number; def?: number; phys?: number;
   morale?: number | null;
-  apps?: number; goalsSeason?: number; goalsCareer?: number;
+  apps?: number; goalsSeason?: number; goalsCareer?: number; assistsCareer?: number;
   wantsTransfer?: boolean;
   contractUntil?: number;
   wage?: number;
@@ -100,8 +100,14 @@ export interface Career {
   manMarking?: { opponentId: string | number; myPlayerId: string; rivalPlayerId: string } | null;
   tacticalSchemes?: { id: string; name: string }[];
   negativeSeasonsStreak?: number;
-  careerTotals?: { j?: number; v?: number };
-  seasonAwards?: { seasonYear: number; brasileirao?: { campeao?: string | number | null }; copaDoBrasil?: { disputou?: boolean; campeao?: string | number | null } }[];
+  seasonAwards?: SeasonAward[];
+  // Fase 10 (estatísticas, conquistas, loja, preferências)
+  teamStats?: import("./games.ts").StatsBucket;
+  careerTotals?: import("./games.ts").CareerTotals;
+  currentWinStreak?: number; currentUnbeatenStreak?: number;
+  leagueChampions?: { year: number; championId: string | number; championName: string; viceId?: string | number | null; viceName?: string | null; myPosition?: number | null }[];
+  titlesWonCopa?: number; titlesWonNacional?: number;
+  boardDecision?: string | null; lastBoardRequestRound?: number | null;
   calendar?: { year: number; idx: number; weeks: CalendarWeek[]; friendlies?: Friendly[] };
   divisionTeams?: Record<string, Team[]>;
   notifications?: import("./week.ts").Notice[];
@@ -118,4 +124,11 @@ export interface OfferOut {
 export interface Listing {
   id?: string; playerId: string | number; playerName?: string; askingValue?: number; marketValue?: number; listedRound?: number;
   offers?: { id: string; clubId: string; clubName: string; value: number; installments: number; round?: number }[];
+}
+
+export interface AwardEntry { jogadorId: string; nome: string; clubeId: string | number; clubeName: string; valor: number }
+export interface SeasonAward {
+  seasonYear: number;
+  brasileirao?: { campeao?: string | number | null; vice?: string | number | null; artilheiro?: AwardEntry | null; assistencias?: AwardEntry | null; melhorJogador?: AwardEntry | null };
+  copaDoBrasil?: { disputou?: boolean; campeao?: string | number | null; vice?: string | number | null };
 }

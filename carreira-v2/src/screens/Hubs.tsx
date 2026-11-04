@@ -61,8 +61,8 @@ export function GamesHub({ home, cup }: { home: HomeModel; cup: CupModel }) {
       <Section items={[
         { title: "Calendário", sub: home.next ? `Próximo: ${home.next.home.name} × ${home.next.away.name} · ${home.next.line}` : "Todos os jogos da temporada", to: `${BASE}/calendario` },
         { title: "Tabela", sub: home.position !== null ? `${home.position}º lugar` : "Nenhuma rodada disputada", to: `${BASE}/tabela` },
-        { title: "Copa do Brasil", sub: CUP_SHORT[cup.outcome] || cup.status, legacy: "copa" },
-        { title: "Estatísticas", sub: "Seu time, o campeonato e o histórico", legacy: "estatisticas" },
+        { title: "Copa do Brasil", sub: CUP_SHORT[cup.outcome] || cup.status, to: `${BASE}/copa` },
+        { title: "Estatísticas", sub: "Seu time, o campeonato e o histórico", to: `${BASE}/estatisticas` },
       ]} />
       <TabBar current="jogos" />
     </div>
@@ -109,13 +109,13 @@ export function MoreMenu({ onLogout }: { onLogout: () => Promise<void> }) {
       <p className="screen-sub">Conta, carreira e preferências.</p>
       <Section items={[
         { title: "Perfil do treinador", sub: "Reputação, histórico e objetivos", to: `${BASE}/perfil` },
-        { title: "Conquistas", legacy: "conquistas" },
-        { title: "Premiações", legacy: "premiacoes" },
-        { title: "Ranking", legacy: "ranking" },
-        { title: "Loja", legacy: "loja" },
-        { title: "Configurações", legacy: "configuracoes" },
-        { title: "Central de ajuda", legacy: "ajuda" },
-        { title: "Saves", sub: "Carreira atual · reiniciar", legacy: "mais" },
+        { title: "Conquistas", to: `${BASE}/conquistas` },
+        { title: "Premiações", to: `${BASE}/premiacoes` },
+        { title: "Ranking", to: `${BASE}/ranking` },
+        { title: "Loja", to: `${BASE}/loja` },
+        { title: "Configurações", to: `${BASE}/configuracoes` },
+        { title: "Central de ajuda", to: `${BASE}/ajuda` },
+        { title: "Saves", sub: "Carreira atual · reiniciar", to: `${BASE}/saves` },
         { title: leaving ? "Saindo…" : "Sair", action: () => { if (!leaving) { setLeaving(true); onLogout(); } } },
       ]} />
       <TabBar current="mais" />

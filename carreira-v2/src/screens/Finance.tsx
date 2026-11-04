@@ -7,7 +7,6 @@ import { RECENT_LEDGER, type FinanceModel, type LedgerRow } from "../domain/fina
 import { Wordmark } from "../ui/components.tsx";
 import { IconBack, IconChevron } from "../ui/icons.tsx";
 import { BASE, Link, goBack, goBackTo } from "../ui/router.tsx";
-import { legacyHref } from "../adapters/legacy.ts";
 import "./table.css";
 import "./calendar.css";
 import "./board.css";
@@ -81,11 +80,10 @@ export function Finance({ m }: { m: FinanceModel }) {
           <Link key={to} className="row bd-link" to={`${BASE}/${to}`}><span className="row-body"><span className="row-title">{t}</span></span><IconChevron className="row-chevron bd-chev" /></Link>
         ))}
       </nav>
-      {/* O pedido de orçamento à diretoria ainda não tem tela na v2. */}
-      <a className="row fn-legacy" href={legacyHref("financas")}>
-        <span className="row-body"><span className="row-title">Pedido de orçamento à diretoria</span><span className="row-sub">Na versão anterior</span></span>
-        <span className="hb-ext" aria-label="abre a versão anterior">↗</span>
-      </a>
+      <Link className="row fn-legacy" to={`${BASE}/diretoria/orcamento`}>
+        <span className="row-body"><span className="row-title">Pedido de orçamento à diretoria</span></span>
+        <IconChevron className="row-chevron" />
+      </Link>
 
       <div className="cal-foot"><button type="button" className="link-back" onClick={() => goBackTo(`${BASE}/clube`)}>Voltar ao clube</button></div>
     </div>
