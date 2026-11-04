@@ -48,9 +48,9 @@ O E2E novo passa por compra, contraproposta, desistência, venda, empréstimos d
 | **Histórico** ("O mercado do clube." / vazio: "Seu histórico começa.") | Mercado, Minhas propostas ou Clube | Abas Compras, Vendas e Empréstimos, com a rodada e a frase de cada negociação |
 | **Proposta pendente** ("Uma oferta chegou.") | Mercado → "Proposta recebida" | Jogador, idade, clube, valor, parcelamento, valor de mercado, diferença; "Aceitar" e "Recusar" |
 
-**Capturas** (pasta `evidencias/F8-mercado/`, 390×844): de `01-mercado.png` a `18-proposta-pendente.png`.
+**Capturas** (pasta `evidencias/F8-mercado/`, 390×844): 27 arquivos, de `01-mercado.png` a `18-proposta-pendente.png`, inclusive a recusa de empréstimo de um jogador de destaque (`16b-emprestimo-saida-recusa.png`).
 
-**Comparativos** (prancha × v2): de `comparativo-01-mercado.png` a `comparativo-16-proposta-pendente.png`.
+**Comparativos** (prancha × v2): 16 arquivos, de `comparativo-01-mercado.png` a `comparativo-16-proposta-pendente.png`.
 
 ## Motor (ponte)
 Os comandos novos usam as funções de sempre:
@@ -78,7 +78,8 @@ As checagens antes de cada comando são as dos modais de hoje: janela, teto sala
 7. **Histórico:** tentativas de compra que não deram certo (recusa, disputa perdida, proposta retirada) ficam em Compras. Negócios entre outros clubes não aparecem.
 8. **Proposta pendente:** o parcelamento é sempre "À vista", porque a proposta do jogo por um jogador seu é sempre à vista.
 9. **"Voltar":** as telas do mercado voltam ao Mercado, e o Mercado volta ao Clube.
-10. **Camisa e barra inferior:** como nas fases anteriores.
+10. **Emprestar um jogador de destaque:** a tela abre e mostra a recusa do jogo ("… não aceita ser emprestado"), com "Propor empréstimo" inativo. A linha "Emprestar" da ficha não avisa antes.
+11. **Camisa e barra inferior:** como nas fases anteriores.
 
 ## Testes
 - **Unitários:** 105/105 (`domain/market.test.ts`, novo, com 5 testes).
@@ -95,4 +96,5 @@ As checagens antes de cada comando são as dos modais de hoje: janela, teto sala
   9. 360 px e sem `/carreira-old`.
 
   A carreira nova começa com a janela fechada, então o teste abre a janela no save (a semana atual passa a ser de pré-temporada), como já prepara o caixa. As respostas dos clubes (contraproposta, propostas pelo anúncio, proposta pendente) também são preparadas no save, porque o motor só as gera ao simular rodadas.
-- **Suíte completa:** SUITE_RESULT.
+- **Ajustado:** `test_v2_financas.js` 4 e 5: "Ver mercado" agora abre o Mercado da v2 ("Busque seu reforço.").
+- **Suíte completa:** **181/182**. A falha foi o `test_v2_financas.js`, que ainda esperava o link antigo para o mercado. Depois do ajuste, ele passa sozinho, junto com o E2E do mercado e o da fase 7.

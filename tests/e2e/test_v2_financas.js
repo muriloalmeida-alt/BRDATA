@@ -2,7 +2,7 @@
 // Início → Finanças; saldo e folha × teto iguais aos da versão atual;
 // últimas movimentações = extrato da versão atual (mesma ordem) com "Ver
 // extrato completo"; saldo negativo em vermelho e folha acima do teto;
-// Ver elenco (v2) / Ver mercado (versão atual); nada gravado; 360 px.
+// Ver elenco e Ver mercado (v2, fase 8); nada gravado; 360 px.
 const { chromium } = require("playwright-core");
 const { check } = require("./_check");
 const { ensureDailyClaimed } = require("./_v2_match");
@@ -93,22 +93,20 @@ const { playRound, closeLeftoverTabela } = require("./_round");
   await v2.click('.fn-links a[href="/carreira/elenco"]');
   await v2.waitForSelector(".sq-row", { timeout: 10000 });
   await v2.goBack(); await v2.waitForSelector(".fn-cash", { timeout: 10000 });
-  check("4) Atalhos (Ver elenco → v2; Ver mercado e Patrocínios/estádio → versão atual); 360 px sem rolagem e alvos ≥ 44 px; nada gravado:",
-    JSON.stringify(r3.links) === JSON.stringify(["/carreira/elenco", "/carreira-old#mercado", "/carreira-old#financas"]) && a.overflow <= 0 && a.small.length === 0 && writes.length === 0, JSON.stringify({ links: r3.links, a, writes }));
+  check("4) Atalhos (Ver elenco e Ver mercado → v2; Patrocínios/estádio → versão atual); 360 px sem rolagem e alvos ≥ 44 px; nada gravado:",
+    JSON.stringify(r3.links) === JSON.stringify(["/carreira/elenco", "/carreira/mercado", "/carreira-old#financas"]) && a.overflow <= 0 && a.small.length === 0 && writes.length === 0, JSON.stringify({ links: r3.links, a, writes }));
 
-  // 5) Ver mercado abre o Mercado da versão atual; Voltar ao clube → Início.
+  // 5) Ver mercado abre o Mercado da v2 (fase 8); Voltar ao clube → tela Clube.
   await page.goto("about:blank");
-  await v2.click('.fn-links a[href="/carreira-old#mercado"]');
-  await v2.waitForURL(/\/carreira-old(#.*)?$/, { timeout: 10000 });
-  await waitForBoot(v2);
-  await v2.waitForFunction(() => document.getElementById("panel-mercado").classList.contains("active"), null, { timeout: 15000 }).catch(() => {});
-  const mk = await v2.evaluate(() => ({ active: document.getElementById("panel-mercado").classList.contains("active"), hash: location.hash }));
+  await v2.click('.fn-links a[href="/carreira/mercado"]');
+  await v2.waitForFunction(() => (document.querySelector("h1") || {}).textContent === "Busque seu reforço.", null, { timeout: 30000 });
+  const mk = { path: new URL(v2.url()).pathname };
   await v2.goto(base + "/carreira/financas", { waitUntil: "domcontentloaded" });
   await v2.waitForSelector(".fn-cash", { timeout: 15000 });
   await v2.click(".cal-foot .link-back");
   await v2.waitForURL(/\/carreira\/clube$/, { timeout: 10000 });
-  check("5) 'Ver mercado' abre o Mercado da versão atual (#mercado) e limpa o fragmento; 'Voltar ao clube' → tela Clube (P7):",
-    mk.active && mk.hash === "" && new URL(v2.url()).pathname === "/carreira/clube", JSON.stringify({ mk, url: v2.url() }));
+  check("5) 'Ver mercado' abre o Mercado da v2 ('Busque seu reforço.'); 'Voltar ao clube' → tela Clube (P7):",
+    mk.path === "/carreira/mercado" && new URL(v2.url()).pathname === "/carreira/clube", JSON.stringify({ mk, url: v2.url() }));
 
   await browser.close();
 })();

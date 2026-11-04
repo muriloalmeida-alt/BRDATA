@@ -343,7 +343,7 @@ function ImpactRows({ pv, buy }: { pv: Preview; buy: boolean }) {
 }
 function ImpactClub({ pv }: { pv: Preview }) {
   return (
-    <section className="wk-sec" aria-labelledby="ic-t"><h2 className="kicker-caps" id="ic-t">Impacto no clube</h2>
+    <section className="wk-sec mk-impact" aria-labelledby="ic-t"><h2 className="kicker-caps" id="ic-t">Impacto no clube</h2>
       <Rows rows={[
         { label: "Caixa", value: `${moneyShort(pv.caixaAntes)} → ${moneyShort(pv.caixaDepois)}`, tone: pv.caixaDepois < 0 ? "neg" : undefined },
         { label: "Folha salarial mensal", value: `${moneyShort(pv.folhaAntes)} → ${moneyShort(pv.folhaDepois)}`, tone: pv.teto != null && pv.folhaDepois > pv.teto ? "neg" : undefined },

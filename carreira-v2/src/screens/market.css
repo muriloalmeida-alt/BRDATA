@@ -18,3 +18,4 @@
 .mk-log dt { flex: none; min-width: 92px; color: var(--bd-muted); font-family: var(--bd-font-text); font-weight: 400; font-size: 14px; }
 .mk-log dd { text-align: left; color: var(--bd-text); }
 .pr .cal-foot a.cta { display: flex; align-items: center; justify-content: center; text-decoration: none; }
+.mk-impact { margin-left: 0; margin-right: 0; }
