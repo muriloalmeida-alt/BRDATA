@@ -1,13 +1,11 @@
 // CAP02-T03 — Perfil do jogador (pranchas/05_elenco.png, coluna 2).
 // Camisa grande com o overall, nome e posição; "No elenco do <clube>" com
 // dados esportivos em linhas simples (sem idade, salário ou gráficos);
-// "Contrato e ações do jogador" abre a ficha da versão atual (decisões de
-// 01/11). Só leitura.
+// "Contrato e ações do jogador" abre a ficha completa da v2 (fase 7). Só leitura.
 import type { ProfileModel } from "../domain/squad.ts";
 import { Jersey, Wordmark } from "../ui/components.tsx";
 import { IconBack, IconChevron } from "../ui/icons.tsx";
 import { BASE, Link, goBack, goBackTo } from "../ui/router.tsx";
-import { legacyPlayerHref } from "../adapters/legacy.ts";
 import "./squad.css";
 
 export function Profile({ m }: { m: ProfileModel }) {
@@ -35,10 +33,10 @@ export function Profile({ m }: { m: ProfileModel }) {
             </div>
           ))}
         </dl>
-        <a className="row pf-legacy" href={legacyPlayerHref(m.player.id)}>
-          <span className="row-body"><span className="row-title">Contrato e ações do jogador</span><span className="row-sub">Renovar, conversar, vender, emprestar e mais</span></span>
+        <Link className="row pf-legacy" to={`${BASE}/elenco/ficha?id=${encodeURIComponent(m.player.id)}`}>
+          <span className="row-body"><span className="row-title">Contrato e ações do jogador</span><span className="row-sub">Ficha completa, renovar, conversar, comparar e mais</span></span>
           <IconChevron className="row-chevron" />
-        </a>
+        </Link>
       </section>
 
       <div className="pf-foot">

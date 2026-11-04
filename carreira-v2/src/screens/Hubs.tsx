@@ -84,7 +84,7 @@ export function ClubHub({ home, board, finance }: { home: HomeModel; board: Boar
       ]} />
       <Section title="Elenco e mercado" items={[
         { title: "Mercado", sub: "Compra, venda e empréstimos", legacy: "mercado" },
-        { title: "Contratos", sub: "Salários e prazos do elenco", legacy: "contratos" },
+        { title: "Contratos", sub: "Salários e prazos do elenco", to: `${BASE}/contratos` },
         { title: "Histórico de negociações", legacy: "historico-negociacoes" },
         { title: "Base e olheiros", sub: "Missões, relatórios e categorias de base", legacy: "olheiros" },
         { title: "Comissão técnica", legacy: "comissao" },

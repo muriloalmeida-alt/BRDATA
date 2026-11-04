@@ -6,7 +6,12 @@ import type { SquadModel, SquadRow } from "../domain/squad.ts";
 import { Jersey, Wordmark } from "../ui/components.tsx";
 import { IconBack, IconChevron } from "../ui/icons.tsx";
 import { BASE, Link, goBack } from "../ui/router.tsx";
-import { legacyHref } from "../adapters/legacy.ts";
+import { useState } from "react";
+import type { Career } from "../domain/types.ts";
+import { NO_FILTERS, filterSquad, filtersActive, type SquadFilters } from "../domain/squadplus.ts";
+import { Sheet } from "../ui/dialog.tsx";
+import "./week.css";
+import "./prep.css";
 import "./calendar.css";
 import "./squad.css";
 
@@ -24,7 +29,41 @@ function Row({ r }: { r: SquadRow }) {
   );
 }
 
-export function Squad({ m }: { m: SquadModel }) {
+// Fase 7: filtros e busca (CAP02-N01, complemento 28 col. 3), só nesta
+// visita; com filtro ou busca, a lista vira uma só, na ordem escolhida.
+let lastFilters: SquadFilters = NO_FILTERS;
+function FiltersSheet({ f, onApply, onClose }: { f: SquadFilters; onApply: (f: SquadFilters) => void; onClose: () => void }) {
+  const [d, setD] = useState(f);
+  const seg = <K extends "pos" | "sit" | "cat" | "sort">(k: K, label: string, opts: [SquadFilters[K], string][]) => (
+    <div className="pr-field">
+      <span className="pr-label" id={`ft-${k}`}>{label}</span>
+      <div className="pr-seg" role="radiogroup" aria-labelledby={`ft-${k}`}>
+        {opts.map(([v, l]) => <button key={String(v)} type="button" role="radio" aria-checked={d[k] === v} className={`pr-seg-btn${d[k] === v ? " is-on" : ""}`} onClick={() => setD({ ...d, [k]: v })}>{l}</button>)}
+      </div>
+    </div>
+  );
+  return (
+    <Sheet labelledBy="ft-t" onDismiss={onClose}>
+      <h2 id="ft-t" className="sheet-title">Encontre seu jogador.</h2>
+      <p className="wk-sheet-text">Filtre e organize o elenco.</p>
+      <div className="sheet-list">
+        {seg("pos", "Posição", [["todas", "Todas"], ["G", "Goleiro"], ["D", "Defensor"], ["M", "Meio"], ["F", "Atacante"]])}
+        {seg("sit", "Situação", [["todas", "Todas"], ["titular", "Titular"], ["banco", "Banco"], ["lesionado", "Lesionado"], ["suspenso", "Suspenso"], ["venda", "À venda"]])}
+        {seg("cat", "Categoria", [["todas", "Todas"], ["profissional", "Profissional"], ["base", "Base"]])}
+        {seg("sort", "Ordenar por", [["posicao", "Posição"], ["overall", "Overall"], ["idade", "Idade"], ["condicao", "Condição"], ["contrato", "Contrato"]])}
+      </div>
+      <button type="button" className="cta" onClick={() => onApply(d)}>Aplicar filtros</button>
+      <button type="button" className="text-btn" onClick={() => onApply({ ...NO_FILTERS, q: d.q })}>Limpar filtros</button>
+    </Sheet>
+  );
+}
+
+export function Squad({ m, career }: { m: SquadModel; career: Career }) {
+  const [f, setF] = useState<SquadFilters>(lastFilters);
+  const [sheet, setSheet] = useState(false);
+  const set = (x: SquadFilters) => { lastFilters = x; setF(x); };
+  const active = filtersActive(f);
+  const filtered = active || f.q.trim() ? filterSquad(career, f) : null;
   return (
     <div className="sq">
       <header className="sub-head">
@@ -40,13 +79,24 @@ export function Squad({ m }: { m: SquadModel }) {
         <Link className="row" to={`${BASE}/treino/condicao`}><span className="row-body"><span className="row-title">Evolução e condição</span><span className="row-sub">Condição física, fadiga e risco de lesão</span></span><IconChevron className="row-chevron" /></Link>
       </nav>
 
-      {m.groups.map((g) => (
+      <div className="sq-tools">
+        <label className="sr-only" htmlFor="sq-q">Buscar jogador</label>
+        <input id="sq-q" className="pr-input sq-search" type="search" placeholder="Buscar jogador" value={f.q} onChange={(e) => set({ ...f, q: e.target.value })} />
+        <button type="button" className="state-btn sq-filter" onClick={() => setSheet(true)} aria-label={`Filtros${active ? `, ${active} ativos` : ""}`}>Filtros{active ? ` (${active})` : ""}</button>
+      </div>
+      {filtered && (
+        <section className="sq-sec" aria-label="Resultado">
+          <p className="sq-count" role="status">{filtered.length} {filtered.length === 1 ? "jogador" : "jogadores"}</p>
+          <div>{filtered.map((r) => <Row key={r.player.id} r={r} />)}</div>
+        </section>
+      )}
+      {!filtered && m.groups.map((g) => (
         <section key={g.group} className="sq-sec" aria-labelledby={`sq-${g.group}`}>
           <h2 className="sq-head" id={`sq-${g.group}`}>{g.title}</h2>
           <div>{g.rows.map((r) => <Row key={r.player.id} r={r} />)}</div>
         </section>
       ))}
-      {m.base.length > 0 && (
+      {!filtered && m.base.length > 0 && (
         <section className="sq-sec" aria-labelledby="sq-base">
           <h2 className="sq-head" id="sq-base">Base</h2>
           <div>{m.base.map((r) => <Row key={r.player.id} r={r} />)}</div>
@@ -54,12 +104,13 @@ export function Squad({ m }: { m: SquadModel }) {
       )}
       {m.total === 0 && <p className="cal-empty">Sem jogadores.</p>}
 
-      <a className="row sq-legacy" href={legacyHref("elenco")}>
-        <span className="row-body"><span className="row-title">Filtros e ordenação</span><span className="row-sub">Resumo do elenco, busca e outras ordenações</span></span>
+      <Link className="row sq-legacy" to={`${BASE}/contratos`}>
+        <span className="row-body"><span className="row-title">Contratos</span><span className="row-sub">Salários, prazos e renovações</span></span>
         <IconChevron className="row-chevron" />
-      </a>
+      </Link>
 
       <div className="cal-foot"><Link className="cta" to={`${BASE}/escalacao`}>Ajustar escalação</Link></div>
+      {sheet && <FiltersSheet f={f} onClose={() => setSheet(false)} onApply={(x) => { set(x); setSheet(false); }} />}
     </div>
   );
 }

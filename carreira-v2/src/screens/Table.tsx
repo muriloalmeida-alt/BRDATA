@@ -2,21 +2,20 @@
 // coluna 2). Trecho de 6 linhas ao redor do seu clube com "Ver tabela
 // completa", zonas discretas, seletor de divisão, resultados da última
 // rodada e Copa do Brasil (decisões de 01/11). Só leitura; tocar num clube
-// abre o elenco dele na versão atual.
+// abre o elenco dele na v2 (fase 7).
 import { useEffect, useState } from "react";
 import type { CupModel, TableModel, TableRow } from "../domain/table.ts";
 import { Crest, Wordmark } from "../ui/components.tsx";
 import { IconBack, IconChevron, IconDown } from "../ui/icons.tsx";
 import { BASE, goBack, goBackTo, navigate } from "../ui/router.tsx";
-import { legacyClubHref } from "../adapters/legacy.ts";
 import "./table.css";
 
 
 function Row({ r, zoneLabel, onClub }: { r: TableRow; zoneLabel: string | null; onClub?: (href: string, name: string) => void }) {
-  const href = legacyClubHref(r.team.id);
+  const href = `${BASE}/clube-elenco?id=${encodeURIComponent(String(r.team.id))}`;
   return (
     <a className={`tb-row${r.mine ? " is-me" : ""}`} href={href} role="row"
-      onClick={onClub ? (e) => { e.preventDefault(); onClub(href, r.team.name); } : undefined}
+      onClick={(e) => { e.preventDefault(); if (onClub) onClub(href, r.team.name); else navigate(href); }}
       aria-label={`${r.pos}º, ${r.team.name}${r.mine ? " (seu clube)" : ""}, ${r.pts} pontos, ${r.j} jogos${zoneLabel ? `, zona: ${zoneLabel}` : ""}. Ver elenco`}>
       <span className={`tb-pos${r.zone ? ` tb-zone tb-zone--${r.zone}` : ""}`} role="cell">{r.pos}</span>
       <span className="tb-club" role="cell"><Crest team={r.team} size={26} /><span className="tb-name">{r.team.name}</span></span>

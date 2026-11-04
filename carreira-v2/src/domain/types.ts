@@ -38,6 +38,9 @@ export interface Player {
   contractUntil?: number;
   wage?: number;
   potential?: number;
+  // Fase 7 (ficha completa, conversa, contratos)
+  age?: number; value?: number; benchStreak?: number; lastTalkRound?: number; moraleReason?: string;
+  yellowCards?: number; assistsSeason?: number; appsSeason?: number;
   // Fase 6 (Evolução e condição): históricos do motor.
   fatigueHistory?: { round: number; fadiga: number }[];
   injuryHistory?: { round: number; severity?: string; durationRounds: number; fadigaAtInjury?: number }[];
@@ -77,6 +80,8 @@ export interface Career {
   newsFeed?: NewsItem[];
   clubProposals?: { clubId?: string; clubName: string; reputationRequired?: number; budgetOffered?: number; seasonYear?: number }[];
   reputation?: number;
+  leagueSquads?: Record<string, Player[]>;
+  pendingListings?: { playerId: string | number }[];
   manMarking?: { opponentId: string | number; myPlayerId: string; rivalPlayerId: string } | null;
   tacticalSchemes?: { id: string; name: string }[];
   negativeSeasonsStreak?: number;

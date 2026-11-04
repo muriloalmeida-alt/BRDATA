@@ -1365,6 +1365,15 @@ function applyTalkOption(option) {
   if (!TALK_CTX) return;
   const p = CAREER.squad.find((x) => x.id === TALK_CTX.playerId);
   if (!p) { closeTalkModal(); return; }
+  const { delta, resultText } = applyTalkEffect(p, option);
+  closeTalkModal();
+  toast(resultText, { durationMs: 4500, type: delta > 0 ? "pos" : "warn" });
+  persistCareer();
+  if (document.getElementById("detailOverlay").classList.contains("open")) openDetail(p.id);
+}
+// Efeito de uma conversa — extraído de applyTalkOption sem mudar o cálculo
+// (Carreira 2.0, fase 7, aplica o mesmo pela ponte).
+function applyTalkEffect(p, option) {
   const morale = p.morale == null ? 70 : p.morale;
   let delta, resultText;
   if (option === "apoiar") {
@@ -1386,10 +1395,7 @@ function applyTalkOption(option) {
   p.moraleReason = "Conversou recentemente com o técnico";
   p.wantsTransfer = p.benchStreak >= WANTS_TRANSFER_BENCH_STREAK && p.morale <= WANTS_TRANSFER_MORALE_MAX;
   p.lastTalkRound = CAREER.currentRound;
-  closeTalkModal();
-  toast(resultText, { durationMs: 4500, type: delta > 0 ? "pos" : "warn" });
-  persistCareer();
-  if (document.getElementById("detailOverlay").classList.contains("open")) openDetail(p.id);
+  return { delta, resultText, applied: newMorale - morale };
 }
 // Virada de temporada (chamada de dentro de renewHumanSquad): puxa a
 // moral de todo mundo um pouco de volta pro neutro (sem isso, ao longo
@@ -11097,49 +11103,44 @@ function closeRenewModal() {
   document.getElementById("renewOverlay").classList.remove("open");
   RENEW_CTX = null;
 }
+// Avaliação da proposta de renovação — extraída de proposeRenewal sem mudar
+// as regras (Carreira 2.0, fase 7, usa a mesma pela ponte). Devolve null
+// (aceita) ou { motivo: "teto" (o clube nem envia) | "moral" | "salario" |
+// "duracao" (recusas do jogador), texto, toast }.
+function renewalVerdict(p, newWage, duration) {
+  const minWage = suggestedRenewalWage(p);
+  // Orçamento primeiro (o CLUBE não pode nem oferecer o que não cabe
+  // no teto) — mesma trava de promote/buyPlayer. Base não conta pro
+  // teto (wageBillOf só soma elenco principal, ver Fase 2b), então só
+  // barra pra quem já está no principal.
+  if (newWage > p.wage && p.origin === "principal" && wageBillOf(CAREER.squad) - p.wage + newWage > CAREER.finances.wageCap) {
+    return { motivo: "teto", texto: `Essa renovação estouraria o teto salarial (${fmtBRL(CAREER.finances.wageCap)}).` };
+  }
+  // Recusa do JOGADOR (não do orçamento) — regras determinísticas de
+  // propósito. FASE 2 (b): moral MUITO baixa é recusa na certa, valor
+  // e duração nem importam mais; antes disso, mínimo sugerido continua
+  // sendo recusa na certa, e proposta de 1 ano só passa pra quem
+  // realmente não tem moral de pedir mais tempo.
+  const morale = p.morale == null ? 70 : p.morale;
+  if (morale < 30) return { motivo: "moral", texto: "Está infeliz no clube e não quer renovar agora.", toast: "está infeliz no clube e não quer renovar agora." };
+  if (newWage < minWage) return { motivo: "salario", texto: `Quer pelo menos ${fmtBRL(minWage)}/mês.`, toast: `quer pelo menos ${fmtBRL(minWage)}/mês.` };
+  if (duration === 1 && (p.age <= 23 || p.overall >= 85 || morale >= 85)) return { motivo: "duracao", texto: "Quer um contrato mais longo (pelo menos 2 anos).", toast: "quer um contrato mais longo (pelo menos 2 anos)." };
+  return null;
+}
 function proposeRenewal() {
   if (!RENEW_CTX) return;
   const p = CAREER.squad.find((x) => x.id === RENEW_CTX.playerId);
   if (!p) { closeRenewModal(); return; }
   const newWage = Math.max(0, Math.round(Number(document.getElementById("renewWageInput").value) || 0));
   const duration = Number(document.getElementById("renewDurationSelect").value) || 1;
-  const minWage = suggestedRenewalWage(p);
-  // Orçamento primeiro (o CLUBE não pode nem oferecer o que não cabe
-  // no teto) — mesma trava de promote/buyPlayer. Base não conta pro
-  // teto (wageBillOf só soma elenco principal, ver Fase 2b), então só
-  // barra pra quem já está no principal.
-  if (newWage > p.wage && p.origin === "principal") {
-    const wageAfter = wageBillOf(CAREER.squad) - p.wage + newWage;
-    if (wageAfter > CAREER.finances.wageCap) {
-      toast(`Essa renovação estouraria o teto salarial (${fmtBRL(CAREER.finances.wageCap)}).`, { type: "warn" });
-      return; // mantém o sub-modal aberto pra ajustar o valor
-    }
+  const verdict = renewalVerdict(p, newWage, duration);
+  if (verdict && verdict.motivo === "teto") {
+    toast(verdict.texto, { type: "warn" });
+    return; // mantém o sub-modal aberto pra ajustar o valor
   }
-  // Recusa do JOGADOR (não do orçamento) — regras determinísticas de
-  // propósito. FASE 2 (b): moral MUITO baixa é recusa na certa, valor
-  // e duração nem importam mais (o jogador já quer é sair, não
-  // assinar de novo) — antes disso, mínimo sugerido continua sendo
-  // recusa na certa, e proposta de 1 ano só passa pra quem realmente
-  // não tem moral de pedir mais tempo (jovem em ascensão, já craque,
-  // OU moral alta o bastante pra ser exigente).
-  const morale = p.morale == null ? 70 : p.morale;
-  if (morale < 30) {
+  if (verdict) {
     closeRenewModal();
-    toast(`${abbreviateName(p.name)} recusou a proposta — está infeliz no clube e não quer renovar agora.`, { durationMs: 5000, type: "warn" });
-    firePressConference("19", CAREER.currentRound, false);
-    openPressConferenceModal();
-    return;
-  }
-  if (newWage < minWage) {
-    closeRenewModal();
-    toast(`${abbreviateName(p.name)} recusou a proposta — quer pelo menos ${fmtBRL(minWage)}/mês.`, { durationMs: 5000, type: "warn" });
-    firePressConference("19", CAREER.currentRound, false);
-    openPressConferenceModal();
-    return;
-  }
-  if (duration === 1 && (p.age <= 23 || p.overall >= 85 || morale >= 85)) {
-    closeRenewModal();
-    toast(`${abbreviateName(p.name)} recusou a proposta — quer um contrato mais longo (pelo menos 2 anos).`, { durationMs: 5000, type: "warn" });
+    toast(`${abbreviateName(p.name)} recusou a proposta — ${verdict.toast}`, { durationMs: 5000, type: "warn" });
     firePressConference("19", CAREER.currentRound, false);
     openPressConferenceModal();
     return;
@@ -17213,6 +17214,51 @@ if (V2_PONTE) {
         PONTE.recebendo = false;
       }
     },
+    // Fase 7 — elenco avançado (Carreira 2.0). Mesmas regras: renewalVerdict
+    // (proposeRenewal), applyTalkEffect (applyTalkOption), canTalkTo,
+    // isContractExpiring e handlePlayerAction. Gravam.
+    async renovar(id, salario, anos) {
+      const p = CAREER && CAREER.squad.find((x) => x.id === id);
+      if (!p) return { ok: false, motivo: "jogador-invalido" };
+      if (!isContractExpiring(p)) return { ok: false, motivo: "fora-do-prazo" };
+      const newWage = Math.max(0, Math.round(Number(salario) || 0));
+      const duration = Math.round(Number(anos));
+      if (!(duration >= 1 && duration <= 5)) return { ok: false, motivo: "duracao-invalida" };
+      const v = renewalVerdict(p, newWage, duration);
+      if (v && v.motivo === "teto") return { ok: false, motivo: "teto", mensagem: v.texto };
+      if (v) {
+        firePressConference("19", CAREER.currentRound, false);
+        return { ok: true, aceita: false, motivo: v.texto, salario: newWage, anos: duration, coletiva: !!PENDING_PRESS };
+      }
+      p.wage = Math.max(p.wage, newWage);
+      p.contractUntil = CAREER.seasonYear + duration;
+      const r = await ponteGravar();
+      return r.ok ? { ok: true, aceita: true, salario: p.wage, anos: duration, ate: p.contractUntil } : r;
+    },
+    coletivaAtual() {
+      const e = PENDING_PRESS && PENDING_PRESS.entry;
+      return e ? { ok: true, pergunta: e.pergunta, respostas: e.respostas.map((r) => ({ letra: r.letra, texto: r.texto })) } : { ok: false, motivo: "sem-coletiva" };
+    },
+    async conversar(id, opcao) {
+      const p = CAREER && CAREER.squad.find((x) => x.id === id);
+      if (!p) return { ok: false, motivo: "jogador-invalido" };
+      if (!canTalkTo(p)) return { ok: false, motivo: "sem-conversa" };
+      if (!["apoiar", "prometer", "cobrar"].includes(opcao)) return { ok: false, motivo: "opcao-invalida" };
+      const fx = applyTalkEffect(p, opcao);
+      const r = await ponteGravar();
+      return r.ok ? { ok: true, efeito: fx.applied, texto: fx.resultText, moral: p.morale } : r;
+    },
+    // Banco, base e dispensa: as mesmas checagens de handlePlayerAction.
+    async acaoJogador(id, acao) {
+      const p = CAREER && CAREER.squad.find((x) => x.id === id);
+      if (!p) return { ok: false, motivo: "jogador-invalido" };
+      if (!["removeStarter", "removeBench", "addBench", "promote", "demote", "release"].includes(acao)) return { ok: false, motivo: "acao-invalida" };
+      if (acao === "addBench" && CAREER.lineup.bench.length >= MAX_BENCH) return { ok: false, motivo: "banco-cheio", mensagem: `O banco já tem ${MAX_BENCH} jogadores.` };
+      if (acao === "promote" && wageBillOf(CAREER.squad) + p.wage > CAREER.finances.wageCap) return { ok: false, motivo: "teto", mensagem: `Promover esse jogador estouraria o teto salarial (${fmtBRL(CAREER.finances.wageCap)}).` };
+      if (acao === "release" && p.origin === "principal" && CAREER.squad.filter((x) => x.origin === "principal").length <= 14) return { ok: false, motivo: "minimo", mensagem: "O elenco principal não pode ficar com menos de 14 jogadores." };
+      await handlePlayerAction(id, acao);
+      return ponteGravar();
+    },
     // Fase 6 — tática e treino (Carreira 2.0). Mesmas regras e funções da
     // versão anterior: TACTIC_AXES/SECTOR_INSTRUCTIONS, saveTacticalScheme,
     // applyTacticalScheme, renameTacticalScheme, deleteTacticalScheme,
@@ -17472,7 +17518,9 @@ if (V2_PONTE) {
     // Coletiva: mesmo efeito de applyPressAnswer (applyPressEffects); sem
     // letra = "Pular" (sem comentário, sem efeito — o X de sempre). Grava.
     async responderColetiva(letra) {
-      if (!PONTE.seq || !PENDING_PRESS) return { ok: false, motivo: "sem-coletiva" };
+      // Fase 7: também a coletiva avulsa (renovação recusada), sem
+      // sequência de pós-jogo.
+      if (!PENDING_PRESS) return { ok: false, motivo: "sem-coletiva" };
       const { entry, roundPlayed } = PENDING_PRESS;
       let efeito = null;
       if (letra != null) {
@@ -17480,7 +17528,7 @@ if (V2_PONTE) {
         if (!efeito) return { ok: false, motivo: "resposta-invalida" };
       }
       PENDING_PRESS = null;
-      PONTE.seq.feitas.add("coletiva");
+      if (PONTE.seq) PONTE.seq.feitas.add("coletiva");
       const salvo = efeito ? await persistCareer() : true;
       if (!salvo) return { ok: false, motivo: PONTE.erroGravacao || "falha" };
       return { ok: true, reputacao: efeito ? efeito.repDelta : null, moral: efeito ? efeito.moralDelta : null, ...ponteEtapaPosJogo() };

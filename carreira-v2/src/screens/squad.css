@@ -31,3 +31,8 @@
 .btn-secondary { min-height: var(--bd-cta-h); border: 1.5px solid #c9ccd2; border-radius: var(--bd-radius-sm); background: none; color: var(--bd-text); font-family: var(--bd-font-display); font-weight: 600; font-size: 20px; cursor: pointer; }
 .sq-prep { margin: 14px var(--bd-gutter) 0; border-top: 1px solid var(--bd-line); }
 .sq-prep .row { color: inherit; }
+/* Fase 7 — busca e filtros do Elenco. */
+.sq-tools { display: flex; gap: 10px; margin: 14px var(--bd-gutter) 0; }
+.sq-search { flex: 1; min-width: 0; }
+.sq-filter { flex: none; }
+.sq-count { margin: 4px 0 6px; font-size: 14px; color: var(--bd-muted); }

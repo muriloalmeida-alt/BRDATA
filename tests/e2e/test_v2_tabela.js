@@ -2,7 +2,7 @@
 // depois de 2 rodadas jogadas: Início → Tabela; trecho de 6 linhas ao redor
 // do seu clube e tabela completa iguais à classificação da versão atual;
 // zonas; resultados da última rodada; outras divisões; Copa do Brasil sem
-// texto quebrado; toque no clube abre o elenco na versão atual; voltar ao
+// texto quebrado; toque no clube abre o elenco na v2 (fase 7); voltar ao
 // clube; nada gravado; 360 px e acessibilidade.
 const { chromium } = require("playwright-core");
 const { check } = require("./_check");
@@ -115,17 +115,15 @@ const { playRound, closeLeftoverTabela } = require("./_round");
   await v2.waitForSelector(".home", { timeout: 10000 });
   check("7) 'Voltar ao clube' leva ao Início:", new URL(v2.url()).pathname === "/carreira/", v2.url());
 
-  // 8) Toque num clube adversário → elenco dele na versão atual.
+  // 8) Toque num clube adversário → elenco dele na v2 (fase 7).
   await v2.goto(base + "/carreira/tabela", { waitUntil: "domcontentloaded" });
   await v2.waitForSelector(".tb-row", { timeout: 15000 });
   const other = v2.locator(".tb-row:not(.is-me)").first();
   const otherName = await other.locator(".tb-name").textContent();
   await other.click();
-  await v2.waitForURL(/\/carreira-old(#.*)?$/, { timeout: 10000 });
-  await waitForBoot(v2);
-  await v2.waitForFunction(() => document.getElementById("clubRosterOverlay").classList.contains("open"), null, { timeout: 15000 }).catch(() => {});
-  const roster = await v2.evaluate(() => ({ open: document.getElementById("clubRosterOverlay").classList.contains("open"), name: document.getElementById("clubRosterName").textContent, hash: location.hash }));
-  check("8) Toque no clube abre o elenco dele na versão atual (#clube:id) e limpa o fragmento:", roster.open && roster.name === otherName && roster.hash === "", JSON.stringify({ roster, otherName }));
+  await v2.waitForFunction(() => (document.querySelector("h1") || {}).textContent === "Conheça o adversário.", null, { timeout: 15000 });
+  const roster = await v2.evaluate(() => ({ path: location.pathname, name: document.querySelector(".wk-item dt").textContent, players: document.querySelectorAll(".sp-player").length }));
+  check("8) Toque no clube abre o elenco dele na v2 (nome, elenco):", roster.path === "/carreira/clube-elenco" && roster.name === otherName && roster.players >= 11, JSON.stringify({ roster, otherName }));
 
   await browser.close();
 })();
