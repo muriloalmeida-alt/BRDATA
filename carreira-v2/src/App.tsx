@@ -37,6 +37,7 @@ import { TacticsAxes, TacticsHub, TacticsMarking, TacticsSchemes, TacticsSectors
 import { Evolution, TrainingCondition, TrainingWeek } from "./screens/Training.tsx";
 import { PrepGateway } from "./adapters/prep.ts";
 import { ClubRoster, Compare, Contracts, Ficha, PressStandalone, Talk } from "./screens/SquadPlus.tsx";
+import { BaseScreen, HireScoutScreen, LedgerScreen, MissionScreen, ProspectsScreen, ScoutsScreen, SponsorsScreen, StadiumScreen, StaffScreen, SuggestionsScreen } from "./screens/Club.tsx";
 import { History as MarketHistory, Loan, Market, MyOffers, MySales, Negotiation, PendingOffer, Propose, SaleOffers, Target } from "./screens/Market.tsx";
 
 // Recompensa diária: abre sozinha no máximo uma vez por carregamento da v2.
@@ -177,6 +178,20 @@ export function App() {
     return <Match start={start} sub={sub} outId={q.get("sai")} competitionId={data.career.competitionId} competitionName={home.competition}
       teamById={data.teamById} onFinished={reloadCareer}
       renderTable={(ctx) => <Table m={buildTable(data.career, data.teamById, q.get("divisao"))} cup={buildCup(data.career, data.teamById)} match={ctx} />} />;
+  }
+  // Fase 9 — clube.
+  {
+    const q = new URLSearchParams(loc.search);
+    if (loc.path === `${BASE}/comissao`) return <StaffScreen onChanged={reloadCareer} />;
+    if (loc.path === `${BASE}/estadio` || loc.path === `${BASE}/estadio/obra`) return <StadiumScreen key={loc.path + loc.search} work={loc.path.endsWith("/obra") ? q.get("id") : null} onChanged={reloadCareer} />;
+    if (loc.path === `${BASE}/patrocinios`) return <SponsorsScreen onChanged={reloadCareer} />;
+    if (loc.path === `${BASE}/extrato`) return <LedgerScreen career={data.career} />;
+    if (loc.path === `${BASE}/olheiros`) return <ScoutsScreen career={data.career} onChanged={reloadCareer} />;
+    if (loc.path === `${BASE}/olheiros/contratar`) return <HireScoutScreen career={data.career} onChanged={reloadCareer} />;
+    if (loc.path === `${BASE}/olheiros/missao`) return <MissionScreen key={loc.search} career={data.career} type={q.get("tipo")} scoutId={q.get("olheiro")} onChanged={reloadCareer} />;
+    if (loc.path === `${BASE}/olheiros/indicacoes`) return <SuggestionsScreen career={data.career} onChanged={reloadCareer} />;
+    if (loc.path === `${BASE}/olheiros/relatorios` || loc.path === `${BASE}/olheiros/prospecto`) return <ProspectsScreen key={loc.path + loc.search} career={data.career} id={loc.path.endsWith("/prospecto") ? q.get("id") : null} onChanged={reloadCareer} />;
+    if (loc.path === `${BASE}/base`) return <BaseScreen career={data.career} />;
   }
   // Fase 8 — mercado.
   if (loc.path === `${BASE}/mercado` || loc.path.startsWith(`${BASE}/mercado/`)) {

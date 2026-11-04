@@ -80,18 +80,18 @@ export function ClubHub({ home, board, finance }: { home: HomeModel; board: Boar
       <Section title="Gestão" items={[
         { title: "Diretoria", sub: board.goal ? `Meta: ${board.goal}` : "Objetivos da temporada", to: `${BASE}/diretoria` },
         { title: "Finanças", sub: `Saldo ${finance.cashText}`, to: `${BASE}/financas` },
-        { title: "Extrato financeiro", sub: "Entradas e saídas por rodada", legacy: "extrato" },
+        { title: "Extrato financeiro", sub: "Entradas e saídas por rodada", to: `${BASE}/extrato` },
       ]} />
       <Section title="Elenco e mercado" items={[
         { title: "Mercado", sub: "Compra, venda e empréstimos", to: `${BASE}/mercado` },
         { title: "Contratos", sub: "Salários e prazos do elenco", to: `${BASE}/contratos` },
         { title: "Histórico de negociações", to: `${BASE}/mercado/historico` },
-        { title: "Base e olheiros", sub: "Missões, relatórios e categorias de base", legacy: "olheiros" },
-        { title: "Comissão técnica", legacy: "comissao" },
+        { title: "Base e olheiros", sub: "Missões, relatórios e categorias de base", to: `${BASE}/olheiros` },
+        { title: "Comissão técnica", to: `${BASE}/comissao` },
       ]} />
       <Section title="Estrutura" items={[
-        { title: "Estádio", sub: "Capacidade e obras", legacy: "estadio" },
-        { title: "Patrocínios", legacy: "patrocinios" },
+        { title: "Estádio", sub: "Capacidade e obras", to: `${BASE}/estadio` },
+        { title: "Patrocínios", to: `${BASE}/patrocinios` },
       ]} />
       <TabBar current="inicio" />
     </div>
