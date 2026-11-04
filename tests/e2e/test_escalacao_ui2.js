@@ -99,7 +99,12 @@ async function newCareer(page, base, email) {
   // "Implementação Visual".
   await page.click(`.mt-pos-slot[data-index="0"]`);
   await page.waitForSelector("#pickerOverlay.open");
-  await page.waitForTimeout(200);
+  // Espera a folha terminar de subir (fundo encostado no rodapé); com o CI
+  // carregado, 200 ms fixos pegavam a animação no meio.
+  await page.waitForFunction(() => {
+    const m = document.querySelector("#pickerOverlay .ct-modal");
+    return m && Math.abs(m.getBoundingClientRect().bottom - window.innerHeight) <= 2;
+  }, null, { timeout: 10000 }).catch(() => {});
   const pickerFull = await page.evaluate(() => {
     const modal = document.querySelector("#pickerOverlay .ct-modal");
     const rect = modal.getBoundingClientRect();
