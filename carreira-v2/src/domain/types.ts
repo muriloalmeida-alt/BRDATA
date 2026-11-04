@@ -39,6 +39,7 @@ export interface Player {
   wage?: number;
   potential?: number;
   // Fase 7 (ficha completa, conversa, contratos)
+  scoutRevealed?: boolean;
   age?: number; value?: number; benchStreak?: number; lastTalkRound?: number; moraleReason?: string;
   yellowCards?: number; assistsSeason?: number; appsSeason?: number;
   // Fase 6 (Evolução e condição): históricos do motor.
@@ -91,6 +92,11 @@ export interface Career {
   transferLog?: { round: number; text: string }[];
   nextSigningDiscountPct?: number | null;
   marketScope?: "multi" | "single" | string;
+  // Fase 9 (clube)
+  scouts?: import("./club.ts").Scout[];
+  scoutMissionProspects?: import("./club.ts").Prospect[];
+  scoutSuggestions?: import("./club.ts").ScoutSuggestion[];
+  technicalStaff?: { hired: boolean };
   manMarking?: { opponentId: string | number; myPlayerId: string; rivalPlayerId: string } | null;
   tacticalSchemes?: { id: string; name: string }[];
   negativeSeasonsStreak?: number;

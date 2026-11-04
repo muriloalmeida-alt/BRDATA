@@ -13,6 +13,7 @@ import type { Career, Player, PlayerGroup } from "./types.ts";
 import { moneyShort, sortedStandings } from "./home.ts";
 import { isAvailable, shortName, sortKey } from "./lineup.ts";
 import { situationOf, type SquadRow } from "./squad.ts";
+import { potentialText } from "./potential.ts";
 
 export const POSITION: Record<PlayerGroup, string> = { G: "Goleiro", D: "Defensor", M: "Meio-campo", F: "Atacante" };
 const DIVISION: Record<string, string> = { brasileirao: "Série A", serie_b: "Série B", serie_c: "Série C" };
@@ -99,7 +100,8 @@ export function buildFicha(career: Career, id: string): FichaModel | null {
     facts: [
       { label: "Idade", value: p.age != null ? `${p.age} anos` : "—" },
       { label: "Overall", value: String(p.overall) },
-      { label: "Potencial", value: p.potential != null ? String(p.potential) : "—" },
+      // Como o jogo: a faixa estimada pelo olheiro, nunca o potencial real.
+      { label: "Potencial", value: potentialText(p) || "Não avaliado" },
       { label: "Moral", value: String(morale(p)) },
       { label: "Condição", value: `${Math.round(p.condition ?? 100)}%` },
     ],

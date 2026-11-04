@@ -13,6 +13,7 @@ import type { Career, OfferOut, Player, PlayerGroup } from "./types.ts";
 import { moneyShort } from "./home.ts";
 import { shortName, sortKey } from "./lineup.ts";
 import { POSITION } from "./squadplus.ts";
+import { potentialText } from "./potential.ts";
 
 export interface MarketInfo {
   janela: { aberta: boolean; texto: string };
@@ -75,7 +76,7 @@ export function buildTarget(career: Career, info: MarketInfo, clubId: string, p:
     facts: [
       { label: "Idade", value: p.age != null ? `${p.age} anos` : "—" },
       { label: "Overall", value: String(p.overall) },
-      { label: "Potencial", value: p.potential != null ? String(p.potential) : "—" },
+      { label: "Potencial", value: potentialText(p) || "Não avaliado" },
       { label: "Contrato", value: p.contractUntil != null ? `Até ${p.contractUntil}` : "—" },
       { label: "Salário mensal", value: p.wage != null ? moneyShort(p.wage) : "—" },
       { label: "Valor de mercado", value: p.value != null ? moneyShort(p.value) : "—" },

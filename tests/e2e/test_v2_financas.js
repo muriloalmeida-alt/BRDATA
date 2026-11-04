@@ -2,7 +2,8 @@
 // Início → Finanças; saldo e folha × teto iguais aos da versão atual;
 // últimas movimentações = extrato da versão atual (mesma ordem) com "Ver
 // extrato completo"; saldo negativo em vermelho e folha acima do teto;
-// Ver elenco e Ver mercado (v2, fase 8); nada gravado; 360 px.
+// Ver elenco e Ver mercado (v2, fase 8); extrato e clube (v2, fase 9);
+// nada gravado; 360 px.
 const { chromium } = require("playwright-core");
 const { check } = require("./_check");
 const { ensureDailyClaimed } = require("./_v2_match");
@@ -64,13 +65,16 @@ const { playRound, closeLeftoverTabela } = require("./_round");
     r1.path === "/carreira/financas" && r1.cash === legacy.cash && !r1.neg && r1.wage === `${legacy.bill} de ${legacy.cap}` && !r1.over && !document_hasChart(r1.text), JSON.stringify({ r1: { cash: r1.cash, wage: r1.wage }, legacy: { cash: legacy.cash, bill: legacy.bill, cap: legacy.cap } }));
   function document_hasChart(t) { return /%/.test(t); }
 
-  // 2) Últimas movimentações = 5 primeiras do extrato atual; extrato completo.
+  // 2) Últimas movimentações = 5 primeiras do extrato atual; "Ver extrato
+  // completo" abre o Extrato da v2 (fase 9) com todos os lançamentos.
   const r2a = r1.tx;
-  await v2.click(".fn-ledger ~ .tb-more");
-  const r2 = await read();
-  const rounds = await v2.locator(".fn-round").count();
-  check("2) Últimas 5 movimentações na mesma ordem do extrato atual; 'Ver extrato completo' mostra todas, agrupadas por rodada:",
-    JSON.stringify(r2a) === JSON.stringify(legacy.ledger.slice(0, 5)) && r1.more && JSON.stringify(r2.tx) === JSON.stringify(legacy.ledger) && rounds >= 1, JSON.stringify({ r2a, all: r2.tx.length, legacy: legacy.ledger.length, rounds }));
+  await v2.click('.fn-ledger ~ a.tb-more[href="/carreira/extrato"]');
+  await v2.waitForFunction(() => (document.querySelector("h1") || {}).textContent === "Cada movimento conta.", null, { timeout: 15000 });
+  const r2 = await v2.evaluate(() => [...document.querySelectorAll(".wk-item dt")].map((d) => d.textContent.split(" · ").slice(1).join(" · ")));
+  const rounds = await v2.locator(".wk-sec .kicker-caps", { hasText: "Rodada" }).count();
+  await v2.goBack(); await v2.waitForSelector(".fn-cash", { timeout: 10000 });
+  check("2) Últimas 5 movimentações na mesma ordem do extrato atual; 'Ver extrato completo' abre o Extrato da v2 com todas, por rodada:",
+    JSON.stringify(r2a) === JSON.stringify(legacy.ledger.slice(0, 5)) && r1.more && JSON.stringify(r2) === JSON.stringify(legacy.ledger) && rounds >= 1, JSON.stringify({ r2a, all: r2.length, legacy: legacy.ledger.length, rounds }));
 
   // 3) Saldo negativo em vermelho; folha acima do teto.
   await page.evaluate(async () => {
@@ -93,8 +97,8 @@ const { playRound, closeLeftoverTabela } = require("./_round");
   await v2.click('.fn-links a[href="/carreira/elenco"]');
   await v2.waitForSelector(".sq-row", { timeout: 10000 });
   await v2.goBack(); await v2.waitForSelector(".fn-cash", { timeout: 10000 });
-  check("4) Atalhos (Ver elenco e Ver mercado → v2; Patrocínios/estádio → versão atual); 360 px sem rolagem e alvos ≥ 44 px; nada gravado:",
-    JSON.stringify(r3.links) === JSON.stringify(["/carreira/elenco", "/carreira/mercado", "/carreira-old#financas"]) && a.overflow <= 0 && a.small.length === 0 && writes.length === 0, JSON.stringify({ links: r3.links, a, writes }));
+  check("4) Atalhos (elenco, mercado, patrocínios, estádio e comissão → v2; pedido de orçamento → versão atual); 360 px sem rolagem e alvos ≥ 44 px; nada gravado:",
+    JSON.stringify(r3.links) === JSON.stringify(["/carreira/elenco", "/carreira/mercado", "/carreira/patrocinios", "/carreira/estadio", "/carreira/comissao", "/carreira-old#financas"]) && a.overflow <= 0 && a.small.length === 0 && writes.length === 0, JSON.stringify({ links: r3.links, a, writes }));
 
   // 5) Ver mercado abre o Mercado da v2 (fase 8); Voltar ao clube → tela Clube.
   await page.goto("about:blank");

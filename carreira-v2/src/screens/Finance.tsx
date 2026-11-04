@@ -3,10 +3,9 @@
 // movimentações com "Ver extrato completo", Ver elenco / Ver mercado e
 // atalho "Patrocínios, estádio e orçamento" para a versão atual
 // (decisões de 01/11). Sem gráficos nem controles de dinheiro. Só leitura.
-import { useState } from "react";
 import { RECENT_LEDGER, type FinanceModel, type LedgerRow } from "../domain/finance.ts";
 import { Wordmark } from "../ui/components.tsx";
-import { IconBack, IconChevron, IconDown } from "../ui/icons.tsx";
+import { IconBack, IconChevron } from "../ui/icons.tsx";
 import { BASE, Link, goBack, goBackTo } from "../ui/router.tsx";
 import { legacyHref } from "../adapters/legacy.ts";
 import "./table.css";
@@ -32,7 +31,6 @@ function Ledger({ rows, grouped }: { rows: LedgerRow[]; grouped: boolean }) {
 }
 
 export function Finance({ m }: { m: FinanceModel }) {
-  const [full, setFull] = useState(false);
   return (
     <div className="fn">
       <header className="sub-head">
@@ -68,22 +66,25 @@ export function Finance({ m }: { m: FinanceModel }) {
       </nav>
 
       <section className="bd-sec" aria-labelledby="fn-mov">
-        <h2 className="kicker-caps" id="fn-mov">{full ? "Extrato" : "Últimas movimentações"}</h2>
+        <h2 className="kicker-caps" id="fn-mov">Últimas movimentações</h2>
         {m.ledger.length ? (
           <>
-            <Ledger rows={full ? m.ledger : m.ledger.slice(0, RECENT_LEDGER)} grouped={full} />
-            {m.ledger.length > RECENT_LEDGER && (
-              <button type="button" className="tb-more" aria-expanded={full} onClick={() => setFull(!full)}>
-                {full ? "Ver só as últimas" : "Ver extrato completo"}<IconDown className={full ? "is-up" : ""} />
-              </button>
-            )}
+            <Ledger rows={m.ledger.slice(0, RECENT_LEDGER)} grouped={false} />
+            {/* Fase 9: o extrato completo (com filtros) é a tela Extrato da v2. */}
+            {m.ledger.length > RECENT_LEDGER && <Link className="tb-more" to={`${BASE}/extrato`}>Ver extrato completo<IconChevron /></Link>}
           </>
         ) : <p className="fn-empty">Nenhum lançamento ainda.</p>}
       </section>
 
+      <nav aria-label="Clube" className="fn-links">
+        {[["patrocinios", "Patrocínios"], ["estadio", "Estádio e obras"], ["comissao", "Comissão técnica"]].map(([to, t]) => (
+          <Link key={to} className="row bd-link" to={`${BASE}/${to}`}><span className="row-body"><span className="row-title">{t}</span></span><IconChevron className="row-chevron bd-chev" /></Link>
+        ))}
+      </nav>
+      {/* O pedido de orçamento à diretoria ainda não tem tela na v2. */}
       <a className="row fn-legacy" href={legacyHref("financas")}>
-        <span className="row-body"><span className="row-title">Patrocínios, estádio e orçamento</span><span className="row-sub">Contratos, obras, comissão técnica e pedido à diretoria</span></span>
-        <IconChevron className="row-chevron" />
+        <span className="row-body"><span className="row-title">Pedido de orçamento à diretoria</span><span className="row-sub">Na versão anterior</span></span>
+        <span className="hb-ext" aria-label="abre a versão anterior">↗</span>
       </a>
 
       <div className="cal-foot"><button type="button" className="link-back" onClick={() => goBackTo(`${BASE}/clube`)}>Voltar ao clube</button></div>

@@ -12117,6 +12117,8 @@ function suggestMarket() {
   return {
     text: `${best.p.name} (${best.club.name}, overall ${best.p.overall}) por ${fmtBRL(best.p.value)} reforçaria ${SUBPOS_LABEL[subpos]} — seu titular mais fraco lá é ${weakest.name} (${weakest.overall}).`,
     canApply: true,
+    // Fase 9 (Carreira 2.0) — alvo da sugestão, para a v2 abrir a proposta.
+    target: { clubId: String(best.club.id), playerId: best.p.id },
     // AJUSTE (pedido do usuário: "no Mercado deu certo mas precisa
     // funcionar também na Comissão Técnica") — Mercado não compra mais
     // na hora em lugar NENHUM do jogo (ver Bloco 3, openOfferModal/
@@ -14111,6 +14113,15 @@ function hireScout(marketId) {
 // Só dá pra dispensar sem missão em andamento — mesmo espírito de
 // "não pode mexer no que já foi comprometido" que outras ações do jogo
 // (obra de estádio, empréstimo) já seguem.
+// Fase 9 (Carreira 2.0) — a regra de dispensar, sem o diálogo (a v2
+// confirma na própria tela); fireScout continua igual.
+function releaseScout(scoutId) {
+  const scout = (CAREER.scouts || []).find((s) => s.id === scoutId);
+  if (!scout) return { ok: false, motivo: "olheiro-invalido" };
+  if (scout.mission) return { ok: false, motivo: "em-missao", texto: "Esse olheiro está em missão — espere ele voltar antes de dispensar." };
+  CAREER.scouts = CAREER.scouts.filter((s) => s.id !== scoutId);
+  return { ok: true, scout };
+}
 async function fireScout(scoutId) {
   const scout = (CAREER.scouts || []).find((s) => s.id === scoutId);
   if (!scout) return;
@@ -14119,7 +14130,7 @@ async function fireScout(scoutId) {
     return;
   }
   if (!(await confirmModal(`Dispensar ${scout.name}?`, "Dispensar", { danger: true }))) return;
-  CAREER.scouts = CAREER.scouts.filter((s) => s.id !== scoutId);
+  releaseScout(scoutId);
   persistCareer();
   renderScoutingScreen();
   toast(`${scout.name} dispensado.`, { type: "warn" });
@@ -17449,6 +17460,132 @@ if (V2_PONTE) {
       else if (decisao === "recusar") declineOffer();
       else return { ok: false, motivo: "decisao-invalida" };
       return ponteGravar();
+    },
+    // Fase 9 — clube (Carreira 2.0). As funções de sempre: COMMISSION_AREAS
+    // (suggestLineup/Training/Tactics/Market), hire/fireTechnicalStaff,
+    // STADIUM_UPGRADES/startStadiumUpgrade, sponsorship/signSponsorProposal,
+    // SCOUT_MARKET/hireScout/releaseScout/startScoutMission,
+    // recruitProspectToBase e as indicações dos olheiros.
+    comissao() {
+      if (!CAREER) return { ok: false, motivo: "sem-carreira" };
+      const hired = !!(CAREER.technicalStaff && CAREER.technicalStaff.hired);
+      const sugestoes = hired ? COMMISSION_AREAS.map((a) => { const s = a.fn(); return { area: a.id, nome: a.label, texto: s.text, aplicavel: !!s.canApply, alvo: s.target || null }; }) : [];
+      return { ok: true, contratada: hired, custoMensal: technicalStaffMonthlyCost(), sugestoes };
+    },
+    async contratarComissao() {
+      if (!CAREER) return { ok: false, motivo: "sem-carreira" };
+      if (CAREER.technicalStaff && CAREER.technicalStaff.hired) return { ok: false, motivo: "ja-contratada" };
+      hireTechnicalStaff();
+      return ponteGravar();
+    },
+    async demitirComissao() {
+      if (!CAREER || !(CAREER.technicalStaff && CAREER.technicalStaff.hired)) return { ok: false, motivo: "sem-comissao" };
+      fireTechnicalStaff();
+      return ponteGravar();
+    },
+    // Mercado: só devolve o alvo (a v2 abre a proposta, como openOfferModal).
+    async aplicarSugestao(area) {
+      if (!CAREER || !(CAREER.technicalStaff && CAREER.technicalStaff.hired)) return { ok: false, motivo: "sem-comissao" };
+      const a = COMMISSION_AREAS.find((x) => x.id === area);
+      if (!a) return { ok: false, motivo: "area-invalida" };
+      const s = a.fn();
+      if (!s.canApply) return { ok: false, motivo: "sem-sugestao", mensagem: s.text };
+      if (area === "market") return { ok: true, alvo: s.target };
+      await s.apply();
+      const g = await ponteGravar();
+      return g.ok ? { ok: true, texto: s.text } : g;
+    },
+    estadio() {
+      if (!CAREER) return { ok: false, motivo: "sem-carreira" };
+      const club = teamById(CAREER.clubId);
+      const st = CAREER.stadium || initialStadium();
+      return {
+        ok: true, nome: (club && club.venue && club.venue.name) || null, capacidade: stadiumCapacityFor(club), caixa: CAREER.finances.cash,
+        obra: st.pendingUpgrade ? { id: st.pendingUpgrade.id, nome: st.pendingUpgrade.name, rodadasRestantes: st.pendingUpgrade.roundsLeft } : null,
+        melhorias: STADIUM_UPGRADES.map((u) => {
+          const req = u.requires ? STADIUM_UPGRADES.find((x) => x.id === u.requires) : null;
+          const estado = st.completed.includes(u.id) ? "concluida" : st.pendingUpgrade && st.pendingUpgrade.id === u.id ? "em-obra"
+            : u.requires && !st.completed.includes(u.requires) ? "bloqueada" : st.pendingUpgrade ? "aguardando" : "disponivel";
+          return { id: u.id, nome: u.name, custo: u.cost, rodadas: u.roundsNeeded, lugares: u.capacityGain, requer: req ? req.name : null, estado };
+        }),
+      };
+    },
+    async iniciarObra(id) {
+      if (!CAREER) return { ok: false, motivo: "sem-carreira" };
+      const u = STADIUM_UPGRADES.find((x) => x.id === id);
+      const st = CAREER.stadium;
+      if (!u || !st) return { ok: false, motivo: "obra-invalida" };
+      if (st.pendingUpgrade) return { ok: false, motivo: "obra-em-andamento", mensagem: "Já existe uma obra em andamento — espere terminar antes de iniciar outra." };
+      if (st.completed.includes(id)) return { ok: false, motivo: "concluida", mensagem: "Essa melhoria já foi concluída." };
+      if (u.requires && !st.completed.includes(u.requires)) return { ok: false, motivo: "bloqueada", mensagem: "Essa melhoria depende de outra ainda não concluída." };
+      if (CAREER.finances.cash < u.cost) return { ok: false, motivo: "caixa", mensagem: `Caixa insuficiente — a obra custa ${fmtBRL(u.cost)}.` };
+      startStadiumUpgrade(id);
+      return ponteGravar();
+    },
+    // Contrato vencido sem propostas geradas: gera, como openSponsorProposalsModal.
+    async patrocinios() {
+      if (!CAREER) return { ok: false, motivo: "sem-carreira" };
+      let gerou = false;
+      ["master", "material"].forEach((k) => { if (!CAREER.sponsorship[k] && !CAREER.sponsorProposals[k]) { CAREER.sponsorProposals[k] = generateSponsorProposals(k); gerou = true; } });
+      if (gerou) { const g = await ponteGravar(); if (!g.ok) return g; }
+      const tipo = (k) => ({ tipo: k, nome: SPONSOR_KIND_LABEL[k], contrato: CAREER.sponsorship[k] || null, propostas: CAREER.sponsorship[k] ? null : CAREER.sponsorProposals[k] });
+      return { ok: true, tipos: [tipo("master"), tipo("material")], totalTemporada: sponsorshipSeasonTotal() };
+    },
+    async assinarPatrocinio(kind, idx) {
+      if (!CAREER || !["master", "material"].includes(kind)) return { ok: false, motivo: "tipo-invalido" };
+      if (CAREER.sponsorship[kind]) return { ok: false, motivo: "com-contrato" };
+      if (!(CAREER.sponsorProposals[kind] || [])[idx]) return { ok: false, motivo: "proposta-invalida" };
+      signSponsorProposal(kind, idx);
+      return ponteGravar();
+    },
+    olheiros() {
+      if (!CAREER) return { ok: false, motivo: "sem-carreira" };
+      return {
+        ok: true,
+        catalogo: SCOUT_MARKET.map((c) => ({ id: c.id, nome: c.name, especialidade: c.specialty, avaliacao: c.evaluation, rede: c.network, salario: c.monthlyCost, regioes: c.regionScope === "any" ? scoutingAvailableRegions() : c.regionScope })),
+        regioes: scoutingAvailableRegions().map((r) => ({ id: r, nome: REGION_LABEL[r] })),
+        tipos: Object.entries(SCOUT_MISSION_TYPES).map(([id, t]) => ({ id, nome: t.label })),
+        duracoes: Object.entries(SCOUT_MISSION_DURATIONS).map(([id, d]) => ({ id, nome: d.label, rodadas: d.rounds, tentativas: d.rolls })),
+        permitidas: Object.fromEntries((CAREER.scouts || []).map((sc) => [sc.id, scoutAllowedRegions(sc)])),
+        custoMensal: scoutsMonthlyCost(),
+      };
+    },
+    async contratarOlheiro(marketId) {
+      if (!CAREER) return { ok: false, motivo: "sem-carreira" };
+      if (!SCOUT_MARKET.some((c) => c.id === marketId)) return { ok: false, motivo: "olheiro-invalido" };
+      if ((CAREER.scouts || []).some((s) => s.marketId === marketId)) return { ok: false, motivo: "ja-contratado", mensagem: "Esse olheiro já faz parte do seu staff." };
+      hireScout(marketId);
+      return ponteGravar();
+    },
+    async dispensarOlheiro(scoutId) {
+      if (!CAREER) return { ok: false, motivo: "sem-carreira" };
+      const r = releaseScout(scoutId);
+      if (!r.ok) return { ok: false, motivo: r.motivo, mensagem: r.texto };
+      return ponteGravar();
+    },
+    async enviarMissao(scoutId, regiao, tipo, posicao, duracao) {
+      const scout = CAREER && (CAREER.scouts || []).find((s) => s.id === scoutId);
+      if (!scout) return { ok: false, motivo: "olheiro-invalido" };
+      if (scout.mission) return { ok: false, motivo: "em-missao", mensagem: "Esse olheiro já está em missão." };
+      if (!SCOUT_MISSION_TYPES[tipo] || !SCOUT_MISSION_DURATIONS[duracao] || (posicao && !SCOUT_GROUP_LABEL[posicao])) return { ok: false, motivo: "opcao-invalida" };
+      if (!scoutAllowedRegions(scout).includes(regiao)) return { ok: false, motivo: "regiao-invalida", mensagem: "Esse olheiro não atua nessa região." };
+      startScoutMission(scoutId, regiao, { type: tipo, group: posicao || null, duration: duracao });
+      return ponteGravar();
+    },
+    async trazerParaBase(prospectId) {
+      if (!CAREER || !(CAREER.scoutMissionProspects || []).some((p) => p.id === prospectId)) return { ok: false, motivo: "prospecto-invalido" };
+      recruitProspectToBase(prospectId);
+      return ponteGravar();
+    },
+    // "Propor": tira a indicação da lista, como acceptScoutSuggestion, e a
+    // v2 abre a proposta; "Recusar": rejectScoutSuggestion.
+    async indicacao(id, decisao) {
+      const s = CAREER && (CAREER.scoutSuggestions || []).find((x) => x.id === id);
+      if (!s) return { ok: false, motivo: "indicacao-invalida" };
+      if (!["propor", "recusar"].includes(decisao)) return { ok: false, motivo: "decisao-invalida" };
+      CAREER.scoutSuggestions = CAREER.scoutSuggestions.filter((x) => x.id !== id);
+      const g = await ponteGravar();
+      return g.ok ? { ok: true, alvo: decisao === "propor" ? { clubId: String(s.clubId), playerId: s.playerId } : null } : g;
     },
     // Fase 6 — tática e treino (Carreira 2.0). Mesmas regras e funções da
     // versão anterior: TACTIC_AXES/SECTOR_INSTRUCTIONS, saveTacticalScheme,

@@ -65,7 +65,13 @@ const { skipPreseason } = require("./_calendar_skip");
   const matchLogLen = await page.evaluate(() => (CAREER.matchLog || []).length);
   check("2) matchLog registrou as 3 partidas jogadas:", matchLogLen === 3, matchLogLen);
 
-  await page.click("#nextMatchBox");
+  // A Tabela do pós-jogo pode abrir depois da janela de "silêncio" acima
+  // (CI carregado) e cobrir o clique: fecha e tenta de novo, até abrir o H2H.
+  for (let k = 0; k < 10; k++) {
+    await closeLeftoverTabela(page);
+    const ok = await page.click("#nextMatchBox", { timeout: 2000 }).then(() => true, () => false);
+    if (ok && await page.waitForSelector("#h2hOverlay.open", { timeout: 3000 }).then(() => true, () => false)) break;
+  }
   await page.waitForSelector("#h2hOverlay.open", { timeout: 3000 });
   await page.waitForTimeout(150);
   const after = await page.evaluate(() => ({

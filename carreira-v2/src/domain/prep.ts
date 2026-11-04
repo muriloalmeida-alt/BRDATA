@@ -9,6 +9,7 @@
 // treino com tudo o que o jogo tem (jogo no sábado, folgas protegidas,
 // duração, individual, modelos); overall por temporada passa a ser guardado;
 // escalação automática na Escalação.
+import { potentialText } from "./potential.ts";
 import type { Player } from "./types.ts";
 import { shortName } from "./lineup.ts";
 
@@ -87,7 +88,7 @@ export function buildEvolution(p: Player): EvolutionModel {
     name: shortName(p.name), position: POSITION[p.group] || "",
     condition: `${Math.round(p.condition == null ? 100 : p.condition)}%`,
     fatigue, seasons, injuries,
-    potential: p.potential != null ? `${p.overall} · teto ${p.potential}` : String(p.overall),
+    potential: potentialText(p) ? `${p.overall} · teto estimado ${potentialText(p)}` : String(p.overall),
     empty: !fatigue.length && !seasons.length && !injuries.length,
   };
 }

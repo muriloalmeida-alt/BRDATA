@@ -34,17 +34,17 @@ import "./market.css";
 
 const M = `${BASE}/mercado`;
 type Row = { label: string; value: string; tone?: "pos" | "neg" };
-function Rows({ rows }: { rows: Row[] }) {
+export function Rows({ rows }: { rows: Row[] }) {
   return <dl className="wk-list">{rows.map((r, i) => <div key={`${r.label}-${i}`} className="wk-item"><dt>{r.label}</dt><dd className={r.tone === "pos" ? "is-pos" : r.tone === "neg" ? "is-neg" : undefined}>{r.value}</dd></div>)}</dl>;
 }
-function PlayerRow({ name, position, to }: { name: string; position: string; to?: string }) {
+export function PlayerRow({ name, position, to }: { name: string; position: string; to?: string }) {
   const inner = <><Jersey value="" size={44} /><span className="row-body"><span className="row-title">{name}</span><span className="row-sub">{position}</span></span>{to && <IconChevron className="row-chevron" />}</>;
   return to ? <Link className="row sp-player" to={to}>{inner}</Link> : <div className="row sp-player">{inner}</div>;
 }
-function NavRow({ to, title, sub, value }: { to: string; title: string; sub?: string | null; value?: string | null }) {
+export function NavRow({ to, title, sub, value }: { to: string; title: string; sub?: string | null; value?: string | null }) {
   return <Link className="row pr-row" to={to}><span className="row-body"><span className="row-title">{title}</span>{sub && <span className="row-sub">{sub}</span>}</span>{value && <span className="row-sub pr-val">{value}</span>}<IconChevron className="row-chevron" /></Link>;
 }
-function Status({ msg, err }: { msg?: string | null; err?: string | null }) {
+export function Status({ msg, err }: { msg?: string | null; err?: string | null }) {
   return <>
     <p className="sr-only" role="status" aria-live="polite">{msg || ""}</p>
     {msg && <p className="pr-ok" aria-hidden="true">{msg}</p>}
@@ -653,7 +653,7 @@ export function ListSheet({ player, onClose, onDone }: { player: Player; onClose
 }
 
 // ---------- Empréstimo (CAP05-N06): entrada (clube=) ou saída ----------
-function Seg<T extends string | number>({ id, label, value, opts, onChange }: { id: string; label: string; value: T; opts: [T, string][]; onChange: (v: T) => void }) {
+export function Seg<T extends string | number>({ id, label, value, opts, onChange }: { id: string; label: string; value: T; opts: [T, string][]; onChange: (v: T) => void }) {
   return (
     <div className="pr-field">
       <span className="pr-label" id={id}>{label}</span>
