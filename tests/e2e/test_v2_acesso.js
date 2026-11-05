@@ -116,7 +116,18 @@ const { serverCareer } = require("./_v2_match");
   // 5) Recompensa diária.
   const cash0 = created.finances.cash;
   await v2.click(".ac-foot .cta");
-  await v2.waitForURL(/\/recompensa$/, { timeout: 20000 });
+  // Desde o item 1 (05/11), antes da recompensa vêm o tutorial (1ª carreira
+  // da conta) e o assistente de início (carreira nova): pula os dois aqui
+  // (eles têm teste próprio, test_v2_onboarding.js).
+  await v2.waitForURL(/\/boas-vindas$/, { timeout: 20000 });
+  await v2.click(".ob-skip");
+  for (let n = 1; n <= 4; n++) {
+    await v2.waitForURL(new RegExp(`assistente=${n}`), { timeout: 30000 });
+    // A URL muda antes da barra do passo novo: espera a barra certa.
+    await v2.waitForFunction((n) => (document.querySelector(".wz-k")?.textContent || "").includes(`Passo ${n} de 4`), n, { timeout: 30000 });
+    await v2.click(".wz-skip");
+  }
+  await v2.waitForURL(/\/recompensa$/, { timeout: 30000 });
   await v2.waitForSelector(".rw-days", { timeout: 40000 });
   const rw = await v2.evaluate(() => ({ today: document.querySelector(".rw-day.is-today b")?.textContent, days: document.querySelectorAll(".rw-day").length, title: document.querySelector(".rw-title").textContent, state: document.querySelector(".rw-state").textContent }));
   await v2.click(".rw-foot .cta");

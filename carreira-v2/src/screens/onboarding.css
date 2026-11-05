@@ -1,0 +1,24 @@
+/* Tutorial de boas-vindas e assistente de início (item 1, 05/11). */
+.ob-skip { justify-self: end; min-height: var(--bd-touch); padding: 0 4px; }
+.ob-body { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 24px var(--bd-gutter); text-align: center; }
+.ob-icon { width: 72px; height: 72px; color: var(--bd-accent); }
+.ob-title { margin: 24px 0 0; }
+.ob-text { margin: 16px 0 0; max-width: 34ch; color: var(--bd-muted); font-size: 18px; line-height: 1.45; }
+.ob-dots { display: flex; gap: 8px; margin: 28px 0 0; padding: 0; list-style: none; }
+.ob-dots li { width: 8px; height: 8px; border-radius: 50%; background: var(--bd-neutral-chip); }
+.ob-dots li.is-on { width: 22px; border-radius: 4px; background: var(--bd-accent); }
+
+/* Barra do assistente: fica embaixo de qualquer tela do passo. A barra
+   inferior some enquanto o assistente está aberto, e o rodapé próprio da
+   tela (Salvar etc.) sobe acima da barra. */
+:root { --wz-h: calc(186px + var(--bd-safe-bottom)); }
+.wz { position: fixed; left: 0; right: 0; bottom: 0; z-index: 30; padding: 12px var(--bd-gutter) calc(12px + var(--bd-safe-bottom)); background: var(--bd-bg-deep); border-top: 1px solid var(--bd-line); }
+.wz-k { margin: 0; font-family: var(--bd-font-display); font-weight: 600; font-size: 14px; letter-spacing: .08em; text-transform: uppercase; color: var(--bd-gold); }
+.wz-t { margin: 2px 0 0; font-family: var(--bd-font-display); font-weight: 600; font-size: 20px; color: var(--bd-text); }
+.wz-err { margin: 6px 0 0; }
+.wz-actions { display: flex; flex-direction: column-reverse; align-items: stretch; gap: 4px; margin-top: 10px; }
+.wz-skip { min-height: var(--bd-touch); padding: 0 4px; text-align: center; }
+.wz-next { width: 100%; }
+body:has(.wz) .tabbar { display: none; }
+body:has(.wz) #root { padding-bottom: var(--wz-h); }
+body:has(.wz) .cal-foot, body:has(.wz) .ac-foot--sticky { bottom: var(--wz-h); }

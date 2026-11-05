@@ -60,6 +60,10 @@ export const MoreGateway = {
   toggleNotice: (key: string) => run("alternarNotificacao", key),
   setSound: (on: boolean) => run<{ som: boolean }>("somAtivo", on),
   saveName: (name: string) => run<{ nome: string }>("salvarNome", name),
+  // Tutorial (item 1, 05/11): o mesmo POST /api/account/onboarding-seen de
+  // closeOnboardingOverlay; o assistente, o mesmo startupWizardSeen = true.
+  tutorialSeen: () => api("/api/account/onboarding-seen", { method: "POST" }),
+  wizardDone: () => run("assistenteVisto"),
   // Reiniciar: mesmo DELETE /api/career do "Apagar e reiniciar".
   restart: () => api("/api/career", { method: "DELETE" }),
 };

@@ -7,7 +7,7 @@
 // - /carreira/tatica/esquemas: Esquemas salvos (CAP03-T04, 25 col. 3 e 26 col. 1-2);
 // - /carreira/tatica/marcacao: Marcação individual (CAP03-N02, 26 col. 3).
 // Tudo lido e gravado pelo motor (adapters/prep.ts), mesmas regras de sempre.
-import { useCallback, useEffect, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { PrepGateway, type Res } from "../adapters/prep.ts";
 import { schemeAxes, schemeMeta, type Axis, type MarkingData, type SchemesData, type TacticsData } from "../domain/prep.ts";
 import { shortName } from "../domain/lineup.ts";
@@ -15,6 +15,7 @@ import { Wordmark } from "../ui/components.tsx";
 import { Sheet } from "../ui/dialog.tsx";
 import { IconBack, IconCheck, IconChevron } from "../ui/icons.tsx";
 import { BASE, Link, goBack, goBackTo } from "../ui/router.tsx";
+import { registerWizardApply } from "./Onboarding.tsx";
 import "./home.css";
 import "./calendar.css";
 import "./match.css";
@@ -101,6 +102,20 @@ export function TacticsHub({ formation, marking, schemes }: { formation: string;
 export function TacticsAxes({ onSaved }: { onSaved: () => void }) {
   const [data] = useRead(PrepGateway.tactics);
   const [axes, setAxes] = useState<Record<string, number> | null>(null);
+  // Assistente de início (passo 4): "Começar a temporada" grava as
+  // instruções mexidas e ainda não salvas, como o "Continuar" da versão anterior.
+  const axesRef = useRef(axes);
+  axesRef.current = axes;
+  useEffect(() => {
+    if (!/[?&]assistente=4\b/.test(location.search)) return;
+    registerWizardApply(async () => {
+      if (!axesRef.current) return true;
+      const r = await PrepGateway.saveTactics(axesRef.current);
+      if (r.ok) onSaved();
+      return r.ok;
+    });
+    return () => registerWizardApply(null);
+  }, [onSaved]);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);

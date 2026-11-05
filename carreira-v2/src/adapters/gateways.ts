@@ -22,6 +22,8 @@ export interface SessionUser {
   id: string; name: string;
   // Login diário (recompensa): dia da sequência e data local da última coleta.
   dailyLogin?: { currentStreakDay: number; lastClaimDate: string | null };
+  // Tutorial de boas-vindas já visto pela conta (/api/auth/me).
+  onboardingSeen?: boolean;
 }
 
 export const SessionGateway = {

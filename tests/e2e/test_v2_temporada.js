@@ -18,7 +18,7 @@
 //  6) 360 px sem rolagem horizontal e alvos ≥ 44 px; nada por /carreira-old.
 const { chromium } = require("playwright-core");
 const { check } = require("./_check");
-const { newCareer, serverCareer } = require("./_v2_match");
+const { newCareer, serverCareer, skipAutoOpen } = require("./_v2_match");
 
 const base = "http://localhost:8787";
 
@@ -42,7 +42,8 @@ const base = "http://localhost:8787";
     await v2.setViewportSize({ width: 390, height: 844 });
   };
   const waitH1 = (t) => v2.waitForFunction((t) => (document.querySelector("h1") || {}).textContent === t, t, { timeout: 40000 });
-  const home = async () => { await v2.goto(base + "/", { waitUntil: "domcontentloaded" }); await v2.waitForSelector(".home", { timeout: 20000 }); };
+  // Uma carreira nova (ao aceitar outro clube) abre o assistente de início: pula.
+  const home = async () => { await v2.goto(base + "/", { waitUntil: "domcontentloaded" }); await skipAutoOpen(v2); await v2.waitForSelector(".home", { timeout: 20000 }); };
   await v2.goto(base + "/", { waitUntil: "domcontentloaded" });
   await v2.waitForSelector(".home", { timeout: 20000 });
   // Edita o save pelo servidor (a v2 relê ao navegar com recarga).

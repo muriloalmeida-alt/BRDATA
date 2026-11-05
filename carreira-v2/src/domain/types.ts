@@ -63,6 +63,8 @@ export interface Career {
   clubShort?: string;
   clubLogo?: string | null;
   competitionId?: string;
+  // Assistente de início: false numa carreira recém-criada (startCareer).
+  startupWizardSeen?: boolean;
   seasonYear: number;
   currentRound: number;
   schedule: Record<string, Fixture[]>;
