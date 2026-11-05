@@ -1,7 +1,7 @@
 # Carreira 2.0: plano para separar `/carreira` de `/carreira-old`
 
 - **Data:** 03/11/2026 (situação atualizada em 05/11, seção 9).
-- **Status:** fases 0 a 11 e P8 na `main` (#57 a #70); fase 12 em andamento (etapas 1 e 2 na `main`, etapa 3 em PR). Pendentes: as etapas 4 a 6 da fase 12. Ver a seção 9.
+- **Status:** fases 0 a 11 e P8 na `main` (#57 a #70); fase 12 em andamento (etapas 1 a 3 na `main`, etapa 4 em PR). Pendentes: as etapas 5 e 6 da fase 12. Ver a seção 9.
 - **Atualização de 03/11:** chegou o pacote complementar do GPT, com as pranchas 17 a 45 (`referencias/complemento_17_45/`). Veja a seção 6.
 - **Objetivo** (pedido do Murilo, 03/11): `/carreira` (v2) e `/carreira-old` (versão anterior) **100% independentes**, sem nenhuma transição entre a jornada nova e a antiga.
 
@@ -389,8 +389,10 @@ A seção 8 é o retrato de 03/11 e fica como histórico.
 | P8 — tutorial, assistente de início e "Compartilhar título" | #70 | na `main` |
 | 12.1 — núcleo da partida em `public/js/motor/partida.js` | #71 | na `main` |
 | 12.2 — tabela, calendário e rodada simples (`motor/tabela.js`, `calendario.js`, `rodada.js`) | #73 | na `main` |
-| 12.3 — finanças (`motor/financas.js`) | próximo PR | `ENTREGA_F12_3_FINANCAS.md` |
-| 12.4 a 12.6 — treino, mercado, temporada | — | **não iniciadas** |
+| 12.3 — finanças (`motor/financas.js`) | #75 | na `main` |
+| Comissão técnica: sugestões rápidas (Escalação, Formação, Postura) | #76 | `ENTREGA_COMISSAO_TECNICA.md` |
+| 12.4 — treino e evolução natural (`motor/treino.js`) | próximo PR | `ENTREGA_F12_4_TREINO.md` |
+| 12.5 e 12.6 — mercado, temporada | — | **não iniciadas** |
 
 ### Pontos de dependência (seção 1)
 - **1 a 10:** resolvidos. Nenhuma tela da v2 abre a versão anterior. O teste `test_v2_corte.js` navega por 70 telas sem nenhuma saída.

@@ -133,7 +133,7 @@ async function simulateOneRound(page) {
     // isolando o efeito só do dia 0 pro teste de condição abaixo (um
     // dia 0 sozinho + vários "descanso" de +12 cada mascarava a queda
     // de fadiga, sempre saturando de volta em 100).
-    for (let i = 1; i < 7; i++) { if (i !== TRAINING_GAME_DAY) CAREER.trainingPlan[i] = {}; }
+    for (let i = 1; i < 7; i++) { if (i !== motorTreino().TRAINING_GAME_DAY) CAREER.trainingPlan[i] = {}; }
     applyWeeklyTraining();
     // getCareer() (abaixo) lê do SERVIDOR (GET /api/career) -- sem
     // persistir aqui, o teste compararia contra o save antigo, ainda

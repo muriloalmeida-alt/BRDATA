@@ -294,6 +294,10 @@ const motorTabela = () => motorModulo("tabela");
 // Fase 12, etapa 3 (05/11): regras de dinheiro em motor/financas.js — o
 // motor devolve os lançamentos; aqui só se aplica no caixa e no extrato.
 const motorFinancas = () => motorModulo("financas");
+// Fase 12, etapa 4 (05/11): treino semanal e evolução natural em
+// motor/treino.js — o motor devolve os campos novos de cada jogador e
+// aqui só se aplica no elenco.
+const motorTreino = () => motorModulo("treino");
 function applyFinanceEntries(entries, round) {
   entries.forEach((e) => {
     CAREER.finances.cash += e.amount;
@@ -1488,16 +1492,7 @@ function derivePotentialForAdult(overall, age, rng) {
 // propósito — sempre >= 5% de chance —, mas na prática convergindo
 // bem mais devagar); no teto, sempre zero. Nunca passa do teto.
 function attributeTrainingGain(currentValue, ceiling, baseGain) {
-  const room = ceiling - currentValue;
-  if (room <= 0) return 0;
-  let gained = 0;
-  for (let i = 0; i < baseGain; i++) {
-    // GE-BALANCE-005 (issue #38) — além da distância até o teto, a
-    // faixa ABSOLUTA do atributo também freia (ver highBandGainFactor).
-    const chance = clamp(room / 15, 0.05, 1) * highBandGainFactor(currentValue + gained);
-    if (Math.random() < chance) gained++;
-  }
-  return Math.min(gained, room);
+  return motorTreino().attributeTrainingGain(currentValue, ceiling, baseGain, Math.random);
 }
 
 /* ---------- GE-BALANCE-005 (issue #38) — evolução realista ----------
@@ -1515,29 +1510,16 @@ function attributeTrainingGain(currentValue, ceiling, baseGain) {
    roda tal e qual. */
 // [idade máxima da faixa, ganho máximo na temporada] — 30+ não ganha
 // nada (só declina, ver applyNaturalAgingEvolution/potentialDeclineFor).
-const SEASON_GAIN_CAP_BY_AGE = [[21, 6], [25, 4], [29, 2]];
-function seasonGainBaseCap(age) {
-  const band = SEASON_GAIN_CAP_BY_AGE.find(([maxAge]) => age <= maxAge);
-  return band ? band[1] : 0;
-}
+function seasonGainBaseCap(age) { return motorTreino().seasonGainBaseCap(age); }
 // Minutagem importa (escopo item 5): quem joga pelo menos metade das
 // rodadas já disputadas usa o teto cheio; quem não joga nunca, metade
 // dele. Começo de temporada (< 6 rodadas) não pune ninguém — amostra
 // pequena demais pra dizer quem é reserva.
-function playTimeGainFactor(appsSeason, roundsSoFar) {
-  if (roundsSoFar < 6) return 1;
-  const share = (appsSeason || 0) / roundsSoFar;
-  return 0.5 + 0.5 * clamp(share / 0.5, 0, 1);
-}
-function seasonGainCap(p, roundsSoFar) {
-  return Math.round(seasonGainBaseCap(p.age) * playTimeGainFactor(p.appsSeason, roundsSoFar));
-}
+function playTimeGainFactor(appsSeason, roundsSoFar) { return motorTreino().playTimeGainFactor(appsSeason, roundsSoFar); }
+function seasonGainCap(p, roundsSoFar) { return motorTreino().seasonGainCap(p, roundsSoFar); }
 // Quanto ainda dá pra ganhar NESTE atributo nesta temporada (treino +
 // maturação somados, ver recordSeasonGain).
-function seasonGainRoom(p, attr, roundsSoFar) {
-  const used = (p.seasonGain && p.seasonGain[attr]) || 0;
-  return Math.max(0, seasonGainCap(p, roundsSoFar) - used);
-}
+function seasonGainRoom(p, attr, roundsSoFar) { return motorTreino().seasonGainRoom(p, attr, roundsSoFar); }
 function recordSeasonGain(p, attr, gain) {
   if (!gain) return;
   p.seasonGain = p.seasonGain || {};
@@ -1545,9 +1527,7 @@ function recordSeasonGain(p, attr, gain) {
 }
 // Retorno decrescente pela faixa ABSOLUTA (CLAUDE.md §17): acima de 80
 // cada ponto é 2x mais difícil, acima de 88, 4x — 90+ vira raridade.
-function highBandGainFactor(value) {
-  return value >= 88 ? 0.25 : value >= 80 ? 0.5 : 1;
-}
+function highBandGainFactor(value) { return motorTreino().highBandGainFactor(value); }
 // Queda anual do potencial a partir do pico (D5): -1 aos 30-31, -2 aos
 // 32-33, -3 dos 34 em diante (goleiro, 2 anos depois). Determinístico.
 function potentialDeclineFor(age, group) {
@@ -6011,41 +5991,12 @@ function computeHumanStrength(club) {
    NESSA rodada (banco/lesionado tem mais chance de estagnar/regredir
    que evoluir). */
 function applyNaturalAgingEvolution(playedThisRound) {
-  const playedIds = new Set((playedThisRound || []).map((p) => p.id));
-  CAREER.squad.forEach((p) => {
-    const played = playedIds.has(p.id);
-    const declineAge = p.group === "G" ? 32 : 30;
-    let growChance, declineChance;
-    if (p.age <= 21) { growChance = played ? 0.14 : 0.05; declineChance = 0; }
-    else if (p.age < declineAge) { growChance = played ? 0.06 : 0.01; declineChance = played ? 0 : 0.01; }
-    else { growChance = played ? 0.02 : 0; declineChance = (played ? 0.05 : 0.08) + (p.age - declineAge) * 0.01; }
-    const trend = p.attrTrend || { overall: 0, atk: 0, def: 0, phys: 0 };
-    // Nova feature (pedido do usuário: "atributos precisam ser mais
-    // reais... evolução menos agressiva") — a maturação natural
-    // também respeita o teto (p.potential, ver derivePotentialForAdult/
-    // buildBasePlayer) — sem isso, um jovem promissor acabaria
-    // passando do próprio potencial só de jogar muitas temporadas,
-    // mesmo sem treino nenhum envolvido. Declínio nunca é limitado por
-    // teto (é sobre o PISO, 20, que já valia).
-    const ceiling = p.potential != null ? p.potential : 99;
-    ["overall", "atk", "def", "phys"].forEach((attr) => {
-      const roll = Math.random();
-      // GE-BALANCE-005 (issue #38) — maturação também conta pro teto da
-      // temporada (seasonGainRoom) e sofre o mesmo freio de faixa alta.
-      if (roll < growChance * highBandGainFactor(p[attr])) {
-        if (p[attr] < ceiling && seasonGainRoom(p, attr, CAREER.currentRound - 1) > 0) {
-          p[attr] = clamp(p[attr] + 1, 20, ceiling); trend[attr] += 1; recordSeasonGain(p, attr, 1);
-        }
-      }
-      else if (roll > 1 - declineChance) { p[attr] = clamp(p[attr] - 1, 20, 99); trend[attr] -= 1; }
-    });
-    // Acumula até o jogador ser aberto no detalhe de novo (ver
-    // openDetail, que lê isso pro indicador ↑/↓ e zera em seguida —
-    // "desde a última checagem", pedido da especificação). O ganho
-    // determinístico de applyWeeklyTraining soma NO MESMO campo, pra
-    // não duplicar a seta de tendência com 2 fontes diferentes.
-    p.attrTrend = trend;
-  });
+  const patches = motorTreino().agingWeek({
+    squad: CAREER.squad,
+    playedIds: (playedThisRound || []).map((p) => p.id),
+    roundsSoFar: CAREER.currentRound - 1,
+  }, Math.random);
+  CAREER.squad.forEach((p) => Object.assign(p, patches.get(p.id)));
 }
 
 /* ---------- Módulo de Treinos (pedido do usuário: "vamos evoluir o
@@ -6094,13 +6045,8 @@ function applyNaturalAgingEvolution(playedThisRound) {
    já existente, reaproveitando moraleReason, em vez de um estado
    paralelo que duplicaria/conflitaria com o sistema de moral já
    maduro do jogo. */
-const TRAINING_DAY_NAMES = ["Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado", "Domingo"];
-const TRAINING_GAME_DAY = 5;      // sábado — fixo (ver aviso acima)
-const TRAINING_PRE_GAME_DAY = 4;  // sexta — folga protegida pré-jogo
-const TRAINING_POST_GAME_DAY = 6; // domingo — folga protegida pós-jogo
-function isProtectedTrainingDay(i) { return i === TRAINING_PRE_GAME_DAY || i === TRAINING_POST_GAME_DAY; }
+function isProtectedTrainingDay(i) { return motorTreino().isProtectedTrainingDay(i); }
 // Fórmulas exatas do documento (seção 2.2).
-const TRAINING_INTENSITY_MULT = { leve: 0.5, moderada: 1, intensa: 1.8 };
 const TRAINING_INTENSITY_LABEL = { leve: "Leve", moderada: "Moderada", intensa: "Intensa" };
 const TRAINING_GROUP_LABEL = { principal: "Elenco", misto: "Misto c/ Sub-20", individual: "Individual" };
 // Bloco 5 (mockups brtreinadorbloco5treino.html/brtreinadorbloco5pendentes.html)
@@ -6113,7 +6059,6 @@ const TRAINING_GROUP_LABEL = { principal: "Elenco", misto: "Misto c/ Sub-20", in
 // (só informativo: não entra nas fórmulas de fadiga/ganho do documento,
 // que continuam intocadas — combina com a "prévia de fadiga" já mostrada
 // noutro lugar da tela, sem duplicar cálculo).
-const TRAINING_DURATION_DEFAULT = { leve: 45, moderada: 60, intensa: 75 };
 const TRAINING_DURATION_MIN = 15, TRAINING_DURATION_MAX = 120, TRAINING_DURATION_STEP = 15;
 // Histórico por jogador (Bloco 5, "pendentes" — tela "Histórico de
 // fadiga"): fatigueHistory alimentado 1x por rodada em
@@ -6125,97 +6070,22 @@ const TRAINING_DURATION_MIN = 15, TRAINING_DURATION_MAX = 120, TRAINING_DURATION
 // começam vazios em carreiras já em andamento — sem como reconstruir
 // histórico que não foi guardado — e crescem a partir de agora; cap no
 // tamanho pra não inchar o save numa carreira de várias temporadas.
-const FATIGUE_HISTORY_MAX = 16;
 const INJURY_HISTORY_MAX = 10;
 // 5 esquemas prontos (seção 3 do documento, portados 1:1 — sexta e
 // domingo nunca precisam ser escritos como "descanso" explicitamente
 // aqui: são sempre protegidos por posição, ver isProtectedTrainingDay,
 // então o dia 5 (jogo) também nem entra no array de foco/intensidade/
 // grupo por esquema — só os dias 0-3 variam de verdade entre eles).
-const TRAINING_SCHEMES = [
-  {
-    id: "equilibrio", name: "Equilíbrio Semanal",
-    desc: "Alterna técnico e físico moderado, com folgas protegidas de sexta e domingo.",
-    days: [
-      { foco: "tecnico", intensidade: "moderada", grupo: "principal" },
-      { foco: "fisico", intensidade: "moderada", grupo: "principal" },
-      { foco: "tecnico", intensidade: "moderada", grupo: "misto" },
-      { foco: "fisico", intensidade: "leve", grupo: "principal" },
-    ],
-  },
-  {
-    id: "pre_jogo", name: "Ativação Pré-Jogo",
-    desc: "Cargas leves na semana toda. Uso quando o calendário está apertado (jogos a cada 3-4 dias).",
-    days: [
-      { foco: "tecnico", intensidade: "leve", grupo: "principal" },
-      { foco: "tecnico", intensidade: "leve", grupo: "principal" },
-      { foco: "fisico", intensidade: "leve", grupo: "principal" },
-      { foco: "tecnico", intensidade: "leve", grupo: "principal" },
-    ],
-  },
-  {
-    id: "pretemporada", name: "Pré-Temporada Física",
-    desc: "Cargas físicas intensas para elevar a base de condicionamento. Uso fora de sequência apertada de jogos.",
-    days: [
-      { foco: "fisico", intensidade: "intensa", grupo: "principal" },
-      { foco: "fisico", intensidade: "intensa", grupo: "principal" },
-      { foco: "tecnico", intensidade: "moderada", grupo: "principal" },
-      { foco: "fisico", intensidade: "intensa", grupo: "principal" },
-    ],
-  },
-  {
-    id: "recuperacao", name: "Recuperação",
-    desc: "Reduz carga total. Uso após jogos física ou taticamente desgastantes, ou elenco com muitos atletas fadigados.",
-    days: [
-      { foco: "descanso" },
-      { foco: "tecnico", intensidade: "leve", grupo: "principal" },
-      { foco: "descanso" },
-      { foco: "tecnico", intensidade: "leve", grupo: "principal" },
-    ],
-  },
-  {
-    id: "base_sub20", name: "Integração Sub-20",
-    desc: "Foco técnico com o time misto para acelerar evolução da base e elevar moral dos jovens.",
-    days: [
-      { foco: "tecnico", intensidade: "moderada", grupo: "misto" },
-      { foco: "tecnico", intensidade: "moderada", grupo: "misto" },
-      { foco: "fisico", intensidade: "leve", grupo: "misto" },
-      { foco: "tecnico", intensidade: "moderada", grupo: "misto" },
-    ],
-  },
-];
 // Monta o plano de 7 dias inteiro a partir de um esquema (os 4 dias
 // dele + jogo/2 folgas protegidas fixas, sempre nas mesmas posições).
-function defaultTrainingPlan(schemeId) {
-  const scheme = TRAINING_SCHEMES.find((s) => s.id === schemeId) || TRAINING_SCHEMES[0];
-  const plan = new Array(7);
-  let di = 0;
-  for (let i = 0; i < 7; i++) {
-    if (i === TRAINING_GAME_DAY) plan[i] = { foco: "jogo" };
-    else if (isProtectedTrainingDay(i)) plan[i] = { foco: "descanso" };
-    else {
-      plan[i] = { ...scheme.days[di++] };
-      // Bloco 5 — duração default por intensidade (só informativo, ver
-      // aviso no topo desta seção sobre TRAINING_DURATION_DEFAULT).
-      plan[i].duracao = TRAINING_DURATION_DEFAULT[plan[i].intensidade] || 60;
-    }
-  }
-  return plan;
-}
+function defaultTrainingPlan(schemeId) { return motorTreino().defaultTrainingPlan(schemeId); }
 // Quem é afetado por um dia de treino — "individual" só o jogador
 // escolhido (ver PICKER_CTX.type==="training" em renderPickerList/
 // pickerChoose); "misto" o elenco inteiro (principal + base, junto —
 // é o ponto do esquema "Integração Sub-20"); "principal" só quem
 // realmente veste a camisa 10 (loan conta junto, mesmo critério de
 // sempre — ver computeHumanStrength/wageBillOf).
-function trainingTargets(entry) {
-  if (entry.grupo === "individual") {
-    const p = entry.individualPlayerId && CAREER.squad.find((x) => x.id === entry.individualPlayerId);
-    return p ? [p] : [];
-  }
-  if (entry.grupo === "misto") return CAREER.squad.slice();
-  return CAREER.squad.filter((p) => p.origin === "principal" || p.origin === "loan");
-}
+function trainingTargets(entry) { return motorTreino().trainingTargets(entry, CAREER.squad); }
 // Resolve a semana INTEIRA de uma vez (ver aviso grande no topo desta
 // seção sobre por que não dá pra simular dia a dia). Idempotente por
 // rodada — chamar de novo na mesma rodada não faz nada (trainingAppliedForRound
@@ -6225,84 +6095,15 @@ function applyWeeklyTraining() {
   // GE-CALENDAR-001 — 1x por TURNO (semana no calendário; rodada no
   // modelo antigo), ver calendarTurnKey.
   if (String(CAREER.trainingAppliedForRound) === calendarTurnKey()) return null;
-  const gains = new Map();
-  CAREER.trainingPlan.forEach((entry, i) => {
-    if (i === TRAINING_GAME_DAY || !entry || !entry.foco) return;
-    if (entry.foco === "descanso") {
-      // Descanso não tem "grupo" (o protótipo também desabilita esse
-      // campo pra descanso) — recupera o elenco inteiro por igual.
-      CAREER.squad.forEach((p) => { p.condition = clamp((p.condition == null ? 100 : p.condition) + 12, 0, 100); });
-      return;
-    }
-    const mult = TRAINING_INTENSITY_MULT[entry.intensidade] || 1;
-    const baseGain = Math.round(2 * mult);   // fórmula exata do documento (2.2) — teto POSSÍVEL, não garantido, ver attributeTrainingGain
-    const fatigueCost = Math.round(6 * mult);
-    // "Tático" (Bloco 5) mistura os 2 lados do jogo — evolui ATAQUE E
-    // DEFESA junto, cada um com metade do baseGain (mantém o total de
-    // evolução por semana comparável ao foco único de técnico/físico,
-    // em vez de dobrar de graça só por afetar 2 atributos).
-    const attrs = entry.foco === "tecnico" ? ["overall"] : entry.foco === "fisico" ? ["phys"] : ["atk", "def"];
-    trainingTargets(entry).forEach((p) => {
-      p.condition = clamp((p.condition == null ? 100 : p.condition) - fatigueCost, 0, 100);
-      attrs.forEach((attr) => {
-        // GE-CALENDAR-001 — pré-temporada: treino físico rende 1 ponto a
-        // mais por sessão (o teto da temporada, GE-BALANCE-005, segue valendo).
-        const preseasonBonus = attr === "phys" && calendarOn() && (calendarWeek() || {}).p === "pre" ? 1 : 0;
-        const attrGain = (attrs.length > 1 ? Math.max(1, Math.round(baseGain / 2)) : baseGain) + preseasonBonus;
-        // Nova feature (pedido do usuário: "atributos precisam ser mais
-        // reais... evolução menos agressiva") — ganho respeita o teto
-        // de cada jogador (p.potential), com retorno decrescente perto
-        // dele (ver attributeTrainingGain) — fadiga sempre é cobrada
-        // (o esforço aconteceu), mas o ganho de verdade pode vir menor
-        // que attrGain, ou zero, se o jogador já estiver perto/no teto.
-        const ceiling = p.potential != null ? p.potential : 99;
-        // GE-BALANCE-005 (issue #38) — e o teto de ganho da TEMPORADA
-        // por idade/minutagem (ver seasonGainRoom): veterano 30+ não
-        // recupera mais no treino o que perdeu com a idade.
-        const seasonRoom = seasonGainRoom(p, attr, CAREER.currentRound - 1);
-        const gain = seasonRoom > 0 ? attributeTrainingGain(p[attr], ceiling, Math.min(attrGain, seasonRoom)) : 0;
-        if (gain > 0) {
-          p[attr] = clamp(p[attr] + gain, 20, ceiling);
-          recordSeasonGain(p, attr, gain);
-          const trend = p.attrTrend || { overall: 0, atk: 0, def: 0, phys: 0 };
-          trend[attr] += gain;
-          p.attrTrend = trend;
-          gains.set(p.id, (gains.get(p.id) || 0) + gain);
-        }
-      });
-      // Regra do documento (2.5): Sub-20 treinando no grupo Misto com
-      // o elenco principal ganha moral "feliz" — na escala numérica
-      // já existente, isso é um empurrão positivo + motivo explícito
-      // (ver moraleReason, já usado em toda parte do jogo que mexe em
-      // moral).
-      if (p.origin === "base" && entry.grupo === "misto") {
-        p.morale = clamp((p.morale == null ? 70 : p.morale) + 5, 0, 100);
-        p.moraleReason = "Feliz treinando com o elenco principal";
-      }
-    });
-  });
-  // Regras do documento (2.5) ligadas ao ESTADO FINAL de condição
-  // (depois da semana inteira resolvida) — "cansado" abaixo de 40,
-  // volta a "neutro" só quando a condição já recuperou pra 55+ E o
-  // motivo registrado ainda for o do cansaço do treino (evita
-  // sobrescrever um moraleReason de outro sistema, ex.: banco/conversa
-  // recente, sem relação com fadiga de treino).
-  CAREER.squad.forEach((p) => {
-    const cond = p.condition == null ? 100 : p.condition;
-    if (cond < 40 && p.moraleReason !== "Cansado pelo desgaste dos treinos") {
-      p.morale = clamp((p.morale == null ? 70 : p.morale) - 4, 0, 100);
-      p.moraleReason = "Cansado pelo desgaste dos treinos";
-    } else if (cond >= 55 && p.moraleReason === "Cansado pelo desgaste dos treinos") {
-      p.morale = clamp((p.morale == null ? 70 : p.morale) + 4, 0, 100);
-      p.moraleReason = "Neutro no clube";
-    }
-    // Bloco 5 ("pendentes" — tela "Histórico de fadiga") — 1 ponto por
-    // rodada pra TODO o elenco, treinando ou não nesta semana (ver
-    // aviso grande sobre FATIGUE_HISTORY_MAX no topo desta seção).
-    p.fatigueHistory = p.fatigueHistory || [];
-    p.fatigueHistory.push({ round: CAREER.currentRound, fadiga: Math.round(100 - cond) });
-    if (p.fatigueHistory.length > FATIGUE_HISTORY_MAX) p.fatigueHistory.shift();
-  });
+  const { patches, gains } = motorTreino().trainingWeek({
+    plan: CAREER.trainingPlan,
+    squad: CAREER.squad,
+    roundsSoFar: CAREER.currentRound - 1,
+    // GE-CALENDAR-001 — pré-temporada: treino físico rende 1 ponto a mais.
+    preseason: !!(calendarOn() && (calendarWeek() || {}).p === "pre"),
+    round: CAREER.currentRound,
+  }, Math.random);
+  CAREER.squad.forEach((p) => Object.assign(p, patches.get(p.id)));
   CAREER.trainingAppliedForRound = calendarTurnKey();
   // Retenção/Engajamento — "Treine 1 jogador" (objetivo diário) conta
   // a SEMANA aplicada como 1 evento (não 1 por jogador afetado, senão
@@ -6357,7 +6158,7 @@ function renderTrainingDayPanel() {
   const day = TRAINING_SELECTED_DAY;
   const entry = CAREER.trainingPlan[day];
   const panel = document.getElementById("trainingDayPanel");
-  if (day === TRAINING_GAME_DAY) {
+  if (day === motorTreino().TRAINING_GAME_DAY) {
     panel.innerHTML = `<p class="mt-card-sub" style="margin:0;">Dia de jogo — sem treino configurável aqui.</p>`;
     return;
   }
@@ -6365,7 +6166,7 @@ function renderTrainingDayPanel() {
   const violated = isProtectedTrainingDay(day) && !isRest;
   let html = "";
   if (violated) {
-    const when = day === TRAINING_PRE_GAME_DAY ? "véspera do" : "dia seguinte ao";
+    const when = day === motorTreino().TRAINING_PRE_GAME_DAY ? "véspera do" : "dia seguinte ao";
     html += `<div class="mt-training-warning"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/></svg><span>Você está sobrescrevendo uma folga protegida (${when} jogo) — risco maior de fadiga e lesão.</span></div>`;
   }
   html += `<span class="mt-field-label">Foco</span>${segGroupHTML("foco", entry.foco || "descanso", false)}`;
@@ -6374,7 +6175,7 @@ function renderTrainingDayPanel() {
   // ganho, ver aviso no topo da seção de constantes); escondida em
   // Descanso, que não tem duração configurável (igual Intensidade/Grupo).
   if (!isRest) {
-    const dur = entry.duracao || TRAINING_DURATION_DEFAULT[entry.intensidade] || 60;
+    const dur = entry.duracao || motorTreino().TRAINING_DURATION_DEFAULT[entry.intensidade] || 60;
     html += `<span class="mt-field-label">Duração</span>
       <div class="mt-dur-stepper">
         <button type="button" class="mt-dur-step-btn" id="btnTrainingDurMinus" aria-label="Diminuir duração">−</button>
@@ -6397,13 +6198,13 @@ function renderTrainingDayPanel() {
       const keptIntensidade = (!isRest && entry.intensidade) || "moderada";
       CAREER.trainingPlan[day] = value === "descanso" ? { foco: "descanso" }
         : { foco: value, intensidade: keptIntensidade, grupo: (!isRest && entry.grupo) || "principal",
-            duracao: (!isRest && entry.duracao) || TRAINING_DURATION_DEFAULT[keptIntensidade] };
+            duracao: (!isRest && entry.duracao) || motorTreino().TRAINING_DURATION_DEFAULT[keptIntensidade] };
     } else if (seg === "intensidade") {
       // Bloco 5 — duração acompanha o default da intensidade nova (o
       // técnico ainda pode ajustar no stepper depois, ver
       // stepTrainingDuration).
       CAREER.trainingPlan[day][seg] = value;
-      CAREER.trainingPlan[day].duracao = TRAINING_DURATION_DEFAULT[value] || 60;
+      CAREER.trainingPlan[day].duracao = motorTreino().TRAINING_DURATION_DEFAULT[value] || 60;
     } else {
       CAREER.trainingPlan[day][seg] = value;
     }
@@ -6427,7 +6228,7 @@ function renderTrainingDayPanel() {
 // realmente usa).
 function stepTrainingDuration(day, delta) {
   const entry = CAREER.trainingPlan[day];
-  const current = entry.duracao || TRAINING_DURATION_DEFAULT[entry.intensidade] || 60;
+  const current = entry.duracao || motorTreino().TRAINING_DURATION_DEFAULT[entry.intensidade] || 60;
   entry.duracao = clamp(current + delta, TRAINING_DURATION_MIN, TRAINING_DURATION_MAX);
   persistCareer();
   renderTrainingDayPanel();
@@ -6455,11 +6256,11 @@ function projectWeekPeakFatigue() {
   const cond = new Map(CAREER.squad.map((p) => [p.id, p.condition == null ? 100 : p.condition]));
   const worst = new Map(cond);
   CAREER.trainingPlan.forEach((entry, i) => {
-    if (i === TRAINING_GAME_DAY || !entry || !entry.foco) return;
+    if (i === motorTreino().TRAINING_GAME_DAY || !entry || !entry.foco) return;
     if (entry.foco === "descanso") {
       CAREER.squad.forEach((p) => cond.set(p.id, clamp(cond.get(p.id) + 12, 0, 100)));
     } else {
-      const mult = TRAINING_INTENSITY_MULT[entry.intensidade] || 1;
+      const mult = motorTreino().TRAINING_INTENSITY_MULT[entry.intensidade] || 1;
       const fatigueCost = Math.round(6 * mult);
       trainingTargets(entry).forEach((p) => cond.set(p.id, clamp(cond.get(p.id) - fatigueCost, 0, 100)));
     }
@@ -6469,13 +6270,13 @@ function projectWeekPeakFatigue() {
 }
 function renderTreinos() {
   const strip = document.getElementById("trainingSchemeStrip");
-  strip.innerHTML = TRAINING_SCHEMES.map(trainingSchemeCardHTML).join("");
+  strip.innerHTML = motorTreino().TRAINING_SCHEMES.map(trainingSchemeCardHTML).join("");
   strip.querySelectorAll("[data-scheme]").forEach((card) => card.addEventListener("click", () => {
     applyTrainingScheme(card.dataset.scheme);
     renderTreinos();
   }));
 
-  const activeScheme = TRAINING_SCHEMES.find((s) => s.id === CAREER.trainingSchemeId);
+  const activeScheme = motorTreino().TRAINING_SCHEMES.find((s) => s.id === CAREER.trainingSchemeId);
   document.getElementById("trainingWeekLabel").innerHTML = activeScheme
     ? `Semana — <span style="color:var(--mt-gold-300);">${activeScheme.name}</span>`
     : `Semana — <span class="mt-week-label-custom">Personalizado</span>`;
@@ -6486,7 +6287,7 @@ function renderTreinos() {
     const isRest = focoCls === "descanso";
     const violated = isProtectedTrainingDay(i) && !isRest && focoCls !== "jogo";
     return `<div class="mt-day-cell foco-${focoCls}${i === TRAINING_SELECTED_DAY ? " selected" : ""}${violated ? " dviolated" : ""}" data-day="${i}">
-      <span class="dname">${TRAINING_DAY_NAMES[i].slice(0, 3).toUpperCase()}</span>
+      <span class="dname">${motorTreino().TRAINING_DAY_NAMES[i].slice(0, 3).toUpperCase()}</span>
       <span class="dind"></span>
       ${isProtectedTrainingDay(i) ? `<span class="dshield">${violated ? "⚠️" : "🛡️"}</span>` : ""}
     </div>`;
@@ -6504,7 +6305,7 @@ function renderTreinos() {
   const relevant = CAREER.squad.filter((p) => p.origin === "principal" || p.origin === "loan");
   const avgFadigaAtual = relevant.length ? Math.round(relevant.reduce((s, p) => s + (100 - (p.condition == null ? 100 : p.condition)), 0) / relevant.length) : 0;
   const avgMoral = relevant.length ? Math.round(relevant.reduce((s, p) => s + (p.morale == null ? 70 : p.morale), 0) / relevant.length) : 0;
-  const protectedRespected = [TRAINING_PRE_GAME_DAY, TRAINING_POST_GAME_DAY].filter((d) => {
+  const protectedRespected = [motorTreino().TRAINING_PRE_GAME_DAY, motorTreino().TRAINING_POST_GAME_DAY].filter((d) => {
     const e = CAREER.trainingPlan[d];
     return !e || !e.foco || e.foco === "descanso";
   }).length;
@@ -11912,7 +11713,7 @@ function suggestTraining() {
   if (round === 1) schemeId = "pretemporada";
   else if (avgCond < 70) schemeId = "recuperacao";
   else schemeId = "equilibrio";
-  const scheme = TRAINING_SCHEMES.find((s) => s.id === schemeId);
+  const scheme = motorTreino().TRAINING_SCHEMES.find((s) => s.id === schemeId);
   if (CAREER.trainingSchemeId === schemeId) {
     return { text: `Já está no esquema recomendado (${scheme.name}) — condição média do elenco: ${Math.round(avgCond)}%.`, canApply: false };
   }
@@ -16968,7 +16769,7 @@ function ponteResumoSemana(antes, giros, extra) {
   const soma = (k) => ok.reduce((t, r) => t + (r[k] || 0), 0);
   const treinadas = ok.filter((r) => r.phase !== "ferias").length;
   const sessoes = CAREER.trainingPlan
-    .map((e, i) => (i !== TRAINING_GAME_DAY && e && e.foco ? { foco: e.foco, intensidade: e.foco === "descanso" ? null : (e.intensidade || "moderada") } : null))
+    .map((e, i) => (i !== motorTreino().TRAINING_GAME_DAY && e && e.foco ? { foco: e.foco, intensidade: e.foco === "descanso" ? null : (e.intensidade || "moderada") } : null))
     .filter(Boolean);
   const jogadores = CAREER.squad.map((p) => {
     const a = antes.condicao.has(p.id) ? antes.condicao.get(p.id) : null;
@@ -17611,18 +17412,18 @@ if (V2_PONTE) {
       const relevant = CAREER.squad.filter((p) => p.origin === "principal" || p.origin === "loan");
       const cond = (p) => (p.condition == null ? 100 : p.condition);
       const projected = projectWeekPeakFatigue();
-      const folgas = [TRAINING_PRE_GAME_DAY, TRAINING_POST_GAME_DAY].filter((d) => { const e = CAREER.trainingPlan[d]; return !e || !e.foco || e.foco === "descanso"; }).length;
+      const folgas = [motorTreino().TRAINING_PRE_GAME_DAY, motorTreino().TRAINING_POST_GAME_DAY].filter((d) => { const e = CAREER.trainingPlan[d]; return !e || !e.foco || e.foco === "descanso"; }).length;
       return {
         ok: true,
         dias: CAREER.trainingPlan.map((e, i) => ({
-          dia: i, nome: TRAINING_DAY_NAMES[i], jogo: i === TRAINING_GAME_DAY, protegido: isProtectedTrainingDay(i),
+          dia: i, nome: motorTreino().TRAINING_DAY_NAMES[i], jogo: i === motorTreino().TRAINING_GAME_DAY, protegido: isProtectedTrainingDay(i),
           foco: e && e.foco ? e.foco : "descanso", intensidade: e && e.intensidade ? e.intensidade : null, grupo: e && e.grupo ? e.grupo : null,
           duracao: e && e.duracao ? e.duracao : null, jogador: e && e.individualPlayerId ? e.individualPlayerId : null,
         })),
         modelo: CAREER.trainingSchemeId || null,
-        modelos: TRAINING_SCHEMES.map((m) => ({ id: m.id, nome: m.name, descricao: m.desc })),
+        modelos: motorTreino().TRAINING_SCHEMES.map((m) => ({ id: m.id, nome: m.name, descricao: m.desc })),
         aplicado: String(CAREER.trainingAppliedForRound) === calendarTurnKey(),
-        duracao: { min: TRAINING_DURATION_MIN, max: TRAINING_DURATION_MAX, passo: TRAINING_DURATION_STEP, padrao: TRAINING_DURATION_DEFAULT },
+        duracao: { min: TRAINING_DURATION_MIN, max: TRAINING_DURATION_MAX, passo: TRAINING_DURATION_STEP, padrao: motorTreino().TRAINING_DURATION_DEFAULT },
         resumo: {
           fadigaMedia: relevant.length ? Math.round(relevant.reduce((t, p) => t + (100 - cond(p)), 0) / relevant.length) : 0,
           moral: relevant.length ? Math.round(relevant.reduce((t, p) => t + (p.morale == null ? 70 : p.morale), 0) / relevant.length) : 0,
@@ -17635,14 +17436,14 @@ if (V2_PONTE) {
     async salvarDiaTreino(dia, entrada) {
       if (!CAREER) return { ok: false, motivo: "sem-carreira" };
       const i = Number(dia);
-      if (!(i >= 0 && i < 7) || i === TRAINING_GAME_DAY) return { ok: false, motivo: "dia-invalido" };
+      if (!(i >= 0 && i < 7) || i === motorTreino().TRAINING_GAME_DAY) return { ok: false, motivo: "dia-invalido" };
       const e = entrada || {};
       if (!["tecnico", "fisico", "tatico", "descanso"].includes(e.foco)) return { ok: false, motivo: "foco-invalido" };
       if (e.foco === "descanso") CAREER.trainingPlan[i] = { foco: "descanso" };
       else {
-        const intensidade = TRAINING_INTENSITY_MULT[e.intensidade] ? e.intensidade : "moderada";
+        const intensidade = motorTreino().TRAINING_INTENSITY_MULT[e.intensidade] ? e.intensidade : "moderada";
         const grupo = TRAINING_GROUP_LABEL[e.grupo] ? e.grupo : "principal";
-        const duracao = clamp(Math.round((Number(e.duracao) || TRAINING_DURATION_DEFAULT[intensidade]) / TRAINING_DURATION_STEP) * TRAINING_DURATION_STEP, TRAINING_DURATION_MIN, TRAINING_DURATION_MAX);
+        const duracao = clamp(Math.round((Number(e.duracao) || motorTreino().TRAINING_DURATION_DEFAULT[intensidade]) / TRAINING_DURATION_STEP) * TRAINING_DURATION_STEP, TRAINING_DURATION_MIN, TRAINING_DURATION_MAX);
         const entry = { foco: e.foco, intensidade, grupo, duracao };
         if (grupo === "individual") {
           if (!CAREER.squad.some((p) => p.id === e.jogador)) return { ok: false, motivo: "jogador-invalido" };
@@ -17654,7 +17455,7 @@ if (V2_PONTE) {
       return ponteGravar();
     },
     async aplicarModeloTreino(id) {
-      if (!CAREER || !TRAINING_SCHEMES.some((m) => m.id === id)) return { ok: false, motivo: "modelo-invalido" };
+      if (!CAREER || !motorTreino().TRAINING_SCHEMES.some((m) => m.id === id)) return { ok: false, motivo: "modelo-invalido" };
       applyTrainingScheme(id);
       return ponteGravar();
     },
