@@ -49,6 +49,7 @@ A força e a ambição só são calculadas quando a regra precisa, com o mesmo c
 1. **Testes ajustados:** 2 testes e 1 simulação liam `TRANSFER_WINDOWS` e `MAX_NEGOTIATION_ROUNDS` como variáveis globais da página: `test_transfer_ai_market_dynamics`, `test_transfer_ai_negotiation` e `sim_transfer_ai_market_dynamics`. Agora leem do motor.
 2. **Referência congelada em arquivo:** o código antigo ficou em `tests/unit/ref_mercado_antes.js`, porque tem textos com crase que não cabem dentro do teste. O executor só roda os arquivos `test_*`, então ele não roda sozinho.
 3. **Etapa 6 (temporada):** é a última. Levanto e trago as decisões antes.
+4. **`test_v2_ajustes` intermitente:** o teste acha quem entrou pelo nome curto ("G. Costa"). Com elenco sorteado, dois jogadores podem ter o mesmo nome curto, e o teste pegava o do banco. A causa mais provável é essa, mas não consegui reproduzir. Agora, entre homônimos, ele prefere o que está entre os titulares. A regra do jogo não mudou.
 
 ## Testes
 - **Novo `tests/unit/test_motor_mercado.js`:** compara as funções antigas (congeladas) com as novas (do `carreira.js` atual, já chamando o motor). As duas rodam no mesmo mundo sorteado, com 14 clubes, tabela, outra divisão e o seu clube, e com o mesmo `Math.random`. São 120 mundos por verificação, todas iguais:
@@ -62,4 +63,5 @@ A força e a ambição só são calculadas quando a regra precisa, com o mesmo c
   - mercado multi-divisão e entre temporadas;
   - concorrência, negociação, empréstimos, olheiros, colocar à venda e histórico;
   - Mercado e Comissão da v2.
-- **Suíte completa:** __SUITE__.
+- **v2:** 117/117 unitários, `tsc` limpo, build regenerado e `verificar-bundle-v2` idêntico. Mercado, Comissão e corte da v2 passaram de novo depois do build (4/4).
+- **Suíte completa:** 191/192. A falha foi `test_v2_ajustes` (verificação 5: quem entrou na substituição tinha de estar entre os titulares depois da partida). Rodado de novo, passou 3/3 (ponto 4).
