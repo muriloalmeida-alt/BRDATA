@@ -291,6 +291,15 @@ function motorModulo(nome) {
   return m;
 }
 const motorTabela = () => motorModulo("tabela");
+// Fase 12, etapa 3 (05/11): regras de dinheiro em motor/financas.js — o
+// motor devolve os lançamentos; aqui só se aplica no caixa e no extrato.
+const motorFinancas = () => motorModulo("financas");
+function applyFinanceEntries(entries, round) {
+  entries.forEach((e) => {
+    CAREER.finances.cash += e.amount;
+    pushLedger(e.type, e.label, e.amount, round);
+  });
+}
 
 /* ---------- Redesign M3 (BRTreinadorSistemadeDesignM3v1.docx +
    brtreinadormockupsm3.zip) — cor dinâmica por clube ----------
@@ -1784,27 +1793,24 @@ async function buildSquad(club) {
    proporcional, sem precisar de uma 2ª fonte de "tamanho do clube". */
 function wageBillOf(squad) {
   // "loan" conta pro teto igual "principal" — você paga o salário
-  // (reduzido) de quem pega emprestado, ver loanInPlayer.
-  return squad.filter((p) => p.origin === "principal" || p.origin === "loan").reduce((s, p) => s + (p.wage || 0), 0);
+  // (reduzido) de quem pega emprestado, ver loanInPlayer. (motor/financas.js)
+  return motorFinancas().wageBill(squad);
 }
 function initialFinances(squad) {
-  const wageCap = Math.round(wageBillOf(squad) * 1.35 / 1000) * 1000;
-  const cash = Math.round(wageCap * 6 / 1000) * 1000;
-  return { cash, wageCap };
+  return motorFinancas().initialFinances(squad);
 }
 // Nova feature — Comissão Técnica: custo mensal escala com a folha do
 // elenco principal (clube maior = comissão maior) — mesma lógica de
 // "proporcional ao tamanho do clube" que wageCap já usa. Arredondado
 // pro milhar mais próximo, mesmo padrão visual de wageCap/cash acima.
-const TECHNICAL_STAFF_WAGE_PCT = 0.05;
 function technicalStaffMonthlyCost() {
-  return Math.round(wageBillOf(CAREER.squad) * TECHNICAL_STAFF_WAGE_PCT / 1000) * 1000;
+  return motorFinancas().staffMonthlyCost(CAREER.squad); // 5% da folha (motor/financas.js)
 }
 // Bloco 6 — soma do salário mensal de cada olheiro contratado (ver
 // SCOUT_MARKET/hireScout); custo fixo por olheiro (não escala com o
 // clube como a Comissão Técnica, cada um já tem seu preço no catálogo).
 function scoutsMonthlyCost() {
-  return (CAREER.scouts || []).reduce((sum, s) => sum + s.monthlyCost, 0);
+  return motorFinancas().scoutsMonthlyCost(CAREER.scouts);
 }
 
 /* ---------- FASE 4 (item 5 da especificação "BR Data Treinador") —
@@ -1825,34 +1831,13 @@ function scoutsMonthlyCost() {
    verificado ANTES de setupCup() resetar a Copa pra temporada nova,
    ver advanceSeason) — decisão nossa pro "escala com desempenho"
    pedido, sem precisar de um histórico de títulos à parte. */
-const SPONSOR_MASTER_NAMES = ["Banco Vértice", "Seguradora Ipê", "TotalBet Apostas", "ConectaTelecom", "Ouro Fino Bebidas", "Vitalis Saúde"];
-const SPONSOR_MATERIAL_NAMES = ["Aro Sports", "Fortex", "Zênite Esportes", "Rael Wear", "Lance Esportivo", "Bravo Sport"];
-const SPONSOR_BASE_VALUE = { master: 5000000, material: 2000000 };
+// Nível, propostas e valores: motor/financas.js (sponsorshipTier,
+// sponsorProposals, SPONSOR_BASE_VALUE e os nomes das empresas).
 function sponsorshipTier() {
-  const lastSeason = (CAREER.seasonHistory || [])[0];
-  let score = 40; // base neutra (sem histórico ainda, ex.: 1ª temporada)
-  if (lastSeason) {
-    if (lastSeason.position <= 4) score += 35;
-    else if (lastSeason.position <= 8) score += 20;
-    else if (lastSeason.position <= 12) score += 5;
-    else if (lastSeason.position >= 17) score -= 15;
-    if (lastSeason.position === 1) score += 25; // campeão do Brasileirão
-  }
-  if (CAREER.cup && CAREER.cup.championIsHuman) score += 20; // campeão da Copa do Brasil
-  return clamp(score, 10, 100);
+  return motorFinancas().sponsorshipTier((CAREER.seasonHistory || [])[0], !!(CAREER.cup && CAREER.cup.championIsHuman));
 }
 function generateSponsorProposals(kind) {
-  const base = SPONSOR_BASE_VALUE[kind];
-  const tier = sponsorshipTier();
-  const mult = 0.6 + (tier / 100) * 1.2;
-  const names = kind === "master" ? SPONSOR_MASTER_NAMES : SPONSOR_MATERIAL_NAMES;
-  const pool = [...names].sort(() => Math.random() - 0.5).slice(0, 3);
-  return pool.map((empresa) => {
-    const duracao = 2 + Math.floor(Math.random() * 2); // 2 ou 3 temporadas
-    const variance = 0.85 + Math.random() * 0.3;
-    const valorTemporada = Math.round((base * mult * variance) / 50000) * 50000;
-    return { empresa, valorTemporada, duracao };
-  });
+  return motorFinancas().sponsorProposals(kind, sponsorshipTier(), Math.random);
 }
 // Chamado só na criação da carreira — assina de cara a 1ª proposta
 // gerada de cada tipo (tier neutro, sem histórico ainda) pra não
@@ -1886,7 +1871,7 @@ function advanceSponsorshipSeason() {
   });
 }
 function sponsorshipSeasonTotal() {
-  return ["master", "material"].reduce((sum, kind) => sum + (CAREER.sponsorship[kind] ? CAREER.sponsorship[kind].valorTemporada : 0), 0);
+  return motorFinancas().sponsorshipSeasonTotal(CAREER.sponsorship);
 }
 const SPONSOR_KIND_LABEL = { master: "Patrocinador Master", material: "Material Esportivo" };
 // Card dentro do Financeiro (ver renderCentral) — 2 linhas (master e
@@ -3055,24 +3040,20 @@ function finalizeCupPhaseExpanded(phase, round, silent) {
    CAREER.recentForm, atualizado a cada rodada em simulateRound) — só
    pontos, não posição na tabela (um time no meio da tabela numa
    sequência de vitórias enche o estádio do mesmo jeito). */
+// Bloco 4 — melhorias de estádio (ver STADIUM_UPGRADES) só existem pro
+// SEU clube (os outros continuam puramente procedurais). Cálculos em
+// motor/financas.js; o sorteio fixo por clube vem daqui (seededRngFromKey).
+function stadiumUpgradeBonusFor(club) {
+  return CAREER && String(club.id) === String(CAREER.clubId) ? (CAREER.stadium?.capacityBonus || 0) : 0;
+}
 function stadiumCapacityFor(club) {
-  const rng = seededRngFromKey(`stadium:${club.id}`);
-  const base = 15000 + rng() * 20000; // 15 a 35 mil de base
-  const bonus = clamp((club.atk || 1.3) - 1, 0, 1) * 45000; // clube forte chega a +45 mil
-  // Bloco 4 — melhorias de estádio (ver STADIUM_UPGRADES) só existem pro
-  // SEU clube (os outros 19 continuam puramente procedurais, sem
-  // CAREER.stadium) — soma o bônus de capacidade já concluído.
-  const upgradeBonus = CAREER && String(club.id) === String(CAREER.clubId) ? (CAREER.stadium?.capacityBonus || 0) : 0;
-  return Math.round((base + bonus) / 1000) * 1000 + upgradeBonus;
+  return motorFinancas().stadiumCapacity(club, seededRngFromKey(`stadium:${club.id}`), stadiumUpgradeBonusFor(club));
 }
 function avgTicketPriceFor(club) {
-  return Math.round(25 + clamp((club.atk || 1.3) - 1, 0, 1) * 65);
+  return motorFinancas().avgTicketPrice(club);
 }
 function currentAttendancePct() {
-  const form = CAREER.recentForm || [];
-  if (!form.length) return 0.6; // sem histórico ainda (início de carreira) — nem cheio nem vazio
-  const avgPts = form.reduce((s, x) => s + x, 0) / form.length; // 0 (só derrotas) a 3 (só vitórias)
-  return clamp(0.35 + (avgPts / 3) * 0.6, 0.25, 0.98);
+  return motorFinancas().attendancePct(CAREER.recentForm);
 }
 // Atualiza a sequência de forma (últimos 5 jogos, só pontos ganhos)
 // depois de cada rodada — usada tanto pra público do estádio quanto,
@@ -3086,12 +3067,7 @@ function pushRecentForm(pts) {
 // Renda de ingressos do jogo em CASA — devolve null se o clube jogou
 // fora ou teve folga (sem receita nesses casos).
 function computeTicketRevenue(club) {
-  const capacity = stadiumCapacityFor(club);
-  const pct = currentAttendancePct();
-  const price = avgTicketPriceFor(club);
-  const attendance = Math.round(capacity * pct);
-  const revenue = attendance * price;
-  return { capacity, attendance, pct, price, revenue };
+  return motorFinancas().ticketRevenue(club, seededRngFromKey(`stadium:${club.id}`), stadiumUpgradeBonusFor(club), CAREER.recentForm);
 }
 
 /* ---------- Bloco 4 — melhorias de estádio ----------
@@ -4148,11 +4124,9 @@ function updateNotificationBadge() {
 // contratação, bilheteria, transferências, premiação de copa, obra de
 // estádio) — ver finishRoundTail e cada chamada de pushLedger espalhada
 // pelo arquivo. type serve tanto de rótulo quanto de filtro na tela.
-const FINANCE_LEDGER_MAX = 60;
 function pushLedger(type, label, amount, round) {
-  CAREER.financeLedger = CAREER.financeLedger || [];
-  CAREER.financeLedger.unshift({ round, type, label, amount });
-  if (CAREER.financeLedger.length > FINANCE_LEDGER_MAX) CAREER.financeLedger.length = FINANCE_LEDGER_MAX;
+  // Mais recente primeiro, até 60 lançamentos (motor/financas.js, LEDGER_MAX).
+  CAREER.financeLedger = motorFinancas().addLedgerEntry(CAREER.financeLedger, { round, type, label, amount });
 }
 // Mini-gráfico de caixa do card Financeiro (tela Clube) — 1 snapshot por
 // rodada simulada (ver finishRoundTail), guarda só as últimas
@@ -4246,25 +4220,12 @@ function syncCalendarToRound() {
 // Finanças do mês (12x por ano): folha, comissão, olheiros, patrocínio
 // (total da temporada / 12) e cota de TV. Retorna os totais pro resumo.
 function applyCalendarMonthlyFinances(monthIdx) {
-  const round = CAREER.currentRound;
-  const month = MONTH_LONG[monthIdx];
-  const wagePaid = wageBillOf(CAREER.squad);
-  CAREER.finances.cash -= wagePaid;
-  if (wagePaid) pushLedger("salario", `Folha salarial de ${month}`, -wagePaid, round);
-  if (CAREER.technicalStaff && CAREER.technicalStaff.hired) {
-    const staffCost = technicalStaffMonthlyCost();
-    CAREER.finances.cash -= staffCost;
-    if (staffCost) pushLedger("salario", `Comissão Técnica (${month})`, -staffCost, round);
-  }
-  const scoutsCost = scoutsMonthlyCost();
-  if (scoutsCost) { CAREER.finances.cash -= scoutsCost; pushLedger("salario", `Olheiros (${month})`, -scoutsCost, round); }
-  const sponsorIncome = Math.round(sponsorshipSeasonTotal() / 12);
-  CAREER.finances.cash += sponsorIncome;
-  if (sponsorIncome) pushLedger("patrocinio", `Patrocínio de ${month}`, sponsorIncome, round);
-  const tv = CAREER.calendar.tvMonthly || 0;
-  CAREER.finances.cash += tv;
-  if (tv) pushLedger("tv", `Cota de TV de ${month}`, tv, round);
-  return { wagePaid, sponsorIncome: sponsorIncome + tv };
+  const m = motorFinancas().monthEntries({
+    squad: CAREER.squad, staffHired: !!(CAREER.technicalStaff && CAREER.technicalStaff.hired), scouts: CAREER.scouts,
+    sponsorship: CAREER.sponsorship, tvMonthly: CAREER.calendar.tvMonthly, month: MONTH_LONG[monthIdx],
+  });
+  applyFinanceEntries(m.entries, CAREER.currentRound);
+  return { wagePaid: m.wagePaid, sponsorIncome: m.income };
 }
 // Fecha o turno da semana atual e passa pra próxima: mês novo cobra/
 // recebe o mês; fase nova avisa (abre/fecha janela).
@@ -8716,33 +8677,13 @@ function finishRoundTail(round, allResults, humanMatch, standingsBefore) {
   // segue 1/4 do mês por rodada como sempre.
   let wagePaid = 0, sponsorIncome = 0;
   if (!calendarOn()) {
-    wagePaid = Math.round(wageBillOf(CAREER.squad) / 4);
-    CAREER.finances.cash -= wagePaid;
-    if (wagePaid) pushLedger("salario", "Folha salarial do elenco", -wagePaid, round);
-    // Nova feature — Comissão Técnica: mesmo ritmo de pagamento do
-    // elenco (1/4 do custo mensal por rodada), só quando contratada.
-    if (CAREER.technicalStaff && CAREER.technicalStaff.hired) {
-      const staffCost = Math.round(technicalStaffMonthlyCost() / 4);
-      CAREER.finances.cash -= staffCost;
-      if (staffCost) pushLedger("salario", "Custo da Comissão Técnica", -staffCost, round);
-    }
-    // Bloco 6 (mockups brtreinadorbloco6base.html/brtreinadorbloco6pendentes.html
-    // — "Base e Olheiros") — mesmo ritmo de sempre (1/4 do custo mensal por
-    // rodada) pro salário de cada olheiro contratado (ver
-    // hireScout/SCOUT_MARKET).
-    const scoutsCost = Math.round(scoutsMonthlyCost() / 4);
-    if (scoutsCost) {
-      CAREER.finances.cash -= scoutsCost;
-      pushLedger("salario", "Salário dos olheiros", -scoutsCost, round);
-    }
-    // FASE 4 (item 5) — patrocínio paga em parcelas ao longo da
-    // temporada (1/38 do valor anual por rodada), mesmo ritmo de
-    // "dinheiro chega aos poucos" que já existe pra ingresso (por
-    // partida em casa) e salário (por rodada) — em vez de um valor único
-    // na virada de temporada, que seria um pulo brusco de caixa.
-    sponsorIncome = Math.round(sponsorshipSeasonTotal() / 38);
-    CAREER.finances.cash += sponsorIncome;
-    if (sponsorIncome) pushLedger("patrocinio", "Parcela de patrocínio", sponsorIncome, round);
+    // FASE 2 (b)/FASE 4 (item 5)/Bloco 6: 1/4 do mês de folha, comissão e
+    // olheiros por rodada e 1/38 do patrocínio da temporada (motor/financas.js).
+    const m = motorFinancas().roundEntries({
+      squad: CAREER.squad, staffHired: !!(CAREER.technicalStaff && CAREER.technicalStaff.hired), scouts: CAREER.scouts, sponsorship: CAREER.sponsorship,
+    });
+    applyFinanceEntries(m.entries, round);
+    wagePaid = m.wagePaid; sponsorIncome = m.sponsorIncome;
   }
   // Nova feature (Bloco 3) — parcelas de contratações já FECHADAS
   // (ver finalizeIncomingPurchase) continuam descontando o caixa a
@@ -13623,17 +13564,10 @@ function resolvePendingOffersOutRound(round) {
 // transferências (é uma dívida já assumida, não uma negociação nova),
 // mesmo espírito de "dinheiro sai/entra aos poucos" do patrocínio.
 function processPendingInstallments() {
-  const list = CAREER.pendingInstallments || [];
-  let totalDue = 0;
-  const stillPending = [];
-  list.forEach((inst) => {
-    totalDue += inst.perRoundAmount;
-    inst.roundsLeft -= 1;
-    if (inst.roundsLeft > 0) stillPending.push(inst);
-  });
-  CAREER.finances.cash -= totalDue;
-  CAREER.pendingInstallments = stillPending;
-  return totalDue;
+  const { total, remaining } = motorFinancas().settleInstallments(CAREER.pendingInstallments);
+  CAREER.finances.cash -= total;
+  CAREER.pendingInstallments = remaining;
+  return total;
 }
 
 /* ---------- Bloco 3 (3/4) — Mercado: "Colocar à venda" (pedido do
@@ -13755,17 +13689,10 @@ function resolvePendingListingsRound() {
 // Espelho de processPendingInstallments — só que o dinheiro ENTRA
 // (venda a prazo já fechada, ver acceptListingOffer) em vez de sair.
 function processPendingReceivables() {
-  const list = CAREER.pendingReceivables || [];
-  let totalDue = 0;
-  const stillPending = [];
-  list.forEach((r) => {
-    totalDue += r.perRoundAmount;
-    r.roundsLeft -= 1;
-    if (r.roundsLeft > 0) stillPending.push(r);
-  });
-  CAREER.finances.cash += totalDue;
-  CAREER.pendingReceivables = stillPending;
-  return totalDue;
+  const { total, remaining } = motorFinancas().settleInstallments(CAREER.pendingReceivables);
+  CAREER.finances.cash += total;
+  CAREER.pendingReceivables = remaining;
+  return total;
 }
 let LIST_CTX = null; // { playerId } enquanto o sheet de novo anúncio está aberto
 function openListModal(playerId) {
