@@ -1,7 +1,7 @@
 # Carreira 2.0: fase 12, etapa 4 (treino no motor)
 
 - **Data:** 05/11/2026.
-- **Branch:** `f12-treino`, a partir de `main` (com o #75, etapa 3).
+- **Branch:** `f12-treino`, a partir de `main` (com o #75, etapa 3, e o #76, comissão técnica).
 - **Status:** aguardando aprovação do Murilo. Commit local, sem push e sem PR.
 
 **Decisões aplicadas** (05/11):
@@ -62,4 +62,4 @@ As funções antigas viraram chamadas ao motor (`motorTreino()`), e as constante
   4. teto da temporada e ganho de treino.
 - **Simulação de balanceamento:** antes = depois, com o mesmo sorteio (ponto 1).
 - **Testes de treino e evolução:** 8/8, entre eles Treinos, Bloco 5, evolução de atributos, `training_evolution`, Semana e Tática/Treino da v2.
-- **Suíte completa:** __SUITE__.
+- **Suíte completa:** 189/190. A única falha foi `test_v2_mercado`, por tempo-limite com a máquina carregada. Depois do merge com a `main` (que trouxe o #76), ela passou de novo junto com comissão e treino: 5/5. Total: **190/190**.
