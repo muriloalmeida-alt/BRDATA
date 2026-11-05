@@ -67,7 +67,9 @@ const { enterGame, waitForBoot } = require("./_startup");
   await page.click("#btnRestart");
   await page.waitForSelector("#confirmOverlay.open", { timeout: 3000 });
   await page.click("#confirmOkBtn");
-  await page.waitForTimeout(400);
+  // A troca de tela vem depois do DELETE /api/career: espera o estado (antes
+  // 400 ms fixos, curto sob carga no CI).
+  await page.waitForFunction(() => !document.getElementById("screenCompetitionPicker").classList.contains("hidden"), null, { timeout: 15000 }).catch(() => {});
   const afterRestart = await page.evaluate(() => !document.getElementById("screenCompetitionPicker").classList.contains("hidden"));
   check("5) 'Reiniciar' volta pro seletor de campeonato:", afterRestart);
 
