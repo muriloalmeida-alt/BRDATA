@@ -1,7 +1,7 @@
 # Carreira 2.0: plano para separar `/carreira` de `/carreira-old`
 
-- **Data:** 03/11/2026.
-- **Status:** decisões D1 a D4 e P1 a P8 tomadas pelo Murilo em 03/11 (seção 7). Pronto para começar pela fase 1.
+- **Data:** 03/11/2026 (situação atualizada em 05/11, seção 9).
+- **Status:** fases 0 a 11 concluídas e na `main` (#57 a #69). Pendentes: tutorial, assistente e "Compartilhar título" (em PR), homologação, publicação e a fase 12. Ver a seção 9.
 - **Atualização de 03/11:** chegou o pacote complementar do GPT, com as pranchas 17 a 45 (`referencias/complemento_17_45/`). Veja a seção 6.
 - **Objetivo** (pedido do Murilo, 03/11): `/carreira` (v2) e `/carreira-old` (versão anterior) **100% independentes**, sem nenhuma transição entre a jornada nova e a antiga.
 
@@ -366,3 +366,42 @@ Nenhum dos três PRs foi mesclado ainda. Eles estão em pilha, e a ordem de merg
   A rede deste ambiente bloqueia o domínio de homologação.
 - **`/carreira.html`** (app instalado, notificações e volta do pagamento) continua abrindo a versão anterior. O destino final se decide na fase 11.
 - **Até a entrega P8,** quem cria carreira pela v2 não vê o tutorial nem o assistente de início.
+
+## 9. Situação em 05/11
+A seção 8 é o retrato de 03/11 e fica como histórico.
+
+### Fases
+| Fase | PR | Situação |
+|---|---|---|
+| 1 — motor invisível | #57 | na `main` |
+| Ajustes de sistema (P1, P3) | #58 | na `main` |
+| 2 — acesso | #59 | na `main` |
+| P7 — navegação (Jogos, Clube, Mais) | #60 | na `main` |
+| 3 — a semana | #61 | na `main` |
+| 4 — pós-jogo | #62 | na `main` |
+| 5 — temporada e carreira do treinador | #63 | na `main` |
+| 6 — tática e treino | #64 | na `main` |
+| 7 — elenco avançado | #65 | na `main` |
+| 8 — mercado | #66 | na `main` |
+| 9 — clube | #67 | na `main` |
+| 10 — Jogos e Mais (+ favicon e escudos negativos) | #68 | na `main` |
+| 11 — corte (v2 na raiz, site em `/brasileirao`, versão anterior redireciona) | #69 | na `main` |
+| P8 — tutorial, assistente de início e "Compartilhar título" | próximo PR | `ENTREGA_P8_ONBOARDING.md` |
+| 12 — extrair o motor | — | **não iniciada** |
+
+### Pontos de dependência (seção 1)
+- **1 a 10:** resolvidos. Nenhuma tela da v2 abre a versão anterior. O teste `test_v2_corte.js` navega por 70 telas sem nenhuma saída.
+- **11 (motor):** resolvido em parte. A v2 ainda roda a página antiga escondida em `/carreira/motor`. Ela só sai com a fase 12.
+
+### Pendências
+1. **Homologação e publicação:** roteiro em `ROTEIRO_HML_PRD.md`.
+   - Itens que precisam de aparelho: tempo do motor no celular e Safari com VoiceOver.
+   - A publicação em produção é manual no Railway.
+2. **Fase 12, extrair o motor** (ordem da seção 3): partida → rodada e tabela → finanças → treino → mercado → temporada. Enquanto ela não sai:
+   - a v2 carrega o `carreira.js` escondido;
+   - cerca de 150 testes de regressão do motor rodam pela tela antiga (`BRDATA_LEGACY_UI=1`, só no servidor de testes).
+3. **Riscos conhecidos, sem ação agora:**
+   - mesmo save nas duas abas (D1);
+   - pacote da v2 com 507 kB, sem divisão por tela;
+   - escudos do modo ao vivo sem versão negativa;
+   - SEO de `/tabela`, `/estatisticas` e `/noticias`, que agora são telas da v2.
