@@ -127,7 +127,7 @@ const N_BROAD = 12000;
     const eventsPerReplay = [];
 
     function bucketOfRound(round) {
-      const win = TRANSFER_WINDOWS.find(([o, c]) => round >= o && round <= c);
+      const win = motorMercado().TRANSFER_WINDOWS.find(([o, c]) => round >= o && round <= c);
       if (!win) return null;
       const [open, close] = win;
       const progress = (round - open) / Math.max(close - open, 1);
