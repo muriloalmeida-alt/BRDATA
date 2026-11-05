@@ -1,12 +1,12 @@
 // Carreira 2.0 — Entrega A3 (Substituição, Ajustar tática e Lances, pela
 // Pausa da Partida da v2). Partida real pela ponte: substituição em duas
-// etapas (cancelar não troca; confirmar troca, conta 1 de 5 e aparece nos
+// etapas (cancelar não troca; confirmar troca, conta 1 de N e aparece nos
 // lances e no Revisar time); tática (formação + eixo) aplicada pelo motor
 // de sempre; ao fim, o save tem a formação/tática e o jogador que entrou;
 // partida continua pausada durante os ajustes; 360 px.
 const { chromium } = require("playwright-core");
 const { check } = require("./_check");
-const { ensureDailyClaimed } = require("./_v2_match");
+const { ensureDailyClaimed, ponteFrame } = require("./_v2_match");
 const { passCareerSetup, enterGame } = require("./_startup");
 const { skipPreseason } = require("./_calendar_skip");
 
@@ -44,6 +44,10 @@ const { skipPreseason } = require("./_calendar_skip");
   await v2.click(".mt-actions .mt-primary");
   await v2.waitForSelector(".pz-title", { timeout: 10000 });
   const min0 = await v2.locator(".pz-min").textContent();
+  // Total de substituições da partida: 5, mais 1 por vermelho do seu time
+  // (subsBonus do motor) — um vermelho no 1º trecho é sorteio da partida
+  // (CI, PR #73), então o total vem do motor em vez de fixo em 5.
+  const subsTotal = await ponteFrame(v2).evaluate(() => MAX_SUBS_PER_MATCH + LIVE_MATCH.subsBonus);
 
   // 1) Quem sai: titulares em campo; cancelar não troca.
   await v2.click(".pz-row[href$='tela=sai']");
@@ -57,8 +61,8 @@ const { skipPreseason } = require("./_calendar_skip");
   const afterCancel = await v2.locator(".pz-row[href$='tela=sai'] .row-sub").textContent();
   const parts = before.outName.trim().split(/\s+/); const outShort = parts.length > 1 ? `${parts[0][0].toUpperCase()}. ${parts[parts.length - 1]}` : before.outName;
   check("1) Quem sai: 11 titulares e 'Substituições: 0 de 5'; Sai ⇄ Entra com quem sai fixo e Confirmar desativado até escolher; Cancelar volta à Pausa sem trocar:",
-    outList.n === 11 && /0 de 5/.test(outList.count) && pair0.search.includes(`sai=${encodeURIComponent(before.outId)}`) && pair0.sai === outShort && pair0.entra === "Escolha abaixo" && pair0.disabled && /0 de 5/.test(afterCancel),
-    JSON.stringify({ outList, pair0, afterCancel }));
+    outList.n === 11 && outList.count.includes(`0 de ${subsTotal}`) && subsTotal >= 5 && pair0.search.includes(`sai=${encodeURIComponent(before.outId)}`) && pair0.sai === outShort && pair0.entra === "Escolha abaixo" && pair0.disabled && afterCancel.includes(`0 de ${subsTotal}`),
+    JSON.stringify({ outList, pair0, afterCancel, subsTotal }));
 
   // 2) Confirmar substituição: volta à Pausa, 1 de 5, jogo ainda parado.
   await v2.click(".pz-row[href$='tela=sai']");
@@ -70,7 +74,7 @@ const { skipPreseason } = require("./_calendar_skip");
   await v2.click(".sb-foot .cta");
   await v2.waitForSelector(".pz-title", { timeout: 10000 });
   const p2 = await v2.evaluate(() => ({ search: location.search, sub: document.querySelector(".pz-row[href$='tela=sai'] .row-sub").textContent, min: document.querySelector(".pz-min").textContent }));
-  check("2) Confirmar substituição volta à Pausa com '1 de 5' e a partida segue parada:", p2.search === "?tela=pausa" && /1 de 5/.test(p2.sub) && p2.min === min0, JSON.stringify({ p2, inShort }));
+  check("2) Confirmar substituição volta à Pausa com '1 de 5' e a partida segue parada:", p2.search === "?tela=pausa" && p2.sub.includes(`1 de ${subsTotal}`) && p2.min === min0, JSON.stringify({ p2, inShort, subsTotal }));
 
   // 3) Revisar time e Lances refletem a troca.
   await v2.click(".pz-row[href$='tela=time']");
