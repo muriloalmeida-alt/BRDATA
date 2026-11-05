@@ -96,10 +96,14 @@ a { color: inherit; }
 .sheet-opt.is-on { color: var(--bd-accent); }
 .sheet-check { width: 22px; height: 22px; }
 
-/* Foco programático (AUD-04/05): título da tela e a própria folha recebem
-   foco por programa; o contorno fica só para quem navega por teclado. */
-[data-screen-title]:focus:not(:focus-visible), h1[tabindex="-1"]:focus:not(:focus-visible), .sheet:focus:not(:focus-visible) { outline: none; }
-.sheet:focus { outline: none; }
+/* Foco programático (AUD-04/05): o título da tela e a própria folha recebem
+   foco por programa, só para o leitor de tela anunciar onde se está — não
+   são controles, então nunca desenham contorno. (Antes o contorno era
+   escondido só fora de :focus-visible, mas numa troca de tela sem toque
+   antes — abertura automática, voltar do sistema, recarregar — o navegador
+   trata o foco programático como de teclado e a borda lima aparecia no
+   título, relato de 05/11.) Botões e links seguem com o contorno de sempre. */
+[data-screen-title]:focus, h1[tabindex="-1"]:focus, .sheet:focus { outline: none; }
 
 /* P1 (03/11): "Voltar ao …" é ação secundária em texto — o lima fica para
    progressão e confirmação (Continuar, Salvar, Confirmar…). Alvo ≥ 44 px. */
