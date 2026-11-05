@@ -1,7 +1,7 @@
 # Carreira 2.0: plano para separar `/carreira` de `/carreira-old`
 
 - **Data:** 03/11/2026 (situação atualizada em 05/11, seção 9).
-- **Status:** fases 0 a 11 e P8 na `main` (#57 a #70); fase 12 em andamento (etapa 1, partida). Pendentes: homologação, publicação e as etapas 2 a 6 da fase 12. Ver a seção 9.
+- **Status:** fases 0 a 11 e P8 na `main` (#57 a #70); fase 12 em andamento (etapa 1 na `main`, etapa 2 em PR). Pendentes: as etapas 3 a 6 da fase 12. Ver a seção 9.
 - **Atualização de 03/11:** chegou o pacote complementar do GPT, com as pranchas 17 a 45 (`referencias/complemento_17_45/`). Veja a seção 6.
 - **Objetivo** (pedido do Murilo, 03/11): `/carreira` (v2) e `/carreira-old` (versão anterior) **100% independentes**, sem nenhuma transição entre a jornada nova e a antiga.
 
@@ -387,8 +387,9 @@ A seção 8 é o retrato de 03/11 e fica como histórico.
 | 10 — Jogos e Mais (+ favicon e escudos negativos) | #68 | na `main` |
 | 11 — corte (v2 na raiz, site em `/brasileirao`, versão anterior redireciona) | #69 | na `main` |
 | P8 — tutorial, assistente de início e "Compartilhar título" | #70 | na `main` |
-| 12.1 — núcleo da partida em `public/js/motor/partida.js` | próximo PR | `ENTREGA_F12_1_PARTIDA.md` |
-| 12.2 a 12.6 — rodada e tabela, finanças, treino, mercado, temporada | — | **não iniciadas** |
+| 12.1 — núcleo da partida em `public/js/motor/partida.js` | #71 | na `main` |
+| 12.2 — tabela, calendário e rodada simples (`motor/tabela.js`, `calendario.js`, `rodada.js`) | próximo PR | `ENTREGA_F12_2_RODADA.md` |
+| 12.3 a 12.6 — finanças, treino, mercado, temporada | — | **não iniciadas** |
 
 ### Pontos de dependência (seção 1)
 - **1 a 10:** resolvidos. Nenhuma tela da v2 abre a versão anterior. O teste `test_v2_corte.js` navega por 70 telas sem nenhuma saída.

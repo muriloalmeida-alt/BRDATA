@@ -6040,7 +6040,10 @@
      dá boot — o motor já está em window.BRDATA_MOTOR quando o jogo começa. -->
 <script type="module">
   import * as partida from "./js/motor/partida.js";
-  window.BRDATA_MOTOR = Object.assign(window.BRDATA_MOTOR || {}, { partida });
+  import * as tabela from "./js/motor/tabela.js";
+  import * as calendario from "./js/motor/calendario.js";
+  import * as rodada from "./js/motor/rodada.js";
+  window.BRDATA_MOTOR = Object.assign(window.BRDATA_MOTOR || {}, { partida, tabela, calendario, rodada });
 </script>
 <script src="js/carreira.js"></script>
 <script>

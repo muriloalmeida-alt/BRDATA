@@ -283,6 +283,14 @@ function motorPartida() {
 function weightedPick(items, weights) {
   return motorPartida().weightedPick(items, weights, Math.random);
 }
+// Fase 12, etapa 2 (05/11): tabela, calendário e rodada simples também
+// moram no motor (motor/tabela.js, calendario.js, rodada.js).
+function motorModulo(nome) {
+  const m = window.BRDATA_MOTOR && window.BRDATA_MOTOR[nome];
+  if (!m) throw new Error(`Motor (js/motor/${nome}.js) não carregou.`);
+  return m;
+}
+const motorTabela = () => motorModulo("tabela");
 
 /* ---------- Redesign M3 (BRTreinadorSistemadeDesignM3v1.docx +
    brtreinadormockupsm3.zip) — cor dinâmica por clube ----------
@@ -3312,7 +3320,7 @@ function renewHumanSquad() {
    do chaveamento já garante de verdade.
    Desempate (pedido do usuário): quem jogou MENOS partidas vence. */
 function computeSeasonAwards() {
-  const sortedStandings = Object.values(CAREER.standings).sort((a, b) => (b.pts - a.pts) || (b.v - a.v) || (b.sg - a.sg) || (b.gp - a.gp));
+  const sortedStandings = motorTabela().sortRows(CAREER.standings);
   const campeao = sortedStandings[0] ? sortedStandings[0].id : null;
   const vice = sortedStandings[1] ? sortedStandings[1].id : null;
 
@@ -3554,9 +3562,8 @@ async function advanceSeason() {
     if (CAREER.leagueChampions.length > MAX_SEASON_HISTORY) CAREER.leagueChampions.length = MAX_SEASON_HISTORY;
   }
 
-  CAREER.schedule = generateAllRounds(LEAGUE_TEAMS.map((t) => t.id)); // global de js/data.js
-  const standings = {};
-  LEAGUE_TEAMS.forEach((t) => { standings[t.id] = { id: t.id, j: 0, v: 0, e: 0, d: 0, gp: 0, gc: 0, sg: 0, pts: 0 }; });
+  CAREER.schedule = motorModulo("calendario").generateAllRounds(LEAGUE_TEAMS.map((t) => t.id)); // Fase 12: motor/calendario.js
+  const standings = motorTabela().emptyStandings(LEAGUE_TEAMS.map((t) => t.id));
   CAREER.standings = standings;
   CAREER.currentRound = 1;
   CAREER.resultsByRound = {};
@@ -3781,9 +3788,7 @@ function pickCpuXI(squad) {
 const RELEGATION_N = 4; // mesmo tamanho da zona de rebaixamento já usada na Tabela (ver .mt-zone-dot)
 function freshDivisionRound(teams) {
   const ids = teams.map((t) => String(t.id));
-  const standings = {};
-  ids.forEach((id) => { standings[id] = { id, j: 0, v: 0, e: 0, d: 0, gp: 0, gc: 0, sg: 0, pts: 0 }; });
-  return { schedule: generateAllRounds(ids), standings };
+  return { schedule: motorModulo("calendario").generateAllRounds(ids), standings: motorTabela().emptyStandings(ids) };
 }
 // Chamado só na criação de carreira NOVA (ver startCareer) — monta o
 // snapshot inicial de CAREER.divisionTeams (3 divisões x 20 times,
@@ -3810,7 +3815,7 @@ function divisionStandingsFor(compId) {
   return (CAREER.otherDivisions && CAREER.otherDivisions[compId] && CAREER.otherDivisions[compId].standings) || {};
 }
 function sortedDivisionRows(compId) {
-  return Object.values(divisionStandingsFor(compId)).sort((a, b) => (b.pts - a.pts) || (b.v - a.v) || (b.sg - a.sg) || (b.gp - a.gp));
+  return motorTabela().sortRows(divisionStandingsFor(compId));
 }
 // Resolve, sem tela nem torcida, a rodada corrente das 2 divisões que
 // o técnico NÃO joga — mesmo cálculo de gols por Poisson do CPU x CPU
@@ -3822,15 +3827,9 @@ function sortedDivisionRows(compId) {
 function resolveOtherDivisionsRound(round) {
   if (!CAREER.otherDivisions) return; // carreira sem o sistema ativado (ver migrateCareerDefaults) — nada a fazer
   Object.entries(CAREER.otherDivisions).forEach(([compId, division]) => {
-    const fixtures = division.schedule[round] || [];
     const teamsById = new Map((CAREER.divisionTeams[compId] || []).map((t) => [String(t.id), t]));
-    fixtures.forEach((fx) => {
-      const home = teamsById.get(String(fx.home)), away = teamsById.get(String(fx.away));
-      if (!home || !away) return;
-      // GE-BALANCE-003 (issue #30) — ver comentário em simulateCupLeg.
-      const { gh, ga } = motorPartida().scoreGoals(home, away, 1, Math.random);
-      applyResultToStandings({ home: fx.home, away: fx.away, gh, ga }, division.standings);
-    });
+    // Fase 12, etapa 2: rodada só de placar (motor/rodada.js).
+    motorModulo("rodada").playSimpleRound(division.schedule[round] || [], teamsById, division.standings, Math.random);
   });
 }
 // Bottom n (zona de rebaixamento) de uma tabela já ordenada — quando
@@ -3838,16 +3837,10 @@ function resolveOtherDivisionsRound(round) {
 // ficaria de fora dela (ver exceção da Série D no comentário grande
 // acima), mantendo o tamanho da zona em n.
 function relegationZoneIds(sortedRows, n, protectedId) {
-  const ids = sortedRows.map((r) => String(r.id));
-  let zone = ids.slice(ids.length - n);
-  if (protectedId != null && zone.includes(String(protectedId))) {
-    zone = zone.filter((id) => id !== String(protectedId));
-    zone.push(ids[ids.length - n - 1]);
-  }
-  return zone;
+  return motorTabela().relegationZoneIds(sortedRows, n, protectedId); // Fase 12: motor/tabela.js
 }
 function accessZoneIds(sortedRows, n) {
-  return sortedRows.slice(0, n).map((r) => String(r.id));
+  return motorTabela().accessZoneIds(sortedRows, n);
 }
 // GE-BALANCE-002 (issue #27) — pedido do usuário: "Clubes com histórico
 // devem ter um rating maior. Não faz sentido clubes como Corinthians e
@@ -5745,9 +5738,8 @@ async function startCareer(clubId) {
     const leagueSquads = await buildLeagueSquads(club.id, ALL_TEAMS_FLAT);
     const formation = "4-3-3";
     const lineup = autoLineup(squad, formation);
-    const schedule = generateAllRounds(LEAGUE_TEAMS.map((t) => t.id)); // global de js/data.js
-    const standings = {};
-    LEAGUE_TEAMS.forEach((t) => { standings[t.id] = { id: t.id, j: 0, v: 0, e: 0, d: 0, gp: 0, gc: 0, sg: 0, pts: 0 }; });
+    const schedule = motorModulo("calendario").generateAllRounds(LEAGUE_TEAMS.map((t) => t.id)); // Fase 12: motor/calendario.js
+    const standings = motorTabela().emptyStandings(LEAGUE_TEAMS.map((t) => t.id));
     CAREER = {
       version: 1,
       // BUG CORRIGIDO ("erro 400 — Formato de save inválido." toda vez
@@ -8057,8 +8049,7 @@ function applyConditionRecovery(starterIds) {
 // (renderEstatisticas) pra reaproveitar na diretoria (Fase 3a, ver
 // evaluateBoardRequest) sem duplicar o critério de ordenação.
 function sortedStandings() {
-  return Object.values(CAREER.standings).slice()
-    .sort((a, b) => (b.pts - a.pts) || (b.v - a.v) || (b.sg - a.sg) || (b.gp - a.gp));
+  return motorTabela().sortRows(CAREER.standings);
 }
 function myLeaguePosition() {
   return sortedStandings().findIndex((r) => String(r.id) === String(CAREER.clubId)) + 1;
@@ -8069,27 +8060,17 @@ function myLeaguePosition() {
 // da rodada com a de AGORA, sem precisar guardar a posição num campo
 // à parte.
 function positionInStandings(standings) {
-  return Object.values(standings).slice()
-    .sort((a, b) => (b.pts - a.pts) || (b.v - a.v) || (b.sg - a.sg) || (b.gp - a.gp))
-    .findIndex((r) => String(r.id) === String(CAREER.clubId)) + 1;
+  return motorTabela().positionOf(standings, CAREER.clubId);
 }
 // AJUSTE (pedido do usuário: "reinicie o tema do rebaixamento") —
 // `standings` agora é parâmetro opcional (era sempre CAREER.standings)
 // pra dar pra atualizar a tabela das OUTRAS 2 divisões também (ver
 // resolveOtherDivisionsRound) sem duplicar essa lógica.
 function applyResultToStandings(r, standings = CAREER.standings) {
-  const H = standings[r.home], A = standings[r.away];
-  if (!H || !A) return;
-  H.j++; A.j++; H.gp += r.gh; H.gc += r.ga; A.gp += r.ga; A.gc += r.gh;
-  if (r.gh > r.ga) { H.v++; H.pts += 3; A.d++; }
-  else if (r.gh < r.ga) { A.v++; A.pts += 3; H.d++; }
-  else { H.e++; A.e++; H.pts++; A.pts++; }
-  H.sg = H.gp - H.gc; A.sg = A.gp - A.gc;
+  motorTabela().applyResult(standings, r); // Fase 12: motor/tabela.js
 }
 function cloneStandings(standings) {
-  const copy = {};
-  Object.keys(standings).forEach((id) => { copy[id] = { ...standings[id] }; });
-  return copy;
+  return motorTabela().cloneStandings(standings);
 }
 
 /* ---------- FASE 4 (item 3 da especificação "BR Data Treinador") —
@@ -8120,7 +8101,7 @@ const NEWS_FEED_MAX = 60; // manchetes guardadas no feed navegável (ver finishR
 const NEWS_TAG_LABEL = { lider: "Liderança", zebra: "Zebra", goleada: "Goleada", jejum_quebrado: "Fim de jejum", lanterna_reage: "Reação", empate_defendido: "Defesa do resultado", generico: "Rodada" };
 const ZEBRA_OVR_GAP = 6; // diferença mínima de overall médio pra contar como zebra/empate-defendido
 function rankByPoints(standings) {
-  const rows = Object.values(standings).sort((a, b) => (b.pts - a.pts) || (b.v - a.v) || (b.sg - a.sg) || (b.gp - a.gp));
+  const rows = motorTabela().sortRows(standings);
   const pos = {};
   rows.forEach((r, i) => { pos[r.id] = i + 1; });
   return pos;
@@ -9764,7 +9745,7 @@ function renderTopbarIdentity() {
   document.getElementById("btnTopbarNotifications").setAttribute("aria-label", unread ? `Notificações (${unread} não lida${unread === 1 ? "" : "s"})` : "Notificações");
   document.getElementById("topbarClubName").textContent = club?.name || "";
   document.getElementById("topbarClubSub").textContent = `${competitionName(CAREER.competitionId)} · Temporada ${CAREER.seasonYear}`;
-  const rows = Object.values(CAREER.standings).sort((a, b) => (b.pts - a.pts) || (b.v - a.v) || (b.sg - a.sg) || (b.gp - a.gp));
+  const rows = motorTabela().sortRows(CAREER.standings);
   const pos = rows.findIndex((r) => String(r.id) === String(CAREER.clubId)) + 1;
   // Posição só depois de jogo real — antes disso a ordem da tabela é
   // alfabética/aleatória e "1º lugar" seria informação falsa.
@@ -9893,7 +9874,7 @@ function renderHomeDashboard() {
   if (ni) ni.addEventListener("click", () => openNewsScreen());
 
   // Mini tabela: 4 primeiros + o seu clube, se estiver fora
-  const rows = Object.values(CAREER.standings).sort((a, b) => (b.pts - a.pts) || (b.v - a.v) || (b.sg - a.sg) || (b.gp - a.gp));
+  const rows = motorTabela().sortRows(CAREER.standings);
   const show = rows.slice(0, 4);
   const mineIdx = rows.findIndex((r) => String(r.id) === String(CAREER.clubId));
   if (mineIdx >= 4) show.push(rows[mineIdx]);
@@ -12783,7 +12764,7 @@ function pickerChoose(playerId) {
 // G6/G12 Libertadores, que só existe na Série A) quando compId não é
 // a Série A.
 function renderTabela(containerId = "standingsTable", standings = CAREER.standings, compId = CURRENT_COMPETITION_ID) {
-  const rows = Object.values(standings).sort((a, b) => (b.pts - a.pts) || (b.v - a.v) || (b.sg - a.sg) || (b.gp - a.gp));
+  const rows = motorTabela().sortRows(standings);
   const total = rows.length;
   const isSerieA = compId === "brasileirao";
   const body = rows.map((r, i) => {
