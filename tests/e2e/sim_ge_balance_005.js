@@ -62,7 +62,7 @@ function extract(src, name) {
   return "";
 }
 const NAMES = [
-  "clamp", "avg",
+  "clamp", "avg", "motorModulo", "motorTreino",
   // GE-BALANCE-005 (só existem no "depois")
   "SEASON_GAIN_CAP_BY_AGE", "seasonGainBaseCap", "playTimeGainFactor", "seasonGainCap", "seasonGainRoom",
   "recordSeasonGain", "highBandGainFactor", "potentialDeclineFor", "youthPotentialRoll", "applyCpuAnnualEvolution",
@@ -76,8 +76,19 @@ const NAMES = [
 ];
 const SEEDED = dataJs.match(/function mulberry32\(seed\) \{[\s\S]*?\n\}\n/)[0] + dataJs.match(/function seededRngFromKey\(key\) \{[\s\S]*?\n\}\n/)[0];
 
-function makeEngine(src) {
-  const code = SEEDED + NAMES.map((n) => extract(src, n)).join("") + `
+// Fase 12, etapa 4: as regras de treino e evolução moraram para
+// public/js/motor/treino.js (ES module). No vm, o módulo entra como
+// window.BRDATA_MOTOR.treino, sem os "export". Revisões antigas (sem o
+// motor) simplesmente não chamam motorTreino().
+function motorSource(name, rev) {
+  let src;
+  try { src = rev ? execSync(`git show ${rev}:public/js/motor/${name}.js`, { cwd: ROOT, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }) : fs.readFileSync(path.join(ROOT, `public/js/motor/${name}.js`), "utf8"); }
+  catch (_) { return `window.BRDATA_MOTOR.${name} = null;\n`; }
+  const names = [...src.matchAll(/^export (?:function|const) (\w+)/gm)].map((m) => m[1]);
+  return `window.BRDATA_MOTOR.${name} = (function () {\n${src.replace(/^export /gm, "")}\nreturn { ${names.join(", ")} };\n})();\n`;
+}
+function makeEngine(src, rev) {
+  const code = "var window = { BRDATA_MOTOR: {} };\n" + motorSource("treino", rev) + SEEDED + NAMES.map((n) => extract(src, n)).join("") + `
     var LIVE_SEASON = 2026;
     var DEMO_FIRST_NAMES = ["A", "B", "C", "D"], DEMO_LAST_NAMES = ["Silva", "Souza", "Lima"];
     var CAREER = null, CLUB = { id: "sim", atk: 1.55, def: 0.9 };
@@ -87,10 +98,17 @@ function makeEngine(src) {
     function ensureObjectivesFresh() {}
     function bumpObjective() {}
     function minSquadSizeFor() { return MIN_LEAGUE_SQUAD; }
+    // GE-CALENDAR-001: a simulação usa o modelo por rodada (sem calendário).
+    function calendarOn() { return false; }
+    function calendarWeek() { return null; }
+    function calendarTurnKey() { return String(CAREER.currentRound); }
   `;
-  const sb = { Math, console };
+  // Math.random com semente fixa: antes e depois sorteiam a mesma
+  // sequência, então qualquer diferença é de regra, não de sorte.
+  const sb = { Math: Object.create(Math), console };
   vm.createContext(sb);
   vm.runInContext(code, sb);
+  sb.Math.random = sb.mulberry32(5005);
   return sb;
 }
 
@@ -160,8 +178,8 @@ function runLeague(E) {
   return series;
 }
 
-function report(label, src) {
-  const E = makeEngine(src);
+function report(label, src, rev) {
+  const E = makeEngine(src, rev);
   const res = Array.from({ length: CAREERS }, (_, k) => runCareer(E, k));
   E.CLUB = { id: "sim", atk: 1.55, def: 0.9 };
   const curve = Array.from({ length: SEASONS }, (_, s) => mean(res.map((r) => r.top11[s])).toFixed(1));
@@ -179,5 +197,5 @@ function report(label, src) {
   console.log(`Liga CPU (59 clubes): média ${league[0].mean.toFixed(1)} → ${league[SEASONS].mean.toFixed(1)} | p99 ${league[0].p99} → ${league[SEASONS].p99}`);
 }
 
-report(`ANTES (${BEFORE_REV})`, beforeSrc);
+report(`ANTES (${BEFORE_REV})`, beforeSrc, BEFORE_REV);
 report("DEPOIS (checkout atual)", afterSrc);
