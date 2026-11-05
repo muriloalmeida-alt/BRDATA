@@ -51,11 +51,11 @@ export function SeasonEnd({ m, onAdvanced, onExpired }: { m: SeasonEndModel; onA
   // a chapinha clara, então usa o original, não a versão negativa.
   const share = async (k: TitleKind) => {
     setShareMsg(null);
-    const src = crestSrc(m.club);
+    const src = crestSrc(m.club, false);
     const r = await shareTitle({
       head: TITLE_HEAD[k], year: m.year, file: `campeao-${m.year}.png`,
       text: `${m.club.name} é ${TITLE_TEXT[k]} em ${m.year} no Modo Técnico!`,
-      team: { name: m.club.name, short: m.club.short, c1: m.club.c1, c2: m.club.c2, src: src ? src.replace(/_neg\.(svg|png)$/, ".$1") : null },
+      team: { name: m.club.name, short: m.club.short, c1: m.club.c1, c2: m.club.c2, src },
     });
     if (r === "downloaded") setShareMsg("Imagem baixada: compartilhe pela sua galeria.");
     if (r === "failed") setShareMsg("Não deu pra gerar a imagem agora.");

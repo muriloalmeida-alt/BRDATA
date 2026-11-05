@@ -53,7 +53,10 @@ const { enterGame } = require("./_startup");
   await page.click("#btnBottomMenu");
   await page.waitForTimeout(200);
   await page.click("#btnLogout");
-  await page.waitForTimeout(800);
+  // O logout navega para "/" (desde a fase 11, a v2): espera a navegação
+  // terminar, em vez de 800 ms fixos (curto sob carga no CI, PR #72).
+  await page.waitForURL((u) => new URL(u).pathname === "/", { timeout: 15000 }).catch(() => {});
+  await page.waitForLoadState("load").catch(() => {});
   const url = page.url();
   const meResp = await page.evaluate(async () => (await fetch("/api/auth/me")).json());
   console.log("URL depois do logout:", url, "| /api/auth/me:", JSON.stringify(meResp));
