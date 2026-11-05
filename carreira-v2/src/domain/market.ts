@@ -10,6 +10,7 @@
 // propostas da venda: escolher (com confirmação), recusar todas ou uma;
 // confirmação da compra; proposta pendente no Mercado.
 import type { Career, OfferOut, Player, PlayerGroup } from "./types.ts";
+import { offerEffectiveValue as effective } from "../../../public/js/motor/mercado.js";
 import { moneyShort } from "./home.ts";
 import { shortName, sortKey } from "./lineup.ts";
 import { POSITION } from "./squadplus.ts";
@@ -106,13 +107,12 @@ export function offerStatus(o: OfferOut): { text: string; tone: "gold" | "neg" |
   if (o.rivalOffer) return { text: "Concorrência", tone: "neg" };
   return { text: "Aguardando", tone: null };
 }
-// offerEffectiveValue (carreira.js): cada parcela extra pesa 3% para quem vende.
-const effective = (v: number, n: number) => v * (1 - 0.03 * (n - 1));
 export function buildNegotiation(o: OfferOut) {
   const rival = o.rivalOffer || null;
   let analysis: string | null = null;
   if (rival) {
     // offerCompareAnalysisText (carreira.js), mesmo critério.
+    // Peso da proposta parcelada: offerEffectiveValue do motor (-3% por parcela extra).
     const mineWins = effective(o.offerValue, o.installments) >= effective(rival.offerValue, rival.installments);
     const cheaperMine = o.offerValue < rival.offerValue, fasterMine = o.installments <= rival.installments;
     analysis = mineWins
