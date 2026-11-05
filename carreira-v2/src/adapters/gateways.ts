@@ -94,10 +94,14 @@ export function negativeCrest(src: string): string {
   const m = /^(\/img\/teams\/)([a-z0-9_]+)\.(svg|png)$/.exec(src);
   return m && NEGATIVE_CRESTS.has(m[2]) ? `${m[1]}${m[2]}_neg.${m[3]}` : src;
 }
-export function crestSrc(t: Team | undefined): string | null {
+export function crestSrc(t: Team | undefined, darkBackground = true): string | null {
   if (!t) return null;
-  if (t.logo) return t.logo.startsWith("http") ? t.logo : negativeCrest(t.logo.startsWith("/") ? t.logo : `/${t.logo}`);
-  return LOCAL_CRESTS.has(String(t.id)) ? negativeCrest(`/img/teams/${t.id}.svg`) : null;
+  const id = String(t.id);
+  if (darkBackground && (id === "12230" || id === "mga")) return "/img/teams/mga_white.png";
+  const src = t.logo
+    ? (t.logo.startsWith("http") || t.logo.startsWith("/") ? t.logo : `/${t.logo}`)
+    : LOCAL_CRESTS.has(id) ? `/img/teams/${id}.svg` : null;
+  return src && darkBackground ? negativeCrest(src) : src;
 }
 
 type DemoGlobals = Record<string, Team[] | undefined>;
