@@ -5,6 +5,7 @@
 // financeLedger, mais recente primeiro; fmtBRLShort). Só leitura.
 import type { Career } from "./types.ts";
 import { moneyShort } from "./home.ts";
+import { wageBill } from "../../../public/js/motor/financas.js";
 
 export const RECENT_LEDGER = 5;
 
@@ -19,8 +20,9 @@ export interface FinanceModel {
 
 export function buildFinance(career: Career): FinanceModel {
   const cash = career.finances?.cash || 0;
-  // legado: wageBillOf — principal + emprestados (você paga o salário de quem pega emprestado)
-  const bill = (career.squad || []).filter((p) => p.origin === "principal" || p.origin === "loan").reduce((s, p) => s + (p.wage || 0), 0);
+  // Folha: a mesma regra do motor (public/js/motor/financas.js, wageBill) —
+  // principal + emprestados (você paga o salário de quem pega emprestado).
+  const bill = wageBill(career.squad || []);
   const cap = career.finances?.wageCap;
   return {
     cash,

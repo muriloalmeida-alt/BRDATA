@@ -41,7 +41,8 @@ const { skipOnboarding } = require("./_startup");
 
   // 2) Semana seguinte da pré: convites aparecem e o botão vira "Ir para o amistoso".
   await page.click("#btnSimulate"); // avança a 1ª semana (sem amistoso)
-  await page.waitForTimeout(700);
+  // Espera a semana nova desenhar (antes 700 ms fixos, curto sob carga).
+  await page.waitForFunction(() => /Ir para o amistoso/.test(document.getElementById("btnSimulate").textContent), null, { timeout: 15000 }).catch(() => {});
   const s2 = await page.evaluate(() => ({
     chips: document.querySelectorAll("#nextMatchBox [data-friendly-pick]").length,
     fab: document.getElementById("btnSimulate").textContent.trim(),
