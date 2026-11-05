@@ -2,7 +2,7 @@
 
 - **Data:** 05/11/2026.
 - **Branch:** `f12-treino`, a partir de `main` (com o #75, etapa 3, e o #76, comissão técnica).
-- **Status:** aguardando aprovação do Murilo. Commit local, sem push e sem PR.
+- **Status:** aprovado pelo Murilo (05/11).
 
 **Decisões aplicadas** (05/11):
 - **Forma:** o motor devolve o efeito por jogador.

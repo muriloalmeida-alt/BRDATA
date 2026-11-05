@@ -391,7 +391,7 @@ A seção 8 é o retrato de 03/11 e fica como histórico.
 | 12.2 — tabela, calendário e rodada simples (`motor/tabela.js`, `calendario.js`, `rodada.js`) | #73 | na `main` |
 | 12.3 — finanças (`motor/financas.js`) | #75 | na `main` |
 | Comissão técnica: sugestões rápidas (Escalação, Formação, Postura) | #76 | na `main` |
-| 12.4 — treino e evolução natural (`motor/treino.js`) | próximo PR | `ENTREGA_F12_4_TREINO.md` |
+| 12.4 — treino e evolução natural (`motor/treino.js`) | #77 | `ENTREGA_F12_4_TREINO.md` |
 | 12.5 e 12.6 — mercado, temporada | — | **não iniciadas** |
 
 ### Pontos de dependência (seção 1)
