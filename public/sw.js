@@ -79,6 +79,7 @@ const APP_SHELL = [
   // Fase 11: /carreira.html virou redirecionamento para "/" (já acima);
   // carreira.js segue no shell porque o motor da v2 (/carreira/motor) usa.
   "/js/carreira.js",
+  "/js/motor/partida.js", // Fase 12: núcleo da partida (carreira.html o importa)
   "/manifest-treinador.json",
   "/img/brand-icon.png",
   "/img/icons/apple-touch-icon.png",

@@ -269,11 +269,19 @@ function avg(arr) { return arr.length ? arr.reduce((s, v) => s + v, 0) / arr.len
 function escapeHtml(s) {
   return String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 }
+// Fase 12, etapa 1 (05/11): o núcleo do cálculo da partida mora em
+// public/js/motor/partida.js (ES module, carregado por carreira.html em
+// window.BRDATA_MOTOR antes do boot — módulos rodam antes do
+// DOMContentLoaded). Mesmas regras de antes; o sorteio continua sendo
+// Math.random, passado como parâmetro (tests/unit/test_motor_partida.js
+// prova a equivalência com a implementação anterior).
+function motorPartida() {
+  const m = window.BRDATA_MOTOR && window.BRDATA_MOTOR.partida;
+  if (!m) throw new Error("Motor da partida (js/motor/partida.js) não carregou.");
+  return m;
+}
 function weightedPick(items, weights) {
-  const total = weights.reduce((s, w) => s + w, 0) || 1;
-  let r = Math.random() * total;
-  for (let i = 0; i < items.length; i++) { r -= weights[i]; if (r <= 0) return items[i]; }
-  return items[items.length - 1];
+  return motorPartida().weightedPick(items, weights, Math.random);
 }
 
 /* ---------- Redesign M3 (BRTreinadorSistemadeDesignM3v1.docx +
@@ -1241,8 +1249,7 @@ function fairWageFor(p) {
 // pra quem nunca teve a moral mexida (CPU, ver comentário no topo da
 // seção). Clampado pra nunca zerar nem triplicar a chance de ninguém.
 function moraleFactor(p) {
-  const m = p.morale == null ? 70 : p.morale;
-  return clamp(1 + (m - 70) / 100, 0.6, 1.3);
+  return motorPartida().moraleFactor(p); // Fase 12: mesma regra, no motor (motor/partida.js)
 }
 // AJUSTE (pedido do usuário: "a idade é fundamental pra moral do
 // atleta — atletas mais velhos, mais novos e com overall mais baixo
@@ -2816,10 +2823,7 @@ function simulateCupLeg(hostId, guestId, round) {
   // melhor"). A fórmula de gol multiplica pelo def do DEFENSOR (não
   // divide) pra respeitar esse sentido: defesa melhor (def menor) ->
   // lambda menor (menos gols esperados contra ela).
-  const lambdaHome = clamp((hs.atk * as.def) * 1.12, 0.05, 6);
-  const lambdaAway = clamp(as.atk * hs.def, 0.05, 6);
-  const gh = poissonSample(lambdaHome, Math.random);
-  const ga = poissonSample(lambdaAway, Math.random);
+  const { gh, ga } = motorPartida().scoreGoals(hs, as, 1, Math.random);
   if (isHost) applyConditionRecovery(hs.starters.map((p) => p.id));
   if (isGuest) applyConditionRecovery(as.starters.map((p) => p.id));
   if (isHost) simulatePlayerEvents(hs.starters, gh, round);
@@ -2838,8 +2842,7 @@ function simulateCupTie(homeId, awayId, round) {
     // 2 elencos, mas ainda bem sujeito ao acaso — pênalti é loteria
     // até no futebol de verdade.
     penalties = true;
-    const pHome = clamp(0.5 + (squadAvgOverallOf(homeId) - squadAvgOverallOf(awayId)) / 100, 0.25, 0.75);
-    winner = Math.random() < pHome ? homeId : awayId;
+    winner = motorPartida().cupPenaltyHomeWins(squadAvgOverallOf(homeId), squadAvgOverallOf(awayId), Math.random) ? homeId : awayId;
   }
   return { gh, ga, penalties, winner };
 }
@@ -2993,8 +2996,7 @@ function finalizeCupPhaseExpanded(phase, round, silent) {
       // ver checkpoint de desenho aprovado). Mesmo enviesamento leve
       // do formato legado.
       penalties = true;
-      const pHome = clamp(0.5 + (squadAvgOverallOf(tie.home) - squadAvgOverallOf(tie.away)) / 100, 0.25, 0.75);
-      winner = Math.random() < pHome ? tie.home : tie.away;
+      winner = motorPartida().cupPenaltyHomeWins(squadAvgOverallOf(tie.home), squadAvgOverallOf(tie.away), Math.random) ? tie.home : tie.away;
     }
     tie.winner = winner; tie.penalties = penalties;
     const humanInvolved = String(tie.home) === String(CAREER.clubId) || String(tie.away) === String(CAREER.clubId);
@@ -3826,10 +3828,7 @@ function resolveOtherDivisionsRound(round) {
       const home = teamsById.get(String(fx.home)), away = teamsById.get(String(fx.away));
       if (!home || !away) return;
       // GE-BALANCE-003 (issue #30) — ver comentário em simulateCupLeg.
-      const lambdaHome = clamp((home.atk * away.def) * 1.12, 0.05, 6);
-      const lambdaAway = clamp(away.atk * home.def, 0.05, 6);
-      const gh = poissonSample(lambdaHome, Math.random); // global de js/data.js
-      const ga = poissonSample(lambdaAway, Math.random);
+      const { gh, ga } = motorPartida().scoreGoals(home, away, 1, Math.random);
       applyResultToStandings({ home: fx.home, away: fx.away, gh, ga }, division.standings);
     });
   });
@@ -7777,55 +7776,28 @@ function injuryChanceFor(p) {
 function attributeGoals(starters, goals, suppress) {
   const events = [];
   if (!starters || !starters.length || !goals) return events;
-  const weightFor = (p) => (suppress && p.id === suppress.playerId ? suppress.factor : 1);
   // FASE 2 (b) — moral pesa no sorteio (ver moraleFactor); factor 1
   // pra quem nunca teve moral mexida (CPU/moral neutra), não muda nada.
-  const atkWeights = starters.map((p) => ({ F: 4, M: 2, D: 0.6, G: 0.02 }[p.group] || 1) * moraleFactor(p) * weightFor(p));
-  for (let i = 0; i < goals; i++) {
-    const scorer = weightedPick(starters, atkWeights);
+  // Fase 12, etapa 1: quem marca e quem dá o passe vem do motor
+  // (motor/partida.js, pickGoalAuthors, mesmos pesos e mesma ordem de
+  // sorteio); aqui só se aplica no jogador o que foi sorteado.
+  // - goalsSeason: contador SÓ da temporada atual, zerado na virada de
+  //   ano (ver renewHumanSquad/renewLeagueSquad); goalsCareer nunca zera.
+  // - Gol e assistência são UM evento atômico (assistPlayer); ~8% dos
+  //   gols viram "de pênalti" na narrativa (sem assistência), sem somar
+  //   gol nenhum (o placar já estava fechado pelo lambda).
+  const picks = motorPartida().pickGoalAuthors(starters, goals, Math.random, suppress);
+  picks.forEach(({ scorer, assister }) => {
     scorer.goalsCareer = (scorer.goalsCareer || 0) + 1;
-    // FASE 4 (item 6) — contador SÓ da temporada atual, zerado na
-    // virada de ano (ver renewHumanSquad/renewLeagueSquad), pra dar pra
-    // apurar o artilheiro DESSA temporada — goalsCareer nunca zera (é
-    // "na carreira", ver Elenco/detalhe do jogador), não serve pra
-    // isso. Nota: chamada pela Copa do Brasil (ver simulateCupTie) só
-    // pro lado HUMANO também soma aqui, misturando um pouco de gol de
-    // Copa no total "da temporada" do SEU jogador (mesma mistura que
-    // goalsCareer já tinha) — sem impacto pros outros 19 clubes, cuja
-    // Copa nunca chama isso pro lado deles (ver comentário em
-    // simulateCupTie).
     scorer.goalsSeason = (scorer.goalsSeason || 0) + 1;
-    // AJUSTE (Play-by-Play v1, pedido do usuário — documento "BR Data
-    // Play-by-Play", seção 2) — gol e assistência viram UM evento
-    // atômico só (assistPlayer, não mais um 2º evento "assistencia"
-    // separado) — bate com a estrutura de evento do documento e deixa
-    // o banco de comentários tecer os dois na mesma frase ("Fulano
-    // lança, Ciclano não perdoa"), em vez de 2 linhas soltas no feed.
-    // AJUSTE (Play-by-Play v2, catálogo PENALTY_AWARDED) — ~8% dos
-    // gols já decididos viram "de pênalti" na narrativa — NÃO soma
-    // gol nenhum a mais (o placar já estava fechado pelo lambda), só
-    // reaproveita um gol que já ia acontecer e muda como ele é
-    // contado: sem assistência (pênalti não tem passe pra ninguém) e
-    // com o comentário próprio (COMMENTARY_BANK.gol_penalti).
-    const isPenalty = Math.random() < 0.08;
-    let assistName = null, assistId = null;
-    // ~72% dos gols saem com assistência de um companheiro (nunca o
-    // próprio artilheiro) — meio-campista pesa mais no sorteio, mas
-    // qualquer titular pode ter dado o passe.
-    if (!isPenalty && starters.length > 1 && Math.random() < 0.72) {
-      const assistPool = starters.filter((p) => p.id !== scorer.id);
-      const assistWeights = assistPool.map((p) => ({ M: 3, F: 1.5, D: 0.8, G: 0.05 }[p.group] || 1) * moraleFactor(p) * weightFor(p));
-      const assister = weightedPick(assistPool, assistWeights);
+    if (assister) {
       assister.assistsCareer = (assister.assistsCareer || 0) + 1;
       assister.assistsSeason = (assister.assistsSeason || 0) + 1;
-      assistName = assister.name;
-      assistId = assister.id;
     }
-    if (isPenalty) events.push({ type: "penalty_awarded", player: scorer.name });
-    // UX-MERCADO-001 — ids junto dos nomes pra o lance virar link pro
-    // perfil do jogador (ver playerLinkHTML/matchEventsSummaryHTML).
-    events.push({ type: "gol", player: scorer.name, playerId: scorer.id, assistPlayer: assistName, assistPlayerId: assistId, penalty: isPenalty });
-  }
+  });
+  // UX-MERCADO-001 — ids junto dos nomes pra o lance virar link pro
+  // perfil do jogador (ver playerLinkHTML/matchEventsSummaryHTML).
+  events.push(...motorPartida().goalEvents(picks));
   return events;
 }
 // chunkShare = fração da partida coberta por essa chamada (1 = jogo
@@ -7908,21 +7880,9 @@ function applyMatchWearChunk(starters, round, chunkShare, appearedSet) {
 // seu clube (CPU x CPU continua sem essa camada — ninguém vê o feed
 // dessas partidas mesmo).
 function attributeChances(starters, atkStrength, defStrength, chunkShare) {
-  const events = [];
-  if (!starters || !starters.length) return events;
-  // GE-BALANCE-003 (issue #30) — ver comentário em simulateCupLeg.
-  const lambda = clamp((atkStrength * defStrength) * 7, 1, 14) * chunkShare;
-  const count = poissonSample(lambda, Math.random);
-  const weights = starters.map((p) => ({ F: 4, M: 2, D: 0.7, G: 0.05 }[p.group] || 1));
-  for (let i = 0; i < count; i++) {
-    const player = weightedPick(starters, weights);
-    // ~38% das chances vira defesa do goleiro adversário (chute no
-    // alvo, mas sem gol) — o resto é chance perdida (fora/travessão),
-    // mesma proporção aproximada do catálogo do documento (seção 3:
-    // CHANCE_MISSED 8-15/jogo, SHOT_ON_TARGET_SAVED 4-8/jogo).
-    events.push({ type: Math.random() < 0.38 ? "defesa" : "chance_perdida", player: player.name });
-  }
-  return events;
+  // ~38% das chances viram defesa do goleiro; o resto, chance perdida
+  // (fora/travessão). Cálculo no motor (motor/partida.js, chanceEvents).
+  return motorPartida().chanceEvents(starters, atkStrength, defStrength, chunkShare, Math.random);
 }
 // AJUSTE (Play-by-Play v2, pedido do usuário — documento seção 3/8,
 // catálogo PENALTY_MISSED) — pênalti perdido é decorativo puro (não
@@ -7933,14 +7893,7 @@ function attributeChances(starters, atkStrength, defStrength, chunkShare) {
 // attributeGoals — reaproveita um gol que o lambda JÁ decidiu, só
 // muda a narrativa, nunca soma um gol a mais (ver comentário lá).
 function attributePenaltyMisses(starters, atkStrength, defStrength, chunkShare) {
-  const events = [];
-  if (!starters || !starters.length) return events;
-  if (Math.random() >= 0.04 * chunkShare) return events;
-  const weights = starters.map((p) => ({ F: 4, M: 2, D: 0.7 }[p.group] || 1.2));
-  const player = weightedPick(starters, weights);
-  events.push({ type: "penalty_awarded", player: player.name });
-  events.push({ type: "penalty_missed", player: player.name });
-  return events;
+  return motorPartida().penaltyMissEvents(starters, chunkShare, Math.random);
 }
 function simulatePlayerEvents(starters, goals, round) {
   if (!starters || !starters.length) return [];
@@ -8719,10 +8672,7 @@ function resolveCpuFixture(fx, round) {
   const hs = { atk: home.atk, def: home.def, starters: pickCpuXI(leagueSquadFor(fx.home)) };
   const as = { atk: away.atk, def: away.def, starters: pickCpuXI(leagueSquadFor(fx.away)) };
   // GE-BALANCE-003 (issue #30) — ver comentário em simulateCupLeg.
-  const lambdaHome = clamp((hs.atk * as.def) * 1.12, 0.05, 6);
-  const lambdaAway = clamp(as.atk * hs.def, 0.05, 6);
-  const gh = poissonSample(lambdaHome, Math.random); // global de js/data.js
-  const ga = poissonSample(lambdaAway, Math.random);
+  const { gh, ga } = motorPartida().scoreGoals(hs, as, 1, Math.random);
   // FASE 2 (a) — pedido do usuário: "estatísticas reais de todos os
   // times". Antes só o SEU time tinha elenco individual — o
   // adversário virava "Gol do <Time>" sem autor (ver histórico desse
@@ -9204,7 +9154,7 @@ function resolveLiveChunk() {
     // maior=melhor pra atk) continua igual; def PIOR precisa de um
     // número MAIOR (menor = defesa melhor, ver comentário em
     // simulateCupLeg) — por isso def usa /= em vez de *=.
-    humanSide.atk *= 0.92; humanSide.def /= 0.92;
+    Object.assign(humanSide, motorPartida().withFormationPenalty(humanSide));
     lm.formationPenaltyChunksLeft--;
   }
   // GE-BALANCE-001 (issue #26) — adversário motivado contra sequência
@@ -9216,12 +9166,9 @@ function resolveLiveChunk() {
   // GE-BALANCE-003 (issue #30) — mesmo motivo do formationPenalty acima:
   // "adversário mais ligado" precisa de um def MENOR (defesa melhor),
   // por isso def usa /= em vez de *= (atk continua *=, maior=melhor).
-  if (motivationMod > 1) { cpuSide.atk *= motivationMod; cpuSide.def /= motivationMod; }
+  Object.assign(cpuSide, motorPartida().withMotivation(cpuSide, motivationMod));
   // GE-BALANCE-003 (issue #30) — ver comentário em simulateCupLeg.
-  const lambdaHome = clamp((hs.atk * as.def) * 1.12, 0.05, 6) * chunkShare;
-  const lambdaAway = clamp(as.atk * hs.def, 0.05, 6) * chunkShare;
-  const ghChunk = poissonSample(lambdaHome, Math.random);
-  const gaChunk = poissonSample(lambdaAway, Math.random);
+  const { gh: ghChunk, ga: gaChunk } = motorPartida().scoreGoals(hs, as, chunkShare, Math.random);
   const wearHome = applyMatchWearChunk(hs.starters, round, chunkShare, lm.appeared);
   const wearAway = applyMatchWearChunk(as.starters, round, chunkShare, lm.appeared);
   const myRedIds = lm.isHome ? wearHome.redCardIds : wearAway.redCardIds;
@@ -9253,10 +9200,7 @@ function resolveLiveChunk() {
   // nossa pra não precisar desfazer um gol já creditado — ver
   // comentário no topo de attributeGoals sobre pênalti pelo mesmo
   // motivo).
-  const varEvents = [];
-  [...goalsHome, ...goalsAway].forEach((e) => {
-    if (Math.random() < 0.12) varEvents.push({ type: "var_check", mine: e.mine });
-  });
+  const varEvents = motorPartida().varCheckEvents([...goalsHome, ...goalsAway], Math.random);
   const chunkEvents = [
     ...goalsHome, ...goalsAway,
     ...varEvents,
@@ -9309,21 +9253,10 @@ function resolveLiveChunk() {
 // Posse acumula uma MÉDIA PONDERADA pela fração de jogo de cada tempo
 // (chunkShare soma 1 no fim da partida); finalizações/faltas somam.
 function updateLiveStats(lm, hs, as, chunkShare, chancesHome, chancesAway, ghChunk, gaChunk) {
-  const s = lm.stats;
-  const homeRatio = hs.atk / (hs.atk + as.atk || 1);
-  s.possWeightHome += homeRatio * chunkShare;
-  // AJUSTE (Play-by-Play v2, catálogo POSSESSION_SHIFT — "alimenta um
-  // indicador de domínio de jogo... sem precisar virar um evento
-  // narrado no feed") — soma da fração já processada, pra normalizar
-  // a posse EM TEMPO REAL (ver renderLiveMatch/.mt-live-poss) antes do
-  // fim da partida, quando chunkShare ainda não somou 1.
-  s.chunkShareSum = (s.chunkShareSum || 0) + chunkShare;
-  s.shots.home += chancesHome.length + ghChunk;
-  s.shots.away += chancesAway.length + gaChunk;
-  s.shotsOnTarget.home += chancesHome.filter((e) => e.type === "defesa").length + ghChunk;
-  s.shotsOnTarget.away += chancesAway.filter((e) => e.type === "defesa").length + gaChunk;
-  s.fouls.home += poissonSample(11 * chunkShare, Math.random);
-  s.fouls.away += poissonSample(11 * chunkShare, Math.random);
+  // Posse ponderada pela fração de cada tempo (chunkShareSum normaliza a
+  // posse em tempo real, ver renderLiveMatch); finalizações e faltas
+  // somam. Cálculo no motor (motor/partida.js, addChunkStats).
+  lm.stats = motorPartida().addChunkStats(lm.stats, hs, as, chunkShare, chancesHome, chancesAway, ghChunk, gaChunk, Math.random);
 }
 // ---- Destaque de gol em tela cheia (Tela hifi-02) ----
 // Fila (raro, mas possível 2 gols no mesmo tempo de 15min) — mostra um
