@@ -6035,6 +6035,13 @@
 <div class="ct-toast" id="toast"></div>
 
 <script src="js/data.js"></script>
+<!-- Fase 12 (05/11): núcleo do motor em ES modules (public/js/motor/).
+     Módulos rodam antes do DOMContentLoaded, que é quando o carreira.js
+     dá boot — o motor já está em window.BRDATA_MOTOR quando o jogo começa. -->
+<script type="module">
+  import * as partida from "./js/motor/partida.js";
+  window.BRDATA_MOTOR = Object.assign(window.BRDATA_MOTOR || {}, { partida });
+</script>
 <script src="js/carreira.js"></script>
 <script>
   // Registra o service worker (ver sw.js) — mesmo registro de
