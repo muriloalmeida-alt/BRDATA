@@ -11955,6 +11955,152 @@ function suggestTactics() {
     },
   };
 }
+/* ---------- Comissão técnica — sugestões rápidas (05/11) ----------
+   Menu lateral da v2 (Início, Escalação, Pré-jogo): três decisões para o
+   próximo jogo — Escalação, Formação e Postura — com motivo e "Aplicar".
+   Só regras reais do motor, nada inventado (documento
+   IMPLEMENTAR_COMISSAO_TECNICA.md e decisões de 05/11):
+   - Escalação, UMA troca por vez, em ordem: (1) titular indisponível →
+     melhor reserva disponível da mesma posição; (2) titular com condição
+     < 70% → reserva da mesma posição com condição ≥ 85% e overall até 3
+     pontos menor; (3) a troca de maior ganho de overall que a escalação
+     automática (autoLineup) faria.
+   - Formação: para cada formação suportada, a escalação automática dela e
+     a força pela fórmula do jogo (computeHumanStrength); sugere a melhor
+     se a razão de gols esperados contra o próximo adversário melhorar
+     ≥ 3% sobre a formação atual (comparando as duas com a escalação
+     automática, para medir o efeito da formação).
+   - Postura: a regra de suggestTactics (ofensiva 4 / equilibrada 3 /
+     cautelosa 2 em ritmo, pressão e linha defensiva) pela força relativa.
+   Cada sugestão leva uma `chave`: ao aplicar, o motor recalcula e só
+   aplica se a chave for a mesma (senão devolve a recomendação nova). */
+const COMISSAO_COND_DESGASTE = 70, COMISSAO_COND_DESCANSADO = 85, COMISSAO_OVR_TOLERANCIA = 3, COMISSAO_FORMACAO_GANHO = 1.03;
+function comissaoJogador(id) { return id ? CAREER.squad.find((p) => p.id === id) || null : null; }
+function comissaoNome(p) { return p ? abbreviateName(p.name) : "—"; }
+function comissaoReservasDisponiveis() {
+  const titulares = new Set(CAREER.lineup.starters.filter(Boolean));
+  return CAREER.squad.filter((p) => p.status === "ok" && !titulares.has(p.id) && (p.origin === "principal" || p.origin === "loan"));
+}
+function comissaoEscalacao() {
+  const f = CAREER.lineup.formation, slots = FORMATIONS[f];
+  if (!slots || !CAREER.squad.length) return { estado: "sem-dados" };
+  const reservas = comissaoReservasDisponiveis();
+  const melhor = (lista) => lista.slice().sort((a, b) => b.overall - a.overall)[0] || null;
+  const troca = (idx, sai, entra, motivo, nota) => ({
+    estado: "mudanca", resumo: `${comissaoNome(entra)} no lugar de ${sai ? comissaoNome(sai) : "vaga vazia"}`, motivo, nota,
+    detalhe: { slot: idx, sai: sai ? { id: sai.id, nome: comissaoNome(sai) } : null, entra: { id: entra.id, nome: comissaoNome(entra) } },
+  });
+  // 1) Titular indisponível (lesão, suspensão, fora do elenco).
+  for (let i = 0; i < slots.length; i++) {
+    const p = comissaoJogador(CAREER.lineup.starters[i]);
+    if (p && p.status === "ok") continue;
+    const cand = melhor(reservas.filter((r) => r.group === slots[i][0]));
+    if (!cand) continue;
+    const why = !p ? "A vaga está sem titular." : p.status === "contundido" ? `${comissaoNome(p)} está lesionado.` : p.status === "suspenso" ? `${comissaoNome(p)} está suspenso.` : `${comissaoNome(p)} não está disponível.`;
+    return troca(i, p, cand, why, "Melhor reserva disponível na posição");
+  }
+  // 2) Titular desgastado.
+  const cond = (p) => (p.condition == null ? 100 : p.condition);
+  let pior = null;
+  slots.forEach((s, i) => {
+    const p = comissaoJogador(CAREER.lineup.starters[i]);
+    if (p && cond(p) < COMISSAO_COND_DESGASTE && (!pior || cond(p) < cond(pior.p))) pior = { i, p };
+  });
+  if (pior) {
+    const cand = melhor(reservas.filter((r) => r.group === slots[pior.i][0] && cond(r) >= COMISSAO_COND_DESCANSADO && r.overall >= pior.p.overall - COMISSAO_OVR_TOLERANCIA));
+    if (cand) return troca(pior.i, pior.p, cand, `${comissaoNome(pior.p)} está desgastado para começar (condição ${Math.round(cond(pior.p))}%).`, "Mais energia desde o início");
+  }
+  // 3) Maior ganho de overall da escalação automática.
+  const auto = autoLineup(CAREER.squad, f, false);
+  const titulares = new Set(CAREER.lineup.starters.filter(Boolean));
+  let best = null;
+  auto.starters.forEach((id, i) => {
+    if (!id || id === CAREER.lineup.starters[i] || titulares.has(id)) return;
+    const entra = comissaoJogador(id), sai = comissaoJogador(CAREER.lineup.starters[i]);
+    if (!entra || entra.group !== slots[i][0]) return;
+    const ganho = entra.overall - (sai ? sai.overall : 0);
+    if (ganho > 0 && (!best || ganho > best.ganho)) best = { i, entra, sai, ganho };
+  });
+  if (best) return troca(best.i, best.sai, best.entra, `${comissaoNome(best.entra)} (${best.entra.overall}) rende mais que ${comissaoNome(best.sai)} (${best.sai ? best.sai.overall : "—"}) nesta posição.`, `+${best.ganho} de overall na posição`);
+  return { estado: "manter", resumo: "Manter escalação atual", motivo: "Os titulares estão disponíveis e descansados para esta formação." };
+}
+// Força de uma escalação hipotética pela fórmula do jogo (computeHumanStrength
+// lê CAREER.lineup: troca por um instante e devolve o original).
+function comissaoForca(lineup, club) {
+  const original = CAREER.lineup;
+  CAREER.lineup = { ...original, formation: lineup.formation, starters: lineup.starters, bench: lineup.bench };
+  try { return computeHumanStrength(club); } finally { CAREER.lineup = original; }
+}
+function comissaoProximoJogo() {
+  const round = CAREER.currentRound;
+  if (round > 38) return null;
+  const fx = (CAREER.schedule[round] || []).find((m) => String(m.home) === String(CAREER.clubId) || String(m.away) === String(CAREER.clubId));
+  if (!fx) return null;
+  const casa = String(fx.home) === String(CAREER.clubId);
+  return { adversarioId: casa ? fx.away : fx.home, casa, rodada: round };
+}
+function comissaoFormacao(jogo) {
+  const myClub = teamById(CAREER.clubId), opp = teamById(jogo.adversarioId);
+  if (!myClub || !opp || !opp.atk || !opp.def) return { estado: "sem-dados" };
+  const razao = (s) => {
+    const l = motorPartida().goalLambdas(jogo.casa ? s : { atk: opp.atk, def: opp.def }, jogo.casa ? { atk: opp.atk, def: opp.def } : s);
+    return jogo.casa ? l.home / l.away : l.away / l.home;
+  };
+  const atual = CAREER.lineup.formation;
+  const avaliar = (f) => { const a = autoLineup(CAREER.squad, f, false); const s = comissaoForca({ formation: f, starters: a.starters, bench: a.bench }, myClub); return { f, a, s, r: razao(s) }; };
+  const base = avaliar(atual);
+  let best = base;
+  Object.keys(FORMATIONS).forEach((f) => { if (f === atual) return; const v = avaliar(f); if (v.r > best.r) best = v; });
+  if (best.f === atual || best.r < base.r * COMISSAO_FORMACAO_GANHO) {
+    return { estado: "manter", resumo: "Manter formação atual", motivo: `O ${atual} é a melhor formação para os jogadores disponíveis contra o ${opp.name}.` };
+  }
+  const pct = (x, y) => Math.round((x / y - 1) * 100);
+  const atk = pct(best.s.atk, base.s.atk), def = pct(base.s.def, best.s.def);
+  const ganhos = [atk > 0 ? `ataque +${atk}%` : null, def > 0 ? `defesa +${def}%` : null].filter(Boolean);
+  const titularesAgora = new Set(CAREER.lineup.starters.filter(Boolean));
+  const novos = new Set(best.a.starters.filter(Boolean));
+  const entram = best.a.starters.filter((id) => id && !titularesAgora.has(id)).map((id) => comissaoNome(comissaoJogador(id)));
+  const saem = CAREER.lineup.starters.filter((id) => id && !novos.has(id)).map((id) => comissaoNome(comissaoJogador(id)));
+  return {
+    estado: "mudanca", resumo: `${best.f} para este jogo`,
+    motivo: `Com os jogadores disponíveis, o ${best.f} rende mais que o ${atual} contra o ${opp.name}${ganhos.length ? ` (${ganhos.join(", ")})` : ""}.`,
+    nota: `Gols esperados a favor/contra: ${Math.round((best.r / base.r - 1) * 100)}% melhor`,
+    detalhe: { de: atual, para: best.f, entram, saem, starters: best.a.starters, bench: best.a.bench },
+  };
+}
+const COMISSAO_POSTURAS = { 4: "Ofensiva", 3: "Equilibrada", 2: "Cautelosa" };
+function comissaoPostura(jogo) {
+  const myClub = teamById(CAREER.clubId), opp = teamById(jogo.adversarioId);
+  if (!myClub || !opp || !opp.atk || !opp.def) return { estado: "sem-dados" };
+  // Mesma conta de suggestTactics (força bruta do catálogo, sem mando).
+  const ratio = (myClub.atk * opp.def) / (opp.atk * myClub.def);
+  const nivel = ratio > 1.15 ? 4 : ratio < 0.87 ? 2 : 3;
+  const motivo = nivel === 4 ? `Seu time é favorito contra o ${opp.name}.` : nivel === 2 ? `O ${opp.name} é favorito neste confronto.` : `Times parelhos contra o ${opp.name}.`;
+  const eixos = ["ritmo", "pressao", "linhaDefensiva"];
+  const t = CAREER.lineup.tactics || {};
+  const antes = Object.fromEntries(eixos.map((id) => [id, t[id] || 3]));
+  if (eixos.every((id) => antes[id] === nivel)) return { estado: "manter", resumo: "Manter postura atual", motivo: `${COMISSAO_POSTURAS[nivel]} já está aplicada. ${motivo}` };
+  return {
+    estado: "mudanca", resumo: `${COMISSAO_POSTURAS[nivel]} para começar`, motivo,
+    nota: `Ritmo, pressão e linha defensiva no nível ${nivel}`,
+    detalhe: { nivel, nome: COMISSAO_POSTURAS[nivel], antes },
+  };
+}
+function comissaoChave(cat, item) {
+  const l = CAREER.lineup;
+  const estado = cat === "postura" ? JSON.stringify(l.tactics || {}) : JSON.stringify([l.formation, l.starters, l.bench]);
+  return JSON.stringify([cat, item.estado, item.detalhe || null, estado]);
+}
+function comissaoRecomendacoes() {
+  const contratada = !!(CAREER.technicalStaff && CAREER.technicalStaff.hired);
+  if (!contratada) return { contratada, jogo: null, itens: [] };
+  const jogo = comissaoProximoJogo();
+  if (!jogo) return { contratada, jogo: null, itens: [] };
+  const opp = teamById(jogo.adversarioId);
+  const itens = [["escalacao", comissaoEscalacao()], ["formacao", comissaoFormacao(jogo)], ["postura", comissaoPostura(jogo)]]
+    .map(([cat, item]) => ({ categoria: cat, ...item, chave: comissaoChave(cat, item) }));
+  return { contratada, jogo: { adversario: opp ? opp.name : "", casa: jogo.casa, rodada: jogo.rodada }, itens };
+}
 // Mercado — acha o titular mais fraco (menor overall) e procura, no
 // mesmo catálogo que a aba Mercado usa (allMarketPlayers), o reforço
 // MAIS BARATO da mesma posição que seja melhor E caiba no caixa atual.
@@ -17532,6 +17678,68 @@ if (V2_PONTE) {
         eixos: TACTIC_AXES.map((ax) => ({ id: ax.id, nome: ax.label, baixo: ax.lowLabel, alto: ax.highLabel, nivel: t[ax.id] || 3 })),
         setores: SECTOR_IDS.map((sec) => ({ id: sec, nome: SECTOR_LABEL[sec], instrucoes: SECTOR_INSTRUCTIONS[sec].map((i) => ({ id: i.id, nome: i.label, baixo: i.lowLabel, alto: i.highLabel, nivel: (st[sec] || {})[i.id] || 3 })) })),
       };
+    },
+    // Comissão técnica — sugestões rápidas (05/11). Ver comissaoRecomendacoes.
+    comissaoSugestoes() {
+      if (!CAREER) return { ok: false, motivo: "sem-carreira" };
+      if (LIVE_MATCH && !LIVE_MATCH.finished) return { ok: false, motivo: "partida" };
+      return { ok: true, ...comissaoRecomendacoes() };
+    },
+    // Aplica a sugestão da categoria só se ela ainda for a mesma (chave);
+    // senão devolve a recomendação atual para o técnico ver e tocar de novo.
+    // Devolve `desfazer` com o necessário para voltar SÓ esta mudança.
+    async comissaoAplicar(cat, chave) {
+      if (!CAREER) return { ok: false, motivo: "sem-carreira" };
+      if (LIVE_MATCH && !LIVE_MATCH.finished) return { ok: false, motivo: "partida" };
+      const atual = comissaoRecomendacoes();
+      const item = atual.itens.find((i) => i.categoria === cat);
+      if (!item || item.estado !== "mudanca") return { ok: false, motivo: "sem-sugestao", ...atual };
+      if (item.chave !== chave) return { ok: false, motivo: "desatualizada", ...atual };
+      const l = CAREER.lineup;
+      let desfazer;
+      if (cat === "escalacao") {
+        const { slot, sai, entra } = item.detalhe;
+        const benchIdx = l.bench.indexOf(entra.id);
+        desfazer = { categoria: cat, slot, sai: sai ? sai.id : null, entra: entra.id, benchIdx, resumo: item.resumo };
+        l.starters[slot] = entra.id;
+        if (benchIdx >= 0) { if (sai) l.bench[benchIdx] = sai.id; else l.bench.splice(benchIdx, 1); }
+      } else if (cat === "formacao") {
+        const d = item.detalhe;
+        desfazer = { categoria: cat, antes: { formation: l.formation, starters: [...l.starters], bench: [...l.bench] }, depois: { formation: d.para, starters: [...d.starters], bench: [...d.bench] }, resumo: item.resumo };
+        l.formation = d.para; l.starters = [...d.starters]; l.bench = [...d.bench];
+      } else {
+        const d = item.detalhe;
+        l.tactics = l.tactics || {};
+        desfazer = { categoria: cat, antes: d.antes, nivel: d.nivel, resumo: item.resumo };
+        Object.keys(d.antes).forEach((id) => { l.tactics[id] = d.nivel; });
+      }
+      markLineupDirty();
+      const r = await ponteGravar();
+      if (!r.ok) return r;
+      return { ok: true, desfazer, ...comissaoRecomendacoes() };
+    },
+    // Desfaz SÓ a mudança aplicada, e só se ela ainda está como ficou (sem
+    // sobrescrever o que o técnico mudou depois).
+    async comissaoDesfazer(d) {
+      if (!CAREER || !d) return { ok: false, motivo: "sem-carreira" };
+      if (LIVE_MATCH && !LIVE_MATCH.finished) return { ok: false, motivo: "partida" };
+      const l = CAREER.lineup;
+      if (d.categoria === "escalacao") {
+        if (l.starters[d.slot] !== d.entra || (d.benchIdx >= 0 && d.sai && l.bench[d.benchIdx] !== d.sai)) return { ok: false, motivo: "mudou" };
+        l.starters[d.slot] = d.sai;
+        if (d.benchIdx >= 0) { if (d.sai) l.bench[d.benchIdx] = d.entra; else l.bench.splice(d.benchIdx, 0, d.entra); }
+      } else if (d.categoria === "formacao") {
+        if (l.formation !== d.depois.formation || JSON.stringify(l.starters) !== JSON.stringify(d.depois.starters) || JSON.stringify(l.bench) !== JSON.stringify(d.depois.bench)) return { ok: false, motivo: "mudou" };
+        l.formation = d.antes.formation; l.starters = [...d.antes.starters]; l.bench = [...d.antes.bench];
+      } else if (d.categoria === "postura") {
+        const t = l.tactics || {};
+        if (!Object.keys(d.antes).every((id) => (t[id] || 3) === d.nivel)) return { ok: false, motivo: "mudou" };
+        Object.entries(d.antes).forEach(([id, v]) => { t[id] = v; });
+      } else return { ok: false, motivo: "categoria-invalida" };
+      markLineupDirty();
+      const r = await ponteGravar();
+      if (!r.ok) return r;
+      return { ok: true, ...comissaoRecomendacoes() };
     },
     async salvarTatica(eixos) {
       if (!CAREER) return { ok: false, motivo: "sem-carreira" };

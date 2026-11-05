@@ -20,8 +20,8 @@ export function focusablesIn(el: HTMLElement): HTMLElement[] {
   return [...el.querySelectorAll<HTMLElement>(FOCUSABLE)].filter((n) => n.tabIndex >= 0 && !n.hasAttribute("inert") && n.getClientRects().length > 0);
 }
 
-export function Sheet({ labelledBy, describedBy, alert = false, onDismiss, children }: {
-  labelledBy: string; describedBy?: string; alert?: boolean; onDismiss?: () => void; children: ReactNode;
+export function Sheet({ labelledBy, describedBy, alert = false, onDismiss, className, id, children }: {
+  labelledBy: string; describedBy?: string; alert?: boolean; onDismiss?: () => void; className?: string; id?: string; children: ReactNode;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const dismissRef = useRef(onDismiss);
@@ -63,7 +63,7 @@ export function Sheet({ labelledBy, describedBy, alert = false, onDismiss, child
 
   return createPortal(
     <div className="sheet-scrim" onClick={() => dismissRef.current?.()}>
-      <div ref={ref} className="sheet" role={alert ? "alertdialog" : "dialog"} aria-modal="true" aria-labelledby={labelledBy} aria-describedby={describedBy}
+      <div ref={ref} id={id} className={className ? `sheet ${className}` : "sheet"} role={alert ? "alertdialog" : "dialog"} aria-modal="true" aria-labelledby={labelledBy} aria-describedby={describedBy}
         tabIndex={-1} onClick={(e) => e.stopPropagation()}>
         <div className="sheet-grip" aria-hidden="true" />
         {children}

@@ -116,6 +116,12 @@ async function newCareer(page, base, email) {
   await page.waitForTimeout(200);
   await page.click("#tabelaModalClose").catch(() => {});
   await page.waitForTimeout(200);
+  // Proposta por jogador (evento sorteado depois da rodada) cobre o menu:
+  // recusa, como nos outros testes do fluxo pós-jogo.
+  if (await page.evaluate(() => document.getElementById("playerOfferOverlay")?.classList.contains("open"))) {
+    await page.click("#btnPlayerOfferDecline");
+    await page.waitForFunction(() => !document.getElementById("playerOfferOverlay").classList.contains("open"));
+  }
 
   // 6) Aberta pelo menu "≡" (fora do fluxo pós-jogo), "Continuar" NÃO
   // aparece -- é só uma tela de consulta, X fecha normalmente.
