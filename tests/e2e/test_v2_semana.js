@@ -64,7 +64,7 @@ const base = "http://localhost:8787";
     small: [...document.querySelectorAll("a, button")].filter((el) => { const r = el.getBoundingClientRect(); return r.height && (r.height < 44 || r.width < 44); }).map((el) => el.className) }));
   const sizes = {};
   const at360 = async (k) => { await v2.setViewportSize({ width: 360, height: 780 }); sizes[k] = await small(); await v2.setViewportSize({ width: 390, height: 844 }); };
-  const home = async () => { await v2.goto(base + "/carreira/", { waitUntil: "domcontentloaded" }); await v2.waitForSelector(".home", { timeout: 20000 }); };
+  const home = async () => { await v2.goto(base + "/", { waitUntil: "domcontentloaded" }); await v2.waitForSelector(".home", { timeout: 20000 }); };
 
   // 1) Semana sem jogo.
   const w1 = await setWeek("plain");
@@ -83,7 +83,7 @@ const base = "http://localhost:8787";
   const cashRow = (wk.rows.find((r) => r[0] === "Caixa") || [])[1];
   const fmtCash = (v) => `R$ ${(v / 1e6).toLocaleString("pt-BR", { maximumFractionDigits: 1 })} mi`;
   check("1) Avançar semana pela v2: Semana concluída (treino, condição, prazos, caixa = save), save +1 semana; recarregar não avança outra:",
-    cta[0] === "Avançar semana" && cta[1] === "/carreira/semana?avancar=semana" && wk.url === "/carreira/semana" && wk.h1 === "A semana avançou."
+    cta[0] === "Avançar semana" && cta[1] === "/semana?avancar=semana" && wk.url === "/semana" && wk.h1 === "A semana avançou."
       && wk.secs.join("|") === "Treino aplicado|Condição do elenco|Prazos e finanças" && s1.calendar.idx === w1.wi + 1 && cashRow === fmtCash(s1.finances.cash)
       && s1b.calendar.idx === w1.wi + 1,
     JSON.stringify({ cta, wk, idx: [w1.wi, s1.calendar.idx, s1b.calendar.idx], cash: [cashRow, s1.finances.cash] }));
@@ -95,7 +95,7 @@ const base = "http://localhost:8787";
   await v2.waitForSelector(".wk h1", { timeout: 30000 });
   await v2.click(".cal-foot .cta");
   await v2.waitForSelector(".home", { timeout: 15000 });
-  check("2) 'Continuar' volta ao Início:", new URL(v2.url()).pathname === "/carreira/", v2.url());
+  check("2) 'Continuar' volta ao Início:", new URL(v2.url()).pathname === "/", v2.url());
 
   // 3) Amistoso da pré-temporada.
   const w3 = await setWeek("pre");
@@ -123,8 +123,8 @@ const base = "http://localhost:8787";
   const s3 = await serverCareer(v2);
   const slot = s3.calendar.friendlies.find((f) => f.wi === w3.wi);
   check("3) Amistoso: 3 convites (1º marcado), escolha gravada, partida 'Amistoso' sem 'Ver tabela', Continuar → semana com placar; save: jogado, +1 semana, rodada igual:",
-    cta3[0] === "Ir para o amistoso" && cta3[1] === "/carreira/amistoso" && am.h1 === "Entre em campo." && am.opts.length === 3 && am.opts[0][1] === "true"
-      && chosen === w3.friendly.invites[1] && kicker === "Amistoso" && !rs.links.includes("Ver tabela") && wk3.url === "/carreira/semana" && wk3.secs[0] === "Amistoso"
+    cta3[0] === "Ir para o amistoso" && cta3[1] === "/amistoso" && am.h1 === "Entre em campo." && am.opts.length === 3 && am.opts[0][1] === "true"
+      && chosen === w3.friendly.invites[1] && kicker === "Amistoso" && !rs.links.includes("Ver tabela") && wk3.url === "/semana" && wk3.secs[0] === "Amistoso"
       && slot.played === true && slot.result && wk3.score === `Flamengo ${slot.result.gh} × ${slot.result.ga} ${am.opts[1][0]}` && s3.calendar.idx === w3.wi + 1 && s3.currentRound === w3.round,
     JSON.stringify({ cta3, am, chosen, invites: w3.friendly.invites, kicker, rs, wk3, slot, idx: s3.calendar.idx }));
 
@@ -173,7 +173,7 @@ const base = "http://localhost:8787";
   await v2.click(".cal-foot .link-back");
   await v2.waitForSelector(".home", { timeout: 15000 });
   check("6) Notícias da v2: título, elenco (lesionado com volta) e manchetes; 'Voltar ao clube' → Início:",
-    nw.h1 === "Nos bastidores." && nw.squad.some((t) => /lesionado · volta na rodada 6$/.test(t)) && nw.squad.every((t) => /· (lesionado|suspenso)/.test(t)) && nw.heads[0] === "Flamengo assume a ponta" && new URL(v2.url()).pathname === "/carreira/",
+    nw.h1 === "Nos bastidores." && nw.squad.some((t) => /lesionado · volta na rodada 6$/.test(t)) && nw.squad.every((t) => /· (lesionado|suspenso)/.test(t)) && nw.heads[0] === "Flamengo assume a ponta" && new URL(v2.url()).pathname === "/",
     JSON.stringify(nw));
 
   // 7) Sino.

@@ -1,4 +1,4 @@
-// Carreira 2.0 — Entrega 06 (Elenco + Perfil, /carreira/elenco). Pela UI
+// Carreira 2.0 — Entrega 06 (Elenco + Perfil, /elenco). Pela UI
 // real: aba Elenco da v2; seções e contagens iguais às da versão atual
 // (principal + emprestados por posição, base à parte); situação real
 // (titular/reserva/lesionado com retorno); Perfil com dados esportivos e
@@ -49,9 +49,9 @@ const { skipPreseason } = require("./_calendar_skip");
   const v2 = await ctx.newPage();
   const writes = [];
   v2.on("request", (r) => { if (r.url().includes("/api/career") && r.method() !== "GET") writes.push(r.method()); });
-  await v2.goto(base + "/carreira/", { waitUntil: "domcontentloaded" });
+  await v2.goto(base + "/", { waitUntil: "domcontentloaded" });
   await v2.waitForSelector(".home", { timeout: 15000 });
-  await v2.click('.tab[href="/carreira/elenco"]');
+  await v2.click('.tab[href="/elenco"]');
   await v2.waitForSelector(".sq-row", { timeout: 10000 });
   const sq = await v2.evaluate(() => ({
     path: location.pathname, title: document.querySelector(".sq-title").textContent,
@@ -61,7 +61,7 @@ const { skipPreseason } = require("./_calendar_skip");
   const mainShown = sq.perSec.slice(0, sq.heads.indexOf("Base") >= 0 ? sq.heads.indexOf("Base") : undefined).reduce((a, b) => a + b, 0);
   const baseShown = sq.heads.indexOf("Base") >= 0 ? sq.perSec[sq.heads.indexOf("Base")] : 0;
   check("1) Aba Elenco abre o Elenco da v2: Goleiros/Defesa/Meio-campo/Ataque + Base, mesmas contagens da versão atual:",
-    sq.path === "/carreira/elenco" && sq.title === "Elenco" && JSON.stringify(sq.heads.slice(0, 4)) === JSON.stringify(["Goleiros", "Defesa", "Meio-campo", "Ataque"])
+    sq.path === "/elenco" && sq.title === "Elenco" && JSON.stringify(sq.heads.slice(0, 4)) === JSON.stringify(["Goleiros", "Defesa", "Meio-campo", "Ataque"])
       && mainShown === fx.main && baseShown === fx.base, JSON.stringify({ sq, fx: { main: fx.main, base: fx.base } }));
 
   // 2) Situação real: lesionado com retorno (vermelho) e titular.
@@ -85,32 +85,32 @@ const { skipPreseason } = require("./_calendar_skip");
   const short = parts.length > 1 ? `${parts[0][0].toUpperCase()}. ${parts[parts.length - 1]}` : fx.striker.name;
   check("3) Perfil: nome, 'Ataque', 'No elenco do Flamengo', overall/atributos/jogos iguais ao save, sem idade nem salário:",
     pf.name === short && pf.pos === "Ataque" && pf.club === "No elenco do Flamengo" && pf.facts["Overall"] === String(fx.striker.overall) && pf.facts["Ataque"] === String(fx.striker.atk)
-      && pf.facts["Situação"] === "Titular" && pf.facts["Jogos"] === String(fx.striker.apps || 0) && !/anos|Salário|R\$/.test(pf.text) && pf.legacy === `/carreira/elenco/ficha?id=${encodeURIComponent(fx.striker.id)}`, JSON.stringify(pf.facts));
+      && pf.facts["Situação"] === "Titular" && pf.facts["Jogos"] === String(fx.striker.apps || 0) && !/anos|Salário|R\$/.test(pf.text) && pf.legacy === `/elenco/ficha?id=${encodeURIComponent(fx.striker.id)}`, JSON.stringify(pf.facts));
 
   // 4) Navegação: Ver escalação → Escalação v2; voltar; Voltar ao elenco.
-  await v2.click('.pf-foot a.cta[href="/carreira/escalacao"]');
+  await v2.click('.pf-foot a.cta[href="/escalacao"]');
   await v2.waitForSelector(".lu-pitch", { timeout: 10000 });
   await v2.goBack(); await v2.waitForSelector(".pf-hero", { timeout: 10000 });
   await v2.click(".pf-foot .link-back");
   await v2.waitForSelector(".sq-row", { timeout: 10000 });
-  const navOk = new URL(v2.url()).pathname === "/carreira/elenco";
-  await v2.click('.cal-foot a.cta[href="/carreira/escalacao"]');
+  const navOk = new URL(v2.url()).pathname === "/elenco";
+  await v2.click('.cal-foot a.cta[href="/escalacao"]');
   await v2.waitForSelector(".lu-pitch", { timeout: 10000 });
-  await v2.click('.lu-more[href="/carreira/elenco"]');
+  await v2.click('.lu-more[href="/elenco"]');
   await v2.waitForSelector(".sq-row", { timeout: 10000 });
-  check("4) Perfil → Ver escalação → voltar → 'Voltar ao elenco'; Elenco → Ajustar escalação → 'Ver elenco' volta ao Elenco:", navOk && new URL(v2.url()).pathname === "/carreira/elenco", v2.url());
+  check("4) Perfil → Ver escalação → voltar → 'Voltar ao elenco'; Elenco → Ajustar escalação → 'Ver elenco' volta ao Elenco:", navOk && new URL(v2.url()).pathname === "/elenco", v2.url());
 
   // 5) Jogador inexistente → Elenco; 360 px; nada gravado.
-  await v2.goto(base + "/carreira/elenco/jogador?id=nao-existe", { waitUntil: "domcontentloaded" });
+  await v2.goto(base + "/elenco/jogador?id=nao-existe", { waitUntil: "domcontentloaded" });
   await v2.waitForSelector(".sq-row", { timeout: 15000 });
-  const redirected = new URL(v2.url()).pathname === "/carreira/elenco";
+  const redirected = new URL(v2.url()).pathname === "/elenco";
   await v2.setViewportSize({ width: 360, height: 780 });
   const audit = () => v2.evaluate(() => ({
     overflow: document.documentElement.scrollWidth - innerWidth,
     small: [...document.querySelectorAll("a, button")].filter((el) => { const r = el.getBoundingClientRect(); return r.height && (r.height < 44 || r.width < 44); }).map((el) => el.className),
   }));
   const a1 = await audit();
-  await v2.goto(base + "/carreira/elenco/jogador?id=" + encodeURIComponent(fx.hurtId), { waitUntil: "domcontentloaded" });
+  await v2.goto(base + "/elenco/jogador?id=" + encodeURIComponent(fx.hurtId), { waitUntil: "domcontentloaded" });
   await v2.waitForSelector(".pf-hero", { timeout: 15000 });
   const a2 = await audit();
   const hurtSit = await v2.evaluate(() => [...document.querySelectorAll(".pf-fact")].find((f) => f.querySelector("dt").textContent === "Situação").querySelector("dd").className);
@@ -121,7 +121,7 @@ const { skipPreseason } = require("./_calendar_skip");
   await v2.click(".pf-legacy");
   await v2.waitForFunction(() => (document.querySelector("h1") || {}).textContent === "Conheça seu jogador.", null, { timeout: 15000 });
   const det = await v2.evaluate(() => ({ path: location.pathname + location.search, name: document.querySelector(".sp-player .row-title")?.textContent }));
-  check("6) 'Contrato e ações do jogador' abre a ficha completa da v2 do mesmo jogador:", det.path.startsWith("/carreira/elenco/ficha?id=") && !!det.name, JSON.stringify(det));
+  check("6) 'Contrato e ações do jogador' abre a ficha completa da v2 do mesmo jogador:", det.path.startsWith("/elenco/ficha?id=") && !!det.name, JSON.stringify(det));
 
   await browser.close();
 })();

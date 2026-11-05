@@ -42,8 +42,8 @@ const base = "http://localhost:8787";
     await v2.setViewportSize({ width: 390, height: 844 });
   };
   const waitH1 = (t) => v2.waitForFunction((t) => (document.querySelector("h1") || {}).textContent === t, t, { timeout: 40000 });
-  const home = async () => { await v2.goto(base + "/carreira/", { waitUntil: "domcontentloaded" }); await v2.waitForSelector(".home", { timeout: 20000 }); };
-  await v2.goto(base + "/carreira/", { waitUntil: "domcontentloaded" });
+  const home = async () => { await v2.goto(base + "/", { waitUntil: "domcontentloaded" }); await v2.waitForSelector(".home", { timeout: 20000 }); };
+  await v2.goto(base + "/", { waitUntil: "domcontentloaded" });
   await v2.waitForSelector(".home", { timeout: 20000 });
   // Edita o save pelo servidor (a v2 relê ao navegar com recarga).
   const patch = (fn, arg) => v2.evaluate(async ({ src, arg }) => {
@@ -71,7 +71,7 @@ const base = "http://localhost:8787";
     warn: document.querySelector(".se-warn").textContent, links: [...document.querySelectorAll(".row .row-title")].map((t) => t.textContent) }));
   await at360("encerramento");
   check("1) Temporada encerrada: 'Próxima temporada' abre o Encerramento da v2 (1º, meta cumprida, aviso da virada, classificação e histórico):",
-    cta[0] === "Próxima temporada" && cta[1] === "/carreira/temporada" && cta[2] === "Temporada encerrada." && e1.pos === "1º" && e1.met && e1.goal === s0.boardGoal.label
+    cta[0] === "Próxima temporada" && cta[1] === "/temporada" && cta[2] === "Temporada encerrada." && e1.pos === "1º" && e1.met && e1.goal === s0.boardGoal.label
       && e1.warn.includes(`temporada ${s0.seasonYear + 1} começa`) && e1.links.includes("Ver classificação") && e1.links.includes("Ver histórico"),
     JSON.stringify({ cta, e1 }));
 
@@ -122,13 +122,13 @@ const base = "http://localhost:8787";
   check("3) Proposta ao treinador: clube, orçamento e clube atual; Recusar tira a proposta; Aceitar confirma (Cancelar não muda) e a carreira segue no novo clube, com o anterior no histórico:",
     p3.some((r) => r[0].includes(otherName)) && p3.some((r) => r[0] === "Orçamento para salários" && r[1] === "R$ 9,5 mi") && p3.some((r) => r[0] === "Posição atual")
       && (s3a.clubProposals || []).length === 0 && sheet.t === "Mudar de clube?" && sheet.d.includes(otherName) && String(s3b.clubId) === String(s2.clubId)
-      && first.url === "/carreira/nova/pronto" && String(s3.clubId) === String(other) && s3.clubHistory[0].clubName === s2.clubName && s3.clubHistory[0].reason === "accepted_proposal",
+      && first.url === "/nova/pronto" && String(s3.clubId) === String(other) && s3.clubHistory[0].clubName === s2.clubName && s3.clubHistory[0].reason === "accepted_proposal",
     JSON.stringify({ p3, s3a: s3a.clubProposals, sheet, first, club: [s2.clubId, s3.clubId], hist: s3.clubHistory }));
 
   // 4) Perfil e histórico.
   await home();
   await v2.click('.tabbar .tab[href$="/mais"]');
-  await v2.waitForURL(/\/carreira\/mais$/);
+  await v2.waitForURL(/\/mais$/);
   await v2.click('.hb-row[href$="/perfil"]');
   await waitH1("Perfil do treinador.");
   const p4 = await v2.evaluate(() => ({ name: document.querySelector(".cp-name").textContent, role: document.querySelector(".cp-role").textContent, rep: document.querySelector(".wk-item dd").textContent }));
@@ -153,7 +153,7 @@ const base = "http://localhost:8787";
   const d5 = await v2.evaluate(() => ({ reason: document.querySelector(".dm-reason").textContent, rows: [...document.querySelectorAll(".wk-item dt")].map((d) => d.textContent) }));
   await at360("demissao");
   const s5b = await serverCareer(v2);
-  await v2.goto(base + "/carreira/temporada", { waitUntil: "domcontentloaded" });
+  await v2.goto(base + "/temporada", { waitUntil: "domcontentloaded" });
   await waitH1("O ciclo terminou.");
   const s5c = await serverCareer(v2);
   await v2.click(".dm .cal-foot .cta");

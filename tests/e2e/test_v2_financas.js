@@ -1,4 +1,4 @@
-// Carreira 2.0 — Entrega 08 (Finanças, /carreira/financas). Pela UI real:
+// Carreira 2.0 — Entrega 08 (Finanças, /financas). Pela UI real:
 // Início → Finanças; saldo e folha × teto iguais aos da versão atual;
 // últimas movimentações = extrato da versão atual (mesma ordem) com "Ver
 // extrato completo"; saldo negativo em vermelho e folha acima do teto;
@@ -56,19 +56,19 @@ const { playRound, closeLeftoverTabela } = require("./_round");
   }));
 
   // 1) Início → Finanças: saldo e folha × teto iguais aos da versão atual.
-  await v2.goto(base + "/carreira/", { waitUntil: "domcontentloaded" });
+  await v2.goto(base + "/", { waitUntil: "domcontentloaded" });
   await v2.waitForSelector(".home", { timeout: 15000 });
-  await v2.click('a.row[href="/carreira/financas"]');
+  await v2.click('a.row[href="/financas"]');
   await v2.waitForSelector(".fn-cash", { timeout: 10000 });
   const r1 = await read();
   check("1) Início → Finanças: saldo (lima) e 'folha de teto' iguais aos da versão atual, sem gráficos:",
-    r1.path === "/carreira/financas" && r1.cash === legacy.cash && !r1.neg && r1.wage === `${legacy.bill} de ${legacy.cap}` && !r1.over && !document_hasChart(r1.text), JSON.stringify({ r1: { cash: r1.cash, wage: r1.wage }, legacy: { cash: legacy.cash, bill: legacy.bill, cap: legacy.cap } }));
+    r1.path === "/financas" && r1.cash === legacy.cash && !r1.neg && r1.wage === `${legacy.bill} de ${legacy.cap}` && !r1.over && !document_hasChart(r1.text), JSON.stringify({ r1: { cash: r1.cash, wage: r1.wage }, legacy: { cash: legacy.cash, bill: legacy.bill, cap: legacy.cap } }));
   function document_hasChart(t) { return /%/.test(t); }
 
   // 2) Últimas movimentações = 5 primeiras do extrato atual; "Ver extrato
   // completo" abre o Extrato da v2 (fase 9) com todos os lançamentos.
   const r2a = r1.tx;
-  await v2.click('.fn-ledger ~ a.tb-more[href="/carreira/extrato"]');
+  await v2.click('.fn-ledger ~ a.tb-more[href="/extrato"]');
   await v2.waitForFunction(() => (document.querySelector("h1") || {}).textContent === "Cada movimento conta.", null, { timeout: 15000 });
   const r2 = await v2.evaluate(() => [...document.querySelectorAll(".wk-item dt")].map((d) => d.textContent.split(" · ").slice(1).join(" · ")));
   const rounds = await v2.locator(".wk-sec .kicker-caps", { hasText: "Rodada" }).count();
@@ -94,23 +94,23 @@ const { playRound, closeLeftoverTabela } = require("./_round");
     overflow: document.documentElement.scrollWidth - innerWidth,
     small: [...document.querySelectorAll("a, button")].filter((el) => { const r = el.getBoundingClientRect(); return r.height && (r.height < 44 || r.width < 44); }).map((el) => el.className),
   }));
-  await v2.click('.fn-links a[href="/carreira/elenco"]');
+  await v2.click('.fn-links a[href="/elenco"]');
   await v2.waitForSelector(".sq-row", { timeout: 10000 });
   await v2.goBack(); await v2.waitForSelector(".fn-cash", { timeout: 10000 });
   check("4) Atalhos (elenco, mercado, patrocínios, estádio, comissão e pedido de orçamento, todos na v2); 360 px sem rolagem e alvos ≥ 44 px; nada gravado:",
-    JSON.stringify(r3.links) === JSON.stringify(["/carreira/elenco", "/carreira/mercado", "/carreira/patrocinios", "/carreira/estadio", "/carreira/comissao", "/carreira/diretoria/orcamento"]) && a.overflow <= 0 && a.small.length === 0 && writes.length === 0, JSON.stringify({ links: r3.links, a, writes }));
+    JSON.stringify(r3.links) === JSON.stringify(["/elenco", "/mercado", "/patrocinios", "/estadio", "/comissao", "/diretoria/orcamento"]) && a.overflow <= 0 && a.small.length === 0 && writes.length === 0, JSON.stringify({ links: r3.links, a, writes }));
 
   // 5) Ver mercado abre o Mercado da v2 (fase 8); Voltar ao clube → tela Clube.
   await page.goto("about:blank");
-  await v2.click('.fn-links a[href="/carreira/mercado"]');
+  await v2.click('.fn-links a[href="/mercado"]');
   await v2.waitForFunction(() => (document.querySelector("h1") || {}).textContent === "Busque seu reforço.", null, { timeout: 30000 });
   const mk = { path: new URL(v2.url()).pathname };
-  await v2.goto(base + "/carreira/financas", { waitUntil: "domcontentloaded" });
+  await v2.goto(base + "/financas", { waitUntil: "domcontentloaded" });
   await v2.waitForSelector(".fn-cash", { timeout: 15000 });
   await v2.click(".cal-foot .link-back");
-  await v2.waitForURL(/\/carreira\/clube$/, { timeout: 10000 });
+  await v2.waitForURL(/\/clube$/, { timeout: 10000 });
   check("5) 'Ver mercado' abre o Mercado da v2 ('Busque seu reforço.'); 'Voltar ao clube' → tela Clube (P7):",
-    mk.path === "/carreira/mercado" && new URL(v2.url()).pathname === "/carreira/clube", JSON.stringify({ mk, url: v2.url() }));
+    mk.path === "/mercado" && new URL(v2.url()).pathname === "/clube", JSON.stringify({ mk, url: v2.url() }));
 
   await browser.close();
 })();

@@ -102,7 +102,7 @@ async function sendStreakReminders(now = brtNow()) {
       body: streakDay > 0
         ? "Volte hoje pro Modo Técnico e colete o login diário antes da meia-noite."
         : "Entre no Modo Técnico e comece (ou continue) sua sequência de login diário.",
-      url: "/carreira.html",
+      url: "/",
     });
     if (result.ok) sent++;
     else if (result.expired) { users.setPushSubscription(id, null); cleared++; }

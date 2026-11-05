@@ -46,9 +46,9 @@ const base = "http://localhost:8787";
   const ok = (t) => v2.waitForFunction((t) => (document.querySelector(".pr-ok") || {}).textContent === t, t, { timeout: 20000 });
 
   // 1) Índice.
-  await go("/carreira/escalacao");
+  await go("/escalacao");
   await v2.waitForSelector(".lu-legacy", { timeout: 20000 });
-  await v2.click('.lu-legacy[href="/carreira/tatica"]');
+  await v2.click('.lu-legacy[href="/tatica"]');
   await waitH1("Seu time em campo.");
   const hub = await v2.evaluate(() => [...document.querySelectorAll(".row .row-title")].map((t) => t.textContent));
   await at360("tatica");
@@ -68,7 +68,7 @@ const base = "http://localhost:8787";
     axes.join("|") === "Ritmo de jogo|Pressão|Linha defensiva|Estilo de passe" && s2.lineup.tactics.ritmo === 5 && s2.lineup.tactics.pressao === 1, JSON.stringify({ axes, t: s2.lineup.tactics }));
 
   // 3) Por setor.
-  await go("/carreira/tatica/setor", "Ajuste cada setor.");
+  await go("/tatica/setor", "Ajuste cada setor.");
   const tabs = await v2.evaluate(() => [...document.querySelectorAll(".pr-tab")].map((t) => t.textContent));
   await v2.locator(".pr-tab", { hasText: "Meio" }).click();
   await v2.click('[aria-labelledby="sc-transicao"] .tk-step:nth-child(5)');
@@ -83,7 +83,7 @@ const base = "http://localhost:8787";
     JSON.stringify({ tabs, st: s3.lineup.sectorTactics }));
 
   // 4) Esquemas.
-  await go("/carreira/tatica/esquemas", "Guarde sua ideia.");
+  await go("/tatica/esquemas", "Guarde sua ideia.");
   await v2.click(".pr .cal-foot .cta");
   await v2.waitForSelector("#sq-n");
   await v2.fill("#sq-n", "Pressão alta");
@@ -113,7 +113,7 @@ const base = "http://localhost:8787";
     JSON.stringify({ a: s4a.tacticalSchemes.map((x) => x.name), b: s4b.tacticalSchemes.map((x) => x.name), active: s4c.activeSchemeId, after: s4d.tacticalSchemes.length }));
 
   // 5) Marcação individual.
-  await go("/carreira/tatica/marcacao", "Acompanhe de perto.");
+  await go("/tatica/marcacao", "Acompanhe de perto.");
   const opp = await v2.textContent(".wk-item dt");
   await v2.click(".pr-check"); // estava "Sem marcação" marcado: desmarca
   await v2.locator(".pr-select").nth(0).click();
@@ -132,7 +132,7 @@ const base = "http://localhost:8787";
     !!opp && s5a.manMarking && s5a.manMarking.myPlayerId && s5a.manMarking.rivalPlayerId && !s5b.manMarking, JSON.stringify({ opp, mm: s5a.manMarking, after: s5b.manMarking }));
 
   // 6) Escalar automaticamente.
-  await go("/carreira/escalacao");
+  await go("/escalacao");
   await v2.waitForSelector(".lu-auto", { timeout: 20000 });
   await v2.click(".lu-auto");
   await v2.waitForSelector("#au-t");
@@ -143,7 +143,7 @@ const base = "http://localhost:8787";
   check("6) Escalar automaticamente (com confirmação): 11 titulares gravados:", au === "Escalar automaticamente?" && s6.lineup.starters.filter(Boolean).length === 11, JSON.stringify({ au, starters: s6.lineup.starters.filter(Boolean).length }));
 
   // 7) Treino.
-  await go("/carreira/");
+  await go("/");
   await v2.waitForSelector(".home", { timeout: 20000 });
   await v2.click('.home-list a.row[href$="/treino"]');
   await waitH1("Prepare a semana.");
@@ -189,7 +189,7 @@ const base = "http://localhost:8787";
     p.seasonHistory = [{ year: c.seasonYear - 1, clubName: c.clubName, apps: 30, goals: 5, assists: 2, overall: p.overall - 2 }];
     await fetch("/api/career", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(c) });
   }, pid);
-  await go("/carreira/treino/condicao", "Cuide do elenco.");
+  await go("/treino/condicao", "Cuide do elenco.");
   const cond = await v2.evaluate(() => ({ rows: document.querySelectorAll(".pr-plist li").length, risk: document.querySelectorAll(".pr-risk").length }));
   await at360("condicao");
   await v2.click(`.pr-prow[href$="id=${encodeURIComponent(pid)}"]`);

@@ -2,7 +2,7 @@
 // 04_inicio_carreira (Pacote Mobile) com as decisões de 03/11:
 // - Abertura (CAP01-T01): túnel, wordmark e "Carregando…".
 // - Login (CAP01-T02): e-mail e senha; "Criar conta" leva ao cadastro do
-//   portal (/?signup=1), o único que existe.
+//   portal (/brasileirao?signup=1), o único que existe.
 // - Competição (CAP01-T03): nomes reais (Brasileirão Série A/B/C) com os
 //   subtítulos do jogo.
 // - Clube (CAP01-T04): os clubes reais, sem pré-seleção; o botão só fica
@@ -72,7 +72,7 @@ export function LoginScreen({ onLoggedIn }: { onLoggedIn: () => void }) {
         {error && <p className="inline-error" role="alert">{error}</p>}
         <button type="submit" className="cta" disabled={busy}>{busy ? "Entrando…" : "Entrar"}</button>
       </form>
-      <p className="ac-signup">Ainda não tem uma conta? <a href="/?signup=1">Criar conta</a></p>
+      <p className="ac-signup">Ainda não tem uma conta? <a href="/brasileirao?signup=1">Criar conta</a></p>
     </div>
   );
 }

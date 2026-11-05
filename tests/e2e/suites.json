@@ -40,7 +40,8 @@
       "test_v2_tabela_partida.js",
       "test_v2_gravacao.js",
       "test_v2_motor.js",
-      "test_v2_acesso.js"
+      "test_v2_acesso.js",
+      "test_v2_corte.js"
     ]
   },
   "exclusive": {

@@ -1,4 +1,4 @@
-// Carreira 2.0 — Entrega 07 (Diretoria, /carreira/diretoria). Pela UI
+// Carreira 2.0 — Entrega 07 (Diretoria, /diretoria). Pela UI
 // real: Início → Objetivo → Diretoria; meta igual à da versão atual;
 // pré-temporada sem posição; depois de 1 rodada, posição e "Dentro da
 // meta" com o critério da versão atual (boardGoalMet); outros objetivos;
@@ -47,13 +47,13 @@ const { playRound, closeLeftoverTabela } = require("./_round");
   }));
 
   // 1) Pré-temporada: Início → Objetivo → Diretoria, meta real, sem posição.
-  await v2.goto(base + "/carreira/", { waitUntil: "domcontentloaded" });
+  await v2.goto(base + "/", { waitUntil: "domcontentloaded" });
   await v2.waitForSelector(".home", { timeout: 15000 });
-  await v2.click('a.row[href="/carreira/diretoria"]');
+  await v2.click('a.row[href="/diretoria"]');
   await v2.waitForSelector(".bd-list", { timeout: 10000 });
   const pre = await read();
   check("1) Início → Diretoria (pré-temporada): meta igual à da versão atual e 'Temporada ainda não começou', sem barra nem %:",
-    pre.path === "/carreira/diretoria" && pre.title === "Diretoria" && pre.lead === "O que o clube espera." && pre.items[0][0] === goal
+    pre.path === "/diretoria" && pre.title === "Diretoria" && pre.lead === "O que o clube espera." && pre.items[0][0] === goal
       && pre.items[1][0] === "Temporada ainda não começou" && pre.items[1].length === 1 && !/%|confian/i.test(pre.text), JSON.stringify(pre.items));
 
   // 2) Depois de 1 rodada: posição e "Dentro da meta" pelo critério da versão atual.
@@ -88,7 +88,7 @@ const { playRound, closeLeftoverTabela } = require("./_round");
     r2.history.length === 2 && /· 7º lugar/.test(r2.history[0]) && /Terminar entre os 10 primeiros · Cumprida$/.test(r2.history[0]) && /Não cumprida$/.test(r2.history[1]), JSON.stringify(r2.history));
 
   // 4) Ver classificação → Tabela; voltar; 360 px; Voltar ao clube; nada gravado.
-  await v2.click('.bd-link[href="/carreira/tabela"]');
+  await v2.click('.bd-link[href="/tabela"]');
   await v2.waitForSelector(".tb-table", { timeout: 10000 });
   await v2.goBack(); await v2.waitForSelector(".bd-list", { timeout: 10000 });
   await v2.setViewportSize({ width: 360, height: 780 });
@@ -97,9 +97,9 @@ const { playRound, closeLeftoverTabela } = require("./_round");
     small: [...document.querySelectorAll("a, button")].filter((el) => { const r = el.getBoundingClientRect(); return r.height && (r.height < 44 || r.width < 44); }).map((el) => el.className),
   }));
   await v2.click(".cal-foot .link-back");
-  await v2.waitForURL(/\/carreira\/clube$/, { timeout: 10000 });
+  await v2.waitForURL(/\/clube$/, { timeout: 10000 });
   check("4) Ver classificação abre a Tabela; 360 px sem rolagem horizontal e alvos ≥ 44 px; Voltar ao clube → tela Clube (P7); nada gravado:",
-    a.overflow <= 0 && a.small.length === 0 && new URL(v2.url()).pathname === "/carreira/clube" && writes.length === 0, JSON.stringify({ a, writes, url: v2.url() }));
+    a.overflow <= 0 && a.small.length === 0 && new URL(v2.url()).pathname === "/clube" && writes.length === 0, JSON.stringify({ a, writes, url: v2.url() }));
 
   await browser.close();
 })();

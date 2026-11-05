@@ -3,7 +3,7 @@
   "name": "BR Treinador",
   "short_name": "BR Treinador",
   "description": "Modo Técnico do BR Data — assuma o comando de um clube do Brasileirão: escalação, mercado, coletivas de imprensa e temporadas inteiras.",
-  "start_url": "/carreira.html?source=pwa",
+  "start_url": "/?source=pwa",
   "scope": "/",
   "display": "standalone",
   "orientation": "any",

@@ -115,7 +115,7 @@ const { newCareer, signup, serverCareer, playV2MatchToEnd, ponteFrame, continueT
 
   // 5) Sessão expirada (logout de verdade antes do fim da partida).
   const before5 = await serverCareer(v2);
-  await v2.goto("http://localhost:8787/carreira/", { waitUntil: "domcontentloaded" });
+  await v2.goto("http://localhost:8787/", { waitUntil: "domcontentloaded" });
   await v2.waitForSelector(".home", { timeout: 15000 });
   await v2.click(".home-main .cta");
   await v2.waitForSelector(".pm-cta", { timeout: 10000 });

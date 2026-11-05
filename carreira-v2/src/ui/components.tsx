@@ -2,7 +2,6 @@ import type { Team } from "../domain/types.ts";
 import { crestSrc } from "../adapters/gateways.ts";
 import { IconArrow, IconHome, IconUsers, IconCalendar, IconMore } from "./icons.tsx";
 import type { HomeModel } from "../domain/home.ts";
-import { legacyHref } from "../adapters/legacy.ts";
 import { BASE, Link } from "./router.tsx";
 
 export function Wordmark() {
@@ -25,7 +24,7 @@ export function Crest({ team, size }: { team: Team; size: number }) {
 // passaram a ter tela de entrada própria).
 export function TabBar({ current }: { current: "inicio" | "elenco" | "jogos" | "mais" }) {
   const tabs = [
-    { id: "inicio", label: "Início", href: "/carreira/", Icon: IconHome },
+    { id: "inicio", label: "Início", href: "/", Icon: IconHome },
     { id: "elenco", label: "Elenco", href: `${BASE}/elenco`, Icon: IconUsers },
     { id: "jogos", label: "Jogos", href: `${BASE}/jogos`, Icon: IconCalendar },
     { id: "mais", label: "Mais", href: `${BASE}/mais`, Icon: IconMore },
@@ -62,8 +61,6 @@ export function CtaLink({ cta, className }: { cta: HomeModel["cta"]; className: 
   const to = cta.action === "preparar" ? `${BASE}/pre-jogo`
     : cta.action === "avancar-semana" ? `${BASE}/semana?avancar=semana`
     : cta.action === "amistoso" ? `${BASE}/amistoso`
-    : cta.action === "proxima-temporada" ? `${BASE}/temporada` : null;
-  return to
-    ? <Link className={className} to={to}>{inner}</Link>
-    : <a className={className} href={legacyHref(cta.action)}>{inner}</a>;
+    : `${BASE}/temporada`;
+  return <Link className={className} to={to}>{inner}</Link>;
 }

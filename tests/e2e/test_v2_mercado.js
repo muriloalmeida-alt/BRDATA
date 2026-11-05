@@ -47,7 +47,7 @@ const base = "http://localhost:8787";
     await fetch("/api/career", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(c) });
     return out;
   }, { src: fn, arg });
-  await go("/carreira/");
+  await go("/");
   await v2.waitForSelector(".home", { timeout: 20000 });
   // Caixa folgado e teto alto para as compras do teste (o motor checa os
   // dois) e janela aberta (a carreira nova começa com ela fechada): a semana
@@ -61,7 +61,7 @@ const base = "http://localhost:8787";
   `);
 
   // 1) Lista e filtro.
-  await go("/carreira/mercado", "Busque seu reforço.");
+  await go("/mercado", "Busque seu reforço.");
   await v2.waitForSelector(".mk-list li", { timeout: 30000 });
   const l1 = await v2.evaluate(() => ({ window: document.querySelector(".mk-window").textContent, count: document.querySelector(".sq-count").textContent }));
   await v2.click(".sq-filter");
@@ -76,7 +76,7 @@ const base = "http://localhost:8787";
 
   // 2) Fazer proposta.
   const offerValue = Math.round(prep.a.value * 0.9 / 1000) * 1000;
-  await go(`/carreira/mercado/alvo?clube=${encodeURIComponent(prep.a.club)}&id=${encodeURIComponent(prep.a.id)}`, "Conheça seu reforço.");
+  await go(`/mercado/alvo?clube=${encodeURIComponent(prep.a.club)}&id=${encodeURIComponent(prep.a.id)}`, "Conheça seu reforço.");
   await at360("alvo");
   await v2.click(".pr .cal-foot .cta");
   await waitH1("Faça sua oferta.");
@@ -93,7 +93,7 @@ const base = "http://localhost:8787";
   // 3) Contraproposta: aumentar (valor livre) e depois aceitar com confirmação.
   const counter = Math.round(prep.a.value * 1.1 / 1000) * 1000;
   await put(`const o = c.pendingOffersOut.find((x) => x.id === arg.id); o.status = "countered"; o.counterValue = arg.v;`, { id: o2.id, v: counter });
-  await go(`/carreira/mercado/negociacao?id=${encodeURIComponent(o2.id)}`, "A negociação continua.");
+  await go(`/mercado/negociacao?id=${encodeURIComponent(o2.id)}`, "A negociação continua.");
   await v2.waitForSelector("#ng-c");
   await at360("negociacao");
   await v2.locator("button.pr-row", { hasText: "Aumentar proposta" }).click();
@@ -105,7 +105,7 @@ const base = "http://localhost:8787";
   const s3a = await serverCareer(v2);
   const o3 = s3a.pendingOffersOut.find((o) => o.id === o2.id);
   await put(`const o = c.pendingOffersOut.find((x) => x.id === arg.id); o.status = "countered"; o.counterValue = arg.v;`, { id: o2.id, v: counter });
-  await go(`/carreira/mercado/negociacao?id=${encodeURIComponent(o2.id)}`, "A negociação continua.");
+  await go(`/mercado/negociacao?id=${encodeURIComponent(o2.id)}`, "A negociação continua.");
   const cash0 = (await serverCareer(v2)).finances.cash;
   await v2.click(".pr .cal-foot .cta");
   await v2.waitForSelector("#cc-t");
@@ -120,10 +120,10 @@ const base = "http://localhost:8787";
     JSON.stringify({ o3: [o3.offerValue, o3.status], sheet3, cash: [cash0, s3.finances.cash, per] }));
 
   // 4) Desistir.
-  await go(`/carreira/mercado/proposta?clube=${encodeURIComponent(prep.b.club)}&id=${encodeURIComponent(prep.b.id)}`, "Faça sua oferta.");
+  await go(`/mercado/proposta?clube=${encodeURIComponent(prep.b.club)}&id=${encodeURIComponent(prep.b.id)}`, "Faça sua oferta.");
   await v2.click(".pr .cal-foot .cta");
   await waitH1("Proposta enviada.");
-  await go("/carreira/mercado/propostas", "Suas negociações.");
+  await go("/mercado/propostas", "Suas negociações.");
   await v2.click(".wk-sec a.pr-row >> nth=0");
   await waitH1("A negociação continua.");
   await v2.click(".pr .cal-foot .link-back");
@@ -135,7 +135,7 @@ const base = "http://localhost:8787";
 
   // 5) Colocar à venda pela ficha.
   const sell = s4.squad.filter((p) => p.origin === "principal" && p.id !== prep.a.id)[2];
-  await go(`/carreira/elenco/ficha?id=${encodeURIComponent(sell.id)}&tela=numeros`, "A temporada em números.");
+  await go(`/elenco/ficha?id=${encodeURIComponent(sell.id)}&tela=numeros`, "A temporada em números.");
   await v2.locator("button.pr-row", { hasText: "Colocar à venda" }).click();
   await v2.waitForSelector("#ls-t");
   await at360("anunciar");
@@ -149,7 +149,7 @@ const base = "http://localhost:8787";
   // 6) Propostas recebidas: recusar só uma, escolher outra.
   await put(`const l = c.pendingListings.find((x) => x.id === arg.id);
     l.offers = [{ id: "lo1", clubId: arg.c1, clubName: "Clube Um", value: 3000000, installments: 1, round: 1 }, { id: "lo2", clubId: arg.c2, clubName: "Clube Dois", value: 4000000, installments: 2, round: 1 }];`, { id: l5.id, c1: prep.d.club, c2: prep.e.club });
-  await go("/carreira/mercado/vendas", "Jogadores no mercado.");
+  await go("/mercado/vendas", "Jogadores no mercado.");
   await at360("vendas");
   await v2.locator("a.pr-row", { hasText: "Propostas recebidas" }).click();
   await waitH1("Escolha a melhor oferta.");
@@ -170,7 +170,7 @@ const base = "http://localhost:8787";
     JSON.stringify({ after1, cash: [cash6, s6.finances.cash] }));
 
   // 7) Empréstimos: entrada (75%) e saída (clube sorteado; tenta de novo se ninguém quiser).
-  await go(`/carreira/mercado/emprestimo?clube=${encodeURIComponent(prep.d.club)}&id=${encodeURIComponent(prep.d.id)}`, "Combine o empréstimo.");
+  await go(`/mercado/emprestimo?clube=${encodeURIComponent(prep.d.club)}&id=${encodeURIComponent(prep.d.id)}`, "Combine o empréstimo.");
   await v2.locator('[aria-labelledby="ln-p"] .pr-seg-btn', { hasText: "75%" }).click();
   await at360("emprestimo-entrada");
   await v2.click(".pr .cal-foot .cta");
@@ -180,7 +180,7 @@ const base = "http://localhost:8787";
   const out = s7a.squad.filter((p) => p.origin === "principal" && p.overall < 70)[0] || s7a.squad.filter((p) => p.origin === "principal").slice(-1)[0];
   let prepOk = false;
   for (let i = 0; i < 6 && !prepOk; i++) {
-    await go(`/carreira/mercado/emprestimo?id=${encodeURIComponent(out.id)}`, "Combine o empréstimo.");
+    await go(`/mercado/emprestimo?id=${encodeURIComponent(out.id)}`, "Combine o empréstimo.");
     await v2.waitForFunction(() => document.querySelector(".pr .wk-item") || document.querySelector(".pr .inline-error"), null, { timeout: 30000 });
     prepOk = await v2.evaluate(() => !!document.querySelector(".pr .wk-item"));
   }
@@ -195,13 +195,13 @@ const base = "http://localhost:8787";
     JSON.stringify({ in7: in7 && [in7.origin, in7.wage], prep7, lent: !!lent }));
 
   // 8) Histórico e proposta pendente.
-  await go("/carreira/mercado/historico", "O mercado do clube.");
+  await go("/mercado/historico", "O mercado do clube.");
   const tabs = {};
   for (const t of ["Compras", "Vendas", "Empréstimos"]) { await v2.locator(".pr-tab", { hasText: t }).click(); tabs[t] = await v2.locator(".mk-log").count(); }
   await at360("historico");
   const po = s7.squad.filter((p) => p.origin === "principal")[4];
   await put(`c.pendingOffer = { playerId: arg.id, playerName: arg.name, clubId: arg.club, clubName: "Clube Três", fee: 1234000, round: c.currentRound };`, { id: po.id, name: po.name, club: prep.e.club });
-  await go("/carreira/mercado", "Busque seu reforço.");
+  await go("/mercado", "Busque seu reforço.");
   await v2.locator("a.pr-row", { hasText: "Clube Três quer" }).click();
   await waitH1("Uma oferta chegou.");
   const cash8 = (await serverCareer(v2)).finances.cash;

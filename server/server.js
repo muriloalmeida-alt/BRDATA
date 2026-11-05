@@ -195,6 +195,15 @@ function isHomologHost(req) {
 // homologação declarar canonical pra si mesma (o certo é sempre
 // apontar pra produção, mesmo que algo escape do bloqueio abaixo).
 const CANONICAL_SITE_URL = "https://brdata.online";
+// Fase 11 (corte da Carreira 2.0, 04/11/2026): a raiz do domínio passou
+// a abrir a Carreira (v2) e o site do Brasileirão (tabela, jogos,
+// estatísticas, times, jogadores) mudou inteiro para /brasileirao/*.
+// As rotas do site continuam escritas sem o prefixo: o handler tira o
+// prefixo antes de despachar (ver isSite no createServer) e sitePath()
+// põe de volta em todo link, canonical, redirect e sitemap.
+const SITE_BASE = "/brasileirao";
+function sitePath(p) { return p === "/" ? SITE_BASE : SITE_BASE + p; }
+const LEGACY_UI_FOR_TESTS = process.env.BRDATA_LEGACY_UI === "1";
 
 // Pedido do usuário: homologação nunca deveria aparecer indexada no
 // Google nem ter link nenhum seguido a partir dela — é uma cópia de
@@ -532,7 +541,7 @@ async function renderShellWithSeo(req, { title, description, canonicalPath, body
   // homologação (que além disso já leva noindex/nofollow, ver
   // withRobotsMetaIfHomolog mais abaixo).
   const base = CANONICAL_SITE_URL;
-  const canonicalUrl = `${base}${canonicalPath}`;
+  const canonicalUrl = `${base}${sitePath(canonicalPath)}`;
   const ogImage = image || `${base}/img/og-image.png`;
   const ld = jsonLd || {
     "@context": "https://schema.org", "@type": "WebSite",
@@ -634,7 +643,7 @@ async function handlePlayerRoute(req, res, playerId, requestedTeamSlug) {
     // de servir o mesmo conteúdo debaixo de 2 URLs diferentes.
     const onCanonicalRoute = correctTeamSlug ? (requestedTeamSlug === correctTeamSlug) : (requestedTeamSlug == null);
     if (!onCanonicalRoute) {
-      res.writeHead(301, { Location: canonicalPath });
+      res.writeHead(301, { Location: sitePath(canonicalPath) });
       return res.end();
     }
 
@@ -648,7 +657,7 @@ async function handlePlayerRoute(req, res, playerId, requestedTeamSlug) {
     // clicável/rastreável) -- correctTeamSlug já estava calculado
     // acima, só faltava usar aqui no corpo.
     const teamLinkHTML = correctTeamSlug
-      ? `<p><a href="/times/${escapeHtml(correctTeamSlug)}">Ver página do ${escapeHtml(teamName)}</a></p>`
+      ? `<p><a href="${SITE_BASE}/times/${escapeHtml(correctTeamSlug)}">Ver página do ${escapeHtml(teamName)}</a></p>`
       : "";
     const bodySnapshotHtml = `<div id="seoSnapshot" style="max-width:680px;margin:32px auto;padding:0 20px;font:15px/1.6 system-ui,sans-serif;color:#0A1424;">
   <h1>${escapeHtml(player.name)}</h1>
@@ -669,7 +678,7 @@ async function handlePlayerRoute(req, res, playerId, requestedTeamSlug) {
       jsonLd: {
         "@context": "https://schema.org", "@type": "Person",
         name: player.name,
-        url: `${CANONICAL_SITE_URL}${canonicalPath}`,
+        url: `${CANONICAL_SITE_URL}${sitePath(canonicalPath)}`,
         ...(player.photo ? { image: player.photo } : {}),
         ...(teamName ? { affiliation: { "@type": "SportsTeam", name: teamName } } : {}),
       },
@@ -812,7 +821,7 @@ async function handleMatchRoute(req, res, fixtureId) {
     // link nenhum pra nenhum dos 2 times (o JSON-LD já tinha homeTeam.
     // url/awayTeam.url, mas isso não é clicável/rastreável por um
     // crawler igual um <a> de verdade é).
-    const teamLinksHTML = `<p>${escapeHtml(homeName)} <a href="/times/${escapeHtml(slugify(homeName))}">ver página do time</a> · ${escapeHtml(awayName)} <a href="/times/${escapeHtml(slugify(awayName))}">ver página do time</a></p>`;
+    const teamLinksHTML = `<p>${escapeHtml(homeName)} <a href="${SITE_BASE}/times/${escapeHtml(slugify(homeName))}">ver página do time</a> · ${escapeHtml(awayName)} <a href="${SITE_BASE}/times/${escapeHtml(slugify(awayName))}">ver página do time</a></p>`;
     const bodySnapshotHtml = `<div id="seoSnapshot" style="max-width:680px;margin:32px auto;padding:0 20px;font:15px/1.6 system-ui,sans-serif;color:#0A1424;">
   <h1>${escapeHtml(homeName)} x ${escapeHtml(awayName)}</h1>
   <p><strong>${escapeHtml(quickAnswer)}</strong></p>
@@ -834,12 +843,12 @@ async function handleMatchRoute(req, res, fixtureId) {
     const eventJsonLd = {
       "@type": "SportsEvent",
       name: `${homeName} x ${awayName}`,
-      url: `${CANONICAL_SITE_URL}${canonicalPath}`,
+      url: `${CANONICAL_SITE_URL}${sitePath(canonicalPath)}`,
       eventStatus: finished ? "https://schema.org/EventCompleted" : "https://schema.org/EventScheduled",
       ...(fixture.date ? { startDate: fixture.date } : {}),
       ...(venueName ? { location: { "@type": "Place", name: venueName } } : {}),
-      homeTeam: { "@type": "SportsTeam", name: homeName, sport: "Soccer", ...(home?.logo ? { logo: home.logo } : {}), url: `${CANONICAL_SITE_URL}/times/${slugify(homeName)}` },
-      awayTeam: { "@type": "SportsTeam", name: awayName, sport: "Soccer", ...(away?.logo ? { logo: away.logo } : {}), url: `${CANONICAL_SITE_URL}/times/${slugify(awayName)}` },
+      homeTeam: { "@type": "SportsTeam", name: homeName, sport: "Soccer", ...(home?.logo ? { logo: home.logo } : {}), url: `${CANONICAL_SITE_URL}${SITE_BASE}/times/${slugify(homeName)}` },
+      awayTeam: { "@type": "SportsTeam", name: awayName, sport: "Soccer", ...(away?.logo ? { logo: away.logo } : {}), url: `${CANONICAL_SITE_URL}${SITE_BASE}/times/${slugify(awayName)}` },
       ...(broadcastStation ? {
         publication: {
           "@type": "BroadcastEvent",
@@ -909,7 +918,14 @@ function serveStatic(req, res) {
     if (filePath.endsWith("sw.js")) {
       headers["Cache-Control"] = "no-cache";
       res.writeHead(200, headers);
-      return res.end(data.toString("utf8").replaceAll("__DEPLOY_VERSION__", DEPLOY_VERSION));
+      let v2Assets = [];
+      try {
+        const v2Index = fs.readFileSync(path.join(PUBLIC_DIR, "carreira", "index.html"), "utf8");
+        v2Assets = [...new Set(v2Index.match(/\/carreira\/assets\/[^"']+\.(?:js|css)/g) || [])];
+      } catch { /* sem build da v2: segue sem pré-carregar */ }
+      return res.end(data.toString("utf8")
+        .replaceAll("__DEPLOY_VERSION__", DEPLOY_VERSION)
+        .replace("/*__V2_ASSETS__*/[]", JSON.stringify(v2Assets)));
     }
     // Todo .html (raiz, privacidade, admin, carreira) também não deve
     // ficar em cache — é o documento que decide QUAIS versões de JS/CSS
@@ -937,9 +953,66 @@ function serveStatic(req, res) {
 
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, `http://${req.headers.host}`);
-  const { pathname, searchParams } = url;
+  let { pathname } = url;
+  const { searchParams } = url;
+  // Fase 11 (corte): o site do Brasileirão mora em /brasileirao/*. Tira o
+  // prefixo e segue para as rotas de sempre (escritas sem ele); isSite
+  // separa as rotas do site das da Carreira, que agora é a raiz.
+  let isSite = false;
+  if (pathname === SITE_BASE || pathname.startsWith(SITE_BASE + "/")) {
+    isSite = true;
+    pathname = pathname.slice(SITE_BASE.length) || "/";
+    req.url = pathname + url.search;
+  }
 
   try {
+    if (!isSite) {
+      const qs = url.search;
+      // Endereços antigos do site (antes da raiz virar a Carreira): 301
+      // para o mesmo caminho em /brasileirao, com a query.
+      if (/^\/(times|jogadores)\//.test(pathname) || /^\/jogos\/\d/.test(pathname)
+        || pathname === "/seja-premium" || pathname === "/apoie") {
+        res.writeHead(301, { Location: sitePath(pathname) + qs });
+        return res.end();
+      }
+      // Carreira anterior e endereços antigos da v2: tudo vai para a raiz,
+      // com a query (convite, retorno do pagamento, source=pwa).
+      // BRDATA_LEGACY_UI=1 (só o servidor isolado dos testes E2E, ver
+      // tests/e2e/run_parallel.js): a versão anterior continua abrindo em
+      // /carreira.html e /carreira-old, porque a suíte de regressão do motor
+      // roda pela tela dela até a fase 12 (extração do motor). Em produção
+      // a variável não existe e as duas redirecionam. O cabeçalho
+      // x-brdata-producao deixa um teste ver o roteamento de produção.
+      if (LEGACY_UI_FOR_TESTS && !req.headers["x-brdata-producao"] && (pathname === "/carreira.html" || pathname === "/carreira-old")) {
+        return fs.readFile(path.join(PUBLIC_DIR, "carreira.html"), (err, data) => {
+          if (err) { res.writeHead(404); return res.end("Not found"); }
+          res.writeHead(200, { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-cache" });
+          res.end(data.toString("utf8").replace("</head>", `<meta name="robots" content="noindex, nofollow">\n</head>`));
+        });
+      }
+      if (pathname === "/carreira.html" || pathname === "/carreira-old" || pathname === "/carreira-v2" || pathname.startsWith("/carreira-v2/")) {
+        const rest = pathname.startsWith("/carreira-v2/") ? pathname.slice("/carreira-v2".length) : "/";
+        res.writeHead(301, { Location: rest + qs });
+        return res.end();
+      }
+      if (pathname === "/carreira" || (pathname.startsWith("/carreira/") && pathname !== "/carreira/motor" && !path.extname(pathname))) {
+        res.writeHead(301, { Location: (pathname.slice("/carreira".length) || "/") + qs });
+        return res.end();
+      }
+      // Carreira 2.0 (React; fonte em carreira-v2/, build em
+      // public/carreira/): qualquer caminho SEM extensão fora de /api,
+      // /admin, /carreira/motor e do site serve o index da SPA (deep link
+      // e recarregar funcionam). Arquivos (assets, ícones, sw.js) seguem
+      // para o estático normal.
+      if (!path.extname(pathname) && !pathname.startsWith("/api/") && pathname !== "/admin" && pathname !== "/carreira/motor") {
+        return fs.readFile(path.join(PUBLIC_DIR, "carreira", "index.html"), (err, data) => {
+          if (err) { res.writeHead(404); return res.end("Not found"); }
+          res.writeHead(200, { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-cache" });
+          res.end(data.toString("utf8").replace("</head>", `<meta name="robots" content="noindex, nofollow">\n</head>`));
+        });
+      }
+    }
+
     if (pathname === "/api/health") {
       return sendJSON(res, 200, {
         ok: true,
@@ -1037,15 +1110,17 @@ const server = http.createServer(async (req, res) => {
       // host essa requisição específica veio (evita listar URL de
       // homologação por engano se alguém bater aqui nesse host, ou de
       // um domínio auxiliar do Railway).
-      const base = CANONICAL_SITE_URL;
+      // Só o site do Brasileirão (/brasileirao/*): a Carreira, na raiz,
+      // fica atrás de login e com noindex.
+      const base = CANONICAL_SITE_URL + SITE_BASE;
       const today = new Date().toISOString().slice(0, 10);
       const urls = [
-        { loc: `${base}/`, changefreq: "daily", priority: "1.0" },
+        { loc: base, changefreq: "daily", priority: "1.0" },
         { loc: `${base}/tabela`, changefreq: "daily", priority: "0.9" },
         { loc: `${base}/estatisticas`, changefreq: "daily", priority: "0.7" },
         { loc: `${base}/noticias`, changefreq: "hourly", priority: "0.6" },
         { loc: `${base}/seja-premium`, changefreq: "weekly", priority: "0.5" },
-        { loc: `${base}/privacidade.html`, changefreq: "yearly", priority: "0.3" },
+        { loc: `${CANONICAL_SITE_URL}/privacidade.html`, changefreq: "yearly", priority: "0.3" },
       ];
       if (liveModeEnabled()) {
         try {
@@ -1177,7 +1252,7 @@ const server = http.createServer(async (req, res) => {
         // abaixo, pros times só faltava).
         const standingsRowsHTML = sorted.map((r) => {
           const t = teamById.get(r.id);
-          const nameHTML = t ? `<a href="/times/${escapeHtml(slugify(t.name))}">${escapeHtml(t.name)}</a>` : "?";
+          const nameHTML = t ? `<a href="${SITE_BASE}/times/${escapeHtml(slugify(t.name))}">${escapeHtml(t.name)}</a>` : "?";
           return `<tr><td>${r.rank}º</td><td>${nameHTML}</td><td>${r.pts}</td><td>${r.j}</td></tr>`;
         }).join("\n    ");
         const upcomingHTML = upcoming.map((f) => {
@@ -1188,7 +1263,7 @@ const server = http.createServer(async (req, res) => {
           // link interno de maior peso pra ajudar o Google a descobrir
           // essas URLs novas (sitemap sozinho não carrega relevância).
           const slug = matchSlug(home, away, f.date);
-          const href = `/jogos/${f.id}${slug ? `-${slug}` : ""}`;
+          const href = `${SITE_BASE}/jogos/${f.id}${slug ? `-${slug}` : ""}`;
           return `<li><a href="${escapeHtml(href)}">${escapeHtml(home)} x ${escapeHtml(away)} — onde assistir e horário</a></li>`;
         }).join("\n    ");
 
@@ -1201,9 +1276,9 @@ const server = http.createServer(async (req, res) => {
     ${standingsRowsHTML}
     </tbody>
   </table>
-  <p><a href="/tabela">Ver tabela completa (V/E/D, saldo de gols e zonas de classificação)</a></p>
+  <p><a href="${SITE_BASE}/tabela">Ver tabela completa (V/E/D, saldo de gols e zonas de classificação)</a></p>
   ${upcoming.length ? `<h2>Próximos jogos</h2>\n  <ul>\n    ${upcomingHTML}\n  </ul>` : ""}
-  <p><a href="/estatisticas">Artilheiros e estatísticas</a> · <a href="/noticias">Notícias</a> · <a href="/seja-premium">Seja Premium</a></p>
+  <p><a href="${SITE_BASE}/estatisticas">Artilheiros e estatísticas</a> · <a href="${SITE_BASE}/noticias">Notícias</a> · <a href="${SITE_BASE}/seja-premium">Seja Premium</a></p>
 </div>`;
 
         const html = await renderShellWithSeo(req, {
@@ -1265,7 +1340,7 @@ const server = http.createServer(async (req, res) => {
 
         const rowsHTML = sorted.map((r) => {
           const t = teamById.get(r.id);
-          const nameHTML = t ? `<a href="/times/${escapeHtml(slugify(t.name))}">${escapeHtml(t.name)}</a>` : "?";
+          const nameHTML = t ? `<a href="${SITE_BASE}/times/${escapeHtml(slugify(t.name))}">${escapeHtml(t.name)}</a>` : "?";
           const zone = zoneLabel(r.rank);
           return `<tr><td>${r.rank}º</td><td>${nameHTML}</td><td>${r.pts}</td><td>${r.j}</td><td>${r.v}</td><td>${r.e}</td><td>${r.d}</td><td>${r.gp}</td><td>${r.gc}</td><td>${r.sg > 0 ? "+" + r.sg : r.sg}</td><td>${zone}</td></tr>`;
         }).join("\n    ");
@@ -1296,7 +1371,7 @@ const server = http.createServer(async (req, res) => {
             name: "Tabela do Brasileirão 2026",
             description,
             inLanguage: "pt-BR",
-            url: `${CANONICAL_SITE_URL}/tabela`,
+            url: `${CANONICAL_SITE_URL}${SITE_BASE}/tabela`,
           },
         });
         res.writeHead(200, { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "public, max-age=600" });
@@ -1364,7 +1439,7 @@ const server = http.createServer(async (req, res) => {
             "@context": "https://schema.org", "@type": "WebPage",
             name: "Artilheiros e Estatísticas do Brasileirão 2026",
             description, inLanguage: "pt-BR",
-            url: `${CANONICAL_SITE_URL}/estatisticas`,
+            url: `${CANONICAL_SITE_URL}${SITE_BASE}/estatisticas`,
           },
         });
         res.writeHead(200, { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "public, max-age=600" });
@@ -1416,7 +1491,7 @@ const server = http.createServer(async (req, res) => {
             "@context": "https://schema.org", "@type": "WebPage",
             name: "Notícias do Brasileirão 2026",
             description, inLanguage: "pt-BR",
-            url: `${CANONICAL_SITE_URL}/noticias`,
+            url: `${CANONICAL_SITE_URL}${SITE_BASE}/noticias`,
           },
         });
         res.writeHead(200, { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "public, max-age=600" });
@@ -1448,7 +1523,7 @@ const server = http.createServer(async (req, res) => {
       // logo abaixo/em /api/auth/signup) -- um redirect sem a query
       // quebraria captureApoieReturnParams() (app.js), que lê esses
       // parâmetros pra mostrar o resultado do pagamento.
-      res.writeHead(301, { Location: `/seja-premium${url.search}` });
+      res.writeHead(301, { Location: `${SITE_BASE}/seja-premium${url.search}` });
       return res.end();
     }
     if (pathname === "/seja-premium") {
@@ -1475,7 +1550,7 @@ const server = http.createServer(async (req, res) => {
           jsonLd: {
             "@context": "https://schema.org", "@type": "WebPage",
             name: "Seja Premium — Planos BR Data", description, inLanguage: "pt-BR",
-            url: `${CANONICAL_SITE_URL}/seja-premium`,
+            url: `${CANONICAL_SITE_URL}${SITE_BASE}/seja-premium`,
             mainEntity: plans.filter((p) => p.price > 0).map((p) => ({
               "@type": "Product",
               name: `BR Data ${p.title}`,
@@ -1592,7 +1667,7 @@ const server = http.createServer(async (req, res) => {
           jsonLd: {
             "@context": "https://schema.org", "@type": "SportsTeam",
             name: team.name, sport: "Soccer",
-            url: `${CANONICAL_SITE_URL}/times/${slug}`,
+            url: `${CANONICAL_SITE_URL}${SITE_BASE}/times/${slug}`,
             ...(team.logo ? { logo: team.logo } : {}),
           },
         });
@@ -1646,22 +1721,10 @@ const server = http.createServer(async (req, res) => {
       });
     }
 
-    // URL amigável pro "Modo Técnico" (Elifoot-like) — mesmo espírito
-    // da rota /admin acima: só serve o HTML/JS, quem protege de
-    // verdade é o login obrigatório de /api/career/* (ver guard mais
-    // abaixo). noindex sempre — é uma ferramenta atrás de login, não
-    // conteúdo pra indexar.
-    // Carreira 2.0 (frontend novo, React — fonte em carreira-v2/, build
-    // versionado em public/carreira/). Desde 01/11/2026 é ela que responde
-    // em /carreira; a versão anterior (carreira.html) passou para
-    // /carreira-old (que a v2 ainda usa para as telas que não tem; o motor
-    // da partida fica em /carreira/motor, acima). Qualquer subrota SEM extensão serve o index
-    // da SPA (deep link); arquivos (assets/…, *.webp) caem no estático normal.
-    // Motor da Carreira 2.0 (plano de independência, fase 1): a mesma página
-    // da versão anterior, em modo ponte, num endereço próprio — a v2 não
-    // aponta mais para /carreira-old. A página usa caminhos relativos
-    // (css/…, js/…), então ganha <base href="/"> para resolver a partir da
-    // raiz. Só é aberta escondida, por dentro da v2.
+    // Motor da Carreira 2.0 (plano de independência, fase 1): a página da
+    // versão anterior, em modo ponte, num endereço próprio. Usa caminhos
+    // relativos (css/…, js/…), então ganha <base href="/"> para resolver a
+    // partir da raiz. Só é aberta escondida, por dentro da v2.
     if (pathname === "/carreira/motor") {
       return fs.readFile(path.join(PUBLIC_DIR, "carreira.html"), (err, data) => {
         if (err) { res.writeHead(404); return res.end("Not found"); }
@@ -1671,31 +1734,6 @@ const server = http.createServer(async (req, res) => {
           .replace("</head>", `<meta name="robots" content="noindex, nofollow">\n</head>`));
       });
     }
-    if (pathname === "/carreira" || (pathname.startsWith("/carreira/") && !path.extname(pathname))) {
-      return fs.readFile(path.join(PUBLIC_DIR, "carreira", "index.html"), (err, data) => {
-        if (err) { res.writeHead(404); return res.end("Not found"); }
-        res.writeHead(200, { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-cache" });
-        res.end(data.toString("utf8").replace("</head>", `<meta name="robots" content="noindex, nofollow">\n</head>`));
-      });
-    }
-    // Endereço antigo da v2 (links e favoritos de antes da troca): mesmo
-    // caminho, já na rota nova.
-    if (pathname === "/carreira-v2" || pathname.startsWith("/carreira-v2/")) {
-      const qs = req.url.includes("?") ? req.url.slice(req.url.indexOf("?")) : "";
-      res.writeHead(302, { Location: "/carreira" + pathname.slice("/carreira-v2".length) + qs });
-      return res.end();
-    }
-    if (pathname === "/carreira-old") {
-      return fs.readFile(path.join(PUBLIC_DIR, "carreira.html"), (err, data) => {
-        if (err) { res.writeHead(404); return res.end("Not found"); }
-        res.writeHead(200, { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-cache" });
-        res.end(data.toString("utf8").replace(
-          "</head>",
-          `<meta name="robots" content="noindex, nofollow">\n</head>`
-        ));
-      });
-    }
-
     // Beacon de analytics de produto (funil de login + páginas mais
     // navegadas — pedido do usuário, ver server/src/analytics.js e
     // GET /api/adminpanel/analytics mais abaixo) — colocado CEDO de
@@ -2166,7 +2204,7 @@ const server = http.createServer(async (req, res) => {
         const pref = await mercadoPago.createPreference({
           plan, name, email, phone,
           externalReference: user.id,
-          backUrl: `${base}/seja-premium`,
+          backUrl: `${base}${SITE_BASE}/seja-premium`,
           notificationUrl: `${base}/api/support/webhook`,
         });
         users.updateUser(user.id, { preferenceId: pref.id });
@@ -2380,7 +2418,7 @@ const server = http.createServer(async (req, res) => {
       const result = await push.sendNotification(req.authUser.pushSubscription, {
         title: "⚽ Tudo certo!",
         body: "As notificações push do Modo Técnico estão funcionando.",
-        url: "/carreira.html",
+        url: "/",
       });
       if (!result.ok && result.expired) users.setPushSubscription(req.authUser.id, null);
       return sendJSON(res, result.ok ? 200 : 502, result);
@@ -2405,7 +2443,7 @@ const server = http.createServer(async (req, res) => {
         const pref = await mercadoPago.createPreference({
           plan, name: user.name, email: user.email, phone: user.phone,
           externalReference: user.id,
-          backUrl: `${base}/seja-premium`,
+          backUrl: `${base}${SITE_BASE}/seja-premium`,
           notificationUrl: `${base}/api/support/webhook`,
         });
         if (user.planStatus === "active" && user.plan !== plan.id) {
@@ -2441,7 +2479,7 @@ const server = http.createServer(async (req, res) => {
           itemTitle: `BR Treinador — ${pkg.title} (${pkg.credits.toLocaleString("pt-BR")} Créditos BR)`,
           name: user.name, email: user.email, phone: user.phone,
           externalReference: `credits:${user.id}:${pkg.id}`,
-          backUrl: `${base}/carreira.html`,
+          backUrl: `${base}/loja`, // Fase 11: volta para a Loja da v2 (lê o status na URL)
           notificationUrl: `${base}/api/support/webhook`,
         });
         return sendJSON(res, 200, { checkoutUrl: pref.init_point });

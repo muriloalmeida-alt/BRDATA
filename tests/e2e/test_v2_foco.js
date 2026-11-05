@@ -29,7 +29,7 @@ const { newCareer, serverCareer } = require("./_v2_match");
   const atTitle = async () => { const f = await focused(); const h1 = await v2.evaluate(() => (document.querySelector("#root h1")?.textContent || "").trim().slice(0, 40)); return f.tag === "H1" && f.text === h1 ? h1 : null; };
 
   // 1) Foco ao navegar.
-  await v2.goto("http://localhost:8787/carreira/", { waitUntil: "domcontentloaded" });
+  await v2.goto("http://localhost:8787/", { waitUntil: "domcontentloaded" });
   await v2.waitForSelector(".home", { timeout: 15000 });
   const nav = {};
   await v2.locator(".tab", { hasText: "Elenco" }).click(); await v2.waitForSelector(".sq-row");
@@ -90,7 +90,7 @@ const { newCareer, serverCareer } = require("./_v2_match");
     JSON.stringify({ closed2, formBefore, chosen, formAfter, puts: puts - putsA, btnFocus }));
 
   // 3) Partida.
-  await v2.goto("http://localhost:8787/carreira/", { waitUntil: "domcontentloaded" });
+  await v2.goto("http://localhost:8787/", { waitUntil: "domcontentloaded" });
   await v2.waitForSelector(".home");
   await v2.click(".home-main .cta");
   await v2.waitForSelector(".pm-cta");
@@ -133,7 +133,7 @@ const { newCareer, serverCareer } = require("./_v2_match");
     return route.continue();
   });
   const t0 = Date.now();
-  await v3.goto("http://localhost:8787/carreira/partida", { waitUntil: "domcontentloaded" });
+  await v3.goto("http://localhost:8787/partida", { waitUntil: "domcontentloaded" });
   await v3.waitForSelector('[role="alert"] .state-btn', { timeout: 45000 });
   const took = Date.now() - t0;
   const err = await v3.evaluate(() => ({ text: document.querySelector('[role="alert"]').textContent, frames: document.querySelectorAll("iframe").length }));

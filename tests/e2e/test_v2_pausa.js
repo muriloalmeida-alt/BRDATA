@@ -38,7 +38,7 @@ const { skipPreseason } = require("./_calendar_skip");
   await page.goto("about:blank");
 
   const v2 = await ctx.newPage();
-  await v2.goto(base + "/carreira/partida?iniciar=1", { waitUntil: "domcontentloaded" });
+  await v2.goto(base + "/partida?iniciar=1", { waitUntil: "domcontentloaded" });
   await v2.waitForSelector(".mt-score", { timeout: 40000 });
   await v2.waitForFunction(() => /^(15|30)/.test(document.querySelector(".mt-min")?.textContent || ""), null, { timeout: 20000 });
 

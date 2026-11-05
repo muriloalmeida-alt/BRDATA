@@ -210,7 +210,7 @@ async function startIsolatedServer(profile = null) {
   }
   const log = fs.openSync(path.join(ARTIFACTS, profile ? `server-${profile.name}.log` : "server.log"), "w");
   const t0 = Date.now();
-  const proc = spawn(process.execPath, ["server.js"], { cwd: srv, env: { ...process.env, ...(profile ? profile.env : {}), PORT: String(PORT) }, stdio: ["ignore", log, log] });
+  const proc = spawn(process.execPath, ["server.js"], { cwd: srv, env: { ...process.env, ...(profile ? profile.env : {}), PORT: String(PORT), BRDATA_LEGACY_UI: "1" }, stdio: ["ignore", log, log] });
   while (!(await httpOk(PORT))) {
     if (proc.exitCode != null) throw new Error(`servidor isolado saiu com código ${proc.exitCode} — ver _artifacts/server.log`);
     if (Date.now() - t0 > 30000) { proc.kill("SIGKILL"); throw new Error("servidor isolado não respondeu em 30s — ver _artifacts/server.log"); }

@@ -1,4 +1,4 @@
-// Carreira 2.0 — Entrega 04 (Tabela, /carreira/tabela). Pela UI real,
+// Carreira 2.0 — Entrega 04 (Tabela, /tabela). Pela UI real,
 // depois de 2 rodadas jogadas: Início → Tabela; trecho de 6 linhas ao redor
 // do seu clube e tabela completa iguais à classificação da versão atual;
 // zonas; resultados da última rodada; outras divisões; Copa do Brasil sem
@@ -55,9 +55,9 @@ const { playRound, closeLeftoverTabela } = require("./_round");
   const v2 = await ctx.newPage();
   const writes = [];
   v2.on("request", (r) => { if (r.url().includes("/api/career") && r.method() !== "GET") writes.push(r.method()); });
-  await v2.goto(base + "/carreira/", { waitUntil: "domcontentloaded" });
+  await v2.goto(base + "/", { waitUntil: "domcontentloaded" });
   await v2.waitForSelector(".home", { timeout: 15000 });
-  await v2.click('a.home-pos[href="/carreira/tabela"]');
+  await v2.click('a.home-pos[href="/tabela"]');
   await v2.waitForSelector(".tb-table", { timeout: 10000 });
   const read = () => v2.evaluate(() => [...document.querySelectorAll(".tb-row")].map((r) => ({
     pos: Number(r.querySelector(".tb-pos").textContent), name: r.querySelector(".tb-name").textContent,
@@ -68,7 +68,7 @@ const { playRound, closeLeftoverTabela } = require("./_round");
   const head = await v2.evaluate(() => ({ title: document.querySelector(".screen-title").textContent, round: document.querySelector(".tb-round").textContent, comp: document.querySelector(".tb-comp").textContent }));
   const meRow = ex.find((r) => r.me);
   check("1) Início → Tabela: trecho de 6 linhas com seu clube destacado na posição real, rodada da última disputada:",
-    new URL(v2.url()).pathname === "/carreira/tabela" && head.title === "A disputa continua." && head.round === `Rodada ${legacy.last}` && head.comp === "Brasileirão Série A"
+    new URL(v2.url()).pathname === "/tabela" && head.title === "A disputa continua." && head.round === `Rodada ${legacy.last}` && head.comp === "Brasileirão Série A"
       && ex.length === 6 && meRow && meRow.pos === legacy.myPos && ex.every((r) => { const l = legacy.rows[r.pos - 1]; return l.name === r.name && l.pts === r.pts && l.j === r.j; }), JSON.stringify({ head, ex, myPos: legacy.myPos }));
 
   // 2) Tabela completa igual à da versão atual; zonas da Série A.
@@ -113,17 +113,17 @@ const { playRound, closeLeftoverTabela } = require("./_round");
   // 7) Voltar ao clube → Início.
   await v2.click(".tb-foot .link-back");
   await v2.waitForSelector(".home", { timeout: 10000 });
-  check("7) 'Voltar ao clube' leva ao Início:", new URL(v2.url()).pathname === "/carreira/", v2.url());
+  check("7) 'Voltar ao clube' leva ao Início:", new URL(v2.url()).pathname === "/", v2.url());
 
   // 8) Toque num clube adversário → elenco dele na v2 (fase 7).
-  await v2.goto(base + "/carreira/tabela", { waitUntil: "domcontentloaded" });
+  await v2.goto(base + "/tabela", { waitUntil: "domcontentloaded" });
   await v2.waitForSelector(".tb-row", { timeout: 15000 });
   const other = v2.locator(".tb-row:not(.is-me)").first();
   const otherName = await other.locator(".tb-name").textContent();
   await other.click();
   await v2.waitForFunction(() => (document.querySelector("h1") || {}).textContent === "Conheça o adversário.", null, { timeout: 15000 });
   const roster = await v2.evaluate(() => ({ path: location.pathname, name: document.querySelector(".wk-item dt").textContent, players: document.querySelectorAll(".sp-player").length }));
-  check("8) Toque no clube abre o elenco dele na v2 (nome, elenco):", roster.path === "/carreira/clube-elenco" && roster.name === otherName && roster.players >= 11, JSON.stringify({ roster, otherName }));
+  check("8) Toque no clube abre o elenco dele na v2 (nome, elenco):", roster.path === "/clube-elenco" && roster.name === otherName && roster.players >= 11, JSON.stringify({ roster, otherName }));
 
   await browser.close();
 })();

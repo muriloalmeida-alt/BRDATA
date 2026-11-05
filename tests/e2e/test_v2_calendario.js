@@ -1,4 +1,4 @@
-// Carreira 2.0 — Entrega 05 (Calendário, /carreira/calendario). Pela UI
+// Carreira 2.0 — Entrega 05 (Calendário, /calendario). Pela UI
 // real: Início → Ver calendário; pré-temporada (sem anteriores); depois de
 // 2 rodadas jogadas, próximo compromisso = rodada atual (adversário, data
 // do domingo e mando iguais aos da versão atual), anteriores com placar do
@@ -44,14 +44,14 @@ const { playRound, closeLeftoverTabela } = require("./_round");
   })));
 
   // 1) Pré-temporada: Início → Ver calendário; 38 rodadas, sem anteriores.
-  await v2.goto(base + "/carreira/", { waitUntil: "domcontentloaded" });
+  await v2.goto(base + "/", { waitUntil: "domcontentloaded" });
   await v2.waitForSelector(".home", { timeout: 15000 });
-  await v2.click('a.row[href="/carreira/calendario"]');
+  await v2.click('a.row[href="/calendario"]');
   await v2.waitForSelector(".cal-list", { timeout: 10000 });
   const pre = await items();
   const pre1 = await v2.evaluate(() => ({ path: location.pathname, title: document.querySelector(".cal-title").textContent, lead: document.querySelector(".cal-lead").textContent, past: !!document.querySelector(".cal-more"), cta: document.querySelector(".cal-foot .cta").textContent }));
   check("1) Início → Calendário (pré-temporada): 38 rodadas do Brasileirão, próximo destacado, sem 'anteriores', CTA da semana:",
-    pre1.path === "/carreira/calendario" && pre1.title === "Calendário" && pre1.lead === "Seu próximo compromisso." && !pre1.past
+    pre1.path === "/calendario" && pre1.title === "Calendário" && pre1.lead === "Seu próximo compromisso." && !pre1.past
       && pre.filter((i) => i.comp.startsWith("Brasileirão Série A · Rodada")).length === 38 && pre[0].next && pre.filter((i) => i.next).length === 1
       && pre1.cta === "Avançar semana", JSON.stringify({ pre1, first: pre[0] }));
 
@@ -98,16 +98,16 @@ const { playRound, closeLeftoverTabela } = require("./_round");
     small: [...document.querySelectorAll("a, button")].filter((el) => { const r = el.getBoundingClientRect(); return r.height && (r.height < 44 || r.width < 44); }).map((el) => el.className),
   }));
   check("4) CTA 'Preparar partida' → Pré-jogo; 360 px sem rolagem horizontal e alvos ≥ 44 px; nada gravado:",
-    cta === "/carreira/pre-jogo" && a.overflow <= 0 && a.small.length === 0 && writes.length === 0, JSON.stringify({ cta, a, writes }));
+    cta === "/pre-jogo" && a.overflow <= 0 && a.small.length === 0 && writes.length === 0, JSON.stringify({ cta, a, writes }));
 
   // 5) Voltar → Início.
-  await v2.goto(base + "/carreira/", { waitUntil: "domcontentloaded" });
+  await v2.goto(base + "/", { waitUntil: "domcontentloaded" });
   await v2.waitForSelector(".home", { timeout: 15000 });
-  await v2.click('a.row[href="/carreira/calendario"]');
+  await v2.click('a.row[href="/calendario"]');
   await v2.waitForSelector(".cal-list", { timeout: 10000 });
   await v2.click(".back-btn");
   await v2.waitForSelector(".home", { timeout: 10000 });
-  check("5) Voltar leva ao Início:", new URL(v2.url()).pathname === "/carreira/", v2.url());
+  check("5) Voltar leva ao Início:", new URL(v2.url()).pathname === "/", v2.url());
 
   await browser.close();
 })();
