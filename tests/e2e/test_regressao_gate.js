@@ -15,7 +15,7 @@ const { check } = require("./_check");
 
   // 1) Visitante normal (sem params) continua caindo direto no app,
   // sem gate -- comportamento do "Freemium sem login" preservado.
-  await page.goto(base + "/", { waitUntil: "load" });
+  await page.goto(base + "/brasileirao", { waitUntil: "load" });
   await page.waitForTimeout(500);
   const gateHidden = await page.evaluate(() => document.getElementById("authGate").style.display === "none");
   const shellVisible = await page.evaluate(() => document.querySelector(".shell").style.display !== "none");
@@ -34,7 +34,7 @@ const { check } = require("./_check");
 
   // 3) ?signup=1 some da URL depois de processado (não reaparece num
   // reload acidental).
-  await page.goto(base + "/?signup=1", { waitUntil: "load" });
+  await page.goto(base + "/brasileirao?signup=1", { waitUntil: "load" });
   await page.waitForTimeout(500);
   const urlClean = !page.url().includes("signup=1");
   const gateVisible = await page.evaluate(() => document.getElementById("authGate").style.display);

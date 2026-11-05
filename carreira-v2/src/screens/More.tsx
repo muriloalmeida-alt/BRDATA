@@ -97,7 +97,7 @@ export function RankingScreen({ tab }: { tab: "all" | "friends" }) {
   const me = acc && acc !== "erro" ? acc : null;
   const invite = async () => {
     if (!me?.friendCode) return;
-    const url = `${location.origin}/carreira.html?convite=${encodeURIComponent(me.friendCode)}`;
+    const url = `${location.origin}/?convite=${encodeURIComponent(me.friendCode)}`;
     const text = "Entra no Modo Técnico comigo! Usa meu link pra a gente virar amigo no Ranking:";
     try { if (navigator.share) { await navigator.share({ title: "BR Treinador — Modo Técnico", text, url }); return; } } catch (e) { if ((e as Error).name === "AbortError") return; }
     try { await navigator.clipboard.writeText(url); setMsg("Link de convite copiado."); } catch { setErr("Não deu pra copiar o link agora."); }
@@ -149,8 +149,29 @@ export function RankingScreen({ tab }: { tab: "all" | "friends" }) {
 }
 
 // ---------- Loja ----------
+// Volta do Checkout Pro (fase 11: o Mercado Pago devolve para /loja):
+// mesmas mensagens de LOJA_STATUS_LABELS (carreira.js). O saldo só muda
+// pelo webhook confirmado no servidor; aqui só se relê a conta.
+const PAY_STATUS: Record<string, { text: string; ok: boolean }> = {
+  approved: { text: "Pagamento aprovado! Seus Créditos BR já devem estar disponíveis.", ok: true },
+  pending: { text: "Pagamento pendente: assim que for confirmado (no Pix pode levar alguns instantes), os créditos aparecem sozinhos.", ok: false },
+  in_process: { text: "Pagamento em análise: vamos confirmar e creditar automaticamente assim que possível.", ok: false },
+  rejected: { text: "Pagamento não aprovado. Você pode tentar de novo com outro cartão ou pelo Pix.", ok: false },
+};
+function readPaymentReturn(): string | null {
+  try {
+    const p = new URLSearchParams(location.search);
+    const status = p.get("collection_status") || p.get("status");
+    if (!status) return null;
+    ["collection_status", "status", "payment_id", "collection_id", "external_reference", "payment_type", "merchant_order_id", "preference_id", "site_id", "processing_mode"].forEach((k) => p.delete(k));
+    history.replaceState(history.state, "", location.pathname + (p.toString() ? `?${p}` : "") + location.hash);
+    return status;
+  } catch { return null; }
+}
 export function ShopScreen({ onChanged }: { onChanged: () => Promise<void> | void }) {
   const [acc, reloadAcc] = useAccount();
+  const [payment] = useState(readPaymentReturn);
+  useEffect(() => { if (payment === "approved") { const t = setTimeout(reloadAcc, 4000); return () => clearTimeout(t); } }, [payment, reloadAcc]);
   const load = useCallback(() => MoreGateway.shop(), []);
   const [data, reload] = useRead<{ pacotes: Package[]; itens: BoostItem[]; categorias: Record<string, string>; historico: PurchaseTx[] }>(load);
   const [ask, setAsk] = useState<null | { kind: "package"; item: Package } | { kind: "boost"; item: BoostItem }>(null);
@@ -177,6 +198,7 @@ export function ShopScreen({ onChanged }: { onChanged: () => Promise<void> | voi
       <h1 className="screen-title">Mais opções de jogo.</h1>
       <span className="tb-bar" aria-hidden="true" />
       <p className="screen-sub">Créditos e itens disponíveis.</p>
+      {payment && <p className={payment === "approved" ? "pr-ok mo-pay" : "wk-note pr-pad mo-pay"} role="status">{(PAY_STATUS[payment] || { text: "Pagamento em processamento: vamos confirmar o status assim que possível." }).text}</p>}
       <Loading data={data}>{() => {
         const d = data as { pacotes: Package[]; itens: BoostItem[]; categorias: Record<string, string> };
         return (<>

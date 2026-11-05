@@ -16955,10 +16955,6 @@ function migrateCareerDefaults() {
 // (CAREER.competitionId), não sempre Série A. Sem carreira salva, quem
 // decide o campeonato é o novo seletor (ver renderCompetitionPicker) —
 // loadLeague só roda depois que ele escolher.
-// Carreira 2.0 — a v2 (/carreira) abre aqui as telas que ainda não tem,
-// via fragmento: /carreira-old#elenco, #preparar etc. Só depois que o tutorial,
-// o assistente e o login diário (que abrem sozinhos ao entrar) fecharem;
-// o fragmento é limpo pra um recarregamento não repetir a ação.
 /* ---------- Carreira 2.0 — API da ponte (modo ?ponte=partida) ----------
    Só leitura do estado da partida + os MESMOS comandos dos botões da
    tela Ao Vivo (pauseLiveMatch, resumeLiveMatch, continueFromHalftime,
@@ -18119,71 +18115,6 @@ if (V2_PONTE) {
     },
   };
 }
-const V2_DEEP_LINKS = {
-  preparar: () => { switchToPanel("central"); document.getElementById("btnSimulate").click(); },
-  // "Iniciar partida" do Pré-jogo da v2 (decisão de 01/11): mesma função de
-  // "Ir para o jogo" da confirmação (goToMatch). Fora de semana de jogo
-  // (link antigo, semana já avançada) cai no botão principal de sempre.
-  iniciar: () => {
-    switchToPanel("central");
-    const w = calendarWeek();
-    if ((w && !w.r) || CAREER.currentRound > 38) { document.getElementById("btnSimulate").click(); return; }
-    goToMatch();
-  },
-  "avancar-semana": () => { switchToPanel("central"); document.getElementById("btnSimulate").click(); },
-  amistoso: () => { switchToPanel("central"); document.getElementById("btnSimulate").click(); },
-  "proxima-temporada": () => { switchToPanel("central"); document.getElementById("btnAdvanceSeason").click(); },
-  escalacao: () => switchToPanel("escalacao"),
-  mercado: () => switchToPanel("mercado"),
-  elenco: () => switchToPanel("elenco"),
-  calendario: () => switchToPanel("jogos"),
-  jogos: () => switchToPanel("jogos"),
-  financas: () => switchToPanel("clube"),
-  diretoria: () => openBoardGoalsScreen(),
-  noticias: () => openNewsScreen(),
-  proposta: () => openClubProposalModal(),
-  mais: () => document.getElementById("btnBottomMenu").click(),
-  // P7 (telas de entrada Jogos, Clube e Mais da v2): áreas que ainda não
-  // têm tela na v2 abrem aqui, pela mesma função de sempre.
-  estatisticas: () => switchToPanel("estatisticas"),
-  copa: () => switchToPanel("jogos"),
-  contratos: () => openContratosScreen(),
-  comissao: () => openCommissionScreen(),
-  estadio: () => openStadiumScreen(),
-  patrocinios: () => openAnySponsorProposal(),
-  olheiros: () => openScoutingScreen(),
-  extrato: () => openExtratoScreen(),
-  "historico-negociacoes": () => openTransferHistoryScreen(),
-  "perfil-treinador": () => openCoachProfileScreen(),
-  conquistas: () => switchToPanel("conquistas"),
-  premiacoes: () => openAwardsScreen(),
-  ranking: () => switchToPanel("ranking"),
-  loja: () => switchToPanel("loja"),
-  configuracoes: () => openSettingsScreen(),
-  ajuda: () => openHelpCenterScreen(),
-  notificacoes: () => openNotificationsSheet(),
-};
-function applyV2DeepLink() {
-  const key = decodeURIComponent((location.hash || "").slice(1));
-  // #clube:<id> — elenco de um clube tocado na Tabela da v2 (mesmo
-  // openClubRoster do toque no nome do clube na Tabela de sempre).
-  const clubMatch = /^clube:(.+)$/.exec(key);
-  // #jogador:<id> — "Contrato e ações do jogador" no Perfil da v2: abre a
-  // mesma ficha (openDetail) do toque no jogador no Elenco de sempre.
-  const playerMatch = /^jogador:(.+)$/.exec(key);
-  const action = clubMatch ? () => openClubRoster(clubMatch[1])
-    : playerMatch ? () => { switchToPanel("elenco"); openDetail(playerMatch[1]); }
-    : V2_DEEP_LINKS[key];
-  if (!action) return;
-  history.replaceState(null, "", location.pathname + location.search);
-  let tries = 0;
-  const run = () => {
-    const blocking = [...document.querySelectorAll(".ct-modal-overlay.open")].some((o) => o.id !== "actionLoadingOverlay");
-    if (blocking && tries++ < 120) { setTimeout(run, 250); return; }
-    if (!blocking) action();
-  };
-  setTimeout(run, 0);
-}
 async function enterAfterAuth() {
   show("screenLoading");
   document.getElementById("screenLoading").innerHTML = splashLoadingHTML("Carregando o Modo Técnico...");
@@ -18244,7 +18175,6 @@ async function enterAfterAuth() {
     if (!V2_PONTE) persistCareer(); // grava os campos novos pra não migrar de novo (e de novo) a cada load
     setBootProgress(5, 5);
     showGameScreen();
-    applyV2DeepLink();
   } else {
     setBootProgress(5, 5);
     renderCompetitionPicker();

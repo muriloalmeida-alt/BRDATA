@@ -19,15 +19,15 @@ const { newCareer } = require("./_v2_match");
   v2.on("pageerror", (err) => console.log("PAGE ERROR:", err.message));
 
   const screens = [
-    ["Início", "/carreira/", "h1"],
-    ["Escalação", "/carreira/escalacao", "h1"],
-    ["Tabela", "/carreira/tabela", "h1"],
-    ["Calendário", "/carreira/calendario", "h1"],
-    ["Elenco", "/carreira/elenco", "h1"],
-    ["Diretoria", "/carreira/diretoria", "h1"],
-    ["Finanças", "/carreira/financas", "h1"],
+    ["Início", "/", "h1"],
+    ["Escalação", "/escalacao", "h1"],
+    ["Tabela", "/tabela", "h1"],
+    ["Calendário", "/calendario", "h1"],
+    ["Elenco", "/elenco", "h1"],
+    ["Diretoria", "/diretoria", "h1"],
+    ["Finanças", "/financas", "h1"],
     // No Perfil o título fica ao lado da camisa: mede o botão do rodapé.
-    ["Perfil", `/carreira/elenco/jogador?id=${encodeURIComponent(playerId)}`, ".pf-foot .cta"],
+    ["Perfil", `/elenco/jogador?id=${encodeURIComponent(playerId)}`, ".pf-foot .cta"],
   ];
   const margins = {};
   for (const [w, expected] of [[390, 24], [360, 20], [430, 24]]) {
@@ -45,7 +45,7 @@ const { newCareer } = require("./_v2_match");
 
   await v2.setViewportSize({ width: 390, height: 844 });
   const backs = {};
-  for (const [name, url] of [["Tabela", "/carreira/tabela"], ["Diretoria", "/carreira/diretoria"], ["Finanças", "/carreira/financas"], ["Perfil", `/carreira/elenco/jogador?id=${encodeURIComponent(playerId)}`]]) {
+  for (const [name, url] of [["Tabela", "/tabela"], ["Diretoria", "/diretoria"], ["Finanças", "/financas"], ["Perfil", `/elenco/jogador?id=${encodeURIComponent(playerId)}`]]) {
     await v2.goto("http://localhost:8787" + url, { waitUntil: "domcontentloaded" });
     await v2.waitForSelector(".link-back", { timeout: 15000 });
     backs[name] = await v2.evaluate(() => {

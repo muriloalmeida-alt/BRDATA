@@ -3,7 +3,7 @@
   "name": "BR Data — Brasileirão 2026",
   "short_name": "BR Data",
   "description": "Tabela, jogos, estatísticas e simulador do Campeonato Brasileiro Série A.",
-  "start_url": "/?source=pwa",
+  "start_url": "/brasileirao?source=pwa",
   "scope": "/",
   "display": "standalone",
   "orientation": "any",

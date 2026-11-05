@@ -1,4 +1,4 @@
-// Carreira 2.0 — Entrega 03 (Pré-jogo, /carreira/pre-jogo). Pela UI real:
+// Carreira 2.0 — Entrega 03 (Pré-jogo, /pre-jogo). Pela UI real:
 // Início → Preparar partida → Pré-jogo com confronto, rodada e titulares do
 // save; avisos da confirmação atual como linhas; Revisar escalação e volta;
 // fora da semana de jogo volta ao Início; nada gravado ao abrir; "Iniciar
@@ -37,9 +37,9 @@ const { skipPreseason } = require("./_calendar_skip");
   const v2 = await ctx.newPage();
   const writes = [];
   v2.on("request", (r) => { if (r.url().includes("/api/career") && r.method() !== "GET") writes.push(r.method()); });
-  await v2.goto(base + "/carreira/pre-jogo", { waitUntil: "domcontentloaded" });
+  await v2.goto(base + "/pre-jogo", { waitUntil: "domcontentloaded" });
   await v2.waitForSelector(".home", { timeout: 15000 });
-  check("1) Pré-temporada: /carreira/pre-jogo volta ao Início:", new URL(v2.url()).pathname === "/carreira/", v2.url());
+  check("1) Pré-temporada: /pre-jogo volta ao Início:", new URL(v2.url()).pathname === "/", v2.url());
 
   await skipPreseason(page);
   await page.evaluate(() => persistCareer());
@@ -63,21 +63,21 @@ const { skipPreseason } = require("./_calendar_skip");
     slots: document.querySelectorAll(".pm-pitch .lu-slot").length,
     links: document.querySelectorAll(".pm-pitch a").length,
     gk: [...document.querySelectorAll(".pm-pitch .lu-slot")].pop().querySelector("text").textContent,
-    alerts: document.querySelectorAll(".pm-foot nav .row").length, h2h: !!document.querySelector('.pm-foot nav a.row[href^="/carreira/retrospecto?id="]'),
+    alerts: document.querySelectorAll(".pm-foot nav .row").length, h2h: !!document.querySelector('.pm-foot nav a.row[href^="/retrospecto?id="]'),
     cta: document.querySelector(".pm-cta").getAttribute("href"),
     ctx: document.querySelector(".sub-head-ctx").textContent,
   }));
   check("2) Início → Pré-jogo: confronto, competição + rodada, data sem horário, 11 titulares só leitura com overall real; 'Histórico do duelo' (fase 10):",
-    pm.path === "/carreira/pre-jogo" && pm.title === "É hora de jogar." && pm.sub === `Brasileirão Série A · Rodada ${legacy.round}` && pm.teams[0] === legacy.home && pm.teams[1] === legacy.away
+    pm.path === "/pre-jogo" && pm.title === "É hora de jogar." && pm.sub === `Brasileirão Série A · Rodada ${legacy.round}` && pm.teams[0] === legacy.home && pm.teams[1] === legacy.away
       && /^\d{2} [A-Z]{3}$/.test(pm.date) && pm.formation === `Formação ${legacy.formation}` && pm.slots === 11 && pm.links === 0 && pm.gk === String(legacy.gk)
-      && pm.alerts === 2 && pm.h2h && pm.cta === "/carreira/partida?iniciar=1" && pm.ctx === "Pré-jogo", JSON.stringify({ pm, legacy }));
+      && pm.alerts === 2 && pm.h2h && pm.cta === "/partida?iniciar=1" && pm.ctx === "Pré-jogo", JSON.stringify({ pm, legacy }));
 
   // 3) Revisar escalação → Escalação v2; voltar retorna ao Pré-jogo.
-  await v2.click('.pm-foot a.row[href="/carreira/escalacao"]');
+  await v2.click('.pm-foot a.row[href="/escalacao"]');
   await v2.waitForSelector(".lu-bench", { timeout: 10000 });
   await v2.click(".back-btn");
   await v2.waitForSelector(".pm-pitch", { timeout: 10000 });
-  check("3) Revisar escalação abre a Escalação da v2 e o voltar retorna ao Pré-jogo:", new URL(v2.url()).pathname === "/carreira/pre-jogo", v2.url());
+  check("3) Revisar escalação abre a Escalação da v2 e o voltar retorna ao Pré-jogo:", new URL(v2.url()).pathname === "/pre-jogo", v2.url());
 
   // 4) Avisos da confirmação atual: titular lesionado e escalação incompleta.
   const c = await page.evaluate(async () => (await (await fetch("/api/career", { cache: "no-store" })).json()).career);
@@ -106,7 +106,7 @@ const { skipPreseason } = require("./_calendar_skip");
   await v2.click(".pm-cta");
   await v2.waitForSelector(".mt-score", { timeout: 40000 });
   const live = await v2.evaluate(() => ({ path: location.pathname, search: location.search, kicker: document.querySelector(".mt-kicker").textContent }));
-  check("7) Iniciar partida abre a Partida da v2 (endereço limpo) com a rodada atual:", live.path === "/carreira/partida" && live.search === "" && /Rodada/.test(live.kicker), JSON.stringify(live));
+  check("7) Iniciar partida abre a Partida da v2 (endereço limpo) com a rodada atual:", live.path === "/partida" && live.search === "" && /Rodada/.test(live.kicker), JSON.stringify(live));
 
   await browser.close();
 })();

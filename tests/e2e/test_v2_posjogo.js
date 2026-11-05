@@ -74,7 +74,7 @@ const base = "http://localhost:8787";
   const s1 = await serverCareer(v2);
   const log = (s1.pressLog || [])[0];
   check("1) Coletiva da v2: pergunta e respostas reais; efeito só depois de responder (= o gravado no save):",
-    c1.url === "/carreira/pos-jogo" && c1.q === forced.question && c1.n === forced.answers && log && (s1.pressLog || []).length === (before.pressLog || []).length + 1
+    c1.url === "/pos-jogo" && c1.q === forced.question && c1.n === forced.answers && log && (s1.pressLog || []).length === (before.pressLog || []).length + 1
       && effect === `Reputação ${log.reputacao > 0 ? "+" : log.reputacao < 0 ? "−" : ""}${Math.abs(log.reputacao)} · Moral do elenco ${log.moral > 0 ? "+" : log.moral < 0 ? "−" : ""}${Math.abs(log.moral)}`,
     JSON.stringify({ c1, effect, log }));
   await v2.click(".pj .cal-foot .cta");
@@ -101,7 +101,7 @@ const base = "http://localhost:8787";
   await v2.click(".tb-foot .link-back");
   await waitH1("A disputa continua.");
   check("3) Resultados da rodada: 10 jogos, o seu primeiro e marcado; 'Ver tabela' abre a Tabela e volta aos resultados:",
-    r3.rows === 10 && r3.firstMine && r3.mine === 1 && tableUrl === "/carreira/pos-jogo?tela=tabela", JSON.stringify({ r3, tableUrl }));
+    r3.rows === 10 && r3.firstMine && r3.mine === 1 && tableUrl === "/pos-jogo?tela=tabela", JSON.stringify({ r3, tableUrl }));
   await v2.click(".pj .cal-foot .cta");
 
   // 4) Proposta → Aceitar.

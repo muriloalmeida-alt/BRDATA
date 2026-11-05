@@ -1,12 +1,13 @@
-// Navegação interna da v2 (History API, sem dependência nova). Rotas:
-//   /carreira/                       Início
-//   /carreira/escalacao              Escalação
-//   /carreira/escalacao/trocar?…     Quem entra? (vaga=N | reserva=id)
-// O servidor devolve o index.html para qualquer caminho sem extensão
-// abaixo de /carreira/ (server.js), então recarregar funciona.
+// Navegação interna da v2 (History API, sem dependência nova). Desde a
+// fase 11 (corte) a v2 vive na raiz do domínio. Rotas:
+//   /                        Início
+//   /escalacao               Escalação
+//   /escalacao/trocar?…      Quem entra? (vaga=N | reserva=id)
+// O servidor devolve o index.html para qualquer caminho sem extensão fora
+// de /brasileirao (site), /api e /admin (server.js), então recarregar funciona.
 import { useEffect, useRef, useState, type AnchorHTMLAttributes, type MouseEvent } from "react";
 
-export const BASE = "/carreira";
+export const BASE = "";
 const EVT = "bd:navigate";
 
 export function navigate(to: string, opts: { replace?: boolean } = {}) {

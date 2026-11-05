@@ -44,20 +44,20 @@ const base = "http://localhost:8787";
     await fetch("/api/career", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(c) });
     return out;
   }, { src: fn, arg });
-  await go("/carreira/");
+  await go("/");
   await v2.waitForSelector(".home", { timeout: 20000 });
   await put(`c.finances.cash = 50000000;`);
 
   // 1) Clube.
-  await go("/carreira/clube");
+  await go("/clube");
   await v2.waitForSelector(".hb-row", { timeout: 20000 });
   const hub = await v2.evaluate(() => Object.fromEntries([...document.querySelectorAll("a.hb-row")].map((a) => [a.querySelector(".row-title").textContent, a.getAttribute("href")])));
   check("1) Clube: Comissão, Estádio, Patrocínios, Extrato e Base e olheiros abrem a v2:",
-    hub["Comissão técnica"] === "/carreira/comissao" && hub["Estádio"] === "/carreira/estadio" && hub["Patrocínios"] === "/carreira/patrocinios" && hub["Extrato financeiro"] === "/carreira/extrato" && hub["Base e olheiros"] === "/carreira/olheiros",
+    hub["Comissão técnica"] === "/comissao" && hub["Estádio"] === "/estadio" && hub["Patrocínios"] === "/patrocinios" && hub["Extrato financeiro"] === "/extrato" && hub["Base e olheiros"] === "/olheiros",
     JSON.stringify(hub));
 
   // 2) Comissão.
-  await go("/carreira/comissao", "Fortaleça a comissão.");
+  await go("/comissao", "Fortaleça a comissão.");
   await v2.waitForSelector(".pr .cal-foot .cta");
   await at360("comissao");
   await v2.click(".pr .cal-foot .cta");
@@ -76,7 +76,7 @@ const base = "http://localhost:8787";
     hired === true && sug.join("|") === "Escalação|Treinos|Tática|Mercado" && fired === false, JSON.stringify({ hired, sug, fired }));
 
   // 3) Estádio.
-  await go("/carreira/estadio", "Faça o clube crescer.");
+  await go("/estadio", "Faça o clube crescer.");
   await at360("estadio");
   await v2.locator("a.pr-row", { hasText: "Iluminação LED completa" }).click();
   await waitH1("O clube em obras.");
@@ -88,7 +88,7 @@ const base = "http://localhost:8787";
   await v2.click('[role="alertdialog"] .sp-sheet-cta');
   await v2.waitForSelector(".pr-ok", { timeout: 30000 });
   const s3 = await serverCareer(v2);
-  await go("/carreira/estadio/obra?id=setor_norte", "O clube em obras.");
+  await go("/estadio/obra?id=setor_norte", "O clube em obras.");
   const other = await v2.evaluate(() => ({ cta: !!document.querySelector(".pr .cal-foot .cta"), txt: document.body.innerText.includes("Só uma obra por vez") }));
   check("3) Estádio: obra com confirmação (caixa antes → depois) grava e desconta; outra melhoria aguarda:",
     s3.stadium.pendingUpgrade && s3.stadium.pendingUpgrade.id === "iluminacao" && s3.finances.cash === cash3 - 900000 && /→/.test(conf3) && !other.cta && other.txt,
@@ -96,7 +96,7 @@ const base = "http://localhost:8787";
 
   // 4) Patrocínios.
   await put(`c.sponsorship.master = null; c.sponsorProposals.master = null;`);
-  await go("/carreira/patrocinios", "Novas parcerias.");
+  await go("/patrocinios", "Novas parcerias.");
   await v2.waitForSelector('[aria-labelledby="sp-master"] button.pr-row', { timeout: 30000 });
   await at360("patrocinios");
   const props = await v2.evaluate(() => [...document.querySelectorAll('[aria-labelledby="sp-master"] button.pr-row .row-title')].map((t) => t.textContent));
@@ -110,9 +110,9 @@ const base = "http://localhost:8787";
 
   // 5) Extrato.
   await put(`for (let i = 0; i < 6; i++) c.financeLedger.unshift({ round: 1, type: "tv", label: "Cota " + i, amount: 100000 });`);
-  await go("/carreira/financas");
+  await go("/financas");
   await v2.waitForSelector(".fn-cash", { timeout: 20000 });
-  await v2.click('a.tb-more[href="/carreira/extrato"]');
+  await v2.click('a.tb-more[href="/extrato"]');
   await waitH1("Cada movimento conta.");
   await at360("extrato");
   const filters = await v2.evaluate(() => [...document.querySelectorAll(".cl-filters .pr-seg-btn")].map((b) => b.textContent));
@@ -122,7 +122,7 @@ const base = "http://localhost:8787";
     filters[0] === "Tudo" && filters.includes("Estádio") && filters.includes("Cota de TV") && est.length >= 1 && est.every((t) => t.startsWith("Estádio · ")), JSON.stringify({ filters, est }));
 
   // 6) Olheiros.
-  await go("/carreira/olheiros", "Amplie seu alcance.");
+  await go("/olheiros", "Amplie seu alcance.");
   await at360("olheiros");
   await v2.locator("a.pr-row", { hasText: "Contratar olheiro" }).click();
   await waitH1("Monte sua rede.");
@@ -131,7 +131,7 @@ const base = "http://localhost:8787";
   await v2.waitForSelector("#oh-t");
   await v2.click('[role="alertdialog"] .sp-sheet-cta');
   await v2.waitForSelector(".pr-ok", { timeout: 30000 });
-  await go("/carreira/olheiros/missao", "Planeje a missão.");
+  await go("/olheiros/missao", "Planeje a missão.");
   await v2.locator('[aria-labelledby="ms-d"] .pr-seg-btn', { hasText: "Curta" }).click();
   await at360("missao");
   await v2.click(".pr .cal-foot .cta");
@@ -143,14 +143,14 @@ const base = "http://localhost:8787";
 
   // 7) Relatórios → base.
   await put(`c.scoutMissionProspects = [{ id: "pp1", name: "Kauã Souza", group: "F", age: 16, overall: 41, atk: 45, def: 30, phys: 60, potential: 80, potRange: { lo: 76, hi: 82 }, foundRegion: "norte", scoutName: "R. Moura", scoutNote: "Promissor.", wage: 2000, value: 100000, contractUntil: c.seasonYear + 3, report: { recommendation: "Promover já", strength: "físico", weakness: "defesa" } }];`);
-  await go("/carreira/olheiros/relatorios", "Veja os prospectos.");
+  await go("/olheiros/relatorios", "Veja os prospectos.");
   await at360("relatorios");
   await v2.locator("a.pr-row", { hasText: "Ver jogador" }).click();
   await waitH1("K. Souza.");
   await v2.click(".pr .cal-foot .cta");
   await waitH1("Bem-vindo à base.");
   const s7 = await serverCareer(v2);
-  await go("/carreira/base", "O futuro está aqui.");
+  await go("/base", "O futuro está aqui.");
   await v2.locator(".pr-tab", { hasText: "Sub-17" }).click();
   const inBase = await v2.evaluate(() => [...document.querySelectorAll(".sp-player .row-title")].map((t) => t.textContent));
   await at360("base");
@@ -162,7 +162,7 @@ const base = "http://localhost:8787";
     const clubs = Object.keys(c.leagueSquads).filter((id) => id !== String(c.clubId));
     const mk = (i) => { const p = c.leagueSquads[clubs[i]][0]; return { id: "sg" + i, playerId: p.id, playerName: p.name, clubId: clubs[i], clubName: "Clube " + i, subpos: "MEI", overall: p.overall, age: p.age, value: p.value, potLo: 70, potHi: 74 }; };
     c.scoutSuggestions = [mk(0), mk(1)]; return c.scoutSuggestions.map((s) => s.playerId);`);
-  await go("/carreira/olheiros/indicacoes", "Indicações dos olheiros.");
+  await go("/olheiros/indicacoes", "Indicações dos olheiros.");
   await v2.waitForFunction(() => !document.querySelector(".mk-window.is-closed") && document.querySelectorAll(".cl-actions").length === 2, null, { timeout: 30000 });
   await at360("indicacoes");
   await v2.locator(".cl-actions >> nth=1").locator("button", { hasText: "Recusar" }).click();

@@ -9,7 +9,7 @@
 //  4) Save atualizado: a v2 troca a formação com o motor já aberto; ao
 //     iniciar a partida, o motor é recarregado e o resultado gravado mantém a
 //     formação nova (sem sobrescrever com o save antigo).
-//  5) Depois do pós-jogo, abrir /carreira/partida não reapresenta a partida
+//  5) Depois do pós-jogo, abrir /partida não reapresenta a partida
 //     encerrada ("Nenhuma partida em andamento"); continua um motor só.
 //  Toda navegação é DENTRO da v2 (sem recarregar a página).
 //  6) Tempo de abertura do motor (medida, para o relatório).
@@ -34,7 +34,7 @@ const { newCareer, serverCareer, continueToHome } = require("./_v2_match");
   await v2.goto("http://localhost:8787/privacidade.html", { waitUntil: "domcontentloaded" });
   const r1 = await v2.evaluate(async () => {
     const html = await (await fetch("/carreira/motor", { cache: "no-store" })).text();
-    const v2html = await (await fetch("/carreira/", { cache: "no-store" })).text();
+    const v2html = await (await fetch("/", { cache: "no-store" })).text();
     const js = v2html.match(/\/carreira\/assets\/[^"]+\.js/)[0];
     const bundle = await (await fetch(js, { cache: "no-store" })).text();
     return { base: /<head>\s*<base href="\/">/.test(html), legacy: html.includes("ctLoginForm"), noindex: html.includes("noindex"),
@@ -45,7 +45,7 @@ const { newCareer, serverCareer, continueToHome } = require("./_v2_match");
 
   // 2) Pré-carga no Início, escondida e sem gravar.
   const t0 = Date.now();
-  await v2.goto("http://localhost:8787/carreira/", { waitUntil: "domcontentloaded" });
+  await v2.goto("http://localhost:8787/", { waitUntil: "domcontentloaded" });
   await v2.waitForSelector(".home", { timeout: 15000 });
   const motorFrame = () => v2.frames().find((f) => f.url().includes("/carreira/motor"));
   let ready = false;
@@ -70,7 +70,7 @@ const { newCareer, serverCareer, continueToHome } = require("./_v2_match");
 
   // 3) Sem mudança no save: a partida usa o MESMO motor pré-carregado.
   const before = await serverCareer(v2);
-  await go("/carreira/pre-jogo");
+  await go("/pre-jogo");
   await v2.waitForSelector(".pm-cta", { timeout: 15000 });
   await v2.click(".pm-cta");
   await v2.waitForSelector(".mt-skip", { timeout: 40000 });
@@ -86,7 +86,7 @@ const { newCareer, serverCareer, continueToHome } = require("./_v2_match");
 
   // 4) A v2 grava a formação com o motor aberto: ao iniciar, o motor é
   //    recarregado e o resultado mantém a formação nova.
-  await go("/carreira/escalacao");
+  await go("/escalacao");
   await v2.waitForSelector(".lu-form-btn");
   await v2.click(".lu-form-btn");
   await v2.waitForSelector('[role="dialog"] [role="radio"]');
@@ -95,7 +95,7 @@ const { newCareer, serverCareer, continueToHome } = require("./_v2_match");
   await v2.waitForFunction(() => !document.querySelector('[role="dialog"]'), null, { timeout: 10000 });
   const lineupSaved = (await serverCareer(v2)).lineup.formation;
   const stillPre = (await frameInfo()).marca === "pre";
-  await go("/carreira/pre-jogo");
+  await go("/pre-jogo");
   await v2.waitForSelector(".pm-cta", { timeout: 15000 });
   await v2.click(".pm-cta");
   await v2.waitForSelector(".mt-skip", { timeout: 40000 });
@@ -110,7 +110,7 @@ const { newCareer, serverCareer, continueToHome } = require("./_v2_match");
   // 5) Depois do pós-jogo, abrir a Partida de novo não reapresenta o jogo.
   await v2.evaluate(() => { document.querySelector("iframe").dataset.marca = "partida"; });
   await continueToHome(v2);
-  await go("/carreira/partida");
+  await go("/partida");
   await v2.waitForFunction(() => /Nenhuma partida em andamento/.test(document.body.textContent), null, { timeout: 20000 });
   const after5 = await frameInfo();
   check("5) Abrir a Partida depois do pós-jogo não reapresenta o jogo encerrado; continua o mesmo motor, escondido:",

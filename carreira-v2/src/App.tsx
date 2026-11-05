@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { CareerGateway, ClubCatalogGateway, HttpError, SessionGateway, type SessionUser } from "./adapters/gateways.ts";
+import { consumeInvite } from "./adapters/invite.ts";
 import { buildHome } from "./domain/home.ts";
 import { buildLineup, buildSubstitute, currentLineup, shortName, type LineupChange, type SwapTarget } from "./domain/lineup.ts";
 import type { Career, Team } from "./domain/types.ts";
@@ -53,7 +54,7 @@ const SAVE_ERROR = "Não foi possível salvar. Tente de novo.";
 // Sessão → carreira ativa → tela da rota. Fase 2 (plano de independência):
 // sem sessão, o login é da própria v2; sem carreira, a criação também
 // (/carreira/nova…). Sessão que expira durante o uso abre a folha de login
-// sobre a tela atual. Nada mais manda para /carreira-old.
+// sobre a tela atual. Nada mais manda para a versão anterior.
 export function App() {
   const [state, setState] = useState<State>({ kind: "loading" });
   const loc = useLocation();
@@ -67,6 +68,7 @@ export function App() {
     try {
       const user = await SessionGateway.current();
       if (!user) { setState({ kind: "login" }); return; }
+      consumeInvite(); // convite de amigo guardado (fase 11): usa assim que a conta é conhecida
       const career = await CareerGateway.loadActive();
       if (!career) { setState({ kind: "nova", user }); return; }
       const teamById = await ClubCatalogGateway.forCareer(career);

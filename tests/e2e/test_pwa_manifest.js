@@ -40,7 +40,9 @@ const { check } = require("./_check");
   }, manifestUrl);
   check("2) manifest-treinador.json responde 200:", manifestRes.ok);
   console.log("   name/short_name = 'BR Treinador':", manifestRes.body.name === "BR Treinador" && manifestRes.body.short_name === "BR Treinador");
-  console.log("   start_url aponta pra carreira.html:", manifestRes.body.start_url.includes("carreira.html"));
+  // Fase 11: o app instalado abre a v2 (raiz); o id continua o mesmo para
+  // quem já instalou não ganhar um 2º ícone.
+  check("2b) start_url abre a v2 na raiz e o id continua /carreira.html:", manifestRes.body.start_url === "/?source=pwa" && manifestRes.body.id === "/carreira.html", JSON.stringify({ start_url: manifestRes.body.start_url, id: manifestRes.body.id }));
   console.log("   tem ícone maskable de 512 (brasão em destaque, área de segurança do Android):", manifestRes.body.icons.some((i) => i.purpose === "maskable" && i.sizes === "512x512"));
   console.log("   tem ícone 'any' de 192 e 512:", manifestRes.body.icons.some((i) => i.purpose === "any" && i.sizes === "192x192") && manifestRes.body.icons.some((i) => i.purpose === "any" && i.sizes === "512x512"));
 
@@ -58,11 +60,17 @@ const { check } = require("./_check");
 
   // 4) O manifest do site PRINCIPAL continua intacto (não foi
   // mexido/sobrescrito por engano).
-  await page.goto(base + "/", { waitUntil: "domcontentloaded" });
+  await page.goto(base + "/brasileirao", { waitUntil: "domcontentloaded" });
   const mainManifestHref = await page.evaluate(() => document.querySelector('link[rel="manifest"]')?.getAttribute("href"));
   const mainManifest = await page.evaluate(async () => (await (await fetch("/manifest.json")).json()));
   check("4) index.html continua referenciando manifest.json (não mudou):", mainManifestHref === "manifest.json");
   console.log("   manifest.json do site principal continua 'BR Data' (intacto):", mainManifest.name === "BR Data — Brasileirão 2026" && mainManifest.short_name === "BR Data");
+  check("5) o app do site abre em /brasileirao:", mainManifest.start_url === "/brasileirao?source=pwa", mainManifest.start_url);
+
+  // 6) A v2 (raiz) declara o mesmo manifest do app da Carreira.
+  await page.goto(base + "/", { waitUntil: "domcontentloaded" });
+  const v2ManifestHref = await page.evaluate(() => document.querySelector('link[rel="manifest"]')?.getAttribute("href"));
+  check("6) a v2 (raiz) referencia /manifest-treinador.json:", v2ManifestHref === "/manifest-treinador.json", v2ManifestHref);
 
   await browser.close();
 })().catch((e) => { console.error("FATAL:", e); process.exit(1); });

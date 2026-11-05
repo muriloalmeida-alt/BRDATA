@@ -33,7 +33,7 @@ const { playRound, closeLeftoverTabela } = require("./_round");
 
   const v2 = await ctx.newPage();
   v2.on("pageerror", (err) => console.log("PAGE ERROR:", err.message));
-  await v2.goto("http://localhost:8787/carreira/", { waitUntil: "domcontentloaded" });
+  await v2.goto("http://localhost:8787/", { waitUntil: "domcontentloaded" });
   await v2.waitForSelector(".home", { timeout: 15000 });
   await v2.click(".home-main .cta");
   await v2.waitForSelector(".pm-cta", { timeout: 10000 });
@@ -57,8 +57,8 @@ const { playRound, closeLeftoverTabela } = require("./_round");
     await v2.waitForFunction((l) => document.querySelector(".tb-switch [aria-selected=true]")?.textContent === l, label, { timeout: 5000 });
     seen.push({ label, comp: await v2.locator(".tb-comp").textContent(), focusTab: await v2.evaluate(() => document.activeElement?.getAttribute("role") === "tab" && document.activeElement.textContent), ...(await ponteState()) });
   }
-  check("1) Série B → Série C → Série A pela Tabela do Resultado: fica em /carreira/partida?tela=tabela, mesmo quadro da ponte, tabela da divisão certa e foco na aba:",
-    tabs.length === 3 && pending.cupLeg && seen.every((s) => s.path === "/carreira/partida" && s.search.startsWith("?tela=tabela") && s.frames === 1 && s.marca === "original" && s.focusTab === s.label && s.comp.includes(s.label.replace("Série A", "Série A")))
+  check("1) Série B → Série C → Série A pela Tabela do Resultado: fica em /partida?tela=tabela, mesmo quadro da ponte, tabela da divisão certa e foco na aba:",
+    tabs.length === 3 && pending.cupLeg && seen.every((s) => s.path === "/partida" && s.search.startsWith("?tela=tabela") && s.frames === 1 && s.marca === "original" && s.focusTab === s.label && s.comp.includes(s.label.replace("Série A", "Série A")))
       && seen[0].search.includes("divisao=") && !seen[2].search.includes("divisao="),
     JSON.stringify({ tabs, pending, seen }));
 
@@ -71,7 +71,7 @@ const { playRound, closeLeftoverTabela } = require("./_round");
   const after2 = await ponteState();
   check("2) Tocar num clube na Tabela do Resultado pergunta antes de sair (foco em ficar); ficar mantém a Tabela e a mesma ponte:",
     ask.title === "Sair do resultado?" && /Copa/.test(ask.text) && /elenco do/.test(ask.leave) && /Voltar ao resultado/.test(ask.focus)
-      && !(await v2.locator('[role="alertdialog"]').count()) && after2.path === "/carreira/partida" && after2.frames === 1 && after2.marca === "original",
+      && !(await v2.locator('[role="alertdialog"]').count()) && after2.path === "/partida" && after2.frames === 1 && after2.marca === "original",
     JSON.stringify({ ask, after2 }));
 
   // 3) Voltar ao Resultado, Ver lances, voltar do sistema no Resultado.
@@ -90,7 +90,7 @@ const { playRound, closeLeftoverTabela } = require("./_round");
   const after3 = await ponteState();
   check("3) Voltar ao resultado com o mesmo placar; Ver lances volta; o voltar do sistema no Resultado pergunta e Escape fica:",
     score3 === score0 && ask3 === "Sair do resultado?" && !(await v2.locator('[role="alertdialog"]').count()) && (await v2.locator(".rs-title").count()) === 1
-      && after3.path === "/carreira/partida" && after3.search === "" && after3.frames === 1 && after3.marca === "original",
+      && after3.path === "/partida" && after3.search === "" && after3.frames === 1 && after3.marca === "original",
     JSON.stringify({ score0, score3, ask3, after3 }));
 
   // 4) Continuar: pós-jogo completo, com a perna da Copa ao vivo.

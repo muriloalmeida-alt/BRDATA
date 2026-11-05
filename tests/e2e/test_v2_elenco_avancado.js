@@ -41,7 +41,7 @@ const base = "http://localhost:8787";
   };
   const waitH1 = (t) => v2.waitForFunction((t) => (document.querySelector("h1") || {}).textContent === t, t, { timeout: 30000 });
   const go = async (p, h1) => { await v2.goto(base + p, { waitUntil: "domcontentloaded" }); if (h1) await waitH1(h1); };
-  await go("/carreira/");
+  await go("/");
   await v2.waitForSelector(".home", { timeout: 20000 });
 
   // Preparação no save: R (renova), M (moral baixa, renovação recusada), T (insatisfeito no banco).
@@ -57,7 +57,7 @@ const base = "http://localhost:8787";
   });
 
   // 1) Busca e filtros.
-  await go("/carreira/elenco");
+  await go("/elenco");
   await v2.waitForSelector(".sq-tools", { timeout: 20000 });
   await v2.fill("#sq-q", prep.rName.split(" ")[0]);
   const search = await v2.evaluate(() => [...document.querySelectorAll(".sq-name")].map((n) => n.textContent));
@@ -74,7 +74,7 @@ const base = "http://localhost:8787";
   await v2.click('[role="dialog"] .text-btn'); // Limpar filtros
 
   // 2) Perfil → Ficha; renovar inativo fora do último ano.
-  await go(`/carreira/elenco/jogador?id=${encodeURIComponent(prep.other)}`);
+  await go(`/elenco/jogador?id=${encodeURIComponent(prep.other)}`);
   await v2.waitForSelector(".pf-legacy", { timeout: 20000 });
   await v2.click(".pf-legacy");
   await waitH1("Conheça seu jogador.");
@@ -84,7 +84,7 @@ const base = "http://localhost:8787";
     ["Idade", "Potencial", "Moral", "Salário mensal", "Término", "Valor de mercado"].every((l) => f2.facts.includes(l)) && f2.renew === "true" && /último ano de contrato/.test(f2.why), JSON.stringify(f2));
 
   // 3) Renovar (aceita).
-  await go(`/carreira/elenco/ficha?id=${encodeURIComponent(prep.r)}`, "Conheça seu jogador.");
+  await go(`/elenco/ficha?id=${encodeURIComponent(prep.r)}`, "Conheça seu jogador.");
   await v2.click(".pr .cal-foot .cta");
   await v2.waitForSelector("#rn-t");
   const sug = await v2.inputValue("#rn-w");
@@ -99,7 +99,7 @@ const base = "http://localhost:8787";
   await v2.click('[role="dialog"] .text-btn');
 
   // 4) Renovação recusada → coletiva avulsa (pelos Contratos).
-  await go("/carreira/contratos", "Cuide da continuidade.");
+  await go("/contratos", "Cuide da continuidade.");
   await v2.locator('.pr-tab', { hasText: "Vencendo" }).click();
   const venc = await v2.evaluate(() => [...document.querySelectorAll(".sp-player .row-title")].map((t) => t.textContent));
   await at360("contratos");
@@ -121,7 +121,7 @@ const base = "http://localhost:8787";
     JSON.stringify({ venc, r4, press: [prep.pressLog, (s4.pressLog || []).length], until: m4.contractUntil }));
 
   // 5) Conversa.
-  await go(`/carreira/elenco/ficha?id=${encodeURIComponent(prep.t)}`, "Conheça seu jogador.");
+  await go(`/elenco/ficha?id=${encodeURIComponent(prep.t)}`, "Conheça seu jogador.");
   await v2.click('.pr .cal-foot a.link-back');
   await waitH1("Abra o diálogo.");
   await at360("conversa");
@@ -136,23 +136,23 @@ const base = "http://localhost:8787";
   // 6) Mais ações: banco e dispensa.
   // (o banco costuma estar cheio — 11 — então o teste tira um reserva do banco)
   const benchId = s5.lineup.bench[0];
-  await go(`/carreira/elenco/ficha?id=${encodeURIComponent(benchId)}`, "Conheça seu jogador.");
+  await go(`/elenco/ficha?id=${encodeURIComponent(benchId)}`, "Conheça seu jogador.");
   await v2.locator("button.pr-row", { hasText: "Tirar do banco" }).click();
   await v2.waitForSelector(".pr-ok", { timeout: 30000 });
   const benchOk = !(await serverCareer(v2)).lineup.bench.includes(benchId);
   const rel = s5.squad.filter((p) => p.origin === "base")[0];
-  await go(`/carreira/elenco/ficha?id=${encodeURIComponent(rel.id)}`, "Conheça seu jogador.");
+  await go(`/elenco/ficha?id=${encodeURIComponent(rel.id)}`, "Conheça seu jogador.");
   await v2.locator("button.pr-row", { hasText: "Dispensar" }).click();
   await v2.waitForSelector("#fa-t");
   const ask6 = await v2.textContent("#fa-t");
   await v2.click('[role="alertdialog"] .text-btn');
-  await v2.waitForURL(/\/carreira\/elenco$/, { timeout: 15000 });
+  await v2.waitForURL(/\/elenco$/, { timeout: 15000 });
   const s6 = await serverCareer(v2);
   check("6) Mais ações: 'Tirar do banco' grava; 'Dispensar' pede confirmação e tira o jogador do elenco:",
     benchOk === true && ask6 === "Dispensar?" && !s6.squad.some((p) => p.id === rel.id), JSON.stringify({ benchOk, ask6 }));
 
   // 7) Comparar.
-  await go(`/carreira/elenco/comparar?a=${encodeURIComponent(prep.r)}`, "Compare lado a lado.");
+  await go(`/elenco/comparar?a=${encodeURIComponent(prep.r)}`, "Compare lado a lado.");
   await v2.click(".pr .cal-foot .cta");
   await v2.click('[role="dialog"] .pr-opt >> nth=0');
   await v2.waitForSelector(".sp-cmp");
@@ -162,13 +162,13 @@ const base = "http://localhost:8787";
     c7.cols === 2 && c7.rows.join("|") === "Ataque|Defesa|Físico|Salário mensal|Valor de mercado" && /custo-benefício/.test(c7.verdict), JSON.stringify(c7));
 
   // 8) Outro clube.
-  await go("/carreira/tabela");
+  await go("/tabela");
   await v2.waitForSelector(".tb-row", { timeout: 15000 });
   await v2.locator(".tb-row:not(.is-me)").first().click();
   await waitH1("Conheça o adversário.");
   await at360("outro-clube");
   await v2.click(".sp-player >> nth=0");
-  await v2.waitForFunction(() => location.pathname === "/carreira/clube-elenco/jogador");
+  await v2.waitForFunction(() => location.pathname === "/clube-elenco/jogador");
   await v2.locator(".row", { hasText: "Comparar com o meu" }).click();
   await waitH1("Compare lado a lado.");
   await v2.click(".pr .cal-foot .cta");

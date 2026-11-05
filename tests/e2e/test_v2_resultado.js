@@ -40,7 +40,7 @@ const { skipPreseason } = require("./_calendar_skip");
 
   const v2 = await ctx.newPage();
   // 1) Pré-jogo → Iniciar partida (v2); voltar no meio do jogo pergunta.
-  await v2.goto(base + "/carreira/", { waitUntil: "domcontentloaded" });
+  await v2.goto(base + "/", { waitUntil: "domcontentloaded" });
   await v2.waitForSelector(".home", { timeout: 15000 });
   await v2.click(".home-main .cta"); // Preparar partida
   await v2.waitForSelector(".pm-cta", { timeout: 10000 });
@@ -54,7 +54,7 @@ const { skipPreseason } = require("./_calendar_skip");
   const m1 = await v2.locator(".mt-min").textContent();
   await v2.waitForFunction((m) => document.querySelector(".mt-min")?.textContent !== m, m1, { timeout: 15000 });
   check("1) Pré-jogo abre a Partida da v2; o voltar do sistema no meio do jogo pergunta 'Sair da partida?' e 'Continuar jogando' segue o jogo:",
-    ask.path === "/carreira/partida" && ask.title === "Sair da partida?" && !(await v2.locator('[role="alertdialog"]').count()), JSON.stringify({ ask, m1 }));
+    ask.path === "/partida" && ask.title === "Sair da partida?" && !(await v2.locator('[role="alertdialog"]').count()), JSON.stringify({ ask, m1 }));
 
   // 2) Voltar de novo → 'Sair e simular o resto' → Resultado gravado.
   await v2.goBack();
@@ -105,13 +105,13 @@ const { skipPreseason } = require("./_calendar_skip");
     if (st.live) { await v2.click(".mt-skip"); seen.push("copa"); }
     else if (st.ready) await v2.click(".pz-foot .cta");
     else if (st.answer) { if (!st.effect) { seen.push("coletiva"); await v2.click(".pj-answer"); } else await v2.click(".pj .cal-foot .cta"); }
-    else if (st.path === "/carreira/pos-jogo" && st.h1) { if (seen[seen.length - 1] !== st.h1) seen.push(st.h1); await v2.click(st.h1 === "Uma oferta chegou." ? ".pj .cal-foot .link-back" : ".pj .cal-foot .cta"); }
+    else if (st.path === "/pos-jogo" && st.h1) { if (seen[seen.length - 1] !== st.h1) seen.push(st.h1); await v2.click(st.h1 === "Uma oferta chegou." ? ".pj .cal-foot .link-back" : ".pj .cal-foot .cta"); }
     await v2.waitForTimeout(400);
   }
   await v2.waitForSelector(".home", { timeout: 20000 });
   const home = await v2.evaluate(() => ({ path: location.pathname, line: document.querySelector(".home-date")?.textContent || "", frames: document.querySelectorAll("iframe").length, shown: [...document.querySelectorAll("iframe")].filter((f) => f.getBoundingClientRect().width > 1 || f.getAttribute("aria-hidden") !== "true").length }));
   check("5) Continuar: pós-jogo nas telas da v2 (notícias da rodada e resultados, mais coletiva/Copa/proposta quando houver), motor sempre escondido; termina no Início na rodada seguinte:",
-    allHidden && seen.includes("Nos bastidores.") && seen.includes("A disputa continua.") && seen.indexOf("Nos bastidores.") < seen.indexOf("A disputa continua.") && home.path === "/carreira/" && home.line.endsWith(`RODADA ${before.round + 1}`) && home.frames <= 1 && home.shown === 0,
+    allHidden && seen.includes("Nos bastidores.") && seen.includes("A disputa continua.") && seen.indexOf("Nos bastidores.") < seen.indexOf("A disputa continua.") && home.path === "/" && home.line.endsWith(`RODADA ${before.round + 1}`) && home.frames <= 1 && home.shown === 0,
     JSON.stringify({ seen, home, allHidden }));
 
   await browser.close();

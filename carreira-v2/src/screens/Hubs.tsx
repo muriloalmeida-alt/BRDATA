@@ -7,7 +7,6 @@
 // anterior (só em homologação — D3), marcadas com ↗ no fim da linha; elas
 // passam a ser telas da v2 nas fases seguintes.
 import { useState } from "react";
-import { legacyHref, type LegacyTarget } from "../adapters/legacy.ts";
 import type { BoardModel } from "../domain/board.ts";
 import type { FinanceModel } from "../domain/finance.ts";
 import type { HomeModel } from "../domain/home.ts";
@@ -17,15 +16,14 @@ import { IconBack, IconChevron } from "../ui/icons.tsx";
 import { BASE, Link, goBack } from "../ui/router.tsx";
 import "./hubs.css";
 
-type Entry = { title: string; sub?: string | null } & ({ to: string } | { legacy: LegacyTarget } | { action: () => void });
+type Entry = { title: string; sub?: string | null } & ({ to: string } | { action: () => void });
 
 function Row({ e }: { e: Entry }) {
   const body = (<>
     <span className="row-body"><span className="row-title">{e.title}</span>{e.sub && <span className="row-sub">{e.sub}</span>}</span>
-    {"legacy" in e ? <span className="hb-ext" aria-label="abre a versão anterior">↗</span> : <IconChevron className="row-chevron" />}
+    <IconChevron className="row-chevron" />
   </>);
   if ("to" in e) return <Link className="row hb-row" to={e.to}>{body}</Link>;
-  if ("legacy" in e) return <a className="row hb-row" href={legacyHref(e.legacy)}>{body}</a>;
   return <button type="button" className="row hb-row" onClick={e.action}>{body}</button>;
 }
 

@@ -70,7 +70,14 @@ const { skipOnboarding } = require("./_startup");
 
   // 4) Persistência: recarrega e confere que a força nova veio do save.
   await page.evaluate(() => persistCareer());
-  await page.waitForTimeout(2500);
+  // Espera o save do SERVIDOR conter a força nova (estado), em vez de 2,5 s
+  // fixos: sob carga no CI o PUT ainda não tinha chegado e o reload lia o
+  // save antigo (0 de 4).
+  await page.waitForFunction(async (saved) => {
+    const c = (await (await fetch("/api/career", { cache: "no-store" })).json()).career;
+    const A = (c && c.divisionTeams && c.divisionTeams.brasileirao) || [];
+    return saved.every((s) => A.some((t) => String(t.id) === s.id && t.atk === s.atk && t.def === s.def));
+  }, res.saved, { timeout: 20000, polling: 500 }).catch(() => {});
   await page.reload({ waitUntil: "domcontentloaded" });
   // Espera a carreira recarregar do save (estado), até 15 s — antes 3 s
   // fixos, curto sob carga (CAREER ainda null).

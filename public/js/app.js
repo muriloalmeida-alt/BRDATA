@@ -3118,8 +3118,18 @@ function matchPath(m) {
 // carrega tudo de uma vez mas jogador não) de uma lista pré-carregada
 // pra confirmar que existe antes de navegar; renderPlayerPage já trata
 // "não encontrado" direito sozinha (mostra mensagem em vez de travar).
+// Fase 11 (corte da carreira): o site mora em /brasileirao/* -- a raiz
+// é da Carreira. As rotas abaixo seguem escritas sem o prefixo;
+// sitePathname() tira o prefixo da URL atual e siteUrl() o põe de volta.
+const SITE_BASE = "/brasileirao";
+function sitePathname() {
+  const p = location.pathname;
+  if (p === SITE_BASE || p === SITE_BASE + "/") return "/";
+  return p.startsWith(SITE_BASE + "/") ? p.slice(SITE_BASE.length) : p;
+}
+function siteUrl(path) { return path === "/" ? SITE_BASE : SITE_BASE + path; }
 function applyRouteFromLocation() {
-  const teamMatch = location.pathname.match(/^\/times\/([a-z0-9-]+)\/?$/);
+  const teamMatch = sitePathname().match(/^\/times\/([a-z0-9-]+)\/?$/);
   if (teamMatch) {
     const team = findTeamBySlug(teamMatch[1]);
     if (!team) return false; // slug desconhecido (time que não existe, ou de outra competição) -- não força nada, segue pro Dashboard
@@ -3134,7 +3144,7 @@ function applyRouteFromLocation() {
   // handlePlayerRoute), então não precisa validar aqui se o slug bate
   // com o time real do jogador: se estivesse errado, o servidor já
   // teria dado um 301 pra URL certa antes desse HTML chegar aqui.
-  const nestedPlayerMatch = location.pathname.match(/^\/times\/[a-z0-9-]+\/jogadores\/(\d+)(?:-[a-z0-9-]+)?\/?$/);
+  const nestedPlayerMatch = sitePathname().match(/^\/times\/[a-z0-9-]+\/jogadores\/(\d+)(?:-[a-z0-9-]+)?\/?$/);
   if (nestedPlayerMatch) {
     goToPlayer(nestedPlayerMatch[1], { pushUrl: false });
     return true;
@@ -3146,7 +3156,7 @@ function applyRouteFromLocation() {
   // carrega e a gente descobre o time, renderPlayerPage corrige
   // sozinha a URL na barra de endereço pra forma aninhada nova (ver
   // syncPlayerUrl) -- sem reload, só troca a URL visível.
-  const playerMatch = location.pathname.match(/^\/jogadores\/(\d+)(?:-[a-z0-9-]+)?\/?$/);
+  const playerMatch = sitePathname().match(/^\/jogadores\/(\d+)(?:-[a-z0-9-]+)?\/?$/);
   if (playerMatch) {
     goToPlayer(playerMatch[1], { pushUrl: false });
     return true;
@@ -3154,7 +3164,7 @@ function applyRouteFromLocation() {
 
   // Partida (/jogos/:fixtureId[-slug], pedido do usuário 15/08/2026)
   // -- igual jogador, só o ID resolve de verdade; ver goToMatch.
-  const matchRouteMatch = location.pathname.match(/^\/jogos\/(\d+)(?:-[a-z0-9-]+)?\/?$/);
+  const matchRouteMatch = sitePathname().match(/^\/jogos\/(\d+)(?:-[a-z0-9-]+)?\/?$/);
   if (matchRouteMatch) {
     goToMatch(matchRouteMatch[1], { pushUrl: false });
     return true;
@@ -3168,7 +3178,7 @@ function applyRouteFromLocation() {
   // Jogos), por isso não passam por goToTeam/goToPlayer/goToMatch nem
   // por state.pageBeforeDetail -- ver FIXED_PAGE_PATHS (definido perto
   // de syncUrlForPage) pra essa mesma lista, usada nos dois sentidos.
-  const fixedPageEntry = Object.entries(FIXED_PAGE_PATHS).find(([, path]) => path === location.pathname);
+  const fixedPageEntry = Object.entries(FIXED_PAGE_PATHS).find(([, path]) => path === sitePathname());
   if (fixedPageEntry) {
     setActivePage(fixedPageEntry[0], { skipUrlSync: true });
     return true;
@@ -3205,7 +3215,7 @@ function syncUrlForPage(name) {
     const team = TEAM_MAP[state.selectedTeamId];
     if (team) {
       const path = `/times/${teamSlug(team)}`;
-      if (location.pathname !== path) history.pushState(null, "", path);
+      if (sitePathname() !== path) history.pushState(null, "", siteUrl(path));
       return;
     }
   }
@@ -3218,7 +3228,7 @@ function syncUrlForPage(name) {
     const found = findMatchByFixtureId(state.selectedMatchFixtureId);
     if (found) {
       const path = matchPath(found.match);
-      if (location.pathname !== path) history.pushState(null, "", path);
+      if (sitePathname() !== path) history.pushState(null, "", siteUrl(path));
       return;
     }
   }
@@ -3228,11 +3238,12 @@ function syncUrlForPage(name) {
   // "/" (ver reset genérico abaixo).
   if (FIXED_PAGE_PATHS[name]) {
     const path = FIXED_PAGE_PATHS[name];
-    if (location.pathname !== path) history.pushState(null, "", path);
+    if (sitePathname() !== path) history.pushState(null, "", siteUrl(path));
     return;
   }
-  if (location.pathname.startsWith("/times/") || location.pathname.startsWith("/jogadores/") || location.pathname.startsWith("/jogos/") || Object.values(FIXED_PAGE_PATHS).includes(location.pathname)) {
-    history.pushState(null, "", "/");
+  const cur = sitePathname();
+  if (cur.startsWith("/times/") || cur.startsWith("/jogadores/") || cur.startsWith("/jogos/") || Object.values(FIXED_PAGE_PATHS).includes(cur)) {
+    history.pushState(null, "", siteUrl("/"));
   }
 }
 
@@ -3248,7 +3259,7 @@ function syncUrlForPage(name) {
 function syncPlayerUrl(playerId, team) {
   if (state.selectedPlayerId !== playerId) return; // usuário já trocou de jogador de novo enquanto isso rodava
   const path = team ? `/times/${teamSlug(team)}/jogadores/${playerId}` : `/jogadores/${playerId}`;
-  if (location.pathname !== path) history.pushState(null, "", path);
+  if (sitePathname() !== path) history.pushState(null, "", siteUrl(path));
 }
 
 // opts.pushUrl=false: URL já está certa (veio de applyRouteFromLocation,

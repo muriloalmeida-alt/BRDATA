@@ -36,7 +36,7 @@ async function serverCareer(page) {
 
 // Início → Preparar partida → Iniciar partida → "Pular para o fim".
 async function playV2MatchToEnd(v2) {
-  await v2.goto(base + "/carreira/", { waitUntil: "domcontentloaded" });
+  await v2.goto(base + "/", { waitUntil: "domcontentloaded" });
   await v2.waitForSelector(".home", { timeout: 15000 });
   await v2.click(".home-main .cta");
   await v2.waitForSelector(".pm-cta", { timeout: 10000 });

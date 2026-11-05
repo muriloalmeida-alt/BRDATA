@@ -42,8 +42,16 @@
 const CACHE_NAME = "brdata-shell-__DEPLOY_VERSION__";
 const API_CACHE_NAME = "brdata-api-v1";
 
+// Carreira 2.0 (fase 11, a raiz do app instalado): JS/CSS do build da v2,
+// com hash no nome — o servidor troca o comentário abaixo pela lista lida
+// de public/carreira/index.html (ver serveStatic em server.js), para a tela
+// abrir offline já na 1ª vez.
+const V2_ASSETS = /*__V2_ASSETS__*/[];
+
 const APP_SHELL = [
-  "/",
+  ...V2_ASSETS,
+  "/",            // desde a fase 11, a Carreira 2.0 (a raiz abre a v2)
+  "/brasileirao", // o site do Brasileirão (index.html, servido pelo servidor)
   "/index.html",
   "/manifest.json",
   "/css/style.css",
@@ -68,7 +76,8 @@ const APP_SHELL = [
   // nunca ter aberto o site principal, o app shell abaixo garante que
   // a tela abre mesmo assim — dados de carreira (fetch/api) continuam
   // exigindo rede na 1ª vez, como já era.
-  "/carreira.html",
+  // Fase 11: /carreira.html virou redirecionamento para "/" (já acima);
+  // carreira.js segue no shell porque o motor da v2 (/carreira/motor) usa.
   "/js/carreira.js",
   "/manifest-treinador.json",
   "/img/brand-icon.png",
@@ -163,14 +172,14 @@ self.addEventListener("push", (event) => {
       body: data.body,
       icon: "/img/icons/icon-192.png",
       badge: "/img/icons/icon-192.png",
-      data: { url: data.url || "/carreira.html" },
+      data: { url: data.url || "/" },
     })
   );
 });
 
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
-  const targetUrl = new URL(event.notification.data?.url || "/carreira.html", self.location.origin);
+  const targetUrl = new URL(event.notification.data?.url || "/", self.location.origin);
   event.waitUntil(
     self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clients) => {
       const existing = clients.find((c) => new URL(c.url).pathname === targetUrl.pathname);

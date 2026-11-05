@@ -1,6 +1,6 @@
 // Carreira 2.0 — fase 2 (acesso), pela UI real, com conta nova e SEM
 // passar pela versão anterior:
-//  1) Sem sessão: abertura e login da v2 em /carreira/ (senha errada mostra
+//  1) Sem sessão: abertura e login da v2 em / (senha errada mostra
 //     erro); "Criar conta" leva ao cadastro do portal.
 //  2) Sem carreira: Competição com os nomes reais; "Continuar" só depois de
 //     escolher.
@@ -47,7 +47,7 @@ const { serverCareer } = require("./_v2_match");
   const sizes = {};
 
   // 1) Login da v2.
-  await v2.goto(base + "/carreira/", { waitUntil: "domcontentloaded" });
+  await v2.goto(base + "/", { waitUntil: "domcontentloaded" });
   await v2.waitForSelector(".ac-form", { timeout: 15000 });
   const signup = await v2.getAttribute(".ac-signup a", "href");
   await v2.fill('input[type="email"]', email);
@@ -58,9 +58,9 @@ const { serverCareer } = require("./_v2_match");
   await v2.setViewportSize({ width: 360, height: 780 }); sizes.login = await small(); await v2.setViewportSize({ width: 390, height: 844 });
   await v2.fill('input[type="password"]', "senha123");
   await v2.click('.ac-form button[type="submit"]');
-  await v2.waitForURL(/\/carreira\/nova$/, { timeout: 15000 });
-  check("1) Sem sessão, /carreira/ mostra o login da v2; senha errada mostra erro; 'Criar conta' leva a /?signup=1; entrar sem carreira leva a /carreira/nova:",
-    signup === "/?signup=1" && !!wrong && /\/carreira\/nova$/.test(v2.url()), JSON.stringify({ signup, wrong }));
+  await v2.waitForURL(/\/nova$/, { timeout: 15000 });
+  check("1) Sem sessão, / mostra o login da v2; senha errada mostra erro; 'Criar conta' leva a /brasileirao?signup=1; entrar sem carreira leva a /nova:",
+    signup === "/brasileirao?signup=1" && !!wrong && /\/nova$/.test(v2.url()), JSON.stringify({ signup, wrong }));
 
   // 2) Competição.
   await v2.waitForSelector('.ac-opt[role="radio"]', { timeout: 40000 });
@@ -73,9 +73,9 @@ const { serverCareer } = require("./_v2_match");
   await v2.locator(".ac-opt", { hasText: "Série B" }).click();
   const after = await v2.locator(".ac-foot .cta").textContent();
   await v2.click(".ac-foot .cta");
-  await v2.waitForURL(/\/carreira\/nova\/clube\?comp=serie_b/, { timeout: 10000 });
+  await v2.waitForURL(/\/nova\/clube\?comp=serie_b/, { timeout: 10000 });
   check("2) Competição: Brasileirão Série A/B/C, nada pré-selecionado, 'Continuar' inativo até escolher:",
-    comps.items.join("|") === "Brasileirão Série A|Brasileirão Série B|Brasileirão Série C" && comps.checked === 0 && comps.disabled === "true" && stay === "/carreira/nova" && after === "Continuar",
+    comps.items.join("|") === "Brasileirão Série A|Brasileirão Série B|Brasileirão Série C" && comps.checked === 0 && comps.disabled === "true" && stay === "/nova" && after === "Continuar",
     JSON.stringify({ comps, stay, after }));
 
   // 3) Clube.
@@ -91,7 +91,7 @@ const { serverCareer } = require("./_v2_match");
     clubs.names.length >= 16 && JSON.stringify(sorted) === JSON.stringify(clubs.names) && clubs.checked === 0 && clubs.cta === "Escolha um clube" && clubs.disabled === "true" && cta3.startsWith(`Continuar com ${pick}`),
     JSON.stringify({ n: clubs.names.length, cta: clubs.cta, cta3 }));
   await v2.click(".ac-foot .cta");
-  await v2.waitForURL(/\/carreira\/nova\/treinador/, { timeout: 10000 });
+  await v2.waitForURL(/\/nova\/treinador/, { timeout: 10000 });
 
   // 4) Configurar e criar.
   await v2.waitForSelector(".ac-clubline", { timeout: 20000 });
@@ -101,7 +101,7 @@ const { serverCareer } = require("./_v2_match");
   const emptyErr = await v2.locator(".ac-form .inline-error").textContent();
   await v2.fill(".ac-input input", "Técnico Teste");
   await v2.click(".ac-form .cta");
-  await v2.waitForURL(/\/carreira\/nova\/pronto$/, { timeout: 90000 });
+  await v2.waitForURL(/\/nova\/pronto$/, { timeout: 90000 });
   await v2.waitForSelector(".ac-hero", { timeout: 20000 });
   const fe = await v2.evaluate(() => ({ title: document.querySelector("h1").textContent, club: document.querySelector(".ac-hero b").textContent, kicker: document.querySelector(".ac-hero .ac-kicker").textContent,
     objective: document.querySelector(".ac-sec-text")?.textContent || "", next: document.querySelector(".ac-match-line")?.textContent || null, cta: document.querySelector(".ac-foot .cta").textContent }));
@@ -116,7 +116,7 @@ const { serverCareer } = require("./_v2_match");
   // 5) Recompensa diária.
   const cash0 = created.finances.cash;
   await v2.click(".ac-foot .cta");
-  await v2.waitForURL(/\/carreira\/recompensa$/, { timeout: 20000 });
+  await v2.waitForURL(/\/recompensa$/, { timeout: 20000 });
   await v2.waitForSelector(".rw-days", { timeout: 40000 });
   const rw = await v2.evaluate(() => ({ today: document.querySelector(".rw-day.is-today b")?.textContent, days: document.querySelectorAll(".rw-day").length, title: document.querySelector(".rw-title").textContent, state: document.querySelector(".rw-state").textContent }));
   await v2.click(".rw-foot .cta");
@@ -131,7 +131,7 @@ const { serverCareer } = require("./_v2_match");
   await v2.waitForTimeout(800);
   const pathAfterReload = new URL(v2.url()).pathname;
   check("5) Recompensa: abre sozinha (dia 1 de 7, 'R$ 500 no caixa'); 'Receber' põe R$ 500 no caixa e some; Início mostra 'Recebida hoje'; recarregar não reabre:",
-    rw.today === "1" && rw.days === 7 && rw.title === "R$ 500 no caixa" && /Receba/.test(rw.state) && /Recompensa recebida/.test(rw2) && cash1 === cash0 + 500 && row === "Recebida hoje" && pathAfterReload === "/carreira/",
+    rw.today === "1" && rw.days === 7 && rw.title === "R$ 500 no caixa" && /Receba/.test(rw.state) && /Recompensa recebida/.test(rw2) && cash1 === cash0 + 500 && row === "Recebida hoje" && pathAfterReload === "/",
     JSON.stringify({ rw, rw2, cash: [cash0, cash1], row, pathAfterReload }));
 
   // 6) Sessão expirada no meio do uso.
@@ -153,7 +153,7 @@ const { serverCareer } = require("./_v2_match");
   await v2.click('[role="dialog"] button[type="submit"]');
   await v2.waitForFunction(() => !document.querySelector("#lg-t"), null, { timeout: 15000 });
   check("6) Sessão expirada no meio do uso: folha 'Sua sessão expirou.' sobre a tela; outra conta recusada; a mesma conta fecha a folha:",
-    sheet.title === "Sua sessão expirou." && sheet.path === "/carreira/escalacao" && /outra conta/.test(other), JSON.stringify({ sheet, other }));
+    sheet.title === "Sua sessão expirou." && sheet.path === "/escalacao" && /outra conta/.test(other), JSON.stringify({ sheet, other }));
 
   // 7) Sem /carreira-old e 360 px.
   const old = navs.filter((p) => p.startsWith("/carreira-old"));
