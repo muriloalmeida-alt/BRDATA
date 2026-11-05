@@ -14,6 +14,7 @@
 import type { Career, Team } from "./types.ts";
 import { COMPETITION_NAME, ROUNDS, moneyShort, sortedStandings } from "./home.ts";
 import { shortName } from "./lineup.ts";
+import { seasonTitles, type TitleKind } from "./onboarding.ts";
 
 // Mesma regra da versão anterior (DISMISSAL_STREAK em carreira.js), usada
 // só para reconhecer uma demissão já decidida e ainda não confirmada.
@@ -38,6 +39,8 @@ export interface SeasonEndModel {
   kicker: string; line: string;
   goal: null | { label: string; met: boolean };
   dismissalPending: boolean;
+  // Títulos da temporada (campeonato e/ou Copa), para "Compartilhar título".
+  titles: TitleKind[];
 }
 export function seasonEnded(career: Career): boolean { return career.currentRound > ROUNDS; }
 export function dismissalPending(career: Career): boolean {
@@ -54,6 +57,7 @@ export function buildSeasonEnd(career: Career, teamById: (id: string | number) =
     line: position != null ? `O ${career.clubName} concluiu a temporada de ${career.seasonYear} em ${position}º lugar no ${comp}.` : `Temporada de ${career.seasonYear} concluída.`,
     goal: career.boardGoal ? { label: career.boardGoal.label, met } : null,
     dismissalPending: dismissalPending(career),
+    titles: seasonTitles(career, position),
   };
 }
 

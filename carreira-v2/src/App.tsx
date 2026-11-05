@@ -28,6 +28,8 @@ import { DailyReward } from "./screens/DailyReward.tsx";
 import { ClubHub, GamesHub, MoreMenu } from "./screens/Hubs.tsx";
 import { LoginSheet } from "./ui/session.tsx";
 import { rewardPending } from "./domain/reward.ts";
+import { autoOpen, wizardPending, wizardStepOf } from "./domain/onboarding.ts";
+import { Tutorial, WizardBar } from "./screens/Onboarding.tsx";
 import { buildFriendly, buildNews, buildNotices, skipInfo } from "./domain/week.ts";
 import { FriendlyPre, News, WeekDone } from "./screens/Week.tsx";
 import { WeekGateway } from "./adapters/week.ts";
@@ -43,8 +45,9 @@ import { AchievementsScreen, BudgetScreen, EditProfileScreen, HelpScreen, Purcha
 import { BaseScreen, HireScoutScreen, LedgerScreen, MissionScreen, ProspectsScreen, ScoutsScreen, SponsorsScreen, StadiumScreen, StaffScreen, SuggestionsScreen } from "./screens/Club.tsx";
 import { History as MarketHistory, Loan, Market, MyOffers, MySales, Negotiation, PendingOffer, Propose, SaleOffers, Target } from "./screens/Market.tsx";
 
-// Recompensa diária: abre sozinha no máximo uma vez por carregamento da v2.
-let rewardShown = false;
+// Tutorial, assistente e recompensa diária: a abertura automática roda no
+// máximo uma vez por carregamento da v2 (sair pelo "Voltar" não reabre).
+let autoDone = false;
 
 type Data = { career: Career; teamById: (id: string | number) => Team; user: SessionUser };
 type State = { kind: "loading" } | { kind: "error"; message: string } | { kind: "login" } | { kind: "nova"; user: SessionUser } | { kind: "ready"; data: Data };
@@ -113,17 +116,34 @@ export function App() {
     setState((s) => s.kind === "ready" ? { kind: "ready", data: { ...s.data, career: fresh || s.data.career, user: user || s.data.user } } : s);
   }, []);
 
-  // Recompensa diária (decisão de 03/11): abre sozinha ao entrar, uma vez
-  // por carregamento, se ainda não foi recebida hoje — fora da criação de
-  // carreira e da partida.
-  const readyUser = state.kind === "ready" ? state.data.user : null;
+  // O que abre sozinho ao entrar, uma vez por carregamento e fora da
+  // criação de carreira e da partida, nesta ordem (como na versão
+  // anterior): tutorial de boas-vindas (1ª carreira da conta) → assistente
+  // de início (carreira nova, na pré-temporada) → recompensa diária (se
+  // ainda não recebida hoje). Ao fechar um, segue para o próximo.
+  const readyData = state.kind === "ready" ? state.data : null;
+  const nextAuto = useCallback((d: { user: SessionUser; career: Career }) => autoOpen({
+    tutorialSeen: d.user.onboardingSeen !== false,
+    wizard: wizardPending(d.career),
+    reward: rewardPending(d.user.dailyLogin),
+  }), []);
   useEffect(() => {
-    if (!readyUser || rewardShown) return;
-    if (loc.path.startsWith(NEW) || loc.path === `${BASE}/partida` || loc.path === `${BASE}/recompensa`) return;
-    if (!rewardPending(readyUser.dailyLogin)) return;
-    rewardShown = true;
-    navigate(`${BASE}/recompensa`);
-  }, [readyUser, loc.path]);
+    if (!readyData || autoDone) return;
+    if (loc.path.startsWith(NEW) || loc.path === `${BASE}/partida` || loc.path === `${BASE}/recompensa` || loc.path === `${BASE}/boas-vindas` || wizardStepOf(loc.search)) return;
+    autoDone = true;
+    const to = nextAuto(readyData);
+    if (to) navigate(to);
+  }, [readyData, loc.path, loc.search, nextAuto]);
+  // Ao fechar o tutorial ou concluir o assistente: segue a fila (ou volta ao Início).
+  const continueAuto = useCallback((patch: { user?: Partial<SessionUser>; career?: Partial<Career> }) => {
+    setState((s) => {
+      if (s.kind !== "ready") return s;
+      const d = { ...s.data, user: { ...s.data.user, ...patch.user }, career: { ...s.data.career, ...patch.career } };
+      const to = nextAuto(d);
+      queueMicrotask(() => navigate(to || `${BASE}/`, { replace: true }));
+      return { kind: "ready", data: d };
+    });
+  }, [nextAuto]);
 
   // Fase 1: com a carreira carregada, o motor começa a abrir em segundo
   // plano (a 1ª partida não espera a carga da página do motor). Uma vez só.
@@ -160,11 +180,17 @@ export function App() {
   if (loc.path === `${NEW}/pronto`) return <FirstEntryScreen home={home} />;
   if (loc.path.startsWith(NEW)) { queueMicrotask(() => navigate(`${BASE}/`, { replace: true })); return null; }
   if (loc.path === `${BASE}/recompensa`) return <DailyReward onClaimed={refreshAfterReward} />;
+  if (loc.path === `${BASE}/boas-vindas`) return <Tutorial onDone={() => continueAuto({ user: { onboardingSeen: true } })} />;
   // P7 — telas de entrada.
   if (loc.path === `${BASE}/jogos`) return <GamesHub home={home} cup={buildCup(data.career, data.teamById)} />;
   if (loc.path === `${BASE}/clube`) return <ClubHub home={home} board={buildBoard(data.career)} finance={buildFinance(data.career)} />;
   if (loc.path === `${BASE}/mais`) return <MoreMenu onLogout={async () => { await SessionGateway.logout(); engine.reset(); navigate(`${BASE}/`, { replace: true }); load(); }} />;
-  return <>{route()}{sessionSheet}</>;
+  // Assistente de início: a tela do passo + a barra "Passo N de 4".
+  const wzStep = wizardStepOf(loc.search);
+  const wizard = wzStep && loc.path === wzStep.path && data.career.startupWizardSeen === false && (
+    <WizardBar key={wzStep.n} step={wzStep} onFinished={() => continueAuto({ career: { startupWizardSeen: true } })} />
+  );
+  return <>{route()}{wizard}{sessionSheet}</>;
 
   // Telas com carreira (a folha de sessão expirada fica por cima de qualquer uma).
   function route(): JSX.Element | null {

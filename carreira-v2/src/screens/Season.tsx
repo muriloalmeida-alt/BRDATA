@@ -11,6 +11,9 @@ import { SeasonGateway, newSeasonStore } from "../adapters/season.ts";
 import { buildCoach, buildDismissal, buildHistory, buildNewSeason, type ClubOfferModel, type CoachHistory, type SeasonEndModel } from "../domain/season.ts";
 import type { Career } from "../domain/types.ts";
 import { Crest, Wordmark } from "../ui/components.tsx";
+import { crestSrc } from "../adapters/gateways.ts";
+import { TITLE_HEAD, TITLE_LABEL, TITLE_TEXT, type TitleKind } from "../domain/onboarding.ts";
+import { shareTitle } from "../ui/share.ts";
 import { Sheet } from "../ui/dialog.tsx";
 import { IconArrow, IconBack, IconCheck, IconChevron, IconClose, IconList, IconTrophy } from "../ui/icons.tsx";
 import { BASE, Link, goBack, goBackTo, navigate } from "../ui/router.tsx";
@@ -43,6 +46,20 @@ function Rows({ rows }: { rows: Row[] }) {
 export function SeasonEnd({ m, onAdvanced, onExpired }: { m: SeasonEndModel; onAdvanced: () => Promise<void> | void; onExpired: () => void }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [shareMsg, setShareMsg] = useState<string | null>(null);
+  // Cartão de título (mesmo desenho da versão anterior): o escudo vai sobre
+  // a chapinha clara, então usa o original, não a versão negativa.
+  const share = async (k: TitleKind) => {
+    setShareMsg(null);
+    const src = crestSrc(m.club);
+    const r = await shareTitle({
+      head: TITLE_HEAD[k], year: m.year, file: `campeao-${m.year}.png`,
+      text: `${m.club.name} é ${TITLE_TEXT[k]} em ${m.year} no Modo Técnico!`,
+      team: { name: m.club.name, short: m.club.short, c1: m.club.c1, c2: m.club.c2, src: src ? src.replace(/_neg\.(svg|png)$/, ".$1") : null },
+    });
+    if (r === "downloaded") setShareMsg("Imagem baixada: compartilhe pela sua galeria.");
+    if (r === "failed") setShareMsg("Não deu pra gerar a imagem agora.");
+  };
   const go = async () => {
     if (busy) return;
     setBusy(true); setError(null);
@@ -82,7 +99,15 @@ export function SeasonEnd({ m, onAdvanced, onExpired }: { m: SeasonEndModel; onA
         )}
         <Link className="row" to={`${BASE}/tabela`}><IconList className="row-icon" /><span className="row-body"><span className="row-title">Ver classificação</span></span><IconChevron className="row-chevron" /></Link>
         <Link className="row" to={`${BASE}/historico`}><IconTrophy className="row-icon" /><span className="row-body"><span className="row-title">Ver histórico</span></span><IconChevron className="row-chevron" /></Link>
+        {m.titles.map((k) => (
+          <button key={k} type="button" className="row se-share" onClick={() => share(k)}>
+            <IconTrophy className="row-icon" />
+            <span className="row-body"><span className="row-kicker row-kicker--caps">{TITLE_LABEL[k]}</span><span className="row-title">Compartilhar título</span></span>
+            <IconChevron className="row-chevron" />
+          </button>
+        ))}
       </nav>
+      {shareMsg && <p className="wk-note se-share-msg" role="status">{shareMsg}</p>}
       <p className="wk-note se-warn">Ao continuar, a temporada {m.nextYear} começa: o elenco envelhece, contratos vencidos saem e a base renova.</p>
       {error && <p className="inline-error se-err" role="alert">{error}</p>}
       <div className="cal-foot">

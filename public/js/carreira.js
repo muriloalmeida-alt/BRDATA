@@ -17647,6 +17647,13 @@ if (V2_PONTE) {
       if (!CAREER) return { ok: false, motivo: "sem-carreira" };
       return { ok: true, notificacoes: CAREER.notificationSettings || { partida: true, loja: false, lesao: true }, som: !!SFX_ENABLED, reputacao: CAREER.reputation == null ? 50 : CAREER.reputation };
     },
+    // Assistente de início pela v2 (item 1, 05/11): o mesmo
+    // CAREER.startupWizardSeen = true de finishStartupWizard, gravado.
+    async assistenteVisto() {
+      if (!CAREER) return { ok: false, motivo: "sem-carreira" };
+      CAREER.startupWizardSeen = true;
+      return ponteGravar();
+    },
     async alternarNotificacao(chave) {
       if (!CAREER || !["partida", "loja", "lesao"].includes(chave)) return { ok: false, motivo: "opcao-invalida" };
       CAREER.notificationSettings = CAREER.notificationSettings || { partida: true, loja: false, lesao: true };

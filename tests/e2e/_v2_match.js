@@ -110,3 +110,20 @@ async function ensureDailyClaimed(page) {
   });
 }
 module.exports.ensureDailyClaimed = ensureDailyClaimed;
+
+// Desde o item 1 (05/11) a v2 abre sozinha, ao entrar, o tutorial (1ª
+// carreira da conta), o assistente de início (carreira nova) e a
+// recompensa. Pula o que estiver aberto até chegar ao Início.
+async function skipAutoOpen(page, timeout = 30000) {
+  const end = Date.now() + timeout;
+  while (Date.now() < end) {
+    if (await page.locator(".home").count()) return true;
+    const u = page.url();
+    if (/\/boas-vindas$/.test(u) && await page.locator(".ob-skip").count()) await page.click(".ob-skip").catch(() => {});
+    else if (/assistente=\d/.test(u) && await page.locator(".wz-skip").count()) await page.click(".wz-skip").catch(() => {});
+    else if (/\/recompensa$/.test(u) && await page.locator(".rw-foot .link-back").count()) await page.click(".rw-foot .link-back").catch(() => {});
+    await page.waitForTimeout(300);
+  }
+  return false;
+}
+module.exports.skipAutoOpen = skipAutoOpen;
