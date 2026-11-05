@@ -30,6 +30,7 @@ import { LoginSheet } from "./ui/session.tsx";
 import { rewardPending } from "./domain/reward.ts";
 import { autoOpen, wizardPending, wizardStepOf } from "./domain/onboarding.ts";
 import { Tutorial, WizardBar } from "./screens/Onboarding.tsx";
+import { CommissionTab } from "./screens/Commission.tsx";
 import { buildFriendly, buildNews, buildNotices, skipInfo } from "./domain/week.ts";
 import { FriendlyPre, News, WeekDone } from "./screens/Week.tsx";
 import { WeekGateway } from "./adapters/week.ts";
@@ -190,7 +191,10 @@ export function App() {
   const wizard = wzStep && loc.path === wzStep.path && data.career.startupWizardSeen === false && (
     <WizardBar key={wzStep.n} step={wzStep} onFinished={() => continueAuto({ career: { startupWizardSeen: true } })} />
   );
-  return <>{route()}{wizard}{sessionSheet}</>;
+  // Comissão técnica (05/11): aba lateral no Início, Escalação e Pré-jogo,
+  // com carreira carregada e fora do assistente e da sessão expirada.
+  const commission = !wzStep && !expired && [`${BASE}/`, `${BASE}/escalacao`, `${BASE}/pre-jogo`].includes(loc.path) && <CommissionTab onChanged={reloadCareer} />;
+  return <>{route()}{wizard}{commission}{sessionSheet}</>;
 
   // Telas com carreira (a folha de sessão expirada fica por cima de qualquer uma).
   function route(): JSX.Element | null {
