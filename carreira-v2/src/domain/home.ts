@@ -3,6 +3,7 @@
 // As regras de ordenação/fase reproduzem as do legado (carreira.js:
 // sortedStandings, renderCentral) só para EXIBIR — não decidem jogo.
 import type { Career, CalendarWeek, Team } from "./types.ts";
+import { sortRows } from "../../../public/js/motor/tabela.js";
 
 export const COMPETITION_NAME: Record<string, string> = {
   brasileirao: "Brasileirão Série A",
@@ -33,9 +34,10 @@ export interface HomeModel {
   optionalFriendly: null | { invites: number };
 }
 
+// Critério da tabela (pontos → vitórias → saldo → gols pró): o mesmo do
+// motor (public/js/motor/tabela.js), usado também pela versão anterior.
 export function sortedStandings(career: Career) {
-  return Object.values(career.standings || {}).slice()
-    .sort((a, b) => (b.pts - a.pts) || (b.v - a.v) || (b.sg - a.sg) || (b.gp - a.gp));
+  return sortRows(career.standings || {});
 }
 
 export function moneyShort(v: number): string {

@@ -11,6 +11,7 @@
 // comparar (proposta na fase 8).
 import type { Career, Player, PlayerGroup } from "./types.ts";
 import { moneyShort, sortedStandings } from "./home.ts";
+import { sortRows } from "../../../public/js/motor/tabela.js";
 import { isAvailable, shortName, sortKey } from "./lineup.ts";
 import { situationOf, type SquadRow } from "./squad.ts";
 import { potentialText } from "./potential.ts";
@@ -176,7 +177,7 @@ export function buildClubRoster(career: Career, clubId: string, clubName: string
   const rows = sortedStandings(career);
   const pos = rows.findIndex((r) => String(r.id) === clubId);
   const inMyLeague = pos >= 0;
-  const other = !inMyLeague ? Object.entries(career.otherDivisions || {}).map(([, d]) => Object.values(d.standings || {}).sort((a, b) => (b.pts - a.pts) || (b.v - a.v) || (b.sg - a.sg) || (b.gp - a.gp))).find((r) => r.some((x) => String(x.id) === clubId)) : null;
+  const other = !inMyLeague ? Object.entries(career.otherDivisions || {}).map(([, d]) => sortRows(d.standings || {})).find((r) => r.some((x) => String(x.id) === clubId)) : null;
   const position = inMyLeague ? pos + 1 : other ? other.findIndex((x) => String(x.id) === clubId) + 1 : null;
   return {
     name: clubName, division,

@@ -2,6 +2,7 @@
 // do legado (public/js/carreira.js: renderTabela — ordenação e zonas —,
 // divisionStandingsFor, wireTabelaDivisionSwitch, renderCopa). Só leitura.
 import type { Career, StandingRow, Team } from "./types.ts";
+import { sortRows as motorSortRows } from "../../../public/js/motor/tabela.js";
 import { COMPETITION_NAME } from "./home.ts";
 
 export const RELEGATION_N = 4; // legado: RELEGATION_N
@@ -27,7 +28,8 @@ export interface TableModel {
   results: ResultRow[];
 }
 
-const sortRows = (rows: StandingRow[]) => rows.slice().sort((a, b) => (b.pts - a.pts) || (b.v - a.v) || (b.sg - a.sg) || (b.gp - a.gp));
+// Critério da tabela: o do motor (public/js/motor/tabela.js).
+const sortRows = (rows: StandingRow[]) => motorSortRows(rows);
 
 // Mesmas faixas do legado: Série A — 1º–6º Libertadores, 7º–12º
 // Pré-Libertadores (Sul-Americana), últimos 4 rebaixamento; Série B/C —
