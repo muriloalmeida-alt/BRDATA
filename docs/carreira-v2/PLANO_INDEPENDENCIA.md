@@ -392,7 +392,7 @@ A seção 8 é o retrato de 03/11 e fica como histórico.
 | 12.3 — finanças (`motor/financas.js`) | #75 | na `main` |
 | Comissão técnica: sugestões rápidas (Escalação, Formação, Postura) | #76 | na `main` |
 | 12.4 — treino e evolução natural (`motor/treino.js`) | #77 | na `main` |
-| 12.5 — núcleo do mercado (`motor/mercado.js`) | próximo PR | `ENTREGA_F12_5_MERCADO.md` |
+| 12.5 — núcleo do mercado (`motor/mercado.js`) | #78 | `ENTREGA_F12_5_MERCADO.md` |
 | 12.6 — temporada | — | **não iniciada** |
 
 ### Pontos de dependência (seção 1)

@@ -2,7 +2,7 @@
 
 - **Data:** 05/11/2026.
 - **Branch:** `f12-mercado`, a partir de `main` (com o #77, etapa 4).
-- **Status:** aguardando aprovação do Murilo. Commit local, sem push e sem PR.
+- **Status:** aprovado pelo Murilo (06/11).
 
 **Decisões aplicadas** (05/11):
 - **Escopo:** só o núcleo de regras.
