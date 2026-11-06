@@ -61,4 +61,4 @@ As regras da virada de temporada foram para `public/js/motor/temporada.js`, **se
   - **Correção no próprio teste:** a 1ª versão gerava tabelas sem `id`, e a zona saía vazia. A contraprova do perdão mostrou isso, e o mundo foi corrigido antes do resultado acima.
 - **Testes da temporada:** 33/33. Entram temporada, rebaixamento e divisões, GE-BALANCE, diretoria, reputação, premiações, demissão, carreira do treinador, base, olheiros, contratos e os 3 testes de equivalência do motor.
 - **v2:** 117/117 unitários, `tsc` limpo, build regenerado e `verificar-bundle-v2` idêntico.
-- **Suíte completa:** __SUITE__.
+- **Suíte completa:** 193/193 na primeira rodada.
