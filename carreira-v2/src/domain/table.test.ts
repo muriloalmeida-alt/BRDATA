@@ -22,8 +22,9 @@ function career(myPts = 0): Career {
 
 test("RELEGATION_N e faixas de zona iguais às do legado", () => {
   const src = readFileSync(new URL("../../../public/js/carreira.js", import.meta.url), "utf8");
-  assert.match(src, /const RELEGATION_N = 4;/);
-  assert.match(src, /pos === 1 \? "campeao" : pos <= 6 \? "libertadores" : pos <= 12 \? "sula" : pos > total - RELEGATION_N \? "reb" : ""/);
+  const motor = readFileSync(new URL("../../../public/js/motor/temporada.js", import.meta.url), "utf8");
+  assert.match(motor, /export const RELEGATION_N = 4;/);
+  assert.match(src, /pos === 1 \? "campeao" : pos <= 6 \? "libertadores" : pos <= 12 \? "sula" : pos > total - motorTemporada\(\)\.RELEGATION_N \? "reb" : ""/);
   assert.deepEqual([1, 6, 7, 12, 13, 16, 17, 20].map((p) => zoneOf(p, 20, "brasileirao")), ["top", "top", "mid", "mid", null, null, "reb", "reb"]);
   assert.deepEqual([1, 4, 5, 16, 17].map((p) => zoneOf(p, 20, "serie_b")), ["top", "top", null, null, "reb"]);
 });

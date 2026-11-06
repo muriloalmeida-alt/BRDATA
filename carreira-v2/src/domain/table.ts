@@ -4,8 +4,11 @@
 import type { Career, StandingRow, Team } from "./types.ts";
 import { sortRows as motorSortRows } from "../../../public/js/motor/tabela.js";
 import { COMPETITION_NAME } from "./home.ts";
+import { RELEGATION_N } from "../../../public/js/motor/temporada.js";
 
-export const RELEGATION_N = 4; // legado: RELEGATION_N
+// Tamanho das zonas de acesso e rebaixamento: o mesmo do motor
+// (motor/temporada.js, RELEGATION_N).
+export { RELEGATION_N };
 export const DIVISIONS = [
   { id: "brasileirao", short: "Série A" },
   { id: "serie_b", short: "Série B" },

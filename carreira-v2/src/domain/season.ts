@@ -15,10 +15,11 @@ import type { Career, Team } from "./types.ts";
 import { COMPETITION_NAME, ROUNDS, moneyShort, sortedStandings } from "./home.ts";
 import { shortName } from "./lineup.ts";
 import { seasonTitles, type TitleKind } from "./onboarding.ts";
+import { DISMISSAL_STREAK } from "../../../public/js/motor/temporada.js";
 
-// Mesma regra da versão anterior (DISMISSAL_STREAK em carreira.js), usada
+// Mesma regra do motor (DISMISSAL_STREAK em motor/temporada.js), usada
 // só para reconhecer uma demissão já decidida e ainda não confirmada.
-export const DISMISSAL_STREAK = 3;
+export { DISMISSAL_STREAK };
 const DIVISION: Record<string, string> = { brasileirao: "Série A", serie_b: "Série B", serie_c: "Série C" };
 
 function divisionOf(career: Career, id: string | number): string | null {

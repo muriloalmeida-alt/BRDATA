@@ -98,8 +98,8 @@ const { enterGame } = require("./_startup");
     // (que pode mudar de resultado noutra CAREER.seasonYear, já que o
     // seed inclui o ano — ver applyTraditionReprieve), quebrando um
     // teste que não tem nada a ver com o mecanismo novo.
-    const wasTraditionClub = CLUB_TRADITION_IDS.has(String(CAREER.clubId));
-    if (wasTraditionClub) CLUB_TRADITION_IDS.delete(String(CAREER.clubId));
+    const wasTraditionClub = motorTemporada().CLUB_TRADITION_IDS.has(String(CAREER.clubId));
+    if (wasTraditionClub) motorTemporada().CLUB_TRADITION_IDS.delete(String(CAREER.clubId));
 
     const teamsA = CAREER.divisionTeams.brasileirao.map((t) => String(t.id));
     teamsA.forEach((id, i) => { CAREER.standings[id] = { id, j: 38, v: teamsA.length - i, e: 0, d: i, gp: 50, gc: 10, sg: 40, pts: (teamsA.length - i) * 3 }; });

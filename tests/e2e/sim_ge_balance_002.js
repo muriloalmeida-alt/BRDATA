@@ -29,20 +29,17 @@ function extractFn(re, label) {
   if (!m) throw new Error(`Não achou ${label} em carreira.js — arquivo mudou?`);
   return m[0];
 }
-const relegationZoneIdsSrc = extractFn(/function relegationZoneIds\(sortedRows, n, protectedId\) \{[\s\S]*?\n\}\n/, "relegationZoneIds");
-const clubTraditionIdsSrc = extractFn(/const CLUB_TRADITION_IDS = new Set\(\[[^\]]*\]\);/, "CLUB_TRADITION_IDS");
-const traditionChanceSrc = extractFn(/const TRADITION_REPRIEVE_CHANCE = [\d.]+;/, "TRADITION_REPRIEVE_CHANCE");
-const applyTraditionReprieveSrc = extractFn(/function applyTraditionReprieve\(zone, sortedRows, seedKey\) \{[\s\S]*?\n\}\n/, "applyTraditionReprieve");
-
+// Fase 12 (etapas 2 e 6): a zona de rebaixamento e o perdão da tradição
+// moram em public/js/motor/ (tabela.js e temporada.js); o motor entra no
+// vm por _motor_vm.js e as funções do carreira.js (que chamam o motor)
+// são extraídas tal e qual.
+const { motorCode } = require("./_motor_vm");
+const extractFnByName = (name) => extractFn(new RegExp(`^(?:const ${name} = .*\\n|function ${name}\\([^)]*\\) \\{[\\s\\S]*?\\n\\}\\n)`, "m"), name);
 const sandbox = {};
 vm.createContext(sandbox);
-// `const` de topo não vira propriedade do objeto global do contexto vm
-// (diferente de `function`/`var`) — troca só pra isso não quebrar o
-// acesso via `sandbox.X` depois (o CÓDIGO em si continua sendo o
-// mesmo, só a forma de declarar top-level muda, sem efeito nenhum no
-// comportamento de nenhuma das 2 constantes).
-const toVar = (src) => src.replace(/^const /, "var ");
-vm.runInContext(mulberryMatch[0] + seededMatch[0] + relegationZoneIdsSrc + toVar(clubTraditionIdsSrc) + toVar(traditionChanceSrc) + applyTraditionReprieveSrc, sandbox);
+vm.runInContext("var window = { BRDATA_MOTOR: {} };\n" + motorCode() + mulberryMatch[0] + seededMatch[0]
+  + ["motorModulo", "motorTabela", "motorTemporada", "relegationZoneIds", "applyTraditionReprieve"].map(extractFnByName).join("")
+  + "var CLUB_TRADITION_IDS = window.BRDATA_MOTOR.temporada.CLUB_TRADITION_IDS, TRADITION_REPRIEVE_CHANCE = window.BRDATA_MOTOR.temporada.TRADITION_REPRIEVE_CHANCE;\n", sandbox);
 const { relegationZoneIds, CLUB_TRADITION_IDS, TRADITION_REPRIEVE_CHANCE, applyTraditionReprieve } = sandbox;
 console.log("Código real extraído de produção — TRADITION_REPRIEVE_CHANCE:", TRADITION_REPRIEVE_CHANCE, "| CLUB_TRADITION_IDS:", [...CLUB_TRADITION_IDS].join(", "));
 
