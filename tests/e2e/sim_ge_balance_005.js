@@ -62,7 +62,7 @@ function extract(src, name) {
   return "";
 }
 const NAMES = [
-  "clamp", "avg", "motorModulo", "motorTreino",
+  "clamp", "avg", "motorModulo", "motorTreino", "motorTabela", "motorTemporada", "playerBuildEnv",
   // GE-BALANCE-005 (só existem no "depois")
   "SEASON_GAIN_CAP_BY_AGE", "seasonGainBaseCap", "playTimeGainFactor", "seasonGainCap", "seasonGainRoom",
   "recordSeasonGain", "highBandGainFactor", "potentialDeclineFor", "youthPotentialRoll", "applyCpuAnnualEvolution",
@@ -76,19 +76,12 @@ const NAMES = [
 ];
 const SEEDED = dataJs.match(/function mulberry32\(seed\) \{[\s\S]*?\n\}\n/)[0] + dataJs.match(/function seededRngFromKey\(key\) \{[\s\S]*?\n\}\n/)[0];
 
-// Fase 12, etapa 4: as regras de treino e evolução moraram para
-// public/js/motor/treino.js (ES module). No vm, o módulo entra como
-// window.BRDATA_MOTOR.treino, sem os "export". Revisões antigas (sem o
-// motor) simplesmente não chamam motorTreino().
-function motorSource(name, rev) {
-  let src;
-  try { src = rev ? execSync(`git show ${rev}:public/js/motor/${name}.js`, { cwd: ROOT, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }) : fs.readFileSync(path.join(ROOT, `public/js/motor/${name}.js`), "utf8"); }
-  catch (_) { return `window.BRDATA_MOTOR.${name} = null;\n`; }
-  const names = [...src.matchAll(/^export (?:function|const) (\w+)/gm)].map((m) => m[1]);
-  return `window.BRDATA_MOTOR.${name} = (function () {\n${src.replace(/^export /gm, "")}\nreturn { ${names.join(", ")} };\n})();\n`;
-}
+// Fase 12 (etapas 4 e 6): treino, evolução e virada de temporada moram em
+// public/js/motor/ (treino.js e temporada.js); o motor entra no vm por
+// _motor_vm.js, lido da mesma revisão do carreira.js de cada lado.
+const { motorCode } = require("./_motor_vm");
 function makeEngine(src, rev) {
-  const code = "var window = { BRDATA_MOTOR: {} };\n" + motorSource("treino", rev) + SEEDED + NAMES.map((n) => extract(src, n)).join("") + `
+  const code = "var window = { BRDATA_MOTOR: {} };\n" + motorCode(rev) + SEEDED + NAMES.map((n) => extract(src, n)).join("") + `
     var LIVE_SEASON = 2026;
     var DEMO_FIRST_NAMES = ["A", "B", "C", "D"], DEMO_LAST_NAMES = ["Silva", "Souza", "Lima"];
     var CAREER = null, CLUB = { id: "sim", atk: 1.55, def: 0.9 };

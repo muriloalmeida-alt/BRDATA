@@ -302,6 +302,14 @@ const motorTreino = () => motorModulo("treino");
 // janela, interesse do clube, avaliação e negociação. O motor recebe os
 // clubes já montados (marketClub) e não lê o save.
 const motorMercado = () => motorModulo("mercado");
+// Fase 12, etapa 6 (06/11): regras da virada de temporada em
+// motor/temporada.js — meta, reputação, premiações, contrato/potencial,
+// geradores de jogador, renovação dos elencos e acesso/rebaixamento.
+const motorTemporada = () => motorModulo("temporada");
+// Nomes (data.js) e o ano da temporada real para os geradores de jogador.
+function playerBuildEnv() {
+  return { firstNames: DEMO_FIRST_NAMES, lastNames: DEMO_LAST_NAMES, liveSeason: LIVE_SEASON };
+}
 function marketClub(clubId) {
   let avg, amb, roster;
   return {
@@ -1236,18 +1244,7 @@ function mapPositionGroup(raw) {
    milhões), não uma modelagem financeira de verdade.
    contractUntil é uma TEMPORADA (ver LIVE_SEASON), não uma data. */
 function computeContractFields(overall, age, potential, rng) {
-  let ageMult = 1;
-  if (age <= 20) ageMult = 0.8;
-  else if (age <= 23) ageMult = 1.0;
-  else if (age <= 27) ageMult = 1.25;
-  else if (age <= 30) ageMult = 1.0;
-  else if (age <= 33) ageMult = 0.6;
-  else ageMult = 0.35;
-  const potBoost = potential ? 1 + clamp(potential - overall, 0, 40) / 40 * 0.5 : 1;
-  const wage = Math.round(Math.pow(1.145, overall - 50) * 2500 * ageMult / 100) * 100;
-  const value = Math.round(Math.pow(1.16, overall - 50) * 120000 * ageMult * potBoost / 1000) * 1000;
-  const contractUntil = LIVE_SEASON + 1 + Math.floor(rng() * 4); // 1 a 4 temporadas de contrato
-  return { wage, value, contractUntil };
+  return motorTemporada().computeContractFields(overall, age, potential, rng, LIVE_SEASON);
 }
 /* ---------- FASE 2 (b) — moral do elenco ----------
    Fase 2 do Modo Carreira, item escolhido pelo usuário. A própria Fase
@@ -1277,11 +1274,7 @@ function computeContractFields(overall, age, potential, rng) {
      salário mais alto e também rejeita contrato curto (mais confiante,
      mais exigente). */
 function fairWageFor(p) {
-  // Mesma fórmula de sempre (ver computeContractFields) só que sem
-  // sortear duração de contrato nenhuma — quer só o salário "de
-  // mercado" nominal pro overall/idade atual do jogador, pra comparar
-  // contra o que ele realmente ganha.
-  return computeContractFields(p.overall, p.age, p.potential || null, () => 0.5).wage;
+  return motorTemporada().fairWageFor(p);
 }
 // Fator multiplicador no sorteio de gol/assistência (ver
 // simulatePlayerEvents) — moral 70 (o valor "de nascença") não muda
@@ -1451,17 +1444,7 @@ function applyTalkEffect(p, option) {
 // não entra no teto salarial nem tem "salário de mercado" comparável
 // de verdade, ver Fase 2b original).
 function applySeasonMoraleReset(squad) {
-  squad.forEach((p) => {
-    const base = p.morale == null ? 70 : p.morale;
-    let m = Math.round(base + (70 - base) * 0.3);
-    if (p.origin === "principal") {
-      const fair = fairWageFor(p);
-      const ratio = fair ? p.wage / fair : 1;
-      if (ratio < 0.85) m -= 6;
-      else if (ratio > 1.15) m += 4;
-    }
-    p.morale = clamp(m, 0, 100);
-  });
+  squad.forEach((p) => { p.morale = motorTemporada().seasonMorale(p); });
 }
 /* ---------- Evolução de atributos mais realista (pedido do usuário:
    "os atributos precisam ser mais reais... com os treinos chega um
@@ -1490,16 +1473,7 @@ function applySeasonMoraleReset(squad) {
    retroativo determinístico na migração (ver backfillPlayerPotential/
    migrateCareerDefaults). */
 function derivePotentialForAdult(overall, age, rng) {
-  let room;
-  if (age <= 20) room = 8 + rng() * 10;       // 8-18: base jovem ainda tem margem real
-  else if (age <= 23) room = 4 + rng() * 8;   // 4-12
-  else if (age <= 26) room = 1 + rng() * 5;   // 1-6
-  else if (age <= 29) room = rng() * 3;       // 0-3
-  else room = 0;                               // 30+: sem mais espaço de crescimento por treino
-  // GE-BALANCE-005 (issue #38) — quem já nasce em faixa alta tem menos
-  // espaço (um 82 de 19 anos com teto 100 enchia o elenco de 90+).
-  room *= highBandGainFactor(overall);
-  return Math.round(clamp(overall + room, overall, 99));
+  return motorTemporada().derivePotentialForAdult(overall, age, rng);
 }
 // Ganho de um atributo no treino (ver applyWeeklyTraining) respeitando
 // o teto do jogador, com retorno DECRESCENTE perto dele: baseGain
@@ -1550,15 +1524,13 @@ function highBandGainFactor(value) { return motorTreino().highBandGainFactor(val
 // Queda anual do potencial a partir do pico (D5): -1 aos 30-31, -2 aos
 // 32-33, -3 dos 34 em diante (goleiro, 2 anos depois). Determinístico.
 function potentialDeclineFor(age, group) {
-  const declineAge = group === "G" ? 32 : 30;
-  if (age < declineAge) return 0;
-  return Math.min(3, 1 + Math.floor((age - declineAge) / 2));
+  return motorTemporada().potentialDeclineFor(age, group);
 }
 // Potencial de jovem (base/olheiro) com distribuição enviesada (escopo
 // item 4): ~75% entre 55 e 75, 85+ em ~1-2,5% (conforme o clube), 90+
 // excepcional. `bonus` = nível do clube/olheiro.
 function youthPotentialRoll(rng, bonus) {
-  return Math.round(clamp(48 + rng() * 22 + Math.pow(rng(), 8) * 22 + bonus, 35, 94));
+  return motorTemporada().youthPotentialRoll(rng, bonus);
 }
 // Evolução ANUAL agregada de jogador CPU (D6) — roda 1x na virada de
 // temporada (ver renewLeagueSquad), com a idade e a minutagem da
@@ -1566,20 +1538,7 @@ function youthPotentialRoll(rng, bonus) {
 // idade, banda alta, teto de potencial; declínio na mesma taxa média
 // de applyNaturalAgingEvolution), sem treino semanal nem campo novo.
 function applyCpuAnnualEvolution(p, rng) {
-  const declineAge = p.group === "G" ? 32 : 30;
-  let delta = 0;
-  if (p.age >= declineAge) {
-    const expected = (0.05 + (p.age - declineAge) * 0.01) * 38;
-    delta = -Math.round(expected * (0.6 + rng() * 0.8));
-  } else {
-    const room = (p.potential != null ? p.potential : 99) - p.overall;
-    if (room > 0) {
-      const cap = seasonGainBaseCap(p.age) * playTimeGainFactor(p.appsSeason, 38);
-      delta = Math.min(room, Math.round(cap * (0.5 + rng() * 0.5) * highBandGainFactor(p.overall)));
-    }
-  }
-  if (!delta) return;
-  ["overall", "atk", "def", "phys"].forEach((attr) => { p[attr] = clamp(p[attr] + delta, 20, 99); });
+  motorTemporada().applyCpuAnnualEvolution(p, rng);
 }
 // Explicabilidade (escopo item 7, CLAUDE.md §45) — por que o jogador
 // parou de evoluir. Só pro SEU elenco (o teto sazonal é do treino dele).
@@ -1647,34 +1606,8 @@ function buildRealPlayer(raw, club, rng) {
 // fornecedor sem posição confiável (Sportmonks hoje sempre devolve
 // null, ver providers/sportmonks.js), pode não ter nenhum goleiro
 // reconhecido; sem isso a escalação ficaria impossível de completar.
-const BASE_COMPOSITION = ["G", "G", "D", "D", "D", "D", "D", "M", "M", "M", "M", "M", "F", "F", "F", "F"];
 function buildBasePlayer(club, idx, rng) {
-  const group = BASE_COMPOSITION[idx % BASE_COMPOSITION.length];
-  // Bloco 6 (mockups brtreinadorbloco6base.html/brtreinadorbloco6pendentes.html
-  // — "Categorias de base") — ampliado de 16-20 pra 15-20 pra a aba
-  // Sub-15 da nova tela ter gente de verdade (era sempre vazia antes).
-  // Só afeta jogadores gerados daqui pra frente — saves antigos mantêm
-  // a idade já salva.
-  const age = 15 + Math.floor(rng() * 6);
-  // GE-BALANCE-005 (issue #38) — era uniforme 42-92 (~10% de cada safra
-  // com teto 85+); agora enviesado, ver youthPotentialRoll.
-  const potential = youthPotentialRoll(rng, (club.atk - 1) * 6);
-  const overall = Math.round(clamp(potential * (0.42 + rng() * 0.28), 26, 60));
-  const atk = clamp(overall + (group === "F" ? 5 : group === "M" ? 2 : -8) + Math.round(rng() * 6 - 3), 18, 78);
-  const def = clamp(overall + (group === "D" || group === "G" ? 5 : -8) + Math.round(rng() * 6 - 3), 18, 78);
-  const phys = clamp(Math.round(52 + rng() * 32), 32, 88);
-  const first = DEMO_FIRST_NAMES[Math.floor(rng() * DEMO_FIRST_NAMES.length)];
-  const last = DEMO_LAST_NAMES[Math.floor(rng() * DEMO_LAST_NAMES.length)];
-  return {
-    id: `base_${club.id}_${idx}`, name: `${first} ${last}`, photo: null,
-    group, age, overall, atk, def, phys, potential,
-    origin: "base", real: false,
-    status: "ok", outUntilRound: null, yellowCards: 0, condition: 100, morale: 70,
-    benchStreak: 0, moraleReason: "Neutro no clube", moraleTrend: "estavel",
-    wantsTransfer: false, lastTalkRound: null,
-    goalsCareer: 0, assistsCareer: 0, apps: 0,
-    ...computeContractFields(overall, age, potential, rng),
-  };
+  return motorTemporada().buildBasePlayer(club, idx, rng, playerBuildEnv());
 }
 /* ---------- Fase 2 do Modo Carreira — olheiro / potencial visível na
    base ----------
@@ -1726,31 +1659,8 @@ function scoutedPotentialRange(p) {
 // baixo overall), só pra fechar o elenco. Cicla numa composição
 // típica de time profissional (mais defensor/meio do que goleiro/
 // atacante).
-const FILLER_COMPOSITION = ["G", "D", "D", "D", "D", "D", "M", "M", "M", "M", "M", "M", "F", "F", "F", "F"];
 function buildGeneratedProPlayer(club, idx, rng) {
-  const group = FILLER_COMPOSITION[idx % FILLER_COMPOSITION.length];
-  const age = 19 + Math.floor(rng() * 16); // 19-34, faixa normal de elenco profissional
-  const clubFactor = (group === "F" || group === "M") ? club.atk : (2 - club.def);
-  const overall = Math.round(clamp(52 + (clubFactor - 1) * 14 + (rng() * 16 - 8), 40, 82));
-  const atk = clamp(overall + (group === "F" ? 6 : group === "M" ? 2 : -10) + Math.round(rng() * 6 - 3), 28, 90);
-  const def = clamp(overall + (group === "D" || group === "G" ? 6 : -10) + Math.round(rng() * 6 - 3), 28, 90);
-  const phys = clamp(Math.round(55 + rng() * 30), 38, 90);
-  const first = DEMO_FIRST_NAMES[Math.floor(rng() * DEMO_FIRST_NAMES.length)];
-  const last = DEMO_LAST_NAMES[Math.floor(rng() * DEMO_LAST_NAMES.length)];
-  // Nova feature (pedido do usuário: "atributos precisam ser mais
-  // reais... evolução menos agressiva") — mesmo teto por idade de
-  // buildRealPlayer, ver derivePotentialForAdult.
-  const potential = derivePotentialForAdult(overall, age, rng);
-  return {
-    id: `gen_${club.id}_${idx}`, name: `${first} ${last}`, photo: null,
-    group, age, overall, atk, def, phys, potential,
-    origin: "principal", real: false,
-    status: "ok", outUntilRound: null, yellowCards: 0, condition: 100, morale: 70,
-    benchStreak: 0, moraleReason: "Neutro no clube", moraleTrend: "estavel",
-    wantsTransfer: false, lastTalkRound: null,
-    goalsCareer: 0, assistsCareer: 0, apps: 0,
-    ...computeContractFields(overall, age, potential, rng),
-  };
+  return motorTemporada().buildGeneratedProPlayer(club, idx, rng, playerBuildEnv());
 }
 // Elenco principal: usa TODOS os jogadores reais que o fornecedor
 // devolver — sem cortar em N, e sem "completar" até bater um número
@@ -1766,13 +1676,12 @@ function buildGeneratedProPlayer(club, idx, rng) {
 // real veio truncada/incompleta de verdade (falha pontual da API),
 // não o caminho normal. MAX_PRINCIPAL só existe pra não deixar o save
 // gigante no caso raro de um fornecedor devolver um elenco enorme.
-const MIN_PRINCIPAL = 18;
 const MAX_PRINCIPAL = 60;
 async function buildSquad(club) {
   const rng = seededRngFromKey(`squad:${club.id}:${LIVE_SEASON}`); // global de js/data.js
   const raw = await fetchRealPlayers(club.id);
   const realPlayers = raw.slice(0, MAX_PRINCIPAL).map((p) => buildRealPlayer(p, club, rng));
-  const missing = Math.max(0, MIN_PRINCIPAL - realPlayers.length);
+  const missing = Math.max(0, motorTemporada().MIN_PRINCIPAL - realPlayers.length);
   const filler = Array.from({ length: missing }, (_, i) => buildGeneratedProPlayer(club, i, rng));
   const base = Array.from({ length: 16 }, (_, i) => buildBasePlayer(club, i, rng));
   return [...realPlayers, ...filler, ...base];
@@ -2048,25 +1957,19 @@ function averageOverall(list) {
 // (só as chaves dos 20 times da própria divisão, sempre) pelo mesmo
 // motivo já aplicado em renderEstatisticas (artilheiros da liga).
 function computeBoardGoal() {
-  const myAvg = averageOverall(CAREER.squad.filter((p) => p.origin === "principal"));
   const leagueSquadsOwnDivision = Object.entries(CAREER.leagueSquads || {})
     .filter(([teamId]) => Object.prototype.hasOwnProperty.call(CAREER.standings, teamId))
     .flatMap(([, squad]) => squad);
-  const leagueAvg = averageOverall(leagueSquadsOwnDivision);
-  const diff = myAvg - leagueAvg;
-  if (diff >= 4) return { type: "posicao_tabela", target: 6, label: "Terminar entre os 6 primeiros" };
-  if (diff <= -4) return { type: "posicao_tabela", target: 16, label: "Não cair (terminar fora do Z4)" };
-  return { type: "posicao_tabela", target: 10, label: "Terminar na primeira metade da tabela" };
+  return motorTemporada().computeBoardGoal(CAREER.squad.filter((p) => p.origin === "principal"), leagueSquadsOwnDivision);
 }
 function boardGoalMet(position, goal) {
-  return !!goal && position > 0 && position <= goal.target;
+  return motorTemporada().boardGoalMet(position, goal);
 }
 // Depois de N temporadas seguidas sem bater a meta, a diretoria demite
 // o treinador (decisão minha — não estava especificado no documento,
 // que deixou em aberto "quantas temporadas sem bater meta até
 // demissão"): 3 dá uma margem real antes de acabar a carreira nesse
 // clube, sem deixar a meta sem consequência nenhuma.
-const DISMISSAL_STREAK = 3;
 
 /* ---------- FASE 4 (item 4) — reputação do técnico → propostas de
    outros clubes ----------
@@ -2088,10 +1991,6 @@ const DISMISSAL_STREAK = 3;
    "Reiniciar" explícito (esse sim apaga tudo de propósito, sem
    carregar reputação nenhuma pra frente) — ver TECHNICIAN_CARRY/
    endCurrentClubStint logo abaixo, consumidos por startCareer(). */
-const REPUTATION_META_WEIGHT = 0.5;
-const REPUTATION_TITLE_WEIGHT = 0.2;
-const REPUTATION_META_POINTS = { met: 14, missed: -10 };
-const REPUTATION_TITLE_POINTS = 30; // por título (Brasileirão e Copa do Brasil contam separado)
 const REPUTATION_DISMISSAL_PENALTY = 25;
 // FASE 4 (item 2) — peso de "Entrevistas" da fórmula (10%): a
 // biblioteca de coletivas (PRESS_LIBRARY, mais abaixo) já vem com um
@@ -2103,19 +2002,13 @@ const REPUTATION_DISMISSAL_PENALTY = 25;
 const REPUTATION_INTERVIEW_POINTS = 10;
 const REPUTATION_INTERVIEW_WEIGHT = 0.1;
 function countTitlesThisSeason(award) {
-  let n = 0;
-  if (award.brasileirao.campeao != null && String(award.brasileirao.campeao) === String(CAREER.clubId)) n++;
-  if (award.copaDoBrasil.disputou && String(award.copaDoBrasil.campeao) === String(CAREER.clubId)) n++;
-  return n;
+  return motorTemporada().countTitlesThisSeason(award, CAREER.clubId);
 }
 function applySeasonReputationDelta(goalWasMet, award) {
-  const metaDelta = (goalWasMet ? REPUTATION_META_POINTS.met : REPUTATION_META_POINTS.missed) * REPUTATION_META_WEIGHT;
-  const titleDelta = countTitlesThisSeason(award) * REPUTATION_TITLE_POINTS * REPUTATION_TITLE_WEIGHT;
-  const base = CAREER.reputation == null ? 50 : CAREER.reputation;
-  CAREER.reputation = clamp(Math.round(base + metaDelta + titleDelta), 0, 100);
+  CAREER.reputation = motorTemporada().seasonReputation(CAREER.reputation, goalWasMet, award, CAREER.clubId);
 }
 function reputationLabel(rep) {
-  return rep >= 85 ? "Lendário" : rep >= 70 ? "Renomado" : rep >= 50 ? "Estabelecido" : rep >= 30 ? "Em dúvida" : "Contestado";
+  return motorTemporada().reputationLabel(rep);
 }
 // SAVE-LIMIT-001 — gap confirmado por inspeção: clubHistory crescia sem
 // nenhum cap (ao contrário de seasonHistory/newsFeed/transferLog/etc.,
@@ -3149,18 +3042,8 @@ const MAX_SEASON_HISTORY = 15;
 // escopado só ao elenco PRÓPRIO (ver renewHumanSquad) pra não inflar o
 // save com histórico de jogador de clube CPU que o técnico nunca
 // gerencia (mesmo cuidado já tomado com o mercado "multi divisão").
-const MAX_PLAYER_SEASON_HISTORY = 15;
 function snapshotPlayerSeasonHistory(p, clubName) {
-  if (!p.seasonHistory) p.seasonHistory = [];
-  p.seasonHistory.unshift({
-    year: CAREER.seasonYear, clubName,
-    apps: p.appsSeason || 0, goals: p.goalsSeason || 0, assists: p.assistsSeason || 0,
-    // Carreira 2.0, fase 6 (decisão de 04/11): overall ao fim da temporada,
-    // para "Overall por temporada" na Evolução. Campo novo e opcional:
-    // entradas antigas ficam sem ele (a tela mostra só as que têm).
-    overall: p.overall,
-  });
-  if (p.seasonHistory.length > MAX_PLAYER_SEASON_HISTORY) p.seasonHistory.length = MAX_PLAYER_SEASON_HISTORY;
+  motorTemporada().snapshotSeason(p, CAREER.seasonYear, clubName);
 }
 // Item 6 da lista de melhorias — "abrir uma aba temporada-a-temporada
 // por jogador (gols/assistências/jogos por ano no clube), reaproveitando
@@ -3200,84 +3083,28 @@ const MAX_MATCH_LOG = 200;
 // profissional adulto de sempre — CPU não tem categoria de base
 // própria, ver Fase 2a).
 function renewLeagueSquad(club, squad) {
-  // BUG CORRIGIDO (achado ao alargar a duração da lesão pra Fase 1 item
-  // 4 — lesão grave passou a poder chegar a 14 rodadas): sem resetar
-  // status/outUntilRound na virada de temporada, um jogador machucado
-  // ou suspenso nas últimas rodadas do ano carregava esse afastamento
-  // pra rodada 1 da temporada NOVA (currentRound volta a 1, mas
-  // outUntilRound continuava um número alto de quando a lesão
-  // aconteceu) — ficava fora de combate o ano inteiro sem chance
-  // nenhuma de voltar, mesmo o campeonato tendo terminado fazia tempo.
-  // Entressafra é tempo de sobra pra qualquer lesão/suspensão resolver.
-  // FASE 4 (item 6) — goalsSeason/assistsSeason também zeram aqui (são
-  // "da temporada", ver attributeGoals/computeSeasonAwards). appsSeason
-  // (item 6 da lista de melhorias) reseta junto pelo mesmo motivo, mas
-  // SEM snapshot de seasonHistory aqui — time CPU o técnico não
-  // gerencia, não faz sentido guardar histórico individual (ver
-  // renewHumanSquad, único lugar que snapshota de verdade).
-  // GE-BALANCE-005 (issue #38) — evolução anual agregada (idade/
-  // minutagem da temporada que ACABOU, por isso antes do age += 1 e do
-  // reset de appsSeason) + queda do potencial já com a idade nova.
-  const evoRng = seededRngFromKey(`cpu-evo:${club.id}:${CAREER.seasonYear}`);
-  squad.forEach((p) => {
-    applyCpuAnnualEvolution(p, evoRng);
-    p.age += 1; p.status = "ok"; p.outUntilRound = null; p.injurySeverity = null; p.yellowCards = 0; p.goalsSeason = 0; p.assistsSeason = 0; p.appsSeason = 0;
-    delete p.seasonGain; // jogador vendido pelo humano chega com o contador da temporada dele
-    if (p.potential != null) p.potential = clamp(p.potential - potentialDeclineFor(p.age, p.group), 20, 99);
+  return motorTemporada().renewLeagueSquad({
+    club, squad, seasonYear: CAREER.seasonYear, minSize: minSquadSizeFor(club.id),
+    evoRng: seededRngFromKey(`cpu-evo:${club.id}:${CAREER.seasonYear}`),
+    rng: seededRngFromKey(`renew-league:${club.id}:${CAREER.seasonYear}`),
+    env: playerBuildEnv(),
   });
-  const kept = squad.filter((p) => p.contractUntil >= CAREER.seasonYear);
-  const rng = seededRngFromKey(`renew-league:${club.id}:${CAREER.seasonYear}`);
-  // AJUSTE (pedido do usuário: "o mercado deve trazer jogadores das 3
-  // ligas") — piso certo por time (ver minSquadSizeFor) — repor sempre
-  // até MIN_LEAGUE_SQUAD (16) reencheria de mais um time de outra
-  // divisão (piso menor de propósito, 12 — ver
-  // MIN_LEAGUE_SQUAD_OTHER_DIVISION), voltando a inflar o save a cada
-  // virada de temporada mesmo sem nenhuma negociação de verdade.
-  const missing = Math.max(0, minSquadSizeFor(club.id) - kept.length);
-  const fresh = Array.from({ length: missing }, (_, i) => buildGeneratedProPlayer(club, i, rng));
-  return [...kept, ...fresh];
 }
 // Elenco do SEU clube: envelhece, quem venceu contrato sai de graça
 // (limpa da escalação também), repõe a base até 16 com jovens novos
 // (mesmo gerador de sempre, ver buildBasePlayer) e o principal até o
 // mínimo jogável se caiu abaixo por causa das saídas.
 function renewHumanSquad() {
-  // BUG CORRIGIDO — mesmo problema/motivo do renewLeagueSquad acima.
-  // FASE 4 (item 6) — goalsSeason/assistsSeason também zeram aqui.
-  // Item 6 da lista de melhorias — snapshot do ANO QUE TERMINOU pro
-  // histórico individual (ver snapshotPlayerSeasonHistory) ANTES de
-  // zerar goalsSeason/assistsSeason/appsSeason pra temporada nova;
-  // roda pra todo mundo AINDA no elenco (inclusive quem sai duas
-  // linhas abaixo por fim de contrato — a temporada que passou com
-  // esse clube conta pro histórico dele mesmo saindo agora).
-  // GE-BALANCE-005 (issue #38) — teto de ganho da temporada zera
-  // (seasonGain) e o potencial começa a cair a partir do pico.
-  CAREER.squad.forEach((p) => {
-    snapshotPlayerSeasonHistory(p, CAREER.clubName); p.age += 1; p.status = "ok"; p.outUntilRound = null; p.injurySeverity = null; p.yellowCards = 0; p.goalsSeason = 0; p.assistsSeason = 0; p.appsSeason = 0;
-    delete p.seasonGain;
-    if (p.potential != null) p.potential = clamp(p.potential - potentialDeclineFor(p.age, p.group), 20, 99);
+  const r = motorTemporada().renewHumanSquad({
+    club: teamById(CAREER.clubId), clubName: CAREER.clubName, squad: CAREER.squad, lineup: CAREER.lineup,
+    seasonYear: CAREER.seasonYear,
+    rng: seededRngFromKey(`renew-human:${CAREER.clubId}:${CAREER.seasonYear}`),
+    env: playerBuildEnv(),
   });
-  const leavingNames = [];
-  CAREER.squad = CAREER.squad.filter((p) => {
-    if (p.contractUntil < CAREER.seasonYear) { leavingNames.push(p.name); return false; }
-    return true;
-  });
-  const remainingIds = new Set(CAREER.squad.map((p) => p.id));
-  CAREER.lineup.starters = CAREER.lineup.starters.map((id) => (id && remainingIds.has(id) ? id : null));
-  CAREER.lineup.bench = CAREER.lineup.bench.filter((id) => remainingIds.has(id));
-  // FASE 2 (b) — regressão pro neutro + efeito de salário justo/injusto
-  // (só quem sobreviveu à saída por fim de contrato acima — quem chega
-  // novo já nasce em 70, ver builders).
-  applySeasonMoraleReset(CAREER.squad);
-
-  const club = teamById(CAREER.clubId);
-  const rng = seededRngFromKey(`renew-human:${CAREER.clubId}:${CAREER.seasonYear}`);
-  const baseCount = CAREER.squad.filter((p) => p.origin === "base").length;
-  const newBase = Array.from({ length: Math.max(0, 16 - baseCount) }, (_, i) => buildBasePlayer(club, i, rng));
-  const principalCount = CAREER.squad.filter((p) => p.origin === "principal").length;
-  const newPrincipal = Array.from({ length: Math.max(0, MIN_PRINCIPAL - principalCount) }, (_, i) => buildGeneratedProPlayer(club, i, rng));
-  CAREER.squad.push(...newBase, ...newPrincipal);
-  return { leavingNames, newBaseCount: newBase.length, newPrincipalCount: newPrincipal.length };
+  CAREER.squad = r.squad;
+  CAREER.lineup.starters = r.starters;
+  CAREER.lineup.bench = r.bench;
+  return r.summary;
 }
 /* ---------- FASE 4 (item 6 da especificação "BR Data Treinador") —
    premiações de final de temporada ----------
@@ -3295,34 +3122,10 @@ function renewHumanSquad() {
    do chaveamento já garante de verdade.
    Desempate (pedido do usuário): quem jogou MENOS partidas vence. */
 function computeSeasonAwards() {
-  const sortedStandings = motorTabela().sortRows(CAREER.standings);
-  const campeao = sortedStandings[0] ? sortedStandings[0].id : null;
-  const vice = sortedStandings[1] ? sortedStandings[1].id : null;
-
-  const allPlayers = [];
-  CAREER.squad.filter((p) => p.origin === "principal" || p.origin === "loan").forEach((p) => allPlayers.push({ p, clubId: CAREER.clubId }));
-  Object.entries(CAREER.leagueSquads || {}).forEach(([clubId, squad]) => {
-    squad.forEach((p) => allPlayers.push({ p, clubId }));
+  return motorTemporada().seasonAwards({
+    rows: motorTabela().sortRows(CAREER.standings), humanClubId: CAREER.clubId, humanSquad: CAREER.squad,
+    leagueSquads: CAREER.leagueSquads, teamName: (id) => teamById(id).name, cup: CAREER.cup, seasonYear: CAREER.seasonYear,
   });
-  const awardEntry = (e, valor) => ({ jogadorId: e.p.id, nome: e.p.name, clubeId: e.clubId, clubeName: teamById(e.clubId).name, valor });
-  const pickBestBy = (statKey) => {
-    const withStat = allPlayers.filter((e) => (e.p[statKey] || 0) > 0);
-    if (!withStat.length) return null;
-    withStat.sort((a, b) => (b.p[statKey] - a.p[statKey]) || ((a.p.apps || 0) - (b.p.apps || 0)));
-    return awardEntry(withStat[0], withStat[0].p[statKey]);
-  };
-  const artilheiro = pickBestBy("goalsSeason");
-  const assistencias = pickBestBy("assistsSeason");
-  const melhorRanked = allPlayers.slice().sort((a, b) => (b.p.overall - a.p.overall) || ((a.p.apps || 0) - (b.p.apps || 0)));
-  const melhorJogador = melhorRanked.length ? awardEntry(melhorRanked[0], melhorRanked[0].p.overall) : null;
-
-  const cup = CAREER.cup;
-  const cupDone = !!(cup && cup.active && cup.phase === "done" && cup.ties.final[0]);
-  const copaDoBrasil = cupDone
-    ? { disputou: true, campeao: cup.champion, vice: String(cup.ties.final[0].home) === String(cup.champion) ? cup.ties.final[0].away : cup.ties.final[0].home }
-    : { disputou: false, campeao: null, vice: null };
-
-  return { seasonYear: CAREER.seasonYear, brasileirao: { campeao, vice, artilheiro, assistencias, melhorJogador }, copaDoBrasil };
 }
 // Tela própria (pedido do usuário) com o histórico de premiações de
 // TODAS as temporadas já fechadas (ver CAREER.seasonAwards, mais novo
@@ -3400,11 +3203,9 @@ function renderAwardsScreen() {
   }).join("");
 }
 function applySeasonAwardMoraleBoost(award) {
-  const b = award.brasileirao;
-  [b.artilheiro, b.assistencias, b.melhorJogador].forEach((entry) => {
-    if (!entry || String(entry.clubeId) !== String(CAREER.clubId)) return;
-    const p = CAREER.squad.find((x) => x.id === entry.jogadorId);
-    if (p) p.morale = clamp((p.morale == null ? 70 : p.morale) + 15, 0, 100);
+  motorTemporada().awardedPlayerIds(award, CAREER.clubId).forEach((id) => {
+    const p = CAREER.squad.find((x) => x.id === id);
+    if (p) p.morale = clamp((p.morale == null ? 70 : p.morale) + motorTemporada().AWARD_MORALE_BOOST, 0, 100);
   });
 }
 function openAwardsScreen() {
@@ -3468,7 +3269,7 @@ async function advanceSeason() {
   // Não mexe em MAIS NADA do save (elenco, calendário, teto) — o fim
   // de carreira nesse clube é definitivo (ver showDismissalModal, que
   // apaga o save inteiro quando o usuário confirma).
-  if (CAREER.negativeSeasonsStreak >= DISMISSAL_STREAK) {
+  if (CAREER.negativeSeasonsStreak >= motorTemporada().DISMISSAL_STREAK) {
     return { dismissed: true, finishedYear, finishedPos, finishedGoal, goalWasMet, streak: CAREER.negativeSeasonsStreak };
   }
 
@@ -3760,7 +3561,6 @@ function pickCpuXI(squad) {
    jogável) — nesse caso, quem desce no lugar dele é o time melhor
    colocado que ficaria de fora da zona (a "vítima" muda, o tamanho da
    zona de 4 times não muda). */
-const RELEGATION_N = 4; // mesmo tamanho da zona de rebaixamento já usada na Tabela (ver .mt-zone-dot)
 function freshDivisionRound(teams) {
   const ids = teams.map((t) => String(t.id));
   return { schedule: motorModulo("calendario").generateAllRounds(ids), standings: motorTabela().emptyStandings(ids) };
@@ -3839,13 +3639,11 @@ function accessZoneIds(sortedRows, n) {
 // exemplo), por id (o id de cada clube é estável entre divisões — um
 // clube rebaixado continua com o MESMO id/atk/def, só muda de
 // competitionId, ver applyPromotionRelegation/teamsFor).
-const CLUB_TRADITION_IDS = new Set(["fla", "cor", "pal", "sao", "san", "vas", "flu", "bot", "gre", "int", "cru", "cam"]);
 // "peso moderado, não absoluto" (escopo item 3) — moeda ao ar, não
 // imunidade: metade das vezes um clube tradicional que cai na zona
 // desce igual qualquer outro. Fica de fora da zona de acesso/promoção
 // de propósito (CLAUDE.md §22 — IA deve refletir mérito esportivo, não
 // favoritismo; só amortece a QUEDA, nunca facilita a SUBIDA).
-const TRADITION_REPRIEVE_CHANCE = 0.5;
 // Troca cada clube de tradição que caiu na zona pelo time imediatamente
 // mais seguro que ainda não esteja nela (mesmo padrão de swap já usado
 // pelo `protectedId` de relegationZoneIds acima, generalizado pra
@@ -3853,32 +3651,7 @@ const TRADITION_REPRIEVE_CHANCE = 0.5;
 // por temporada+divisão (seededRngFromKey, mesmo padrão do resto do
 // jogo), então o resultado é reproduzível dado o mesmo save/seed.
 function applyTraditionReprieve(zone, sortedRows, seedKey) {
-  const ids = sortedRows.map((r) => String(r.id));
-  const rng = seededRngFromKey(seedKey);
-  const n = zone.length;
-  let currentZone = zone.slice();
-  zone.forEach((id) => {
-    if (!CLUB_TRADITION_IDS.has(id) || !currentZone.includes(id)) return;
-    if (rng() >= TRADITION_REPRIEVE_CHANCE) return; // continua rebaixado — mérito esportivo prevalece
-    // GAP CORRIGIDO (achado pela simulação de validação,
-    // tests/e2e/sim_ge_balance_002.js): a 1ª versão pegava sempre o
-    // time logo ACIMA da linha, não importa quem fosse — como boa parte
-    // da Série A já É de tradição (12 dos 20 clubes reais), o "próximo
-    // da linha" também costumava ser tradicional, e trocar 1 tradicional
-    // por outro não reduz nada o total. Agora procura, de baixo pra
-    // cima a partir da linha, o clube NÃO-tradicional mais próximo —
-    // só recorre a outro tradicional (fallback) se a tabela inteira
-    // acima da zona for só de clubes de tradição (praticamente
-    // impossível com 12 tradicionais em 60 clubes no total).
-    const zoneSet = new Set(currentZone);
-    const above = [];
-    for (let i = ids.length - n - 1; i >= 0; i--) { if (!zoneSet.has(ids[i])) above.push(ids[i]); }
-    const replacement = above.find((rid) => !CLUB_TRADITION_IDS.has(rid)) || above[0];
-    if (!replacement) return; // sem substituto disponível (não deveria acontecer com 20 times) — mantém como estava
-    currentZone = currentZone.filter((zid) => zid !== id);
-    currentZone.push(replacement);
-  });
-  return currentZone;
+  return motorTemporada().applyTraditionReprieve(zone, sortedRows, seededRngFromKey(seedKey));
 }
 /* ---------- GE-BALANCE-004 (issue #39) — força relativa à divisão ----------
    Pedido do usuário: "times que sobem de uma divisão para outra não
@@ -3902,29 +3675,17 @@ function applyTraditionReprieve(zone, sortedRows, seedKey) {
    Lembrete de sentido: atk alto = ataca melhor; def ALTO = defende PIOR
    (lambda = atk * def adversário, GE-BALANCE-003). As funções puras
    abaixo são extraídas por tests/e2e/sim_ge_balance_004.js. */
-const STRENGTH_DIVISION_GAP_SD = 2.0;
 // Média e desvio de ataque/defesa de um conjunto de clubes.
 function divisionStrengthScale(teams) {
-  const atks = teams.map((t) => t.atk).filter(Number.isFinite);
-  const defs = teams.map((t) => t.def).filter(Number.isFinite);
-  const mean = (arr) => arr.reduce((a, v) => a + v, 0) / (arr.length || 1);
-  const sd = (arr, m) => Math.sqrt(arr.reduce((a, v) => a + (v - m) ** 2, 0) / (arr.length || 1)) || 1;
-  const meanAtk = mean(atks), meanDef = mean(defs);
-  return { meanAtk, meanDef, sdAtk: sd(atks, meanAtk), sdDef: sd(defs, meanDef) };
+  return motorTemporada().divisionStrengthScale(teams);
 }
 // Reposiciona quem chega numa divisão: mantém o desvio (em sd) que o
 // clube tinha na divisão de ORIGEM (`originScale`, tirada antes de
 // qualquer mudança) e aplica o degrau — promovido desce, rebaixado sobe
 // — na escala dos clubes que FICAM na divisão de destino.
 function repositionArrivals(arrivals, stayers, direction, originScale) {
-  const dest = divisionStrengthScale(stayers);
-  const gap = direction === "promoted" ? -STRENGTH_DIVISION_GAP_SD : STRENGTH_DIVISION_GAP_SD;
-  arrivals.forEach((t) => {
-    const zAtk = (t.atk - originScale.meanAtk) / originScale.sdAtk + gap;
-    const zDef = (t.def - originScale.meanDef) / originScale.sdDef - gap; // def alto = pior
-    t.atk = Math.round(clamp(dest.meanAtk + zAtk * dest.sdAtk, 0.35, 2.6) * 1000) / 1000;
-    t.def = Math.round(clamp(dest.meanDef + zDef * dest.sdDef, 0.3, 2.6) * 1000) / 1000;
-  });
+  const values = motorTemporada().arrivalStrength(arrivals, stayers, direction, originScale);
+  arrivals.forEach((t, i) => { t.atk = values[i].atk; t.def = values[i].def; });
 }
 // Cascata de acesso/rebaixamento entre A/B/C + repositório da Série D
 // na virada de temporada (ver advanceSeason, chamado ANTES de
@@ -3934,60 +3695,28 @@ function repositionArrivals(arrivals, stayers, direction, originScale) {
 // (ver buildLeagueSquad — nunca tiveram elenco montado antes).
 async function applyPromotionRelegation() {
   if (!CAREER.serieDPool) return null; // carreira sem o sistema ativado — nada a fazer
-  const rowsA = sortedDivisionRows("brasileirao");
-  const rowsB = sortedDivisionRows("serie_b");
-  const rowsC = sortedDivisionRows("serie_c");
-  // GE-BALANCE-002 (issue #27) — reprieve de tradição roda DEPOIS do
-  // swap de proteção do clube humano (relegationZoneIds/protectedId,
-  // só existe na Série C) — nessa altura o humano, se protegido, já
-  // nem está mais na zona recebida por applyTraditionReprieve.
-  const relegatedA = applyTraditionReprieve(relegationZoneIds(rowsA, RELEGATION_N), rowsA, `tradition:brasileirao:${CAREER.seasonYear}`);
-  const promotedB = accessZoneIds(rowsB, RELEGATION_N);
-  const relegatedB = applyTraditionReprieve(relegationZoneIds(rowsB, RELEGATION_N), rowsB, `tradition:serie_b:${CAREER.seasonYear}`);
-  const promotedC = accessZoneIds(rowsC, RELEGATION_N);
-  const relegatedC = applyTraditionReprieve(relegationZoneIds(rowsC, RELEGATION_N, CURRENT_COMPETITION_ID === "serie_c" ? CAREER.clubId : null), rowsC, `tradition:serie_c:${CAREER.seasonYear}`);
-
+  // Fase 12, etapa 6: quem sobe, quem cai, o perdão da tradição e a força
+  // de quem troca de divisão vêm do motor (motor/temporada.js); aqui só
+  // se aplica a força nova nos objetos de clube e se montam as divisões.
   const dPool = CAREER.serieDPool.slice();
-  const promotedDIdx = [];
-  while (promotedDIdx.length < Math.min(RELEGATION_N, dPool.length)) {
-    const idx = Math.floor(Math.random() * dPool.length);
-    if (!promotedDIdx.includes(idx)) promotedDIdx.push(idx);
-  }
-  const promotedD = promotedDIdx.map((i) => dPool[i]); // objetos completos — nunca estiveram em divisionTeams antes
-
-  const byId = new Map();
-  ALL_COMPETITIONS_ORDER.forEach((compId) => (CAREER.divisionTeams[compId] || []).forEach((t) => byId.set(String(t.id), t)));
-  const teamsFor = (ids) => ids.map((id) => byId.get(String(id))).filter(Boolean);
-  const idsOf = (rows) => rows.map((r) => String(r.id));
-
-  // GE-BALANCE-004 — antes de montar as divisões novas, quem troca de
-  // divisão é recolocado na escala da divisão nova com o degrau entre
-  // divisões (ver repositionArrivals; réguas tiradas antes). Os objetos
-  // de time são os mesmos de CAREER.divisionTeams/serieDPool, então a
-  // força nova é a que vai pra temporada seguinte (e pro save).
-  const scaleA = divisionStrengthScale(CAREER.divisionTeams.brasileirao || []);
-  const scaleB = divisionStrengthScale(CAREER.divisionTeams.serie_b || []);
-  const scaleC = divisionStrengthScale(CAREER.divisionTeams.serie_c || []);
-  const scaleD = divisionStrengthScale(dPool);
-  const stayA = teamsFor(idsOf(rowsA).filter((id) => !relegatedA.includes(id)));
-  const stayB = teamsFor(idsOf(rowsB).filter((id) => !promotedB.includes(id) && !relegatedB.includes(id)));
-  const stayC = teamsFor(idsOf(rowsC).filter((id) => !promotedC.includes(id) && !relegatedC.includes(id)));
-  repositionArrivals(teamsFor(promotedB), stayA, "promoted", scaleB);
-  repositionArrivals(teamsFor(relegatedA), stayB, "relegated", scaleA);
-  repositionArrivals(teamsFor(promotedC), stayB, "promoted", scaleC);
-  repositionArrivals(teamsFor(relegatedB), stayC, "relegated", scaleB);
-  repositionArrivals(promotedD, stayC, "promoted", scaleD);
-
-  const newA = [...teamsFor(idsOf(rowsA).filter((id) => !relegatedA.includes(id))), ...teamsFor(promotedB)];
-  const newB = [
-    ...teamsFor(idsOf(rowsB).filter((id) => !promotedB.includes(id) && !relegatedB.includes(id))),
-    ...teamsFor(relegatedA), ...teamsFor(promotedC),
-  ];
-  const newC = [
-    ...teamsFor(idsOf(rowsC).filter((id) => !promotedC.includes(id) && !relegatedC.includes(id))),
-    ...teamsFor(relegatedB), ...promotedD,
-  ];
-  const newDPool = [...dPool.filter((_, i) => !promotedDIdx.includes(i)), ...teamsFor(relegatedC)];
+  const plan = motorTemporada().promotionRelegation({
+    rows: { A: sortedDivisionRows("brasileirao"), B: sortedDivisionRows("serie_b"), C: sortedDivisionRows("serie_c") },
+    teams: { A: CAREER.divisionTeams.brasileirao || [], B: CAREER.divisionTeams.serie_b || [], C: CAREER.divisionTeams.serie_c || [] },
+    dPool,
+    protectedC: CURRENT_COMPETITION_ID === "serie_c" ? CAREER.clubId : null,
+    reprieveRng: {
+      A: seededRngFromKey(`tradition:brasileirao:${CAREER.seasonYear}`),
+      B: seededRngFromKey(`tradition:serie_b:${CAREER.seasonYear}`),
+      C: seededRngFromKey(`tradition:serie_c:${CAREER.seasonYear}`),
+    },
+    rng: Math.random,
+  });
+  // GE-BALANCE-004 — os objetos de time são os mesmos de
+  // CAREER.divisionTeams/serieDPool, então a força nova vai pra
+  // temporada seguinte (e pro save).
+  plan.strength.forEach(({ team, atk, def }) => { team.atk = atk; team.def = def; });
+  const { relegatedA, promotedB, relegatedB, promotedC, relegatedC } = plan;
+  const { newA, newB, newC, newDPool, teamsFor, promotedD } = plan.compose();
 
   const humanNewCompId = newA.some((t) => String(t.id) === String(CAREER.clubId)) ? "brasileirao"
     : newB.some((t) => String(t.id) === String(CAREER.clubId)) ? "serie_b" : "serie_c";
@@ -12477,8 +12206,8 @@ function renderTabela(containerId = "standingsTable", standings = CAREER.standin
     const t = teamById(r.id);
     const pos = i + 1;
     const zone = isSerieA
-      ? (pos === 1 ? "campeao" : pos <= 6 ? "libertadores" : pos <= 12 ? "sula" : pos > total - RELEGATION_N ? "reb" : "")
-      : (pos === 1 ? "campeao" : pos <= RELEGATION_N ? "acesso" : pos > total - RELEGATION_N ? "reb" : "");
+      ? (pos === 1 ? "campeao" : pos <= 6 ? "libertadores" : pos <= 12 ? "sula" : pos > total - motorTemporada().RELEGATION_N ? "reb" : "")
+      : (pos === 1 ? "campeao" : pos <= motorTemporada().RELEGATION_N ? "acesso" : pos > total - motorTemporada().RELEGATION_N ? "reb" : "");
     const dotClass = zone === "campeao" || zone === "libertadores" || zone === "acesso" ? "libertadores" : zone === "sula" ? "pre" : zone === "reb" ? "rebaixamento" : "safe";
     const isMe = String(r.id) === String(CAREER.clubId);
     return `<div class="mt-tr${isMe ? " highlight" : ""}">
@@ -13814,7 +13543,7 @@ const SCOUT_NOTE_POOL = [
 // fórmulas deste arquivo).
 function generateScoutProspect(scout, region, round, idx, { ages = [15, 20], group: focusGroup = null } = {}) {
   const rng = seededRngFromKey(`scoutprospect:${scout.id}:${round}:${idx}`);
-  const rolledGroup = BASE_COMPOSITION[Math.floor(rng() * BASE_COMPOSITION.length)];
+  const rolledGroup = motorTemporada().BASE_COMPOSITION[Math.floor(rng() * motorTemporada().BASE_COMPOSITION.length)];
   const group = focusGroup || rolledGroup;
   const age = ages[0] + Math.floor(rng() * (ages[1] - ages[0] + 1));
   const starBoost = (scout.stars - 3) * 3;
@@ -17533,7 +17262,7 @@ if (V2_PONTE) {
     // A criação seguinte (criarCarreira) usa este mesmo motor.
     async demitir() {
       if (!CAREER || CAREER.currentRound <= 38) return { ok: false, motivo: "sem-demissao" };
-      if ((CAREER.negativeSeasonsStreak || 0) < DISMISSAL_STREAK) return { ok: false, motivo: "sem-demissao" };
+      if ((CAREER.negativeSeasonsStreak || 0) < motorTemporada().DISMISSAL_STREAK) return { ok: false, motivo: "sem-demissao" };
       endCurrentClubStint("dismissed");
       try { await fetchJSON("/api/career", { method: "DELETE" }); } catch (err) { return { ok: false, motivo: err.status === 401 ? "sessao" : "falha" }; }
       CAREER = null;

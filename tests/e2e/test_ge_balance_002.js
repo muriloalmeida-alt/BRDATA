@@ -38,7 +38,7 @@ async function newCareer(page, base, email) {
   await newCareer(page, base, `gebalance002${Date.now()}@teste.com`);
 
   // 1) Lista curada de tradição — os 12 clubes esperados, nada a mais.
-  const list = await page.evaluate(() => [...CLUB_TRADITION_IDS].sort());
+  const list = await page.evaluate(() => [...motorTemporada().CLUB_TRADITION_IDS].sort());
   const expected = ["bot", "cam", "cor", "cru", "flu", "fla", "gre", "int", "pal", "san", "sao", "vas"].sort();
   check("1) CLUB_TRADITION_IDS tem exatamente os 12 clubes esperados:",
     JSON.stringify(list) === JSON.stringify(expected), JSON.stringify(list));

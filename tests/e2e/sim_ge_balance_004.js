@@ -29,11 +29,19 @@ function extract(text, name) {
     else if (text[j] === c && --d === 0) return text.slice(m.index, isFn ? j + 1 : text.indexOf(";", j) + 1).replace(/^const /, "var ") + "\n";
   }
 }
+// Fase 12, etapa 6: as regras de força entre divisões moram em
+// public/js/motor/temporada.js; o motor entra no vm por _motor_vm.js (o
+// degrau opcional da linha de comando ajusta a constante do motor).
+const { motorCode } = require("./_motor_vm");
 const sb = {};
 vm.createContext(sb);
 vm.runInContext(
-  ["mulberry32", "seededRngFromKey", "poissonSample", "DEMO_TEAMS", "DEMO_TEAMS_SERIE_B", "DEMO_TEAMS_SERIE_C", "DEMO_TEAMS_SERIE_D"].map((n) => extract(dataJs, n)).join("")
-  + ["clamp", "STRENGTH_DIVISION_GAP_SD", "divisionStrengthScale", "repositionArrivals"].map((n) => extract(src, n)).join(""), sb);
+  "var window = { BRDATA_MOTOR: {} };\n"
+  + motorCode(null, (name, text) => (name === "temporada" && GAP_OVERRIDE != null
+    ? text.replace(/^export const STRENGTH_DIVISION_GAP_SD = [\d.]+;/m, `export const STRENGTH_DIVISION_GAP_SD = ${GAP_OVERRIDE};`) : text))
+  + ["mulberry32", "seededRngFromKey", "poissonSample", "DEMO_TEAMS", "DEMO_TEAMS_SERIE_B", "DEMO_TEAMS_SERIE_C", "DEMO_TEAMS_SERIE_D"].map((n) => extract(dataJs, n)).join("")
+  + ["clamp", "motorModulo", "motorTemporada", "divisionStrengthScale", "repositionArrivals"].map((n) => extract(src, n)).join("")
+  + "var STRENGTH_DIVISION_GAP_SD = window.BRDATA_MOTOR.temporada.STRENGTH_DIVISION_GAP_SD;\n", sb);
 
 function playSeason(teams, rng) {
   const rows = new Map(teams.map((t) => [t.id, { id: t.id, j: 0, v: 0, gp: 0, gc: 0, sg: 0, pts: 0 }]));
@@ -97,7 +105,6 @@ function run(withFix, liveLike, seed) {
   }
   return out;
 }
-if (GAP_OVERRIDE != null) sb.STRENGTH_DIVISION_GAP_SD = GAP_OVERRIDE;
 console.log(`Degrau entre divisões: ${sb.STRENGTH_DIVISION_GAP_SD} sd`);
 const pct = (arr, f) => (arr.filter(f).length / arr.length * 100).toFixed(1) + "%";
 const mean = (arr) => (arr.reduce((a, v) => a + v, 0) / arr.length).toFixed(1);
