@@ -2,7 +2,7 @@
 
 - **Data:** 06/11/2026.
 - **Branch:** `f12-temporada`, a partir de `main` (com o #78, etapa 5).
-- **Status:** aguardando aprovação do Murilo. Commit local, sem push e sem PR.
+- **Status:** aprovado pelo Murilo (06/11).
 
 **Decisões aplicadas** (06/11):
 - **Escopo:** só as regras da virada. A Copa do Brasil e a orquestração (`advanceSeason`) ficam no `carreira.js`.
