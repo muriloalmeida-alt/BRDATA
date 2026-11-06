@@ -239,14 +239,14 @@ const { enterGame } = require("./_startup");
 
   // 12) início da janela tem menor urgência (1x, progress=0).
   const n12 = await page.evaluate(() => {
-    const open = TRANSFER_WINDOWS[0][0]; // 1º round da 1ª janela
+    const open = motorMercado().TRANSFER_WINDOWS[0][0]; // 1º round da 1ª janela
     return { atOpen: urgencyMultiplier(0.9, open) }; // mesmo com necessidade máxima, 1º round = 1x
   });
   check("12) Início da janela (1º round) tem urgência neutra (1x), mesmo com necessidade alta:", n12.atOpen === 1, JSON.stringify(n12));
 
   // 13) final da janela só aumenta urgência quando existe necessidade real.
   const n13 = await page.evaluate(() => {
-    const close = TRANSFER_WINDOWS[0][1]; // último round da 1ª janela
+    const close = motorMercado().TRANSFER_WINDOWS[0][1]; // último round da 1ª janela
     return { semNecessidade: urgencyMultiplier(0.05, close), comNecessidade: urgencyMultiplier(0.8, close) };
   });
   check("13) Final da janela: sem necessidade real -> urgência continua 1x; com necessidade real -> urgência sobe:",
@@ -258,7 +258,7 @@ const { enterGame } = require("./_startup");
   const n14 = await page.evaluate((clubId) => {
     let maxMultiplier = 0;
     for (let necessidade = 0; necessidade <= 1; necessidade += 0.05) {
-      for (const [open, close] of TRANSFER_WINDOWS) {
+      for (const [open, close] of motorMercado().TRANSFER_WINDOWS) {
         for (let round = open; round <= close; round++) {
           const m = urgencyMultiplier(necessidade, round);
           if (m > maxMultiplier) maxMultiplier = m;
@@ -406,7 +406,7 @@ const { enterGame } = require("./_startup");
   // independente de qual clube/divisão é passado, só necessidade e
   // round importam).
   const n22 = await page.evaluate(() => {
-    const round = TRANSFER_WINDOWS[0][1];
+    const round = motorMercado().TRANSFER_WINDOWS[0][1];
     const a = urgencyMultiplier(0.8, round);
     const b = urgencyMultiplier(0.8, round); // sem clubId nenhum no parâmetro -> não há como discriminar por divisão
     return { a, b, identical: a === b, fnSource: urgencyMultiplier.toString().includes("competitionId") || urgencyMultiplier.toString().includes("Division") };

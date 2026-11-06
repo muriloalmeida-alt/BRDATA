@@ -238,7 +238,7 @@ const { enterGame } = require("./_startup");
     const cf = computeContractFields(50, 30, null, () => 0.5); // veterano fraco -> score tende a ficar baixo
     const player = { id: "c15_p", group: "M", overall: 50, potential: 50, age: 30, wage: cf.wage, value: cf.value, contractUntil: CAREER.seasonYear + 3 };
     const deal = negotiateOffer(player, clubId, CAREER.clubId, { baseValue: cf.value * 3 }); // baseValue MUITO acima do que o comprador toparia, reserva também sobe junto
-    return { deal, respectsCap: deal.rounds <= MAX_NEGOTIATION_ROUNDS };
+    return { deal, respectsCap: deal.rounds <= motorMercado().MAX_NEGOTIATION_ROUNDS };
   }, BUYER_CLUB);
   check("15) Negociação nunca ultrapassa MAX_NEGOTIATION_ROUNDS (3) rodadas, mesmo em cenário adversarial:", c15.respectsCap, JSON.stringify(c15.deal));
 
@@ -255,7 +255,7 @@ const { enterGame } = require("./_startup");
       const player = { id: `c16_${i}`, group: ["G", "D", "M", "F"][i % 4], overall, potential: overall, age, wage: cf.wage, value: cf.value, contractUntil: CAREER.seasonYear + 1 };
       const deal = negotiateOffer(player, clubId, CAREER.clubId, { baseValue: cf.value * (0.5 + Math.random() * 2) });
       rounds.push(deal.rounds);
-      if (deal.rounds > MAX_NEGOTIATION_ROUNDS || typeof deal.outcome !== "string") allTerminated = false;
+      if (deal.rounds > motorMercado().MAX_NEGOTIATION_ROUNDS || typeof deal.outcome !== "string") allTerminated = false;
     }
     return { allTerminated, maxRounds: Math.max(...rounds), minRounds: Math.min(...rounds) };
   }, BUYER_CLUB);
