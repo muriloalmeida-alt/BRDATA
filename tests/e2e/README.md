@@ -123,6 +123,20 @@ scripts saíam com código 0 mesmo com verificação `false` (só exceção
 reprovava). Desde então toda verificação numerada passa por `check()`
 (ver abaixo) — o código de saída reflete as verificações.
 
+## Tela antiga descontinuada (09/11/2026): como escrever teste novo
+
+A tela antiga da carreira (`carreira.html`, `/carreira-old`) está
+**descontinuada e congelada**: a carreira oficial é `/carreira` (a v2) com o
+motor em `public/js/motor/` (ver `CLAUDE.md`, seção 0).
+
+- **Teste novo de tela:** pelas telas da v2, com `_v2_carreira.js`. O `novaCarreiraV2(page, email)` cria conta e carreira só pela v2 e chega ao Início. Exemplo: `test_v2_ajudante_carreira.js`.
+- **Teste novo de regra do jogo:**
+  - **Sem navegador, pela ponte:** com `_sem_tela.js`. O `abrirPagina()` dá uma conta nova com a ponte pronta, `criar(P)` cria a carreira e `jogarRodada(P)` joga semana, partida e pós-jogo. Exemplo: `test_sem_tela.js`.
+  - **Teste unitário do módulo:** em `tests/unit/`.
+- **Nunca** abra `/carreira.html`, `/carreira-old` ou a página escondida (`/carreira/motor`) num teste novo, nem use os ajudantes que passam por elas (`_startup`, `_round`, `_calendar_skip`, `_v2_match`).
+- Os testes que já faziam isso estão em `tela_antiga_legado.json` e continuam rodando como rede de segurança. A lista **só diminui**: ao reescrever um deles pela v2 ou sem tela, tire-o dela.
+- **Checagem:** `node .github/scripts/verificar-tela-antiga.js`, que o CI roda na rota rápida.
+
 ## Helpers compartilhados (arquivos `_*.js`, não são testes)
 
 - `_check.js` — `check("N) descrição:", condição, ...detalhes)`: imprime a

@@ -15,6 +15,36 @@
 
 ---
 
+# 0. CARREIRA OFICIAL E TELA ANTIGA (decisão de 09/11/2026)
+
+> **A carreira oficial é `/carreira`:** o frontend em `carreira-v2/` (React,
+> build versionado em `public/carreira/`) mais o motor em `public/js/motor/`.
+>
+> **A tela antiga da carreira está DESCONTINUADA e congelada:**
+> `public/carreira.html` e as telas, os modais e o CSS dela em
+> `public/js/carreira.js` (`/carreira-old`, que em produção já redireciona
+> para `/carreira`).
+
+Regras para qualquer código novo:
+
+1. **Regra do jogo nova ou alterada** vai para `public/js/motor/`, como
+   módulo, com teste. Nunca para as telas da carreira antiga.
+2. **Tela nova ou ajuste de tela** vai só para `carreira-v2/`. Nada novo
+   na tela antiga: nenhuma tela, modal, botão, estilo ou recurso.
+3. **O `carreira.js` só muda para** tirar lógica dele para o motor (plano
+   `docs/carreira-v2/PLANO_SEM_PAGINA_ESCONDIDA.md`), manter a ponte que a
+   v2 usa enquanto a página escondida existir (`/carreira/motor`, até a
+   etapa G) ou corrigir defeito que afete a v2 ou o motor.
+4. **Teste novo nunca usa a tela antiga.**
+   - Para tela, use as telas da v2 (`tests/e2e/_v2_carreira.js`).
+   - Para regra do jogo, use a ponte, sem navegador (`tests/e2e/_sem_tela.js`), ou um teste unitário do motor.
+   - Os testes que já usavam a tela antiga estão numa lista congelada (`tests/e2e/tela_antiga_legado.json`), que só diminui. O CI barra teste novo fora dela (`.github/scripts/verificar-tela-antiga.js`).
+5. **Onde este arquivo falar de `carreira.js` como "núcleo"** (seções 4 e
+   seguintes), leia como história. A lógica está saindo para o motor em
+   etapas, e a tela é a v2.
+
+---
+
 # 1. PROPÓSITO DESTE ARQUIVO
 
 Este documento é a fonte de verdade para qualquer agente de IA que trabalhe no código do BRDATA.
@@ -131,6 +161,11 @@ Se uma documentação antiga indicar que determinado sistema não existe, verifi
 ---
 
 # 4. ARQUITETURA ATUAL
+
+> **Atualização de 09/11/2026:** ver a seção 0. Hoje a carreira oficial é
+> `carreira-v2/` (telas) + `public/js/motor/` (regras e estado). O
+> `carreira.js` abaixo é a carreira antiga, descontinuada, que ainda roda
+> escondida para a v2 até o fim do plano sem página escondida.
 
 A carreira está concentrada principalmente em:
 
