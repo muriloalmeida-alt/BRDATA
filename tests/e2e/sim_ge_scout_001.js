@@ -5,7 +5,8 @@
 const fs = require("fs");
 const path = require("path");
 const vm = require("vm");
-const src = fs.readFileSync(path.resolve(__dirname, "../../public/js/carreira.js"), "utf8");
+// Etapa C2: parte das funções mora em motor/semana.js (ver paginaComoAntes).
+const src = require("./_motor_vm").paginaComoAntes(fs.readFileSync(path.resolve(__dirname, "../../public/js/carreira.js"), "utf8"));
 const dataJs = fs.readFileSync(path.resolve(__dirname, "../../public/js/data.js"), "utf8");
 function extract(name) {
   const m = src.match(new RegExp(`^(function ${name}\\(|const ${name} = )`, "m"));

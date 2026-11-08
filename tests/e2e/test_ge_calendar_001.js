@@ -49,15 +49,41 @@ const { skipOnboarding } = require("./_startup");
 
   // Contadores instalados ANTES de qualquer avanço (o pulo do passo 2 já
   // cruza a virada de fevereiro pra março).
+  // Etapa C2 (09/11): a semana sem jogo mora em motor/semana.js e chama a
+  // cobrança do mês e a IA de mercado por dentro do módulo, então não dá
+  // mais para contar trocando as funções da página. Agora:
+  // - meses cobrados: lançamentos novos "Folha salarial de <mês>" no extrato
+  //   (o efeito de verdade da cobrança);
+  // - IA de mercado: turnos em que a regra a chama (semana sem jogo com a
+  //   janela aberta e índice par, ou rodada com a janela aberta), contados
+  //   antes de cada passo.
   await page.evaluate(() => {
     window.__cnt = { monthly: 0, ai: 0 };
-    const origMonthly = applyCalendarMonthlyFinances;
-    applyCalendarMonthlyFinances = (m) => { window.__cnt.monthly++; return origMonthly(m); };
-    const origAi = simulateAiTransfers;
-    simulateAiTransfers = (r) => { window.__cnt.ai++; return origAi(r); };
+    const vistos = new Set(CAREER.financeLedger || []);
+    window.__contarMeses = () => {
+      (CAREER.financeLedger || []).forEach((e) => {
+        if (vistos.has(e)) return;
+        vistos.add(e);
+        if (/^Folha salarial de /.test(e.label)) window.__cnt.monthly++;
+      });
+    };
+    window.__contarIa = () => {
+      const w = calendarWeek();
+      if (!transferWindowStatus(CAREER.currentRound).open) return;
+      if (w && w.r) window.__cnt.ai++;
+      else if (w && CAREER.calendar.idx % 2 === 0) window.__cnt.ai++;
+    };
   });
 
   // 2) Pular até o próximo jogo (clique real).
+  // O pulo atravessa semanas sem jogo: conta os turnos da IA no caminho.
+  await page.evaluate(() => {
+    let i = CAREER.calendar.idx;
+    while (CAREER.calendar.weeks[i] && !CAREER.calendar.weeks[i].r) {
+      if (CALENDAR_WINDOW_PHASES.has(CAREER.calendar.weeks[i].p) && i % 2 === 0) window.__cnt.ai++;
+      i++;
+    }
+  });
   await page.click("#btnSkipToMatch");
   await page.waitForTimeout(800);
   await page.waitForFunction(() => CAREER.currentRound === 1 && /Ir para o jogo/.test(document.getElementById("btnSimulate").textContent), null, { timeout: 15000 }).catch(() => {});
@@ -79,19 +105,23 @@ const { skipOnboarding } = require("./_startup");
         try {
           const w = calendarWeek();
           if (transferWindowStatus(CAREER.currentRound).open) windowOpenWeeks++;
-          if (!w.r) { runCalendarOffWeek(); offWeeks++; continue; }
+          window.__contarIa();
+          if (!w.r) { runCalendarOffWeek(); window.__contarMeses(); offWeeks++; continue; }
           const sum = simulateRound();
           if (sum === "live") { skipLiveMatch(); if (LIVE_MATCH && !LIVE_MATCH.finished) await finishLiveMatch(); }
+          window.__contarMeses();
           roundsPlayed++;
         } catch (e) { errors.push(String(e && e.message || e)); break; }
       }
       // meses cobrados NESTA temporada (inclui o janeiro cobrado na
       // virada anterior) e chamadas da IA de mercado
+      window.__contarMeses();
       const monthlyCharges = count.monthly, aiCalls = count.ai;
       count.monthly = 0; count.ai = 0;
       const year = CAREER.seasonYear;
       CAREER.negativeSeasonsStreak = -99; // o teste mede o calendário, não a diretoria
       const r = await advanceSeason(); // já cobra o janeiro da próxima (conta pra ela)
+      window.__contarMeses();
       out.push({ year, roundsPlayed, offWeeks, monthlyCharges, aiCalls, windowOpenWeeks, errors, dismissed: r && r.dismissed, newPhase: calendarWeek().p, newYear: CAREER.calendar.year });
     }
     return out;

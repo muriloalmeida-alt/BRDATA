@@ -27,8 +27,10 @@ const SEASONS = 10;
 const SCENARIO = process.argv[4] || "real"; // "real" | "gerado"
 
 const dataJs = fs.readFileSync(path.join(ROOT, "public/js/data.js"), "utf8");
-const afterSrc = fs.readFileSync(path.join(ROOT, "public/js/carreira.js"), "utf8");
-const beforeSrc = execSync(`git show ${BEFORE_REV}:public/js/carreira.js`, { cwd: ROOT, encoding: "utf8", maxBuffer: 64 << 20 });
+// Etapa C2: parte das funções mora em motor/semana.js (ver paginaComoAntes).
+const { paginaComoAntes } = require("./_motor_vm");
+const afterSrc = paginaComoAntes(fs.readFileSync(path.join(ROOT, "public/js/carreira.js"), "utf8"));
+const beforeSrc = paginaComoAntes(execSync(`git show ${BEFORE_REV}:public/js/carreira.js`, { cwd: ROOT, encoding: "utf8", maxBuffer: 64 << 20 }), BEFORE_REV);
 
 // Extrai `function NOME(...) {...}` ou `const NOME = ...;` pelo
 // casamento de chaves/colchetes — nomes que não existem numa das

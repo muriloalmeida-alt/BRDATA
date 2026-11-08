@@ -217,9 +217,10 @@ function combinedSectorTacticMod() {
 // melhor mostrar as 4 posições que a gente sabe de verdade do que 6
 // "de mentira".
 const SUBPOS_ORDER = { GOL: 0, DEF: 1, MEI: 2, ATA: 3 };
-const SUBPOS_LABEL = { GOL: "Goleiro", DEF: "Defensor", MEI: "Meio-campo", ATA: "Atacante" };
+// Etapa C2 (09/11): mora em motor/semana.js.
+Object.defineProperty(window, "SUBPOS_LABEL", { configurable: true, get() { return motorSemana().SUBPOS_LABEL; } });
 function subPositionOf(p) {
-  return { G: "GOL", D: "DEF", M: "MEI", F: "ATA" }[p.group] || "DEF";
+  return motorSemana().subPositionOf(p);
 }
 function squadSortKey(p) { return (SUBPOS_ORDER[subPositionOf(p)] ?? 9) * 1000 - p.overall; }
 
@@ -345,34 +346,31 @@ const motorEstado = () => motorModulo("estado");
 // em motor/registro.js; avisos de tela viram eventos (motor/eventos.js).
 const motorRegistro = () => motorModulo("registro");
 const motorEventos = () => motorModulo("eventos");
-// A página antiga mostra o evento "aviso" como o toast de sempre (ligado no boot).
+// Etapa C2 (09/11): a semana sem jogo (calendário, treino, olheiros, obras,
+// mercado da CPU e propostas) em motor/semana.js, e a formatação dos textos
+// em motor/texto.js. O ambiente (nomes de data.js, sorteio por chave e o ano
+// da temporada real) é passado na primeira vez que o módulo é usado.
+const motorTexto = () => motorModulo("texto");
+function motorSemana() {
+  const m = motorModulo("semana");
+  if (!m.temAmbiente()) m.definirAmbiente({ primeirosNomes: DEMO_FIRST_NAMES, sobrenomes: DEMO_LAST_NAMES, rngDaChave: seededRngFromKey, temporadaReal: () => LIVE_SEASON });
+  return m;
+}
+// A página antiga mostra o evento "aviso" como o toast de sempre e abre a
+// coletiva quando o motor pede (ligado no boot).
 function ouvirAvisosDoMotor() {
-  motorEventos().ouvir("aviso", (a) => toast({ title: a.titulo, detail: a.detalhe }, a.tipo ? { type: a.tipo } : undefined));
+  motorEventos().ouvir("aviso", (a) => toast(a.texto != null ? a.texto : { title: a.titulo, detail: a.detalhe }, a.tipo ? { type: a.tipo } : undefined));
+  motorEventos().ouvir("coletiva", (c) => { firePressConference(c.id, c.rodada, false); openPressConferenceModal(); });
 }
 // Nomes (data.js) e o ano da temporada real para os geradores de jogador.
 function playerBuildEnv() {
   return { firstNames: DEMO_FIRST_NAMES, lastNames: DEMO_LAST_NAMES, liveSeason: LIVE_SEASON };
 }
 function marketClub(clubId) {
-  let avg, amb, roster;
-  return {
-    id: String(clubId),
-    squad: leagueSquadFor(clubId),
-    minSize: minSquadSizeFor(clubId),
-    maxSize: maxSquadSizeFor(clubId),
-    // Titulares só no seu clube (CPU não tem titular fixo, ver pickCpuXI).
-    starters: String(clubId) === String(CAREER.clubId) ? (CAREER.lineup.starters || []) : null,
-    // Calculados só quando a regra precisa (mesmo custo de antes).
-    get avgOverall() { if (avg === undefined) avg = squadAvgOverallOf(clubId); return avg; },
-    get ambition() { if (amb === undefined) amb = clubAmbitionFactor(clubId); return amb; },
-    get roster() { if (roster === undefined) roster = squadForClub(clubId); return roster; },
-  };
+  return motorSemana().marketClub(clubId);
 }
 function applyFinanceEntries(entries, round) {
-  entries.forEach((e) => {
-    CAREER.finances.cash += e.amount;
-    pushLedger(e.type, e.label, e.amount, round);
-  });
+  return motorSemana().applyFinanceEntries(entries, round);
 }
 
 /* ---------- Redesign M3 (BRTreinadorSistemadeDesignM3v1.docx +
@@ -1206,15 +1204,15 @@ function lastNameOf(name) {
 // linha só no celular (ver .ct-name-cell no <style> de carreira.html).
 // Nome de 1 palavra só (raro) fica como está.
 function abbreviateName(name) {
-  const parts = String(name || "").trim().split(/\s+/).filter(Boolean);
-  if (parts.length <= 1) return name || "?";
-  return `${parts[0][0].toUpperCase()}. ${parts[parts.length - 1]}`;
+  // Etapa C2 (09/11): mora em motor/texto.js.
+  return motorTexto().abbreviateName(name);
 }
 // FASE 2 (b) — mesmo formatador de dinheiro do site principal (fmtBRL
 // em app.js, duplicado aqui pelo mesmo motivo de sempre — esta página
 // não carrega app.js). Aceita negativo (caixa pode ficar no vermelho).
 function fmtBRL(v) {
-  return (v || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 });
+  // Etapa C2 (09/11): mora em motor/texto.js.
+  return motorTexto().fmtBRL(v);
 }
 // Versão curta ("R$ 35 mi") pros KPIs de caixa/folha na Central — a
 // caixa de KPI (.ct-kpi .v, ver carreira.html) é estreita demais pro
@@ -1715,7 +1713,8 @@ function buildGeneratedProPlayer(club, idx, rng) {
 // real veio truncada/incompleta de verdade (falha pontual da API),
 // não o caminho normal. MAX_PRINCIPAL só existe pra não deixar o save
 // gigante no caso raro de um fornecedor devolver um elenco enorme.
-const MAX_PRINCIPAL = 60;
+// Etapa C2 (09/11): mora em motor/semana.js.
+Object.defineProperty(window, "MAX_PRINCIPAL", { configurable: true, get() { return motorSemana().MAX_PRINCIPAL; } });
 async function buildSquad(club) {
   const rng = seededRngFromKey(`squad:${club.id}:${LIVE_SEASON}`); // global de js/data.js
   const raw = await fetchRealPlayers(club.id);
@@ -3050,16 +3049,7 @@ function startStadiumUpgrade(id) {
 // Chamado 1x por rodada simulada (ver finishRoundTail) — decrementa a
 // obra em andamento e conclui quando chega a 0.
 function tickStadiumUpgrade() {
-  const st = CAREER.stadium;
-  if (!st || !st.pendingUpgrade) return;
-  st.pendingUpgrade.roundsLeft -= 1;
-  if (st.pendingUpgrade.roundsLeft <= 0) {
-    const done = st.pendingUpgrade;
-    st.capacityBonus += done.capacityGain;
-    st.completed.push(done.id);
-    st.pendingUpgrade = null;
-    pushTransferLog(`Obra concluída no estádio: ${done.name}.`, CAREER.currentRound);
-  }
+  return motorSemana().tickStadiumUpgrade();
 }
 
 /* ---------- FASE 3 (c) — multitemporadas ----------
@@ -3436,8 +3426,10 @@ async function advanceSeason() {
    usuário, só precisa de nomes plausíveis pra estatística e pra
    escalar 11 a cada rodada (ver pickCpuXI). Elenco cheio (principal +
    base, como o seu) pros 20 times deixaria o save ~20x maior à toa. */
-const MAX_LEAGUE_SQUAD = 26;
-const MIN_LEAGUE_SQUAD = 16;
+// Etapa C2 (09/11): mora em motor/semana.js.
+Object.defineProperty(window, "MAX_LEAGUE_SQUAD", { configurable: true, get() { return motorSemana().MAX_LEAGUE_SQUAD; } });
+// Etapa C2 (09/11): mora em motor/semana.js.
+Object.defineProperty(window, "MIN_LEAGUE_SQUAD", { configurable: true, get() { return motorSemana().MIN_LEAGUE_SQUAD; } });
 // AJUSTE (pedido do usuário: "o mercado deve trazer jogadores das 3
 // ligas para que transações possam ser feitas entre os 60 times das
 // Séries A, B e C") — BUG CORRIGIDO antes mesmo de publicar (achado
@@ -3453,8 +3445,10 @@ const MIN_LEAGUE_SQUAD = 16;
 // com o elenco cheio de sempre, usados de verdade em pickCpuXI a cada
 // rodada) — ainda de sobra pra variedade de mercado (40 times × até 16
 // jogadores = 640 opções), cortando boa parte do peso extra no save.
-const MAX_LEAGUE_SQUAD_OTHER_DIVISION = 16;
-const MIN_LEAGUE_SQUAD_OTHER_DIVISION = 12;
+// Etapa C2 (09/11): mora em motor/semana.js.
+Object.defineProperty(window, "MAX_LEAGUE_SQUAD_OTHER_DIVISION", { configurable: true, get() { return motorSemana().MAX_LEAGUE_SQUAD_OTHER_DIVISION; } });
+// Etapa C2 (09/11): mora em motor/semana.js.
+Object.defineProperty(window, "MIN_LEAGUE_SQUAD_OTHER_DIVISION", { configurable: true, get() { return motorSemana().MIN_LEAGUE_SQUAD_OTHER_DIVISION; } });
 async function buildLeagueSquad(club) {
   const rng = seededRngFromKey(`league-squad:${club.id}:${LIVE_SEASON}`);
   // AJUSTE (pedido do usuário: "o mercado deve trazer jogadores das 3
@@ -3542,7 +3536,7 @@ function ensureUniquePlayerIds() {
   return renames.length;
 }
 function leagueSquadFor(clubId) {
-  return (CAREER.leagueSquads && CAREER.leagueSquads[String(clubId)]) || [];
+  return motorSemana().leagueSquadFor(clubId);
 }
 // Escala uma XI plausível pro time CPU essa rodada — sem tática/
 // formação (isso é só pro SEU time, ver computeHumanStrength), só uma
@@ -3816,11 +3810,10 @@ async function applyPromotionRelegation() {
    resumo compacto do Mercado, mas era curto demais pra uma tela
    dedicada de histórico (cada entrada é minúscula, {round,text}, então
    o impacto no tamanho do save é desprezível). */
-const TRANSFER_LOG_MAX = 60;
+// Etapa C2 (09/11): mora em motor/semana.js.
+Object.defineProperty(window, "TRANSFER_LOG_MAX", { configurable: true, get() { return motorSemana().TRANSFER_LOG_MAX; } });
 function pushTransferLog(text, round) {
-  CAREER.transferLog = CAREER.transferLog || [];
-  CAREER.transferLog.unshift({ round, text });
-  if (CAREER.transferLog.length > TRANSFER_LOG_MAX) CAREER.transferLog.length = TRANSFER_LOG_MAX;
+  return motorSemana().pushTransferLog(text, round);
 }
 
 /* ---------- Central de notificações (Bloco 8 pendentes,
@@ -3883,8 +3876,7 @@ function updateNotificationBadge() {
 // estádio) — ver finishRoundTail e cada chamada de pushLedger espalhada
 // pelo arquivo. type serve tanto de rótulo quanto de filtro na tela.
 function pushLedger(type, label, amount, round) {
-  // Mais recente primeiro, até 60 lançamentos (motor/financas.js, LEDGER_MAX).
-  CAREER.financeLedger = motorFinancas().addLedgerEntry(CAREER.financeLedger, { round, type, label, amount });
+  return motorSemana().pushLedger(type, label, amount, round);
 }
 // Mini-gráfico de caixa do card Financeiro (tela Clube) — 1 snapshot por
 // rodada simulada (ver finishRoundTail), guarda só as últimas
@@ -3921,11 +3913,15 @@ function pushCashSnapshot(round) {
    calendário) tem o próprio turno (runCalendarOffWeek). Carreira de
    antes desta mudança continua no modelo de rodadas até a próxima
    virada de temporada, quando ganha o calendário (ver advanceSeason). */
-const CALENDAR_PHASE_BY_MONTH = ["ferias", "pre", "temporada", "temporada", "temporada", "temporada", "pausa", "temporada", "temporada", "temporada", "temporada", "temporada"];
-const CALENDAR_PHASE_LABEL = { ferias: "Férias", pre: "Pré-temporada", temporada: "Temporada", pausa: "Pausa de julho" };
-const CALENDAR_WINDOW_PHASES = new Set(["ferias", "pre", "pausa"]);
+// Etapa C2 (09/11): mora em motor/semana.js.
+Object.defineProperty(window, "CALENDAR_PHASE_BY_MONTH", { configurable: true, get() { return motorSemana().CALENDAR_PHASE_BY_MONTH; } });
+// Etapa C2 (09/11): mora em motor/semana.js.
+Object.defineProperty(window, "CALENDAR_PHASE_LABEL", { configurable: true, get() { return motorSemana().CALENDAR_PHASE_LABEL; } });
+// Etapa C2 (09/11): mora em motor/semana.js.
+Object.defineProperty(window, "CALENDAR_WINDOW_PHASES", { configurable: true, get() { return motorSemana().CALENDAR_WINDOW_PHASES; } });
 const MONTH_SHORT = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
-const MONTH_LONG = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
+// Etapa C2 (09/11): mora em motor/semana.js.
+Object.defineProperty(window, "MONTH_LONG", { configurable: true, get() { return motorSemana().MONTH_LONG; } });
 // Salário era cobrado 1/4 do mês por rodada (38 rodadas ≈ 9,5 meses por
 // ano); o ano real cobra 12. Cota de TV (receita nova, a maior do
 // futebol brasileiro de verdade) cobre esses 2,5 meses a mais — fixada
@@ -3951,9 +3947,15 @@ function buildSeasonCalendar(year) {
   const monthlyCosts = wageBillOf(CAREER.squad) + (CAREER.technicalStaff && CAREER.technicalStaff.hired ? technicalStaffMonthlyCost() : 0) + scoutsMonthlyCost();
   return { year, idx: 0, weeks, tvMonthly: Math.round(monthlyCosts * CALENDAR_EXTRA_MONTHS / 12 / 1000) * 1000 };
 }
-function calendarOn() { return !!(CAREER && CAREER.calendar && Array.isArray(CAREER.calendar.weeks)); }
-function calendarWeek(i) { return calendarOn() ? CAREER.calendar.weeks[i == null ? CAREER.calendar.idx : i] || null : null; }
-function calendarWeekMonth(w) { return Number(w.d.slice(0, 2)) - 1; }
+function calendarOn() {
+  return motorSemana().calendarOn();
+}
+function calendarWeek(i) {
+  return motorSemana().calendarWeek(i);
+}
+function calendarWeekMonth(w) {
+  return motorSemana().calendarWeekMonth(w);
+}
 function calendarDateLabel(w, plusDays = 0) {
   const [m, d] = w.d.split("-").map(Number);
   const dt = new Date(Date.UTC(CAREER.calendar.year, m - 1, d + plusDays));
@@ -3962,44 +3964,28 @@ function calendarDateLabel(w, plusDays = 0) {
 // Chave do turno atual (semana no calendário, rodada no modelo antigo)
 // — usada por quem precisa de "1x por turno" (treino) ou de semente
 // única por turno (missão de olheiro).
-function calendarTurnKey() { return calendarOn() ? `${CAREER.calendar.year}w${CAREER.calendar.idx}` : String(CAREER.currentRound); }
+function calendarTurnKey() {
+  return motorSemana().calendarTurnKey();
+}
 // Semana em que mora a próxima rodada a jogar (ou null se a temporada
 // já acabou).
 function calendarWeekIndexOfRound(round) {
-  return calendarOn() ? CAREER.calendar.weeks.findIndex((w) => w.r === round) : -1;
+  return motorSemana().calendarWeekIndexOfRound(round);
 }
 // Nunca deixa o calendário "na frente" da rodada a jogar (ex.: save
 // editado, rodada jogada por um caminho antigo) — volta pra semana dela.
 function syncCalendarToRound() {
-  if (!calendarOn() || CAREER.currentRound > 38) return;
-  const wi = calendarWeekIndexOfRound(CAREER.currentRound);
-  if (wi >= 0 && CAREER.calendar.idx > wi) CAREER.calendar.idx = wi;
+  return motorSemana().syncCalendarToRound();
 }
 // Finanças do mês (12x por ano): folha, comissão, olheiros, patrocínio
 // (total da temporada / 12) e cota de TV. Retorna os totais pro resumo.
 function applyCalendarMonthlyFinances(monthIdx) {
-  const m = motorFinancas().monthEntries({
-    squad: CAREER.squad, staffHired: !!(CAREER.technicalStaff && CAREER.technicalStaff.hired), scouts: CAREER.scouts,
-    sponsorship: CAREER.sponsorship, tvMonthly: CAREER.calendar.tvMonthly, month: MONTH_LONG[monthIdx],
-  });
-  applyFinanceEntries(m.entries, CAREER.currentRound);
-  return { wagePaid: m.wagePaid, sponsorIncome: m.income };
+  return motorSemana().applyCalendarMonthlyFinances(monthIdx);
 }
 // Fecha o turno da semana atual e passa pra próxima: mês novo cobra/
 // recebe o mês; fase nova avisa (abre/fecha janela).
 function advanceCalendarWeek() {
-  const cal = CAREER.calendar;
-  const prev = calendarWeek();
-  if (cal.idx >= cal.weeks.length - 1) return { wagePaid: 0, sponsorIncome: 0 };
-  cal.idx += 1;
-  const cur = calendarWeek();
-  let money = { wagePaid: 0, sponsorIncome: 0 };
-  if (calendarWeekMonth(cur) !== calendarWeekMonth(prev)) money = applyCalendarMonthlyFinances(calendarWeekMonth(cur));
-  if (cur.p !== prev.p) {
-    const win = CALENDAR_WINDOW_PHASES.has(cur.p);
-    pushNotification("calendario", `${CALENDAR_PHASE_LABEL[cur.p]} — ${win ? "janela de transferências aberta" : "janela de transferências fechada (vender continua liberado)"}.`);
-  }
-  return money;
+  return motorSemana().advanceCalendarWeek();
 }
 // Turno de uma semana SEM jogo seu: treino (exceto férias, que é
 // descanso), recuperação, cura de lesão, prazos de propostas/anúncios/
@@ -4008,44 +3994,10 @@ function advanceCalendarWeek() {
 // janela por ano contra 6 rodadas no modelo antigo — mantém o volume
 // anual de negócios parecido.
 function runCalendarOffWeek() {
-  const week = calendarWeek();
-  if (!week || week.r) return null;
-  const round = CAREER.currentRound;
-  if (week.p === "ferias") {
-    CAREER.squad.forEach((p) => { p.condition = 100; });
-  } else {
-    applyWeeklyTraining();
-    CAREER.squad.forEach((p) => { p.condition = clamp((p.condition == null ? 100 : p.condition) + 15, 0, 100); });
-  }
-  const healOneWeek = (p) => { if (p.status === "contundido" && p.outUntilRound != null && p.outUntilRound >= round) p.outUntilRound -= 1; };
-  CAREER.squad.forEach(healOneWeek);
-  Object.values(CAREER.leagueSquads || {}).forEach((sq) => sq.forEach(healOneWeek));
-  refreshAvailability(round);
-  tickStadiumUpgrade();
-  tickScoutMissions(round);
-  if (transferWindowStatus(round).open && CAREER.calendar.idx % 2 === 0) {
-    simulateAiTransfers(round);
-    maybeGenerateOffer(round);
-  }
-  resolvePendingOffersOutRound(round);
-  resolvePendingListingsRound();
-  const installmentsPaid = processPendingInstallments();
-  if (installmentsPaid) pushLedger("parcela", "Parcela de contratação", -installmentsPaid, round);
-  const installmentsReceived = processPendingReceivables();
-  if (installmentsReceived) pushLedger("transferencia", "Parcela de venda", installmentsReceived, round);
-  const money = advanceCalendarWeek();
-  return { phase: week.p, ...money, installmentsPaid, installmentsReceived };
+  return motorSemana().runCalendarOffWeek();
 }
 function transferWindowStatus(round) {
-  // GE-CALENDAR-001 — com calendário, a janela é a FASE do ano (férias,
-  // pré-temporada e pausa de julho), não mais um intervalo de rodadas.
-  if (calendarOn()) {
-    const weeks = CAREER.calendar.weeks;
-    const w = motorMercado().windowByCalendar(weeks, CAREER.calendar.idx, CALENDAR_WINDOW_PHASES);
-    if (w.open) return { open: true, closesLabel: `até o fim de ${MONTH_LONG[calendarWeekMonth(weeks[w.lastIdx])]}` };
-    return { open: false, opensLabel: w.nextIdx >= 0 ? `reabre em ${MONTH_LONG[calendarWeekMonth(weeks[w.nextIdx])]}` : "reabre em janeiro" };
-  }
-  return motorMercado().windowByRound(round);
+  return motorSemana().transferWindowStatus(round);
 }
 // AJUSTE (pedido do usuário: "o mercado deve trazer jogadores das 3
 // ligas para que transações possam ser feitas entre os 60 times das
@@ -4062,13 +4014,10 @@ function transferWindowStatus(round) {
 // (só volta a existir pro mercado se for sorteado de volta pra Série C
 // numa virada de temporada futura).
 function marketTeamsPool() {
-  const pool = CAREER.marketScope === "multi" ? ALL_TEAMS_FLAT : LEAGUE_TEAMS;
-  return pool.filter((t) => t.competitionId !== "serie_d");
+  return motorSemana().marketTeamsPool();
 }
 function pickRandomOtherClub(excludeId) {
-  const pool = marketTeamsPool().filter((t) => String(t.id) !== String(excludeId));
-  if (!pool.length) return null;
-  return pool[Math.floor(Math.random() * pool.length)];
+  return motorSemana().pickRandomOtherClub(excludeId);
 }
 // AJUSTE (pedido do usuário: "quando vende um jogador ele sempre deve
 // ir para outro time. Se não tiver interessados ele tem que continuar
@@ -4090,13 +4039,13 @@ function pickRandomOtherClub(excludeId) {
 // CAREER.standings já usado em renderEstatisticas/computeBoardGoal
 // pra saber se um id é da própria divisão.
 function isOwnDivisionTeam(teamId) {
-  return Object.prototype.hasOwnProperty.call(CAREER.standings, teamId);
+  return motorSemana().isOwnDivisionTeam(teamId);
 }
 function maxSquadSizeFor(teamId) {
-  return isOwnDivisionTeam(teamId) ? MAX_LEAGUE_SQUAD : MAX_LEAGUE_SQUAD_OTHER_DIVISION;
+  return motorSemana().maxSquadSizeFor(teamId);
 }
 function minSquadSizeFor(teamId) {
-  return isOwnDivisionTeam(teamId) ? MIN_LEAGUE_SQUAD : MIN_LEAGUE_SQUAD_OTHER_DIVISION;
+  return motorSemana().minSquadSizeFor(teamId);
 }
 
 /* ---------- Fase 1.1 — Transfer AI (TransferScore) ----------
@@ -4174,7 +4123,7 @@ function squadSizeNeedFactor(squad, buyingClubId) {
 // necessidade diferente pra lateral vs. zagueiro exigiria inventar de
 // novo exatamente o dado que já foi removido por não ser real.
 function necessidadeScore(candidate, squad, buyingClubId) {
-  return motorMercado().necessidadeScore(candidate, squad, buyingClubId == null ? null : marketClub(buyingClubId));
+  return motorSemana().necessidadeScore(candidate, squad, buyingClubId);
 }
 
 // 2) ADEQUAÇÃO (30%) — nível do candidato vs. nível do elenco
@@ -4217,7 +4166,7 @@ function affordabilityRatio(ratio) {
   return motorMercado().affordabilityRatio(ratio);
 }
 function financeiroScore(candidate, squad, buyingClubId) {
-  return motorMercado().financeiroScore(candidate, squad, marketClub(buyingClubId));
+  return motorSemana().financeiroScore(candidate, squad, buyingClubId);
 }
 
 // 4) CONTEXTO (15%) — ambição do clube (posição na tabela quando
@@ -4226,18 +4175,10 @@ function financeiroScore(candidate, squad, buyingClubId) {
 // competição pra clube de outra divisão, que não tem tabela) cruzada
 // com o quanto o candidato eleva o time.
 function clubPositionFactor(clubId) {
-  if (!isOwnDivisionTeam(clubId)) return null; // sem tabela — clube de outra divisão
-  const ranked = sortedStandings(); // já existe — mesmo critério de desempate de sempre
-  return motorMercado().tablePositionFactor(ranked.findIndex((r) => String(r.id) === String(clubId)), ranked.length);
+  return motorSemana().clubPositionFactor(clubId);
 }
 function clubAmbitionFactor(clubId) {
-  const posFactor = clubPositionFactor(clubId);
-  if (posFactor != null) return posFactor;
-  // Fora da própria divisão: sem tabela — força relativa contra os pares
-  // da própria competição (motor/mercado.js, strengthAmbition).
-  const team = teamById(clubId);
-  const peers = ALL_TEAMS_FLAT.filter((t) => t.competitionId === team.competitionId);
-  return motorMercado().strengthAmbition(squadAvgOverallOf(clubId), peers.map((t) => squadAvgOverallOf(t.id)));
+  return motorSemana().clubAmbitionFactor(clubId);
 }
 function contextoScore(candidate, squad, buyingClubId) {
   return motorMercado().contextoScore(candidate, squad, marketClub(buyingClubId));
@@ -4246,7 +4187,7 @@ function contextoScore(candidate, squad, buyingClubId) {
 // TransferScore final — pesos aprovados: necessidade 35% + adequação
 // 30% + financeiro 20% + contexto 15%.
 function transferScore(candidate, buyingClubId) {
-  return motorMercado().transferScore(candidate, marketClub(buyingClubId));
+  return motorSemana().transferScore(candidate, buyingClubId);
 }
 
 // Escolha ponderada entre os melhores candidatos já filtrados/
@@ -4255,7 +4196,7 @@ function transferScore(candidate, buyingClubId) {
 // opções plausíveis). Peso = score², acentua a preferência pelos
 // melhores sem eliminar a chance dos próximos.
 function pickWeightedByScore(scoredList) {
-  return motorMercado().pickWeightedByScore(scoredList, Math.random);
+  return motorSemana().pickWeightedByScore(scoredList);
 }
 
 // Fase 1.2 — Transfer AI: geração de ofertas (pedido do usuário:
@@ -4266,7 +4207,7 @@ function pickWeightedByScore(scoredList) {
 // maybeSpawnListingOffer/maybeSpawnRivalOffer, sempre como o ÚLTIMO
 // filtro antes do RNG decidir se a oferta nasce.
 function offerProbabilityFromScore(score) {
-  return motorMercado().offerProbabilityFromScore(score);
+  return motorSemana().offerProbabilityFromScore(score);
 }
 
 // Fase 1.3 — Transfer AI: valuation (pedido do usuário: "eliminar
@@ -4313,7 +4254,7 @@ function transferValuation(player, buyingClubId, sellingClubId, context = {}) {
    mais abaixo) — de uma sequência de faixas de ratio ad hoc pra estas
    mesmas funções puras, testáveis e reaproveitadas em todo o resto. */
 function squadForClub(clubId) {
-  return String(clubId) === String(CAREER.clubId) ? CAREER.squad.filter((p) => p.origin === "principal") : leagueSquadFor(clubId);
+  return motorSemana().squadForClub(clubId);
 }
 
 // PREÇO DE RESERVA do vendedor — "quanto me custa perder esse
@@ -4330,7 +4271,7 @@ function squadForClub(clubId) {
 // o vendedor também careceria desse jogador, não duplicando
 // adequação/financeiro/contexto, que são sinais do COMPRADOR).
 function calculateSellerReservationValue(player, sellingClubId, context = {}) {
-  return motorMercado().calculateSellerReservationValue(player, marketClub(sellingClubId), context);
+  return motorSemana().calculateSellerReservationValue(player, sellingClubId, context);
 }
 
 // Máximo de rodadas de contraproposta (item 15 do pedido) — único
@@ -4351,7 +4292,7 @@ function calculateCounterOffer(offerValue, reservationValue) {
 // RNG só na faixa "perto da reserva" (item 16 — pequena incerteza
 // permitida), nunca pra calcular valuation/preço/escapar da reserva.
 function sellerNegotiationDecision(offerValue, reservationValue, rng = Math.random) {
-  return motorMercado().sellerNegotiationDecision(offerValue, reservationValue, rng);
+  return motorSemana().sellerNegotiationDecision(offerValue, reservationValue, rng);
 }
 
 // TOLERÂNCIA DO COMPRADOR — itens 10/11/12/13. A tolerância vem do
@@ -4391,7 +4332,7 @@ function buyerNegotiationDecision(counterValue, initialOfferValue, player, buyin
 // corte de "sem progresso" quando o comprador não consegue melhorar a
 // própria oferta, nunca loop infinito).
 function negotiateOffer(player, buyingClubId, sellingClubId, context = {}) {
-  return motorMercado().negotiateOffer(player, marketClub(buyingClubId), marketClub(sellingClubId), { ...context, seasonYear: CAREER.seasonYear }, Math.random);
+  return motorSemana().negotiateOffer(player, buyingClubId, sellingClubId, context);
 }
 
 function findInterestedBuyer(excludeId, player) {
@@ -4727,40 +4668,7 @@ async function finalizeLoanIn(clubId, playerId, { returnRound, buyOption, wagePc
 // — a maioria das rodadas não tem nenhuma, imitando janela de
 // transferência esporádica em vez de mercado aberto toda hora).
 function simulateAiTransfers(round) {
-  let count = 0;
-  if (Math.random() < 0.35) count = 1;
-  if (Math.random() < 0.08) count = 2;
-  for (let i = 0; i < count; i++) {
-    const fromClub = pickRandomOtherClub(CAREER.clubId);
-    if (!fromClub) continue;
-    const fromSquad = leagueSquadFor(fromClub.id);
-    // AJUSTE (pedido do usuário: "o mercado deve trazer jogadores das
-    // 3 ligas") — teto/piso certo por time (ver maxSquadSizeFor/
-    // minSquadSizeFor) — um time de outra divisão tem elenco menor de
-    // propósito (MAX/MIN_LEAGUE_SQUAD_OTHER_DIVISION), então usar o
-    // piso/teto do time da própria divisão pra ele deixaria o elenco
-    // dele encolher demais ou crescer sem limite de verdade.
-    if (fromSquad.length <= minSquadSizeFor(fromClub.id)) continue; // não esvazia um elenco CPU
-    const toClub = pickRandomOtherClub(fromClub.id);
-    if (!toClub || String(toClub.id) === String(CAREER.clubId)) continue; // negociação CPU x CPU só, não mexe no SEU elenco sem sua ação
-    const toSquad = leagueSquadFor(toClub.id);
-    if (toSquad.length >= maxSquadSizeFor(toClub.id)) continue; // elenco de destino já cheio
-    // Fase 1.1 — Transfer AI: em vez de sortear um jogador qualquer do
-    // elenco vendedor, ranqueia por transferScore (necessidade do
-    // comprador + adequação ao seu nível + orçamento + contexto
-    // esportivo, ver definições acima) e sorteia PONDERADO entre os
-    // melhores (pickWeightedByScore) — quem vende/compra (fromClub/
-    // toClub) continua escolhido do mesmo jeito de sempre, só QUAL
-    // jogador muda de sorteio uniforme pra contextual.
-    const candidatos = fromSquad
-      .filter((p) => financeiroScore(p, toSquad, toClub.id) > 0)
-      .map((p) => ({ item: p, score: transferScore(p, toClub.id) }));
-    if (!candidatos.length) continue; // nenhum jogador daquele elenco cabe no orçamento do comprador agora
-    const player = pickWeightedByScore(candidatos);
-    fromSquad.splice(fromSquad.indexOf(player), 1);
-    (CAREER.leagueSquads[String(toClub.id)] = CAREER.leagueSquads[String(toClub.id)] || []).push(player);
-    pushTransferLog(`${toClub.name} contratou ${player.name} (${SUBPOS_LABEL[subPositionOf(player)]}) do ${fromClub.name} por ${fmtBRL(player.value)}.`, round);
-  }
+  return motorSemana().simulateAiTransfers(round);
 }
 // De vez em quando (e só se não tiver proposta pendente ainda) um time
 // CPU oferece pra comprar um jogador SEU — usuário decide aceitar ou
@@ -4814,17 +4722,13 @@ function simulateAiTransfers(round) {
 // pra derivar isso (declineOffer nunca registrava nada, CAREER.transferLog
 // só guarda transferências CONCLUÍDAS). Bounded/podado a cada leitura —
 // nunca cresce sem limite, nunca vira histórico permanente.
-const DECLINE_COOLDOWN_ROUNDS = 3; // cobre o resto da janela atual (janelas têm 3 rounds, ver TRANSFER_WINDOWS)
+// Etapa C2 (09/11): mora em motor/semana.js.
+Object.defineProperty(window, "DECLINE_COOLDOWN_ROUNDS", { configurable: true, get() { return motorSemana().DECLINE_COOLDOWN_ROUNDS; } });
 function pruneRecentDeclines(round) {
-  // "d.round <= round" também descarta entradas de uma temporada
-  // ANTERIOR (currentRound volta pra 1 em advanceSeason — sem essa
-  // checagem, round-d.round ficaria negativo e a entrada nunca seria
-  // podada, crescendo pra sempre no save).
-  CAREER.recentDeclines = (CAREER.recentDeclines || []).filter((d) => d.round <= round && round - d.round < DECLINE_COOLDOWN_ROUNDS);
-  return CAREER.recentDeclines;
+  return motorSemana().pruneRecentDeclines(round);
 }
 function wasRecentlyDeclined(playerId, clubId, round) {
-  return pruneRecentDeclines(round).some((d) => String(d.playerId) === String(playerId) && String(d.clubId) === String(clubId));
+  return motorSemana().wasRecentlyDeclined(playerId, clubId, round);
 }
 function recordDecline(playerId, clubId, round) {
   pruneRecentDeclines(round).push({ playerId: String(playerId), clubId: String(clubId), round });
@@ -4839,43 +4743,13 @@ function recordDecline(playerId, clubId, round) {
 // +30% (nunca dobra, nunca "R$10M vira R$50M" — aliás nem toca em
 // valor nenhum, só em chance de a oferta nascer).
 function urgencyMultiplier(necessidade, round) {
-  return motorMercado().urgencyMultiplier(necessidade, round);
+  return motorSemana().urgencyMultiplier(necessidade, round);
 }
 
-const OFFER_CHANCE_PER_ROUND = 0.18;
+// Etapa C2 (09/11): mora em motor/semana.js.
+Object.defineProperty(window, "OFFER_CHANCE_PER_ROUND", { configurable: true, get() { return motorSemana().OFFER_CHANCE_PER_ROUND; } });
 function maybeGenerateOffer(round) {
-  if (CAREER.pendingOffer) return; // só 1 proposta pendente por vez
-  if (Math.random() >= OFFER_CHANCE_PER_ROUND) return;
-  const principal = CAREER.squad.filter((p) => p.origin === "principal");
-  if (principal.length <= 14) return;
-  const player = principal[Math.floor(Math.random() * principal.length)];
-  const eligible = marketTeamsPool().filter((t) =>
-    String(t.id) !== String(CAREER.clubId) && leagueSquadFor(t.id).length < maxSquadSizeFor(t.id)
-  );
-  if (!eligible.length) return;
-  const scored = eligible
-    .filter((t) => financeiroScore(player, leagueSquadFor(t.id), t.id) > 0) // elimina quem claramente não pode pagar ANTES do RNG
-    .filter((t) => !wasRecentlyDeclined(player.id, t.id, round)) // Fase 1.5 — não reoferece o mesmo par jogador/clube logo depois de recusado
-    .map((t) => ({ item: t, score: transferScore(player, t.id) }));
-  if (!scored.length) return; // nenhum clube consegue bancar esse jogador agora (ou só sobrou quem já foi recusado)
-  const club = pickWeightedByScore(scored);
-  const score = scored.find((s) => s.item === club).score;
-  // Fase 1.5 — urgência de fim de janela (necessidade REAL do clube por
-  // este jogador específico, não um estado de clube inventado).
-  const urgency = urgencyMultiplier(necessidadeScore(player, leagueSquadFor(club.id), club.id), round);
-  if (Math.random() >= offerProbabilityFromScore(score) * urgency) return; // score baixo -> raríssimo; score alto -> frequente
-  // Fase 1.4 — a proposta única (transferValuation) vira o PONTO DE
-  // PARTIDA de uma negociação interna (reserva do vendedor = você vs.
-  // tolerância do comprador = o clube), resolvida antes de qualquer
-  // coisa aparecer na tela (ver negotiateOffer) — você continua vendo
-  // só Aceitar/Recusar um valor final, sem UI nova. Sem acordo
-  // (vendedor rejeitou de vez, ou comprador não teve fôlego pra
-  // fechar): nenhuma proposta nasce nesta rodada, igual a qualquer
-  // outro "return" acima.
-  const deal = negotiateOffer(player, club.id, CAREER.clubId);
-  if (deal.outcome !== "accepted") return;
-  const fee = Math.max(1000, deal.finalValue);
-  CAREER.pendingOffer = { playerId: player.id, playerName: player.name, clubId: String(club.id), clubName: club.name, fee, round };
+  return motorSemana().maybeGenerateOffer(round);
 }
 
 /* ---------- Escalação automática (usada ao criar a carreira, e
@@ -5465,21 +5339,7 @@ async function startCareer(clubId) {
 
 /* ---------- Disponibilidade (lesão/suspensão) ---------- */
 function refreshAvailability(uptoRound) {
-  const r = uptoRound != null ? uptoRound : CAREER.currentRound;
-  CAREER.squad.forEach((p) => {
-    if (p.status !== "ok" && p.outUntilRound != null && r > p.outUntilRound) {
-      // Pedido do usuário: retorno de lesão baixa a condição (o
-      // jogador não está com ritmo de jogo, mesmo tendo passado a
-      // lesão toda descansando — ver INJURY_RETURN_CONDITION). Só
-      // lesão, não suspensão — suspenso treinava normal, só não podia
-      // entrar em campo.
-      if (p.status === "contundido") {
-        const cap = INJURY_RETURN_CONDITION[p.injurySeverity] ?? 60;
-        p.condition = Math.min(p.condition == null ? 100 : p.condition, cap);
-      }
-      p.status = "ok"; p.outUntilRound = null; p.injurySeverity = null;
-    }
-  });
+  return motorSemana().refreshAvailability(uptoRound);
 }
 // Devolve a lista de trocas forçadas (texto curto, já com nome
 // abreviado) — mostrada no modal de resultados da rodada (ver
@@ -5670,24 +5530,7 @@ function trainingTargets(entry) { return motorTreino().trainingTargets(entry, CA
 // já bate com CAREER.currentRound). Devolve um Map<playerId, ganho> só
 // pra feedback visual imediato na tela de Treinos (ver renderTreinos).
 function applyWeeklyTraining() {
-  // GE-CALENDAR-001 — 1x por TURNO (semana no calendário; rodada no
-  // modelo antigo), ver calendarTurnKey.
-  if (String(CAREER.trainingAppliedForRound) === calendarTurnKey()) return null;
-  const { patches, gains } = motorTreino().trainingWeek({
-    plan: CAREER.trainingPlan,
-    squad: CAREER.squad,
-    roundsSoFar: CAREER.currentRound - 1,
-    // GE-CALENDAR-001 — pré-temporada: treino físico rende 1 ponto a mais.
-    preseason: !!(calendarOn() && (calendarWeek() || {}).p === "pre"),
-    round: CAREER.currentRound,
-  }, Math.random);
-  CAREER.squad.forEach((p) => Object.assign(p, patches.get(p.id)));
-  CAREER.trainingAppliedForRound = calendarTurnKey();
-  // Retenção/Engajamento — "Treine 1 jogador" (objetivo diário) conta
-  // a SEMANA aplicada como 1 evento (não 1 por jogador afetado, senão
-  // uma semana de "misto" já bateria a meta sozinha de propósito).
-  if (gains.size) { ensureObjectivesFresh(); bumpObjective("daily", "obj_train_1_player", 1); }
-  return gains;
+  return motorSemana().applyWeeklyTraining();
 }
 
 /* ---------- Renderização: Treinos ----------
@@ -6961,7 +6804,8 @@ function injurySeverityLabel(type) {
 // Pedido do usuário: retorno de lesão baixa a condição — quanto mais
 // grave, mais longe da forma plena o jogador volta (ver
 // refreshAvailability, que aplica isso na transição contundido -> ok).
-const INJURY_RETURN_CONDITION = { leve: 75, media: 60, grave: 45 };
+// Etapa C2 (09/11): mora em motor/semana.js.
+Object.defineProperty(window, "INJURY_RETURN_CONDITION", { configurable: true, get() { return motorSemana().INJURY_RETURN_CONDITION; } });
 // Pedido do usuário: "condição pode ser uma nota de 01 a 05" em vez da
 // barra de porcentagem de sempre — mantém p.condition (0-100) como o
 // número de VERDADE usado na simulação (computeHumanStrength, chance
@@ -12580,16 +12424,7 @@ function openMarketFiltersSheet() {
 }
 
 function allMarketPlayers() {
-  const mine = CAREER.squad.filter((p) => p.origin === "principal")
-    .map((p) => ({ p, club: teamById(CAREER.clubId), mine: true }));
-  // Empréstimo: um jogador que VOCÊ deu emprestado (onLoanFromClubId)
-  // fica temporariamente no elenco de outro clube, mas não é oferta de
-  // mercado de verdade — filtra fora pra não aparecer como se fosse
-  // "à venda" um jogador que já é seu (ver resolveLoanReturns).
-  const others = Object.entries(CAREER.leagueSquads || {}).flatMap(([clubId, squad]) =>
-    squad.filter((p) => !p.onLoanFromClubId).map((p) => ({ p, club: teamById(clubId), mine: false }))
-  );
-  return [...mine, ...others];
+  return motorSemana().allMarketPlayers();
 }
 // AJUSTE (pedido do usuário: "trocar os botões com texto Comprar,
 // Vender, Pegar Emprestado por três botões com um ícone que mostre
@@ -12634,7 +12469,7 @@ const OFFER_WAIT_ROUNDS = 2; // rodadas até o clube vendedor responder
 let OFFER_CTX = null; // { clubId, playerId } enquanto o Dialog de nova proposta está aberto
 let OFFER_DIALOG_ID = null; // id do overlay dinâmico (openM3Dialog), pra fechar depois
 function pendingOfferOutFor(playerId) {
-  return (CAREER.pendingOffersOut || []).find((o) => String(o.playerId) === String(playerId));
+  return motorSemana().pendingOfferOutFor(playerId);
 }
 // S4-B3-003 — "Fazer proposta" virou um Dialog de verdade
 // (openM3Dialog(), S3-DS20-S4-PREP-001) no lugar do antigo
@@ -12790,41 +12625,7 @@ function acceptCounterOffer(offerId) {
 // (paga a 1ª parcela na hora, o resto entra em CAREER.pendingInstallments,
 // processado a cada rodada em processPendingInstallments).
 function finalizeIncomingPurchase(o) {
-  const squad = leagueSquadFor(o.clubId);
-  const idx = squad.findIndex((x) => String(x.id) === String(o.playerId));
-  if (idx < 0) {
-    toast(`${abbreviateName(o.playerName)} não está mais disponível — negociação cancelada.`, { type: "warn" });
-    return { ok: false, texto: `${abbreviateName(o.playerName)} não está mais disponível — negociação cancelada.` };
-  }
-  const p = squad[idx];
-  if (wageBillOf(CAREER.squad) + p.wage > CAREER.finances.wageCap) {
-    toast(`${o.clubName} aceitou, mas contratar ${abbreviateName(p.name)} agora estouraria seu teto salarial — negociação cancelada.`, { type: "warn" });
-    return { ok: false, texto: `Contratar ${abbreviateName(p.name)} agora estouraria seu teto salarial — negociação cancelada.` };
-  }
-  if (CAREER.squad.length >= MAX_PRINCIPAL + 20) {
-    toast(`${o.clubName} aceitou, mas seu elenco está grande demais agora — negociação cancelada.`, { type: "warn" });
-    return { ok: false, texto: "Seu elenco está grande demais agora — negociação cancelada." };
-  }
-  const perInstallment = Math.round(o.offerValue / o.installments / 1000) * 1000;
-  const firstPayment = o.installments === 1 ? o.offerValue : perInstallment;
-  if (CAREER.finances.cash < firstPayment) {
-    toast(`${o.clubName} aceitou, mas seu caixa não cobre nem a 1ª parcela agora — negociação cancelada.`, { type: "warn" });
-    return { ok: false, texto: "Seu caixa não cobre nem a 1ª parcela agora — negociação cancelada." };
-  }
-  squad.splice(idx, 1);
-  CAREER.finances.cash -= firstPayment;
-  if (o.installments > 1) {
-    CAREER.pendingInstallments = CAREER.pendingInstallments || [];
-    CAREER.pendingInstallments.push({ roundsLeft: o.installments - 1, perRoundAmount: perInstallment, label: `Parcela de ${p.name}` });
-  }
-  p.origin = "principal";
-  CAREER.squad.push(p);
-  pushTransferLog(`Você contratou ${p.name} do ${o.clubName} por ${fmtBRL(o.offerValue)}${o.installments > 1 ? ` (${o.installments}x)` : ""}.`, CAREER.currentRound);
-  pushLedger("transferencia", `Contratação — ${p.name} (${o.clubName})${o.installments > 1 ? ` — 1ª de ${o.installments} parcelas` : ""}`, -firstPayment, CAREER.currentRound);
-  toast(`${abbreviateName(p.name)} contratado! O ${o.clubName} aceitou sua proposta.`, { type: "pos" });
-  ensureObjectivesFresh(); bumpObjective("daily", "obj_market_1_move", 1);
-  if (p.overall >= 82) { firePressConference("15", CAREER.currentRound, false); openPressConferenceModal(); }
-  return { ok: true, player: p };
+  return motorSemana().finalizeIncomingPurchase(o);
 }
 /* ---------- Bloco 3 (2/4) — concorrência real por um alvo (pedido do
    usuário, mockup brtreinadorbloco3pendentes.html, "Comparar
@@ -12838,7 +12639,8 @@ function finalizeIncomingPurchase(o) {
    decisão nossa: dá tensão real sem virar leilão infinito) e nunca
    enquanto a proposta está "countered" (o clube já está negociando
    direto com você nesse estado, sem espaço pra um 3º interessado). */
-const RIVAL_OFFER_CHANCE_PER_ROUND = 0.35;
+// Etapa C2 (09/11): mora em motor/semana.js.
+Object.defineProperty(window, "RIVAL_OFFER_CHANCE_PER_ROUND", { configurable: true, get() { return motorSemana().RIVAL_OFFER_CHANCE_PER_ROUND; } });
 // Fase 1.2 — Transfer AI: RIVAL_OFFER_CHANCE_PER_ROUND continua sendo a
 // mesma "janela de exposição" de sempre (será que ALGUÉM aparece
 // disputando esta rodada); dentro dela, QUEM aparece passa a ser
@@ -12855,40 +12657,14 @@ const RIVAL_OFFER_CHANCE_PER_ROUND = 0.35;
 // competitorCount=1 porque essa oferta só nasce enquanto a proposta do
 // técnico já está em andamento (é literalmente o concorrente #1).
 function maybeSpawnRivalOffer(o) {
-  if (o.rivalOffer || o.status !== "pending") return;
-  if (Math.random() >= RIVAL_OFFER_CHANCE_PER_ROUND) return;
-  const player = leagueSquadFor(o.clubId).find((x) => String(x.id) === String(o.playerId));
-  if (!player) return; // jogador já não está mais lá — nada a disputar
-  const pool = marketTeamsPool().filter((t) =>
-    String(t.id) !== String(o.clubId) && String(t.id) !== String(CAREER.clubId) && leagueSquadFor(t.id).length < maxSquadSizeFor(t.id)
-  );
-  if (!pool.length) return;
-  const scored = pool
-    .filter((t) => financeiroScore(player, leagueSquadFor(t.id), t.id) > 0)
-    .map((t) => ({ item: t, score: transferScore(player, t.id) }));
-  if (!scored.length) return; // nenhum clube consegue bancar esse jogador agora
-  const rivalClub = pickWeightedByScore(scored);
-  const score = scored.find((s) => s.item === rivalClub).score;
-  // Fase 1.5 — mesma urgência de fim de janela dos outros 2 caminhos.
-  const urgency = urgencyMultiplier(necessidadeScore(player, leagueSquadFor(rivalClub.id), rivalClub.id), CAREER.currentRound);
-  if (Math.random() >= offerProbabilityFromScore(score) * urgency) return;
-  // Fase 1.4 — mesma negociação interna (vendedor = o clube dono do
-  // jogador, o.clubId; comprador = o clube rival) — se o vendedor e o
-  // rival não chegam a acordo internamente, simplesmente não nasce
-  // oferta rival nesta rodada (igual a qualquer outro "return" acima).
-  const rivalDeal = negotiateOffer(player, rivalClub.id, o.clubId, { baseValue: o.marketValue, competitorCount: 1 });
-  if (rivalDeal.outcome !== "accepted") return;
-  const rivalValue = Math.max(1000, rivalDeal.finalValue);
-  const rivalInstallments = Math.random() < 0.7 ? 1 : 2; // clube CPU quase sempre paga à vista
-  o.rivalOffer = { clubId: String(rivalClub.id), clubName: rivalClub.name, offerValue: rivalValue, installments: rivalInstallments };
-  toast({ title: "Concorrência pelo alvo", detail: `${rivalClub.name} também quer ${abbreviateName(o.playerName)} — compare as propostas.` }, { type: "warn" });
+  return motorSemana().maybeSpawnRivalOffer(o);
 }
 // "Peso" de uma proposta pra quem vende: parcelar desconta um pouco
 // (recebe mais devagar) — mesmo raciocínio usado em qualquer venda a
 // prazo, sem inventar juros nenhum, só uma penalidade leve por parcela
 // extra. Usado pra decidir quem "ganha" quando há concorrência.
 function offerEffectiveValue(offerValue, installments) {
-  return motorMercado().offerEffectiveValue(offerValue, installments);
+  return motorSemana().offerEffectiveValue(offerValue, installments);
 }
 // Roda 1x por rodada simulada (ver finishRoundTail) — decrementa o
 // prazo de cada proposta pendente e resolve quem chegou a zero. Com
@@ -12901,68 +12677,14 @@ function offerEffectiveValue(offerValue, installments) {
 // recusar de vez (vira um item parado esperando o técnico decidir, ver
 // acceptCounterOffer/withdrawOffer, sem consumir mais rodadas).
 function resolvePendingOffersOutRound(round) {
-  const list = CAREER.pendingOffersOut || [];
-  const stillPending = [];
-  list.forEach((o) => {
-    if (o.status === "countered") { stillPending.push(o); return; } // esperando o técnico decidir, sem prazo
-    maybeSpawnRivalOffer(o);
-    o.roundsLeft -= 1;
-    if (o.roundsLeft > 0) { stillPending.push(o); return; }
-    if (o.rivalOffer) {
-      const mine = offerEffectiveValue(o.offerValue, o.installments);
-      const rival = offerEffectiveValue(o.rivalOffer.offerValue, o.rivalOffer.installments);
-      const winChance = mine >= rival ? 0.8 : 0.25;
-      if (Math.random() < winChance) { finalizeIncomingPurchase(o); return; }
-      toast(`${o.clubName} vendeu ${abbreviateName(o.playerName)} pro ${o.rivalOffer.clubName} — a proposta concorrente venceu.`, { type: "warn" });
-      pushTransferLog(`${o.rivalOffer.clubName} venceu a disputa por ${o.playerName} (sua proposta era de ${fmtBRL(o.offerValue)}).`, round);
-      return;
-    }
-    // Fase 1.4 — decisão do vendedor CPU (aceitar/contrapor/recusar a
-    // SUA proposta, digitada livremente em openOfferModal) trocada da
-    // sequência de faixas de ratio ad hoc pras mesmas funções puras
-    // reaproveitadas em todo o resto (calculateSellerReservationValue/
-    // sellerNegotiationDecision) — mesma UI de sempre (contraproposta/
-    // aceitar/retirar em CAREER.pendingOffersOut, nada muda aí).
-    // o.counterRounds (novo campo temporário, só nesta oferta pendente
-    // — não é schema de jogador/clube) limita esta negociação a
-    // MAX_NEGOTIATION_ROUNDS contrapropostas (item 15): sem isso, o
-    // técnico podia aumentar a proposta indefinidamente
-    // (ver increaseOffer) e o vendedor contrapor de novo pra sempre,
-    // sem nenhum teto — um loop sem fim que este item pede pra evitar.
-    const sellerPlayer = leagueSquadFor(o.clubId).find((x) => String(x.id) === String(o.playerId));
-    const reservation = sellerPlayer ? calculateSellerReservationValue(sellerPlayer, o.clubId, { baseValue: o.marketValue }) : o.marketValue;
-    const roundsUsed = o.counterRounds || 0;
-    let decision = sellerNegotiationDecision(o.offerValue, reservation);
-    if (decision.action === "counter" && roundsUsed >= motorMercado().MAX_NEGOTIATION_ROUNDS) {
-      // esgotou o limite de contrapropostas -> decide definitivamente
-      // agora (aceita se ficou razoavelmente perto da reserva, senão
-      // recusa), nunca mais um ciclo.
-      decision = (o.offerValue / reservation) >= 0.85 ? { action: "accept", value: o.offerValue } : { action: "reject", value: null };
-    }
-    if (decision.action === "accept") { finalizeIncomingPurchase(o); return; }
-    if (decision.action === "counter") {
-      o.counterValue = decision.value;
-      o.counterRounds = roundsUsed + 1;
-      o.status = "countered";
-      stillPending.push(o);
-      toast({ title: "Contraproposta recebida", detail: `${o.clubName} quer ${fmtBRL(o.counterValue)} por ${abbreviateName(o.playerName)} — veja em Minhas propostas.` }, { type: "warn" });
-      return;
-    }
-    toast(`${o.clubName} recusou sua proposta de ${fmtBRL(o.offerValue)} por ${abbreviateName(o.playerName)}.`, { type: "warn" });
-    pushTransferLog(`${o.clubName} recusou sua proposta de ${fmtBRL(o.offerValue)} por ${o.playerName}.`, round);
-    pushNotification("proposta", `${o.clubName} recusou sua proposta por ${abbreviateName(o.playerName)}.`);
-  });
-  CAREER.pendingOffersOut = stillPending;
+  return motorSemana().resolvePendingOffersOutRound(round);
 }
 // Parcelas de contratações já fechadas (ver finalizeIncomingPurchase) —
 // descontam o caixa a cada rodada até quitar, MESMO fora da janela de
 // transferências (é uma dívida já assumida, não uma negociação nova),
 // mesmo espírito de "dinheiro sai/entra aos poucos" do patrocínio.
 function processPendingInstallments() {
-  const { total, remaining } = motorFinancas().settleInstallments(CAREER.pendingInstallments);
-  CAREER.finances.cash -= total;
-  CAREER.pendingInstallments = remaining;
-  return total;
+  return motorSemana().processPendingInstallments();
 }
 
 /* ---------- Bloco 3 (3/4) — Mercado: "Colocar à venda" (pedido do
@@ -12989,9 +12711,12 @@ function processPendingInstallments() {
    pra CAREER.pendingReceivables (ver processPendingReceivables,
    também chamada em finishRoundTail) — dinheiro entrando aos poucos,
    em vez de saindo (pendingInstallments). */
-const LISTING_OFFER_CHANCE_PER_ROUND = 0.4;
-const LISTING_MAX_OFFERS = 3;
-const LISTING_BUYER_ANCHOR_CAP = 1.3; // âncora do comprador num anúncio: no máximo 1,3x o valor de mercado (ver maybeSpawnListingOffer)
+// Etapa C2 (09/11): mora em motor/semana.js.
+Object.defineProperty(window, "LISTING_OFFER_CHANCE_PER_ROUND", { configurable: true, get() { return motorSemana().LISTING_OFFER_CHANCE_PER_ROUND; } });
+// Etapa C2 (09/11): mora em motor/semana.js.
+Object.defineProperty(window, "LISTING_MAX_OFFERS", { configurable: true, get() { return motorSemana().LISTING_MAX_OFFERS; } });
+// Etapa C2 (09/11): mora em motor/semana.js.
+Object.defineProperty(window, "LISTING_BUYER_ANCHOR_CAP", { configurable: true, get() { return motorSemana().LISTING_BUYER_ANCHOR_CAP; } });
 function listingFor(playerId) {
   return (CAREER.pendingListings || []).find((l) => String(l.playerId) === String(playerId));
 }
@@ -13024,70 +12749,18 @@ function listingFor(playerId) {
 // LISTING_BUYER_ANCHOR_CAP x o valor de mercado, e num anúncio a reserva
 // é o próprio pedido (sem o ajuste de titularidade acima).
 function maybeSpawnListingOffer(listing) {
-  if (listing.offers.length >= LISTING_MAX_OFFERS) return;
-  if (Math.random() >= LISTING_OFFER_CHANCE_PER_ROUND) return;
-  const p = CAREER.squad.find((x) => x.id === listing.playerId);
-  if (!p) return;
-  const alreadyOffered = new Set(listing.offers.map((o) => String(o.clubId)));
-  const eligible = marketTeamsPool().filter((t) =>
-    String(t.id) !== String(CAREER.clubId) && !alreadyOffered.has(String(t.id)) && leagueSquadFor(t.id).length < maxSquadSizeFor(t.id)
-  );
-  if (!eligible.length) return;
-  const scored = eligible
-    .filter((t) => financeiroScore(p, leagueSquadFor(t.id), t.id) > 0) // elimina quem claramente não pode pagar ANTES do RNG
-    .map((t) => ({ item: t, score: transferScore(p, t.id) }));
-  if (!scored.length) return; // nenhum clube elegível consegue bancar esse jogador agora
-  const club = pickWeightedByScore(scored);
-  const score = scored.find((s) => s.item === club).score;
-  // Fase 1.5 — mesma urgência de fim de janela de maybeGenerateOffer
-  // (fora da janela, urgencyMultiplier devolve 1x — anúncio de venda
-  // continua liberado o ano inteiro, sem mudança de ritmo fora dela).
-  const urgency = urgencyMultiplier(necessidadeScore(p, leagueSquadFor(club.id), club.id), CAREER.currentRound);
-  if (Math.random() >= offerProbabilityFromScore(score) * urgency) return; // score baixo -> raríssimo; score alto -> frequente
-  // Fase 1.4 — mesma negociação interna de maybeGenerateOffer, com
-  // askingValue como âncora (item 19 — nunca substituído): passa por
-  // context.baseValue tanto pra transferValuation (valor inicial, já
-  // era assim) quanto pra calculateSellerReservationValue (reserva
-  // também ancorada no anúncio, não em player.value).
-  // P2 (motor de testes, Fase B) — a reserva continua sendo o pedido
-  // (sellerAsking), mas a âncora do COMPRADOR tem teto de
-  // LISTING_BUYER_ANCHOR_CAP x o valor de mercado: sem ele, anunciar um
-  // jogador por 10x o valor gerava proposta de ~10x (medido: 30% das
-  // negociações fechavam assim). Pedido muito acima do mercado agora
-  // simplesmente não atrai comprador.
-  const buyerAnchor = Math.min(listing.askingValue, Math.round(p.value * LISTING_BUYER_ANCHOR_CAP));
-  const dealCtx = { baseValue: buyerAnchor, sellerAsking: listing.askingValue, competitorCount: listing.offers.length };
-  const deal = negotiateOffer(p, club.id, CAREER.clubId, dealCtx);
-  // P2 — num anúncio quem decide é o técnico (Minhas vendas): se a
-  // negociação interna parou sem acordo, o último lance do comprador
-  // ainda vira proposta quando não está "muito abaixo" do pedido (mesmo
-  // corte de 75% de sellerNegotiationDecision). Sem isso, jogador com
-  // contrato acabando (transferValuation desconta até 15%) anunciado pelo
-  // valor de mercado nunca recebia proposta nenhuma.
-  let dealValue = deal.outcome === "accepted" ? deal.finalValue : null;
-  if (deal.outcome === "walked" && deal.lastOffer >= listing.askingValue * 0.75) dealValue = deal.lastOffer;
-  if (dealValue == null) return;
-  const value = Math.max(1000, dealValue);
-  const installments = Math.random() < 0.6 ? 1 : Math.random() < 0.7 ? 2 : 3; // clube CPU às vezes parcela também
-  listing.offers.unshift({
-    id: `listingoffer_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
-    clubId: String(club.id), clubName: club.name, value, installments, round: CAREER.currentRound,
-  });
-  toast({ title: "Proposta recebida", detail: `${club.name} ofereceu ${fmtBRL(value)} por ${abbreviateName(p.name)} — veja em Minhas vendas.` }, { type: "info" });
+  return motorSemana().maybeSpawnListingOffer(listing);
 }
 // Roda 1x por rodada simulada (ver finishRoundTail) — só sorteia
 // propostas novas; quem decide o destino de cada uma é sempre o
 // técnico (ver acceptListingOffer/rejectListingOffer/cancelListing).
 function resolvePendingListingsRound() {
-  (CAREER.pendingListings || []).forEach(maybeSpawnListingOffer);
+  return motorSemana().resolvePendingListingsRound();
 }
 // Espelho de processPendingInstallments — só que o dinheiro ENTRA
 // (venda a prazo já fechada, ver acceptListingOffer) em vez de sair.
 function processPendingReceivables() {
-  const { total, remaining } = motorFinancas().settleInstallments(CAREER.pendingReceivables);
-  CAREER.finances.cash += total;
-  CAREER.pendingReceivables = remaining;
-  return total;
+  return motorSemana().processPendingReceivables();
 }
 let LIST_CTX = null; // { playerId } enquanto o sheet de novo anúncio está aberto
 function openListModal(playerId) {
@@ -13273,14 +12946,10 @@ function closeMySalesScreen() {
 
 // Região deriva da UF de cada clube (já existe em data.js) — sem dado
 // novo por clube, só uma tabela estática de UF → região.
-const UF_TO_REGION = {
-  AC: "norte", AP: "norte", AM: "norte", PA: "norte", RO: "norte", RR: "norte", TO: "norte",
-  AL: "nordeste", BA: "nordeste", CE: "nordeste", MA: "nordeste", PB: "nordeste", PE: "nordeste", PI: "nordeste", RN: "nordeste", SE: "nordeste",
-  DF: "centro-oeste", GO: "centro-oeste", MT: "centro-oeste", MS: "centro-oeste",
-  ES: "sudeste", MG: "sudeste", RJ: "sudeste", SP: "sudeste",
-  PR: "sul", RS: "sul", SC: "sul",
-};
-const REGION_LABEL = { norte: "Norte", nordeste: "Nordeste", "centro-oeste": "Centro-Oeste", sudeste: "Sudeste", sul: "Sul" };
+// Etapa C2 (09/11): mora em motor/semana.js.
+Object.defineProperty(window, "UF_TO_REGION", { configurable: true, get() { return motorSemana().UF_TO_REGION; } });
+// Etapa C2 (09/11): mora em motor/semana.js.
+Object.defineProperty(window, "REGION_LABEL", { configurable: true, get() { return motorSemana().REGION_LABEL; } });
 // Só as regiões que têm clube de verdade na liga carregada (deriva, não
 // hardcoda) — mesmo raciocínio de outras listas filtradas por dado real
 // do host.
@@ -13383,16 +13052,10 @@ async function fireScout(scoutId) {
 // GE-SCOUT-001 — missão com foco: tipo (Sub-17/Sub-20 trazem jovens pra
 // base; Profissional traz indicações pro Mercado), posição opcional e
 // duração (mais tempo, mais tentativas de achar alguém).
-const SCOUT_MISSION_TYPES = {
-  sub17: { label: "Sub-17", ages: [15, 17] },
-  sub20: { label: "Sub-20", ages: [18, 20] },
-  pro: { label: "Profissional (Mercado)" },
-};
-const SCOUT_MISSION_DURATIONS = {
-  curta: { label: "Curta", rounds: 2, rolls: 1 },
-  media: { label: "Média", rounds: 4, rolls: 2 },
-  longa: { label: "Longa", rounds: 6, rolls: 3 },
-};
+// Etapa C2 (09/11): mora em motor/semana.js.
+Object.defineProperty(window, "SCOUT_MISSION_TYPES", { configurable: true, get() { return motorSemana().SCOUT_MISSION_TYPES; } });
+// Etapa C2 (09/11): mora em motor/semana.js.
+Object.defineProperty(window, "SCOUT_MISSION_DURATIONS", { configurable: true, get() { return motorSemana().SCOUT_MISSION_DURATIONS; } });
 const SCOUT_GROUP_LABEL = { G: "Goleiro", D: "Defensor", M: "Meio-campo", F: "Atacante" };
 function startScoutMission(scoutId, region, { type = "sub17", group = null, duration = "media" } = {}) {
   const scout = (CAREER.scouts || []).find((s) => s.id === scoutId);
@@ -13409,31 +13072,17 @@ function startScoutMission(scoutId, region, { type = "sub17", group = null, dura
 // Faixa de potencial reportada: quanto melhor a Avaliação do olheiro,
 // mais estreita (5 → ±1-2; 1 → ±9-10). O potencial REAL nunca aparece.
 function scoutPotentialRange(potential, overall, evaluation, rng) {
-  const fuzz = 1 + (5 - clamp(evaluation || 3, 1, 5)) * 2 + Math.floor(rng() * 2);
-  const lo = clamp(potential - fuzz, overall, 99);
-  return { lo, hi: clamp(potential + fuzz, lo, 99) };
+  return motorSemana().scoutPotentialRange(potential, overall, evaluation, rng);
 }
 // Relatório do olheiro (escopo item 4): ponto forte/fraco pelos
 // atributos e uma recomendação objetiva.
 function scoutReport(p, range, mode, weakestStarterOverall) {
-  const attrs = [["ataque", p.atk], ["defesa", p.def], ["físico", p.phys]].sort((a, b) => b[1] - a[1]);
-  let recommendation;
-  if (mode === "pro") {
-    recommendation = weakestStarterOverall != null && p.overall > weakestStarterOverall ? "Reforço imediato"
-      : (range.hi - p.overall >= 8 && p.age <= 23) ? "Aposta de futuro" : "Observar";
-  } else {
-    recommendation = range.hi >= 78 ? "Promover já" : range.hi >= 70 ? "Acompanhar" : "Baixa projeção";
-  }
-  return { strength: attrs[0][0], weakness: attrs[2][0], recommendation };
+  return motorSemana().scoutReport(p, range, mode, weakestStarterOverall);
 }
-const SCOUT_PROSPECTS_MAX = 12;
-const SCOUT_NOTE_POOL = [
-  "Jogador com leitura de jogo acima da idade. Recomendo acompanhar de perto.",
-  "Fisicamente ainda precisa desenvolver, mas a técnica já chama atenção.",
-  "Categoria diferenciada — pode virar referência do elenco principal em poucas temporadas.",
-  "Ainda irregular, mas o potencial de crescimento é real.",
-  "Discreto em campo, mas decisivo nos momentos certos.",
-];
+// Etapa C2 (09/11): mora em motor/semana.js.
+Object.defineProperty(window, "SCOUT_PROSPECTS_MAX", { configurable: true, get() { return motorSemana().SCOUT_PROSPECTS_MAX; } });
+// Etapa C2 (09/11): mora em motor/semana.js.
+Object.defineProperty(window, "SCOUT_NOTE_POOL", { configurable: true, get() { return motorSemana().SCOUT_NOTE_POOL; } });
 // Mesma fórmula de buildBasePlayer (ver acima), ajustada pelas
 // estrelas do olheiro (melhor olheiro tende a achar potencial mais
 // alto) — reaproveita os mesmos pools de nome/computeContractFields em
@@ -13442,71 +13091,16 @@ const SCOUT_NOTE_POOL = [
 // não tem esses 3 atributos como stats separados, são aproximações
 // sobre o trio que já existe (mesmo espírito "ilustrativo" de outras
 // fórmulas deste arquivo).
-function generateScoutProspect(scout, region, round, idx, { ages = [15, 20], group: focusGroup = null } = {}) {
-  const rng = seededRngFromKey(`scoutprospect:${scout.id}:${round}:${idx}`);
-  const rolledGroup = motorTemporada().BASE_COMPOSITION[Math.floor(rng() * motorTemporada().BASE_COMPOSITION.length)];
-  const group = focusGroup || rolledGroup;
-  const age = ages[0] + Math.floor(rng() * (ages[1] - ages[0] + 1));
-  const starBoost = (scout.stars - 3) * 3;
-  // GE-BALANCE-005 (issue #38) — mesma distribuição enviesada da base
-  // (ver youthPotentialRoll); olheiro melhor puxa a curva pra cima.
-  const potential = youthPotentialRoll(rng, starBoost);
-  const overall = Math.round(clamp(potential * (0.35 + rng() * 0.25), 22, 55));
-  const atk = clamp(overall + (group === "F" ? 5 : group === "M" ? 2 : -8) + Math.round(rng() * 6 - 3), 15, 78);
-  const def = clamp(overall + (group === "D" || group === "G" ? 5 : -8) + Math.round(rng() * 6 - 3), 15, 78);
-  const phys = clamp(Math.round(50 + rng() * 32), 30, 88);
-  const first = DEMO_FIRST_NAMES[Math.floor(rng() * DEMO_FIRST_NAMES.length)];
-  const last = DEMO_LAST_NAMES[Math.floor(rng() * DEMO_LAST_NAMES.length)];
-  const note = SCOUT_NOTE_POOL[Math.floor(rng() * SCOUT_NOTE_POOL.length)];
-  const potRange = scoutPotentialRange(potential, overall, scout.evaluation, rng);
-  const prospect = {
-    id: `prospect_${scout.id}_${round}_${idx}`, name: `${first} ${last}`,
-    group, age, overall, atk, def, phys, potential,
-    ...computeContractFields(overall, age, potential, rng),
-    foundRegion: region, scoutName: scout.name, scoutNote: note, potRange,
-  };
-  prospect.report = scoutReport(prospect, potRange, "base");
-  return prospect;
+function generateScoutProspect(...args) {
+  return motorSemana().generateScoutProspect(...args);
 }
 function pushScoutProspects(list) {
-  CAREER.scoutMissionProspects = list.concat(CAREER.scoutMissionProspects || []);
-  if (CAREER.scoutMissionProspects.length > SCOUT_PROSPECTS_MAX) CAREER.scoutMissionProspects.length = SCOUT_PROSPECTS_MAX;
+  return motorSemana().pushScoutProspects(list);
 }
 // Chamada 1x por rodada simulada (ver finishRoundTail), mesmo ponto de
 // tickStadiumUpgrade (Bloco 4).
 function tickScoutMissions(round) {
-  (CAREER.scouts || []).forEach((scout) => {
-    if (!scout.mission) return;
-    scout.mission.roundsLeft -= 1;
-    if (scout.mission.roundsLeft > 0) return;
-    const { regionUf: region, type, group, duration } = scout.mission;
-    scout.mission = null;
-    const rng = seededRngFromKey(`scoutfind:${scout.id}:${calendarTurnKey()}`);
-    const specialtyMatch = scout.regionScope !== "any" && scout.regionScope.includes(region);
-    // GE-SCOUT-001 — Rede (não mais as estrelas) decide a chance de
-    // achar; duração decide quantas tentativas. Missão de save antigo
-    // (sem type) continua do jeito de sempre: 2 tentativas, base 15-20.
-    const network = scout.network != null ? scout.network : scout.stars;
-    const chance = clamp(0.35 + network * 0.08 + (specialtyMatch ? 0.15 : 0), 0.2, 0.9);
-    const rolls = type ? (SCOUT_MISSION_DURATIONS[duration] || SCOUT_MISSION_DURATIONS.media).rolls : 2;
-    let hits = 0;
-    for (let i = 0; i < rolls; i++) if (rng() < chance) hits++;
-    if (type === "pro") {
-      const added = scoutMarketFinds(scout, region, group, hits, rng);
-      pushTransferLog(added
-        ? `${scout.name} voltou da missão em ${REGION_LABEL[region]} com ${added} indicação${added > 1 ? "ões" : ""} pro Mercado.`
-        : `${scout.name} voltou da missão em ${REGION_LABEL[region]} sem nenhuma indicação dessa vez.`, round);
-      return;
-    }
-    const ages = type ? SCOUT_MISSION_TYPES[type].ages : [15, 20];
-    const found = Array.from({ length: hits }, (_, i) => generateScoutProspect(scout, region, calendarTurnKey(), i, { ages, group }));
-    if (found.length) {
-      pushScoutProspects(found);
-      pushTransferLog(`${scout.name} voltou da missão em ${REGION_LABEL[region]} com ${found.length} promissor${found.length > 1 ? "es" : ""}.`, round);
-    } else {
-      pushTransferLog(`${scout.name} voltou da missão em ${REGION_LABEL[region]} sem achar ninguém dessa vez.`, round);
-    }
-  });
+  return motorSemana().tickScoutMissions(round);
 }
 // GE-SCOUT-001 — missão Profissional: as "Indicações dos olheiros" do
 // Mercado passam a vir daqui (antes eram um sorteio sem olheiro nenhum).
@@ -13514,40 +13108,7 @@ function tickScoutMissions(round) {
 // e indica os melhores pela leitura DELE — Avaliação baixa erra mais
 // (ruído maior na nota), e a faixa de potencial reportada é mais larga.
 function scoutMarketFinds(scout, region, group, hits, rng) {
-  if (!hits) return 0;
-  const listed = new Set((CAREER.scoutSuggestions || []).map((sg) => `${sg.clubId}|${sg.playerId}`));
-  const evaluation = scout.evaluation != null ? scout.evaluation : scout.stars;
-  const regionOf = (club) => UF_TO_REGION[club.uf];
-  let pool = allMarketPlayers().filter(({ p, club, mine }) => !mine && !listed.has(`${club.id}|${p.id}`) && !pendingOfferOutFor(p.id)
-    && (!group || p.group === group));
-  const inRegion = pool.filter(({ club }) => regionOf(club) === region);
-  if (inRegion.length) pool = inRegion; // sem UF no dado do fornecedor, olha o país todo
-  const weakestBySubpos = {};
-  CAREER.lineup.starters.map((id) => CAREER.squad.find((p) => p.id === id)).filter(Boolean).forEach((p) => {
-    const sp = subPositionOf(p);
-    weakestBySubpos[sp] = Math.min(weakestBySubpos[sp] ?? 99, p.overall);
-  });
-  const noise = (6 - evaluation) * 3;
-  const scored = pool.map((e) => {
-    const sp = subPositionOf(e.p);
-    const upgrade = weakestBySubpos[sp] != null ? e.p.overall - weakestBySubpos[sp] : 0;
-    const growth = (e.p.potential != null ? e.p.potential : e.p.overall) - e.p.overall;
-    return { ...e, read: upgrade * 1.2 + growth + (rng() * 2 - 1) * noise };
-  }).sort((a, b) => b.read - a.read).slice(0, hits);
-  CAREER.scoutSuggestions = CAREER.scoutSuggestions || [];
-  scored.forEach(({ p, club }) => {
-    const range = scoutPotentialRange(p.potential != null ? p.potential : p.overall, p.overall, evaluation, rng);
-    const report = scoutReport(p, range, "pro", weakestBySubpos[subPositionOf(p)]);
-    CAREER.scoutSuggestions.unshift({
-      id: `scout_${scout.id}_${CAREER.currentRound}_${p.id}`,
-      playerId: p.id, playerName: p.name, clubId: String(club.id), clubName: club.name,
-      subpos: subPositionOf(p), overall: p.overall, age: p.age, value: p.value,
-      potLo: range.lo, potHi: range.hi, report, scoutName: scout.name, foundRegion: region,
-    });
-    pushNotification("olheiro", `${scout.name} indicou ${abbreviateName(p.name)} (${club.name}) — ${report.recommendation.toLowerCase()}.`);
-  });
-  if (CAREER.scoutSuggestions.length > SCOUT_MAX_SUGGESTIONS) CAREER.scoutSuggestions.length = SCOUT_MAX_SUGGESTIONS;
-  return scored.length;
+  return motorSemana().scoutMarketFinds(scout, region, group, hits, rng);
 }
 function recruitProspectToBase(id) {
   const idx = (CAREER.scoutMissionProspects || []).findIndex((p) => p.id === id);
@@ -13806,7 +13367,8 @@ function closeBaseCategoriesScreen() {
    spam de clique). Cada indicação fica na lista até o técnico decidir:
    "Aceitar" abre a MESMA proposta real do Mercado (ver openOfferModal),
    "Recusar" só tira da lista, sem afetar nada mais. */
-const SCOUT_MAX_SUGGESTIONS = 8; // teto da lista (mais novas primeiro), pra não virar bagunça
+// Etapa C2 (09/11): mora em motor/semana.js.
+Object.defineProperty(window, "SCOUT_MAX_SUGGESTIONS", { configurable: true, get() { return motorSemana().SCOUT_MAX_SUGGESTIONS; } });
 const SCOUT_MIN_POTENTIAL_GAP = 5; // espaço mínimo (potencial - overall) pra contar como "joia"
 const SCOUT_PICK_PER_SEARCH = 2; // no máximo 2 indicações novas por busca
 // GE-SCOUT-001 (decisão do Murilo: unificar) — não existe mais busca
