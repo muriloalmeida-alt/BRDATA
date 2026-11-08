@@ -1,7 +1,7 @@
 # Plano: contas, sessões e carreiras no Postgres
 
 - **Data:** 08/11/2026.
-- **Status:** proposta para aprovação do Murilo. Nada foi implementado. Infraestrutura (banco, variáveis, deploy) só com sua autorização explícita, feita por você no Railway.
+- **Status:** aprovado pelo Murilo (08/11) e implementado (ver `ENTREGA_POSTGRES.md`). Infraestrutura (banco, variáveis, deploy) só com sua autorização explícita, feita por você no Railway.
 
 **Decisões já tomadas** (08/11):
 - **Escopo:** contas, sessões e carreiras juntas.
@@ -33,10 +33,12 @@ Os três funcionam do mesmo jeito:
 - **Igual:** a memória continua sendo a fonte de leitura, e as funções dos três módulos não mudam. O `server.js`, a API e o jogo não percebem a troca.
 - **Muda:** o lugar onde os dados ficam guardados. Em vez de regravar o arquivo inteiro, cada mudança grava **só aquele registro** no Postgres (inserir, atualizar ou apagar), com o mesmo pequeno atraso de hoje para juntar gravações seguidas.
 
-**Tabelas** (uma por módulo, cada registro como está hoje):
-- `contas (id text primary key, dados jsonb, atualizado_em timestamptz)`;
-- `sessoes (token text primary key, dados jsonb, expira_em timestamptz)`;
-- `carreiras (user_id text primary key, dados jsonb, atualizado_em timestamptz)`.
+**Tabelas** (uma por módulo, cada registro como está hoje), todas com o mesmo formato `(chave text primary key, dados json, atualizado_em timestamptz)`:
+- `contas`: a chave é o id da conta;
+- `sessoes`: a chave é o token, e a validade fica dentro de `dados`, como hoje;
+- `carreiras`: a chave é o id da conta.
+
+O tipo é `json`, e não `jsonb`, porque guarda o texto exatamente como veio. O `jsonb` reordena as chaves, e numa carreira antiga ainda sem compressão isso mudaria os bytes comprimidos, embora não o conteúdo. Ajuste feito na implementação.
 
 A carreira continua comprimida dentro de `dados`, como no arquivo, para não mexer no limite de tamanho nem no formato do save. Consultas dentro da carreira ficam para depois.
 
