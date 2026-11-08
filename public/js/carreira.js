@@ -228,6 +228,10 @@ function squadSortKey(p) { return (SUBPOS_ORDER[subPositionOf(p)] ?? 9) * 1000 -
 // Fase 1 do plano de independência: o motor também atende em /carreira/motor
 // (endereço próprio da v2); ?ponte=partida segue valendo por compatibilidade.
 const V2_PONTE = new URLSearchParams(location.search).get("ponte") === "partida" || location.pathname === "/carreira/motor";
+// Plano "sem página escondida", etapa A (07/11): no modo ponte ninguém vê
+// esta página (a v2 desenha tudo), então ela não desenha nada. Só a lógica
+// que o desenho fazia continua (ver renderAll).
+const SEM_TELA = V2_PONTE;
 // Estado só da ponte (nunca salvo): última partida vista (LIVE_MATCH vira
 // null no fim), resultado da gravação final e quem está ouvindo.
 const PONTE = { pronta: false, ultimo: null, fim: null, ouvintes: new Set(), resumo: null, posJogo: false, salvando: false, erroGravacao: null, semana: null, antesSemana: null, seq: null };
@@ -8898,6 +8902,8 @@ function liveEventDot(type) {
 function renderLiveMatch() {
   const lm = LIVE_MATCH;
   if (!lm) return;
+  // Sem tela: só avisa a v2 (o que o fim desta função faz), sem desenhar.
+  if (SEM_TELA) { PONTE.ultimo = lm; ponteAvisar(); return; }
   document.getElementById("liveMatchScore").innerHTML = `
     <div class="side">${crestImg(lm.home)}<span class="n">${escapeHtml(lm.home.name)}</span></div>
     <span class="vs">${lm.gh} × ${lm.ga}</span>
@@ -8963,23 +8969,32 @@ function closeLiveSubModal() {
   document.getElementById("liveSubOverlay").classList.remove("open");
   resumeLiveMatch();
 }
-function confirmLiveSub() {
-  const lm = LIVE_MATCH;
-  if (!lm) return;
-  const outId = document.getElementById("liveSubOutSelect").value;
-  const inId = document.getElementById("liveSubInSelect").value;
-  if (!outId || !inId) { toast("Escolha quem sai e quem entra."); return; }
+// Substituição ao vivo, sem tela: troca quem sai por quem entra, conta a
+// troca e registra o lance. Usada pelo modal (confirmLiveSub) e pela ponte
+// (substituir). Devolve null ou o motivo de não ter trocado.
+function applyLiveSub(lm, outId, inId) {
   const outIdx = CAREER.lineup.starters.indexOf(outId);
-  if (outIdx < 0) { toast("Esse jogador não está em campo.", { type: "warn" }); return; }
+  if (outIdx < 0) return "fora-de-campo";
   const outPlayer = CAREER.squad.find((p) => p.id === outId);
   const inPlayer = CAREER.squad.find((p) => p.id === inId);
-  if (!outPlayer || !inPlayer) return;
+  if (!outPlayer || !inPlayer) return "sem-jogador";
   CAREER.lineup.starters[outIdx] = inId;
   CAREER.lineup.bench = CAREER.lineup.bench.filter((id) => id !== inId);
   CAREER.lineup.bench.push(outId);
   lm.subsUsed++;
   const minute = lm.chunkIndex === 0 ? 0 : LIVE_MATCH_CHUNK_MINUTES[lm.chunkIndex - 1];
   lm.events.push({ type: "substituicao", saiu: outPlayer.name, entra: inPlayer.name, minute, mine: true });
+  return null;
+}
+function confirmLiveSub() {
+  const lm = LIVE_MATCH;
+  if (!lm) return;
+  const outId = document.getElementById("liveSubOutSelect").value;
+  const inId = document.getElementById("liveSubInSelect").value;
+  if (!outId || !inId) { toast("Escolha quem sai e quem entra."); return; }
+  const erro = applyLiveSub(lm, outId, inId);
+  if (erro === "fora-de-campo") { toast("Esse jogador não está em campo.", { type: "warn" }); return; }
+  if (erro) return;
   document.getElementById("liveSubOverlay").classList.remove("open");
   renderLiveMatch();
   resumeLiveMatch();
@@ -8996,15 +9011,20 @@ function closeLiveTacticsModal() {
   document.getElementById("liveTacticsOverlay").classList.remove("open");
   resumeLiveMatch();
 }
-function confirmLiveTactics() {
-  if (!LIVE_MATCH) return;
-  const newFormation = document.getElementById("liveTacticsFormation").value;
+// Tática ao vivo, sem tela: troca de esquema (com o custo de familiaridade)
+// e os eixos. Usada pelo modal (confirmLiveTactics) e pela ponte
+// (aplicarTatica).
+function applyLiveTactics(lm, newFormation, axes) {
   if (newFormation !== CAREER.lineup.formation) {
     CAREER.lineup.formation = newFormation;
-    LIVE_MATCH.formationPenaltyChunksLeft = LIVE_TACTICS_FAMILIARITY_PENALTY_CHUNKS;
+    lm.formationPenaltyChunksLeft = LIVE_TACTICS_FAMILIARITY_PENALTY_CHUNKS;
     toast("Esquema alterado — o time perde um pouco de efetividade até se ajustar.");
   }
-  Object.assign(CAREER.lineup.tactics, readTacticAxisRows("liveTacticAxisRows"));
+  Object.assign(CAREER.lineup.tactics, axes);
+}
+function confirmLiveTactics() {
+  if (!LIVE_MATCH) return;
+  applyLiveTactics(LIVE_MATCH, document.getElementById("liveTacticsFormation").value, readTacticAxisRows("liveTacticAxisRows"));
   document.getElementById("liveTacticsOverlay").classList.remove("open");
   resumeLiveMatch();
 }
@@ -10898,6 +10918,9 @@ function autoFillLineup() {
 // daqui — retirado por completo (ver módulo de treinos novo,
 // applyWeeklyTraining).
 function commitLineupTactics() {
+  // Sem tela: a tática vem só do save (a v2 grava pela ponte, salvarTatica);
+  // os campos desta página nunca são desenhados e não valem nada.
+  if (SEM_TELA) return;
   Object.assign(CAREER.lineup.tactics, readTacticAxisRows("tacticAxisRows"));
 }
 
@@ -14447,6 +14470,15 @@ function declineOfferFromModal() {
 // abas, e loga + avisa qual foi (sem isso, não dava pra saber o que
 // tinha quebrado sem acesso ao console do navegador).
 function renderAll() {
+  // Sem tela: só o que o desenho fazia de lógica — renovar os objetivos do
+  // dia e da semana (renderObjetivos) e criar as conquistas que faltarem
+  // (renderConquistas).
+  if (SEM_TELA) {
+    if (!CAREER) return;
+    ensureObjectivesFresh();
+    if (!CAREER.achievements) CAREER.achievements = freshAchievementsState();
+    return;
+  }
   [
     ["Identidade do clube", renderTopbarIdentity],
     ["Central", renderCentral], ["Elenco", renderElenco], ["Escalação", renderEscalacao],
@@ -17480,9 +17512,9 @@ if (V2_PONTE) {
       if (ok) renderAll();
       return ok ? { ok: true } : { ok: false, motivo: PONTE.fim.erro };
     },
-    // Substituição: valida como a tela atual e executa o MESMO
-    // confirmLiveSub (que retoma o jogo — a ponte repausa: na v2 a troca
-    // é feita com a partida parada na Pausa).
+    // Substituição: valida como a tela atual e faz a MESMA troca do modal
+    // (applyLiveSub), sem tela: pausa, troca, avisa, retoma — e a ponte
+    // repausa (na v2 a troca é feita com a partida parada na Pausa).
     substituir(saiId, entraId) {
       const lm = LIVE_MATCH;
       if (!lm || lm.finished) return { ok: false, motivo: "sem-partida" };
@@ -17491,28 +17523,32 @@ if (V2_PONTE) {
       const entra = CAREER.squad.find((p) => p.id === entraId);
       if (!entra || !CAREER.lineup.bench.includes(entraId) || entra.status !== "ok") return { ok: false, motivo: "reserva-indisponivel" };
       const wasHalftime = !!lm.halftime;
-      openLiveSubModal();
-      document.getElementById("liveSubOutSelect").value = saiId;
-      document.getElementById("liveSubInSelect").value = entraId;
-      confirmLiveSub();
+      pauseLiveMatch(); // o que abrir o modal fazia
+      applyLiveSub(lm, saiId, entraId);
+      renderLiveMatch();
+      resumeLiveMatch();
       if (!wasHalftime) pauseLiveMatch();
       ponteAvisar();
       return { ok: true };
     },
-    // Tática: mesma rotina de confirmLiveTactics (custo de familiaridade
-    // ao trocar esquema incluso); a ponte repausa depois, como acima.
+    // Tática: a MESMA regra do modal (applyLiveTactics, com o custo de
+    // familiaridade ao trocar esquema), sem tela; a ponte repausa depois,
+    // como acima.
     aplicarTatica({ formacao, eixos }) {
       const lm = LIVE_MATCH;
       if (!lm || lm.finished) return { ok: false, motivo: "sem-partida" };
       if (!FORMATIONS[formacao]) return { ok: false, motivo: "formacao-invalida" };
       const wasHalftime = !!lm.halftime;
-      openLiveTacticsModal();
-      document.getElementById("liveTacticsFormation").value = formacao;
-      document.querySelectorAll("#liveTacticAxisRows .m3-instr-row").forEach((row) => {
-        const v = eixos && eixos[row.dataset.axis];
-        if (v >= 1 && v <= 5) row.dataset.level = String(Math.round(v));
+      pauseLiveMatch(); // o que abrir o modal fazia
+      // Os 4 eixos como o modal os montava: o valor pedido (1 a 5) ou o atual
+      // (3 se faltar).
+      const axes = {};
+      TACTIC_AXES.forEach((ax) => {
+        const v = eixos && eixos[ax.id];
+        axes[ax.id] = v >= 1 && v <= 5 ? Math.round(v) : (CAREER.lineup.tactics[ax.id] || 3);
       });
-      confirmLiveTactics();
+      applyLiveTactics(lm, formacao, axes);
+      resumeLiveMatch();
       if (!wasHalftime) pauseLiveMatch();
       ponteAvisar();
       return { ok: true };
