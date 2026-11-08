@@ -90,3 +90,34 @@ export async function gravarSave(save, pedir, agora = Date.now) {
     };
   }
 }
+
+// ---------- O mundo da carreira (etapa C1, 09/11) ----------
+// Fora do save, mas parte do jogo: os times da liga atual, todos os times
+// das divisões e a competição atual. O carreira.js usa os nomes de sempre
+// (LEAGUE_TEAMS, ALL_TEAMS_FLAT, CURRENT_COMPETITION_ID) como atalho.
+const mundo = { ligaAtual: [], todosTimes: [], competicaoAtual: "brasileirao" };
+export function ligaAtual() { return mundo.ligaAtual; }
+export function definirLigaAtual(lista) { mundo.ligaAtual = lista; return lista; }
+export function todosTimes() { return mundo.todosTimes; }
+export function definirTodosTimes(lista) { mundo.todosTimes = lista; return lista; }
+export function competicaoAtual() { return mundo.competicaoAtual; }
+export function definirCompeticaoAtual(id) { mundo.competicaoAtual = id; return id; }
+
+// Time pelo id: primeiro a liga atual (com a competição atual), depois os
+// outros; sem achar, um time genérico (como sempre foi).
+export function timePorId(id) {
+  const own = mundo.ligaAtual.find((t) => String(t.id) === String(id));
+  if (own) return { ...own, competitionId: mundo.competicaoAtual };
+  const other = mundo.todosTimes.find((t) => String(t.id) === String(id));
+  if (other) return other;
+  return { id, name: `Time #${id}`, short: String(id).slice(0, 3).toUpperCase(), c1: "#8892A0", c2: "#333" };
+}
+export function mediaOverall(lista) {
+  if (!lista.length) return 0;
+  return lista.reduce((s, p) => s + p.overall, 0) / lista.length;
+}
+// Força média do elenco de um clube (o seu: só o principal).
+export function forcaMediaDoElenco(clubId) {
+  if (String(clubId) === String(carreira.clubId)) return mediaOverall(carreira.squad.filter((p) => p.origin === "principal"));
+  return mediaOverall(carreira.leagueSquads[String(clubId)] || []);
+}
