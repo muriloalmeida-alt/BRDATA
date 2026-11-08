@@ -22,7 +22,7 @@
 const fs = require("fs");
 const path = require("path");
 const zlib = require("zlib");
-const { scheduleWrite } = require("./debouncedPersist");
+const persistencia = require("./persistencia");
 
 const DATA_DIR = path.join(__dirname, "..", "data");
 const FILE = path.join(DATA_DIR, "careers.json");
@@ -195,8 +195,20 @@ function load() {
 // trade-off aceito. (gzipSync/gunzipSync em si são baratos pro
 // tamanho real de uma carreira — ~1-2ms medido pra ~560KB — não pesam
 // nesse orçamento.)
+// Plano Postgres (08/11): arquivo (como sempre) ou, com DATABASE_URL, a
+// tabela `carreiras`, gravando só a carreira que mudou (persistencia.js).
+// Vindo do banco, cada registro passa pela mesma normalização da carga do
+// arquivo (formato de slots).
+const armazenamento = persistencia.registrar({
+  nome: "carreiras", tabela: "carreiras", arquivo: FILE, dir: DATA_DIR,
+  obter: () => store,
+  substituir: (mapa) => {
+    store = new Map();
+    for (const [userId, entry] of mapa) { const rec = normalizeRecord(entry); if (rec) store.set(userId, rec); }
+  },
+});
 function persist() {
-  scheduleWrite(FILE, DATA_DIR, () => JSON.stringify(Object.fromEntries(store)));
+  armazenamento.agendar();
 }
 
 load();

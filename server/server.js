@@ -63,6 +63,8 @@ const captureSnapshot = require("./src/captureSnapshot");
 const leaderboard = require("./src/leaderboard");
 const push = require("./src/push");
 const { flushAllSync } = require("./src/debouncedPersist");
+const db = require("./src/db");
+const persistencia = require("./src/persistencia");
 const publicRateLimit = require("./src/publicRateLimit");
 const { slugify, matchSlug } = require("./src/slug");
 
@@ -2892,10 +2894,28 @@ const server = http.createServer(async (req, res) => {
 // no disco — nos 2 sinais de desligamento normal (deploy, restart
 // manual), descarrega tudo que ainda está pendente ANTES de soltar a
 // porta, então um desligamento gracioso nunca perde a última mudança.
+async function iniciarPersistencia() {
+  if (!db.bancoConfigurado()) { console.log("[persistencia] sem DATABASE_URL — contas, sessões e carreiras em arquivo (server/data)."); return; }
+  const t0 = Date.now();
+  let r;
+  try {
+    r = await persistencia.iniciar();
+  } catch (err) {
+    console.error(err.message || err);
+    console.error("[persistencia] o servidor NÃO vai subir: o banco não ficou pronto (dados intactos nos arquivos).");
+    process.exit(1);
+  }
+  const linha = Object.entries(r).map(([nome, x]) => `${nome}: ${x.carregados} no banco${x.copiadosDoArquivo != null ? ` (${x.copiadosDoArquivo} copiados do arquivo e conferidos)` : ""}${x.aviso ? ` [${x.aviso}]` : ""}`).join("; ");
+  console.log(`[persistencia] Postgres pronto em ${Date.now() - t0}ms — ${linha}.`);
+}
+
 function gracefulShutdown(signal) {
   console.log(`\n[server] ${signal} recebido — descarregando saves pendentes antes de sair...`);
   flushAllSync();
-  server.close(() => process.exit(0));
+  // Plano Postgres: com o banco, espera as gravações pendentes (por registro).
+  persistencia.descarregarTudo()
+    .catch((err) => console.error("[server] falha ao descarregar no banco:", err.message))
+    .finally(() => server.close(() => process.exit(0)));
   // Se algo travar o close (conexão pendurada), não fica esperando pra
   // sempre — o flush já rodou, é o que importa de verdade.
   setTimeout(() => process.exit(0), 3000).unref();
@@ -2903,7 +2923,12 @@ function gracefulShutdown(signal) {
 process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
 process.on("SIGINT", () => gracefulShutdown("SIGINT"));
 
-bootstrapDefaultAdmin()
+// Plano Postgres (08/11): com DATABASE_URL, contas, sessões e carreiras
+// vêm do banco (tabelas criadas e cópia conferida dos arquivos na primeira
+// vez) ANTES de qualquer requisição. Se não der, o servidor não sobe:
+// melhor parado do que com dados pela metade.
+iniciarPersistencia()
+  .then(() => bootstrapDefaultAdmin())
   .catch((err) => console.error("[bootstrap] falha ao criar/promover admin padrão:", err.message))
   .finally(() => {
     server.listen(PORT, () => {
