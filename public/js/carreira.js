@@ -261,7 +261,15 @@ let CURRENT_COMPETITION_ID = "brasileirao";
 const ALL_COMPETITIONS_ORDER = ["brasileirao", "serie_b", "serie_c"];
 let LIVE_MODE_BY_COMPETITION = {};
 let ALL_TEAMS_FLAT = [];
-let CAREER = null;     // save inteiro da carreira atual (null = sem carreira ainda)
+// Sem página escondida, etapa B (08/11): o save da carreira atual mora em
+// motor/estado.js (null = sem carreira ainda). `CAREER` continua sendo o
+// nome de sempre aqui: ler e atribuir passam pelo módulo. Antes do motor
+// carregar (só no parse deste arquivo), vale null.
+Object.defineProperty(window, "CAREER", {
+  configurable: true,
+  get() { const e = window.BRDATA_MOTOR && window.BRDATA_MOTOR.estado; return e ? e.carreiraAtual() : null; },
+  set(v) { motorEstado().definirCarreira(v); },
+});
 let PICKER_CTX = null; // contexto do modal de escolha de jogador ({type:"slot",index}, {type:"bench",currentId} ou {type:"training",day})
 let PENDING_ROUND_SUMMARY = null; // resumo da rodada entre o modal de detalhe do jogo e o de resultados (ver simulateRound)
 let TRAINING_SELECTED_DAY = 0; // dia da semana selecionado na tela de Treinos (0=segunda), só estado de UI — não é salvo
@@ -310,6 +318,10 @@ const motorMercado = () => motorModulo("mercado");
 // motor/temporada.js — meta, reputação, premiações, contrato/potencial,
 // geradores de jogador, renovação dos elencos e acesso/rebaixamento.
 const motorTemporada = () => motorModulo("temporada");
+// Sem página escondida, etapa B (08/11): a carreira atual, a versão do save
+// (schemaVersion e migrações numeradas), a carga e a gravação em
+// motor/estado.js.
+const motorEstado = () => motorModulo("estado");
 // Nomes (data.js) e o ano da temporada real para os geradores de jogador.
 function playerBuildEnv() {
   return { firstNames: DEMO_FIRST_NAMES, lastNames: DEMO_LAST_NAMES, liveSeason: LIVE_SEASON };
@@ -4910,53 +4922,51 @@ function autoLineup(squad, formation, includeBase = true) {
 /* ---------- Persistência ---------- */
 async function persistCareer() {
   if (!CAREER) return false;
-  CAREER.updatedAt = Date.now();
-  try {
-    await fetchJSON("/api/career", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(CAREER) });
-    return true;
-  } catch (err) {
-    // BUG CORRIGIDO: qualquer falha (sessão expirada, save grande
-    // demais, rede) caía nessa mesma mensagem genérica de "tente de
-    // novo em instantes" — mas sessão expirada NUNCA se resolve
-    // tentando de novo, só logando de novo (relato real do usuário:
-    // erro ao simular rodada, sem conseguir salvar mais nada depois).
-    // Loga o motivo real no console pra dar pra investigar sem precisar
-    // acesso ao servidor, e distingue sessão expirada do resto.
-    console.error("[carreira] falha ao salvar progresso:", err.status, err.message);
-    // Carreira 2.0 (AUD-02): a ponte informa à v2 se foi sessão expirada
-    // ou outra falha. No modo ponte esta página é um quadro invisível — a
-    // tela de login daqui não seria vista; a v2 mostra o próprio aviso.
-    PONTE.erroGravacao = err.status === 401 ? "sessao" : "falha";
-    if (err.status === 401 && V2_PONTE) {
-      // (sem toast/troca de tela: ver acima)
-    } else if (err.status === 401) {
-      toast("Sua sessão expirou — faça login de novo pra continuar salvando.", { type: "warn" });
-      show("screenLoginRequired");
-    } else if (err.status === 413) {
-      // SAVE-LIMIT-001 — antes disso era literalmente um beco sem saída
-      // ("reinicie a carreira"). Agora o servidor já comprime o save
-      // (gzip, ~92-95% menor na prática — ver careerStore.js) e ainda
-      // poda automaticamente histórico não-essencial antes de recusar
-      // salvar (nunca elenco/contratos/tabela/finanças) — chegar aqui
-      // significa que MESMO DEPOIS dessas 2 camadas o save continua
-      // grande demais, cenário que a medição real (ver
-      // tests/e2e/sim_save_growth.js) não encontrou em nenhuma
-      // simulação de várias temporadas. Por isso o texto não manda
-      // mais reiniciar a carreira — tentar de novo pode resolver (pico
-      // temporário), e persistindo é sinal de bug de verdade, não de
-      // "carreira grande demais" como intenção normal do jogo.
-      toast("Não deu pra salvar agora — o servidor tentou reduzir o histórico da carreira automaticamente e mesmo assim não coube. Tentando de novo deve resolver; se continuar acontecendo, é um bug — nos avise.", { durationMs: 6000, type: "warn" });
-    } else {
-      // Código/motivo aparecem no toast de propósito (mesmo sendo mais
-      // "técnico" do que o ideal pro usuário final): sem acesso aos
-      // logs do servidor daqui, é a forma mais rápida de descobrir a
-      // causa real de um erro que não é nem sessão expirada nem save
-      // grande demais — quem estiver vendo isso pode repassar o texto.
-      const detail = err.status ? `erro ${err.status}${err.message ? " — " + err.message : ""}` : (err.message || "sem conexão com o servidor");
-      toast({ title: "Não deu pra salvar o progresso agora", detail: `${detail} — tente de novo em instantes.` }, { type: "warn" });
-    }
-    return false;
+  // Etapa B: o módulo grava e devolve o motivo; os avisos ficam aqui.
+  const r = await motorEstado().gravarSave(CAREER, fetchJSON);
+  if (r.ok) return true;
+  const err = { status: r.status, message: r.mensagem };
+  // BUG CORRIGIDO: qualquer falha (sessão expirada, save grande
+  // demais, rede) caía nessa mesma mensagem genérica de "tente de
+  // novo em instantes" — mas sessão expirada NUNCA se resolve
+  // tentando de novo, só logando de novo (relato real do usuário:
+  // erro ao simular rodada, sem conseguir salvar mais nada depois).
+  // Loga o motivo real no console pra dar pra investigar sem precisar
+  // acesso ao servidor, e distingue sessão expirada do resto.
+  console.error("[carreira] falha ao salvar progresso:", err.status, err.message);
+  // Carreira 2.0 (AUD-02): a ponte informa à v2 se foi sessão expirada
+  // ou outra falha. No modo ponte esta página é um quadro invisível — a
+  // tela de login daqui não seria vista; a v2 mostra o próprio aviso.
+  PONTE.erroGravacao = r.motivo === "sessao" ? "sessao" : "falha";
+  if (r.motivo === "sessao" && V2_PONTE) {
+    // (sem toast/troca de tela: ver acima)
+  } else if (r.motivo === "sessao") {
+    toast("Sua sessão expirou — faça login de novo pra continuar salvando.", { type: "warn" });
+    show("screenLoginRequired");
+  } else if (r.motivo === "grande") {
+    // SAVE-LIMIT-001 — antes disso era literalmente um beco sem saída
+    // ("reinicie a carreira"). Agora o servidor já comprime o save
+    // (gzip, ~92-95% menor na prática — ver careerStore.js) e ainda
+    // poda automaticamente histórico não-essencial antes de recusar
+    // salvar (nunca elenco/contratos/tabela/finanças) — chegar aqui
+    // significa que MESMO DEPOIS dessas 2 camadas o save continua
+    // grande demais, cenário que a medição real (ver
+    // tests/e2e/sim_save_growth.js) não encontrou em nenhuma
+    // simulação de várias temporadas. Por isso o texto não manda
+    // mais reiniciar a carreira — tentar de novo pode resolver (pico
+    // temporário), e persistindo é sinal de bug de verdade, não de
+    // "carreira grande demais" como intenção normal do jogo.
+    toast("Não deu pra salvar agora — o servidor tentou reduzir o histórico da carreira automaticamente e mesmo assim não coube. Tentando de novo deve resolver; se continuar acontecendo, é um bug — nos avise.", { durationMs: 6000, type: "warn" });
+  } else {
+    // Código/motivo aparecem no toast de propósito (mesmo sendo mais
+    // "técnico" do que o ideal pro usuário final): sem acesso aos
+    // logs do servidor daqui, é a forma mais rápida de descobrir a
+    // causa real de um erro que não é nem sessão expirada nem save
+    // grande demais — quem estiver vendo isso pode repassar o texto.
+    const detail = err.status ? `erro ${err.status}${err.message ? " — " + err.message : ""}` : (err.message || "sem conexão com o servidor");
+    toast({ title: "Não deu pra salvar o progresso agora", detail: `${detail} — tente de novo em instantes.` }, { type: "warn" });
   }
+  return false;
 }
 
 /* ---------- Início de carreira ---------- */
@@ -5234,6 +5244,9 @@ async function startCareer(clubId) {
     const standings = motorTabela().emptyStandings(LEAGUE_TEAMS.map((t) => t.id));
     CAREER = {
       version: 1,
+      // Etapa B (08/11): versão do save para as migrações numeradas
+      // (motor/estado.js). O campo `version` acima é antigo e nunca é lido.
+      schemaVersion: motorEstado().SCHEMA_VERSION,
       // BUG CORRIGIDO ("erro 400 — Formato de save inválido." toda vez
       // que tentava salvar, só em produção com dados reais, nunca no
       // Modo Exemplo): careerStore.js exige typeof clubId === "string"
@@ -17567,7 +17580,7 @@ async function enterAfterAuth() {
   // Item 7 da lista de melhorias — mesmo raciocínio, pro retorno do
   // Checkout Pro do Mercado Pago (ver handleLojaReturnIfAny).
   await handleLojaReturnIfAny();
-  const saved = await fetchJSON("/api/career").catch(() => ({ career: null }));
+  const saved = { career: await motorEstado().carregarSave(fetchJSON) };
   setBootProgress(2, 5, "Carregando sua carreira...");
   if (saved && saved.career) {
     // forceDemo só quando a carreira JÁ GRAVOU explicitamente que nasceu
@@ -17596,6 +17609,9 @@ async function enterAfterAuth() {
     setBootProgress(4, 5, "Preparando o clube...");
     CAREER = saved.career;
     migrateCareerDefaults();
+    // Etapa B: depois da normalização de sempre, as migrações numeradas
+    // do save (schemaVersion, motor/estado.js).
+    motorEstado().migrarSave(CAREER);
     // Nova feature (pedido do usuário: "reinicie o tema do
     // rebaixamento") — CAREER.divisionTeams (quando existe) é a fonte
     // de verdade de "quem está em qual divisão agora" (ver comentário
