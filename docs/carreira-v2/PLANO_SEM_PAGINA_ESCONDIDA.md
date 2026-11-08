@@ -1,7 +1,7 @@
 # Carreira 2.0: plano para tirar a página escondida
 
 - **Data:** 06/11/2026.
-- **Status:** proposta para aprovação do Murilo. Nada foi implementado.
+- **Status:** aprovado pelo Murilo (07/11), com as 3 recomendações. Etapa A em andamento.
 - **Origem:** decisão de 06/11 ("Plano à parte"). A fase 12 fecha com a etapa 6, e este plano trata do que sobra.
 
 ## 1. Onde estamos
@@ -53,7 +53,7 @@ Cada etapa é um PR, com testes de equivalência como na fase 12, e a v2 continu
 - **Testes da tela antiga:** os 153 testes dependem dela (ver a decisão 1).
 - **Mesmo save em duas abas (D1):** continua como hoje. Não piora nem melhora.
 
-## 5. Decisões para você
+## 5. Decisões (07/11: as 3 recomendações)
 1. **Página antiga** (`carreira.html`, que só os testes usam): (a) mantê-la só para os testes, usando o mesmo módulo; ou (b) apagá-la no fim e reescrever os 153 testes pela ponte. Recomendo (a) agora e migrar os testes aos poucos.
 2. **Começar pela etapa A** como prova de viabilidade e decidir o resto depois dela? Recomendo que sim.
 3. **Pacote da v2:** carregar o jogo sob demanda (recomendado) ou junto com o resto?
