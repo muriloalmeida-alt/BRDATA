@@ -57,4 +57,8 @@ São 81 funções e constantes, cerca de 450 linhas de regra. O módulo lê e gr
 - **Testes e simulações que recortam funções do `carreira.js` pelo nome:**
   - **O que mudou:** o `test_motor_mercado` e as simulações `sim_ge_scout_001` e `sim_ge_balance_005` passaram a ler o texto movido do motor.
   - **Resultado:** os três rodam como antes. O `test_motor_mercado` dá 4/4.
-- **Suíte completa (com o Postgres temporário):** _em andamento_.
+- **Suíte completa (com o Postgres temporário):** 198/199.
+  - **A falha:** `test_botoes_rodape`. Uma proposta por jogador, sorteada depois da rodada, abriu um modal na frente do menu, e o clique não passou.
+  - **Correção:** é o mesmo caso já corrigido no `test_noticias_fullscreen_fluxo` e no `test_coletiva_imprensa`. O teste agora recusa a proposta quando ela aparece. Depois disso, passou 3/3.
+  - **Por que não é da C2:** a proposta por jogador não está entre as regras movidas, e o sorteio da semana é o mesmo de antes (ver a equivalência acima).
+- **Checagem da tela antiga:** nenhum teste novo usa a tela antiga. O teste novo é unitário.

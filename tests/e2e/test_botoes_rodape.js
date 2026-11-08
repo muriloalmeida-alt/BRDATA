@@ -86,6 +86,12 @@ function checkFooter(page, overlayId, btnId) {
   await page.click("#btnRoundResultsContinue").catch(() => {});
   await page.click("#tabelaModalClose").catch(() => {});
   await page.waitForTimeout(150);
+  // Proposta por jogador (evento sorteado depois da rodada) cobre o menu:
+  // recusa, como nos outros testes do fluxo pós-jogo.
+  if (await page.evaluate(() => document.getElementById("playerOfferOverlay")?.classList.contains("open"))) {
+    await page.click("#btnPlayerOfferDecline");
+    await page.waitForFunction(() => !document.getElementById("playerOfferOverlay").classList.contains("open"));
+  }
 
   // 5) Notícias aberta pelo menu (só consulta) — rodapé some por
   // inteiro (não sobra faixa vazia com borda).
