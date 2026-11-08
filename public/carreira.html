@@ -6048,7 +6048,9 @@
   import * as mercado from "./js/motor/mercado.js";
   import * as temporada from "./js/motor/temporada.js";
   import * as estado from "./js/motor/estado.js";
-  window.BRDATA_MOTOR = Object.assign(window.BRDATA_MOTOR || {}, { partida, tabela, calendario, rodada, financas, treino, mercado, temporada, estado });
+  import * as eventos from "./js/motor/eventos.js";
+  import * as registro from "./js/motor/registro.js";
+  window.BRDATA_MOTOR = Object.assign(window.BRDATA_MOTOR || {}, { partida, tabela, calendario, rodada, financas, treino, mercado, temporada, estado, eventos, registro });
 </script>
 <script src="js/carreira.js"></script>
 <script>
