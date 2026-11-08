@@ -32,6 +32,9 @@ const { skipOnboarding } = require("./_startup");
   for (let i = 0; i < 6; i++) { await page.click("#btnWizardSkip", { timeout: 2500 }).catch(() => {}); await page.waitForTimeout(300); }
   await page.click("#btnClaimDailyLogin", { timeout: 1500 }).catch(() => {});
   await page.waitForTimeout(500);
+  // Sob carga (CI), a tela pode demorar a montar o botão principal: espera
+  // por ele em vez de confiar só no tempo fixo. A verificação segue igual.
+  await page.waitForFunction(() => /Avançar semana/.test((document.getElementById("btnSimulate") || {}).textContent || ""), null, { timeout: 15000 }).catch(() => {});
   let ok = true;
   const check = (label, cond, extra) => { console.log(label, !!cond, extra !== undefined ? JSON.stringify(extra) : ""); ok = ok && !!cond; };
 
@@ -57,6 +60,7 @@ const { skipOnboarding } = require("./_startup");
   // 2) Pular até o próximo jogo (clique real).
   await page.click("#btnSkipToMatch");
   await page.waitForTimeout(800);
+  await page.waitForFunction(() => CAREER.currentRound === 1 && /Ir para o jogo/.test(document.getElementById("btnSimulate").textContent), null, { timeout: 15000 }).catch(() => {});
   const s2 = await page.evaluate(() => ({
     week: calendarWeek(), round: CAREER.currentRound, win: transferWindowStatus(CAREER.currentRound).open,
     fab: document.getElementById("btnSimulate").textContent.trim(),
