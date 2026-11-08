@@ -49,4 +49,4 @@ O save da carreira passou a morar em `public/js/motor/estado.js`: o objeto da ca
 - **`tests/e2e/test_sem_tela.js`** (agora 10 verificações), com 2 novas:
   - **8)** o `CAREER` é o objeto do módulo, e a carreira grava com `schemaVersion` 1;
   - **9)** um save antigo, sem o campo e gravado direto na API, abre migrado e grava com a versão na próxima jogada, sem perder nada (`version` e rodada conferidos).
-- **Suíte completa:** __SUITE__.
+- **Suíte completa:** 195/195 na primeira rodada.
