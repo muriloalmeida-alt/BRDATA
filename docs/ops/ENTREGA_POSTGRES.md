@@ -2,7 +2,7 @@
 
 - **Data:** 08/11/2026.
 - **Branch:** `postgres`, a partir de `main`.
-- **Status:** aguardando aprovação do Murilo. Commit local, sem push e sem PR.
+- **Status:** aprovado pelo Murilo (08/11).
 - **Plano:** `PLANO_POSTGRES.md`, aprovado em 08/11.
 
 **Decisões aplicadas:**
