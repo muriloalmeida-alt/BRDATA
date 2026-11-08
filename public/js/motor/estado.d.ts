@@ -1,0 +1,14 @@
+// Tipos de public/js/motor/estado.js (sem página escondida, etapa B).
+export type Save = Record<string, unknown> & { schemaVersion?: number; updatedAt?: number };
+export type Pedir = (url: string, opts?: { method?: string; headers?: Record<string, string>; body?: string }) => Promise<unknown>;
+export function carreiraAtual(): Save | null;
+export function definirCarreira(c: Save | null | undefined): Save | null;
+export const SCHEMA_VERSION: number;
+export const MIGRACOES: Record<number, (save: Save) => void>;
+export function versaoDoSave(save: Save | null | undefined): number;
+export function migrarSave(save: Save | null | undefined): number[];
+export function carregarSave(pedir: Pedir): Promise<Save | null>;
+export function gravarSave(save: Save | null | undefined, pedir: Pedir, agora?: () => number): Promise<
+  | { ok: true }
+  | { ok: false; motivo: "sem-carreira" | "sessao" | "grande" | "falha"; status?: number | null; mensagem?: string | null }
+>;

@@ -201,6 +201,12 @@ async function newCareer(page, base, email) {
   await page.click("#btnRoundResultsContinue").catch(() => {});
   await page.waitForTimeout(200);
   await page.click("#tabelaModalClose").catch(() => {});
+  // Proposta por jogador (evento sorteado depois da rodada) cobre a tela:
+  // recusa, como nos outros testes do fluxo pós-jogo.
+  if (await page.evaluate(() => document.getElementById("playerOfferOverlay")?.classList.contains("open"))) {
+    await page.click("#btnPlayerOfferDecline");
+    await page.waitForFunction(() => !document.getElementById("playerOfferOverlay").classList.contains("open"));
+  }
 
   // 8) X fecha sem aplicar efeito (conta como "sem comentário").
   const xCheck = await page.evaluate(() => {
