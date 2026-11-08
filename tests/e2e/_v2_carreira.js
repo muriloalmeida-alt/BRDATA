@@ -38,12 +38,15 @@ async function novaCarreiraV2(page, email, { clube = 0 } = {}) {
   await page.waitForURL(/\/nova\/pronto$/, { timeout: 90000 });
   // Primeira entrada: tutorial (Continuar), assistente (Pular esta etapa /
   // Continuar) e recompensa, até o Início.
-  for (let k = 0; k < 40; k++) {
+  // Cada passo troca a tela: o botão visto pode sumir antes do clique.
+  // Nesse caso o clique falha rápido e a volta seguinte olha de novo.
+  const clicar = (sel) => page.click(sel, { timeout: 2000 }).catch(() => {});
+  for (let k = 0; k < 60; k++) {
     if (await page.locator(".home").count()) break;
-    if (await page.locator(".wz-skip").count()) await page.click(".wz-skip");
-    else if (await page.locator(".wz-next").count()) await page.click(".wz-next");
-    else if (await page.locator(".rw-foot .cta").count()) await page.click(".rw-foot .cta");
-    else if (await page.locator(".ac-foot .cta").count()) await page.click(".ac-foot .cta");
+    if (await page.locator(".wz-skip").count()) await clicar(".wz-skip");
+    else if (await page.locator(".wz-next").count()) await clicar(".wz-next");
+    else if (await page.locator(".rw-foot .cta").count()) await clicar(".rw-foot .cta");
+    else if (await page.locator(".ac-foot .cta").count()) await clicar(".ac-foot .cta");
     await page.waitForTimeout(250);
   }
   if (!(await page.locator(".home").count())) {
