@@ -395,7 +395,7 @@ A seção 8 é o retrato de 03/11 e fica como histórico.
 | 12.5 — núcleo do mercado (`motor/mercado.js`) | #78 | na `main` |
 | 12.6 — regras da virada de temporada (`motor/temporada.js`) | #79 | na `main` |
 | Depois da fase 12 — tirar a página escondida | — | plano aprovado (07/11): `PLANO_SEM_PAGINA_ESCONDIDA.md` |
-| Sem página escondida, etapa A — jogo sem tela | próximo PR | `ENTREGA_SEM_TELA_A.md` |
+| Sem página escondida, etapa A — jogo sem tela | #80 | `ENTREGA_SEM_TELA_A.md` |
 
 ### Pontos de dependência (seção 1)
 - **1 a 10:** resolvidos. Nenhuma tela da v2 abre a versão anterior. O teste `test_v2_corte.js` navega por 70 telas sem nenhuma saída.

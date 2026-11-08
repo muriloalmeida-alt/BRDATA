@@ -2,7 +2,7 @@
 
 - **Data:** 08/11/2026.
 - **Branch:** `sem-tela-a`, a partir de `main` (com o #79, fim da fase 12).
-- **Status:** aguardando aprovação do Murilo. Commit local, sem push e sem PR.
+- **Status:** aprovado pelo Murilo (08/11).
 - **Plano:** `PLANO_SEM_PAGINA_ESCONDIDA.md`, aprovado em 07/11 com as 3 recomendações (página antiga só para testes, começar pela etapa A, jogo sob demanda na v2).
 
 ## Resultado principal
