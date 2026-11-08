@@ -92,6 +92,7 @@ function combinedTacticMod() {
 Object.defineProperty(window, "SECTOR_INSTRUCTIONS", { configurable: true, get() { return motorFechamento().SECTOR_INSTRUCTIONS; } });
 // Etapa C2 (09/11): mora em motor/semana.js.
 Object.defineProperty(window, "SECTOR_IDS", { configurable: true, get() { return motorFechamento().SECTOR_IDS; } });
+const SECTOR_LABEL = { defesa: "Defesa", meio: "Meio", ataque: "Ataque" };
 function defaultSectorTactics() {
   const out = {};
   SECTOR_IDS.forEach((sector) => {

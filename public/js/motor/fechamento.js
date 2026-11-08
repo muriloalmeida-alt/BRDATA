@@ -148,7 +148,6 @@ export const SECTOR_INSTRUCTIONS = {
 };
 
 export const SECTOR_IDS = Object.keys(SECTOR_INSTRUCTIONS); // ["defesa", "meio", "ataque"]
-const SECTOR_LABEL = { defesa: "Defesa", meio: "Meio", ataque: "Ataque" };
 
 export function combinedSectorTacticMod() {
   const CAREER = carreiraAtual();

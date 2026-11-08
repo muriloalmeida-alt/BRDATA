@@ -108,7 +108,6 @@ const SECTOR_INSTRUCTIONS = {
 };
 
 const SECTOR_IDS = Object.keys(SECTOR_INSTRUCTIONS); // ["defesa", "meio", "ataque"]
-const SECTOR_LABEL = { defesa: "Defesa", meio: "Meio", ataque: "Ataque" };
 
 function combinedSectorTacticMod() {
   const st = CAREER.lineup && CAREER.lineup.sectorTactics;
