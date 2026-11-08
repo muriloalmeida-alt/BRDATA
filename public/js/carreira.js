@@ -1,3 +1,7 @@
+/* TELA ANTIGA DESCONTINUADA (09/11/2026): a carreira oficial é a v2 em
+   /carreira (carreira-v2/). Este arquivo fica congelado: só correção de
+   bug crítico e a extração das regras para public/js/motor/. Código novo
+   não deve depender dele. Regras: CLAUDE.md, seção 0. */
 /* ===================================================================
    CARREIRA.JS — "Modo Técnico" (carreira estilo Elifoot)
    -------------------------------------------------------------------

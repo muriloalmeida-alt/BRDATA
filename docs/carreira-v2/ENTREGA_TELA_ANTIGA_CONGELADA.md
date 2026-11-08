@@ -44,3 +44,5 @@
 ## Testes
 - **Checagem:** passa com os testes atuais e falha com um teste novo de mentira que abre `/carreira-old`.
 - **Testes novos e alterados:** `test_v2_ajudante_carreira` (3/3) e `test_sem_tela` (10/10, agora com os ajudantes do módulo).
+- **Aviso no topo das duas telas antigas:** é só comentário. Os testes que leem o `carreira.js` (motor e unitários) e o service worker seguem passando: 8/8 numa amostra (`test_motor_*`, `test_sw_offline_carreira`).
+- **Base:** esta branch sai de `main` e não inclui a C1. Ao juntar as duas, a C1 só adiciona arquivos de motor e de teste unitário, que a checagem não conta como uso da tela antiga.
