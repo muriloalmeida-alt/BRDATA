@@ -241,7 +241,12 @@ const SEM_TELA = V2_PONTE;
 const PONTE = { pronta: false, ultimo: null, fim: null, ouvintes: new Set(), resumo: null, posJogo: false, salvando: false, erroGravacao: null, semana: null, antesSemana: null, seq: null };
 let LIVE_MODE = false;
 let LIVE_SEASON = new Date().getFullYear();
-let LEAGUE_TEAMS = []; // 20 clubes ativos (real ou DEMO_TEAMS — ver loadLeague)
+// Etapa C1 (09/11): mora em motor/estado.js (o "mundo" da carreira). Antes: 20 clubes ativos (real ou DEMO_TEAMS — ver loadLeague)
+Object.defineProperty(window, "LEAGUE_TEAMS", {
+  configurable: true,
+  get() { const e = window.BRDATA_MOTOR && window.BRDATA_MOTOR.estado; return e ? e.ligaAtual() : []; },
+  set(v) { motorEstado().definirLigaAtual(v); },
+});
 // AJUSTE (pedido do usuário: "acrescentar a Série B, C [ao Modo
 // Carreira] com dados reais") — qual campeonato está carregado em
 // LEAGUE_TEAMS agora ("brasileirao"/"serie_b"/"serie_c", mesmos ids de
@@ -249,7 +254,12 @@ let LEAGUE_TEAMS = []; // 20 clubes ativos (real ou DEMO_TEAMS — ver loadLeagu
 // pra saber qual endpoint/fallback de exemplo usar, e gravado em
 // CAREER.competitionId na criação da carreira (ver startCareer) pra
 // carregar o campeonato certo ao retomar uma carreira salva.
-let CURRENT_COMPETITION_ID = "brasileirao";
+// Etapa C1 (09/11): mora em motor/estado.js (o "mundo" da carreira).
+Object.defineProperty(window, "CURRENT_COMPETITION_ID", {
+  configurable: true,
+  get() { const e = window.BRDATA_MOTOR && window.BRDATA_MOTOR.estado; return e ? e.competicaoAtual() : "brasileirao"; },
+  set(v) { motorEstado().definirCompeticaoAtual(v); },
+});
 // AJUSTE (pedido do usuário: "o mercado deve trazer jogadores das 3
 // ligas para que transações possam ser feitas entre os 60 times das
 // Séries A, B e C") — LIVE_MODE (acima) e LEAGUE_TEAMS só cobrem a
@@ -264,7 +274,12 @@ let CURRENT_COMPETITION_ID = "brasileirao";
 // comportamento de LEAGUE_TEAMS/LIVE_MODE pra quem já existia.
 const ALL_COMPETITIONS_ORDER = ["brasileirao", "serie_b", "serie_c"];
 let LIVE_MODE_BY_COMPETITION = {};
-let ALL_TEAMS_FLAT = [];
+// Etapa C1 (09/11): mora em motor/estado.js (o "mundo" da carreira).
+Object.defineProperty(window, "ALL_TEAMS_FLAT", {
+  configurable: true,
+  get() { const e = window.BRDATA_MOTOR && window.BRDATA_MOTOR.estado; return e ? e.todosTimes() : []; },
+  set(v) { motorEstado().definirTodosTimes(v); },
+});
 // Sem página escondida, etapa B (08/11): o save da carreira atual mora em
 // motor/estado.js (null = sem carreira ainda). `CAREER` continua sendo o
 // nome de sempre aqui: ler e atribuir passam pelo módulo. Antes do motor
@@ -326,6 +341,14 @@ const motorTemporada = () => motorModulo("temporada");
 // (schemaVersion e migrações numeradas), a carga e a gravação em
 // motor/estado.js.
 const motorEstado = () => motorModulo("estado");
+// Etapa C1 (09/11): notificações, objetivos, conquistas e notícias da rodada
+// em motor/registro.js; avisos de tela viram eventos (motor/eventos.js).
+const motorRegistro = () => motorModulo("registro");
+const motorEventos = () => motorModulo("eventos");
+// A página antiga mostra o evento "aviso" como o toast de sempre (ligado no boot).
+function ouvirAvisosDoMotor() {
+  motorEventos().ouvir("aviso", (a) => toast({ title: a.titulo, detail: a.detalhe }, a.tipo ? { type: a.tipo } : undefined));
+}
 // Nomes (data.js) e o ano da temporada real para os geradores de jogador.
 function playerBuildEnv() {
   return { firstNames: DEMO_FIRST_NAMES, lastNames: DEMO_LAST_NAMES, liveSeason: LIVE_SEASON };
@@ -1092,11 +1115,7 @@ async function loadOtherCompetitionsTeams(homeCompetitionId, forceDemoMap = {}) 
 // CURRENT_COMPETITION_ID (não carrega esse campo por padrão) pra
 // renderMercado saber a divisão de qualquer time, próprio ou de fora.
 function teamById(id) {
-  const own = LEAGUE_TEAMS.find((t) => String(t.id) === String(id));
-  if (own) return { ...own, competitionId: CURRENT_COMPETITION_ID };
-  const other = ALL_TEAMS_FLAT.find((t) => String(t.id) === String(id));
-  if (other) return other;
-  return { id, name: `Time #${id}`, short: String(id).slice(0, 3).toUpperCase(), c1: "#8892A0", c2: "#333" };
+  return motorEstado().timePorId(id);
 }
 // AJUSTE (pedido do usuário: "refaça 100% do front pra refletir o
 // material enviado / idêntico às 30 telas") — moldura hexagonal (ver
@@ -1965,8 +1984,7 @@ function askBoard() {
    2 extremos são literalmente os 2 exemplos que o próprio documento
    dá ("terminar entre os 6 primeiros" / "não cair"). */
 function averageOverall(list) {
-  if (!list.length) return 0;
-  return list.reduce((s, p) => s + p.overall, 0) / list.length;
+  return motorEstado().mediaOverall(list);
 }
 // AJUSTE (pedido do usuário: "o mercado deve trazer jogadores das 3
 // ligas") — numa carreira "multi", CAREER.leagueSquads tem elenco de
@@ -2595,8 +2613,7 @@ const CUP_ROUNDS_EXPANDED = {
   qf: { ida: 21, volta: 24 }, sf: { ida: 27, volta: 30 }, final: { ida: 33, volta: 36 },
 };
 function squadAvgOverallOf(clubId) {
-  if (String(clubId) === String(CAREER.clubId)) return averageOverall(CAREER.squad.filter((p) => p.origin === "principal"));
-  return averageOverall(CAREER.leagueSquads[String(clubId)] || []);
+  return motorEstado().forcaMediaDoElenco(clubId);
 }
 function shuffleWithRng(arr, rng) {
   const a = arr.slice();
@@ -3816,18 +3833,11 @@ function pushTransferLog(text, round) {
    pesar o save. 3 dos 4 tipos do mockup têm toggle correspondente em
    Configurações (ver CAREER.notificationSettings); "posicao" e
    "olheiro" não têm toggle no mockup — sempre entram. */
-const NOTIFICATION_MAX = 30;
-const NOTIFICATION_ICON = { calendario: "🗓️", lesao: "🩹", proposta: "💰", posicao: "🏆", olheiro: "🔭", loja: "🎁", partida: "📅" };
 function pushNotification(type, text, opts = {}) {
-  CAREER.notificationSettings = CAREER.notificationSettings || { partida: true, loja: false, lesao: true };
-  const gate = opts.gateBy || null; // "partida" | "loja" | "lesao" | null (sem toggle correspondente)
-  if (gate && CAREER.notificationSettings[gate] === false) return;
-  CAREER.notifications = CAREER.notifications || [];
-  CAREER.notifications.unshift({ id: `ntf_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`, type, icon: NOTIFICATION_ICON[type] || "🔔", text, ts: Date.now(), read: false });
-  if (CAREER.notifications.length > NOTIFICATION_MAX) CAREER.notifications.length = NOTIFICATION_MAX;
+  return motorRegistro().pushNotification(type, text, opts);
 }
 function unreadNotificationCount() {
-  return ((CAREER && CAREER.notifications) || []).filter((n) => !n.read).length;
+  return motorRegistro().unreadNotificationCount();
 }
 function timeAgoLabel(ts) {
   const diffMin = Math.max(0, Math.round((Date.now() - ts) / 60000));
@@ -5985,64 +5995,28 @@ function closeFatigueHistoryScreen() {
    sempre (reseta em advanceSeason). Catálogo fixo, direto da tabela do
    documento (seção 3) — não é um pool grande sorteado, são exatamente
    os objetivos que o documento especifica pra cada categoria. */
-function localDateStr(d) { d = d || new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; }
+function localDateStr(d) { return motorRegistro().localDateStr(d); }
 // Segunda-feira da semana de `d`, no fuso local — mesma data usada
 // como "início da semana" pro reset semanal (weekday: dom=0...sáb=6).
-function localWeekStartStr(d) {
-  d = d || new Date();
-  const diffToMonday = (d.getDay() + 6) % 7; // dom(0)->6, seg(1)->0, ter(2)->1...
-  const monday = new Date(d.getFullYear(), d.getMonth(), d.getDate() - diffToMonday);
-  return localDateStr(monday);
-}
-const OBJECTIVE_TEMPLATES = {
-  daily: [
-    { objectiveId: "obj_win_1_match", title: "Vença uma partida", icon: "🏆", progressType: "counter", target: 1, reward: { type: "coins", amount: 300 } },
-    { objectiveId: "obj_train_1_player", title: "Treine 1 jogador", icon: "🏋️", progressType: "counter", target: 1, reward: { type: "coins", amount: 150 } },
-    { objectiveId: "obj_market_1_move", title: "Faça 1 movimentação no mercado", icon: "💼", progressType: "counter", target: 1, reward: { type: "coins", amount: 150 } },
-  ],
-  weekly: [
-    { objectiveId: "obj_win_3_streak", title: "Vença 3 jogos seguidos", icon: "🔥", progressType: "counter", target: 3, reward: { type: "coins_boost", amount: 800 } },
-    { objectiveId: "obj_invicto_round", title: "Termine uma rodada invicto", icon: "🛡️", progressType: "boolean", target: 1, reward: { type: "coins_boost", amount: 600 } },
-  ],
-  season: [
-    { objectiveId: "obj_top4", title: "Termine entre os 4 primeiros", icon: "📈", progressType: "threshold", target: 1, reward: { type: "premium", amount: 2500 } },
-    { objectiveId: "obj_reveal_base", title: "Revele 1 jogador da base", icon: "💎", progressType: "counter", target: 1, reward: { type: "premium", amount: 1500 } },
-  ],
-};
 function freshObjectiveList(category) {
-  return OBJECTIVE_TEMPLATES[category].map((t) => ({ ...t, currentProgress: 0, status: "in_progress" }));
+  return motorRegistro().freshObjectiveList(category);
 }
 function freshObjectivesState() {
-  return {
-    daily: freshObjectiveList("daily"), weekly: freshObjectiveList("weekly"), season: freshObjectiveList("season"),
-    dailyResetDate: localDateStr(), weeklyResetWeekStart: localWeekStartStr(),
-  };
+  return motorRegistro().freshObjectivesState();
 }
 // Checa os 2 relógios de parede (dia/semana) e regenera quem estiver
 // vencido — chamado sempre que a aba Objetivos abre e também de
 // renderAll (pra completar sozinho mesmo sem o usuário abrir a aba, o
 // selo de "objetivo concluído" já aparece pronto quando ele entrar).
 function ensureObjectivesFresh() {
-  if (!CAREER.objectives) CAREER.objectives = freshObjectivesState();
-  const today = localDateStr(), weekStart = localWeekStartStr();
-  if (CAREER.objectives.dailyResetDate !== today) {
-    CAREER.objectives.daily = freshObjectiveList("daily");
-    CAREER.objectives.dailyResetDate = today;
-  }
-  if (CAREER.objectives.weeklyResetWeekStart !== weekStart) {
-    CAREER.objectives.weekly = freshObjectiveList("weekly");
-    CAREER.objectives.weeklyResetWeekStart = weekStart;
-  }
+  return motorRegistro().ensureObjectivesFresh();
 }
 // Conta vitórias seguidas no FIM de CAREER.recentForm (3=vitória, ver
 // pushRecentForm) — usado pro objetivo "vença 3 seguidos" reagir tanto
 // a evoluir quanto a "quebrar" a sequência (um empate/derrota no meio
 // zera sozinho, sem precisar de um contador à parte pra decrementar).
 function trailingWinStreak() {
-  const form = CAREER.recentForm || [];
-  let n = 0;
-  for (let i = form.length - 1; i >= 0 && form[i] === 3; i--) n++;
-  return n;
+  return motorRegistro().trailingWinStreak();
 }
 // Incrementa um objetivo (categoria+id) até o teto, marcando
 // "completed" (pronto pra coletar) ao bater a meta — chamado nos
@@ -6051,14 +6025,7 @@ function trailingWinStreak() {
 // Silencioso se o objetivo já não existir (categoria expirou) ou já
 // tiver sido completado/coletado.
 function bumpObjective(category, objectiveId, amount) {
-  const list = CAREER.objectives && CAREER.objectives[category];
-  const obj = list && list.find((o) => o.objectiveId === objectiveId);
-  if (!obj || obj.status !== "in_progress") return;
-  obj.currentProgress = Math.min(obj.target, obj.currentProgress + (amount || 1));
-  if (obj.currentProgress >= obj.target) {
-    obj.status = "completed";
-    toast({ title: "Objetivo concluído!", detail: obj.title }, { type: "pos" });
-  }
+  return motorRegistro().bumpObjective(category, objectiveId, amount);
 }
 // Traduz o reward genérico do documento pra mecânica real do jogo —
 // mesma decisão já tomada pro login diário (ver applyDailyLoginReward
@@ -6067,16 +6034,11 @@ function bumpObjective(category, objectiveId, amount) {
 // "premium" (temporada) empilha moedas + moral + recuperação de
 // condição — sem inventar item cosmético nenhum que o jogo não tem.
 function applyObjectiveReward(reward) {
-  CAREER.finances.cash += reward.amount;
+  // Etapa C1: o efeito é do motor (motor/registro.js); o texto do aviso, daqui.
+  const efeitos = motorRegistro().applyObjectiveReward(reward);
   let detail = `+${fmtBRL(reward.amount)}`;
-  if (reward.type === "coins_boost" || reward.type === "premium") {
-    CAREER.squad.forEach((p) => { p.morale = clamp((p.morale == null ? 70 : p.morale) + 6, 0, 100); });
-    detail += " · moral do elenco em alta";
-  }
-  if (reward.type === "premium") {
-    CAREER.squad.forEach((p) => { p.condition = clamp((p.condition == null ? 100 : p.condition) + 15, 0, 100); });
-    detail += " · condição física recuperada";
-  }
+  if (efeitos.moral) detail += " · moral do elenco em alta";
+  if (efeitos.condicao) detail += " · condição física recuperada";
   return detail;
 }
 function claimObjective(category, objectiveId) {
@@ -6103,33 +6065,15 @@ function claimObjective(category, objectiveId) {
    central do próprio jogo, ausente da tabela original mas óbvio de
    incluir já que existe). tier (bronze/prata/ouro) só varia o visual
    do badge, mesmo espírito do documento. */
-const ACHIEVEMENT_CATALOG = [
-  { achievementId: "ach_idolo", title: "Ídolo", description: "Complete 10 temporadas no mesmo clube.", category: "carreira", tier: "gold", target: 10, icon: "👑" },
-  { achievementId: "ach_campeao_nacional", title: "Campeão Brasileiro", description: "Vença o Brasileirão.", category: "titulos", tier: "gold", target: 1, icon: "🏆" },
-  { achievementId: "ach_campeao_copa", title: "Campeão da Copa", description: "Vença a Copa do Brasil.", category: "titulos", tier: "silver", target: 1, icon: "🏆" },
-  { achievementId: "ach_artilheiro_area", title: "Artilheiro de Área", description: "100 gols do time em uma temporada.", category: "ofensivo", tier: "gold", target: 100, icon: "⚽" },
-  { achievementId: "ach_fairplay", title: "Fair Play", description: "Termine uma temporada com menos de 30 faltas cometidas.", category: "disciplina", tier: "bronze", target: 1, icon: "🤝" },
-  { achievementId: "ach_joia_base", title: "Joia da Base", description: "Revele 5 jogadores da categoria de base.", category: "formacao", tier: "silver", target: 5, icon: "💎" },
-  { achievementId: "ach_veterano", title: "Veterano", description: "1 ano completo de conta ativa.", category: "fidelidade", tier: "bronze", target: 1, icon: "📅" },
-];
 const ACHIEVEMENT_CATEGORY_LABEL = { carreira: "Carreira", titulos: "Títulos", ofensivo: "Ofensivo", disciplina: "Disciplina", formacao: "Formação", fidelidade: "Fidelidade" };
 function freshAchievementsState() {
-  return ACHIEVEMENT_CATALOG.map((a) => ({ achievementId: a.achievementId, currentProgress: 0, unlockedAt: null }));
+  return motorRegistro().freshAchievementsState();
 }
 function achievementProgressFor(id) {
-  const entry = (CAREER.achievements || []).find((a) => a.achievementId === id);
-  return entry || { achievementId: id, currentProgress: 0, unlockedAt: null };
+  return motorRegistro().achievementProgressFor(id);
 }
 function setAchievementProgress(id, progress) {
-  if (!CAREER.achievements) CAREER.achievements = freshAchievementsState();
-  const entry = CAREER.achievements.find((a) => a.achievementId === id);
-  if (!entry) return;
-  const tpl = ACHIEVEMENT_CATALOG.find((a) => a.achievementId === id);
-  entry.currentProgress = Math.min(tpl.target, progress);
-  if (!entry.unlockedAt && entry.currentProgress >= tpl.target) {
-    entry.unlockedAt = Date.now();
-    toast({ title: "Conquista desbloqueada!", detail: `${tpl.icon} ${tpl.title}` }, { type: "pos" });
-  }
+  return motorRegistro().setAchievementProgress(id, progress);
 }
 // Achievements CONTÍNUOS (sempre seguros de reavaliar a qualquer
 // momento, sem depender de "fim de temporada" — ver os 2 marcados
@@ -6137,19 +6081,8 @@ function setAchievementProgress(id, progress) {
 // relevantes (promoção da base, virada de temporada) e sempre que a
 // tela de Conquistas abre, pra nunca ficar desatualizado.
 function evaluateAlwaysCheckableAchievements() {
-  if (!CAREER.achievements) CAREER.achievements = freshAchievementsState();
-  // Reaproveita CAREER.seasonHistory (já existente, ver advanceSeason)
-  // em vez de um contador novo — ele já é zerado sozinho a cada clube
-  // novo (ver startCareer) e MAX_SEASON_HISTORY (15) é folgado o
-  // bastante acima da meta desta conquista (10).
-  setAchievementProgress("ach_idolo", (CAREER.seasonHistory || []).length);
-  setAchievementProgress("ach_joia_base", CAREER.baseRevealedCount || 0);
-  setAchievementProgress("ach_campeao_nacional", CAREER.titlesWonNacional > 0 ? 1 : 0);
-  setAchievementProgress("ach_campeao_copa", CAREER.titlesWonCopa > 0 ? 1 : 0);
-  if (ME && ME.createdAt) {
-    const oneYearMs = 365 * 24 * 60 * 60 * 1000;
-    setAchievementProgress("ach_veterano", (Date.now() - ME.createdAt) >= oneYearMs ? 1 : 0);
-  }
+  // "Veterano" usa a data de criação da CONTA (ME), que não é do save.
+  return motorRegistro().evaluateAlwaysCheckableAchievements(ME && ME.createdAt);
 }
 // Achievements que só fazem sentido conferir no FIM de uma temporada
 // (o total de gols/faltas sobe ao longo do ano — checar no meio
@@ -6158,9 +6091,7 @@ function evaluateAlwaysCheckableAchievements() {
 // gols). Chamado de dentro de advanceSeason, com os totais da
 // temporada que ACABOU de terminar, antes de zerá-los pra próxima.
 function evaluateSeasonEndAchievements(finishedTeamGoals, finishedTeamFouls) {
-  if (!CAREER.achievements) CAREER.achievements = freshAchievementsState();
-  setAchievementProgress("ach_artilheiro_area", Math.max(achievementProgressFor("ach_artilheiro_area").currentProgress, finishedTeamGoals));
-  if (finishedTeamFouls < 30) setAchievementProgress("ach_fairplay", 1);
+  return motorRegistro().evaluateSeasonEndAchievements(finishedTeamGoals, finishedTeamFouls);
 }
 
 /* ---------- Retenção/Engajamento — Renderização (Objetivos/
@@ -6221,19 +6152,19 @@ function renderConquistas() {
   if (!CAREER.achievements) CAREER.achievements = freshAchievementsState();
   evaluateAlwaysCheckableAchievements();
   const unlockedCount = CAREER.achievements.filter((a) => a.unlockedAt).length;
-  document.getElementById("achievementsSubtitle").textContent = `${unlockedCount} DE ${ACHIEVEMENT_CATALOG.length} DESBLOQUEADAS`;
+  document.getElementById("achievementsSubtitle").textContent = `${unlockedCount} DE ${motorRegistro().ACHIEVEMENT_CATALOG.length} DESBLOQUEADAS`;
   document.querySelectorAll("#achievementsFilters .mt-chip").forEach((chip) => chip.classList.toggle("active", chip.dataset.filter === ACHIEVEMENTS_ACTIVE_FILTER));
-  const list = ACHIEVEMENT_CATALOG.filter((t) => ACHIEVEMENTS_ACTIVE_FILTER === "todas" || t.category === ACHIEVEMENTS_ACTIVE_FILTER);
+  const list = motorRegistro().ACHIEVEMENT_CATALOG.filter((t) => ACHIEVEMENTS_ACTIVE_FILTER === "todas" || t.category === ACHIEVEMENTS_ACTIVE_FILTER);
   const grid = document.getElementById("achievementsGrid");
   grid.innerHTML = list.length ? list.map(achievementBadgeHTML).join("") : `<p class="ct-empty">Nenhuma conquista nessa categoria.</p>`;
   grid.querySelectorAll("[data-achievement]").forEach((el) => el.addEventListener("click", () => openAchievementDetail(el.dataset.achievement)));
-  const nextLocked = ACHIEVEMENT_CATALOG.find((t) => !achievementProgressFor(t.achievementId).unlockedAt);
+  const nextLocked = motorRegistro().ACHIEVEMENT_CATALOG.find((t) => !achievementProgressFor(t.achievementId).unlockedAt);
   document.getElementById("achievementsNext").textContent = nextLocked
     ? `★ PRÓXIMA: ${nextLocked.title}${nextLocked.target > 1 ? ` — faltam ${nextLocked.target - achievementProgressFor(nextLocked.achievementId).currentProgress}` : ""}`
     : "★ Todas as conquistas desbloqueadas!";
 }
 function openAchievementDetail(id) {
-  const tpl = ACHIEVEMENT_CATALOG.find((a) => a.achievementId === id);
+  const tpl = motorRegistro().ACHIEVEMENT_CATALOG.find((a) => a.achievementId === id);
   const entry = achievementProgressFor(id);
   const unlocked = !!entry.unlockedAt;
   document.getElementById("achievementDetailIcon").textContent = tpl.icon;
@@ -7425,89 +7356,19 @@ function cloneStandings(standings) {
    resultado "melhor que o esperado" contra favorito) — mesmo espírito
    da manchete, sem inventar timeline que a simulação não tem. */
 const NEWS_ICON = { lider: "📈", zebra: "⚡", goleada: "🥅", jejum_quebrado: "🔥", lanterna_reage: "🆙", empate_defendido: "🛡️", generico: "📰" };
-const NEWS_PRIORITY = { lider: 1, zebra: 2, lanterna_reage: 3, goleada: 4, empate_defendido: 5, jejum_quebrado: 6, generico: 9 };
-const WINLESS_STREAK_THRESHOLD = 5; // rodadas sem vencer pra "jejum" valer manchete
-const NEWS_FEED_MAX = 60; // manchetes guardadas no feed navegável (ver finishRoundTail/renderNewsScreen)
 const NEWS_TAG_LABEL = { lider: "Liderança", zebra: "Zebra", goleada: "Goleada", jejum_quebrado: "Fim de jejum", lanterna_reage: "Reação", empate_defendido: "Defesa do resultado", generico: "Rodada" };
-const ZEBRA_OVR_GAP = 6; // diferença mínima de overall médio pra contar como zebra/empate-defendido
 function rankByPoints(standings) {
-  const rows = motorTabela().sortRows(standings);
-  const pos = {};
-  rows.forEach((r, i) => { pos[r.id] = i + 1; });
-  return pos;
+  return motorRegistro().rankByPoints(standings);
 }
 // Atualiza o jejum de vitória de TODOS os times que jogaram essa
 // rodada (zera pra quem venceu, soma 1 pra quem empatou/perdeu) — lido
 // ANTES de mexer (ver generateRoundNews, streaksBefore) pra saber
 // havia quanto tempo o time que venceu agora estava sem vencer.
 function updateWinlessStreaks(allResults) {
-  CAREER.teamWinlessStreak = CAREER.teamWinlessStreak || {};
-  allResults.forEach((r) => {
-    const homeId = String(r.home), awayId = String(r.away);
-    if (r.gh > r.ga) { CAREER.teamWinlessStreak[homeId] = 0; CAREER.teamWinlessStreak[awayId] = (CAREER.teamWinlessStreak[awayId] || 0) + 1; }
-    else if (r.ga > r.gh) { CAREER.teamWinlessStreak[awayId] = 0; CAREER.teamWinlessStreak[homeId] = (CAREER.teamWinlessStreak[homeId] || 0) + 1; }
-    else { CAREER.teamWinlessStreak[homeId] = (CAREER.teamWinlessStreak[homeId] || 0) + 1; CAREER.teamWinlessStreak[awayId] = (CAREER.teamWinlessStreak[awayId] || 0) + 1; }
-  });
+  return motorRegistro().updateWinlessStreaks(allResults);
 }
 function generateRoundNews(round, allResults, standingsBefore) {
-  const headlines = [];
-  const isMine = (...ids) => ids.some((id) => String(id) === String(CAREER.clubId));
-  if (standingsBefore) {
-    const posBefore = rankByPoints(standingsBefore);
-    const posAfter = rankByPoints(CAREER.standings);
-    const total = Object.keys(posAfter).length;
-    // Líder novo — pedido do usuário: comparação é por TIME (não por
-    // partida), então checa os 20 de uma vez só; sem manchete na
-    // rodada 1 (todo mundo empatado em 0, "virar líder" não diz nada).
-    if (round > 1) {
-      Object.keys(posAfter).forEach((id) => {
-        if (posAfter[id] === 1 && posBefore[id] !== 1) {
-          headlines.push({ type: "lider", mine: isMine(id), texto: `${teamById(id).name} é o novo líder` });
-        }
-      });
-    }
-    const streaksBefore = { ...(CAREER.teamWinlessStreak || {}) };
-    allResults.forEach((r) => {
-      const home = teamById(r.home), away = teamById(r.away);
-      const mine = isMine(r.home, r.away);
-      if (r.gh === r.ga) {
-        // Empate — ver adaptação no comentário do bloco acima.
-        const homeOvr = squadAvgOverallOf(r.home), awayOvr = squadAvgOverallOf(r.away);
-        if (homeOvr != null && awayOvr != null && awayOvr >= homeOvr + ZEBRA_OVR_GAP) {
-          headlines.push({ type: "empate_defendido", mine, texto: `${home.name} segura o empate em casa` });
-        }
-        return;
-      }
-      const winnerId = r.gh > r.ga ? r.home : r.away;
-      const loserId = r.gh > r.ga ? r.away : r.home;
-      const winner = teamById(winnerId), loser = teamById(loserId);
-      const margin = Math.abs(r.gh - r.ga);
-      if (margin >= 3) {
-        headlines.push({ type: "goleada", mine, texto: `${winner.name} aplica goleada sobre ${loser.name} (${Math.max(r.gh, r.ga)} x ${Math.min(r.gh, r.ga)})` });
-      }
-      const winnerOvr = squadAvgOverallOf(winnerId), loserOvr = squadAvgOverallOf(loserId);
-      if (winnerOvr != null && loserOvr != null && winnerOvr <= loserOvr - ZEBRA_OVR_GAP) {
-        headlines.push({ type: "zebra", mine, texto: `Zebra: ${winner.name} surpreende e vence ${loser.name}` });
-      }
-      if (posBefore[String(winnerId)] === total) {
-        const zoneClause = posAfter[String(winnerId)] <= total - 4 ? " e sai da zona de rebaixamento" : "";
-        headlines.push({ type: "lanterna_reage", mine, texto: `Reação: lanterna ${winner.name} vence${zoneClause}` });
-      }
-      const streak = streaksBefore[String(winnerId)] || 0;
-      if (streak >= WINLESS_STREAK_THRESHOLD) {
-        headlines.push({ type: "jejum_quebrado", mine, texto: `${winner.name} encerra jejum de ${streak} jogos sem vitória` });
-      }
-    });
-  }
-  updateWinlessStreaks(allResults);
-  if (!headlines.length) {
-    headlines.push({ type: "generico", mine: false, texto: `Rodada ${round} não teve grandes surpresas na tabela.` });
-  }
-  // Prioridade pedida: manchete do SEU clube sempre primeiro,
-  // independente do tipo — depois disso, líder > zebra > lanterna
-  // reage > goleada > empate defendido > jejum quebrado > genérico.
-  headlines.sort((a, b) => ((b.mine ? 1 : 0) - (a.mine ? 1 : 0)) || (NEWS_PRIORITY[a.type] - NEWS_PRIORITY[b.type]));
-  return headlines.slice(0, 6);
+  return motorRegistro().generateRoundNews(round, allResults, standingsBefore);
 }
 // ---------- BRDATA Product Pattern novo: NewsCard (S4-B4-005) ----------
 // Nome: NewsCard
@@ -7861,7 +7722,7 @@ function determineMatchPressTrigger(ctx) {
   // LIVE_MATCH_CHUNK_MINUTES) que não terminou em derrota.
   const lateMineGoal = (events || []).some((e) => e.type === "gol" && e.mine === true && e.minute === 90);
   if (lateMineGoal && !lost) candidates.push("21");
-  if (won && myOvr != null && oppOvr != null && myOvr <= oppOvr - ZEBRA_OVR_GAP) candidates.push("11");
+  if (won && myOvr != null && oppOvr != null && myOvr <= oppOvr - motorRegistro().ZEBRA_OVR_GAP) candidates.push("11");
   if (won && margin >= 3) candidates.push("12");
   // Jovem da base estreando bem: marcou ou deu assistência NESSE jogo,
   // é da base e é literalmente o primeiro jogo dele (apps já
@@ -7873,9 +7734,9 @@ function determineMatchPressTrigger(ctx) {
     && CAREER.squad.some((p) => (p.name === e.player || p.name === e.assistPlayer) && p.origin === "base" && p.apps === 1));
   if (debutStar) candidates.push("17");
   if (myPosAfter != null && myPosAfter > total - 4) candidates.push("08");
-  if (lost && myOvr != null && oppOvr != null && myOvr >= oppOvr + ZEBRA_OVR_GAP) candidates.push("10");
+  if (lost && myOvr != null && oppOvr != null && myOvr >= oppOvr + motorRegistro().ZEBRA_OVR_GAP) candidates.push("10");
   if (lost && margin >= 3) candidates.push("13");
-  if (won && winlessBefore >= WINLESS_STREAK_THRESHOLD) candidates.push("14");
+  if (won && winlessBefore >= motorRegistro().WINLESS_STREAK_THRESHOLD) candidates.push("14");
   // Meta em risco: só dispara 1x por temporada (senão repetiria toda
   // rodada enquanto o time seguir mal na tabela) — marca
   // metaRiskWarnedSeason só quando REALMENTE dispara (não quando só
@@ -8131,7 +7992,7 @@ function finishRoundTail(round, allResults, humanMatch, standingsBefore) {
   // abaixo, só alimenta CAREER.newsFeed aqui.
   const roundEntries = news.map((n) => ({ ...n, round, seasonYear: CAREER.seasonYear }));
   CAREER.newsFeed = roundEntries.concat(CAREER.newsFeed || []);
-  if (CAREER.newsFeed.length > NEWS_FEED_MAX) CAREER.newsFeed.length = NEWS_FEED_MAX;
+  if (CAREER.newsFeed.length > motorRegistro().NEWS_FEED_MAX) CAREER.newsFeed.length = motorRegistro().NEWS_FEED_MAX;
   // Central de notificações (Bloco 8 pendentes) — "posicao" não tem
   // toggle no mockup (sempre entra); "partida" (lembrete do próximo
   // jogo) tem toggle em Configurações. Comparado contra standingsBefore
@@ -16997,7 +16858,7 @@ if (V2_PONTE) {
       if (JSON.stringify(CAREER.achievements) !== antes) { const g = await ponteGravar(); if (!g.ok) return g; }
       return {
         ok: true, categorias: ACHIEVEMENT_CATEGORY_LABEL,
-        lista: ACHIEVEMENT_CATALOG.map((t) => { const e = achievementProgressFor(t.achievementId); return { id: t.achievementId, titulo: t.title, descricao: t.description, categoria: t.category, nivel: t.tier, meta: t.target, icone: t.icon, progresso: e.currentProgress || 0, desbloqueadaEm: e.unlockedAt || null }; }),
+        lista: motorRegistro().ACHIEVEMENT_CATALOG.map((t) => { const e = achievementProgressFor(t.achievementId); return { id: t.achievementId, titulo: t.title, descricao: t.description, categoria: t.category, nivel: t.tier, meta: t.target, icone: t.icon, progresso: e.currentProgress || 0, desbloqueadaEm: e.unlockedAt || null }; }),
       };
     },
     pontuacaoRanking() {
@@ -17353,11 +17214,11 @@ if (V2_PONTE) {
         if (a.copaDoBrasil && a.copaDoBrasil.disputou && String(a.copaDoBrasil.campeao) === String(CAREER.clubId)) titulos.push({ ano: a.seasonYear, competicao: "copa" });
       });
       const conquistas = (CAREER.achievements || []).filter((a) => a.unlockedAt).map((a) => {
-        const tpl = ACHIEVEMENT_CATALOG.find((t) => t.achievementId === a.achievementId);
+        const tpl = motorRegistro().ACHIEVEMENT_CATALOG.find((t) => t.achievementId === a.achievementId);
         return tpl ? { id: a.achievementId, titulo: tpl.title, data: a.unlockedAt } : null;
       }).filter(Boolean).sort((x, y) => y.data - x.data);
       return {
-        ok: true, nome: (ME && ME.name) || null, reputacao: rep, status: reputationLabel(rep), conquistasTotal: ACHIEVEMENT_CATALOG.length,
+        ok: true, nome: (ME && ME.name) || null, reputacao: rep, status: reputationLabel(rep), conquistasTotal: motorRegistro().ACHIEVEMENT_CATALOG.length,
         atual: { nome: CAREER.clubName, temporadas: hist.length, melhorPosicao: hist.length ? Math.min(...hist.map((h) => h.position)) : null, titulos: titulos.length },
         anteriores: (CAREER.clubHistory || []).map((h) => ({ nome: h.clubName, temporadas: h.seasons, titulos: h.titles, posicaoMedia: h.avgPosition, saida: h.reason })),
         titulos, conquistas,
@@ -17666,6 +17527,7 @@ function wireModalScrollResetObserver() {
   observer.observe(document.body, { attributes: true, attributeFilter: ["class"], subtree: true });
 }
 async function boot() {
+  ouvirAvisosDoMotor(); // etapa C1: avisos do motor viram toast
   // Item 5 da lista de melhorias — captura o ?convite=CODE da URL (se
   // veio de um link compartilhado) ANTES de saber se o visitante já
   // tem sessão; consumido de verdade depois, em enterAfterAuth() (ver

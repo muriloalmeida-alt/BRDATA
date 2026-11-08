@@ -12,3 +12,14 @@ export function gravarSave(save: Save | null | undefined, pedir: Pedir, agora?: 
   | { ok: true }
   | { ok: false; motivo: "sem-carreira" | "sessao" | "grande" | "falha"; status?: number | null; mensagem?: string | null }
 >;
+// Mundo da carreira (etapa C1).
+export interface Time { id: string | number; name: string; short?: string; competitionId?: string; [k: string]: unknown }
+export function ligaAtual(): Time[];
+export function definirLigaAtual(lista: Time[]): Time[];
+export function todosTimes(): Time[];
+export function definirTodosTimes(lista: Time[]): Time[];
+export function competicaoAtual(): string;
+export function definirCompeticaoAtual(id: string): string;
+export function timePorId(id: string | number): Time;
+export function mediaOverall(lista: { overall: number }[]): number;
+export function forcaMediaDoElenco(clubId: string | number): number;
