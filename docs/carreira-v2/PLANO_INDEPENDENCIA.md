@@ -1,7 +1,7 @@
 # Carreira 2.0: plano para separar `/carreira` de `/carreira-old`
 
 - **Data:** 03/11/2026 (situação atualizada em 05/11, seção 9).
-- **Status:** fases 0 a 11 e P8 na `main` (#57 a #70); fase 12 em andamento (etapas 1 a 5 na `main`, etapa 6 em PR). Depois dela: tirar a página escondida (plano à parte, `PLANO_SEM_PAGINA_ESCONDIDA.md`). Ver a seção 9.
+- **Status:** fases 0 a 11 e P8 na `main` (#57 a #70); fase 12 concluída (etapas 1 a 6 na `main`). Agora: tirar a página escondida (`PLANO_SEM_PAGINA_ESCONDIDA.md`), etapa A em PR. Ver a seção 9.
 - **Atualização de 03/11:** chegou o pacote complementar do GPT, com as pranchas 17 a 45 (`referencias/complemento_17_45/`). Veja a seção 6.
 - **Objetivo** (pedido do Murilo, 03/11): `/carreira` (v2) e `/carreira-old` (versão anterior) **100% independentes**, sem nenhuma transição entre a jornada nova e a antiga.
 
@@ -393,8 +393,9 @@ A seção 8 é o retrato de 03/11 e fica como histórico.
 | Comissão técnica: sugestões rápidas (Escalação, Formação, Postura) | #76 | na `main` |
 | 12.4 — treino e evolução natural (`motor/treino.js`) | #77 | na `main` |
 | 12.5 — núcleo do mercado (`motor/mercado.js`) | #78 | na `main` |
-| 12.6 — regras da virada de temporada (`motor/temporada.js`) | #79 | `ENTREGA_F12_6_TEMPORADA.md` |
-| Depois da fase 12 — tirar a página escondida | — | **plano para aprovação:** `PLANO_SEM_PAGINA_ESCONDIDA.md` |
+| 12.6 — regras da virada de temporada (`motor/temporada.js`) | #79 | na `main` |
+| Depois da fase 12 — tirar a página escondida | — | plano aprovado (07/11): `PLANO_SEM_PAGINA_ESCONDIDA.md` |
+| Sem página escondida, etapa A — jogo sem tela | próximo PR | `ENTREGA_SEM_TELA_A.md` |
 
 ### Pontos de dependência (seção 1)
 - **1 a 10:** resolvidos. Nenhuma tela da v2 abre a versão anterior. O teste `test_v2_corte.js` navega por 70 telas sem nenhuma saída.
