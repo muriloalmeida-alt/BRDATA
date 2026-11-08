@@ -2,7 +2,7 @@
 
 - **Data:** 08/11/2026.
 - **Branch:** `sem-tela-b`, a partir de `main` (com o #80, etapa A).
-- **Status:** aguardando aprovação do Murilo. Commit local, sem push e sem PR.
+- **Status:** aprovado pelo Murilo (08/11).
 
 **Decisões aplicadas** (08/11):
 - **O `CAREER` mora no módulo** já nesta etapa.
