@@ -43,8 +43,8 @@ const CARREIRA_COM_TELA = CARREIRA_JS
   .replace(NARRACAO, "let idx = Math.floor(__sorteioNarracao() * bank.length);");
 
 // Uma conta nova e a página /carreira/motor dela, sem navegador.
-async function abrirPagina({ codigo = CARREIRA_JS, semente = null, medir = false } = {}) {
-  const cookies = new Map();
+async function abrirPagina({ codigo = CARREIRA_JS, semente = null, medir = false, sessao = null } = {}) {
+  const cookies = sessao ? sessao.cookies : new Map();
   const cookie = () => [...cookies].map(([k, v]) => `${k}=${v}`).join("; ");
   const setCookie = (sc) => { const kv = sc.split(";")[0]; const i = kv.indexOf("="); cookies.set(kv.slice(0, i).trim(), kv.slice(i + 1)); };
   const api = async (url, body) => {
@@ -52,9 +52,11 @@ async function abrirPagina({ codigo = CARREIRA_JS, semente = null, medir = false
     (res.headers.getSetCookie ? res.headers.getSetCookie() : []).forEach(setCookie);
     return res.json().catch(() => null);
   };
-  const email = `semtela${Date.now()}${Math.floor(Math.random() * 1e6)}@teste.com`;
-  await api("/api/auth/signup", { name: "Sem Tela", email, password: "senha123", phone: "11999999999", plan: "freemium" });
-  await api("/api/auth/login", { email, password: "senha123" });
+  if (!sessao) {
+    const email = `semtela${Date.now()}${Math.floor(Math.random() * 1e6)}@teste.com`;
+    await api("/api/auth/signup", { name: "Sem Tela", email, password: "senha123", phone: "11999999999", plan: "freemium" });
+    await api("/api/auth/login", { email, password: "senha123" });
+  }
 
   const { win, documento, sinais } = criarJanela({ base, cookie, setCookie });
   const ctx = vm.createContext(win);
@@ -76,7 +78,7 @@ async function abrirPagina({ codigo = CARREIRA_JS, semente = null, medir = false
   }
   documento.dispatchEvent(new win.Event("DOMContentLoaded"));
   const pronta = await ate(() => rodar("PONTE.pronta", "estado"), 30000);
-  return { P: win.BRDATA_PONTE, pronta, api, sinais, desenho, rodar };
+  return { P: win.BRDATA_PONTE, pronta, api, sinais, desenho, rodar, sessao: { cookies } };
 }
 
 // Uma rodada como a v2: semana até o jogo, partida ao vivo até o fim e o
@@ -180,9 +182,28 @@ async function criar(P) {
     }
     P.encerrarPosJogo();
     const gravado = (await api("/api/career")).career;
-    check("8) Substituição e tática ao vivo pela ponte, sem tela: troca feita, eixo inválido ignorado, custo de familiaridade, partida parada, lance na ponte e tudo gravado:",
+    check("7) Substituição e tática ao vivo pela ponte, sem tela: troca feita, eixo inválido ignorado, custo de familiaridade, partida parada, lance na ponte e tudo gravado:",
       i.ok && okSub && okTat && depois.pausada && okEventos && est && est.gravada && gravado.lineup.formation === formacao && gravado.lineup.tactics.pressao === 5,
       JSON.stringify({ sub, tat, okSub, okTat, pausada: depois.pausada, okEventos, gravada: est && est.gravada }));
+  }
+
+  // ---------- Etapa B: o save mora em motor/estado.js, com versão ----------
+  {
+    const mesmoObjeto = pg.rodar("CAREER === window.BRDATA_MOTOR.estado.carreiraAtual() && !!CAREER", "estado");
+    const salvo = (await api("/api/career")).career;
+    check("8) O save mora no módulo de estado (CAREER é o mesmo objeto) e a carreira grava com schemaVersion 1:",
+      mesmoObjeto && salvo.schemaVersion === 1, JSON.stringify({ mesmoObjeto, schemaVersion: salvo.schemaVersion }));
+    // Save antigo: o mesmo save, sem o campo, gravado direto na API.
+    const antigo = { ...salvo }; delete antigo.schemaVersion;
+    const put = await fetch(base + "/api/career", { method: "PUT", headers: { "Content-Type": "application/json", cookie: [...pg.sessao.cookies].map(([k, v]) => `${k}=${v}`).join("; ") }, body: JSON.stringify(antigo) });
+    const semCampo = (await api("/api/career")).career.schemaVersion === undefined;
+    const pg2 = await abrirPagina({ sessao: pg.sessao });
+    const naMemoria = pg2.rodar("CAREER && CAREER.schemaVersion", "estado");
+    const r = await jogarRodada(pg2.P);
+    const depois = (await api("/api/career")).career;
+    check("9) Save antigo (sem schemaVersion) abre migrado para a versão 1 e é gravado assim na próxima jogada, sem perder nada:",
+      put.ok && semCampo && naMemoria === 1 && r.ok && depois.schemaVersion === 1 && depois.version === 1 && depois.currentRound === salvo.currentRound + 1,
+      JSON.stringify({ put: put.status, semCampo, naMemoria, rodada: r.ok, gravado: depois.schemaVersion }));
   }
 
   // ---------- 2. O desenho não muda o jogo ----------
@@ -206,7 +227,7 @@ async function criar(P) {
     const a = limpa(comTela), b = limpa(semTela);
     diff = [...new Set([...Object.keys(a), ...Object.keys(b)])].filter((k) => JSON.stringify(a[k]) !== JSON.stringify(b[k])).join(",");
   } else diff = JSON.stringify({ comTela: comTela && comTela.erro, semTela: semTela && semTela.erro });
-  check(`7) Mesma carreira e mesmo sorteio (${RODADAS} rodadas): o save sem tela é idêntico ao da página desenhando:`,
+  check(`10) Mesma carreira e mesmo sorteio (${RODADAS} rodadas): o save sem tela é idêntico ao da página desenhando:`,
     comTela && semTela && !comTela.erro && !semTela.erro && diff === "", diff ? `diferem: ${diff}` : `rodada ${semTela && semTela.currentRound}`);
 
   // ---------- O que a lógica ainda pediu da tela ----------
