@@ -63,4 +63,5 @@ Eu não criei banco nem mexi em variável ou deploy.
   7. o mesmo roteiro com arquivo e com banco deixa os mesmos dados.
 - **Testes E2E:** o servidor isolado de cada rodada sobe com um **Postgres temporário próprio** (`tests/_pg_temporario.js`). A suíte inteira roda no caminho de produção, e a cópia dos arquivos que os perfis preparam antes da subida é exercitada em toda rodada. `BRDATA_TESTE_SEM_BANCO=1` força o modo arquivo.
 - **CI:** os jobs de testes ganharam um serviço Postgres 16, com um banco novo por servidor isolado.
-- **Suíte completa (com Postgres):** __SUITE__.
+- **Suíte completa (com Postgres):** 194/195 na 1ª rodada. A falha foi `test_save_limit_001_careerstore`, que copia o `careerStore.js` para uma pasta temporária e não levava os dois módulos novos (`persistencia.js`, `db.js`). Corrigido, passa. Total: **195/195**.
+  - **O banco recebeu de fato os dados:** no fim da rodada principal, o Postgres temporário tinha 189 contas, 187 sessões e 182 carreiras. Os dois perfis de servidor também gravaram no banco.
