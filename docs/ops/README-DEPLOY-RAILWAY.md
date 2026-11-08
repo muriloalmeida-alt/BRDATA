@@ -22,6 +22,23 @@ Com HML e PRD já criados, confirme os itens abaixo — são a parte que **não*
   - `MERCADOPAGO_ACCESS_TOKEN`: mesmo token real nos dois, ou um token de teste no HML se quiser evitar pagamentos de verdade durante testes — ver [README-PAGAMENTOS.md](README-PAGAMENTOS.md).
   - `LIVE_SEASON`, `PLAN_*_PRICE`: normalmente iguais nos dois, ajuste se fizer sentido pro seu teste.
 
+## Postgres: contas, sessões e carreiras (plano de 08/11)
+
+Desde o PR do Postgres, o servidor guarda contas, sessões e carreiras no Postgres **quando a variável `DATABASE_URL` existe**. Sem ela, continua nos arquivos de `server/data`, como antes. Por isso o código pode ir para a `main` (e para o HML, que publica sozinho) antes de o banco existir: nada muda até a variável ser colocada. Detalhes em [PLANO_POSTGRES.md](PLANO_POSTGRES.md).
+
+**Ligar o banco num ambiente** (faça primeiro no HML, depois no PRD):
+1. No projeto do Railway, dentro do ambiente: **+ New → Database → PostgreSQL**.
+2. No serviço do jogo, em **Variables**, crie `DATABASE_URL` com a referência à variável do banco: `${{Postgres.DATABASE_URL}}` (o nome `Postgres` é o do serviço do banco; ajuste se for outro). Isso usa a rede interna do Railway.
+3. O Railway publica de novo. No log da subida, procure a linha:
+   `[persistencia] Postgres pronto em …ms — contas: N no banco (N copiados do arquivo e conferidos); sessoes: …; carreiras: ….`
+   É a cópia única dos arquivos para o banco, conferida registro a registro. Nas subidas seguintes, a linha mostra só "N no banco".
+4. Teste no jogo: entrar com uma conta existente, abrir a carreira, jogar uma rodada e recarregar.
+5. **Mantenha o Volume montado.** Os arquivos não são apagados nem alterados pela cópia: ficam como reserva até você decidir apagar.
+
+**Se a subida falhar com o banco** (por exemplo, a cópia não conferiu), o log explica o motivo, e o servidor **não sobe**, para não ficar com dados pela metade. Os arquivos continuam intactos. Para voltar ao modo arquivo na hora, apague a variável `DATABASE_URL`.
+
+**Voltar do banco para os arquivos depois de usar o banco:** depois da cópia, as gravações vão só para o banco, e os arquivos param no tempo. Antes de tirar a `DATABASE_URL`, exporte o banco: no shell do serviço, `node scripts/exportar-postgres.js` grava `users.json`, `sessions.json` e `careers.json` numa pasta nova dentro de `server/data/`. Confira, copie os 3 para `server/data` e só então tire a variável.
+
 ## Como atualizar produção (deploy manual)
 
 1. Teste as mudanças no ambiente **HML** primeiro (já atualiza sozinho a cada push)

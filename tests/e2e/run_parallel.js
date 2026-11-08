@@ -53,6 +53,7 @@ const { spawn, execSync, execFileSync } = require("child_process");
 const fs = require("fs");
 const os = require("os");
 const path = require("path");
+const { subirPostgres } = require("../_pg_temporario");
 const net = require("net");
 const http = require("http");
 
@@ -209,20 +210,41 @@ async function startIsolatedServer(profile = null) {
     execFileSync(process.execPath, [path.join(DIR, profile.preBoot.script), ...profile.preBoot.args], { cwd: DIR, env: { ...process.env, SERVER_DIR: srv }, stdio: ["ignore", "pipe", "inherit"] });
   }
   const log = fs.openSync(path.join(ARTIFACTS, profile ? `server-${profile.name}.log` : "server.log"), "w");
+  // Plano Postgres (08/11): o servidor isolado roda com um Postgres
+  // temporário próprio (o caminho de produção), que importa na subida os
+  // arquivos que o perfil preparou. BRDATA_TESTE_SEM_BANCO=1 força arquivo.
+  let pg = null;
+  if (!process.env.BRDATA_TESTE_SEM_BANCO) {
+    pg = await subirPostgres();
+    if (!pg) console.log("Aviso: sem Postgres disponível — servidor isolado em modo arquivo.");
+  }
   const t0 = Date.now();
-  const proc = spawn(process.execPath, ["server.js"], { cwd: srv, env: { ...process.env, ...(profile ? profile.env : {}), PORT: String(PORT), BRDATA_LEGACY_UI: "1" }, stdio: ["ignore", log, log] });
+  const dbEnv = pg ? { DATABASE_URL: pg.url } : {};
+  const proc = spawn(process.execPath, ["server.js"], { cwd: srv, env: { ...process.env, ...(profile ? profile.env : {}), ...dbEnv, PORT: String(PORT), BRDATA_LEGACY_UI: "1" }, stdio: ["ignore", log, log] });
   while (!(await httpOk(PORT))) {
     if (proc.exitCode != null) throw new Error(`servidor isolado saiu com código ${proc.exitCode} — ver _artifacts/server.log`);
     if (Date.now() - t0 > 30000) { proc.kill("SIGKILL"); throw new Error("servidor isolado não respondeu em 30s — ver _artifacts/server.log"); }
     await new Promise((r) => setTimeout(r, 100));
   }
-  return { proc, root, bootMs: Date.now() - t0 };
+  return { proc, root, pg, bootMs: Date.now() - t0 };
 }
 async function stopIsolatedServer(s) {
   if (!s) return;
   try { s.proc.kill("SIGTERM"); } catch (_) { /* já saiu */ }
   // Espera o processo sair de fato (libera a porta pro próximo perfil).
   if (s.proc.exitCode == null) await new Promise((r) => { s.proc.once("exit", r); setTimeout(r, 5000); });
+  if (s.pg) {
+    // Prova de que a suíte gravou no banco: linhas por tabela no fim.
+    try {
+      const { Client } = require(path.join(REPO, "server", "node_modules", "pg"));
+      const c = new Client({ connectionString: s.pg.url });
+      await c.connect();
+      const n = async (t) => (await c.query(`SELECT count(*)::int AS n FROM ${t}`)).rows[0].n;
+      console.log(`Postgres temporário no fim: contas ${await n("contas")}, sessões ${await n("sessoes")}, carreiras ${await n("carreiras")}.`);
+      await c.end();
+    } catch (err) { console.log("Aviso: não deu para contar as linhas do banco:", err.message); }
+    await s.pg.parar().catch((err) => console.log("Aviso: falha ao derrubar o Postgres temporário:", err.message));
+  }
   try { fs.rmSync(s.root, { recursive: true, force: true }); } catch (_) { /* tmp: o SO limpa */ }
 }
 
@@ -299,7 +321,7 @@ async function main() {
   if (isolated) {
     server = await startIsolatedServer();
     meta.serverBootMs = server.bootMs;
-    console.log(`Servidor isolado de pé em ${server.bootMs}ms (dados vazios).\n`);
+    console.log(`Servidor isolado de pé em ${server.bootMs}ms (dados vazios${server.pg ? ", Postgres temporário" : ", modo arquivo"}).\n`);
   }
   const t0 = Date.now();
   const results = [];

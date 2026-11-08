@@ -15,7 +15,7 @@ const fs = require("fs");
 const path = require("path");
 const crypto = require("crypto");
 const { promisify } = require("util");
-const { scheduleWrite } = require("./debouncedPersist");
+const persistencia = require("./persistencia");
 
 const scryptAsync = promisify(crypto.scrypt);
 
@@ -39,8 +39,14 @@ function load() {
 // tratamento do resto do backend (ver debouncedPersist.js): escrita
 // assíncrona e debounced em vez de bloquear o event loop a cada
 // cadastro/login/coleta de recompensa diária.
+// Plano Postgres (08/11): arquivo (como sempre) ou, com DATABASE_URL, a
+// tabela `contas`, gravando só a conta que mudou (persistencia.js).
+const armazenamento = persistencia.registrar({
+  nome: "contas", tabela: "contas", arquivo: FILE, dir: DATA_DIR,
+  obter: () => store, substituir: (mapa) => { store = mapa; },
+});
 function persist() {
-  scheduleWrite(FILE, DATA_DIR, () => JSON.stringify(Object.fromEntries(store)));
+  armazenamento.agendar();
 }
 
 load();

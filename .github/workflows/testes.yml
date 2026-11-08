@@ -63,6 +63,22 @@ jobs:
     name: Rota rápida
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    # Plano Postgres (08/11): o servidor isolado de cada máquina grava num
+    # Postgres de verdade (um banco novo por servidor, ver
+    # tests/_pg_temporario.js), como em produção.
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 2s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      BRDATA_TEST_PG_URL: postgres://postgres:postgres@localhost:5432/postgres
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/preparar-testes
@@ -92,6 +108,22 @@ jobs:
       fail-fast: false
       matrix:
         shard: [1, 2, 3, 4]
+    # Plano Postgres (08/11): o servidor isolado de cada máquina grava num
+    # Postgres de verdade (um banco novo por servidor, ver
+    # tests/_pg_temporario.js), como em produção.
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 2s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      BRDATA_TEST_PG_URL: postgres://postgres:postgres@localhost:5432/postgres
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/preparar-testes

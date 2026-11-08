@@ -5,7 +5,7 @@
 const fs = require("fs");
 const path = require("path");
 const crypto = require("crypto");
-const { scheduleWrite } = require("./debouncedPersist");
+const persistencia = require("./persistencia");
 
 const DATA_DIR = path.join(__dirname, "..", "data");
 const FILE = path.join(DATA_DIR, "sessions.json");
@@ -29,8 +29,14 @@ function load() {
 // sempre que encontra um token expirado no caminho — uma escrita
 // síncrona bloqueante bem no meio do fluxo mais quente do backend
 // inteiro. Ver debouncedPersist.js.
+// Plano Postgres (08/11): arquivo (como sempre) ou, com DATABASE_URL, a
+// tabela `sessoes`, gravando só a sessão que mudou (persistencia.js).
+const armazenamento = persistencia.registrar({
+  nome: "sessoes", tabela: "sessoes", arquivo: FILE, dir: DATA_DIR,
+  obter: () => store, substituir: (mapa) => { store = mapa; },
+});
 function persist() {
-  scheduleWrite(FILE, DATA_DIR, () => JSON.stringify(Object.fromEntries(store)));
+  armazenamento.agendar();
 }
 
 load();

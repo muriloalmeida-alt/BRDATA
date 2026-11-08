@@ -91,4 +91,4 @@ function flushAllSync() {
   }
 }
 
-module.exports = { scheduleWrite, flushAllSync };
+module.exports = { scheduleWrite, flushAllSync, DEBOUNCE_MS };

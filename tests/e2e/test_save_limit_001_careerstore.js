@@ -14,13 +14,15 @@ const os = require("os");
 // Fase B do motor de testes: o teste usava o server/data/careers.json DO
 // REPOSITÓRIO (e terminava gravando "{}" nele), apagando as carreiras do
 // servidor de dev a cada execução da suíte. careerStore.js grava em
-// <__dirname>/../data, então uma CÓPIA de server/src/careerStore.js (+ o
-// único módulo local que ele usa) num diretório temporário testa o MESMO
+// <__dirname>/../data, então uma CÓPIA de server/src/careerStore.js (+ os
+// módulos locais que ele usa) num diretório temporário testa o MESMO
 // código com um data/ próprio, descartado no fim.
 const SRC_DIR = path.join(__dirname, "..", "..", "server", "src");
 const TMP_ROOT = fs.mkdtempSync(path.join(os.tmpdir(), "brdata-careerstore-"));
 fs.mkdirSync(path.join(TMP_ROOT, "src"));
-for (const m of ["careerStore.js", "debouncedPersist.js"]) fs.copyFileSync(path.join(SRC_DIR, m), path.join(TMP_ROOT, "src", m));
+// Plano Postgres (08/11): careerStore.js grava por persistencia.js (que usa
+// db.js só com DATABASE_URL); aqui, sem a variável, é o arquivo de sempre.
+for (const m of ["careerStore.js", "debouncedPersist.js", "persistencia.js", "db.js"]) fs.copyFileSync(path.join(SRC_DIR, m), path.join(TMP_ROOT, "src", m));
 const DATA_FILE = path.join(TMP_ROOT, "data", "careers.json");
 const STORE_PATH = path.join(TMP_ROOT, "src", "careerStore.js");
 process.on("exit", () => { try { fs.rmSync(TMP_ROOT, { recursive: true, force: true }); } catch (_) { /* tmp: o SO limpa */ } });
