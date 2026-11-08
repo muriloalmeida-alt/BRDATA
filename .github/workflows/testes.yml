@@ -82,6 +82,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/preparar-testes
+      # A tela antiga da carreira está descontinuada (09/11): nenhum teste
+      # novo pode depender dela (lista congelada dos antigos).
+      - name: Tela antiga congelada
+        run: node .github/scripts/verificar-tela-antiga.js
       - name: Rodar rota rápida
         working-directory: tests/e2e
         run: node run_parallel.js --suite=fast --isolated-server
