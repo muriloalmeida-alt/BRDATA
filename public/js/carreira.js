@@ -2536,7 +2536,12 @@ function setupCupLegacy(fastForwardFromRound) {
   // (silent:true, sem prêmio nem log) só pra fechar o chaveamento até a
   // fase que ainda está por vir, e a Copa volta ao normal dali em diante.
   if (fastForwardFromRound != null) {
-    while (CAREER.cup.phase !== "done" && CUP_ROUNDS[CAREER.cup.phase] < fastForwardFromRound) {
+    // Copa inativa (seu clube fora dos 16) nunca é resolvida
+    // (resolveCupPhase devolve null sem avançar a fase): sem o
+    // `cup.active` aqui, esse laço não terminava e a página travava ao
+    // carregar um save antigo depois da rodada 6 (defeito achado na etapa
+    // C3, corrigido em 09/11).
+    while (CAREER.cup.active && CAREER.cup.phase !== "done" && CUP_ROUNDS[CAREER.cup.phase] < fastForwardFromRound) {
       resolveCupPhase(CUP_ROUNDS[CAREER.cup.phase], { silent: true });
     }
   }

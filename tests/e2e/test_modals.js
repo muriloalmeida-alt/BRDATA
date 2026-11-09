@@ -102,6 +102,12 @@ const { check } = require("./_check");
   check("2) Modal de resultados da rodada abriu:", resultsOpen);
   await page.waitForTimeout(300);
   await page.screenshot({ path: "08-tabela-after.png" });
+  // Proposta por jogador (evento sorteado depois da rodada) cobre o menu:
+  // recusa, como nos outros testes do fluxo pós-jogo.
+  if (await page.evaluate(() => document.getElementById("playerOfferOverlay")?.classList.contains("open"))) {
+    await page.click("#btnPlayerOfferDecline");
+    await page.waitForFunction(() => !document.getElementById("playerOfferOverlay").classList.contains("open"));
+  }
 
   // Aba estatísticas
   await page.click("#btnBottomMenu");
