@@ -41,8 +41,10 @@ export function temAmbiente() { return ambientePronto; }
 // Avisos de tela viram o evento "aviso" (texto solto ou título e detalhe).
 export function avisar(input, opts) {
   const tipo = opts && opts.type ? opts.type : null;
-  if (typeof input === "string") emitir("aviso", { texto: input, tipo });
-  else emitir("aviso", { titulo: input.title, detalhe: input.detail, tipo });
+  // Duração própria do aviso (ex.: recusa de empréstimo, 5 s); sem ela, a da tela.
+  const extra = opts && opts.durationMs ? { duracaoMs: opts.durationMs } : {};
+  if (typeof input === "string") emitir("aviso", { texto: input, tipo, ...extra });
+  else emitir("aviso", { titulo: input.title, detalhe: input.detail, tipo, ...extra });
 }
 
 // Mesmos atalhos de carreira.js para regras de outros módulos.

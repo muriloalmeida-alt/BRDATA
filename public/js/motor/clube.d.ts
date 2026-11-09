@@ -1,0 +1,48 @@
+// Tipos de public/js/motor/clube.js (etapa E): ações de mercado e de clube
+// (propostas, anúncios, empréstimos, renovação, comissão, estádio, patrocínio,
+// olheiros, diretoria e loja), extraídas de carreira.js sem mudar regra.
+export const BOARD_REQUEST_COOLDOWN: any;
+export const LOAN_REFUSAL_EFFECTIVE_THRESHOLD: any;
+export const OFFER_WAIT_ROUNDS: any;
+export const PURCHASE_HISTORY_MAX: any;
+export const SCOUT_GROUP_LABEL: any;
+export const SCOUT_MARKET: any;
+export const STADIUM_UPGRADES: any;
+export function acceptCounterOffer(...args: any[]): any;
+export function acceptListingOffer(...args: any[]): any;
+export function acceptOffer(...args: any[]): any;
+export function applyBoostEffect(...args: any[]): any;
+export function applyTalkEffect(...args: any[]): any;
+export function boardRequest(...args: any[]): any;
+export function canTalkTo(...args: any[]): any;
+export function cancelListing(...args: any[]): any;
+export function computeLeaderboardScore(...args: any[]): any;
+export function createListing(...args: any[]): any;
+export function declineOffer(...args: any[]): any;
+export function evaluateBoardRequest(...args: any[]): any;
+export function findInterestedBuyer(...args: any[]): any;
+export function fireTechnicalStaff(...args: any[]): any;
+export function fmtBRLShort(...args: any[]): any;
+export function finalizeLoanIn(...args: any[]): Promise<any>;
+export function finalizeLoanOut(...args: any[]): Promise<any>;
+export function hireScout(...args: any[]): any;
+export function hireTechnicalStaff(...args: any[]): any;
+export function increaseOffer(...args: any[]): any;
+export function isContractExpiring(...args: any[]): any;
+export function isLoanOutRefused(...args: any[]): any;
+export function listingFor(...args: any[]): any;
+export function markLineupDirty(...args: any[]): any;
+export function pushPurchaseHistory(...args: any[]): any;
+export function recordDecline(...args: any[]): any;
+export function recruitProspectToBase(...args: any[]): any;
+export function rejectListingOffer(...args: any[]): any;
+export function releaseScout(...args: any[]): any;
+export function renewalVerdict(...args: any[]): any;
+export function scoutAllowedRegions(...args: any[]): any;
+export function scoutingAvailableRegions(...args: any[]): any;
+export function signSponsorProposal(...args: any[]): any;
+export function startScoutMission(...args: any[]): any;
+export function startStadiumUpgrade(...args: any[]): any;
+export function submitOfferOut(...args: any[]): any;
+export function suggestedRenewalWage(...args: any[]): any;
+export function withdrawOffer(...args: any[]): any;
