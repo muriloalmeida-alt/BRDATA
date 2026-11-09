@@ -60,4 +60,7 @@ Os dois chamam o fechamento do motor quando a partida acaba.
 - **Texto idêntico:** o `paginaComoAntes` passou a cobrir também o `fechamento.js`. As 49 peças da C3 e as 83 da C2 remontam iguais, caractere por caractere, ao código de antes.
 - **Testes do motor:** todos passam, inclusive os da C1 e da C2.
 - **Simulações:** todas as que rodam sem navegador passam (`sim_ge_balance_001` a `005` e `sim_ge_scout_001`).
-- **Suíte completa (com o Postgres temporário):** _em andamento_.
+- **Suíte completa (com o Postgres temporário):** 200/200 na terceira rodada.
+  - **Primeira rodada (197/200):** pegou um erro meu. O extrator levou, junto com `SECTOR_IDS`, a linha seguinte, `SECTOR_LABEL` (os nomes dos setores), porque o comentário no fim da linha tinha aspas. A ponte da v2 usa esses nomes, e as telas de instruções táticas e o passo 4 do assistente não abriam. Corrigi o extrator e gerei a C3 de novo. O `SECTOR_LABEL` voltou para a página, e a remontagem segue idêntica ao código de antes. Conferi que a C2 não tem o mesmo problema.
+  - **Segunda rodada (196/200):** 4 testes da v2 (`calendario`, `escalacao`, `elenco_avancado`, `clube`) estouraram o tempo no mesmo momento. Depois passaram 2 vezes sozinhos e 2 vezes junto com os outros testes da v2 (31/31).
+  - **Terceira rodada:** 200/200.
