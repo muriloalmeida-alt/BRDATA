@@ -52,3 +52,4 @@ As ações de mercado e de clube foram para `public/js/motor/clube.js`, **sem mu
 - **`test_motor_mercado`** agora lê as funções de mercado pela página remontada (algumas delas saíram para o `clube.js`).
 - **Testes do motor:** todos passam.
 - **Suíte completa (com o Postgres temporário):** 204/204.
+- **Teste antigo corrigido (`test_noticias_fullscreen_fluxo`):** falhou no CI da E pelo mesmo defeito de ordem corrigido no `test_coletiva_imprensa` na D2. Recusada a proposta por jogador sorteada depois da rodada, o jogo abre a Tabela, que tapa o menu. O teste agora fecha a Tabela depois de recusar; passou 3 vezes seguidas.
