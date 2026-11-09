@@ -61,4 +61,4 @@ O pós-jogo foi para `public/js/motor/posjogo.js`, **sem mudar regra nem texto**
   - **Resultado:** o grupo passou 3 vezes seguidas depois da correção do `test_coletiva_imprensa`.
   - **Falha isolada:** o `test_v2_semana` falhou uma vez nessas rodadas. Depois passou 4 vezes num grupo menor, e não reproduziu.
 - **Testes do motor e da v2:** todos passam (v2: 117/117).
-- **Suíte completa (com o Postgres temporário):** _em andamento_.
+- **Suíte completa (com o Postgres temporário):** 203/203.
