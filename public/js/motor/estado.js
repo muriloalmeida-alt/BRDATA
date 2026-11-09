@@ -101,6 +101,11 @@ export function definirLigaAtual(lista) { mundo.ligaAtual = lista; return lista;
 export function todosTimes() { return mundo.todosTimes; }
 export function definirTodosTimes(lista) { mundo.todosTimes = lista; return lista; }
 export function competicaoAtual() { return mundo.competicaoAtual; }
+// Etapa D1 (09/11): a partida ao vivo em andamento (LIVE_MATCH), nunca
+// gravada no save. null fora de partida.
+let partida = null;
+export function partidaAtual() { return partida; }
+export function definirPartida(p) { partida = p == null ? null : p; return partida; }
 export function definirCompeticaoAtual(id) { mundo.competicaoAtual = id; return id; }
 
 // Time pelo id: primeiro a liga atual (com a competição atual), depois os
