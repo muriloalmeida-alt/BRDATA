@@ -160,7 +160,9 @@ const STATE = "({ CAREER, LEAGUE_TEAMS, ALL_TEAMS_FLAT, CURRENT_COMPETITION_ID, 
   for (const m of ["partida", "tabela", "calendario", "rodada", "financas", "treino", "mercado", "temporada"]) motor[m] = await imp(m);
   const dataJs = fs.readFileSync(path.join(ROOT, "public/js/data.js"), "utf8");
   const SEEDED = dataJs.match(/function mulberry32\(seed\) \{[\s\S]*?\n\}\n/)[0] + dataJs.match(/function seededRngFromKey\(key\) \{[\s\S]*?\n\}\n/)[0];
-  const nowSrc = fs.readFileSync(path.join(ROOT, "public/js/carreira.js"), "utf8");
+  // A página como antes da etapa F (a virada, a Copa e a criação de volta a ela):
+  // o resto do jogo que este teste usa de igual nos dois lados.
+  const nowSrc = require("../e2e/_motor_vm").paginaComoAntes(fs.readFileSync(path.join(ROOT, "public/js/carreira.js"), "utf8"), undefined, ["virada"]);
   // Acessores do motor e o treino (etapa 4), iguais nos dois lados.
   const SHARED = ["motorModulo", "motorTabela", "motorTreino", "seasonGainBaseCap", "playTimeGainFactor", "highBandGainFactor"].map((nm) => extract(nowSrc, nm)).join("");
   const beforeSrc = fs.readFileSync(path.join(__dirname, "ref_temporada_antes.js"), "utf8");

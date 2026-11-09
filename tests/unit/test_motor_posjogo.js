@@ -247,7 +247,9 @@ const limpa = (x) => JSON.parse(JSON.stringify(x, (k, v) => (k === "ts" && typeo
   : typeof v === "string" ? v.replace(/^ntf_\d+_\w+$/, "ntf_X").replace(/^listingoffer_\d+_\d+$/, "listingoffer_X") : v)));
 
 (async () => {
-  const nowSrc = fs.readFileSync(path.join(ROOT, "public/js/carreira.js"), "utf8");
+  // A página como antes da etapa F (a virada, a Copa e a criação de volta a ela):
+  // o resto do jogo que este teste usa de igual nos dois lados.
+  const nowSrc = require("../e2e/_motor_vm").paginaComoAntes(fs.readFileSync(path.join(ROOT, "public/js/carreira.js"), "utf8"), undefined, ["virada"]);
   const refSrc = fs.readFileSync(path.join(__dirname, "ref_posjogo_antes.js"), "utf8");
   const dataSrc = fs.readFileSync(path.join(ROOT, "public/js/data.js"), "utf8");
   const comuns = COMUNS.map((nm) => extract(nowSrc, nm)).join("");

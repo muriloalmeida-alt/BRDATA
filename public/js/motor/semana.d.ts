@@ -1,6 +1,9 @@
 // Tipos de public/js/motor/semana.js (etapa C2): a semana sem jogo, extraída
 // de carreira.js sem mudar regra. Lê e grava a carreira de motor/estado.js.
-export interface Ambiente { primeirosNomes: string[]; sobrenomes: string[]; rngDaChave: (chave: string) => () => number; temporadaReal: () => number; contaCriadaEm: () => number | null | undefined }
+export interface Ambiente { primeirosNomes: string[]; sobrenomes: string[]; rngDaChave: (chave: string) => () => number; temporadaReal: () => number; contaCriadaEm: () => number | null | undefined;
+  // Etapa F (criação e virada): jogadores de cada clube, times da Série D, escudo, fonte de dados e herança do técnico.
+  buscarJogadores?: (teamId: string | number, competitionId?: string) => Promise<any[]>; timesSerieD?: () => any[]; escudo?: (time: any) => string | null;
+  modoReal?: () => boolean; herancaDoTecnico?: () => { reputation: number; clubHistory: any[] } | null }
 export const ambiente: Ambiente;
 export function avisar(input: string | { title: string; detail?: string }, opts?: { type?: string; durationMs?: number }): void;
 export const CALENDAR_PHASE_BY_MONTH: string[];
