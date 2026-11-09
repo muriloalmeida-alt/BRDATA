@@ -526,27 +526,57 @@ export function resolverBloco() {
   const as = lm.isHome ? { atk: lm.away.atk, def: lm.away.def, starters: lm.cpuXI } : computeHumanStrength(lm.away);
   const humanSide = lm.isHome ? hs : as;
   if (lm.formationPenaltyChunksLeft > 0) {
+    // GE-BALANCE-003 (issue #30) — penalidade simétrica em atk+def:
+    // atk pior (menor, /=0.92 equivale a *0.92... mantido *= porque
+    // maior=melhor pra atk) continua igual; def PIOR precisa de um
+    // número MAIOR (menor = defesa melhor, ver comentário em
+    // simulateCupLeg) — por isso def usa /= em vez de *=.
     Object.assign(humanSide, partida.withFormationPenalty(humanSide));
     lm.formationPenaltyChunksLeft--;
   }
+  // GE-BALANCE-001 (issue #26) — adversário motivado contra sequência
+  // longa de invencibilidade do clube humano (ver opponentMotivationMod)
+  // — só Brasileirão, de propósito (CAREER.currentUnbeatenStreak não é
+  // somado nem lido pela Copa, ver GE-COPA-001/finishCupLegLive).
   const cpuSide = lm.isHome ? as : hs;
   const motivationMod = lm.cupContext || lm.friendlyContext ? 1 : opponentMotivationMod();
+  // GE-BALANCE-003 (issue #30) — mesmo motivo do formationPenalty acima:
+  // "adversário mais ligado" precisa de um def MENOR (defesa melhor),
+  // por isso def usa /= em vez de *= (atk continua *=, maior=melhor).
   Object.assign(cpuSide, partida.withMotivation(cpuSide, motivationMod));
+  // GE-BALANCE-003 (issue #30) — ver comentário em simulateCupLeg.
   const { gh: ghChunk, ga: gaChunk } = partida.scoreGoals(hs, as, chunkShare, Math.random);
   const wearHome = applyMatchWearChunk(hs.starters, round, chunkShare, lm.appeared);
   const wearAway = applyMatchWearChunk(as.starters, round, chunkShare, lm.appeared);
   const myRedIds = lm.isHome ? wearHome.redCardIds : wearAway.redCardIds;
   if (myRedIds.length) lm.subsBonus += myRedIds.length;
   lm.gh += ghChunk; lm.ga += gaChunk;
+  // AJUSTE (Play-by-Play v1) — chance perdida/defesa (camada
+  // decorativa, ver attributeChances) + estatísticas agregadas
+  // (ver updateLiveStats) NÃO tocam lambdaHome/lambdaAway nem
+  // ghChunk/gaChunk — só enriquecem o feed e o resumo de fim de jogo.
   const chancesHome = attributeChances(hs.starters, hs.atk, as.def, chunkShare);
   const chancesAway = attributeChances(as.starters, as.atk, hs.def, chunkShare);
+  // AJUSTE (Play-by-Play v2, catálogo PENALTY_MISSED) — par
+  // PENALTY_AWARDED+PENALTY_MISSED, 100% decorativo (ver
+  // attributePenaltyMisses — nunca vira gol, então nunca precisa
+  // tocar no placar).
   const penMissHome = attributePenaltyMisses(hs.starters, hs.atk, as.def, chunkShare);
   const penMissAway = attributePenaltyMisses(as.starters, as.atk, hs.def, chunkShare);
   updateLiveStats(lm, hs, as, chunkShare, chancesHome, chancesAway, ghChunk, gaChunk);
+  // Nova feature — Marcação individual: suprime (nunca anula) o
+  // jogador do RIVAL escolhido pro técnico marcar, só na partida contra
+  // ESSE adversário específico (ver activeManMarkingSuppression).
   const opponentId = lm.isHome ? lm.away.id : lm.home.id;
   const markSuppress = activeManMarkingSuppression(opponentId);
   const goalsHome = attributeGoals(hs.starters, ghChunk, lm.isHome ? null : markSuppress).map((e) => ({ ...e, mine: lm.isHome }));
   const goalsAway = attributeGoals(as.starters, gaChunk, lm.isHome ? markSuppress : null).map((e) => ({ ...e, mine: !lm.isHome }));
+  // AJUSTE (Play-by-Play v2, catálogo VAR_CHECK) — depois de um gol,
+  // ~12% de chance do lance ser checado no VAR — SEMPRE confirma a
+  // decisão em campo (nunca anula um gol já contado no placar, decisão
+  // nossa pra não precisar desfazer um gol já creditado — ver
+  // comentário no topo de attributeGoals sobre pênalti pelo mesmo
+  // motivo).
   const varEvents = partida.varCheckEvents([...goalsHome, ...goalsAway], Math.random);
   const chunkEvents = [
     ...goalsHome, ...goalsAway,
@@ -573,23 +603,44 @@ export function encerrarPartida() {
   const lm = partidaAtual();
   lm.finished = true;
   const result = { home: lm.humanFx.home, away: lm.humanFx.away, gh: lm.gh, ga: lm.ga };
+  // "substituicao"/"chance_perdida"/"defesa" só existem pro feed AO
+  // VIVO (ver liveEventLabel) — igual lesão (ver comentário no topo de
+  // applyMatchWearChunk), o modal de detalhe do jogo de sempre
+  // (matchEventsSummaryHTML) só lista gol/cartão (Tela hifi-03 do
+  // documento: "Artilheiros e cartões", não chance perdida/defesa).
   const summaryEvents = lm.events.filter((e) => e.type === "gol" || e.type === "amarelo" || e.type === "vermelho");
   if (summaryEvents.length) result.events = summaryEvents;
   applyResultToStandings(result);
   (CAREER.resultsByRound[lm.round] = CAREER.resultsByRound[lm.round] || []).push(result);
+  // "Minha equipe" nas Estatísticas só soma o SEU lado, mesmo critério
+  // de sempre (ver tallyTeamStats/resolveCpuFixture) — filtra pelos
+  // eventos marcados "mine" durante os tempos (ver resolveLiveChunk).
   tallyTeamStats(lm.events.filter((e) => e.mine));
+  // Quem nunca apareceu em nenhum tempo (reserva que ficou fora)
+  // recupera condição no fim da partida, mesmo critério de sempre (ver
+  // applyConditionRecovery) — só uma chamada (não uma por tempo) pra
+  // não multiplicar a recuperação por 6.
   applyConditionRecovery(Array.from(lm.appeared));
   let ticketRevenue = null;
   if (lm.isHome) {
     ticketRevenue = computeTicketRevenue(lm.home);
     CAREER.finances.cash += ticketRevenue.revenue;
   }
+  // AJUSTE (Play-by-Play v1) — stats agregadas (ver updateLiveStats,
+  // consumidas pela Tela hifi-03/matchStatsBarsHTML) e a lista COMPLETA
+  // de eventos, sem filtro (ver openMatchReplay/"Rever lances" — a
+  // única tela que precisa ver chance perdida/defesa/substituição
+  // também, não só gol/cartão).
   const stats = {
     possession: { home: Math.round(clamp(lm.stats.possWeightHome, 0, 1) * 100) },
     shots: lm.stats.shots, shotsOnTarget: lm.stats.shotsOnTarget, fouls: lm.stats.fouls,
   };
   stats.possession.away = 100 - stats.possession.home;
   const humanMatch = { ...result, isHome: lm.isHome, ticketRevenue, stats, allEvents: lm.events };
+  // Nova feature — Histórico de confrontos (H2H, ver renderH2H()):
+  // registra o resultado do SEU jogo pra sempre poder puxar o
+  // retrospecto contra um adversário específico depois. unshift (mais
+  // recente primeiro) — mesma convenção de CAREER.seasonHistory.
   CAREER.matchLog = CAREER.matchLog || [];
   CAREER.matchLog.unshift({
     seasonYear: CAREER.seasonYear, round: lm.round,
@@ -598,9 +649,17 @@ export function encerrarPartida() {
   });
   if (CAREER.matchLog.length > MAX_MATCH_LOG) CAREER.matchLog.length = MAX_MATCH_LOG;
   const myGoals = lm.isHome ? lm.gh : lm.ga, oppGoals = lm.isHome ? lm.ga : lm.gh;
+  // Módulo de Estatísticas completo — V/E/D, clean sheet, mandante x
+  // visitante, maior goleada/derrota e sequências (temporada + de
+  // sempre, ver tallyMatchOutcomeStats).
   tallyMatchOutcomeStats(myGoals, oppGoals, lm.isHome, lm.isHome ? lm.humanFx.away : lm.humanFx.home, lm.round);
   pushRecentForm(myGoals > oppGoals ? 3 : myGoals === oppGoals ? 1 : 0);
   applyMoraleAfterMatch(myGoals, oppGoals);
+  // Retenção/Engajamento — objetivos ligados ao resultado da SUA
+  // partida (ver ensureObjectivesFresh/bumpObjective) + contadores de
+  // temporada usados só no fim dela (ver evaluateSeasonEndAchievements
+  // em advanceSeason) — gols/faltas do SEU lado apenas, mesmo recorte
+  // de "Minha equipe" já usado em tallyTeamStats acima.
   ensureObjectivesFresh();
   if (myGoals > oppGoals) bumpObjective("daily", "obj_win_1_match", 1);
   if (myGoals >= oppGoals) bumpObjective("weekly", "obj_invicto_round", 1);
@@ -614,10 +673,22 @@ export function encerrarPartida() {
   }
   CAREER.seasonTeamGoals = (CAREER.seasonTeamGoals || 0) + myGoals;
   CAREER.seasonTeamFouls = (CAREER.seasonTeamFouls || 0) + (lm.isHome ? lm.stats.fouls.home : lm.stats.fouls.away);
+  // FASE 3 (item 4) — evolução natural por idade considera quem
+  // terminou a partida em campo do seu lado (após eventuais
+  // substituições).
   applyNaturalAgingEvolution(lm.isHome ? lm.lastHsStarters : lm.lastAsStarters);
+  // FASE 4 (item 2) — jejum ANTES de finishRoundTail rodar (ver
+  // updateWinlessStreaks, chamada de dentro de generateRoundNews logo
+  // abaixo, que ZERA o jejum de quem venceu) — sem capturar aqui, não
+  // dava mais pra saber "estava há quantos jogos sem vencer" depois.
   const winlessBefore = (CAREER.teamWinlessStreak || {})[String(CAREER.clubId)] || 0;
   const allResults = [...lm.otherResults, result];
   const summary = finishRoundTail(lm.round, allResults, humanMatch, lm.standingsBefore);
+  // FASE 4 (item 2) — coletiva de imprensa pós-jogo (documento original
+  // da Fase 4): decide se alguma situação da PRESS_LIBRARY bateu com
+  // essa partida específica — se bateu, "Continuar" do modal "Seu
+  // jogo" abre a coletiva ANTES de seguir pros Resultados da rodada
+  // (ver btnMatchDetailContinue/closePressConferenceModal).
   const oppClubId = lm.isHome ? lm.humanFx.away : lm.humanFx.home;
   const trigger = determineMatchPressTrigger({
     myGoals, oppGoals, isHome: lm.isHome, myClubId: CAREER.clubId, oppClubId,

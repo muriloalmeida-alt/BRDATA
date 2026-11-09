@@ -50,9 +50,10 @@ A partida do seu time ao vivo foi para `public/js/motor/aovivo.js`:
 
 **Sem mudança de regra, de save, de API nem de tela.**
 
-## Pontos para sua avaliação
-1. **O resto da etapa D:** a coletiva, a perna da Copa ao vivo e o amistoso ao vivo ficam para a D2.
-2. **Comentários das regras do bloco:** as regras de `resolveLiveChunk` agora moram no motor, sem os comentários longos de cada passo. Na página ficou uma linha apontando para o motor, e o histórico do git guarda os comentários. Se preferir, copio os comentários para o motor.
+## Decisões tomadas depois da entrega (09/11)
+1. **Comentários das regras:** copiados para o motor. Os comentários de cada passo do bloco e do fim do jogo voltaram para junto das regras, em `motor/aovivo.js`. Conferi que o código, sem os comentários, ficou idêntico ao de antes.
+2. **Coletiva na D2:** a regra vai para o motor e o modal fica na tela. O motor guarda a coletiva pendente e aplica a resposta, e a página antiga mostra o modal e chama o motor. A perna da Copa ao vivo e o amistoso ao vivo terminam no motor, do mesmo jeito que a partida da D1.
+3. **Defeito antigo da Copa (achado na C3):** vai ser corrigido numa entrega própria, separada da D2, com teste que mostra o travamento antes da correção e o fim dele depois.
 
 ## Testes
 - **Novo `tests/unit/test_motor_aovivo.js`** compara as funções antigas (congeladas em `tests/unit/ref_aovivo_antes.js`, inclusive as 5 da página que mudaram) com as de hoje.
@@ -67,4 +68,7 @@ A partida do seu time ao vivo foi para `public/js/motor/aovivo.js`:
 - **Texto idêntico:** o `paginaComoAntes` cobre também o `aovivo.js`. As 37 funções e constantes movidas sem mudança remontam iguais, caractere por caractere, às de antes.
 - **Testes da partida (ponta a ponta):** 13/13 (`test_ao_vivo`, `test_v2_partida`, `test_v2_ajustes`, `test_v2_pausa`, `test_play_by_play_v1/v2`, `test_sem_tela`, `test_coletiva_imprensa`, `test_v2_resultado`, `test_marcacao_individual`, `test_save`, `test_ge_calendar_001`, `test_cup_engine`).
 - **Testes do motor e da v2:** todos passam (v2: 117/117).
-- **Suíte completa (com o Postgres temporário):** _em andamento_.
+- **Suíte completa (com o Postgres temporário):** 200/201.
+  - **A falha:** `test_noticias_fullscreen_fluxo`. O modal da tabela ficou na frente de um clique do menu.
+  - **Depois:** o teste passou 3 vezes seguidas, sozinho.
+  - **Por que não é da D1:** o teste só passa pela partida para chegar ao pós-jogo, e a equivalência acima cobre esse caminho.
