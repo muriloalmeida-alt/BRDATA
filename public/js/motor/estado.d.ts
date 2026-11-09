@@ -26,3 +26,8 @@ export function forcaMediaDoElenco(clubId: string | number): number;
 // Etapa D1: a partida ao vivo em andamento (LIVE_MATCH), nunca gravada.
 export function partidaAtual(): any;
 export function definirPartida<T>(p: T): T | null;
+// Etapa D2: a coletiva pendente e se ela faz parte do pós-jogo, nunca gravadas.
+export function coletivaPendente(): { entry: any; roundPlayed: number } | null;
+export function definirColetivaPendente<T>(c: T): T | null;
+export function coletivaEncadeada(): boolean;
+export function definirColetivaEncadeada(v: unknown): boolean;

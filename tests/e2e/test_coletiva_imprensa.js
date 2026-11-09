@@ -206,6 +206,10 @@ async function newCareer(page, base, email) {
   if (await page.evaluate(() => document.getElementById("playerOfferOverlay")?.classList.contains("open"))) {
     await page.click("#btnPlayerOfferDecline");
     await page.waitForFunction(() => !document.getElementById("playerOfferOverlay").classList.contains("open"));
+    // Recusada a proposta, o fluxo segue para a Tabela (que ainda não tinha
+    // aberto quando o teste tentou fechá-la acima): fecha agora.
+    await page.waitForTimeout(200);
+    await page.click("#tabelaModalClose").catch(() => {});
   }
 
   // 8) X fecha sem aplicar efeito (conta como "sem comentário").
