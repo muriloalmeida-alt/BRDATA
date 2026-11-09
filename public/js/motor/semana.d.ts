@@ -1,6 +1,8 @@
 // Tipos de public/js/motor/semana.js (etapa C2): a semana sem jogo, extraída
 // de carreira.js sem mudar regra. Lê e grava a carreira de motor/estado.js.
-export interface Ambiente { primeirosNomes: string[]; sobrenomes: string[]; rngDaChave: (chave: string) => () => number; temporadaReal: () => number }
+export interface Ambiente { primeirosNomes: string[]; sobrenomes: string[]; rngDaChave: (chave: string) => () => number; temporadaReal: () => number; contaCriadaEm: () => number | null | undefined }
+export const ambiente: Ambiente;
+export function avisar(input: string | { title: string; detail?: string }, opts?: { type?: string }): void;
 export const CALENDAR_PHASE_BY_MONTH: string[];
 export const CALENDAR_PHASE_LABEL: Record<string, any>;
 export const CALENDAR_WINDOW_PHASES: Set<string>;

@@ -32,13 +32,14 @@ import * as temporada from "./temporada.js";
 const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
 
 // ---------- Ambiente: dados do mundo real (data.js e a API) ----------
-const ambiente = { primeirosNomes: [], sobrenomes: [], rngDaChave: null, temporadaReal: () => new Date().getFullYear() };
+// Também lido pelo fechamento da rodada (motor/fechamento.js, etapa C3).
+export const ambiente = { primeirosNomes: [], sobrenomes: [], rngDaChave: null, temporadaReal: () => new Date().getFullYear(), contaCriadaEm: () => null };
 let ambientePronto = false;
 export function definirAmbiente(a) { Object.assign(ambiente, a); ambientePronto = true; }
 export function temAmbiente() { return ambientePronto; }
 
 // Avisos de tela viram o evento "aviso" (texto solto ou título e detalhe).
-function avisar(input, opts) {
+export function avisar(input, opts) {
   const tipo = opts && opts.type ? opts.type : null;
   if (typeof input === "string") emitir("aviso", { texto: input, tipo });
   else emitir("aviso", { titulo: input.title, detalhe: input.detail, tipo });

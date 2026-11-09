@@ -23,9 +23,11 @@ function career(): Career {
   };
 }
 
-test("FORMATIONS é cópia fiel da do legado (public/js/carreira.js)", () => {
+test("FORMATIONS é cópia fiel da do motor (public/js/motor/fechamento.js, etapa C3)", () => {
   const src = readFileSync(new URL("../../../public/js/carreira.js", import.meta.url), "utf8");
-  const block = src.slice(src.indexOf("const FORMATIONS = {"), src.indexOf("};", src.indexOf("const FORMATIONS = {")) + 2);
+  // Etapa C3 (09/11): as formações saíram do carreira.js para o motor.
+  const motor = readFileSync(new URL("../../../public/js/motor/fechamento.js", import.meta.url), "utf8");
+  const block = motor.slice(motor.indexOf("const FORMATIONS = {"), motor.indexOf("};", motor.indexOf("const FORMATIONS = {")) + 2);
   const legacy = new Function(`${block.replace(/\/\/.*$/gm, "")}; return FORMATIONS;`)();
   assert.deepEqual(FORMATIONS, legacy);
   assert.match(src, /const MAX_BENCH = 11;/);

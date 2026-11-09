@@ -13,7 +13,7 @@ const { execSync } = require("child_process");
 
 const ROOT = path.resolve(__dirname, "../..");
 // Ordem de dependência (quem importa vem depois).
-const ORDER = ["partida", "tabela", "calendario", "rodada", "financas", "treino", "mercado", "temporada", "estado", "eventos", "registro", "texto", "semana"];
+const ORDER = ["partida", "tabela", "calendario", "rodada", "financas", "treino", "mercado", "temporada", "estado", "eventos", "registro", "texto", "semana", "fechamento"];
 
 function readModule(name, rev) {
   try {
@@ -44,17 +44,18 @@ function motorCode(rev, transform) {
 // formato da página (CAREER, ALL_TEAMS_FLAT, motorMercado(), toast...).
 // Revisão sem semana.js: o fonte como está.
 function paginaComoAntes(src, rev) {
-  const semana = readModule("semana", rev), texto = readModule("texto", rev);
+  const semana = readModule("semana", rev), texto = readModule("texto", rev), fechamento = readModule("fechamento", rev);
   if (semana == null) return src;
   const comoPagina = (t) => t.replace(/^export /gm, "").replace(/ *const CAREER = carreiraAtual\(\);\n?/g, "")
     .replace(/\bconst CAREER = carreiraAtual\(\); /g, "")
     .replace(/\btodosTimes\(\)/g, "ALL_TEAMS_FLAT").replace(/\bligaAtual\(\)/g, "LEAGUE_TEAMS")
-    .replace(/(^|[^\w./])(financas|mercado|treino|temporada)\./gm, (_, a, m) => `${a}motor${m[0].toUpperCase()}${m.slice(1)}().`)
+    .replace(/(^|[^\w./]|\.\.\.)rodada\.(?=[A-Za-z_])/gm, (_, a) => `${a}motorModulo("rodada").`)
+    .replace(/(^|[^\w./]|\.\.\.)(financas|mercado|treino|temporada|partida|tabela|registro)\.(?=[A-Za-z_])/gm, (_, a, m) => `${a}motor${m[0].toUpperCase()}${m.slice(1)}().`)
     .replace(/\bambiente\.primeirosNomes\b/g, "DEMO_FIRST_NAMES").replace(/\bambiente\.sobrenomes\b/g, "DEMO_LAST_NAMES")
     .replace(/\bambiente\.rngDaChave\(/g, "seededRngFromKey(").replace(/\bavisar\(/g, "toast(")
     .replace(/emitir\("coletiva", \{ id: "15", rodada: CAREER\.currentRound \}\);/g, '{ firePressConference("15", CAREER.currentRound, false); openPressConferenceModal(); }');
   const defs = {};
-  const blocos = comoPagina(semana + "\n" + (texto || ""));
+  const blocos = comoPagina(semana + "\n" + (texto || "") + "\n" + (fechamento || ""));
   for (const m of blocos.matchAll(/^(function (\w+)\(|const (\w+) = )/gm)) {
     const nome = m[2] || m[3];
     // Função: do "{" que fecha a primeira linha ("...) {") até a chave que
@@ -71,7 +72,7 @@ function paginaComoAntes(src, rev) {
     defs[nome] = blocos.slice(i, fim);
   }
   return src
-    .replace(/^(function (\w+)\([^\n]*\) \{\n  (?:\/\/[^\n]*\n  )?return motor(?:Semana|Texto)\(\)\.\w+\([^\n]*\);\n\})/gm, (bloco, _, nome) => defs[nome] || bloco)
-    .replace(/^Object\.defineProperty\(window, "(\w+)", \{ configurable: true, get\(\) \{ return motorSemana\(\)\.\w+; \} \}\);$/gm, (linha, nome) => defs[nome] || linha);
+    .replace(/^(function (\w+)\([^\n]*\) \{\n  (?:\/\/[^\n]*\n  )?return motor(?:Semana|Texto|Fechamento)\(\)\.\w+\([^\n]*\);\n\})/gm, (bloco, _, nome) => defs[nome] || bloco)
+    .replace(/^Object\.defineProperty\(window, "(\w+)", \{ configurable: true, get\(\) \{ return motor(?:Semana|Fechamento)\(\)\.\w+; \} \}\);$/gm, (linha, nome) => defs[nome] || linha);
 }
 module.exports = { motorCode, ORDER, paginaComoAntes };

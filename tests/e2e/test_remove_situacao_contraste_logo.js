@@ -97,6 +97,9 @@ const { enterGame, waitForBoot } = require("./_startup");
   await waitForBoot(page);
   await page.click('.mt-competition-card[data-competition="serie_b"]');
   await page.waitForTimeout(300);
+  // Sob carga (CI), a lista de clubes demora mais que 300 ms para aparecer:
+  // espera ela antes de contar os escudos. A verificação segue igual.
+  await page.waitForFunction(() => document.querySelectorAll("#clubGrid img.bd-crest, #clubGrid .ct-crest.has-logo").length > 0, null, { timeout: 15000 }).catch(() => {});
   const pickerCheck = await page.evaluate(() => {
     const withLogo = [...document.querySelectorAll("#clubGrid img.bd-crest, #clubGrid .ct-crest.has-logo")];
     return { count: withLogo.length, allLightBg: withLogo.every((el) => el.tagName === "IMG" ? /drop-shadow/.test(getComputedStyle(el).filter) : getComputedStyle(el).backgroundColor !== "rgba(0, 0, 0, 0)") };
