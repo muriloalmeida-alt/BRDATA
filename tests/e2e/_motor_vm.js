@@ -13,7 +13,7 @@ const { execSync } = require("child_process");
 
 const ROOT = path.resolve(__dirname, "../..");
 // Ordem de dependência (quem importa vem depois).
-const ORDER = ["partida", "tabela", "calendario", "rodada", "financas", "treino", "mercado", "temporada", "estado", "eventos", "registro", "texto", "semana", "fechamento"];
+const ORDER = ["partida", "tabela", "calendario", "rodada", "financas", "treino", "mercado", "temporada", "estado", "eventos", "registro", "texto", "semana", "fechamento", "aovivo"];
 
 function readModule(name, rev) {
   try {
@@ -44,7 +44,7 @@ function motorCode(rev, transform) {
 // formato da página (CAREER, ALL_TEAMS_FLAT, motorMercado(), toast...).
 // Revisão sem semana.js: o fonte como está.
 function paginaComoAntes(src, rev) {
-  const semana = readModule("semana", rev), texto = readModule("texto", rev), fechamento = readModule("fechamento", rev);
+  const semana = readModule("semana", rev), texto = readModule("texto", rev), fechamento = readModule("fechamento", rev), aovivo = readModule("aovivo", rev);
   if (semana == null) return src;
   const comoPagina = (t) => t.replace(/^export /gm, "").replace(/ *const CAREER = carreiraAtual\(\);\n?/g, "")
     .replace(/\bconst CAREER = carreiraAtual\(\); /g, "")
@@ -55,7 +55,7 @@ function paginaComoAntes(src, rev) {
     .replace(/\bambiente\.rngDaChave\(/g, "seededRngFromKey(").replace(/\bavisar\(/g, "toast(")
     .replace(/emitir\("coletiva", \{ id: "15", rodada: CAREER\.currentRound \}\);/g, '{ firePressConference("15", CAREER.currentRound, false); openPressConferenceModal(); }');
   const defs = {};
-  const blocos = comoPagina(semana + "\n" + (texto || "") + "\n" + (fechamento || ""));
+  const blocos = comoPagina(semana + "\n" + (texto || "") + "\n" + (fechamento || "") + "\n" + (aovivo || ""));
   for (const m of blocos.matchAll(/^(function (\w+)\(|const (\w+) = )/gm)) {
     const nome = m[2] || m[3];
     // Função: do "{" que fecha a primeira linha ("...) {") até a chave que
@@ -72,7 +72,7 @@ function paginaComoAntes(src, rev) {
     defs[nome] = blocos.slice(i, fim);
   }
   return src
-    .replace(/^(function (\w+)\([^\n]*\) \{\n  (?:\/\/[^\n]*\n  )?return motor(?:Semana|Texto|Fechamento)\(\)\.\w+\([^\n]*\);\n\})/gm, (bloco, _, nome) => defs[nome] || bloco)
-    .replace(/^Object\.defineProperty\(window, "(\w+)", \{ configurable: true, get\(\) \{ return motor(?:Semana|Fechamento)\(\)\.\w+; \} \}\);$/gm, (linha, nome) => defs[nome] || linha);
+    .replace(/^(function (\w+)\([^\n]*\) \{\n  (?:\/\/[^\n]*\n  )?return motor(?:Semana|Texto|Fechamento|AoVivo)\(\)\.\w+\([^\n]*\);\n\})/gm, (bloco, _, nome) => defs[nome] || bloco)
+    .replace(/^Object\.defineProperty\(window, "(\w+)", \{ configurable: true, get\(\) \{ return motor(?:Semana|Fechamento|AoVivo)\(\)\.\w+; \} \}\);$/gm, (linha, nome) => defs[nome] || linha);
 }
 module.exports = { motorCode, ORDER, paginaComoAntes };

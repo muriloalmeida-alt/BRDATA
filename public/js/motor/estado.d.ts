@@ -23,3 +23,6 @@ export function definirCompeticaoAtual(id: string): string;
 export function timePorId(id: string | number): Time;
 export function mediaOverall(lista: { overall: number }[]): number;
 export function forcaMediaDoElenco(clubId: string | number): number;
+// Etapa D1: a partida ao vivo em andamento (LIVE_MATCH), nunca gravada.
+export function partidaAtual(): any;
+export function definirPartida<T>(p: T): T | null;
