@@ -277,6 +277,13 @@ function motorAoVivo() {
   motorSemana();
   return motorModulo("aovivo");
 }
+// Etapa D2 (09/11): o pós-jogo (coletiva, perna da Copa e amistoso ao vivo)
+// em motor/posjogo.js; a coletiva pendente em motor/estado.js. O modal da
+// coletiva, o apito, a torcida e os avisos de fim continuam aqui.
+function motorPosJogo() {
+  motorSemana();
+  return motorModulo("posjogo");
+}
 // A página antiga mostra o evento "aviso" como o toast de sempre e abre a
 // coletiva quando o motor pede (ligado no boot).
 function ouvirAvisosDoMotor() {
@@ -1913,8 +1920,10 @@ const REPUTATION_DISMISSAL_PENALTY = 25;
 // unidade × peso 0.1 = 1 ponto de reputação por unidade do arquivo,
 // então uma resposta extrema (+3/-3) mexe uns 3 pontos, do mesmo porte
 // de 1 meta batida/não batida (ver REPUTATION_META_POINTS acima).
-const REPUTATION_INTERVIEW_POINTS = 10;
-const REPUTATION_INTERVIEW_WEIGHT = 0.1;
+// Etapa C2 (09/11): mora em motor/semana.js.
+Object.defineProperty(window, "REPUTATION_INTERVIEW_POINTS", { configurable: true, get() { return motorPosJogo().REPUTATION_INTERVIEW_POINTS; } });
+// Etapa C2 (09/11): mora em motor/semana.js.
+Object.defineProperty(window, "REPUTATION_INTERVIEW_WEIGHT", { configurable: true, get() { return motorPosJogo().REPUTATION_INTERVIEW_WEIGHT; } });
 function countTitlesThisSeason(award) {
   return motorTemporada().countTitlesThisSeason(award, CAREER.clubId);
 }
@@ -6840,15 +6849,26 @@ Object.defineProperty(window, "PRESS_META_RISK_GAP", { configurable: true, get()
 function determineMatchPressTrigger(ctx) {
   return motorAoVivo().determineMatchPressTrigger(ctx);
 }
-const PRESS_LOG_MAX = 40;
-const MORAL_INTERVIEW_SCALE = 3; // Efeito Moral do arquivo (-3..+3) vira -9..+9 de moral geral do elenco
-let PENDING_PRESS = null; // { entry, roundPlayed } aguardando resposta, ver openPressConferenceModal
-let PRESS_CHAIN_TO_ROUND_RESULTS = false; // true só quando disparada de dentro do fluxo pós-jogo (ver finishLiveMatch)
+// Etapa C2 (09/11): mora em motor/semana.js.
+Object.defineProperty(window, "PRESS_LOG_MAX", { configurable: true, get() { return motorPosJogo().PRESS_LOG_MAX; } });
+// Etapa C2 (09/11): mora em motor/semana.js.
+Object.defineProperty(window, "MORAL_INTERVIEW_SCALE", { configurable: true, get() { return motorPosJogo().MORAL_INTERVIEW_SCALE; } });
+// { entry, roundPlayed } aguardando resposta, ver openPressConferenceModal.
+// Etapa D2 (09/11): mora em motor/estado.js (nunca gravada).
+Object.defineProperty(window, "PENDING_PRESS", {
+  configurable: true,
+  get() { const e = window.BRDATA_MOTOR && window.BRDATA_MOTOR.estado; return e ? e.coletivaPendente() : null; },
+  set(v) { motorEstado().definirColetivaPendente(v); },
+});
+// true só quando disparada de dentro do fluxo pós-jogo (ver finishLiveMatch).
+Object.defineProperty(window, "PRESS_CHAIN_TO_ROUND_RESULTS", {
+  configurable: true,
+  get() { const e = window.BRDATA_MOTOR && window.BRDATA_MOTOR.estado; return e ? e.coletivaEncadeada() : false; },
+  set(v) { motorEstado().definirColetivaEncadeada(v); },
+});
 function firePressConference(id, roundPlayed, chainToRoundResults) {
-  const entry = pressLibraryEntry(id);
-  if (!entry) return;
-  PENDING_PRESS = { entry, roundPlayed: roundPlayed != null ? roundPlayed : CAREER.currentRound };
-  PRESS_CHAIN_TO_ROUND_RESULTS = !!chainToRoundResults;
+  // Etapa D2: motor/posjogo.js.
+  return motorPosJogo().firePressConference(id, roundPlayed, chainToRoundResults);
 }
 function openPressConferenceModal() {
   if (!PENDING_PRESS) return;
@@ -6887,20 +6907,7 @@ function closePressConferenceModal() {
 // Carreira 2.0 (fase 4) aplicar o MESMO efeito pela ponte. Devolve null se
 // a letra não existe.
 function applyPressEffects(entry, roundPlayed, letra) {
-  const resposta = entry.respostas.find((r) => r.letra === letra);
-  if (!resposta) return null;
-  const repDelta = Math.round(resposta.reputacao * REPUTATION_INTERVIEW_POINTS * REPUTATION_INTERVIEW_WEIGHT);
-  CAREER.reputation = clamp((CAREER.reputation == null ? 50 : CAREER.reputation) + repDelta, 0, 100);
-  const moralDelta = resposta.moral * MORAL_INTERVIEW_SCALE;
-  if (moralDelta) {
-    CAREER.squad.filter((p) => p.origin === "principal").forEach((p) => {
-      p.morale = clamp((p.morale == null ? 70 : p.morale) + moralDelta, 0, 100);
-    });
-  }
-  CAREER.pressLog = CAREER.pressLog || [];
-  CAREER.pressLog.unshift({ round: roundPlayed, gatilho: entry.gatilho, pergunta: entry.pergunta, letra, texto: resposta.texto, reputacao: repDelta, moral: moralDelta });
-  if (CAREER.pressLog.length > PRESS_LOG_MAX) CAREER.pressLog.length = PRESS_LOG_MAX;
-  return { repDelta, moralDelta };
+  return motorPosJogo().applyPressEffects(entry, roundPlayed, letra);
 }
 function applyPressAnswer(letra) {
   if (!PENDING_PRESS) { closePressConferenceModal(); return; }
@@ -7341,24 +7348,8 @@ async function finishLiveMatch() {
 // foram resolvidas antes, ver resolveCupPhaseExpanded) nem passa
 // standingsBefore (Copa não é pontos corridos).
 function startCupLegLive(tie, phase, leg, round) {
-  const hostId = leg === 1 ? tie.home : tie.away;
-  const guestId = leg === 1 ? tie.away : tie.home;
-  const isHome = String(hostId) === String(CAREER.clubId);
-  const home = teamById(hostId), away = teamById(guestId);
-  const cpuTeamId = isHome ? guestId : hostId;
-  const cpuXI = pickCpuXI(leagueSquadFor(cpuTeamId));
-  LIVE_MATCH = {
-    round, humanFx: { home: hostId, away: guestId }, isHome, home, away, cpuXI, otherResults: [], standingsBefore: null,
-    cupContext: { tie, phase, leg },
-    chunkIndex: 0, gh: 0, ga: 0, events: [], appeared: new Set(),
-    subsUsed: 0, subsBonus: 0, formationPenaltyChunksLeft: 0,
-    lastHsStarters: [], lastAsStarters: [],
-    timerId: null, paused: false, finished: false,
-    speed: 1,
-    stats: { possWeightHome: 0, shots: { home: 0, away: 0 }, shotsOnTarget: { home: 0, away: 0 }, fouls: { home: 0, away: 0 } },
-    goalHighlightQueue: [], goalHighlightOnDone: null, goalHighlightTimer: null,
-    injuredBeforeIds: new Set(CAREER.squad.filter((p) => p.status === "contundido").map((p) => p.id)),
-  };
+  // Adversário, XI dele e o LIVE_MATCH da perna: motor/posjogo.js.
+  const { isHome, home, away } = motorPosJogo().iniciarPernaCopa(tie, phase, leg, round);
   renderLiveMatch();
   document.getElementById("liveMatchOverlay").classList.add("open");
   playWhistle(1);
@@ -7383,26 +7374,11 @@ function startCupLegLive(tie, phase, leg, round) {
 async function finishCupLegLive() {
   const lm = LIVE_MATCH;
   const { tie, phase, leg } = lm.cupContext;
-  lm.finished = true;
   playWhistle(3);
   stopCrowdAmbience();
-  const legScore = leg === 1 ? tie.leg1 : tie.leg2;
-  if (leg === 1) { legScore.gh = lm.gh; legScore.ga = lm.ga; }
-  else { legScore.gh = lm.ga; legScore.ga = lm.gh; }
-  const summaryEvents = lm.events.filter((e) => e.type === "gol" || e.type === "amarelo" || e.type === "vermelho");
-  // Copa NÃO soma em CAREER.teamStats (tallyTeamStats) — só em
-  // careerTotals.copa* (ver settleCupTieOutcome), mesma separação já
-  // estabelecida pelo formato legado.
-  applyConditionRecovery(Array.from(lm.appeared));
-  let ticketRevenue = null;
-  if (lm.isHome) {
-    ticketRevenue = computeTicketRevenue(lm.home);
-    CAREER.finances.cash += ticketRevenue.revenue;
-  }
-  applyNaturalAgingEvolution(lm.isHome ? lm.lastHsStarters : lm.lastAsStarters);
-  CAREER.cup.pendingLiveLeg = null;
-  let finalResult = null;
-  if (leg === 2) finalResult = finalizeCupPhaseExpanded(phase, lm.round, false);
+  // Placar no confronto, recuperação, renda, evolução e a decisão da fase:
+  // motor/posjogo.js (encerrarPernaCopa).
+  const { legScore, summaryEvents, finalResult } = motorPosJogo().encerrarPernaCopa();
   document.getElementById("liveMatchOverlay").classList.remove("open");
   LIVE_MATCH = null;
   ponteFim(await persistCareer());
@@ -10452,7 +10428,8 @@ function closeAdjustLineupModal() {
    oficial (gol/assistência), cartão não gera suspensão, só metade das
    lesões se confirma (risco menor) e a minutagem conta pra evolução
    (GE-BALANCE-005). Bilheteria de 30% de um jogo oficial. */
-const FRIENDLY_TICKET_SHARE = 0.3;
+// Etapa C2 (09/11): mora em motor/semana.js.
+Object.defineProperty(window, "FRIENDLY_TICKET_SHARE", { configurable: true, get() { return motorPosJogo().FRIENDLY_TICKET_SHARE; } });
 function buildFriendlySlots(cal) {
   const myComp = ALL_COMPETITIONS_ORDER.indexOf(CURRENT_COMPETITION_ID);
   const pool = marketTeamsPool().filter((t) => String(t.id) !== String(CAREER.clubId)
@@ -10493,27 +10470,10 @@ function pickFriendlyOpponent(clubId) {
   renderAll();
 }
 function startFriendlyLive(slot) {
-  if (!slot.opp) slot.opp = slot.invites[0];
   commitLineupTactics();
-  const home = teamById(CAREER.clubId), away = teamById(slot.opp);
-  // Snapshot do que o amistoso NÃO pode mudar (ver finishFriendlyLive).
-  const snapshot = new Map(CAREER.squad.map((p) => [p.id, {
-    status: p.status, outUntilRound: p.outUntilRound, injurySeverity: p.injurySeverity, yellowCards: p.yellowCards,
-    goalsSeason: p.goalsSeason, assistsSeason: p.assistsSeason, goalsCareer: p.goalsCareer, assistsCareer: p.assistsCareer, apps: p.apps,
-  }]));
-  LIVE_MATCH = {
-    round: CAREER.currentRound, humanFx: { home: CAREER.clubId, away: slot.opp }, isHome: true, home, away,
-    cpuXI: pickCpuXI(leagueSquadFor(slot.opp)), otherResults: [], standingsBefore: null,
-    friendlyContext: { slot, snapshot },
-    chunkIndex: 0, gh: 0, ga: 0, events: [], appeared: new Set(),
-    subsUsed: 0, subsBonus: 0, formationPenaltyChunksLeft: 0,
-    lastHsStarters: [], lastAsStarters: [],
-    timerId: null, paused: false, finished: false,
-    speed: 1,
-    stats: { possWeightHome: 0, shots: { home: 0, away: 0 }, shotsOnTarget: { home: 0, away: 0 }, fouls: { home: 0, away: 0 } },
-    goalHighlightQueue: [], goalHighlightOnDone: null, goalHighlightTimer: null,
-    injuredBeforeIds: new Set(CAREER.squad.filter((p) => p.status === "contundido").map((p) => p.id)),
-  };
+  // Adversário (o 1º convite se nenhum foi escolhido), o que o amistoso não
+  // pode mudar e o LIVE_MATCH: motor/posjogo.js.
+  const { home, away } = motorPosJogo().iniciarAmistoso(slot);
   renderLiveMatch();
   document.getElementById("liveMatchOverlay").classList.add("open");
   playWhistle(1);
@@ -10523,32 +10483,11 @@ function startFriendlyLive(slot) {
 }
 async function finishFriendlyLive() {
   const lm = LIVE_MATCH;
-  const { slot, snapshot } = lm.friendlyContext;
-  lm.finished = true;
   playWhistle(3);
   stopCrowdAmbience();
-  applyConditionRecovery(Array.from(lm.appeared));
-  applyNaturalAgingEvolution(lm.lastHsStarters);
-  const rng = seededRngFromKey(`friendly-injury:${calendarTurnKey()}`);
-  let injuriesKept = 0;
-  CAREER.squad.forEach((p) => {
-    const before = snapshot.get(p.id);
-    if (!before) return;
-    const newInjury = p.status === "contundido" && before.status !== "contundido";
-    if (newInjury && rng() < 0.5) { injuriesKept++; } // lesão confirmada (risco menor: metade)
-    else { p.status = before.status; p.outUntilRound = before.outUntilRound; p.injurySeverity = before.injurySeverity; }
-    // cartão não vale em amistoso; gol/assistência/jogo oficial também não
-    p.yellowCards = before.yellowCards;
-    if (p.status === "suspenso" && before.status !== "suspenso") { p.status = before.status; p.outUntilRound = before.outUntilRound; }
-    ["goalsSeason", "assistsSeason", "goalsCareer", "assistsCareer", "apps"].forEach((k) => { p[k] = before[k]; });
-  });
-  const ticket = Math.round(computeTicketRevenue(lm.home).revenue * FRIENDLY_TICKET_SHARE);
-  CAREER.finances.cash += ticket;
-  if (ticket) pushLedger("bilheteria", "Bilheteria de amistoso", ticket, CAREER.currentRound);
-  slot.played = true;
-  slot.result = { gh: lm.gh, ga: lm.ga };
-  const opp = lm.away;
-  pushNotification("partida", `Amistoso: ${CAREER.clubName} ${lm.gh} x ${lm.ga} ${opp.name}.`);
+  // Recuperação, evolução, lesões (só metade vale), cartões e números que
+  // voltam, bilheteria, resultado e a notificação: motor/posjogo.js.
+  const { injuriesKept, ticket, opp } = motorPosJogo().encerrarAmistoso();
   document.getElementById("liveMatchOverlay").classList.remove("open");
   LIVE_MATCH = null;
   // O amistoso é o jogo da semana — fecha a semana (treino, prazos, mês).

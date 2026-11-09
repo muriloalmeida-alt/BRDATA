@@ -106,6 +106,13 @@ export function competicaoAtual() { return mundo.competicaoAtual; }
 let partida = null;
 export function partidaAtual() { return partida; }
 export function definirPartida(p) { partida = p == null ? null : p; return partida; }
+// Etapa D2 (09/11): a coletiva de imprensa aguardando resposta
+// ({ entry, roundPlayed }) e se ela faz parte do fluxo pós-jogo. Nunca gravadas.
+let coletiva = null, coletivaNoPosJogo = false;
+export function coletivaPendente() { return coletiva; }
+export function definirColetivaPendente(c) { coletiva = c == null ? null : c; return coletiva; }
+export function coletivaEncadeada() { return coletivaNoPosJogo; }
+export function definirColetivaEncadeada(v) { coletivaNoPosJogo = !!v; return coletivaNoPosJogo; }
 export function definirCompeticaoAtual(id) { mundo.competicaoAtual = id; return id; }
 
 // Time pelo id: primeiro a liga atual (com a competição atual), depois os
