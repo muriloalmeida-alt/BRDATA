@@ -92,7 +92,8 @@ function combinedTacticMod() {
 Object.defineProperty(window, "SECTOR_INSTRUCTIONS", { configurable: true, get() { return motorFechamento().SECTOR_INSTRUCTIONS; } });
 // Etapa C3 (09/11): mora em motor/fechamento.js.
 Object.defineProperty(window, "SECTOR_IDS", { configurable: true, get() { return motorFechamento().SECTOR_IDS; } });
-const SECTOR_LABEL = { defesa: "Defesa", meio: "Meio", ataque: "Ataque" };
+// Etapa G1a (10/11): mora em motor/ponte.js.
+Object.defineProperty(window, "SECTOR_LABEL", { configurable: true, get() { return motorPonte().SECTOR_LABEL; } });
 function defaultSectorTactics() {
   return motorVirada().defaultSectorTactics();
 }
@@ -141,7 +142,8 @@ const V2_PONTE = new URLSearchParams(location.search).get("ponte") === "partida"
 const SEM_TELA = V2_PONTE;
 // Estado só da ponte (nunca salvo): última partida vista (LIVE_MATCH vira
 // null no fim), resultado da gravação final e quem está ouvindo.
-const PONTE = { pronta: false, ultimo: null, fim: null, ouvintes: new Set(), resumo: null, posJogo: false, salvando: false, erroGravacao: null, semana: null, antesSemana: null, seq: null };
+// Etapa G1a (10/11): o estado da ponte mora em motor/ponte.js.
+Object.defineProperty(window, "PONTE", { configurable: true, get() { return motorPonte().ponte; } });
 let LIVE_MODE = false;
 let LIVE_SEASON = new Date().getFullYear();
 // Etapa C1 (09/11): mora em motor/estado.js (o "mundo" da carreira). Antes: 20 clubes ativos (real ou DEMO_TEAMS — ver loadLeague)
@@ -259,7 +261,9 @@ function motorSemana() {
   if (!m.temAmbiente()) m.definirAmbiente({ primeirosNomes: DEMO_FIRST_NAMES, sobrenomes: DEMO_LAST_NAMES, rngDaChave: seededRngFromKey, temporadaReal: () => LIVE_SEASON, contaCriadaEm: () => ME && ME.createdAt,
     // Etapa F: os jogadores de cada clube (API ou exemplo), os times da Série D,
     // o escudo, a fonte de dados e a herança do técnico que trocou de clube.
-    buscarJogadores: (...a) => fetchRealPlayers(...a), timesSerieD: () => DEMO_TEAMS_SERIE_D, escudo: (t) => teamLogoSrc(t), modoReal: () => LIVE_MODE, herancaDoTecnico: () => TECHNICIAN_CARRY });
+    buscarJogadores: (...a) => fetchRealPlayers(...a), timesSerieD: () => DEMO_TEAMS_SERIE_D, escudo: (t) => teamLogoSrc(t), modoReal: () => LIVE_MODE, herancaDoTecnico: () => TECHNICIAN_CARRY,
+    // Etapa G1a: a gravação da ponte (a de sempre), o som e o nome do técnico.
+    gravar: () => ponteGravar(), somLigado: () => SFX_ENABLED, nomeTecnico: () => ME && ME.name });
   return m;
 }
 // Etapa C3 (09/11): o fechamento da rodada (jogos da CPU, Copa, empréstimos,
@@ -296,6 +300,12 @@ function motorClube() {
 function motorVirada() {
   motorSemana();
   return motorModulo("virada");
+}
+// Etapa G1a (10/11): os comandos de consulta e de gestão da ponte e o estado
+// dela em motor/ponte.js. Partida, pós-jogo, semana e entrada continuam aqui.
+function motorPonte() {
+  motorSemana();
+  return motorModulo("ponte");
 }
 function fecharOverlay(id) {
   document.getElementById(id).classList.remove("open");
@@ -1631,7 +1641,8 @@ function advanceSponsorshipSeason() {
 function sponsorshipSeasonTotal() {
   return motorFinancas().sponsorshipSeasonTotal(CAREER.sponsorship);
 }
-const SPONSOR_KIND_LABEL = { master: "Patrocinador Master", material: "Material Esportivo" };
+// Etapa G1a (10/11): mora em motor/ponte.js.
+Object.defineProperty(window, "SPONSOR_KIND_LABEL", { configurable: true, get() { return motorPonte().SPONSOR_KIND_LABEL; } });
 // Card dentro do Financeiro (ver renderCentral) — 2 linhas (master e
 // material), cada uma com o contrato atual ou um botão "Ver propostas"
 // quando o contrato venceu (ver advanceSponsorshipSeason).
@@ -3507,7 +3518,8 @@ function findInterestedBuyer(excludeId, player) {
    ter contrato checado como qualquer outro jogador do elenco no mesmo
    clique). Os dois casos reaproveitam settleLoanOut/settleLoanIn, que
    também resolvem a cláusula de compra quando existir. */
-const LOAN_HALF_SEASON_ROUNDS = 19; // "6 meses" ≈ metade das 38 rodadas
+// Etapa G1a (10/11): mora em motor/ponte.js.
+Object.defineProperty(window, "LOAN_HALF_SEASON_ROUNDS", { configurable: true, get() { return motorPonte().LOAN_HALF_SEASON_ROUNDS; } });
 // AJUSTE (pedido do usuário: "os empréstimos não estão realistas —
 // jogadores de destaque devem ter empréstimos recusados") — antes,
 // QUALQUER jogador (seu ou de outro clube) podia ser emprestado sem
@@ -4188,10 +4200,13 @@ function applyNaturalAgingEvolution(playedThisRound) {
    já existente, reaproveitando moraleReason, em vez de um estado
    paralelo que duplicaria/conflitaria com o sistema de moral já
    maduro do jogo. */
-function isProtectedTrainingDay(i) { return motorTreino().isProtectedTrainingDay(i); }
+function isProtectedTrainingDay(i) {
+  return motorPonte().isProtectedTrainingDay(i);
+}
 // Fórmulas exatas do documento (seção 2.2).
 const TRAINING_INTENSITY_LABEL = { leve: "Leve", moderada: "Moderada", intensa: "Intensa" };
-const TRAINING_GROUP_LABEL = { principal: "Elenco", misto: "Misto c/ Sub-20", individual: "Individual" };
+// Etapa G1a (10/11): mora em motor/ponte.js.
+Object.defineProperty(window, "TRAINING_GROUP_LABEL", { configurable: true, get() { return motorPonte().TRAINING_GROUP_LABEL; } });
 // Bloco 5 (mockups brtreinadorbloco5treino.html/brtreinadorbloco5pendentes.html)
 // — pedido do usuário: "Editor de exercício" (Área/Intensidade/Duração/
 // Grupo). Decisão confirmada com o usuário (AskUserQuestion): manter 1
@@ -4202,7 +4217,10 @@ const TRAINING_GROUP_LABEL = { principal: "Elenco", misto: "Misto c/ Sub-20", in
 // (só informativo: não entra nas fórmulas de fadiga/ganho do documento,
 // que continuam intocadas — combina com a "prévia de fadiga" já mostrada
 // noutro lugar da tela, sem duplicar cálculo).
-const TRAINING_DURATION_MIN = 15, TRAINING_DURATION_MAX = 120, TRAINING_DURATION_STEP = 15;
+// Etapa G1a (10/11): mora em motor/ponte.js.
+Object.defineProperty(window, "TRAINING_DURATION_MAX", { configurable: true, get() { return motorPonte().TRAINING_DURATION_MAX; } });
+Object.defineProperty(window, "TRAINING_DURATION_MIN", { configurable: true, get() { return motorPonte().TRAINING_DURATION_MIN; } });
+Object.defineProperty(window, "TRAINING_DURATION_STEP", { configurable: true, get() { return motorPonte().TRAINING_DURATION_STEP; } });
 // Histórico por jogador (Bloco 5, "pendentes" — tela "Histórico de
 // fadiga"): fatigueHistory alimentado 1x por rodada em
 // applyWeeklyTraining (1 rodada = 1 semana, mesma equivalência já usada
@@ -4229,7 +4247,9 @@ function defaultTrainingPlan(schemeId) { return motorTreino().defaultTrainingPla
 // é o ponto do esquema "Integração Sub-20"); "principal" só quem
 // realmente veste a camisa 10 (loan conta junto, mesmo critério de
 // sempre — ver computeHumanStrength/wageBillOf).
-function trainingTargets(entry) { return motorTreino().trainingTargets(entry, CAREER.squad); }
+function trainingTargets(entry) {
+  return motorPonte().trainingTargets(entry);
+}
 // Resolve a semana INTEIRA de uma vez (ver aviso grande no topo desta
 // seção sobre por que não dá pra simular dia a dia). Idempotente por
 // rodada — chamar de novo na mesma rodada não faz nada (trainingAppliedForRound
@@ -4380,20 +4400,7 @@ function applyTrainingScheme(id) {
 // folgas (mesmo espírito do mockup: "fadiga acima de 80% PRA QUINTA",
 // o pico antes da folga de sexta — não a média da semana inteira).
 function projectWeekPeakFatigue() {
-  const cond = new Map(CAREER.squad.map((p) => [p.id, p.condition == null ? 100 : p.condition]));
-  const worst = new Map(cond);
-  CAREER.trainingPlan.forEach((entry, i) => {
-    if (i === motorTreino().TRAINING_GAME_DAY || !entry || !entry.foco) return;
-    if (entry.foco === "descanso") {
-      CAREER.squad.forEach((p) => cond.set(p.id, clamp(cond.get(p.id) + 12, 0, 100)));
-    } else {
-      const mult = motorTreino().TRAINING_INTENSITY_MULT[entry.intensidade] || 1;
-      const fatigueCost = Math.round(6 * mult);
-      trainingTargets(entry).forEach((p) => cond.set(p.id, clamp(cond.get(p.id) - fatigueCost, 0, 100)));
-    }
-    cond.forEach((v, id) => { if (v < worst.get(id)) worst.set(id, v); });
-  });
-  return worst;
+  return motorPonte().projectWeekPeakFatigue();
 }
 function renderTreinos() {
   const strip = document.getElementById("trainingSchemeStrip");
@@ -4614,7 +4621,8 @@ function claimObjective(category, objectiveId) {
    central do próprio jogo, ausente da tabela original mas óbvio de
    incluir já que existe). tier (bronze/prata/ouro) só varia o visual
    do badge, mesmo espírito do documento. */
-const ACHIEVEMENT_CATEGORY_LABEL = { carreira: "Carreira", titulos: "Títulos", ofensivo: "Ofensivo", disciplina: "Disciplina", formacao: "Formação", fidelidade: "Fidelidade" };
+// Etapa G1a (10/11): mora em motor/ponte.js.
+Object.defineProperty(window, "ACHIEVEMENT_CATEGORY_LABEL", { configurable: true, get() { return motorPonte().ACHIEVEMENT_CATEGORY_LABEL; } });
 function freshAchievementsState() {
   return motorRegistro().freshAchievementsState();
 }
@@ -5244,28 +5252,18 @@ function finishStartupWizard() {
    server.js), desce só via /api/loja/spend-credits (preço sempre do
    catálogo do servidor). Todo o resto do Modo Técnico confia no
    cliente (ver aviso em careerStore.js) — aqui, de propósito, não. */
-const CREDIT_PACKAGES = [
-  { id: "bronze", name: "Pacote Bronze", tier: "bronze", priceBRL: 4.90, baseCoins: 490, bonusPct: 0, totalCoins: 490 },
-  { id: "prata", name: "Pacote Prata", tier: "prata", priceBRL: 14.90, baseCoins: 1600, bonusPct: 5, totalCoins: 1680 },
-  { id: "ouro", name: "Pacote Ouro", tier: "ouro", priceBRL: 34.90, baseCoins: 4000, bonusPct: 12, totalCoins: 4480, featured: true },
-  { id: "platina", name: "Pacote Platina", tier: "platina", priceBRL: 69.90, baseCoins: 8500, bonusPct: 20, totalCoins: 10200 },
-  { id: "diamante", name: "Pacote Diamante", tier: "diamante", priceBRL: 149.90, baseCoins: 19500, bonusPct: 30, totalCoins: 25350 },
-];
+// Etapa G1a (10/11): mora em motor/ponte.js.
+Object.defineProperty(window, "CREDIT_PACKAGES", { configurable: true, get() { return motorPonte().CREDIT_PACKAGES; } });
 // Preço em Créditos BR — os 5 primeiros vêm direto do mockup da Loja
 // (só ele mostra o preço em créditos; a planilha só lista preço em
 // R$, que é o insumo do MODELO DE NEGÓCIO, não da UI). "Uniforme
 // Alternativo" está na planilha mas não no mockup — preço nosso,
 // seguindo a mesma proporção aproximada dos outros 5 (R$ × ~30,
 // arredondado à dezena).
-const BOOST_ITEMS = [
-  { id: "recuperacao_instantanea", name: "Recuperação Instantânea", desc: "Zera o tempo de recuperação de condição física de 1 jogador", duration: "IMEDIATO", priceCredits: 90, category: "conveniencia", icon: "⚡" },
-  { id: "reset_moral", name: "Reset de Moral", desc: "Leva a moral do elenco para “Feliz” instantaneamente", duration: "IMEDIATO", priceCredits: 120, category: "conveniencia", icon: "☺" },
-  { id: "treino_extra", name: "Treino Extra", desc: "1 sessão extra fora do ciclo semanal, sem consumir folga protegida", duration: "DURA 1 SEMANA", priceCredits: 150, category: "conveniencia", icon: "＋" },
-  { id: "injecao_moral", name: "Injeção de Moral", desc: "+Moral em todo o elenco, cortesia do patrocinador", duration: "DURA 3 PARTIDAS", priceCredits: 210, category: "patrocinio", icon: "↑" },
-  { id: "desconto_contratacao", name: "Desconto de Contratação", desc: "-15% no custo da próxima contratação", duration: "1 JANELA DE TRANSFERÊNCIA", priceCredits: 300, category: "patrocinio", icon: "%" },
-  { id: "uniforme_alternativo", name: "Uniforme Alternativo", desc: "Novo uniforme visual, sem efeito de jogo", duration: "PERMANENTE (VISUAL)", priceCredits: 180, category: "cosmetico", icon: "👕" },
-];
-const BOOST_CATEGORY_LABEL = { conveniencia: "CONVENIÊNCIA", patrocinio: "PATROCÍNIOS", cosmetico: "COSMÉTICOS" };
+// Etapa G1a (10/11): mora em motor/ponte.js.
+Object.defineProperty(window, "BOOST_ITEMS", { configurable: true, get() { return motorPonte().BOOST_ITEMS; } });
+// Etapa G1a (10/11): mora em motor/ponte.js.
+Object.defineProperty(window, "BOOST_CATEGORY_LABEL", { configurable: true, get() { return motorPonte().BOOST_CATEGORY_LABEL; } });
 const TIER_ABBR = { bronze: "B", prata: "P", ouro: "O", platina: "Pt", diamante: "D" };
 // Preço com centavos — fmtBRL (usada no resto do jogo pra salário/
 // valor de mercado, sempre em reais inteiros) arredonda pra 0 casas
@@ -8567,7 +8565,8 @@ function commitLineupTactics() {
    táticas juntos, decisão confirmada com o usuário) — o técnico monta
    um plano de jogo (ex.: "Retranca fora") uma vez e reaplica inteiro
    depois, sem reconfigurar tudo de novo toda partida. */
-const MAX_TACTICAL_SCHEMES = 8;
+// Etapa G1a (10/11): mora em motor/ponte.js.
+Object.defineProperty(window, "MAX_TACTICAL_SCHEMES", { configurable: true, get() { return motorPonte().MAX_TACTICAL_SCHEMES; } });
 // Qualquer edição manual (formação/titulares/banco/tática) DEPOIS de
 // carregar um esquema desvincula da origem — mesmo espírito de
 // CAREER.trainingSchemeId=null ("Personalizado") já usado no módulo de
@@ -8578,49 +8577,15 @@ function markLineupDirty() {
   return motorClube().markLineupDirty();
 }
 function saveTacticalScheme(name) {
-  const trimmed = (name || "").trim();
-  if (!trimmed) return { ok: false, reason: "Dê um nome pro esquema." };
-  if (CAREER.tacticalSchemes.length >= MAX_TACTICAL_SCHEMES) {
-    return { ok: false, reason: `Limite de ${MAX_TACTICAL_SCHEMES} esquemas salvos — apague um antes de criar outro.` };
-  }
-  const scheme = {
-    id: `scheme_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
-    name: trimmed.slice(0, 30),
-    formation: CAREER.lineup.formation,
-    starters: [...CAREER.lineup.starters],
-    bench: [...CAREER.lineup.bench],
-    tactics: { ...CAREER.lineup.tactics },
-    createdRound: Math.min(CAREER.currentRound, 38),
-  };
-  CAREER.tacticalSchemes.push(scheme);
-  CAREER.activeSchemeId = scheme.id;
-  return { ok: true, scheme };
+  return motorPonte().saveTacticalScheme(name);
 }
 function applyTacticalScheme(id) {
-  const scheme = CAREER.tacticalSchemes.find((s) => s.id === id);
-  if (!scheme) return false;
-  CAREER.lineup.formation = scheme.formation;
-  CAREER.lineup.starters = [...scheme.starters];
-  CAREER.lineup.bench = [...scheme.bench];
-  CAREER.lineup.tactics = { ...scheme.tactics };
-  CAREER.activeSchemeId = scheme.id;
-  // Redesign Cap. 3 · T04 — "data de uso" real (campo opcional: esquemas
-  // salvos antes disto ficam sem e mostram só a rodada em que foram salvos).
-  scheme.lastUsedRound = CAREER.currentRound;
-  scheme.lastUsedSeason = CAREER.seasonYear;
-  return true;
+  return motorPonte().applyTacticalScheme(id);
 }
 // Cap. 3 · T04 — renomear: 1–30 caracteres, sem repetir nome (sem
 // diferenciar maiúsculas). Devolve { ok, error }.
 function renameTacticalScheme(id, rawName) {
-  const scheme = CAREER.tacticalSchemes.find((s) => s.id === id);
-  if (!scheme) return { ok: false, error: "Esquema não encontrado." };
-  const name = String(rawName || "").trim().replace(/\s+/g, " ");
-  if (!name) return { ok: false, error: "Dê um nome ao esquema." };
-  if (name.length > 30) return { ok: false, error: "Use no máximo 30 caracteres." };
-  if (CAREER.tacticalSchemes.some((s) => s.id !== id && s.name.toLowerCase() === name.toLowerCase())) return { ok: false, error: "Já existe um esquema com esse nome." };
-  scheme.name = name;
-  return { ok: true, scheme };
+  return motorPonte().renameTacticalScheme(id, rawName);
 }
 function openRenameSchemeSheet(id) {
   const scheme = CAREER.tacticalSchemes.find((s) => s.id === id);
@@ -8643,8 +8608,7 @@ function openRenameSchemeSheet(id) {
   });
 }
 function deleteTacticalScheme(id) {
-  CAREER.tacticalSchemes = CAREER.tacticalSchemes.filter((s) => s.id !== id);
-  if (CAREER.activeSchemeId === id) CAREER.activeSchemeId = null;
+  return motorPonte().deleteTacticalScheme(id);
 }
 // Meta honesta (não inventa "usado nos últimos 8 jogos" como o mockup —
 // não temos esse dado de verdade) — descreve o que o esquema REALMENTE
@@ -8736,11 +8700,7 @@ let MARKING_SELECTED_RIVAL = null;
 // existe enquanto há um jogo de verdade marcado (round <= 38 e não é
 // rodada de folga).
 function nextOpponentId() {
-  const round = CAREER.currentRound;
-  if (round > 38) return null;
-  const fx = (CAREER.schedule[round] || []).find((m) => String(m.home) === String(CAREER.clubId) || String(m.away) === String(CAREER.clubId));
-  if (!fx) return null;
-  return String(fx.home) === String(CAREER.clubId) ? fx.away : fx.home;
+  return motorPonte().nextOpponentId();
 }
 // Chamada só de dentro da simulação (ver resolveLiveChunk) — devolve
 // null (sem supressão nenhuma) se não há designação ativa OU se ela é
@@ -8980,132 +8940,44 @@ function suggestTactics() {
      cautelosa 2 em ritmo, pressão e linha defensiva) pela força relativa.
    Cada sugestão leva uma `chave`: ao aplicar, o motor recalcula e só
    aplica se a chave for a mesma (senão devolve a recomendação nova). */
-const COMISSAO_COND_DESGASTE = 70, COMISSAO_COND_DESCANSADO = 85, COMISSAO_OVR_TOLERANCIA = 3, COMISSAO_FORMACAO_GANHO = 1.03;
-function comissaoJogador(id) { return id ? CAREER.squad.find((p) => p.id === id) || null : null; }
-function comissaoNome(p) { return p ? abbreviateName(p.name) : "—"; }
+// Etapa G1a (10/11): mora em motor/ponte.js.
+Object.defineProperty(window, "COMISSAO_COND_DESCANSADO", { configurable: true, get() { return motorPonte().COMISSAO_COND_DESCANSADO; } });
+Object.defineProperty(window, "COMISSAO_COND_DESGASTE", { configurable: true, get() { return motorPonte().COMISSAO_COND_DESGASTE; } });
+Object.defineProperty(window, "COMISSAO_FORMACAO_GANHO", { configurable: true, get() { return motorPonte().COMISSAO_FORMACAO_GANHO; } });
+Object.defineProperty(window, "COMISSAO_OVR_TOLERANCIA", { configurable: true, get() { return motorPonte().COMISSAO_OVR_TOLERANCIA; } });
+function comissaoJogador(id) {
+  return motorPonte().comissaoJogador(id);
+}
+function comissaoNome(p) {
+  return motorPonte().comissaoNome(p);
+}
 function comissaoReservasDisponiveis() {
-  const titulares = new Set(CAREER.lineup.starters.filter(Boolean));
-  return CAREER.squad.filter((p) => p.status === "ok" && !titulares.has(p.id) && (p.origin === "principal" || p.origin === "loan"));
+  return motorPonte().comissaoReservasDisponiveis();
 }
 function comissaoEscalacao() {
-  const f = CAREER.lineup.formation, slots = FORMATIONS[f];
-  if (!slots || !CAREER.squad.length) return { estado: "sem-dados" };
-  const reservas = comissaoReservasDisponiveis();
-  const melhor = (lista) => lista.slice().sort((a, b) => b.overall - a.overall)[0] || null;
-  const troca = (idx, sai, entra, motivo, nota) => ({
-    estado: "mudanca", resumo: `${comissaoNome(entra)} no lugar de ${sai ? comissaoNome(sai) : "vaga vazia"}`, motivo, nota,
-    detalhe: { slot: idx, sai: sai ? { id: sai.id, nome: comissaoNome(sai) } : null, entra: { id: entra.id, nome: comissaoNome(entra) } },
-  });
-  // 1) Titular indisponível (lesão, suspensão, fora do elenco).
-  for (let i = 0; i < slots.length; i++) {
-    const p = comissaoJogador(CAREER.lineup.starters[i]);
-    if (p && p.status === "ok") continue;
-    const cand = melhor(reservas.filter((r) => r.group === slots[i][0]));
-    if (!cand) continue;
-    const why = !p ? "A vaga está sem titular." : p.status === "contundido" ? `${comissaoNome(p)} está lesionado.` : p.status === "suspenso" ? `${comissaoNome(p)} está suspenso.` : `${comissaoNome(p)} não está disponível.`;
-    return troca(i, p, cand, why, "Melhor reserva disponível na posição");
-  }
-  // 2) Titular desgastado.
-  const cond = (p) => (p.condition == null ? 100 : p.condition);
-  let pior = null;
-  slots.forEach((s, i) => {
-    const p = comissaoJogador(CAREER.lineup.starters[i]);
-    if (p && cond(p) < COMISSAO_COND_DESGASTE && (!pior || cond(p) < cond(pior.p))) pior = { i, p };
-  });
-  if (pior) {
-    const cand = melhor(reservas.filter((r) => r.group === slots[pior.i][0] && cond(r) >= COMISSAO_COND_DESCANSADO && r.overall >= pior.p.overall - COMISSAO_OVR_TOLERANCIA));
-    if (cand) return troca(pior.i, pior.p, cand, `${comissaoNome(pior.p)} está desgastado para começar (condição ${Math.round(cond(pior.p))}%).`, "Mais energia desde o início");
-  }
-  // 3) Maior ganho de overall da escalação automática.
-  const auto = autoLineup(CAREER.squad, f, false);
-  const titulares = new Set(CAREER.lineup.starters.filter(Boolean));
-  let best = null;
-  auto.starters.forEach((id, i) => {
-    if (!id || id === CAREER.lineup.starters[i] || titulares.has(id)) return;
-    const entra = comissaoJogador(id), sai = comissaoJogador(CAREER.lineup.starters[i]);
-    if (!entra || entra.group !== slots[i][0]) return;
-    const ganho = entra.overall - (sai ? sai.overall : 0);
-    if (ganho > 0 && (!best || ganho > best.ganho)) best = { i, entra, sai, ganho };
-  });
-  if (best) return troca(best.i, best.sai, best.entra, `${comissaoNome(best.entra)} (${best.entra.overall}) rende mais que ${comissaoNome(best.sai)} (${best.sai ? best.sai.overall : "—"}) nesta posição.`, `+${best.ganho} de overall na posição`);
-  return { estado: "manter", resumo: "Manter escalação atual", motivo: "Os titulares estão disponíveis e descansados para esta formação." };
+  return motorPonte().comissaoEscalacao();
 }
 // Força de uma escalação hipotética pela fórmula do jogo (computeHumanStrength
 // lê CAREER.lineup: troca por um instante e devolve o original).
 function comissaoForca(lineup, club) {
-  const original = CAREER.lineup;
-  CAREER.lineup = { ...original, formation: lineup.formation, starters: lineup.starters, bench: lineup.bench };
-  try { return computeHumanStrength(club); } finally { CAREER.lineup = original; }
+  return motorPonte().comissaoForca(lineup, club);
 }
 function comissaoProximoJogo() {
-  const round = CAREER.currentRound;
-  if (round > 38) return null;
-  const fx = (CAREER.schedule[round] || []).find((m) => String(m.home) === String(CAREER.clubId) || String(m.away) === String(CAREER.clubId));
-  if (!fx) return null;
-  const casa = String(fx.home) === String(CAREER.clubId);
-  return { adversarioId: casa ? fx.away : fx.home, casa, rodada: round };
+  return motorPonte().comissaoProximoJogo();
 }
 function comissaoFormacao(jogo) {
-  const myClub = teamById(CAREER.clubId), opp = teamById(jogo.adversarioId);
-  if (!myClub || !opp || !opp.atk || !opp.def) return { estado: "sem-dados" };
-  const razao = (s) => {
-    const l = motorPartida().goalLambdas(jogo.casa ? s : { atk: opp.atk, def: opp.def }, jogo.casa ? { atk: opp.atk, def: opp.def } : s);
-    return jogo.casa ? l.home / l.away : l.away / l.home;
-  };
-  const atual = CAREER.lineup.formation;
-  const avaliar = (f) => { const a = autoLineup(CAREER.squad, f, false); const s = comissaoForca({ formation: f, starters: a.starters, bench: a.bench }, myClub); return { f, a, s, r: razao(s) }; };
-  const base = avaliar(atual);
-  let best = base;
-  Object.keys(FORMATIONS).forEach((f) => { if (f === atual) return; const v = avaliar(f); if (v.r > best.r) best = v; });
-  if (best.f === atual || best.r < base.r * COMISSAO_FORMACAO_GANHO) {
-    return { estado: "manter", resumo: "Manter formação atual", motivo: `O ${atual} é a melhor formação para os jogadores disponíveis contra o ${opp.name}.` };
-  }
-  const pct = (x, y) => Math.round((x / y - 1) * 100);
-  const atk = pct(best.s.atk, base.s.atk), def = pct(base.s.def, best.s.def);
-  const ganhos = [atk > 0 ? `ataque +${atk}%` : null, def > 0 ? `defesa +${def}%` : null].filter(Boolean);
-  const titularesAgora = new Set(CAREER.lineup.starters.filter(Boolean));
-  const novos = new Set(best.a.starters.filter(Boolean));
-  const entram = best.a.starters.filter((id) => id && !titularesAgora.has(id)).map((id) => comissaoNome(comissaoJogador(id)));
-  const saem = CAREER.lineup.starters.filter((id) => id && !novos.has(id)).map((id) => comissaoNome(comissaoJogador(id)));
-  return {
-    estado: "mudanca", resumo: `${best.f} para este jogo`,
-    motivo: `Com os jogadores disponíveis, o ${best.f} rende mais que o ${atual} contra o ${opp.name}${ganhos.length ? ` (${ganhos.join(", ")})` : ""}.`,
-    nota: `Gols esperados a favor/contra: ${Math.round((best.r / base.r - 1) * 100)}% melhor`,
-    detalhe: { de: atual, para: best.f, entram, saem, starters: best.a.starters, bench: best.a.bench },
-  };
+  return motorPonte().comissaoFormacao(jogo);
 }
-const COMISSAO_POSTURAS = { 4: "Ofensiva", 3: "Equilibrada", 2: "Cautelosa" };
+// Etapa G1a (10/11): mora em motor/ponte.js.
+Object.defineProperty(window, "COMISSAO_POSTURAS", { configurable: true, get() { return motorPonte().COMISSAO_POSTURAS; } });
 function comissaoPostura(jogo) {
-  const myClub = teamById(CAREER.clubId), opp = teamById(jogo.adversarioId);
-  if (!myClub || !opp || !opp.atk || !opp.def) return { estado: "sem-dados" };
-  // Mesma conta de suggestTactics (força bruta do catálogo, sem mando).
-  const ratio = (myClub.atk * opp.def) / (opp.atk * myClub.def);
-  const nivel = ratio > 1.15 ? 4 : ratio < 0.87 ? 2 : 3;
-  const motivo = nivel === 4 ? `Seu time é favorito contra o ${opp.name}.` : nivel === 2 ? `O ${opp.name} é favorito neste confronto.` : `Times parelhos contra o ${opp.name}.`;
-  const eixos = ["ritmo", "pressao", "linhaDefensiva"];
-  const t = CAREER.lineup.tactics || {};
-  const antes = Object.fromEntries(eixos.map((id) => [id, t[id] || 3]));
-  if (eixos.every((id) => antes[id] === nivel)) return { estado: "manter", resumo: "Manter postura atual", motivo: `${COMISSAO_POSTURAS[nivel]} já está aplicada. ${motivo}` };
-  return {
-    estado: "mudanca", resumo: `${COMISSAO_POSTURAS[nivel]} para começar`, motivo,
-    nota: `Ritmo, pressão e linha defensiva no nível ${nivel}`,
-    detalhe: { nivel, nome: COMISSAO_POSTURAS[nivel], antes },
-  };
+  return motorPonte().comissaoPostura(jogo);
 }
 function comissaoChave(cat, item) {
-  const l = CAREER.lineup;
-  const estado = cat === "postura" ? JSON.stringify(l.tactics || {}) : JSON.stringify([l.formation, l.starters, l.bench]);
-  return JSON.stringify([cat, item.estado, item.detalhe || null, estado]);
+  return motorPonte().comissaoChave(cat, item);
 }
 function comissaoRecomendacoes() {
-  const contratada = !!(CAREER.technicalStaff && CAREER.technicalStaff.hired);
-  if (!contratada) return { contratada, jogo: null, itens: [] };
-  const jogo = comissaoProximoJogo();
-  if (!jogo) return { contratada, jogo: null, itens: [] };
-  const opp = teamById(jogo.adversarioId);
-  const itens = [["escalacao", comissaoEscalacao()], ["formacao", comissaoFormacao(jogo)], ["postura", comissaoPostura(jogo)]]
-    .map(([cat, item]) => ({ categoria: cat, ...item, chave: comissaoChave(cat, item) }));
-  return { contratada, jogo: { adversario: opp ? opp.name : "", casa: jogo.casa, rodada: jogo.rodada }, itens };
+  return motorPonte().comissaoRecomendacoes();
 }
 // Mercado — acha o titular mais fraco (menor overall) e procura, no
 // mesmo catálogo que a aba Mercado usa (allMarketPlayers), o reforço
@@ -13512,11 +13384,7 @@ function ponteEstado() {
 }
 // Fase 8 — duração e cláusula do empréstimo como em confirmLoanFromModal.
 function ponteOpcoesEmprestimo(duracao, clausula, valorClausula) {
-  if (!["temporada", "meia"].includes(duracao) || !["nenhuma", "opcional", "obrigatoria"].includes(clausula)) return null;
-  const buyValue = Math.max(0, Math.round(Number(valorClausula) || 0));
-  const buyOption = clausula === "nenhuma" ? null : { mandatory: clausula === "obrigatoria", value: buyValue };
-  const returnRound = duracao === "meia" ? Math.min(CAREER.currentRound + LOAN_HALF_SEASON_ROUNDS, 38) : null;
-  return { returnRound, buyOption };
+  return motorPonte().ponteOpcoesEmprestimo(duracao, clausula, valorClausula);
 }
 // Grava o save do motor e devolve { ok } ou o motivo da falha (fase 6).
 async function ponteGravar() {
@@ -13745,37 +13613,9 @@ if (V2_PONTE) {
     // Fase 7 — elenco avançado (Carreira 2.0). Mesmas regras: renewalVerdict
     // (proposeRenewal), applyTalkEffect (applyTalkOption), canTalkTo,
     // isContractExpiring e handlePlayerAction. Gravam.
-    async renovar(id, salario, anos) {
-      const p = CAREER && CAREER.squad.find((x) => x.id === id);
-      if (!p) return { ok: false, motivo: "jogador-invalido" };
-      if (!isContractExpiring(p)) return { ok: false, motivo: "fora-do-prazo" };
-      const newWage = Math.max(0, Math.round(Number(salario) || 0));
-      const duration = Math.round(Number(anos));
-      if (!(duration >= 1 && duration <= 5)) return { ok: false, motivo: "duracao-invalida" };
-      const v = renewalVerdict(p, newWage, duration);
-      if (v && v.motivo === "teto") return { ok: false, motivo: "teto", mensagem: v.texto };
-      if (v) {
-        firePressConference("19", CAREER.currentRound, false);
-        return { ok: true, aceita: false, motivo: v.texto, salario: newWage, anos: duration, coletiva: !!PENDING_PRESS };
-      }
-      p.wage = Math.max(p.wage, newWage);
-      p.contractUntil = CAREER.seasonYear + duration;
-      const r = await ponteGravar();
-      return r.ok ? { ok: true, aceita: true, salario: p.wage, anos: duration, ate: p.contractUntil } : r;
-    },
-    coletivaAtual() {
-      const e = PENDING_PRESS && PENDING_PRESS.entry;
-      return e ? { ok: true, pergunta: e.pergunta, respostas: e.respostas.map((r) => ({ letra: r.letra, texto: r.texto })) } : { ok: false, motivo: "sem-coletiva" };
-    },
-    async conversar(id, opcao) {
-      const p = CAREER && CAREER.squad.find((x) => x.id === id);
-      if (!p) return { ok: false, motivo: "jogador-invalido" };
-      if (!canTalkTo(p)) return { ok: false, motivo: "sem-conversa" };
-      if (!["apoiar", "prometer", "cobrar"].includes(opcao)) return { ok: false, motivo: "opcao-invalida" };
-      const fx = applyTalkEffect(p, opcao);
-      const r = await ponteGravar();
-      return r.ok ? { ok: true, efeito: fx.applied, texto: fx.resultText, moral: p.morale } : r;
-    },
+    renovar(...args) { return motorPonte().comandosGestao.renovar(...args); },
+    coletivaAtual(...args) { return motorPonte().comandosGestao.coletivaAtual(...args); },
+    conversar(...args) { return motorPonte().comandosGestao.conversar(...args); },
     // Banco, base e dispensa: as mesmas checagens de handlePlayerAction.
     async acaoJogador(id, acao) {
       const p = CAREER && CAREER.squad.find((x) => x.id === id);
@@ -13794,160 +13634,27 @@ if (V2_PONTE) {
     // cancelListing, findInterestedBuyer/finalizeLoanOut, finalizeLoanIn,
     // acceptOffer/declineOffer. As checagens antes de cada comando são as
     // dos modais da versão anterior; o motivo volta para a v2 em vez do aviso.
-    mercado() {
-      if (!CAREER) return { ok: false, motivo: "sem-carreira" };
-      const w = transferWindowStatus(CAREER.currentRound);
-      const texto = w.open
-        ? (w.closesLabel ? `Janela aberta ${w.closesLabel}` : w.closesAtRound ? `Janela aberta até a rodada ${w.closesAtRound}` : "Janela aberta")
-        : (w.opensLabel ? `Janela fechada · ${w.opensLabel}` : w.opensAtRound ? `Janela fechada · reabre na rodada ${w.opensAtRound}` : "Janela fechada · próxima temporada");
-      const recusaEmprestimo = [];
-      Object.values(CAREER.leagueSquads || {}).forEach((sq) => sq.forEach((p) => { if (isLoanOutRefused(p)) recusaEmprestimo.push(String(p.id)); }));
-      CAREER.squad.forEach((p) => { if (isLoanOutRefused(p)) recusaEmprestimo.push(String(p.id)); });
-      return {
-        ok: true, janela: { aberta: !!w.open, texto }, multi: CAREER.marketScope === "multi",
-        clubes: marketTeamsPool().map((t) => ({ id: String(t.id), nome: t.name, sigla: t.short || null, divisao: t.competitionId || CURRENT_COMPETITION_ID })),
-        desconto: CAREER.nextSigningDiscountPct || 0, parcelas: [1, 2, 3, 4], esperaRodadas: OFFER_WAIT_ROUNDS,
-        recusaEmprestimo,
-      };
-    },
-    async fazerProposta(clubId, playerId, valor, parcelas) {
-      if (!CAREER) return { ok: false, motivo: "sem-carreira" };
-      if (!transferWindowStatus(CAREER.currentRound).open) return { ok: false, motivo: "janela-fechada", mensagem: "Janela de contratações encerrada — não dá pra propor agora." };
-      if (pendingOfferOutFor(playerId)) return { ok: false, motivo: "ja-proposta", mensagem: "Você já tem uma proposta por esse jogador." };
-      if (![1, 2, 3, 4].includes(Number(parcelas))) return { ok: false, motivo: "parcelas-invalidas" };
-      const r = submitOfferOut(String(clubId), playerId, valor, parcelas);
-      if (!r.ok) return { ok: false, motivo: r.motivo, mensagem: r.texto };
-      const g = await ponteGravar();
-      return g.ok ? { ok: true, id: r.offer.id, valor: r.value } : g;
-    },
-    async aumentarProposta(offerId, valor) {
-      const o = CAREER && (CAREER.pendingOffersOut || []).find((x) => x.id === offerId);
-      if (!o) return { ok: false, motivo: "proposta-invalida" };
-      const v = Math.round(Number(valor) || 0);
-      if (v <= o.offerValue) return { ok: false, motivo: "valor-baixo", mensagem: `A nova proposta precisa ser maior que ${fmtBRL(o.offerValue)}.` };
-      increaseOffer(offerId, v);
-      return ponteGravar();
-    },
-    async retirarProposta(offerId) {
-      if (!CAREER || !(CAREER.pendingOffersOut || []).some((x) => x.id === offerId)) return { ok: false, motivo: "proposta-invalida" };
-      withdrawOffer(offerId);
-      return ponteGravar();
-    },
+    mercado(...args) { return motorPonte().comandosGestao.mercado(...args); },
+    fazerProposta(...args) { return motorPonte().comandosGestao.fazerProposta(...args); },
+    aumentarProposta(...args) { return motorPonte().comandosGestao.aumentarProposta(...args); },
+    retirarProposta(...args) { return motorPonte().comandosGestao.retirarProposta(...args); },
     // Prévia da folha "Confirme seu reforço": as mesmas contas de
     // finalizeIncomingPurchase (1ª parcela arredondada, folha com o salário).
-    previaCompra(offerId) {
-      const o = CAREER && (CAREER.pendingOffersOut || []).find((x) => x.id === offerId);
-      if (!o || o.counterValue == null) return { ok: false, motivo: "proposta-invalida" };
-      const p = leagueSquadFor(o.clubId).find((x) => String(x.id) === String(o.playerId));
-      if (!p) return { ok: false, motivo: "indisponivel", mensagem: `${abbreviateName(o.playerName)} não está mais disponível.` };
-      const valor = o.counterValue;
-      const perInstallment = Math.round(valor / o.installments / 1000) * 1000;
-      const primeira = o.installments === 1 ? valor : perInstallment;
-      return { ok: true, valor, parcelas: o.installments, porParcela: perInstallment, primeira, caixaAntes: CAREER.finances.cash, caixaDepois: CAREER.finances.cash - primeira,
-        folhaAntes: wageBillOf(CAREER.squad), folhaDepois: wageBillOf(CAREER.squad) + p.wage, teto: CAREER.finances.wageCap };
-    },
-    async aceitarContraproposta(offerId) {
-      const o = CAREER && (CAREER.pendingOffersOut || []).find((x) => x.id === offerId);
-      if (!o || o.counterValue == null) return { ok: false, motivo: "proposta-invalida" };
-      const r = acceptCounterOffer(offerId) || { ok: false, texto: null };
-      const g = await ponteGravar();
-      if (!g.ok) return g;
-      return { ok: true, comprado: !!r.ok, mensagem: r.ok ? null : r.texto, coletiva: !!(r.ok && PENDING_PRESS) };
-    },
-    async anunciar(playerId, valor) {
-      const p = CAREER && CAREER.squad.find((x) => x.id === playerId);
-      if (!p) return { ok: false, motivo: "jogador-invalido" };
-      if (listingFor(playerId)) return { ok: false, motivo: "ja-anunciado", mensagem: "Esse jogador já está à venda." };
-      if (p.origin !== "principal") return { ok: false, motivo: "nao-principal", mensagem: "Só jogadores do elenco principal podem ser anunciados." };
-      if (CAREER.squad.filter((x) => x.origin === "principal").length <= 14) return { ok: false, motivo: "minimo", mensagem: "O elenco principal não pode ficar com menos de 14 jogadores." };
-      const l = createListing(p, valor);
-      const g = await ponteGravar();
-      return g.ok ? { ok: true, id: l.id, valor: l.askingValue } : g;
-    },
-    async retirarAnuncio(listingId) {
-      if (!CAREER || !(CAREER.pendingListings || []).some((l) => l.id === listingId)) return { ok: false, motivo: "anuncio-invalido" };
-      cancelListing(listingId);
-      return ponteGravar();
-    },
-    previaVenda(listingId, offerId) {
-      const l = CAREER && (CAREER.pendingListings || []).find((x) => x.id === listingId);
-      const o = l && l.offers.find((x) => x.id === offerId);
-      if (!o) return { ok: false, motivo: "proposta-invalida" };
-      const p = CAREER.squad.find((x) => x.id === l.playerId);
-      const perInstallment = Math.round(o.value / o.installments / 1000) * 1000;
-      const primeira = o.installments === 1 ? o.value : perInstallment;
-      return { ok: true, valor: o.value, parcelas: o.installments, porParcela: perInstallment, primeira, caixaAntes: CAREER.finances.cash, caixaDepois: CAREER.finances.cash + primeira,
-        folhaAntes: wageBillOf(CAREER.squad), folhaDepois: wageBillOf(CAREER.squad) - (p ? p.wage || 0 : 0) };
-    },
-    async aceitarOfertaVenda(listingId, offerId) {
-      const r = CAREER ? acceptListingOffer(listingId, offerId) : null;
-      if (!r) return { ok: false, motivo: "sem-carreira" };
-      if (!r.ok && /não encontrad/.test(r.texto)) return { ok: false, motivo: "proposta-invalida" };
-      const g = await ponteGravar();
-      if (!g.ok) return g;
-      return { ok: true, vendido: !!r.ok, mensagem: r.ok ? null : r.texto, coletiva: !!(r.ok && PENDING_PRESS) };
-    },
+    previaCompra(...args) { return motorPonte().comandosGestao.previaCompra(...args); },
+    aceitarContraproposta(...args) { return motorPonte().comandosGestao.aceitarContraproposta(...args); },
+    anunciar(...args) { return motorPonte().comandosGestao.anunciar(...args); },
+    retirarAnuncio(...args) { return motorPonte().comandosGestao.retirarAnuncio(...args); },
+    previaVenda(...args) { return motorPonte().comandosGestao.previaVenda(...args); },
+    aceitarOfertaVenda(...args) { return motorPonte().comandosGestao.aceitarOfertaVenda(...args); },
     // offerId null = "Recusar todas" (rejectListingOffer em cada uma); o anúncio continua.
-    async recusarOfertaVenda(listingId, offerId) {
-      const l = CAREER && (CAREER.pendingListings || []).find((x) => x.id === listingId);
-      if (!l) return { ok: false, motivo: "anuncio-invalido" };
-      const ids = offerId ? [offerId] : l.offers.map((o) => o.id);
-      if (!ids.length || ids.some((id) => !l.offers.some((o) => o.id === id))) return { ok: false, motivo: "proposta-invalida" };
-      ids.forEach((id) => rejectListingOffer(listingId, id));
-      return ponteGravar();
-    },
+    recusarOfertaVenda(...args) { return motorPonte().comandosGestao.recusarOfertaVenda(...args); },
     // Empréstimo de saída: como openLoanOutModal, o clube interessado é
     // sorteado ao abrir (findInterestedBuyer) e fica guardado até confirmar.
-    prepararEmprestimo(playerId) {
-      if (!CAREER) return { ok: false, motivo: "sem-carreira" };
-      if (!transferWindowStatus(CAREER.currentRound).open) return { ok: false, motivo: "janela-fechada", mensagem: "Janela de contratações encerrada — não dá pra negociar empréstimo agora." };
-      const p = CAREER.squad.find((x) => x.id === playerId);
-      if (!p) return { ok: false, motivo: "jogador-invalido" };
-      if (p.origin !== "principal") return { ok: false, motivo: "nao-principal", mensagem: "Só dá pra emprestar jogador do elenco principal." };
-      if (CAREER.squad.filter((x) => x.origin === "principal").length <= 14) return { ok: false, motivo: "minimo", mensagem: "O elenco principal não pode ficar com menos de 14 jogadores." };
-      if (isLoanOutRefused(p)) return { ok: false, motivo: "recusa", mensagem: `${abbreviateName(p.name)} não aceita ser emprestado — quer continuar brigando por espaço no elenco principal.` };
-      const buyer = findInterestedBuyer(CAREER.clubId, p);
-      if (!buyer) { PONTE.emprestimo = null; return { ok: false, motivo: "sem-interessado", mensagem: `Nenhum time demonstrou interesse em pegar ${abbreviateName(p.name)} emprestado agora.` }; }
-      PONTE.emprestimo = { playerId, buyer };
-      const taxa = (meia) => Math.round((p.value * 0.10 * (meia ? 0.5 : 1)) / 1000) * 1000;
-      return { ok: true, clube: { id: String(buyer.id), nome: buyer.name }, taxaTemporada: taxa(false), taxaMeia: taxa(true), valorMercado: p.value };
-    },
-    async emprestar(playerId, duracao, clausula, valorClausula) {
-      if (!CAREER || !PONTE.emprestimo || PONTE.emprestimo.playerId !== playerId) return { ok: false, motivo: "sem-emprestimo" };
-      if (!transferWindowStatus(CAREER.currentRound).open) return { ok: false, motivo: "janela-fechada", mensagem: "Janela de contratações encerrada — não dá pra negociar empréstimo agora." };
-      const opts = ponteOpcoesEmprestimo(duracao, clausula, valorClausula);
-      if (!opts) return { ok: false, motivo: "opcao-invalida" };
-      const ok = await finalizeLoanOut(playerId, { ...opts, buyer: PONTE.emprestimo.buyer });
-      PONTE.emprestimo = null;
-      if (!ok) return { ok: false, motivo: "recusa", mensagem: "O empréstimo não foi feito." };
-      return ponteGravar();
-    },
-    async pegarEmprestado(clubId, playerId, duracao, percentual, clausula, valorClausula) {
-      if (!CAREER) return { ok: false, motivo: "sem-carreira" };
-      if (!transferWindowStatus(CAREER.currentRound).open) return { ok: false, motivo: "janela-fechada", mensagem: "Janela de contratações encerrada — não dá pra pegar jogador emprestado agora." };
-      const p = leagueSquadFor(String(clubId)).find((x) => x.id === playerId);
-      if (!p) return { ok: false, motivo: "indisponivel", mensagem: "Esse jogador não está mais disponível." };
-      const pct = Number(percentual);
-      if (![50, 75, 100].includes(pct)) return { ok: false, motivo: "opcao-invalida" };
-      const opts = ponteOpcoesEmprestimo(duracao, clausula, valorClausula);
-      if (!opts) return { ok: false, motivo: "opcao-invalida" };
-      if (isLoanOutRefused(p)) return { ok: false, motivo: "recusa", mensagem: `${teamById(clubId).name} recusou emprestar ${abbreviateName(p.name)} — é peça importante demais pro clube.` };
-      const loanWage = Math.round((p.wage * (pct / 100)) / 100) * 100;
-      if (wageBillOf(CAREER.squad) + loanWage > CAREER.finances.wageCap) return { ok: false, motivo: "teto", mensagem: `Pegar esse jogador emprestado estouraria o teto salarial (${fmtBRL(CAREER.finances.wageCap)}).` };
-      if (CAREER.squad.length >= MAX_PRINCIPAL + 20) return { ok: false, motivo: "elenco-grande", mensagem: "Elenco já está muito grande — dispense ou negocie alguém antes." };
-      const ok = await finalizeLoanIn(String(clubId), playerId, { ...opts, wagePct: pct });
-      if (!ok) return { ok: false, motivo: "recusa", mensagem: "O empréstimo não foi feito." };
-      const g = await ponteGravar();
-      return g.ok ? { ok: true, salario: loanWage } : g;
-    },
+    prepararEmprestimo(...args) { return motorPonte().comandosGestao.prepararEmprestimo(...args); },
+    emprestar(...args) { return motorPonte().comandosGestao.emprestar(...args); },
+    pegarEmprestado(...args) { return motorPonte().comandosGestao.pegarEmprestado(...args); },
     // Proposta por um jogador seu fora do pós-jogo ("Decidir depois").
-    async propostaPendente(decisao) {
-      if (!CAREER || !CAREER.pendingOffer) return { ok: false, motivo: "sem-proposta" };
-      if (decisao === "aceitar") acceptOffer();
-      else if (decisao === "recusar") declineOffer();
-      else return { ok: false, motivo: "decisao-invalida" };
-      return ponteGravar();
-    },
+    propostaPendente(...args) { return motorPonte().comandosGestao.propostaPendente(...args); },
     // Fase 9 — clube (Carreira 2.0). As funções de sempre: COMMISSION_AREAS
     // (suggestLineup/Training/Tactics/Market), hire/fireTechnicalStaff,
     // STADIUM_UPGRADES/startStadiumUpgrade, sponsorship/signSponsorProposal,
@@ -13959,17 +13666,8 @@ if (V2_PONTE) {
       const sugestoes = hired ? COMMISSION_AREAS.map((a) => { const s = a.fn(); return { area: a.id, nome: a.label, texto: s.text, aplicavel: !!s.canApply, alvo: s.target || null }; }) : [];
       return { ok: true, contratada: hired, custoMensal: technicalStaffMonthlyCost(), sugestoes };
     },
-    async contratarComissao() {
-      if (!CAREER) return { ok: false, motivo: "sem-carreira" };
-      if (CAREER.technicalStaff && CAREER.technicalStaff.hired) return { ok: false, motivo: "ja-contratada" };
-      hireTechnicalStaff();
-      return ponteGravar();
-    },
-    async demitirComissao() {
-      if (!CAREER || !(CAREER.technicalStaff && CAREER.technicalStaff.hired)) return { ok: false, motivo: "sem-comissao" };
-      fireTechnicalStaff();
-      return ponteGravar();
-    },
+    contratarComissao(...args) { return motorPonte().comandosGestao.contratarComissao(...args); },
+    demitirComissao(...args) { return motorPonte().comandosGestao.demitirComissao(...args); },
     // Mercado: só devolve o alvo (a v2 abre a proposta, como openOfferModal).
     async aplicarSugestao(area) {
       if (!CAREER || !(CAREER.technicalStaff && CAREER.technicalStaff.hired)) return { ok: false, motivo: "sem-comissao" };
@@ -13982,134 +13680,28 @@ if (V2_PONTE) {
       const g = await ponteGravar();
       return g.ok ? { ok: true, texto: s.text } : g;
     },
-    estadio() {
-      if (!CAREER) return { ok: false, motivo: "sem-carreira" };
-      const club = teamById(CAREER.clubId);
-      const st = CAREER.stadium || initialStadium();
-      return {
-        ok: true, nome: (club && club.venue && club.venue.name) || null, capacidade: stadiumCapacityFor(club), caixa: CAREER.finances.cash,
-        obra: st.pendingUpgrade ? { id: st.pendingUpgrade.id, nome: st.pendingUpgrade.name, rodadasRestantes: st.pendingUpgrade.roundsLeft } : null,
-        melhorias: STADIUM_UPGRADES.map((u) => {
-          const req = u.requires ? STADIUM_UPGRADES.find((x) => x.id === u.requires) : null;
-          const estado = st.completed.includes(u.id) ? "concluida" : st.pendingUpgrade && st.pendingUpgrade.id === u.id ? "em-obra"
-            : u.requires && !st.completed.includes(u.requires) ? "bloqueada" : st.pendingUpgrade ? "aguardando" : "disponivel";
-          return { id: u.id, nome: u.name, custo: u.cost, rodadas: u.roundsNeeded, lugares: u.capacityGain, requer: req ? req.name : null, estado };
-        }),
-      };
-    },
-    async iniciarObra(id) {
-      if (!CAREER) return { ok: false, motivo: "sem-carreira" };
-      const u = STADIUM_UPGRADES.find((x) => x.id === id);
-      const st = CAREER.stadium;
-      if (!u || !st) return { ok: false, motivo: "obra-invalida" };
-      if (st.pendingUpgrade) return { ok: false, motivo: "obra-em-andamento", mensagem: "Já existe uma obra em andamento — espere terminar antes de iniciar outra." };
-      if (st.completed.includes(id)) return { ok: false, motivo: "concluida", mensagem: "Essa melhoria já foi concluída." };
-      if (u.requires && !st.completed.includes(u.requires)) return { ok: false, motivo: "bloqueada", mensagem: "Essa melhoria depende de outra ainda não concluída." };
-      if (CAREER.finances.cash < u.cost) return { ok: false, motivo: "caixa", mensagem: `Caixa insuficiente — a obra custa ${fmtBRL(u.cost)}.` };
-      startStadiumUpgrade(id);
-      return ponteGravar();
-    },
+    estadio(...args) { return motorPonte().comandosGestao.estadio(...args); },
+    iniciarObra(...args) { return motorPonte().comandosGestao.iniciarObra(...args); },
     // Contrato vencido sem propostas geradas: gera, como openSponsorProposalsModal.
-    async patrocinios() {
-      if (!CAREER) return { ok: false, motivo: "sem-carreira" };
-      let gerou = false;
-      ["master", "material"].forEach((k) => { if (!CAREER.sponsorship[k] && !CAREER.sponsorProposals[k]) { CAREER.sponsorProposals[k] = generateSponsorProposals(k); gerou = true; } });
-      if (gerou) { const g = await ponteGravar(); if (!g.ok) return g; }
-      const tipo = (k) => ({ tipo: k, nome: SPONSOR_KIND_LABEL[k], contrato: CAREER.sponsorship[k] || null, propostas: CAREER.sponsorship[k] ? null : CAREER.sponsorProposals[k] });
-      return { ok: true, tipos: [tipo("master"), tipo("material")], totalTemporada: sponsorshipSeasonTotal() };
-    },
-    async assinarPatrocinio(kind, idx) {
-      if (!CAREER || !["master", "material"].includes(kind)) return { ok: false, motivo: "tipo-invalido" };
-      if (CAREER.sponsorship[kind]) return { ok: false, motivo: "com-contrato" };
-      if (!(CAREER.sponsorProposals[kind] || [])[idx]) return { ok: false, motivo: "proposta-invalida" };
-      signSponsorProposal(kind, idx);
-      return ponteGravar();
-    },
-    olheiros() {
-      if (!CAREER) return { ok: false, motivo: "sem-carreira" };
-      return {
-        ok: true,
-        catalogo: SCOUT_MARKET.map((c) => ({ id: c.id, nome: c.name, especialidade: c.specialty, avaliacao: c.evaluation, rede: c.network, salario: c.monthlyCost, regioes: c.regionScope === "any" ? scoutingAvailableRegions() : c.regionScope })),
-        regioes: scoutingAvailableRegions().map((r) => ({ id: r, nome: REGION_LABEL[r] })),
-        tipos: Object.entries(SCOUT_MISSION_TYPES).map(([id, t]) => ({ id, nome: t.label })),
-        duracoes: Object.entries(SCOUT_MISSION_DURATIONS).map(([id, d]) => ({ id, nome: d.label, rodadas: d.rounds, tentativas: d.rolls })),
-        permitidas: Object.fromEntries((CAREER.scouts || []).map((sc) => [sc.id, scoutAllowedRegions(sc)])),
-        custoMensal: scoutsMonthlyCost(),
-      };
-    },
-    async contratarOlheiro(marketId) {
-      if (!CAREER) return { ok: false, motivo: "sem-carreira" };
-      if (!SCOUT_MARKET.some((c) => c.id === marketId)) return { ok: false, motivo: "olheiro-invalido" };
-      if ((CAREER.scouts || []).some((s) => s.marketId === marketId)) return { ok: false, motivo: "ja-contratado", mensagem: "Esse olheiro já faz parte do seu staff." };
-      hireScout(marketId);
-      return ponteGravar();
-    },
-    async dispensarOlheiro(scoutId) {
-      if (!CAREER) return { ok: false, motivo: "sem-carreira" };
-      const r = releaseScout(scoutId);
-      if (!r.ok) return { ok: false, motivo: r.motivo, mensagem: r.texto };
-      return ponteGravar();
-    },
-    async enviarMissao(scoutId, regiao, tipo, posicao, duracao) {
-      const scout = CAREER && (CAREER.scouts || []).find((s) => s.id === scoutId);
-      if (!scout) return { ok: false, motivo: "olheiro-invalido" };
-      if (scout.mission) return { ok: false, motivo: "em-missao", mensagem: "Esse olheiro já está em missão." };
-      if (!SCOUT_MISSION_TYPES[tipo] || !SCOUT_MISSION_DURATIONS[duracao] || (posicao && !SCOUT_GROUP_LABEL[posicao])) return { ok: false, motivo: "opcao-invalida" };
-      if (!scoutAllowedRegions(scout).includes(regiao)) return { ok: false, motivo: "regiao-invalida", mensagem: "Esse olheiro não atua nessa região." };
-      startScoutMission(scoutId, regiao, { type: tipo, group: posicao || null, duration: duracao });
-      return ponteGravar();
-    },
-    async trazerParaBase(prospectId) {
-      if (!CAREER || !(CAREER.scoutMissionProspects || []).some((p) => p.id === prospectId)) return { ok: false, motivo: "prospecto-invalido" };
-      recruitProspectToBase(prospectId);
-      return ponteGravar();
-    },
+    patrocinios(...args) { return motorPonte().comandosGestao.patrocinios(...args); },
+    assinarPatrocinio(...args) { return motorPonte().comandosGestao.assinarPatrocinio(...args); },
+    olheiros(...args) { return motorPonte().comandosGestao.olheiros(...args); },
+    contratarOlheiro(...args) { return motorPonte().comandosGestao.contratarOlheiro(...args); },
+    dispensarOlheiro(...args) { return motorPonte().comandosGestao.dispensarOlheiro(...args); },
+    enviarMissao(...args) { return motorPonte().comandosGestao.enviarMissao(...args); },
+    trazerParaBase(...args) { return motorPonte().comandosGestao.trazerParaBase(...args); },
     // "Propor": tira a indicação da lista, como acceptScoutSuggestion, e a
     // v2 abre a proposta; "Recusar": rejectScoutSuggestion.
-    async indicacao(id, decisao) {
-      const s = CAREER && (CAREER.scoutSuggestions || []).find((x) => x.id === id);
-      if (!s) return { ok: false, motivo: "indicacao-invalida" };
-      if (!["propor", "recusar"].includes(decisao)) return { ok: false, motivo: "decisao-invalida" };
-      CAREER.scoutSuggestions = CAREER.scoutSuggestions.filter((x) => x.id !== id);
-      const g = await ponteGravar();
-      return g.ok ? { ok: true, alvo: decisao === "propor" ? { clubId: String(s.clubId), playerId: s.playerId } : null } : g;
-    },
+    indicacao(...args) { return motorPonte().comandosGestao.indicacao(...args); },
     // Fase 10 — abas Jogos e Mais (Carreira 2.0). As funções de sempre:
     // boardRequest (askBoard), ACHIEVEMENT_CATALOG/evaluateAlwaysCheckableAchievements,
     // computeLeaderboardScore, CREDIT_PACKAGES/BOOST_ITEMS/applyBoostEffect/
     // pushPurchaseHistory (confirmPurchaseNow), notificationSettings e setSfxEnabled.
-    async pedirOrcamento() {
-      if (!CAREER) return { ok: false, motivo: "sem-carreira" };
-      const r = boardRequest();
-      if (!r.ok) return { ok: false, motivo: r.motivo, espera: r.wait, mensagem: r.texto };
-      const g = await ponteGravar();
-      return g.ok ? { ok: true, aprovado: r.approved, aumentoTeto: r.raise, aporte: r.cashBoost, motivoTexto: r.reason, posicao: r.pos } : g;
-    },
-    orcamento() {
-      if (!CAREER) return { ok: false, motivo: "sem-carreira" };
-      const last = CAREER.lastBoardRequestRound;
-      const wait = last != null && CAREER.currentRound - last < BOARD_REQUEST_COOLDOWN ? BOARD_REQUEST_COOLDOWN - (CAREER.currentRound - last) : 0;
-      return { ok: true, espera: wait, decisao: CAREER.boardDecision || null, teto: CAREER.finances.wageCap, caixa: CAREER.finances.cash, intervalo: BOARD_REQUEST_COOLDOWN };
-    },
-    async conquistas() {
-      if (!CAREER) return { ok: false, motivo: "sem-carreira" };
-      const antes = JSON.stringify(CAREER.achievements || null);
-      evaluateAlwaysCheckableAchievements();
-      if (JSON.stringify(CAREER.achievements) !== antes) { const g = await ponteGravar(); if (!g.ok) return g; }
-      return {
-        ok: true, categorias: ACHIEVEMENT_CATEGORY_LABEL,
-        lista: motorRegistro().ACHIEVEMENT_CATALOG.map((t) => { const e = achievementProgressFor(t.achievementId); return { id: t.achievementId, titulo: t.title, descricao: t.description, categoria: t.category, nivel: t.tier, meta: t.target, icone: t.icon, progresso: e.currentProgress || 0, desbloqueadaEm: e.unlockedAt || null }; }),
-      };
-    },
-    pontuacaoRanking() {
-      if (!CAREER) return { ok: false, motivo: "sem-carreira" };
-      const { score, breakdown } = computeLeaderboardScore();
-      return { ok: true, pontos: score, detalhe: breakdown, clube: CAREER.clubName };
-    },
-    loja() {
-      if (!CAREER) return { ok: false, motivo: "sem-carreira" };
-      return { ok: true, pacotes: CREDIT_PACKAGES, itens: BOOST_ITEMS, categorias: BOOST_CATEGORY_LABEL, historico: CAREER.purchaseHistory || [] };
-    },
+    pedirOrcamento(...args) { return motorPonte().comandosGestao.pedirOrcamento(...args); },
+    orcamento(...args) { return motorPonte().comandosGestao.orcamento(...args); },
+    conquistas(...args) { return motorPonte().comandosGestao.conquistas(...args); },
+    pontuacaoRanking(...args) { return motorPonte().comandosGestao.pontuacaoRanking(...args); },
+    loja(...args) { return motorPonte().comandosGestao.loja(...args); },
     // O servidor debita os créditos (preço do catálogo dele); só depois o
     // efeito é aplicado na carreira, como confirmPurchaseNow.
     async comprarItem(itemId) {
@@ -14128,23 +13720,11 @@ if (V2_PONTE) {
       const g = await ponteGravar();
       return g.ok ? { ok: true, creditos: data.creditsBR, efeito: effectLabel || item.desc } : g;
     },
-    preferencias() {
-      if (!CAREER) return { ok: false, motivo: "sem-carreira" };
-      return { ok: true, notificacoes: CAREER.notificationSettings || { partida: true, loja: false, lesao: true }, som: !!SFX_ENABLED, reputacao: CAREER.reputation == null ? 50 : CAREER.reputation };
-    },
+    preferencias(...args) { return motorPonte().comandosGestao.preferencias(...args); },
     // Assistente de início pela v2 (item 1, 05/11): o mesmo
     // CAREER.startupWizardSeen = true de finishStartupWizard, gravado.
-    async assistenteVisto() {
-      if (!CAREER) return { ok: false, motivo: "sem-carreira" };
-      CAREER.startupWizardSeen = true;
-      return ponteGravar();
-    },
-    async alternarNotificacao(chave) {
-      if (!CAREER || !["partida", "loja", "lesao"].includes(chave)) return { ok: false, motivo: "opcao-invalida" };
-      CAREER.notificationSettings = CAREER.notificationSettings || { partida: true, loja: false, lesao: true };
-      CAREER.notificationSettings[chave] = !CAREER.notificationSettings[chave];
-      return ponteGravar();
-    },
+    assistenteVisto(...args) { return motorPonte().comandosGestao.assistenteVisto(...args); },
+    alternarNotificacao(...args) { return motorPonte().comandosGestao.alternarNotificacao(...args); },
     somAtivo(ligado) {
       setSfxEnabled(!!ligado);
       return { ok: true, som: !!SFX_ENABLED };
@@ -14167,211 +13747,36 @@ if (V2_PONTE) {
     // applyTacticalScheme, renameTacticalScheme, deleteTacticalScheme,
     // autoLineup, CAREER.manMarking (applyManMarking), defaultTrainingPlan,
     // applyWeeklyTraining e projectWeekPeakFatigue. Cada comando grava.
-    tatica() {
-      if (!CAREER) return { ok: false, motivo: "sem-carreira" };
-      const t = CAREER.lineup.tactics || {};
-      const st = CAREER.lineup.sectorTactics || defaultSectorTactics();
-      return {
-        ok: true, formacao: CAREER.lineup.formation,
-        eixos: TACTIC_AXES.map((ax) => ({ id: ax.id, nome: ax.label, baixo: ax.lowLabel, alto: ax.highLabel, nivel: t[ax.id] || 3 })),
-        setores: SECTOR_IDS.map((sec) => ({ id: sec, nome: SECTOR_LABEL[sec], instrucoes: SECTOR_INSTRUCTIONS[sec].map((i) => ({ id: i.id, nome: i.label, baixo: i.lowLabel, alto: i.highLabel, nivel: (st[sec] || {})[i.id] || 3 })) })),
-      };
-    },
+    tatica(...args) { return motorPonte().comandosGestao.tatica(...args); },
     // Comissão técnica — sugestões rápidas (05/11). Ver comissaoRecomendacoes.
-    comissaoSugestoes() {
-      if (!CAREER) return { ok: false, motivo: "sem-carreira" };
-      if (LIVE_MATCH && !LIVE_MATCH.finished) return { ok: false, motivo: "partida" };
-      return { ok: true, ...comissaoRecomendacoes() };
-    },
+    comissaoSugestoes(...args) { return motorPonte().comandosGestao.comissaoSugestoes(...args); },
     // Aplica a sugestão da categoria só se ela ainda for a mesma (chave);
     // senão devolve a recomendação atual para o técnico ver e tocar de novo.
     // Devolve `desfazer` com o necessário para voltar SÓ esta mudança.
-    async comissaoAplicar(cat, chave) {
-      if (!CAREER) return { ok: false, motivo: "sem-carreira" };
-      if (LIVE_MATCH && !LIVE_MATCH.finished) return { ok: false, motivo: "partida" };
-      const atual = comissaoRecomendacoes();
-      const item = atual.itens.find((i) => i.categoria === cat);
-      if (!item || item.estado !== "mudanca") return { ok: false, motivo: "sem-sugestao", ...atual };
-      if (item.chave !== chave) return { ok: false, motivo: "desatualizada", ...atual };
-      const l = CAREER.lineup;
-      let desfazer;
-      if (cat === "escalacao") {
-        const { slot, sai, entra } = item.detalhe;
-        const benchIdx = l.bench.indexOf(entra.id);
-        desfazer = { categoria: cat, slot, sai: sai ? sai.id : null, entra: entra.id, benchIdx, resumo: item.resumo };
-        l.starters[slot] = entra.id;
-        if (benchIdx >= 0) { if (sai) l.bench[benchIdx] = sai.id; else l.bench.splice(benchIdx, 1); }
-      } else if (cat === "formacao") {
-        const d = item.detalhe;
-        desfazer = { categoria: cat, antes: { formation: l.formation, starters: [...l.starters], bench: [...l.bench] }, depois: { formation: d.para, starters: [...d.starters], bench: [...d.bench] }, resumo: item.resumo };
-        l.formation = d.para; l.starters = [...d.starters]; l.bench = [...d.bench];
-      } else {
-        const d = item.detalhe;
-        l.tactics = l.tactics || {};
-        desfazer = { categoria: cat, antes: d.antes, nivel: d.nivel, resumo: item.resumo };
-        Object.keys(d.antes).forEach((id) => { l.tactics[id] = d.nivel; });
-      }
-      markLineupDirty();
-      const r = await ponteGravar();
-      if (!r.ok) return r;
-      return { ok: true, desfazer, ...comissaoRecomendacoes() };
-    },
+    comissaoAplicar(...args) { return motorPonte().comandosGestao.comissaoAplicar(...args); },
     // Desfaz SÓ a mudança aplicada, e só se ela ainda está como ficou (sem
     // sobrescrever o que o técnico mudou depois).
-    async comissaoDesfazer(d) {
-      if (!CAREER || !d) return { ok: false, motivo: "sem-carreira" };
-      if (LIVE_MATCH && !LIVE_MATCH.finished) return { ok: false, motivo: "partida" };
-      const l = CAREER.lineup;
-      if (d.categoria === "escalacao") {
-        if (l.starters[d.slot] !== d.entra || (d.benchIdx >= 0 && d.sai && l.bench[d.benchIdx] !== d.sai)) return { ok: false, motivo: "mudou" };
-        l.starters[d.slot] = d.sai;
-        if (d.benchIdx >= 0) { if (d.sai) l.bench[d.benchIdx] = d.entra; else l.bench.splice(d.benchIdx, 0, d.entra); }
-      } else if (d.categoria === "formacao") {
-        if (l.formation !== d.depois.formation || JSON.stringify(l.starters) !== JSON.stringify(d.depois.starters) || JSON.stringify(l.bench) !== JSON.stringify(d.depois.bench)) return { ok: false, motivo: "mudou" };
-        l.formation = d.antes.formation; l.starters = [...d.antes.starters]; l.bench = [...d.antes.bench];
-      } else if (d.categoria === "postura") {
-        const t = l.tactics || {};
-        if (!Object.keys(d.antes).every((id) => (t[id] || 3) === d.nivel)) return { ok: false, motivo: "mudou" };
-        Object.entries(d.antes).forEach(([id, v]) => { t[id] = v; });
-      } else return { ok: false, motivo: "categoria-invalida" };
-      markLineupDirty();
-      const r = await ponteGravar();
-      if (!r.ok) return r;
-      return { ok: true, ...comissaoRecomendacoes() };
-    },
-    async salvarTatica(eixos) {
-      if (!CAREER) return { ok: false, motivo: "sem-carreira" };
-      CAREER.lineup.tactics = CAREER.lineup.tactics || {};
-      TACTIC_AXES.forEach((ax) => { const v = Math.round(Number(eixos && eixos[ax.id])); if (v >= 1 && v <= 5) CAREER.lineup.tactics[ax.id] = v; });
-      markLineupDirty();
-      return ponteGravar();
-    },
-    async salvarInstrucoesSetor(setor, valores) {
-      if (!CAREER || !SECTOR_INSTRUCTIONS[setor]) return { ok: false, motivo: "setor-invalido" };
-      if (!CAREER.lineup.sectorTactics) CAREER.lineup.sectorTactics = defaultSectorTactics();
-      SECTOR_INSTRUCTIONS[setor].forEach((i) => { const v = Math.round(Number(valores && valores[i.id])); if (v >= 1 && v <= 5) CAREER.lineup.sectorTactics[setor][i.id] = v; });
-      return ponteGravar();
-    },
-    esquemas() {
-      if (!CAREER) return { ok: false, motivo: "sem-carreira" };
-      return { ok: true, max: MAX_TACTICAL_SCHEMES, ativo: CAREER.activeSchemeId || null, lista: (CAREER.tacticalSchemes || []).map((sc) => ({
-        id: sc.id, nome: sc.name, formacao: sc.formation, titulares: sc.starters.filter(Boolean).length,
-        eixos: TACTIC_AXES.map((ax) => ({ id: ax.id, nome: ax.label, nivel: (sc.tactics || {})[ax.id] || 3 })),
-        criadoRodada: sc.createdRound, usadoRodada: sc.lastUsedRound != null ? sc.lastUsedRound : null,
-      })) };
-    },
-    async salvarEsquema(nome) {
-      if (!CAREER) return { ok: false, motivo: "sem-carreira" };
-      if ((CAREER.tacticalSchemes || []).some((sc) => sc.name.toLowerCase() === String(nome || "").trim().toLowerCase())) return { ok: false, motivo: "nome-repetido", mensagem: "Já existe um esquema com esse nome." };
-      const r = saveTacticalScheme(nome);
-      if (!r.ok) return { ok: false, motivo: "invalido", mensagem: r.reason };
-      return ponteGravar();
-    },
-    async aplicarEsquema(id) {
-      if (!CAREER || !applyTacticalScheme(id)) return { ok: false, motivo: "esquema-invalido" };
-      return ponteGravar();
-    },
-    async renomearEsquema(id, nome) {
-      if (!CAREER) return { ok: false, motivo: "sem-carreira" };
-      const r = renameTacticalScheme(id, nome);
-      if (!r.ok) return { ok: false, motivo: "invalido", mensagem: r.error };
-      return ponteGravar();
-    },
-    async excluirEsquema(id) {
-      if (!CAREER || !(CAREER.tacticalSchemes || []).some((sc) => sc.id === id)) return { ok: false, motivo: "esquema-invalido" };
-      deleteTacticalScheme(id);
-      return ponteGravar();
-    },
-    async escalarAutomaticamente(incluirBase) {
-      if (!CAREER) return { ok: false, motivo: "sem-carreira" };
-      const r = autoLineup(CAREER.squad, CAREER.lineup.formation, !!incluirBase);
-      CAREER.lineup.starters = r.starters;
-      CAREER.lineup.bench = r.bench;
-      markLineupDirty();
-      return ponteGravar();
-    },
-    marcacao() {
-      if (!CAREER) return { ok: false, motivo: "sem-carreira" };
-      const opp = nextOpponentId();
-      if (!opp) return { ok: true, adversario: null };
-      const t = teamById(opp) || {};
-      const mm = CAREER.manMarking && String(CAREER.manMarking.opponentId) === String(opp) ? CAREER.manMarking : null;
-      const meus = CAREER.lineup.starters.map((id) => id && CAREER.squad.find((p) => p.id === id)).filter((p) => p && p.status === "ok" && p.group !== "G")
-        .map((p) => ({ id: p.id, nome: p.name, posicao: SUBPOS_LABEL[subPositionOf(p)] || null }));
-      const rivais = leagueSquadFor(opp).filter((p) => p.group !== "G").sort((a, b) => b.overall - a.overall).slice(0, 5)
-        .map((p) => ({ id: p.id, nome: p.name, posicao: SUBPOS_LABEL[subPositionOf(p)] || null, overall: p.overall }));
-      return { ok: true, adversario: { id: String(opp), nome: t.name || "?", sigla: t.short || null }, meus, rivais, atual: mm ? { meu: mm.myPlayerId, rival: mm.rivalPlayerId } : null };
-    },
-    async salvarMarcacao(meuId, rivalId) {
-      if (!CAREER) return { ok: false, motivo: "sem-carreira" };
-      const opp = nextOpponentId();
-      if (!opp) return { ok: false, motivo: "sem-jogo" };
-      if (meuId == null && rivalId == null) { CAREER.manMarking = null; return ponteGravar(); }
-      const m = this.marcacao();
-      if (!m.meus.some((p) => p.id === meuId) || !m.rivais.some((p) => p.id === rivalId)) return { ok: false, motivo: "jogador-invalido" };
-      CAREER.manMarking = { opponentId: opp, myPlayerId: meuId, rivalPlayerId: rivalId };
-      return ponteGravar();
-    },
-    treino() {
-      if (!CAREER) return { ok: false, motivo: "sem-carreira" };
-      const relevant = CAREER.squad.filter((p) => p.origin === "principal" || p.origin === "loan");
-      const cond = (p) => (p.condition == null ? 100 : p.condition);
-      const projected = projectWeekPeakFatigue();
-      const folgas = [motorTreino().TRAINING_PRE_GAME_DAY, motorTreino().TRAINING_POST_GAME_DAY].filter((d) => { const e = CAREER.trainingPlan[d]; return !e || !e.foco || e.foco === "descanso"; }).length;
-      return {
-        ok: true,
-        dias: CAREER.trainingPlan.map((e, i) => ({
-          dia: i, nome: motorTreino().TRAINING_DAY_NAMES[i], jogo: i === motorTreino().TRAINING_GAME_DAY, protegido: isProtectedTrainingDay(i),
-          foco: e && e.foco ? e.foco : "descanso", intensidade: e && e.intensidade ? e.intensidade : null, grupo: e && e.grupo ? e.grupo : null,
-          duracao: e && e.duracao ? e.duracao : null, jogador: e && e.individualPlayerId ? e.individualPlayerId : null,
-        })),
-        modelo: CAREER.trainingSchemeId || null,
-        modelos: motorTreino().TRAINING_SCHEMES.map((m) => ({ id: m.id, nome: m.name, descricao: m.desc })),
-        aplicado: String(CAREER.trainingAppliedForRound) === calendarTurnKey(),
-        duracao: { min: TRAINING_DURATION_MIN, max: TRAINING_DURATION_MAX, passo: TRAINING_DURATION_STEP, padrao: motorTreino().TRAINING_DURATION_DEFAULT },
-        resumo: {
-          fadigaMedia: relevant.length ? Math.round(relevant.reduce((t, p) => t + (100 - cond(p)), 0) / relevant.length) : 0,
-          moral: relevant.length ? Math.round(relevant.reduce((t, p) => t + (p.morale == null ? 70 : p.morale), 0) / relevant.length) : 0,
-          folgas,
-        },
-        elenco: relevant.map((p) => ({ id: p.id, nome: p.name, posicao: SUBPOS_LABEL[subPositionOf(p)] || null, condicao: Math.round(cond(p)), fadigaProjetada: Math.round(100 - (projected.get(p.id) ?? cond(p))) })),
-      };
-    },
+    comissaoDesfazer(...args) { return motorPonte().comandosGestao.comissaoDesfazer(...args); },
+    salvarTatica(...args) { return motorPonte().comandosGestao.salvarTatica(...args); },
+    salvarInstrucoesSetor(...args) { return motorPonte().comandosGestao.salvarInstrucoesSetor(...args); },
+    esquemas(...args) { return motorPonte().comandosGestao.esquemas(...args); },
+    salvarEsquema(...args) { return motorPonte().comandosGestao.salvarEsquema(...args); },
+    aplicarEsquema(...args) { return motorPonte().comandosGestao.aplicarEsquema(...args); },
+    renomearEsquema(...args) { return motorPonte().comandosGestao.renomearEsquema(...args); },
+    excluirEsquema(...args) { return motorPonte().comandosGestao.excluirEsquema(...args); },
+    escalarAutomaticamente(...args) { return motorPonte().comandosGestao.escalarAutomaticamente(...args); },
+    marcacao(...args) { return motorPonte().comandosGestao.marcacao(...args); },
+    salvarMarcacao(...args) { return motorPonte().comandosGestao.salvarMarcacao(...args); },
+    treino(...args) { return motorPonte().comandosGestao.treino(...args); },
     // Um dia do plano: as mesmas regras do painel do dia (renderTrainingDayPanel).
-    async salvarDiaTreino(dia, entrada) {
-      if (!CAREER) return { ok: false, motivo: "sem-carreira" };
-      const i = Number(dia);
-      if (!(i >= 0 && i < 7) || i === motorTreino().TRAINING_GAME_DAY) return { ok: false, motivo: "dia-invalido" };
-      const e = entrada || {};
-      if (!["tecnico", "fisico", "tatico", "descanso"].includes(e.foco)) return { ok: false, motivo: "foco-invalido" };
-      if (e.foco === "descanso") CAREER.trainingPlan[i] = { foco: "descanso" };
-      else {
-        const intensidade = motorTreino().TRAINING_INTENSITY_MULT[e.intensidade] ? e.intensidade : "moderada";
-        const grupo = TRAINING_GROUP_LABEL[e.grupo] ? e.grupo : "principal";
-        const duracao = clamp(Math.round((Number(e.duracao) || motorTreino().TRAINING_DURATION_DEFAULT[intensidade]) / TRAINING_DURATION_STEP) * TRAINING_DURATION_STEP, TRAINING_DURATION_MIN, TRAINING_DURATION_MAX);
-        const entry = { foco: e.foco, intensidade, grupo, duracao };
-        if (grupo === "individual") {
-          if (!CAREER.squad.some((p) => p.id === e.jogador)) return { ok: false, motivo: "jogador-invalido" };
-          entry.individualPlayerId = e.jogador;
-        }
-        CAREER.trainingPlan[i] = entry;
-      }
-      CAREER.trainingSchemeId = null;
-      return ponteGravar();
-    },
+    salvarDiaTreino(...args) { return motorPonte().comandosGestao.salvarDiaTreino(...args); },
     async aplicarModeloTreino(id) {
       if (!CAREER || !motorTreino().TRAINING_SCHEMES.some((m) => m.id === id)) return { ok: false, motivo: "modelo-invalido" };
       applyTrainingScheme(id);
       return ponteGravar();
     },
     // "Aplicar treino da semana": applyWeeklyTraining (1x por turno).
-    async aplicarTreino() {
-      if (!CAREER) return { ok: false, motivo: "sem-carreira" };
-      const gains = applyWeeklyTraining();
-      if (!gains) return { ok: false, motivo: "ja-aplicado" };
-      const r = await ponteGravar();
-      return r.ok ? { ok: true, evoluiram: gains.size } : r;
-    },
+    aplicarTreino(...args) { return motorPonte().comandosGestao.aplicarTreino(...args); },
     // Fase 5 — temporada e carreira do treinador (Carreira 2.0). Mesmas
     // funções da versão anterior: advanceSeason, endCurrentClubStint,
     // startCareer, declineClubProposal, reputationLabel.
@@ -14444,26 +13849,7 @@ if (V2_PONTE) {
       return salvo ? { ok: true } : { ok: false, motivo: PONTE.erroGravacao || "falha" };
     },
     // Perfil e histórico do treinador: só leitura.
-    historicoTreinador() {
-      if (!CAREER) return { ok: false, motivo: "sem-carreira" };
-      const rep = CAREER.reputation == null ? 50 : CAREER.reputation;
-      const hist = CAREER.seasonHistory || [];
-      const titulos = [];
-      (CAREER.seasonAwards || []).forEach((a) => {
-        if (a.brasileirao && a.brasileirao.campeao != null && String(a.brasileirao.campeao) === String(CAREER.clubId)) titulos.push({ ano: a.seasonYear, competicao: "brasileirao" });
-        if (a.copaDoBrasil && a.copaDoBrasil.disputou && String(a.copaDoBrasil.campeao) === String(CAREER.clubId)) titulos.push({ ano: a.seasonYear, competicao: "copa" });
-      });
-      const conquistas = (CAREER.achievements || []).filter((a) => a.unlockedAt).map((a) => {
-        const tpl = motorRegistro().ACHIEVEMENT_CATALOG.find((t) => t.achievementId === a.achievementId);
-        return tpl ? { id: a.achievementId, titulo: tpl.title, data: a.unlockedAt } : null;
-      }).filter(Boolean).sort((x, y) => y.data - x.data);
-      return {
-        ok: true, nome: (ME && ME.name) || null, reputacao: rep, status: reputationLabel(rep), conquistasTotal: motorRegistro().ACHIEVEMENT_CATALOG.length,
-        atual: { nome: CAREER.clubName, temporadas: hist.length, melhorPosicao: hist.length ? Math.min(...hist.map((h) => h.position)) : null, titulos: titulos.length },
-        anteriores: (CAREER.clubHistory || []).map((h) => ({ nome: h.clubName, temporadas: h.seasons, titulos: h.titles, posicaoMedia: h.avgPosition, saida: h.reason })),
-        titulos, conquistas,
-      };
-    },
+    historicoTreinador(...args) { return motorPonte().comandosGestao.historicoTreinador(...args); },
     // Fase 4 — pós-jogo pela v2. "Continuar" do Resultado chama
     // iniciarPosJogo (no lugar da tela cheia da versão anterior); a v2 pede
     // a etapa (posJogo) e responde cada uma com as MESMAS funções de sempre.

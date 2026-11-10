@@ -98,6 +98,7 @@ const APP_SHELL = [
   "/js/motor/posjogo.js",
   "/js/motor/clube.js",
   "/js/motor/virada.js",
+  "/js/motor/ponte.js",
   "/manifest-treinador.json",
   "/img/brand-icon.png",
   "/img/icons/apple-touch-icon.png",
