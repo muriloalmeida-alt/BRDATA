@@ -144,8 +144,18 @@ const SEM_TELA = V2_PONTE;
 // null no fim), resultado da gravação final e quem está ouvindo.
 // Etapa G1a (10/11): o estado da ponte mora em motor/ponte.js.
 Object.defineProperty(window, "PONTE", { configurable: true, get() { return motorPonte().ponte; } });
-let LIVE_MODE = false;
-let LIVE_SEASON = new Date().getFullYear();
+// Fonte de dados da competição (real ou exemplo). Etapa G1c1 (10/11): mora em motor/estado.js.
+Object.defineProperty(window, "LIVE_MODE", {
+  configurable: true,
+  get() { const e = window.BRDATA_MOTOR && window.BRDATA_MOTOR.estado; return e ? e.modoReal() : false; },
+  set(v) { motorEstado().definirModoReal(v); },
+});
+// Temporada real dos dados. Etapa G1c1 (10/11): mora em motor/estado.js.
+Object.defineProperty(window, "LIVE_SEASON", {
+  configurable: true,
+  get() { const e = window.BRDATA_MOTOR && window.BRDATA_MOTOR.estado; return e ? e.temporadaReal() : new Date().getFullYear(); },
+  set(v) { motorEstado().definirTemporadaReal(v); },
+});
 // Etapa C1 (09/11): mora em motor/estado.js (o "mundo" da carreira). Antes: 20 clubes ativos (real ou DEMO_TEAMS — ver loadLeague)
 Object.defineProperty(window, "LEAGUE_TEAMS", {
   configurable: true,
@@ -179,7 +189,12 @@ Object.defineProperty(window, "CURRENT_COMPETITION_ID", {
 // comportamento de LEAGUE_TEAMS/LIVE_MODE pra quem já existia.
 // Etapa F (09/11): mora em motor/virada.js.
 Object.defineProperty(window, "ALL_COMPETITIONS_ORDER", { configurable: true, get() { return motorVirada().ALL_COMPETITIONS_ORDER; } });
-let LIVE_MODE_BY_COMPETITION = {};
+// Fonte de dados por competição. Etapa G1c1 (10/11): mora em motor/estado.js.
+Object.defineProperty(window, "LIVE_MODE_BY_COMPETITION", {
+  configurable: true,
+  get() { const e = window.BRDATA_MOTOR && window.BRDATA_MOTOR.estado; return e ? e.modoRealPorCompeticao() : {}; },
+  set(v) { motorEstado().definirModoRealPorCompeticao(v); },
+});
 // Etapa C1 (09/11): mora em motor/estado.js (o "mundo" da carreira).
 Object.defineProperty(window, "ALL_TEAMS_FLAT", {
   configurable: true,
@@ -204,7 +219,13 @@ Object.defineProperty(window, "PENDING_ROUND_SUMMARY", {
   set(v) { motorEstado().definirResumoDaRodada(v); },
 });
 let TRAINING_SELECTED_DAY = 0; // dia da semana selecionado na tela de Treinos (0=segunda), só estado de UI — não é salvo
-let ME = null; // resposta de /api/auth/me (ver boot) -- id/nome/friendCode/friends/dailyLogin/createdAt da CONTA logada, não da carreira
+// resposta de /api/auth/me (ver boot) -- id/nome/friendCode/friends/dailyLogin/createdAt da CONTA logada, não da carreira.
+// Conta logada. Etapa G1c1 (10/11): mora em motor/estado.js.
+Object.defineProperty(window, "ME", {
+  configurable: true,
+  get() { const e = window.BRDATA_MOTOR && window.BRDATA_MOTOR.estado; return e ? e.conta() : null; },
+  set(v) { motorEstado().definirConta(v); },
+});
 
 /* ---------- Helpers genéricos ---------- */
 function clamp(v, min, max) { return Math.max(min, Math.min(max, v)); }
@@ -1859,7 +1880,12 @@ const CLUB_HISTORY_MAX = 15;
 // temporadas, títulos, posição média) e guarda o que precisa
 // sobreviver à troca em TECHNICIAN_CARRY, consumido por startCareer()
 // ao montar a carreira nova no próximo clube.
-let TECHNICIAN_CARRY = null;
+// Herança do técnico que trocou de clube. Etapa G1c1 (10/11): mora em motor/estado.js.
+Object.defineProperty(window, "TECHNICIAN_CARRY", {
+  configurable: true,
+  get() { const e = window.BRDATA_MOTOR && window.BRDATA_MOTOR.estado; return e ? e.herancaDoTecnico() : null; },
+  set(v) { motorEstado().definirHerancaDoTecnico(v); },
+});
 function endCurrentClubStint(reason) {
   const seasons = (CAREER.seasonHistory || []).length;
   const avgPosition = seasons

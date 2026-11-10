@@ -1,7 +1,7 @@
 # Carreira 2.0: proposta para a etapa G (sem página escondida)
 
 - **Data:** 09/11/2026.
-- **Status:** para decisão do Murilo. A G estava aprovada como "troca na v2", mas a medição abaixo mostra que ela precisa de uma parte preparatória antes da troca.
+- **Status:** decidido pelo Murilo em 10/11: dividir (G1a, G1b, G1c e G2). No mesmo dia, ele pediu os pedaços restantes ainda menores (ver "Divisão final" no fim).
 
 ## O que a G precisava fazer
 Pelo plano (`PLANO_SEM_PAGINA_ESCONDIDA.md`), a G faz o `adapters/engine.ts` da v2 importar o jogo como módulo, no lugar do quadro escondido em `/carreira/motor`, que sai.
@@ -37,3 +37,17 @@ Dividir a G em 4 entregas, com o mesmo método das etapas C a F (equivalência c
 **Alternativas:**
 - **G inteira num PR só:** menos PRs, mas o maior PR do plano, com risco alto de regressão na partida.
 - **Parar depois da F e replanejar a G.**
+
+## Divisão final (10/11)
+O Murilo pediu os pedaços restantes ainda menores. Cada um é um PR com testes e é mergeado com CI verde:
+
+| Pedaço | O que faz | Situação |
+|---|---|---|
+| G1a | ponte de consulta e gestão (`motor/ponte.js`) | mergeado (#92) |
+| G1b | partida, pós-jogo, semana e temporada (`motor/jogo.js`) | mergeado (#93) |
+| G1c1 | as variáveis da página (conta, fonte de dados, temporada real, herança do técnico) no `motor/estado.js` | este PR |
+| G1c2 | entrada, gravação e os comandos restantes (`motor/carga.js`) | pronto, depois da G1c1 |
+| G2a | o hospedeiro do motor sem página (`motor/v2.js`): ambiente sem página, entrada e a ponte montada a partir do motor, testado sem navegador | a fazer |
+| G2b | a v2 usa o hospedeiro atrás de uma chave, com o quadro ainda disponível | a fazer |
+| G2c | os testes da v2 deixam de ler o quadro escondido | a fazer |
+| G2d | o quadro e `/carreira/motor` saem | a fazer |
