@@ -93,6 +93,7 @@ Foram para `public/js/motor/carga.js`, **sem mudar o texto**:
   - **Comandos:** os 19 desta etapa saem iguais aos de antes.
 - **Os módulos carregam como ES module de verdade** (`test_motor_modulos_esm`, agora com 21 módulos).
 - **Testes do motor:** todos passam (19 arquivos).
+- **Testes da v2 (117/117):** o `lineup.test.ts` conferia `MAX_BENCH = 11` no `carreira.js`. A constante foi para o `motor/carga.js`, e o teste passou a ler de lá. A falha apareceu no CI desta entrega, porque eu não tinha rodado os testes da v2 antes do push; agora eles entram na checagem antes de cada push.
 - **Suíte completa (com o Postgres temporário):** 210/210 na 2ª rodada.
   - **Na 1ª rodada (209/210), falhou o `test_ge_balance_004`, no item 4 ("força reposicionada persiste no save, recarregado"):**
     - **Sozinho:** passou 3 vezes seguidas.
