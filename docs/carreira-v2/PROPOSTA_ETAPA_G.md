@@ -47,7 +47,7 @@ O Murilo pediu os pedaços restantes ainda menores. Cada um é um PR com testes 
 | G1b | partida, pós-jogo, semana e temporada (`motor/jogo.js`) | mergeado (#93) |
 | G1c1 | as variáveis da página (conta, fonte de dados, temporada real, herança do técnico) no `motor/estado.js` | mergeado (#94) |
 | G1c2 | entrada, gravação e os comandos restantes (`motor/carga.js`) | mergeado (#95) |
-| G2a | o hospedeiro do motor sem página (`motor/v2.js`): ambiente sem página, entrada e a ponte montada a partir do motor, testado sem navegador | este PR |
-| G2b | a v2 usa o hospedeiro atrás de uma chave, com o quadro ainda disponível | a fazer |
+| G2a | o hospedeiro do motor sem página (`motor/v2.js`): ambiente sem página, entrada e a ponte montada a partir do motor, testado sem navegador | mergeado (#96) |
+| G2b | a v2 usa o hospedeiro atrás de uma chave, com o quadro ainda disponível | este PR |
 | G2c | os testes da v2 deixam de ler o quadro escondido | a fazer |
 | G2d | o quadro e `/carreira/motor` saem | a fazer |
