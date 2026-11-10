@@ -41,8 +41,10 @@ const myLeaguePosition = () => sortedStandings().findIndex((r) => String(r.id) =
 const wageBillOf = (squad) => financas.wageBill(squad);
 const computeContractFields = (overall, age, potential, rng) => temporada.computeContractFields(overall, age, potential, rng, ambiente.temporadaReal());
 
-// O que a página antiga fazia depois de cada ação (gravar, redesenhar,
-// abrir a coletiva, fechar um painel) vira o evento "tela", na mesma ordem.
+// O que a página antiga fazia depois de cada ação (redesenhar, abrir a
+// coletiva, fechar um painel) vira o evento "tela", na mesma ordem. Gravar é
+// ambiente.persistir() (a persistCareer da página; antes da etapa G2a era o
+// evento "tela" também, e quem hospedasse o motor sem página não gravava).
 function tela(nome, ...args) { emitir("tela", { nome, args }); }
 
 export function fmtBRLShort(v) {
@@ -94,7 +96,7 @@ export function signSponsorProposal(kind, idx) {
   CAREER.sponsorship[kind] = { empresa: proposal.empresa, valorTemporada: proposal.valorTemporada, temporadasRestantes: proposal.duracao };
   CAREER.sponsorProposals[kind] = null;
   tela("fecharOverlay", "sponsorProposalsOverlay");
-  tela("persistCareer");
+  ambiente.persistir();
   tela("renderCentral");
   avisar(`Contrato assinado com ${proposal.empresa}!`, { type: "pos" });
 }
@@ -178,7 +180,7 @@ export function startStadiumUpgrade(id) {
   CAREER.finances.cash -= upgrade.cost;
   pushLedger("estadio", `Obra iniciada: ${upgrade.name}`, -upgrade.cost, CAREER.currentRound);
   st.pendingUpgrade = { id: upgrade.id, name: upgrade.name, capacityGain: upgrade.capacityGain, roundsLeft: upgrade.roundsNeeded };
-  tela("persistCareer");
+  ambiente.persistir();
   tela("renderStadiumScreen");
   tela("renderCentral");
   avisar(`Obra iniciada: ${upgrade.name}.`, { type: "pos" });
@@ -368,13 +370,13 @@ export function markLineupDirty() {
 export function hireTechnicalStaff() {
   const CAREER = carreiraAtual();
   CAREER.technicalStaff.hired = true;
-  tela("persistCareer");
+  ambiente.persistir();
 }
 
 export function fireTechnicalStaff() {
   const CAREER = carreiraAtual();
   CAREER.technicalStaff.hired = false;
-  tela("persistCareer");
+  ambiente.persistir();
 }
 
 export const OFFER_WAIT_ROUNDS = 2; // rodadas até o clube vendedor responder
@@ -415,7 +417,7 @@ export function increaseOffer(offerId, newValue) {
   o.status = "pending";
   o.counterValue = null;
   o.roundsLeft = OFFER_WAIT_ROUNDS;
-  tela("persistCareer");
+  ambiente.persistir();
   tela("renderMyOffersScreen");
   avisar(`Proposta por ${abbreviateName(o.playerName)} atualizada pra ${fmtBRL(value)}.`, { type: "pos" });
 }
@@ -426,7 +428,7 @@ export function withdrawOffer(offerId) {
   if (!o) return;
   CAREER.pendingOffersOut = (CAREER.pendingOffersOut || []).filter((x) => x.id !== offerId);
   pushTransferLog(`Você retirou sua proposta por ${o.playerName} (${o.clubName}).`, CAREER.currentRound);
-  tela("persistCareer");
+  ambiente.persistir();
   tela("renderMyOffersScreen");
   tela("renderMercado");
   avisar(`Proposta por ${abbreviateName(o.playerName)} retirada.`, { type: "info" });
@@ -440,7 +442,7 @@ export function acceptCounterOffer(offerId) {
   o.counterValue = null;
   const r = finalizeIncomingPurchase(o);
   CAREER.pendingOffersOut = (CAREER.pendingOffersOut || []).filter((x) => x.id !== offerId);
-  tela("persistCareer");
+  ambiente.persistir();
   tela("renderMyOffersScreen");
   tela("renderMercado"); tela("renderElenco"); tela("renderCentral");
   return r;
@@ -469,7 +471,7 @@ export function rejectListingOffer(listingId, offerId) {
   const listing = (CAREER.pendingListings || []).find((l) => l.id === listingId);
   if (!listing) return;
   listing.offers = listing.offers.filter((o) => o.id !== offerId);
-  tela("persistCareer");
+  ambiente.persistir();
   tela("renderMySalesScreen");
   tela("renderMercado");
 }
@@ -478,7 +480,7 @@ export function cancelListing(listingId) {
   const CAREER = carreiraAtual();
   const listing = (CAREER.pendingListings || []).find((l) => l.id === listingId);
   CAREER.pendingListings = (CAREER.pendingListings || []).filter((l) => l.id !== listingId);
-  tela("persistCareer");
+  ambiente.persistir();
   tela("renderMySalesScreen");
   tela("renderMercado");
   avisar(listing ? `${abbreviateName(listing.playerName)} não está mais à venda.` : "Anúncio cancelado.", { type: "info" });
@@ -494,7 +496,7 @@ export function acceptListingOffer(listingId, offerId) {
   if (!p) {
     avisar(`${abbreviateName(listing.playerName)} não está mais no seu elenco — anúncio cancelado.`, { type: "warn" });
     CAREER.pendingListings = (CAREER.pendingListings || []).filter((l) => l.id !== listingId);
-    tela("persistCareer"); tela("renderMySalesScreen"); tela("renderMercado");
+    ambiente.persistir(); tela("renderMySalesScreen"); tela("renderMercado");
     return { ok: false, texto: `${abbreviateName(listing.playerName)} não está mais no seu elenco — anúncio cancelado.` };
   }
   const principalCount = CAREER.squad.filter((x) => x.origin === "principal").length;
@@ -522,7 +524,7 @@ export function acceptListingOffer(listingId, offerId) {
   // torcida" já usado em sellPlayer.
   if (p.overall >= 80) { firePressConference("16", CAREER.currentRound, false); tela("openPressConferenceModal"); }
   markLineupDirty();
-  tela("persistCareer");
+  ambiente.persistir();
   tela("renderMySalesScreen");
   tela("renderMercado"); tela("renderElenco"); tela("renderEscalacao"); tela("renderCentral");
   return { ok: true, player: p, offer };
@@ -564,7 +566,7 @@ export function hireScout(marketId) {
     id: `scout_${cand.id}`, marketId: cand.id, name: cand.name, specialty: cand.specialty,
     regionScope: cand.regionScope, stars: cand.stars, evaluation: cand.evaluation, network: cand.network, monthlyCost: cand.monthlyCost, mission: null,
   });
-  tela("persistCareer");
+  ambiente.persistir();
   tela("renderScoutMarketScreen");
   tela("renderScoutingScreen");
   avisar(`${cand.name} contratado!`, { type: "pos" });
@@ -589,7 +591,7 @@ export function startScoutMission(scoutId, region, { type = "sub17", group = nul
   if (!scoutAllowedRegions(scout).includes(region)) { avisar("Esse olheiro não atua nessa região.", { type: "warn" }); return; }
   const dur = SCOUT_MISSION_DURATIONS[duration] || SCOUT_MISSION_DURATIONS.media;
   scout.mission = { regionUf: region, roundsLeft: dur.rounds, roundsTotal: dur.rounds, type, group, duration };
-  tela("persistCareer");
+  ambiente.persistir();
   tela("renderScoutingScreen");
   const focus = [SCOUT_MISSION_TYPES[type].label, group ? SCOUT_GROUP_LABEL[group] : null].filter(Boolean).join(" · ");
   avisar(`${scout.name} partiu em missão pelo ${REGION_LABEL[region]} (${focus}) — retorna em ${dur.rounds} rodadas.`, { type: "pos" });
@@ -613,7 +615,7 @@ export function recruitProspectToBase(id) {
   };
   CAREER.squad.push(player);
   tela("closeProspectSheet");
-  tela("persistCareer");
+  ambiente.persistir();
   tela("renderScoutingScreen");
   avisar(`${player.name} promovido pra categoria de base!`, { type: "pos" });
 }
@@ -634,7 +636,7 @@ export function acceptOffer() {
   avisar(`Proposta aceita — ${fmtBRL(offer.fee)} no caixa.`, { type: "pos" });
   ensureObjectivesFresh(); bumpObjective("daily", "obj_market_1_move", 1);
   CAREER.pendingOffer = null;
-  tela("persistCareer");
+  ambiente.persistir();
   tela("renderMercado"); tela("renderElenco"); tela("renderEscalacao"); tela("renderCentral");
 }
 
@@ -648,6 +650,6 @@ export function declineOffer() {
   recordDecline(CAREER.pendingOffer.playerId, CAREER.pendingOffer.clubId, CAREER.currentRound);
   avisar("Proposta recusada.");
   CAREER.pendingOffer = null;
-  tela("persistCareer");
+  ambiente.persistir();
   tela("renderMercado");
 }
