@@ -42,7 +42,8 @@
 // Tamanho máximo do banco de reservas (pedido do usuário) — usado em
 // todo lugar que cria/valida/exibe o banco, ver renderBench/pickerChoose/
 // openDetail/autoLineup abaixo, pra nunca ficar um número solto.
-const MAX_BENCH = 11;
+// Etapa G1c (10/11): mora em motor/carga.js.
+Object.defineProperty(window, "MAX_BENCH", { configurable: true, get() { return motorCarga().MAX_BENCH; } });
 
 /* ---------- Constantes de tática/formação ---------- */
 // Etapa C3 (09/11): mora em motor/fechamento.js.
@@ -293,7 +294,11 @@ function motorSemana() {
     gravar: () => ponteGravar(), somLigado: () => SFX_ENABLED, nomeTecnico: () => ME && ME.name,
     // Etapa G1b: o relógio da partida, gravar, o modo ponte e o botão Simular.
     agendar: (fn, ms) => setTimeout(fn, ms), cancelar: (id) => clearTimeout(id), persistir: () => persistCareer(), modoPonte: () => V2_PONTE,
-    botaoSimular: () => document.getElementById("btnSimulate") });
+    botaoSimular: () => document.getElementById("btnSimulate"),
+    // Etapa G1c2: a caixa "incluir base" da sugestão de escalação da comissão e
+    // se há modal aberto na tela antiga (só no caminho antigo do continuarPosJogo).
+    incluirBaseNaEscalacao: () => document.getElementById("autoLineupIncludeBase")?.checked,
+    algumModalAberto: () => [...document.querySelectorAll(".ct-modal-overlay.open")].some((o) => o.id !== "actionLoadingOverlay") });
   return m;
 }
 // Etapa C3 (09/11): o fechamento da rodada (jogos da CPU, Copa, empréstimos,
@@ -343,6 +348,22 @@ function motorPonte() {
 function motorJogo() {
   motorSemana();
   return motorModulo("jogo");
+}
+// Etapa G1c2 (10/11): a entrada (carga do save, liga e times, migração), a
+// gravação, o estado da ponte e os comandos restantes da ponte em motor/carga.js.
+function motorCarga() {
+  motorSemana();
+  return motorModulo("carga");
+}
+// Pedidos de tela da entrada e da criação de carreira.
+function telaDeCarga(texto) {
+  document.getElementById("screenLoading").innerHTML = splashLoadingHTML(texto);
+}
+function estiloDe(id, prop, valor) {
+  document.getElementById(id).style[prop] = valor;
+}
+function desabilitar(id, valor) {
+  document.getElementById(id).disabled = valor;
 }
 function abrirOverlay(id) {
   document.getElementById(id).classList.add("open");
@@ -546,15 +567,7 @@ function endActionLoading() {
   document.getElementById("actionLoadingOverlay").classList.remove("open");
 }
 async function fetchJSON(url, opts) {
-  beginActionLoading();
-  try {
-    const res = await fetch(url, opts);
-    const data = await res.json().catch(() => null);
-    if (!res.ok) { const e = new Error(data?.error || `Falha em ${url}`); e.status = res.status; e.code = data?.code; throw e; }
-    return data;
-  } finally {
-    endActionLoading();
-  }
+  return motorCarga().fetchJSON(url, opts);
 }
 let toastTimer = null;
 // AJUSTE (pedido do usuário: "as mensagens que aparecem em várias
@@ -920,16 +933,7 @@ function applyStoredTheme() {
 // específicos do dashboard principal), só js/data.js (times/jogadores
 // de exemplo + gerador de calendário, ver js/data.js).
 function calibrateStrengths(standings) {
-  const withGames = standings.filter((r) => r.j > 0);
-  if (!withGames.length) return {};
-  const leagueAvg = withGames.reduce((s, r) => s + r.gp / r.j, 0) / withGames.length || 1;
-  const out = {};
-  standings.forEach((r) => {
-    const gfpg = r.j ? r.gp / r.j : leagueAvg;
-    const gapg = r.j ? r.gc / r.j : leagueAvg;
-    out[r.id] = { atk: clamp(gfpg / leagueAvg, 0.5, 2.3), def: clamp(gapg / leagueAvg, 0.4, 2.3) };
-  });
-  return out;
+  return motorCarga().calibrateStrengths(standings);
 }
 // Casa o nome do time (fornecedor ao vivo) com o catálogo de cores já
 // curado em DEMO_TEAMS (js/data.js) — mesma técnica de realTeamColor()
@@ -939,59 +943,10 @@ function calibrateStrengths(standings) {
 // mesma cor genérica em modo ao vivo, sem relação com o clube de
 // verdade.
 function normalizeNameForColor(s) {
-  return String(s || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]+/g, " ").trim();
+  return motorCarga().normalizeNameForColor(s);
 }
 function realTeamColor(name) {
-  const norm = normalizeNameForColor(name);
-  let match = DEMO_TEAMS.find((t) => normalizeNameForColor(t.name) === norm || (t.aliases || []).some((a) => normalizeNameForColor(a) === norm));
-  // AJUSTE (pedido do usuário: "alguns clubes estão com as cores de
-  // fundo sem relação com o degradê proposto") — o match exato acima só
-  // cobre variação de nome já REPORTADA e somada a `aliases` (ver
-  // comentário em data.js); qualquer outra variação que o fornecedor de
-  // dado real mande (prefixo/sufixo tipo "EC ", "SE ", "Sport Club ")
-  // caía direto pro azul genérico do fallback (`crestImg`), sem
-  // relação nenhuma com o clube de verdade. Antes de desistir, tenta um
-  // 2º match por "contém" nos dois sentidos — seguro aqui porque
-  // DEMO_TEAMS só cobre os 20 clubes fixos desta competição (não corre
-  // risco de casar com um clube errado de fora da lista).
-  if (!match) {
-    match = DEMO_TEAMS.find((t) => {
-      const candidates = [t.name, ...(t.aliases || [])].map(normalizeNameForColor).filter((c) => c.length > 3);
-      return candidates.some((c) => norm.includes(c) || c.includes(norm));
-    });
-  }
-  // BUG CORRIGIDO (pedido do usuário: "Coritiba com fundo diferente da
-  // logo") — Coritiba não está em DEMO_TEAMS (Série A) porque essa
-  // lista foi curada numa temporada em que ele estava na Série B; o
-  // fornecedor de dado real, porém, reflete a temporada ATUAL (2026),
-  // com o time já de volta à Série A — subiu/desceu de divisão sem
-  // ninguém atualizar essa lista. Em vez de duplicar a cor curada nas
-  // 2 listas (ou torcer pra lembrar de mover o clube certo toda vez que
-  // acesso/queda mudar o elenco da Série A), busca por último também
-  // em DEMO_TEAMS_SERIE_B — mesma técnica de match exato + "contém".
-  if (!match) {
-    match = DEMO_TEAMS_SERIE_B.find((t) => normalizeNameForColor(t.name) === norm || (t.aliases || []).some((a) => normalizeNameForColor(a) === norm));
-  }
-  if (!match) {
-    match = DEMO_TEAMS_SERIE_B.find((t) => {
-      const candidates = [t.name, ...(t.aliases || [])].map(normalizeNameForColor).filter((c) => c.length > 3);
-      return candidates.some((c) => norm.includes(c) || c.includes(norm));
-    });
-  }
-  // AJUSTE (pedido do usuário: "acrescentar a Série B, C [ao Modo
-  // Carreira] com dados reais") — mesma técnica de novo, agora também
-  // em DEMO_TEAMS_SERIE_C, pro caso de um time real da Série C não
-  // estar coberto em nenhuma das 2 listas acima.
-  if (!match) {
-    match = DEMO_TEAMS_SERIE_C.find((t) => normalizeNameForColor(t.name) === norm || (t.aliases || []).some((a) => normalizeNameForColor(a) === norm));
-  }
-  if (!match) {
-    match = DEMO_TEAMS_SERIE_C.find((t) => {
-      const candidates = [t.name, ...(t.aliases || [])].map(normalizeNameForColor).filter((c) => c.length > 3);
-      return candidates.some((c) => norm.includes(c) || c.includes(norm));
-    });
-  }
-  return match ? { c1: match.c1, c2: match.c2, c3: match.c3 } : null;
+  return motorCarga().realTeamColor(name);
 }
 // AJUSTE (pedido do usuário: "acrescentar a Série B, C [ao Modo
 // Carreira] com dados reais") — competitionId agora é parâmetro (era
@@ -1029,41 +984,10 @@ function realTeamColor(name) {
 // mesma trava do bug "Time #xxx" documentado em loadLeague, também
 // necessária aqui (ver loadOtherCompetitionsTeams).
 async function fetchCompetitionTeams(competitionId, health, opts = {}) {
-  if (opts.forceDemo || !health.hasKey) {
-    return { teams: (DEMO_DATA_BY_COMPETITION[competitionId] || { teams: DEMO_TEAMS }).teams, liveMode: false };
-  }
-  try {
-    const season = health.season ? Number(health.season) || LIVE_SEASON : LIVE_SEASON;
-    const [teamsData, standingsData] = await Promise.all([
-      fetchJSON(`/api/career/teams?season=${season}&competition=${competitionId}`),
-      fetchJSON(`/api/career/standings?season=${season}&competition=${competitionId}`),
-    ]);
-    if (!teamsData.teams || !teamsData.teams.length) throw new Error("resposta vazia");
-    const strengths = calibrateStrengths(standingsData.standings || []);
-    const teams = teamsData.teams.map((t) => {
-      const realColor = realTeamColor(t.name);
-      return {
-        ...t, atk: strengths[t.id]?.atk ?? 1.3, def: strengths[t.id]?.def ?? 1.05,
-        c1: realColor?.c1 || "#0057B8", c2: realColor?.c2 || "#062B5C", c3: realColor?.c3,
-      };
-    });
-    return { teams, liveMode: true };
-  } catch {
-    // globais vindos de js/data.js — DEMO_DATA_BY_COMPETITION não tem
-    // entrada pra "serie_d" (fora de escopo por enquanto, ver
-    // renderCompetitionPicker) nem pra competições de mata-mata; cai
-    // em DEMO_TEAMS (Série A) só como rede de segurança bem remota.
-    return { teams: (DEMO_DATA_BY_COMPETITION[competitionId] || { teams: DEMO_TEAMS }).teams, liveMode: false };
-  }
+  return motorCarga().fetchCompetitionTeams(competitionId, health, opts);
 }
 async function loadLeague(competitionId = "brasileirao", opts = {}) {
-  CURRENT_COMPETITION_ID = competitionId;
-  const health = opts.forceDemo ? { hasKey: false } : await fetchJSON("/api/health").catch(() => ({ hasKey: false }));
-  if (health.season) LIVE_SEASON = Number(health.season) || LIVE_SEASON;
-  const { teams, liveMode } = await fetchCompetitionTeams(competitionId, health, opts);
-  LEAGUE_TEAMS = teams;
-  LIVE_MODE = liveMode;
-  LIVE_MODE_BY_COMPETITION[competitionId] = liveMode;
+  return motorCarga().loadLeague(competitionId, opts);
 }
 // AJUSTE (pedido do usuário: "o mercado deve trazer jogadores das 3
 // ligas para que transações possam ser feitas entre os 60 times das
@@ -1081,20 +1005,7 @@ async function loadLeague(competitionId = "brasileirao", opts = {}) {
 // uma carreira que gravou uma delas como Modo Exemplo nunca tenta
 // dado real por conta própria pra ela depois.
 async function loadOtherCompetitionsTeams(homeCompetitionId, forceDemoMap = {}) {
-  const others = ALL_COMPETITIONS_ORDER.filter((c) => c !== homeCompetitionId);
-  const health = await fetchJSON("/api/health").catch(() => ({ hasKey: false }));
-  const liveModeByCompetition = { [homeCompetitionId]: LIVE_MODE };
-  const otherTeams = await Promise.all(others.map(async (compId) => {
-    const { teams, liveMode } = await fetchCompetitionTeams(compId, health, { forceDemo: forceDemoMap[compId] });
-    liveModeByCompetition[compId] = liveMode;
-    LIVE_MODE_BY_COMPETITION[compId] = liveMode;
-    return teams.map((t) => ({ ...t, competitionId: compId }));
-  }));
-  ALL_TEAMS_FLAT = [
-    ...LEAGUE_TEAMS.map((t) => ({ ...t, competitionId: homeCompetitionId })),
-    ...otherTeams.flat(),
-  ];
-  return liveModeByCompetition;
+  return motorCarga().loadOtherCompetitionsTeams(homeCompetitionId, forceDemoMap);
 }
 // Nunca deixa a tela quebrar por um id de clube que não existe mais em
 // LEAGUE_TEAMS (ex.: carreira criada em modo ao vivo, revisitada depois
@@ -1139,11 +1050,10 @@ function teamById(id) {
 // no monograma em todo o Modo Técnico. Mesmos ids do LOCAL_CREST_MAP de
 // app.js. Logo vindo do fornecedor (dado ao vivo) ou do catálogo
 // (Série B, *_b.png) continua tendo prioridade.
-const CAREER_LOCAL_CRESTS = new Set(["fla", "pal", "bot", "for", "int", "sao", "cor", "cap", "cam", "flu", "san", "bra", "juv", "cui", "gre", "cru", "bah", "vas", "vit"]);
+// Etapa G1c (10/11): mora em motor/carga.js.
+Object.defineProperty(window, "CAREER_LOCAL_CRESTS", { configurable: true, get() { return motorCarga().CAREER_LOCAL_CRESTS; } });
 function teamLogoSrc(t) {
-  if (!t) return null;
-  if (t.logo) return t.logo;
-  return t.id != null && CAREER_LOCAL_CRESTS.has(String(t.id)) ? `img/teams/${t.id}.svg` : null;
+  return motorCarga().teamLogoSrc(t);
 }
 function crestImg(t, size = 40) {
   const c1 = t?.c1 || "#8892A0", c2 = t?.c2 || "#333";
@@ -1845,7 +1755,8 @@ function boardGoalMet(position, goal) {
    "Reiniciar" explícito (esse sim apaga tudo de propósito, sem
    carregar reputação nenhuma pra frente) — ver TECHNICIAN_CARRY/
    endCurrentClubStint logo abaixo, consumidos por startCareer(). */
-const REPUTATION_DISMISSAL_PENALTY = 25;
+// Etapa G1c (10/11): mora em motor/carga.js.
+Object.defineProperty(window, "REPUTATION_DISMISSAL_PENALTY", { configurable: true, get() { return motorCarga().REPUTATION_DISMISSAL_PENALTY; } });
 // FASE 4 (item 2) — peso de "Entrevistas" da fórmula (10%): a
 // biblioteca de coletivas (PRESS_LIBRARY, mais abaixo) já vem com um
 // "Efeito Reputação" calibrado por resposta na escala -3 a +3 (ver
@@ -1874,7 +1785,8 @@ function reputationLabel(rep) {
 // aqui é mais por consistência de padrão do que por peso real (o
 // achado real que efetivamente resolve o beco sem saída é a compressão
 // gzip em server/src/careerStore.js).
-const CLUB_HISTORY_MAX = 15;
+// Etapa G1c (10/11): mora em motor/carga.js.
+Object.defineProperty(window, "CLUB_HISTORY_MAX", { configurable: true, get() { return motorCarga().CLUB_HISTORY_MAX; } });
 // Fecha a passagem pelo clube atual (demissão ou proposta aceita) —
 // registra no "currículo" (histórico_clubes do documento: clube,
 // temporadas, títulos, posição média) e guarda o que precisa
@@ -1887,17 +1799,7 @@ Object.defineProperty(window, "TECHNICIAN_CARRY", {
   set(v) { motorEstado().definirHerancaDoTecnico(v); },
 });
 function endCurrentClubStint(reason) {
-  const seasons = (CAREER.seasonHistory || []).length;
-  const avgPosition = seasons
-    ? Math.round(CAREER.seasonHistory.reduce((s, y) => s + y.position, 0) / seasons)
-    : myLeaguePosition();
-  const titles = (CAREER.seasonAwards || []).reduce((n, a) => n + countTitlesThisSeason(a), 0);
-  const clubHistory = (CAREER.clubHistory || []).slice();
-  clubHistory.unshift({ clubId: CAREER.clubId, clubName: CAREER.clubName, seasons, titles, avgPosition, reason });
-  if (clubHistory.length > CLUB_HISTORY_MAX) clubHistory.length = CLUB_HISTORY_MAX;
-  let reputation = CAREER.reputation == null ? 50 : CAREER.reputation;
-  if (reason === "dismissed") reputation = clamp(reputation - REPUTATION_DISMISSAL_PENALTY, 0, 100);
-  TECHNICIAN_CARRY = { reputation, clubHistory };
+  return motorCarga().endCurrentClubStint(reason);
 }
 // Clubes "maiores" (força de elenco bem acima do seu, ver
 // squadAvgOverallOf) fazem proposta quando a reputação bate um
@@ -3817,52 +3719,7 @@ function autoLineup(squad, formation, includeBase = true) {
 
 /* ---------- Persistência ---------- */
 async function persistCareer() {
-  if (!CAREER) return false;
-  // Etapa B: o módulo grava e devolve o motivo; os avisos ficam aqui.
-  const r = await motorEstado().gravarSave(CAREER, fetchJSON);
-  if (r.ok) return true;
-  const err = { status: r.status, message: r.mensagem };
-  // BUG CORRIGIDO: qualquer falha (sessão expirada, save grande
-  // demais, rede) caía nessa mesma mensagem genérica de "tente de
-  // novo em instantes" — mas sessão expirada NUNCA se resolve
-  // tentando de novo, só logando de novo (relato real do usuário:
-  // erro ao simular rodada, sem conseguir salvar mais nada depois).
-  // Loga o motivo real no console pra dar pra investigar sem precisar
-  // acesso ao servidor, e distingue sessão expirada do resto.
-  console.error("[carreira] falha ao salvar progresso:", err.status, err.message);
-  // Carreira 2.0 (AUD-02): a ponte informa à v2 se foi sessão expirada
-  // ou outra falha. No modo ponte esta página é um quadro invisível — a
-  // tela de login daqui não seria vista; a v2 mostra o próprio aviso.
-  PONTE.erroGravacao = r.motivo === "sessao" ? "sessao" : "falha";
-  if (r.motivo === "sessao" && V2_PONTE) {
-    // (sem toast/troca de tela: ver acima)
-  } else if (r.motivo === "sessao") {
-    toast("Sua sessão expirou — faça login de novo pra continuar salvando.", { type: "warn" });
-    show("screenLoginRequired");
-  } else if (r.motivo === "grande") {
-    // SAVE-LIMIT-001 — antes disso era literalmente um beco sem saída
-    // ("reinicie a carreira"). Agora o servidor já comprime o save
-    // (gzip, ~92-95% menor na prática — ver careerStore.js) e ainda
-    // poda automaticamente histórico não-essencial antes de recusar
-    // salvar (nunca elenco/contratos/tabela/finanças) — chegar aqui
-    // significa que MESMO DEPOIS dessas 2 camadas o save continua
-    // grande demais, cenário que a medição real (ver
-    // tests/e2e/sim_save_growth.js) não encontrou em nenhuma
-    // simulação de várias temporadas. Por isso o texto não manda
-    // mais reiniciar a carreira — tentar de novo pode resolver (pico
-    // temporário), e persistindo é sinal de bug de verdade, não de
-    // "carreira grande demais" como intenção normal do jogo.
-    toast("Não deu pra salvar agora — o servidor tentou reduzir o histórico da carreira automaticamente e mesmo assim não coube. Tentando de novo deve resolver; se continuar acontecendo, é um bug — nos avise.", { durationMs: 6000, type: "warn" });
-  } else {
-    // Código/motivo aparecem no toast de propósito (mesmo sendo mais
-    // "técnico" do que o ideal pro usuário final): sem acesso aos
-    // logs do servidor daqui, é a forma mais rápida de descobrir a
-    // causa real de um erro que não é nem sessão expirada nem save
-    // grande demais — quem estiver vendo isso pode repassar o texto.
-    const detail = err.status ? `erro ${err.status}${err.message ? " — " + err.message : ""}` : (err.message || "sem conexão com o servidor");
-    toast({ title: "Não deu pra salvar o progresso agora", detail: `${detail} — tente de novo em instantes.` }, { type: "warn" });
-  }
-  return false;
+  return motorCarga().persistCareer();
 }
 
 /* ---------- Início de carreira ---------- */
@@ -3883,11 +3740,8 @@ async function persistCareer() {
 // fora de propósito (formato de grupos + mata-mata, não bate com o
 // motor de pontos corridos deste app — ver aviso em
 // server/src/competitions.js) até ganhar um motor próprio.
-const CAREER_COMPETITIONS = [
-  { id: "brasileirao", name: "Brasileirão Série A", sub: "20 clubes — a elite do futebol brasileiro", country: "Brasil", countryCode: "BR", category: "Brasil" },
-  { id: "serie_b", name: "Brasileirão Série B", sub: "20 clubes — acesso e disputa direta pela Série A", country: "Brasil", countryCode: "BR", category: "Brasil" },
-  { id: "serie_c", name: "Brasileirão Série C", sub: "20 clubes — a base da pirâmide do futebol nacional", country: "Brasil", countryCode: "BR", category: "Brasil" },
-];
+// Etapa G1c (10/11): mora em motor/carga.js.
+Object.defineProperty(window, "CAREER_COMPETITIONS", { configurable: true, get() { return motorCarga().CAREER_COMPETITIONS; } });
 // Rótulo curto de cada divisão (selo no Mercado — ver renderMercado)
 // — mesmas 3 competições de CAREER_COMPETITIONS acima, sem o prefixo
 // "Brasileirão" (não cabe numa pílula pequena ao lado do time).
@@ -4111,41 +3965,7 @@ function openFirstEntry() {
 }
 
 async function startCareer(clubId) {
-  const club = LEAGUE_TEAMS.find((t) => String(t.id) === String(clubId));
-  if (!club) return;
-  document.getElementById("clubGrid").style.opacity = "0.5";
-  document.getElementById("clubGrid").style.pointerEvents = "none";
-  document.getElementById("btnConfirmClub").disabled = true;
-  try {
-    // AJUSTE (pedido do usuário: "o mercado deve trazer jogadores das
-    // 3 ligas para que transações possam ser feitas entre os 60 times
-    // das Séries A, B e C") — carrega os times das OUTRAS 2
-    // competições (a da própria carreira já está em LEAGUE_TEAMS) e
-    // monta o elenco dos 59 outros times das 3 séries juntas, não só
-    // os 19 da divisão escolhida — ver loadOtherCompetitionsTeams/
-    // buildLeagueSquads. liveModeByCompetition grava a fonte de dado
-    // (real ou exemplo) de CADA UMA das 3, pro mesmo tipo de trava do
-    // bug "Time #xxx" (ver loadLeague) valer aqui também, competição
-    // por competição, quando essa carreira for retomada depois.
-    const [liveModeByCompetition, squad] = await Promise.all([
-      loadOtherCompetitionsTeams(CURRENT_COMPETITION_ID),
-      buildSquad(club),
-    ]);
-    // buildLeagueSquads depende de ALL_TEAMS_FLAT (populada por
-    // loadOtherCompetitionsTeams acima) — não dá pra paralelizar com
-    // ela, só com buildSquad (que não depende de nada disso).
-    const leagueSquads = await buildLeagueSquads(club.id, ALL_TEAMS_FLAT);
-    // Etapa F (09/11): a regra da criação (o save novo, o calendário, as
-    // divisões, a meta, a Copa e o patrocínio) mora em motor/virada.js
-    // (montarCarreira); aqui ficam a carga dos dados e a tela.
-    motorVirada().montarCarreira(club, squad, leagueSquads, liveModeByCompetition);
-    TECHNICIAN_CARRY = null;
-    await persistCareer();
-    openFirstEntry();
-  } finally {
-    document.getElementById("clubGrid").style.opacity = "";
-    document.getElementById("clubGrid").style.pointerEvents = "";
-  }
+  return motorCarga().startCareer(clubId);
 }
 
 /* ---------- Disponibilidade (lesão/suspensão) ---------- */
@@ -4429,9 +4249,7 @@ function stepTrainingDuration(day, delta) {
 // ser chamada pela Comissão Técnica (ver suggestTraining) sem duplicar
 // a lógica de aplicar um esquema.
 function applyTrainingScheme(id) {
-  CAREER.trainingSchemeId = id;
-  CAREER.trainingPlan = defaultTrainingPlan(id);
-  persistCareer();
+  return motorCarga().applyTrainingScheme(id);
 }
 // Bloco 5 (mockup brtreinadorbloco5treino.html) — projeta a semana
 // inteira (dry run, NUNCA toca CAREER.squad de verdade) só pra
@@ -4857,7 +4675,8 @@ async function submitAddFriend() {
 // /api/friends/add já existentes — só embrulha o código numa URL
 // compartilhável, sem nenhum sistema de convite pendente/aceite novo
 // no servidor (mesma bidirecionalidade imediata de sempre).
-const PENDING_INVITE_KEY = "mt_pending_invite_code";
+// Etapa G1c (10/11): mora em motor/carga.js.
+Object.defineProperty(window, "PENDING_INVITE_KEY", { configurable: true, get() { return motorCarga().PENDING_INVITE_KEY; } });
 // Lido uma vez só, bem no início de boot() — ANTES de saber se o
 // visitante já tem sessão (o link pode chegar pra alguém que só vai
 // logar/cadastrar depois). Guardado em sessionStorage (sobrevive a um
@@ -4882,20 +4701,7 @@ function capturePendingInviteFromUrl() {
 // sessionStorage ANTES de qualquer coisa, pra nunca duplicar o toast
 // num reload/erro no meio do caminho (consumo de uso único).
 async function consumePendingInviteIfAny() {
-  let code;
-  try { code = sessionStorage.getItem(PENDING_INVITE_KEY); } catch { return; }
-  if (!code) return;
-  try { sessionStorage.removeItem(PENDING_INVITE_KEY); } catch { }
-  if (!ME || code === ME.friendCode) return; // convite do próprio código (ex.: o dono testando o link) -- ignora em silêncio
-  try {
-    const data = await fetchJSON("/api/friends/add", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ code }) });
-    ME.friends = data.friends;
-    toast({ title: "Amigo adicionado!", detail: "Vocês já podem se comparar no Ranking." }, { type: "pos" });
-  } catch {
-    // Código inválido/expirado -- o técnico só clicou num link, não foi
-    // uma ação que ele possa "corrigir" na hora, então fica em
-    // silêncio; ainda dá pra adicionar manualmente depois no Ranking.
-  }
+  return motorCarga().consumePendingInviteIfAny();
 }
 // Botão "Compartilhar convite" ao lado do código -- Web Share API com
 // fallback de copiar pro clipboard (qualquer navegador sem suporte a
@@ -4926,36 +4732,12 @@ async function shareInviteLink() {
 // verdade — ver /api/support/webhook em server.js). Mesmo espírito do
 // ?convite= (captura + limpa a URL antes de qualquer coisa).
 function captureLojaReturnStatus() {
-  try {
-    const params = new URLSearchParams(location.search);
-    const status = params.get("collection_status") || params.get("status");
-    if (!status) return null;
-    ["collection_status", "status", "payment_id", "collection_id", "external_reference", "payment_type", "merchant_order_id", "preference_id", "site_id", "processing_mode"].forEach((k) => params.delete(k));
-    const clean = location.pathname + (params.toString() ? `?${params}` : "") + location.hash;
-    history.replaceState(null, "", clean);
-    return status;
-  } catch { return null; }
+  return motorCarga().captureLojaReturnStatus();
 }
-const LOJA_STATUS_LABELS = {
-  approved: { title: "Pagamento aprovado!", detail: "Seus Créditos BR já devem estar disponíveis.", type: "pos" },
-  pending: { title: "Pagamento pendente", detail: "Assim que for confirmado (pode levar alguns instantes, principalmente no Pix), os créditos aparecem sozinhos.", type: "warn" },
-  in_process: { title: "Pagamento em análise", detail: "Vamos confirmar e creditar automaticamente assim que possível.", type: "warn" },
-  rejected: { title: "Pagamento não aprovado", detail: "Você pode tentar de novo na Loja com outro cartão ou pelo Pix.", type: "warn" },
-};
+// Etapa G1c (10/11): mora em motor/carga.js.
+Object.defineProperty(window, "LOJA_STATUS_LABELS", { configurable: true, get() { return motorCarga().LOJA_STATUS_LABELS; } });
 async function handleLojaReturnIfAny() {
-  const status = captureLojaReturnStatus();
-  if (!status) return;
-  const info = LOJA_STATUS_LABELS[status] || { title: "Pagamento em processamento", detail: "Vamos confirmar o status assim que possível.", type: "info" };
-  toast({ title: info.title, detail: info.detail }, { type: info.type });
-  if (status !== "approved") return;
-  // Webhook costuma já ter rodado a essa altura, mas Pix pode demorar
-  // alguns segundos — reconsulta agora e de novo um pouco depois, só
-  // pra refletir o saldo novo sem o técnico precisar recarregar a mão.
-  const refresh = async () => {
-    try { const me = await fetchJSON("/api/auth/me"); if (me.authenticated) ME.creditsBR = me.user.creditsBR; } catch { }
-  };
-  await refresh();
-  setTimeout(refresh, 4000);
+  return motorCarga().handleLojaReturnIfAny();
 }
 
 /* ---------- Retenção/Engajamento — Login diário com streak (item 2 do
@@ -4965,16 +4747,10 @@ async function handleLojaReturnIfAny() {
    applyDailyLoginReward) é aplicada na carreira ATIVA no momento do
    claim, já que "moedas do clube"/moral/olheiro só fazem sentido
    dentro de uma carreira em andamento. */
-const DAILY_LOGIN_CYCLE = [
-  { day: 1, reward: { type: "coins", amount: 500 } },
-  { day: 2, reward: { type: "coins", amount: 800 } },
-  { day: 3, reward: { type: "boost", amount: 0 } },
-  { day: 4, reward: { type: "coins", amount: 1200 } },
-  { day: 5, reward: { type: "scout_token", amount: 0 } },
-  { day: 6, reward: { type: "coins", amount: 1800 } },
-  { day: 7, reward: { type: "premium_pack", amount: 3000 } },
-];
-const DAILY_LOGIN_REWARD_ICON = { coins: "🪙", boost: "💪", scout_token: "🔎", premium_pack: "🎁" };
+// Etapa G1c (10/11): mora em motor/carga.js.
+Object.defineProperty(window, "DAILY_LOGIN_CYCLE", { configurable: true, get() { return motorCarga().DAILY_LOGIN_CYCLE; } });
+// Etapa G1c (10/11): mora em motor/carga.js.
+Object.defineProperty(window, "DAILY_LOGIN_REWARD_ICON", { configurable: true, get() { return motorCarga().DAILY_LOGIN_REWARD_ICON; } });
 const DAILY_LOGIN_REWARD_LABEL = { coins: "moedas do clube", boost: "moral do elenco", scout_token: "olheiro", premium_pack: "pacote de elite" };
 // Traduz o reward genérico devolvido pelo servidor (ver DAILY_LOGIN_CYCLE
 // em users.js -- os 2 catálogos precisam ficar em sincronia manual, o
@@ -4987,48 +4763,7 @@ const DAILY_LOGIN_REWARD_LABEL = { coins: "moedas do clube", boost: "moral do el
 // novo); "premium_pack" (dia 7) empilha moedas + moral + recuperação
 // de condição, igual o reward "premium" dos objetivos de temporada.
 function applyDailyLoginReward(reward) {
-  // BUG CORRIGIDO (dia 7, 03/11/2026): o servidor (users.js) manda o
-  // "pacote de elite" sem `amount` ({ type: "premium_pack", id: … }) e o
-  // caixa virava NaN (gravado como null no save). Sem valor válido vindo
-  // do servidor, usa o do ciclo deste mesmo arquivo (DAILY_LOGIN_CYCLE).
-  if (!Number.isFinite(reward.amount)) {
-    const fromCycle = (DAILY_LOGIN_CYCLE.find((d) => d.reward.type === reward.type) || {}).reward;
-    reward = { ...reward, amount: fromCycle && Number.isFinite(fromCycle.amount) ? fromCycle.amount : 0 };
-  }
-  if (reward.type === "coins") {
-    CAREER.finances.cash += reward.amount;
-    pushPurchaseHistory(DAILY_LOGIN_REWARD_ICON.coins, "Recompensa diária: moedas do clube", "Login diário", `+${fmtBRL(reward.amount)}`, "credit");
-    return { icon: DAILY_LOGIN_REWARD_ICON.coins, detail: `+${fmtBRL(reward.amount)}` };
-  }
-  if (reward.type === "boost") {
-    CAREER.squad.forEach((p) => { p.morale = clamp((p.morale == null ? 70 : p.morale) + 8, 0, 100); });
-    pushPurchaseHistory(DAILY_LOGIN_REWARD_ICON.boost, "Boost de moral usado", "Recompensa do login diário", "USADO");
-    pushNotification("loja", "Boost de moral do elenco usado (recompensa do login diário).", { gateBy: "loja" });
-    return { icon: DAILY_LOGIN_REWARD_ICON.boost, detail: "Moral do elenco em alta" };
-  }
-  if (reward.type === "scout_token") {
-    // Só quem ainda tem potencial NÃO revelado (senão o prêmio seria
-    // desperdiçado revelando de novo alguém já revelado).
-    const base = CAREER.squad.filter((p) => p.origin === "base" && p.potential != null && !p.scoutRevealed);
-    if (base.length) {
-      const p = base[Math.floor(Math.random() * base.length)];
-      p.scoutRevealed = true;
-      pushPurchaseHistory(DAILY_LOGIN_REWARD_ICON.scout_token, "Olheiro extra usado", `Potencial de ${abbreviateName(p.name)} revelado`, "USADO");
-      return { icon: DAILY_LOGIN_REWARD_ICON.scout_token, detail: `Potencial de ${abbreviateName(p.name)} revelado` };
-    }
-    CAREER.finances.cash += 500; // sem ninguém da base pra revelar, cai pra um pequeno bônus em dinheiro
-    pushPurchaseHistory(DAILY_LOGIN_REWARD_ICON.scout_token, "Recompensa diária: bônus em dinheiro", "Sem jogador da base pra revelar", "+R$ 500", "credit");
-    return { icon: DAILY_LOGIN_REWARD_ICON.scout_token, detail: "+R$ 500 (sem jogador da base pra revelar)" };
-  }
-  // premium_pack
-  CAREER.finances.cash += reward.amount;
-  CAREER.squad.forEach((p) => {
-    p.morale = clamp((p.morale == null ? 70 : p.morale) + 8, 0, 100);
-    p.condition = clamp((p.condition == null ? 100 : p.condition) + 15, 0, 100);
-  });
-  pushPurchaseHistory(DAILY_LOGIN_REWARD_ICON.premium_pack, "Pacote de elite usado", "Moral e condição recuperadas", `+${fmtBRL(reward.amount)}`, "credit");
-  pushNotification("loja", "Pacote de elite usado (recompensa do login diário).", { gateBy: "loja" });
-  return { icon: DAILY_LOGIN_REWARD_ICON.premium_pack, detail: `+${fmtBRL(reward.amount)} · moral e condição recuperadas` };
+  return motorCarga().applyDailyLoginReward(reward);
 }
 function dailyLoginDayCellHTML(dayInfo, currentDay) {
   const done = dayInfo.day < currentDay || (dayInfo.day === 7 && currentDay === 7 && dayInfo._justClaimed);
@@ -8151,68 +7886,7 @@ function openDetail(id) {
   if (p.attrTrend) p.attrTrend = { overall: 0, atk: 0, def: 0, phys: 0 };
 }
 async function handlePlayerAction(id, act) {
-  const p = CAREER.squad.find((x) => x.id === id);
-  if (!p) return;
-  // FASE 1 (item 1) — abre o sub-modal de renovação POR CIMA do
-  // detalhe (mesmo padrão do confirmModal, que também abre em cima de
-  // qualquer outra modal já aberta) — não fecha nem mexe em nada aqui,
-  // quem decide o que muda é proposeRenewal().
-  if (act === "renew") { openRenewModal(id); return; }
-  // FASE 4 (item 1) — "conversa individual", mesmo padrão de sub-modal
-  // aberto POR CIMA do detalhe (ver openTalkModal/applyTalkOption).
-  if (act === "talk") { openTalkModal(id); return; }
-  // FASE 3 (item 3) — mesmo padrão do "renew" acima: abre o sub-modal
-  // de configuração do empréstimo POR CIMA do detalhe, sem mexer em
-  // nada ainda — quem decide o que muda é confirmLoanFromModal().
-  if (act === "loanout") { openLoanOutModal(id); return; }
-  // Nova feature (Bloco 3, 3/4) — "Colocar à venda", mesmo padrão do
-  // "loanout" acima: abre o sheet de anúncio POR CIMA do detalhe, sem
-  // mexer em nada ainda — quem decide é confirmListFromModal() (ou,
-  // se já tiver anúncio ativo, abre "Minhas vendas" direto).
-  if (act === "sell") { openListModal(id); return; }
-  // Nova feature — Comparar jogadores (ver openComparePicker).
-  if (act === "compare") { openComparePicker(id); return; }
-  if (act === "removeStarter") {
-    CAREER.lineup.starters = CAREER.lineup.starters.map((x) => (x === id ? null : x));
-  } else if (act === "removeBench") {
-    CAREER.lineup.bench = CAREER.lineup.bench.filter((x) => x !== id);
-  } else if (act === "addBench") {
-    if (CAREER.lineup.bench.length < MAX_BENCH) CAREER.lineup.bench.push(id);
-  } else if (act === "promote") {
-    // FASE 2 (b) — mesmo teto salarial checado em openDetail (que já
-    // desabilita o botão) — reforçado aqui pro caso de handlePlayerAction
-    // ser chamado de algum outro lugar no futuro sem passar por lá.
-    if (wageBillOf(CAREER.squad) + p.wage > CAREER.finances.wageCap) {
-      toast(`Promover esse jogador estouraria o teto salarial (${fmtBRL(CAREER.finances.wageCap)}).`, { type: "warn" });
-      return;
-    }
-    p.origin = "principal";
-    // Retenção/Engajamento — "revelar" um jogador da base (objetivo de
-    // temporada + conquista permanente "Joia da Base", que NUNCA
-    // reseta — 2 contadores separados de propósito, ver
-    // freshAchievementsState/OBJECTIVE_TEMPLATES.season).
-    ensureObjectivesFresh();
-    bumpObjective("season", "obj_reveal_base", 1);
-    CAREER.baseRevealedCount = (CAREER.baseRevealedCount || 0) + 1;
-    evaluateAlwaysCheckableAchievements();
-  } else if (act === "demote") {
-    p.origin = "base";
-    CAREER.lineup.starters = CAREER.lineup.starters.map((x) => (x === id ? null : x));
-    CAREER.lineup.bench = CAREER.lineup.bench.filter((x) => x !== id);
-  } else if (act === "release") {
-    const principalCount = CAREER.squad.filter((x) => x.origin === "principal").length;
-    if (p.origin === "principal" && principalCount <= 14) { toast("O elenco principal não pode ficar com menos de 14 jogadores.", { type: "warn" }); return; }
-    CAREER.squad = CAREER.squad.filter((x) => x.id !== id);
-    CAREER.lineup.starters = CAREER.lineup.starters.map((x) => (x === id ? null : x));
-    CAREER.lineup.bench = CAREER.lineup.bench.filter((x) => x !== id);
-  }
-  // Meus esquemas — qualquer uma dessas ações pode mexer na escalação
-  // (titular/banco), então desvincula do esquema salvo igual as outras
-  // mutações de lineup (ver markLineupDirty).
-  markLineupDirty();
-  document.getElementById("detailOverlay").classList.remove("open");
-  persistCareer();
-  renderElenco(); renderEscalacao(); renderCentral(); renderContratos();
+  return motorCarga().handlePlayerAction(id, act);
 }
 
 /* ---------- Comparar jogadores (brtreinadorbloco1pendentes.html) ----------
@@ -8708,45 +8382,14 @@ function fireTechnicalStaff() {
 // "incluir base" que a aba Tática já usa (lido do DOM se a tela
 // estiver aberta; sem base por padrão, mesmo default do botão).
 function suggestLineup() {
-  const includeBase = document.getElementById("autoLineupIncludeBase")?.checked || false;
-  const result = autoLineup(CAREER.squad, CAREER.lineup.formation, includeBase);
-  const changedCount = result.starters.filter((id, i) => id !== CAREER.lineup.starters[i]).length;
-  if (!changedCount) {
-    return { text: "Sua escalação atual já é a melhor disponível pra esse esquema — nenhuma troca a sugerir.", canApply: false };
-  }
-  return {
-    text: `${changedCount} posição${changedCount > 1 ? "ões" : ""} tem um titular disponível melhor pro esquema ${CAREER.lineup.formation}.`,
-    canApply: true,
-    apply: () => {
-      CAREER.lineup.starters = result.starters;
-      CAREER.lineup.bench = result.bench;
-      markLineupDirty();
-      persistCareer();
-      renderPitch(); renderBench();
-    },
-  };
+  return motorCarga().suggestLineup();
 }
 // Treinos — regra simples e honesta a partir de 2 dados reais (rodada
 // atual, condição média do elenco principal): rodada 1 (toda
 // temporada nova) recomenda construir base física; elenco desgastado
 // recomenda recuperar; fora isso, o esquema equilibrado de sempre.
 function suggestTraining() {
-  const round = CAREER.currentRound;
-  const principal = CAREER.squad.filter((p) => p.origin === "principal" || p.origin === "loan");
-  const avgCond = avg(principal.map((p) => p.condition == null ? 100 : p.condition)) ?? 100;
-  let schemeId;
-  if (round === 1) schemeId = "pretemporada";
-  else if (avgCond < 70) schemeId = "recuperacao";
-  else schemeId = "equilibrio";
-  const scheme = motorTreino().TRAINING_SCHEMES.find((s) => s.id === schemeId);
-  if (CAREER.trainingSchemeId === schemeId) {
-    return { text: `Já está no esquema recomendado (${scheme.name}) — condição média do elenco: ${Math.round(avgCond)}%.`, canApply: false };
-  }
-  return {
-    text: `Esquema recomendado: ${scheme.name} — condição média do elenco: ${Math.round(avgCond)}%.`,
-    canApply: true,
-    apply: () => { applyTrainingScheme(schemeId); },
-  };
+  return motorCarga().suggestTraining();
 }
 // Tática — compara a força bruta do seu clube (atk/def do catálogo,
 // mesma fórmula que o motor usa pra decidir o placar) contra o próximo
@@ -8755,31 +8398,7 @@ function suggestTraining() {
 // em ritmo/pressão/linha defensiva (estilo de passe fica de fora — não
 // mapeia claramente pra "mais ofensivo/cauteloso").
 function suggestTactics() {
-  const opponentId = nextOpponentId();
-  if (!opponentId) return { text: "Sem próximo jogo definido agora — volte quando houver um confronto marcado.", canApply: false };
-  const myClub = teamById(CAREER.clubId);
-  const opp = teamById(opponentId);
-  // GE-BALANCE-003 (issue #30) — ver comentário em simulateCupLeg.
-  const lambdaMine = myClub.atk * opp.def;
-  const lambdaOpp = opp.atk * myClub.def;
-  const ratio = lambdaMine / lambdaOpp;
-  let targetLevel, label;
-  if (ratio > 1.15) { targetLevel = 4; label = `postura mais OFENSIVA — seu time é favorito contra o ${opp.name}`; }
-  else if (ratio < 0.87) { targetLevel = 2; label = `postura mais CAUTELOSA — o ${opp.name} é favorito nesse confronto`; }
-  else { targetLevel = 3; label = `manter o padrão equilibrado — times parelhos contra o ${opp.name}`; }
-  const axesToSet = ["ritmo", "pressao", "linhaDefensiva"];
-  const t = CAREER.lineup.tactics;
-  const alreadyThere = axesToSet.every((id) => (t[id] || 3) === targetLevel);
-  if (alreadyThere) return { text: `Recomendação: ${label}. Sua tática já está ajustada assim.`, canApply: false };
-  return {
-    text: `Recomendação pro próximo jogo: ${label}.`,
-    canApply: true,
-    apply: () => {
-      axesToSet.forEach((id) => { CAREER.lineup.tactics[id] = targetLevel; });
-      markLineupDirty();
-      persistCareer();
-    },
-  };
+  return motorCarga().suggestTactics();
 }
 /* ---------- Comissão técnica — sugestões rápidas (05/11) ----------
    Menu lateral da v2 (Início, Escalação, Pré-jogo): três decisões para o
@@ -8845,41 +8464,10 @@ function comissaoRecomendacoes() {
 // Sem sugestão nenhuma fora da janela de contratações (mesma trava que
 // buyPlayer já respeita) ou sem reforço claro disponível.
 function suggestMarket() {
-  if (!transferWindowStatus(CAREER.currentRound).open) {
-    return { text: "Janela de contratações fechada agora — sem sugestão de reforço.", canApply: false };
-  }
-  const starters = CAREER.lineup.starters.map((id) => id && CAREER.squad.find((p) => p.id === id)).filter(Boolean);
-  if (!starters.length) return { text: "Defina a escalação titular na aba Tática antes.", canApply: false };
-  const weakest = starters.slice().sort((a, b) => a.overall - b.overall)[0];
-  const subpos = subPositionOf(weakest);
-  const candidates = allMarketPlayers()
-    .filter(({ p, mine }) => !mine && subPositionOf(p) === subpos && p.overall > weakest.overall && p.value <= CAREER.finances.cash)
-    .sort((a, b) => a.p.value - b.p.value);
-  if (!candidates.length) {
-    return { text: `Nenhum reforço claramente melhor e dentro do caixa pra ${SUBPOS_LABEL[subpos]} agora (titular mais fraco na posição: ${weakest.name}, overall ${weakest.overall}).`, canApply: false };
-  }
-  const best = candidates[0];
-  return {
-    text: `${best.p.name} (${best.club.name}, overall ${best.p.overall}) por ${fmtBRL(best.p.value)} reforçaria ${SUBPOS_LABEL[subpos]} — seu titular mais fraco lá é ${weakest.name} (${weakest.overall}).`,
-    canApply: true,
-    // Fase 9 (Carreira 2.0) — alvo da sugestão, para a v2 abrir a proposta.
-    target: { clubId: String(best.club.id), playerId: best.p.id },
-    // AJUSTE (pedido do usuário: "no Mercado deu certo mas precisa
-    // funcionar também na Comissão Técnica") — Mercado não compra mais
-    // na hora em lugar NENHUM do jogo (ver Bloco 3, openOfferModal/
-    // confirmOfferFromModal): "aceitar" esta sugestão abre a MESMA
-    // tela de proposta real, já com o jogador/clube certos, em vez de
-    // fechar negócio direto (o antigo atalho instantâneo, buyPlayer,
-    // foi removido — sem outro chamador depois desta mudança).
-    apply: async () => { openOfferModal(best.club.id, best.p.id); },
-  };
+  return motorCarga().suggestMarket();
 }
-const COMMISSION_AREAS = [
-  { id: "lineup", label: "Escalação", icon: "⚽", fn: suggestLineup },
-  { id: "training", label: "Treinos", icon: "🏋️", fn: suggestTraining },
-  { id: "tactics", label: "Tática", icon: "🧭", fn: suggestTactics },
-  { id: "market", label: "Mercado", icon: "💰", fn: suggestMarket },
-];
+// Etapa G1c (10/11): mora em motor/carga.js.
+Object.defineProperty(window, "COMMISSION_AREAS", { configurable: true, get() { return motorCarga().COMMISSION_AREAS; } });
 // Nova feature (pedido do usuário: "criar um card no início com o
 // título comissão técnica e com os botões com as sugestões dadas por
 // eles de maneira resumida") — versão condensada de
@@ -10417,12 +10005,7 @@ Object.defineProperty(window, "SCOUT_MARKET", { configurable: true, get() { retu
 // podia ser o "internacional" — alinha ao catálogo nacional mantendo
 // custo e estrelas que ele já tinha (nada muda no caixa do técnico).
 function migrateScoutsToNational() {
-  (CAREER.scouts || []).forEach((sc) => {
-    const cand = SCOUT_MARKET.find((c) => c.id === sc.marketId);
-    if (cand) { sc.specialty = cand.specialty; sc.regionScope = cand.regionScope; }
-    if (sc.evaluation == null) sc.evaluation = cand ? cand.evaluation : (sc.stars || 3);
-    if (sc.network == null) sc.network = cand ? cand.network : (sc.stars || 3);
-  });
+  return motorCarga().migrateScoutsToNational();
 }
 function scoutAllowedRegions(scout) {
   return motorClube().scoutAllowedRegions(scout);
@@ -12849,261 +12432,7 @@ async function submitCtLogin(e) {
 // clubId+squad+lineup+schedule+standings+currentRound), pra abrir sem
 // quebrar não importa de qual fase seja o save.
 function migrateCareerDefaults() {
-  // AJUSTE (pedido do usuário: "acrescentar a Série B, C [ao Modo
-  // Carreira] com dados reais") — carreira criada ANTES do seletor de
-  // campeonato existir foi sempre Série A (não tinha outra opção),
-  // então "brasileirao" é o default certo aqui, não uma suposição.
-  if (!CAREER.competitionId) CAREER.competitionId = "brasileirao";
-  if (!CAREER.leagueSquads) CAREER.leagueSquads = {};
-  // Nova feature (pedido do usuário: "atributos precisam ser mais
-  // reais... evolução menos agressiva") — save de ANTES desta mudança
-  // não tinha p.potential pra jogador adulto (só base sempre teve) —
-  // ver bloco de comentário grande acima de buildRealPlayer/
-  // backfillPlayerPotential. Sem isso, o treino desse jogador cairia
-  // no fallback de 99 (sem teto de verdade) até ele ser negociado/
-  // renovado — melhor corrigir todo mundo já na migração.
-  CAREER.squad.forEach(backfillPlayerPotential);
-  Object.values(CAREER.leagueSquads).forEach((squad) => squad.forEach(backfillPlayerPotential));
-  // Nova feature — Histórico de confrontos (H2H): carreira criada ANTES
-  // desta mudança nunca gravou matchLog — sem migração retroativa (não
-  // dá pra reconstruir partidas já jogadas), só passa a acumular daqui
-  // pra frente.
-  if (!CAREER.matchLog) CAREER.matchLog = [];
-  // Nova feature (pedido do usuário: "reinicie o tema do
-  // rebaixamento") — decisão do usuário: "só nas carreiras novas, sem
-  // migração" — carreira criada ANTES desta mudança NUNCA ganha
-  // CAREER.serieDPool/divisionTeams/otherDivisions aqui (ver
-  // initDivisionSystem, só chamado por startCareer), então continua
-  // pra sempre sem acesso/rebaixamento — todo o resto do sistema
-  // (resolveOtherDivisionsRound/applyPromotionRelegation) já checa a
-  // ausência desses campos e não faz nada nesse caso.
-  // Nova feature — Meus esquemas: carreira criada ANTES desta mudança
-  // nunca teve biblioteca de esquemas — sem migração retroativa (não
-  // dá pra reconstruir esquemas nunca salvos), só passa a existir vazia
-  // daqui pra frente, igual carreira nova.
-  if (!CAREER.tacticalSchemes) CAREER.tacticalSchemes = [];
-  if (CAREER.activeSchemeId === undefined) CAREER.activeSchemeId = null;
-  if (CAREER.manMarking === undefined) CAREER.manMarking = null;
-  // Nova feature — Comissão Técnica: carreira criada ANTES desta
-  // mudança nunca teve isso — nasce não-contratada (sem custo nenhum
-  // até o técnico decidir contratar), igual carreira nova.
-  if (!CAREER.technicalStaff) CAREER.technicalStaff = { hired: false };
-  // Nova feature (Bloco 3) — negociação de compra: carreira criada
-  // ANTES desta mudança nunca teve proposta pendente nem parcela de
-  // contratação nenhuma — nasce vazia, igual carreira nova.
-  if (!CAREER.pendingOffersOut) CAREER.pendingOffersOut = [];
-  if (!CAREER.pendingInstallments) CAREER.pendingInstallments = [];
-  // Nova feature (Bloco 3, 3/4) — "colocar à venda": carreira criada
-  // ANTES desta mudança nunca teve anúncio nem parcela de venda a
-  // receber — nasce vazia, igual carreira nova.
-  if (!CAREER.pendingListings) CAREER.pendingListings = [];
-  if (!CAREER.pendingReceivables) CAREER.pendingReceivables = [];
-  // Nova feature — "Indicações dos olheiros": carreira criada ANTES
-  // desta mudança nunca teve indicação nenhuma — nasce vazia, igual
-  // carreira nova.
-  if (!CAREER.scoutSuggestions) CAREER.scoutSuggestions = [];
-  if (CAREER.lastScoutSearchRound === undefined) CAREER.lastScoutSearchRound = null;
-  // AJUSTE (Bloco 2 M3, brtreinadorbloco2tatica.html) — tactics tinha 3
-  // campos NOMEADOS (mentality/marking/tempo); vira 4 eixos NUMÉRICOS
-  // 1-5 (ver TACTIC_AXES). Migra o que dá pra aproximar (tradução nossa
-  // documentada, não uma equivalência perfeita — cada campo antigo
-  // aponta pro eixo novo mais parecido: tempo→ritmo, mentalidade→
-  // pressão E linha defensiva, já que "ofensiva" historicamente também
-  // empurrava a linha pra frente); Estilo de passe não tem equivalente
-  // antigo nenhum, nasce sempre neutro.
-  if (CAREER.lineup && CAREER.lineup.tactics && CAREER.lineup.tactics.mentality !== undefined) {
-    const old = CAREER.lineup.tactics;
-    const MENT_TO_LEVEL = { defensiva: 2, equilibrada: 3, ofensiva: 4 };
-    const TEMPO_TO_LEVEL = { paciente: 2, normal: 3, direto: 4 };
-    CAREER.lineup.tactics = {
-      ritmo: TEMPO_TO_LEVEL[old.tempo] ?? 3,
-      pressao: MENT_TO_LEVEL[old.mentality] ?? 3,
-      linhaDefensiva: MENT_TO_LEVEL[old.mentality] ?? 3,
-      estiloPasse: 3,
-    };
-  }
-  // Garantia geral — carreira sem tactics nenhum, ou faltando algum dos
-  // 4 eixos por qualquer motivo, nasce neutra (nível 3) nesse eixo.
-  if (CAREER.lineup && !CAREER.lineup.tactics) CAREER.lineup.tactics = {};
-  if (CAREER.lineup) TACTIC_AXES.forEach((ax) => { if (CAREER.lineup.tactics[ax.id] == null) CAREER.lineup.tactics[ax.id] = 3; });
-  // Nova feature — Instruções por setor: carreira criada ANTES desta
-  // mudança nunca teve isso — nasce toda neutra (nível 3 em cada uma
-  // das 15), igual carreira nova. Garante também cada instrução
-  // individual (não só o objeto de cada setor) pro caso de um catálogo
-  // futuro ganhar mais instruções sem quebrar save antigo.
-  if (CAREER.lineup) {
-    if (!CAREER.lineup.sectorTactics) CAREER.lineup.sectorTactics = defaultSectorTactics();
-    SECTOR_IDS.forEach((sector) => {
-      if (!CAREER.lineup.sectorTactics[sector]) CAREER.lineup.sectorTactics[sector] = {};
-      SECTOR_INSTRUCTIONS[sector].forEach((instr) => {
-        if (CAREER.lineup.sectorTactics[sector][instr.id] == null) CAREER.lineup.sectorTactics[sector][instr.id] = 3;
-      });
-    });
-  }
-  // AJUSTE (pedido do usuário: "o mercado deve trazer jogadores das 3
-  // ligas") — carreira criada ANTES desta mudança nunca teve elenco
-  // das outras 2 competições montado — marca explicitamente como
-  // "single" (mercado só da própria divisão, do jeito que sempre foi)
-  // pra enterAfterAuth/pickRandomOtherClub/etc. saberem que não é pra
-  // tentar tratar como "multi" — decisão do usuário: sem migração
-  // automática pra carreira já existente, só carreira nova nasce
-  // "multi" (ver startCareer).
-  if (!CAREER.marketScope) CAREER.marketScope = "single";
-  // AJUSTE (pedido do usuário: "vamos evoluir o método de treinos") —
-  // carreira criada ANTES desta mudança nunca teve plano de treino
-  // (só o extinto CAREER.trainingFocus, um seletor só) — nasce migrada
-  // pro esquema padrão "Equilíbrio Semanal", igual uma carreira nova.
-  // trainingFocus em si fica órfão no save antigo (não é mais lido em
-  // lugar nenhum) — inofensivo, sem precisar apagar explicitamente.
-  if (!CAREER.trainingPlan) {
-    CAREER.trainingSchemeId = "equilibrio";
-    CAREER.trainingPlan = defaultTrainingPlan("equilibrio");
-    CAREER.trainingAppliedForRound = null;
-  }
-  // Jogador criado antes da Fase 2b não tem wage/value/contractUntil
-  // nenhum (esses campos só existem desde que buildRealPlayer/
-  // buildBasePlayer/buildGeneratedProPlayer passaram a chamar
-  // computeContractFields) — sem isso, wageBillOf soma 0 pra ele
-  // (`p.wage || 0`) e o orçamento migrado abaixo nasceria zerado.
-  const backfillContract = (p) => {
-    if (p.wage == null) {
-      const rng = seededRngFromKey(`contract-backfill:${p.id}`);
-      Object.assign(p, computeContractFields(p.overall, p.age, p.potential || null, rng));
-    }
-    // FASE 2 (b) — jogador criado antes da moral existir nasce no
-    // mesmo neutro (70) de quem é criado hoje.
-    if (p.morale == null) p.morale = 70;
-    // FASE 4 (item 1) — jogador criado antes do relacionamento
-    // jogador-técnico existir nasce nos mesmos valores neutros de quem
-    // é criado hoje (sem histórico retroativo de banco pra reconstruir).
-    if (p.benchStreak == null) p.benchStreak = 0;
-    if (p.moraleReason == null) p.moraleReason = "Neutro no clube";
-    if (p.moraleTrend == null) p.moraleTrend = "estavel";
-    if (p.wantsTransfer == null) p.wantsTransfer = false;
-    if (p.lastTalkRound === undefined) p.lastTalkRound = null;
-  };
-  CAREER.squad.forEach(backfillContract);
-  Object.values(CAREER.leagueSquads).forEach((squad) => squad.forEach(backfillContract));
-  if (!CAREER.finances) CAREER.finances = initialFinances(CAREER.squad);
-  // Módulo de Estatísticas completo — save de ANTES desta mudança já
-  // tinha teamStats (assists/yellow/red, "da temporada"), mas sem os
-  // campos novos (clean sheets, mandante/visitante, maior goleada/
-  // derrota) — preenche só o que falta, sem zerar o que já existia.
-  // careerTotals/leagueChampions/sequências nascem do zero (sem como
-  // reconstruir retroativamente temporadas já jogadas, mesmo critério
-  // de todo contador novo desta sessão).
-  if (!CAREER.teamStats) CAREER.teamStats = freshTeamStats();
-  else {
-    const fresh = freshTeamStats();
-    Object.keys(fresh).forEach((k) => { if (CAREER.teamStats[k] === undefined) CAREER.teamStats[k] = fresh[k]; });
-  }
-  if (!CAREER.careerTotals) CAREER.careerTotals = freshCareerTotals();
-  if (CAREER.currentWinStreak == null) CAREER.currentWinStreak = 0;
-  if (CAREER.currentUnbeatenStreak == null) CAREER.currentUnbeatenStreak = 0;
-  if (!CAREER.leagueChampions) CAREER.leagueChampions = [];
-  if (!CAREER.transferLog) CAREER.transferLog = [];
-  if (CAREER.pendingOffer === undefined) CAREER.pendingOffer = null;
-  if (CAREER.lastBoardRequestRound === undefined) CAREER.lastBoardRequestRound = null;
-  if (CAREER.boardDecision == null) CAREER.boardDecision = "";
-  if (!CAREER.recentForm) CAREER.recentForm = [];
-  if (!CAREER.seasonYear) CAREER.seasonYear = LIVE_SEASON;
-  if (!CAREER.seasonHistory) CAREER.seasonHistory = [];
-  // FASE 1 (item 3) — carreira criada antes dessa fase não tem meta
-  // nenhuma: calcula uma pro elenco atual (mesma função de sempre) em
-  // vez de deixar sem meta pro resto da temporada em andamento.
-  if (!CAREER.boardGoal) CAREER.boardGoal = computeBoardGoal();
-  if (CAREER.negativeSeasonsStreak == null) CAREER.negativeSeasonsStreak = 0;
-  // FASE 2 (a) — carreira criada antes da Copa do Brasil existir: monta
-  // um chaveamento novo e fecha por trás (fast-forward, sem prêmio nem
-  // log) qualquer fase cujo round já passou nessa temporada em
-  // andamento — ver comentário em setupCup.
-  if (!CAREER.cup) setupCup(CAREER.currentRound);
-  // FASE 4 (item 5) — carreira criada antes do patrocínio existir:
-  // assina um contrato inicial de cada tipo, mesma função de sempre
-  // (ver initSponsorship) — sem isso o save ficaria pra sempre sem
-  // nenhum contrato (advanceSponsorshipSeason só MEXE em contrato que
-  // já existe, não cria um do zero fora da virada de temporada).
-  if (!CAREER.sponsorship) initSponsorship();
-  // FASE 4 (item 3) — carreira criada antes das notícias da rodada:
-  // sem histórico de jejum nenhum ainda, começa zerado (não tem como
-  // reconstruir retroativamente quantas rodadas cada time já ficou sem
-  // vencer).
-  if (!CAREER.teamWinlessStreak) CAREER.teamWinlessStreak = {};
-  // FASE 4 (item 6) — carreira criada antes das premiações existirem:
-  // sem histórico nenhum ainda (não tem como reconstruir temporadas
-  // passadas retroativamente).
-  if (!CAREER.seasonAwards) CAREER.seasonAwards = [];
-  // FASE 4 (item 4) — carreira criada antes da reputação existir nasce
-  // no mesmo neutro (50) de quem começa hoje, sem currículo nenhum
-  // (não tem como reconstruir passagens por clubes anteriores — essa
-  // sempre foi a única carreira, então "sem histórico anterior" é
-  // literalmente verdade aqui).
-  if (CAREER.reputation == null) CAREER.reputation = 50;
-  if (!CAREER.clubHistory) CAREER.clubHistory = [];
-  // SAVE-LIMIT-001 — save antigo, de antes do CLUB_HISTORY_MAX existir,
-  // pode ter mais entradas que o cap novo; normaliza aqui também (não
-  // só na próxima troca de clube), mesmo tratamento de compatibilidade
-  // que qualquer outro *_MAX já recebe.
-  else if (CAREER.clubHistory.length > CLUB_HISTORY_MAX) CAREER.clubHistory.length = CLUB_HISTORY_MAX;
-  if (!CAREER.clubProposals) CAREER.clubProposals = [];
-  // AJUSTE — carreira criada antes do feed de notícias existir nasce
-  // vazio (não tem como reconstruir manchetes de rodadas já passadas).
-  if (!CAREER.newsFeed) CAREER.newsFeed = [];
-  // FASE 4 (item 2) — carreira criada antes da coletiva de imprensa
-  // existir nasce sem histórico nenhum (não tem como reconstruir
-  // coletivas de jogos já passados retroativamente).
-  if (!CAREER.pressLog) CAREER.pressLog = [];
-  if (CAREER.metaRiskWarnedSeason === undefined) CAREER.metaRiskWarnedSeason = null;
-  // Retenção/Engajamento — carreira criada antes deste bloco existir
-  // nasce com objetivos/conquistas do zero (ensureObjectivesFresh já
-  // cuida de gerar os 3 grupos na hora certa); contadores lifetime/
-  // temporada começam em 0, sem reconstrução retroativa (mesmo padrão
-  // de sempre nesta função pra dado que não dá pra recuperar do
-  // histórico já resumido).
-  ensureObjectivesFresh();
-  if (!CAREER.achievements) CAREER.achievements = freshAchievementsState();
-  if (CAREER.baseRevealedCount == null) CAREER.baseRevealedCount = 0;
-  if (CAREER.titlesWonNacional == null) CAREER.titlesWonNacional = 0;
-  if (CAREER.titlesWonCopa == null) CAREER.titlesWonCopa = 0;
-  if (CAREER.seasonTeamGoals == null) CAREER.seasonTeamGoals = 0;
-  if (CAREER.seasonTeamFouls == null) CAREER.seasonTeamFouls = 0;
-  // Bloco 4 — carreira criada antes do reskin da tela Clube nasce sem
-  // mini-gráfico de caixa, extrato e melhorias de estádio: mesmo motivo
-  // de sempre pra não reconstruir retroativo, começam do zero a partir
-  // daqui (ver cashHistory/financeLedger/stadium em startCareer).
-  if (!CAREER.cashHistory) CAREER.cashHistory = [];
-  if (!CAREER.financeLedger) CAREER.financeLedger = [];
-  if (!CAREER.stadium) CAREER.stadium = initialStadium();
-  // Bloco 6 — carreira criada antes de "Base e Olheiros" existir nasce
-  // sem nenhum olheiro contratado e sem promissor nenhum encontrado —
-  // mesmo motivo de sempre, sem retroativo pra reconstruir.
-  if (!CAREER.scouts) CAREER.scouts = [];
-  if (!CAREER.scoutMissionProspects) CAREER.scoutMissionProspects = [];
-  // Bloco 8 pendentes — Central de notificações/Configurações: carreira
-  // criada antes disso existir nasce sem feed nenhum (mesmo motivo de
-  // sempre — não dá pra reconstruir eventos já passados) e com os 3
-  // toggles de notificação nos MESMOS defaults do mockup (Lembrete de
-  // partida e Alertas de lesão ligados, Ofertas da loja desligado).
-  if (!CAREER.notifications) CAREER.notifications = [];
-  if (!CAREER.notificationSettings) CAREER.notificationSettings = { partida: true, loja: false, lesao: true };
-  // Bloco 7 pendentes — Histórico de compras: mostra USO real de
-  // itens/recompensas (ver applyDailyLoginReward), não uma compra de
-  // verdade — a Loja ainda não cobra nada (ver aviso grande em
-  // renderLoja). Nasce vazio, sem reconstrução retroativa.
-  if (!CAREER.purchaseHistory) CAREER.purchaseHistory = [];
-  // Assistente de início — carreira criada ANTES desta mudança nasce
-  // com o assistente já "visto" (não aparece sozinho no meio de uma
-  // temporada em andamento) — só carreira NOVA a partir de agora passa
-  // por ele (ver startCareer/maybeOpenStartupWizard).
-  if (CAREER.startupWizardSeen === undefined) CAREER.startupWizardSeen = true;
-  // P0-IDS-001 — saves de antes desta correção podem ter ids repetidos.
-  ensureUniquePlayerIds();
-  // GE-SCOUT-001 — olheiros já contratados viram nacionais com Avaliação/Rede.
-  migrateScoutsToNational();
-  // GE-CALENDAR-001 — sem campo novo pra carreira antiga (ganha o
-  // calendário na próxima virada); com calendário, garante coerência.
-  syncCalendarToRound();
-  evaluateAlwaysCheckableAchievements();
+  return motorCarga().migrateCareerDefaults();
 }
 // AJUSTE (pedido do usuário: "acrescentar a Série B, C [ao Modo
 // Carreira] com dados reais") — loadLeague() não pode mais rodar
@@ -13125,59 +12454,10 @@ function ponteFim(salvo) {
   return motorJogo().ponteFim(salvo);
 }
 function ponteJogador(id) {
-  const p = id ? CAREER.squad.find((x) => x.id === id) : null;
-  return p ? { id: p.id, nome: p.name, grupo: p.group, overall: p.overall, status: p.status || "ok", voltaRodada: p.outUntilRound ?? null, condicao: p.condition ?? null } : null;
+  return motorCarga().ponteJogador(id);
 }
 function ponteEstado() {
-  const lm = LIVE_MATCH || PONTE.ultimo;
-  if (!PONTE.pronta) return { fase: "carregando" };
-  if (!CAREER) return { fase: "sem-carreira" };
-  // Pós-jogo (depois de "Continuar" na v2): a sequência de sempre roda nesta
-  // página; termina quando não há mais modal aberto nem partida ao vivo
-  // (a perna da Copa, se houver, também é jogada aqui, como hoje).
-  if (PONTE.posJogo) {
-    const aberto = !!LIVE_MATCH || [...document.querySelectorAll(".ct-modal-overlay.open")].some((o) => o.id !== "actionLoadingOverlay");
-    return { fase: "pos-jogo", posJogo: aberto ? "em-andamento" : "concluido" };
-  }
-  if (!lm) return { fase: "sem-partida" };
-  const n = LIVE_MATCH_CHUNK_MINUTES.length;
-  const minuto = lm.chunkIndex === 0 ? 0 : LIVE_MATCH_CHUNK_MINUTES[Math.min(lm.chunkIndex, n) - 1];
-  const encerrada = lm.finished || lm !== LIVE_MATCH;
-  return {
-    fase: encerrada ? "encerrada" : lm.halftime ? "intervalo" : lm.paused ? "pausada" : "jogando",
-    gravada: encerrada ? (PONTE.fim ? PONTE.fim.salvo : null) : null,
-    // AUD-02: motivo da falha ("sessao" | "outra-conta" | "falha") e se uma
-    // nova tentativa está em curso.
-    erroGravacao: encerrada && PONTE.fim && !PONTE.fim.salvo ? PONTE.fim.erro : null,
-    salvando: !!PONTE.salvando,
-    resultadoPronto: encerrada && !!PONTE.resumo,
-    // Fase 3: amistoso encerrado → resumo da semana pronto (resumoSemana()).
-    semanaPronta: encerrada && !!PONTE.semana,
-    minuto, segundoTempo: minuto > 45,
-    contexto: lm.cupContext ? "copa" : lm.friendlyContext ? "amistoso" : "liga",
-    rodada: lm.round,
-    copa: lm.cupContext ? ponteCopa(lm) : null,
-    mandante: { id: String(lm.home.id), nome: lm.home.name }, visitante: { id: String(lm.away.id), nome: lm.away.name },
-    souMandante: !!lm.isHome, gh: lm.gh, ga: lm.ga, velocidade: lm.speed === 2 ? 2 : 1,
-    substituicoes: { usadas: lm.subsUsed, total: MAX_SUBS_PER_MATCH + lm.subsBonus },
-    // Escalação AO VIVO (pode diferir do save: substituições e troca de
-    // esquema feitas durante o jogo só são gravadas no fim).
-    escalacao: {
-      formacao: CAREER.lineup.formation,
-      titulares: CAREER.lineup.starters.map(ponteJogador),
-      banco: CAREER.lineup.bench.map(ponteJogador).filter(Boolean),
-    },
-    tatica: {
-      formacao: CAREER.lineup.formation,
-      eixos: TACTIC_AXES.map((ax) => ({ id: ax.id, nome: ax.label, baixo: ax.lowLabel, alto: ax.highLabel, nivel: (CAREER.lineup.tactics || {})[ax.id] || 3 })),
-      formacoes: Object.keys(FORMATIONS),
-      penalidadeBlocos: lm.formationPenaltyChunksLeft || 0,
-    },
-    eventos: lm.events.map((e) => ({
-      minuto: e.minute, tipo: e.type, meu: e.mine === true,
-      jogador: e.player || null, assistencia: e.assistPlayer || null, entra: e.entra || null, sai: e.saiu || null, penalti: !!e.penalty,
-    })),
-  };
+  return motorCarga().ponteEstado();
 }
 // Fase 8 — duração e cláusula do empréstimo como em confirmLoanFromModal.
 function ponteOpcoesEmprestimo(duracao, clausula, valorClausula) {
@@ -13185,25 +12465,13 @@ function ponteOpcoesEmprestimo(duracao, clausula, valorClausula) {
 }
 // Grava o save do motor e devolve { ok } ou o motivo da falha (fase 6).
 async function ponteGravar() {
-  const salvo = await persistCareer();
-  if (salvo) renderAll();
-  return salvo ? { ok: true } : { ok: false, motivo: PONTE.erroGravacao || "falha" };
+  return motorCarga().ponteGravar();
 }
 // Fase 4 — contexto da perna de Copa para a faixa da Partida da v2 (P6):
 // placar da ida do seu ponto de vista (só na volta, para o agregado) e,
 // encerrada a volta, se foi nos pênaltis e quem passou (P5).
 function ponteCopa(lm) {
-  const { tie, phase, leg } = lm.cupContext;
-  const meHome = String(tie.home) === String(CAREER.clubId);
-  const l1 = tie.leg1 || {};
-  const ida = leg === 2 && l1.gh != null ? { meus: meHome ? l1.gh : l1.ga, deles: meHome ? l1.ga : l1.gh } : null;
-  const decidida = !!lm.finished && leg === 2 && tie.winner != null;
-  return {
-    fase: phase, perna: leg, ida,
-    penaltis: decidida ? !!tie.penalties : false,
-    classificado: decidida ? (teamById(tie.winner) || {}).name || null : null,
-    classificadoSouEu: decidida ? String(tie.winner) === String(CAREER.clubId) : null,
-  };
+  return motorCarga().ponteCopa(lm);
 }
 // Fase 4 — pós-jogo pela v2. Etapas, na ordem da versão anterior
 // (btnMatchDetailContinue → coletiva → notícias → resultados → perna da
@@ -13224,7 +12492,7 @@ function ponteResumoSemana(antes, giros, extra) {
 if (V2_PONTE) {
   window.BRDATA_PONTE = {
     estado: ponteEstado,
-    aoMudar(cb) { PONTE.ouvintes.add(cb); return () => PONTE.ouvintes.delete(cb); },
+    aoMudar(...args) { return motorCarga().comandosCarga.aoMudar(...args); },
     // Mesmo caminho do "Ir para o jogo" (goToMatch) — só em semana de jogo.
     iniciar(...args) { return motorJogo().comandosJogo.iniciar(...args); },
     pausar(...args) { return motorJogo().comandosJogo.pausar(...args); },
@@ -13245,11 +12513,11 @@ if (V2_PONTE) {
       return { ok: true };
     },
     // Conta dona desta sessão da ponte (a do save em memória).
-    conta() { return ME && ME.id != null ? String(ME.id) : null; },
+    conta(...args) { return motorCarga().comandosCarga.conta(...args); },
     // Fase 1 — versão do save em memória (o updatedAt da última gravação ou
     // leitura). A v2 compara com o do servidor antes de cada comando: se
     // diferem (ex.: a v2 gravou a escalação), ela recarrega o motor.
-    versaoSave() { return CAREER && CAREER.updatedAt != null ? CAREER.updatedAt : null; },
+    versaoSave(...args) { return motorCarga().comandosCarga.versaoSave(...args); },
     // Fase 1 — esquece a última partida já encerrada (resultado gravado ou
     // pós-jogo concluído), para o motor reaproveitado não reapresentá-la.
     // Não age com partida em andamento.
@@ -13257,65 +12525,20 @@ if (V2_PONTE) {
     // Fase 2 — acesso (Carreira 2.0). Mesmas funções da tela de sempre
     // (CAREER_COMPETITIONS, loadLeague/chooseCompetition, startCareer,
     // claimDailyLoginNow), sem regra nova.
-    competicoes() {
-      return CAREER_COMPETITIONS.map((c) => ({ id: c.id, nome: c.name, sub: c.sub }));
-    },
+    competicoes(...args) { return motorCarga().comandosCarga.competicoes(...args); },
     // Carrega a competição (dado real ou exemplo, como hoje) e devolve os
     // clubes em ordem alfabética, com escudo e cidade.
-    async escolherCompeticao(id) {
-      if (CAREER) return { ok: false, motivo: "ja-tem-carreira" };
-      if (!CAREER_COMPETITIONS.some((c) => c.id === id)) return { ok: false, motivo: "competicao-invalida" };
-      await loadLeague(id);
-      const clubes = LEAGUE_TEAMS.slice().sort((a, b) => a.name.localeCompare(b.name, "pt-BR")).map((t) => ({
-        id: String(t.id), nome: t.name, sigla: t.short || null, escudo: teamLogoSrc(t) || null,
-        cidade: t.venue && t.venue.city ? `${t.venue.city}${t.uf ? ", " + t.uf : ""}` : null,
-      }));
-      return { ok: true, competicao: id, clubes };
-    },
+    escolherCompeticao(...args) { return motorCarga().comandosCarga.escolherCompeticao(...args); },
     // Cria a carreira no clube escolhido (mesmo startCareer de sempre, que
     // grava). Confere a gravação com um 2º PUT do mesmo save (idempotente)
     // para devolver se o servidor guardou de fato.
-    async criarCarreira(clubId) {
-      if (CAREER) return { ok: false, motivo: "ja-tem-carreira" };
-      if (!LEAGUE_TEAMS.some((t) => String(t.id) === String(clubId))) return { ok: false, motivo: "clube-invalido" };
-      if (PONTE.criando) return { ok: false, motivo: "em-andamento" };
-      PONTE.criando = true;
-      try {
-        await startCareer(clubId);
-        if (!CAREER) return { ok: false, motivo: "falha" };
-        const salvo = await persistCareer();
-        return salvo ? { ok: true } : { ok: false, motivo: PONTE.erroGravacao || "falha" };
-      } finally {
-        PONTE.criando = false;
-      }
-    },
+    criarCarreira(...args) { return motorCarga().comandosCarga.criarCarreira(...args); },
     // Recompensa diária: estado (dia da sequência, se já recebeu hoje) e
     // o ciclo de 7 dias, para a v2 desenhar.
-    recompensa() {
-      const today = localDateStr();
-      const dl = (ME && ME.dailyLogin) || {};
-      const recebidaHoje = dl.lastClaimDate === today;
-      const dia = recebidaHoje ? (dl.currentStreakDay || 1) : (((dl.currentStreakDay || 0) % 7) + 1);
-      return { dia, recebidaHoje, ciclo: DAILY_LOGIN_CYCLE.map((d) => ({ dia: d.day, tipo: d.reward.type, valor: d.reward.amount == null ? null : d.reward.amount })) };
-    },
+    recompensa(...args) { return motorCarga().comandosCarga.recompensa(...args); },
     // Recebe a recompensa do dia: mesmo caminho de claimDailyLoginNow
     // (servidor decide o dia; o jogo aplica o efeito e grava).
-    async receberRecompensa() {
-      if (!CAREER) return { ok: false, motivo: "sem-carreira" };
-      if (PONTE.recebendo) return { ok: false, motivo: "em-andamento" };
-      PONTE.recebendo = true;
-      try {
-        const result = await fetchJSON("/api/daily-login/claim", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ localDate: localDateStr() }) });
-        ME.dailyLogin = { currentStreakDay: result.currentStreakDay, lastClaimDate: localDateStr() };
-        const { detail } = applyDailyLoginReward(result.reward);
-        const salvo = await persistCareer();
-        return { ok: salvo, motivo: salvo ? undefined : (PONTE.erroGravacao || "falha"), dia: result.currentStreakDay, tipo: result.reward.type, detalhe: detail };
-      } catch (err) {
-        return { ok: false, motivo: err.status === 409 ? "ja-recebida" : err.status === 401 ? "sessao" : "falha", mensagem: err.message || null };
-      } finally {
-        PONTE.recebendo = false;
-      }
-    },
+    receberRecompensa(...args) { return motorCarga().comandosCarga.receberRecompensa(...args); },
     // Fase 7 — elenco avançado (Carreira 2.0). Mesmas regras: renewalVerdict
     // (proposeRenewal), applyTalkEffect (applyTalkOption), canTalkTo,
     // isContractExpiring e handlePlayerAction. Gravam.
@@ -13323,16 +12546,7 @@ if (V2_PONTE) {
     coletivaAtual(...args) { return motorPonte().comandosGestao.coletivaAtual(...args); },
     conversar(...args) { return motorPonte().comandosGestao.conversar(...args); },
     // Banco, base e dispensa: as mesmas checagens de handlePlayerAction.
-    async acaoJogador(id, acao) {
-      const p = CAREER && CAREER.squad.find((x) => x.id === id);
-      if (!p) return { ok: false, motivo: "jogador-invalido" };
-      if (!["removeStarter", "removeBench", "addBench", "promote", "demote", "release"].includes(acao)) return { ok: false, motivo: "acao-invalida" };
-      if (acao === "addBench" && CAREER.lineup.bench.length >= MAX_BENCH) return { ok: false, motivo: "banco-cheio", mensagem: `O banco já tem ${MAX_BENCH} jogadores.` };
-      if (acao === "promote" && wageBillOf(CAREER.squad) + p.wage > CAREER.finances.wageCap) return { ok: false, motivo: "teto", mensagem: `Promover esse jogador estouraria o teto salarial (${fmtBRL(CAREER.finances.wageCap)}).` };
-      if (acao === "release" && p.origin === "principal" && CAREER.squad.filter((x) => x.origin === "principal").length <= 14) return { ok: false, motivo: "minimo", mensagem: "O elenco principal não pode ficar com menos de 14 jogadores." };
-      await handlePlayerAction(id, acao);
-      return ponteGravar();
-    },
+    acaoJogador(...args) { return motorCarga().comandosCarga.acaoJogador(...args); },
     // Fase 8 — mercado (Carreira 2.0). As funções de sempre:
     // transferWindowStatus, submitOfferOut (confirmOfferFromModal),
     // increaseOffer, withdrawOffer, acceptCounterOffer, createListing
@@ -13366,26 +12580,11 @@ if (V2_PONTE) {
     // STADIUM_UPGRADES/startStadiumUpgrade, sponsorship/signSponsorProposal,
     // SCOUT_MARKET/hireScout/releaseScout/startScoutMission,
     // recruitProspectToBase e as indicações dos olheiros.
-    comissao() {
-      if (!CAREER) return { ok: false, motivo: "sem-carreira" };
-      const hired = !!(CAREER.technicalStaff && CAREER.technicalStaff.hired);
-      const sugestoes = hired ? COMMISSION_AREAS.map((a) => { const s = a.fn(); return { area: a.id, nome: a.label, texto: s.text, aplicavel: !!s.canApply, alvo: s.target || null }; }) : [];
-      return { ok: true, contratada: hired, custoMensal: technicalStaffMonthlyCost(), sugestoes };
-    },
+    comissao(...args) { return motorCarga().comandosCarga.comissao(...args); },
     contratarComissao(...args) { return motorPonte().comandosGestao.contratarComissao(...args); },
     demitirComissao(...args) { return motorPonte().comandosGestao.demitirComissao(...args); },
     // Mercado: só devolve o alvo (a v2 abre a proposta, como openOfferModal).
-    async aplicarSugestao(area) {
-      if (!CAREER || !(CAREER.technicalStaff && CAREER.technicalStaff.hired)) return { ok: false, motivo: "sem-comissao" };
-      const a = COMMISSION_AREAS.find((x) => x.id === area);
-      if (!a) return { ok: false, motivo: "area-invalida" };
-      const s = a.fn();
-      if (!s.canApply) return { ok: false, motivo: "sem-sugestao", mensagem: s.text };
-      if (area === "market") return { ok: true, alvo: s.target };
-      await s.apply();
-      const g = await ponteGravar();
-      return g.ok ? { ok: true, texto: s.text } : g;
-    },
+    aplicarSugestao(...args) { return motorCarga().comandosCarga.aplicarSugestao(...args); },
     estadio(...args) { return motorPonte().comandosGestao.estadio(...args); },
     iniciarObra(...args) { return motorPonte().comandosGestao.iniciarObra(...args); },
     // Contrato vencido sem propostas geradas: gera, como openSponsorProposalsModal.
@@ -13410,44 +12609,15 @@ if (V2_PONTE) {
     loja(...args) { return motorPonte().comandosGestao.loja(...args); },
     // O servidor debita os créditos (preço do catálogo dele); só depois o
     // efeito é aplicado na carreira, como confirmPurchaseNow.
-    async comprarItem(itemId) {
-      if (!CAREER) return { ok: false, motivo: "sem-carreira" };
-      const item = BOOST_ITEMS.find((b) => b.id === itemId);
-      if (!item) return { ok: false, motivo: "item-invalido" };
-      let data;
-      try {
-        data = await fetchJSON("/api/loja/spend-credits", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ itemId: item.id }) });
-      } catch (err) {
-        return { ok: false, motivo: "compra-recusada", mensagem: err.message || "Não deu pra concluir a compra agora." };
-      }
-      ME.creditsBR = data.creditsBR;
-      const effectLabel = applyBoostEffect(item);
-      pushPurchaseHistory(item.icon, item.name, effectLabel || item.desc, `-${item.priceCredits}`, "debit");
-      const g = await ponteGravar();
-      return g.ok ? { ok: true, creditos: data.creditsBR, efeito: effectLabel || item.desc } : g;
-    },
+    comprarItem(...args) { return motorCarga().comandosCarga.comprarItem(...args); },
     preferencias(...args) { return motorPonte().comandosGestao.preferencias(...args); },
     // Assistente de início pela v2 (item 1, 05/11): o mesmo
     // CAREER.startupWizardSeen = true de finishStartupWizard, gravado.
     assistenteVisto(...args) { return motorPonte().comandosGestao.assistenteVisto(...args); },
     alternarNotificacao(...args) { return motorPonte().comandosGestao.alternarNotificacao(...args); },
-    somAtivo(ligado) {
-      setSfxEnabled(!!ligado);
-      return { ok: true, som: !!SFX_ENABLED };
-    },
+    somAtivo(...args) { return motorCarga().comandosCarga.somAtivo(...args); },
     // Nome do treinador (conta): mesmo endpoint de saveProfileName.
-    async salvarNome(nome) {
-      const name = String(nome || "").trim();
-      if (!name) return { ok: false, motivo: "nome-vazio", mensagem: "O nome não pode ficar vazio." };
-      try {
-        const result = await fetchJSON("/api/account/name", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name }) });
-        ME.name = result.user.name;
-        renderAll();
-        return { ok: true, nome: ME.name };
-      } catch (err) {
-        return { ok: false, motivo: "nome-recusado", mensagem: err.message || "Não deu pra salvar o nome agora." };
-      }
-    },
+    salvarNome(...args) { return motorCarga().comandosCarga.salvarNome(...args); },
     // Fase 6 — tática e treino (Carreira 2.0). Mesmas regras e funções da
     // versão anterior: TACTIC_AXES/SECTOR_INSTRUCTIONS, saveTacticalScheme,
     // applyTacticalScheme, renameTacticalScheme, deleteTacticalScheme,
@@ -13476,11 +12646,7 @@ if (V2_PONTE) {
     treino(...args) { return motorPonte().comandosGestao.treino(...args); },
     // Um dia do plano: as mesmas regras do painel do dia (renderTrainingDayPanel).
     salvarDiaTreino(...args) { return motorPonte().comandosGestao.salvarDiaTreino(...args); },
-    async aplicarModeloTreino(id) {
-      if (!CAREER || !motorTreino().TRAINING_SCHEMES.some((m) => m.id === id)) return { ok: false, motivo: "modelo-invalido" };
-      applyTrainingScheme(id);
-      return ponteGravar();
-    },
+    aplicarModeloTreino(...args) { return motorCarga().comandosCarga.aplicarModeloTreino(...args); },
     // "Aplicar treino da semana": applyWeeklyTraining (1x por turno).
     aplicarTreino(...args) { return motorPonte().comandosGestao.aplicarTreino(...args); },
     // Fase 5 — temporada e carreira do treinador (Carreira 2.0). Mesmas
@@ -13492,33 +12658,11 @@ if (V2_PONTE) {
     // "Começar nova carreira" da demissão: o mesmo de btnDismissalContinue
     // (reputação e passagens seguem no treinador; o save do clube é apagado).
     // A criação seguinte (criarCarreira) usa este mesmo motor.
-    async demitir() {
-      if (!CAREER || CAREER.currentRound <= 38) return { ok: false, motivo: "sem-demissao" };
-      if ((CAREER.negativeSeasonsStreak || 0) < motorTemporada().DISMISSAL_STREAK) return { ok: false, motivo: "sem-demissao" };
-      endCurrentClubStint("dismissed");
-      try { await fetchJSON("/api/career", { method: "DELETE" }); } catch (err) { return { ok: false, motivo: err.status === 401 ? "sessao" : "falha" }; }
-      CAREER = null;
-      return { ok: true };
-    },
+    demitir(...args) { return motorCarga().comandosCarga.demitir(...args); },
     // Proposta de outro clube ao treinador: aceitar = endCurrentClubStint +
     // startCareer no novo clube (o que a versão anterior faz pelo seletor
     // com só esse clube); recusar = declineClubProposal. Gravam.
-    async aceitarPropostaClube() {
-      const p = CAREER && (CAREER.clubProposals || [])[0];
-      if (!p) return { ok: false, motivo: "sem-proposta" };
-      if (!LEAGUE_TEAMS.some((t) => String(t.id) === String(p.clubId))) return { ok: false, motivo: "clube-invalido" };
-      if (PONTE.criando) return { ok: false, motivo: "em-andamento" };
-      PONTE.criando = true;
-      try {
-        endCurrentClubStint("accepted_proposal");
-        await startCareer(p.clubId);
-        if (!CAREER || String(CAREER.clubId) !== String(p.clubId)) return { ok: false, motivo: "falha" };
-        const salvo = await persistCareer();
-        return salvo ? { ok: true } : { ok: false, motivo: PONTE.erroGravacao || "falha" };
-      } finally {
-        PONTE.criando = false;
-      }
-    },
+    aceitarPropostaClube(...args) { return motorCarga().comandosCarga.aceitarPropostaClube(...args); },
     recusarPropostaClube(...args) { return motorJogo().comandosJogo.recusarPropostaClube(...args); },
     // Perfil e histórico do treinador: só leitura.
     historicoTreinador(...args) { return motorPonte().comandosGestao.historicoTreinador(...args); },
@@ -13555,15 +12699,7 @@ if (V2_PONTE) {
     resumoSemana(...args) { return motorJogo().comandosJogo.resumoSemana(...args); },
     // Avisos (sino): mesmo efeito de abrir a central de notificações
     // (openNotificationsSheet) — tudo vira lido — e grava.
-    async marcarAvisosLidos() {
-      if (!CAREER) return { ok: false, motivo: "sem-carreira" };
-      const pend = (CAREER.notifications || []).filter((n) => !n.read);
-      if (!pend.length) return { ok: true };
-      pend.forEach((n) => { n.read = true; });
-      const salvo = await persistCareer();
-      if (salvo) updateNotificationBadge();
-      return salvo ? { ok: true } : { ok: false, motivo: PONTE.erroGravacao || "falha" };
-    },
+    marcarAvisosLidos(...args) { return motorCarga().comandosCarga.marcarAvisosLidos(...args); },
     // Fase 1 — porta única de comandos: executar("nome", ...args) chama o
     // comando de mesmo nome desta API. Comandos novos (semana, mercado,
     // temporada…) entram aqui como métodos e já ficam acessíveis à v2.
@@ -13578,25 +12714,7 @@ if (V2_PONTE) {
     // uma resposta perdida grava o mesmo conteúdo, sem efeito em dobro.
     // Antes, confere a sessão: expirada → "sessao"; outra conta logada →
     // "outra-conta" e NÃO grava (o save é desta conta).
-    async salvarDeNovo() {
-      if (!PONTE.fim) return { ok: false, motivo: "sem-partida" };
-      if (PONTE.fim.salvo) return { ok: true };
-      if (PONTE.salvando) return { ok: false, motivo: "em-andamento" };
-      PONTE.salvando = true; PONTE.erroGravacao = null; ponteAvisar();
-      let ok = false;
-      try {
-        let me = null;
-        try { me = await fetchJSON("/api/auth/me"); } catch (err) { PONTE.erroGravacao = err.status === 401 ? "sessao" : "falha"; }
-        if (me && !me.authenticated) PONTE.erroGravacao = "sessao";
-        else if (me && String(me.user.id) !== String(ME && ME.id)) PONTE.erroGravacao = "outra-conta";
-        else if (me) ok = await persistCareer();
-      } finally {
-        PONTE.salvando = false;
-        ponteFim(ok);
-      }
-      if (ok) renderAll();
-      return ok ? { ok: true } : { ok: false, motivo: PONTE.fim.erro };
-    },
+    salvarDeNovo(...args) { return motorCarga().comandosCarga.salvarDeNovo(...args); },
     // Substituição: valida como a tela atual e faz a MESMA troca do modal
     // (applyLiveSub), sem tela: pausa, troca, avisa, retoma — e a ponte
     // repausa (na v2 a troca é feita com a partida parada na Pausa).
@@ -13608,76 +12726,7 @@ if (V2_PONTE) {
   };
 }
 async function enterAfterAuth() {
-  show("screenLoading");
-  document.getElementById("screenLoading").innerHTML = splashLoadingHTML("Carregando o Modo Técnico...");
-  setBootProgress(1, 5);
-  // Item 5 da lista de melhorias — ME já está garantidamente setado
-  // aqui (tanto vindo de boot() quanto de submitCtLogin()), então é o
-  // ponto único certo pra consumir um convite por link pendente (ver
-  // capturePendingInviteFromUrl/consumePendingInviteIfAny).
-  await consumePendingInviteIfAny();
-  // Item 7 da lista de melhorias — mesmo raciocínio, pro retorno do
-  // Checkout Pro do Mercado Pago (ver handleLojaReturnIfAny).
-  await handleLojaReturnIfAny();
-  const saved = { career: await motorEstado().carregarSave(fetchJSON) };
-  setBootProgress(2, 5, "Carregando sua carreira...");
-  if (saved && saved.career) {
-    // forceDemo só quando a carreira JÁ GRAVOU explicitamente que nasceu
-    // em Modo Exemplo (liveMode === false) -- carreira bem antiga, de
-    // antes desse campo existir (liveMode undefined), mantém o
-    // comportamento de sempre (tenta dado real, cai pro exemplo se
-    // faltar chave), sem mudança de risco pra quem nunca teve esse bug.
-    const homeCompetitionId = saved.career.competitionId || "brasileirao";
-    await loadLeague(homeCompetitionId, { forceDemo: saved.career.liveMode === false });
-    setBootProgress(3, 5, "Carregando a competição...");
-    // AJUSTE (pedido do usuário: "o mercado deve trazer jogadores das
-    // 3 ligas") — carreira "multi" (ver startCareer) também recarrega
-    // os times das outras 2 competições ao retomar, mesma trava de
-    // forceDemo de cima, agora por competição (ver
-    // liveModeByCompetition/loadOtherCompetitionsTeams): uma que já
-    // gravou uma das outras 2 como Modo Exemplo nunca tenta dado real
-    // sozinha pra ela. Carreira "single" (de antes desta mudança, sem
-    // marketScope) não entra aqui — continua só com o mercado da
-    // própria divisão, por decisão do usuário (sem migração automática).
-    if (saved.career.marketScope === "multi") {
-      const lm = saved.career.liveModeByCompetition || {};
-      const forceDemoMap = {};
-      ALL_COMPETITIONS_ORDER.forEach((c) => { if (lm[c] === false) forceDemoMap[c] = true; });
-      await loadOtherCompetitionsTeams(homeCompetitionId, forceDemoMap);
-    }
-    setBootProgress(4, 5, "Preparando o clube...");
-    CAREER = saved.career;
-    migrateCareerDefaults();
-    // Etapa B: depois da normalização de sempre, as migrações numeradas
-    // do save (schemaVersion, motor/estado.js).
-    motorEstado().migrarSave(CAREER);
-    // Nova feature (pedido do usuário: "reinicie o tema do
-    // rebaixamento") — CAREER.divisionTeams (quando existe) é a fonte
-    // de verdade de "quem está em qual divisão agora" (ver comentário
-    // grande em initDivisionSystem) — sobrescreve o que loadLeague/
-    // loadOtherCompetitionsTeams acabaram de carregar do catálogo/API
-    // (que não sabe nada sobre time que já subiu/desceu nesta
-    // carreira) — sem efeito em carreira sem o sistema ativado.
-    if (CAREER.divisionTeams) {
-      LEAGUE_TEAMS = CAREER.divisionTeams[CURRENT_COMPETITION_ID];
-      ALL_TEAMS_FLAT = ALL_COMPETITIONS_ORDER.flatMap((id) => CAREER.divisionTeams[id]);
-    }
-    // Modo ponte (motor escondido da v2): NÃO grava ao abrir. O motor pode
-    // ficar aberto enquanto a v2 grava a escalação; uma gravação de abertura
-    // atrasada sobrescreveria essa mudança com o save antigo. A migração em
-    // memória acima é idempotente e volta a rodar na próxima abertura; o
-    // save migrado é gravado no primeiro comando que grava (fim de partida).
-    if (!V2_PONTE) persistCareer(); // grava os campos novos pra não migrar de novo (e de novo) a cada load
-    setBootProgress(5, 5);
-    showGameScreen();
-  } else {
-    setBootProgress(5, 5);
-    renderCompetitionPicker();
-    show("screenCompetitionPicker");
-    // Fase 2 (Carreira 2.0): sem carreira, o motor também fica pronto — a
-    // v2 cria a carreira pelos comandos escolherCompeticao/criarCarreira.
-    if (V2_PONTE) { PONTE.pronta = true; ponteAvisar(); }
-  }
+  return motorCarga().enterAfterAuth();
 }
 // Pedido do usuário: "ao trocar de tela sempre colocar foco no topo" —
 // cobre as dezenas de modais/telas cheias (.ct-modal-overlay) do jogo

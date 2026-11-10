@@ -29,3 +29,6 @@ export function skipLiveMatch(...args: any[]): any;
 export function startCupLegLive(...args: any[]): any;
 export function startFriendlyLive(...args: any[]): any;
 export function startLiveMatch(...args: any[]): any;
+export function desenharTudo(): void;
+export function desenharPartida(): void;
+export function lerTaticaDaTela(): void;

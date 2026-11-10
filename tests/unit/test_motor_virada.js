@@ -35,11 +35,19 @@ function primeiraDiferenca(a, b, p = "") {
 }
 const SEMEAR = (seed) => `(() => { let a = ${seed} >>> 0; Math.random = () => { a |= 0; a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; })();`;
 
+// Rede de mentira: a gravação (PUT /api/career) responde ok e é contada;
+// o resto é "sem rede" (dados de exemplo).
+const REDE = String.raw`
+var GRAVOU = 0;
+fetch = async function (url, opts) {
+  if (url === "/api/career" && opts && opts.method === "PUT") { GRAVOU++; return { ok: true, status: 200, json: async () => ({ ok: true }) }; }
+  throw new Error("sem rede");
+};
+`;
 // Tela e gravação de mentira: guardam o que a página pediu, em ordem.
 const STUBS = String.raw`
 var AVISOS = [], TELA = [];
 toast = function (msg, opts) { AVISOS.push([msg, opts || null]); };
-persistCareer = async function () { TELA.push(["gravar"]); };
 openFirstEntry = function () { TELA.push(["primeiraEntrada"]); };
 Date.now = () => 1794000000000;
 ouvirAvisosDoMotor();
@@ -95,11 +103,11 @@ const ROTEIRO = (seed) => `(async () => {
   const motor = motorCode();
   const lado = async (antes, seed) => {
     const { win } = criarJanela({ base: "http://127.0.0.1:9" });
-    win.fetch = () => Promise.reject(new Error("sem rede"));
     win.console = { log() {}, warn() {}, error() {}, info() {} };
     const ctx = vm.createContext(win);
     const rodar = (c, f) => vm.runInContext(c, ctx, { filename: f });
     rodar(SEMEAR(seed), "semente");
+    rodar(REDE, "rede");
     rodar("window.BRDATA_MOTOR = {};\n" + motor, "motor");
     rodar(dataSrc, "data.js");
     rodar(pagina, "carreira.js");

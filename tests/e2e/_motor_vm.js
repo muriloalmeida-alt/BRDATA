@@ -13,7 +13,7 @@ const { execSync } = require("child_process");
 
 const ROOT = path.resolve(__dirname, "../..");
 // Ordem de dependência (quem importa vem depois).
-const ORDER = ["partida", "tabela", "calendario", "rodada", "financas", "treino", "mercado", "temporada", "estado", "eventos", "registro", "texto", "semana", "fechamento", "aovivo", "posjogo", "clube", "virada", "ponte", "jogo"];
+const ORDER = ["partida", "tabela", "calendario", "rodada", "financas", "treino", "mercado", "temporada", "estado", "eventos", "registro", "texto", "semana", "fechamento", "aovivo", "posjogo", "clube", "virada", "ponte", "jogo", "carga"];
 
 function readModule(name, rev) {
   try {
@@ -47,9 +47,21 @@ function motorCode(rev, transform) {
 // remonta a página de antes da etapa F, para os testes das etapas anteriores).
 function paginaComoAntes(src, rev, so) {
   const ler = (m) => (so && !so.includes(m) ? "" : readModule(m, rev));
-  const semana = ler("semana"), texto = ler("texto"), fechamento = ler("fechamento"), aovivo = ler("aovivo"), posjogo = ler("posjogo"), clube = ler("clube"), virada = ler("virada"), ponte = ler("ponte"), jogo = ler("jogo");
+  const semana = ler("semana"), texto = ler("texto"), fechamento = ler("fechamento"), aovivo = ler("aovivo"), posjogo = ler("posjogo"), clube = ler("clube"), virada = ler("virada"), ponte = ler("ponte"), jogo = ler("jogo"), carga = ler("carga");
   if (semana == null || (so && !so.length)) return src;
-  const comoPagina = (t) => t.replace(/^export /gm, "").replace(/ *const CAREER = carreiraAtual\(\);\n?/g, "")
+  const comoPagina = (t) => t.replace(/^export /gm, "")
+    // etapa G1c: variáveis da página no estado, a carreira trocada, telas e o ambiente da entrada
+    .replace(/\bestado\.definirConta\(([^;\n]+)\);/g, "ME = $1;").replace(/\bestado\.definirModoReal\(([^;\n]+)\);/g, "LIVE_MODE = $1;")
+    .replace(/\bestado\.definirTemporadaReal\(([^;\n]+)\);/g, "LIVE_SEASON = $1;").replace(/\bestado\.definirHerancaDoTecnico\(([^;\n]+)\);/g, "TECHNICIAN_CARRY = $1;")
+    .replace(/\bestado\.modoRealPorCompeticao\(\)/g, "LIVE_MODE_BY_COMPETITION").replace(/\bestado\.herancaDoTecnico\(\)/g, "TECHNICIAN_CARRY")
+    .replace(/\bestado\.modoReal\(\)/g, "LIVE_MODE").replace(/\bestado\.conta\(\)/g, "ME").replace(/\bestado\.temporadaReal\(\)/g, "LIVE_SEASON")
+    .replace(/(await startCareer\([^;\n]*\);) CAREER = carreiraAtual\(\);/g, "$1").replace(/ *let CAREER = carreiraAtual\(\);\n?/g, "")
+    .replace(/(^|[^\w.])CAREER = definirCarreira\(([^;\n]+)\);/gm, "$1CAREER = $2;")
+    .replace(/tela\("estiloDe", "(\w+)", "(\w+)", ([^;\n]+)\);/g, 'document.getElementById("$1").style.$2 = $3;')
+    .replace(/tela\("desabilitar", "(\w+)", ([^;\n]+)\);/g, 'document.getElementById("$1").disabled = $2;')
+    .replace(/tela\("telaDeCarga", ([^;\n]+)\);/g, 'document.getElementById("screenLoading").innerHTML = splashLoadingHTML($1);')
+    .replace(/\bambiente\.incluirBaseNaEscalacao\(\)/g, 'document.getElementById("autoLineupIncludeBase")?.checked')
+    .replace(/\bambiente\.algumModalAberto\(\)/g, '[...document.querySelectorAll(".ct-modal-overlay.open")].some((o) => o.id !== "actionLoadingOverlay")').replace(/ *const CAREER = carreiraAtual\(\);\n?/g, "")
     .replace(/\bconst CAREER = carreiraAtual\(\); /g, "")
     .replace(/\btodosTimes\(\)/g, "ALL_TEAMS_FLAT").replace(/\bligaAtual\(\)/g, "LEAGUE_TEAMS")
     .replace(/(^|[^\w./]|\.\.\.)rodada\.(?=[A-Za-z_])/gm, (_, a) => `${a}motorModulo("rodada").`)
@@ -58,7 +70,7 @@ function paginaComoAntes(src, rev, so) {
     .replace(/\bambiente\.rngDaChave\(/g, "seededRngFromKey(").replace(/\bavisar\(/g, "toast(")
     // etapa F: o mundo (estado.js) e o que vem da página pelo ambiente
     .replace(/\bdefinirCompeticaoAtual\(([^;\n]+)\);/g, "CURRENT_COMPETITION_ID = $1;").replace(/\bdefinirLigaAtual\(([^;\n]+)\);/g, "LEAGUE_TEAMS = $1;")
-    .replace(/\bdefinirTodosTimes\(([^;\n]+)\);/g, "ALL_TEAMS_FLAT = $1;").replace(/\bcompeticaoAtual\(\)/g, "CURRENT_COMPETITION_ID")
+    .replace(/\bdefinirTodosTimes\(([\s\S]+?)\);/g, "ALL_TEAMS_FLAT = $1;").replace(/\bcompeticaoAtual\(\)/g, "CURRENT_COMPETITION_ID")
     .replace(/\bambiente\.timesSerieD\(\)/g, "DEMO_TEAMS_SERIE_D").replace(/\bambiente\.temporadaReal\(\)/g, "LIVE_SEASON")
     .replace(/\bambiente\.buscarJogadores\(/g, "fetchRealPlayers(").replace(/\benvJogador\(\)/g, "playerBuildEnv()")
     .replace(/\bambiente\.contaCriadaEm\(\)/g, "ME && ME.createdAt")
@@ -67,7 +79,7 @@ function paginaComoAntes(src, rev, so) {
     .replace(/\bambiente\.persistir\(\)/g, "persistCareer()").replace(/\bambiente\.modoPonte\(\)/g, "V2_PONTE")
     .replace(/\bambiente\.botaoSimular\(\)/g, 'document.getElementById("btnSimulate")')
     .replace(/tela\("abrirOverlay", "(\w+)"\);/g, 'document.getElementById("$1").classList.add("open");')
-    .replace(/\bdesenharTudo\(\)/g, "renderAll()").replace(/\bdesenharPartida\(\)/g, "renderLiveMatch()").replace(/\blerTaticaDaTela\(\)/g, "commitLineupTactics()")
+    .replace(/\bdesenharTudo\(\)/g, "renderAll()").replace(/\bdesenharPartida\(\)/g, "renderLiveMatch()").replace(/\blerTaticaDaTela\(\)/g, "commitLineupTactics()").replace(/\bmostrarJogo\(\)/g, "showGameScreen()")
     .replace(/\bestado\.definirResumoDaRodada\(([^;\n]+)\);/g, "PENDING_ROUND_SUMMARY = $1;").replace(/\bestado\.resumoDaRodada\(\)/g, "PENDING_ROUND_SUMMARY")
     .replace(/\bdefinirPartida\(([^;\n]+)\);/g, "LIVE_MATCH = $1;").replace(/\bdefinirColetivaPendente\(([^;\n]+)\);/g, "PENDING_PRESS = $1;")
     // etapa G1a: estado da partida e da coletiva, o da ponte e o que vem da página
@@ -79,21 +91,21 @@ function paginaComoAntes(src, rev, so) {
     .replace(/tela\("(\w+)"\)/g, "$1()").replace(/tela\("(\w+)", /g, "$1(")
     .replace(/emitir\("coletiva", \{ id: "15", rodada: CAREER\.currentRound \}\);/g, '{ firePressConference("15", CAREER.currentRound, false); openPressConferenceModal(); }');
   // Os módulos da G1b em diante (jogo.js) chamam os outros por namespace.
-  const nsDeVolta = (t) => t.replace(/(^|[^\w./]|\.\.\.)(semana|fechamento|aovivo|posjogo|clube|virada|texto)\.(?=[A-Za-z_])/gm,
-    (_, a, m) => `${a}motor${{ semana: "Semana", fechamento: "Fechamento", aovivo: "AoVivo", posjogo: "PosJogo", clube: "Clube", virada: "Virada", texto: "Texto" }[m]}().`)
+  const nsDeVolta = (t) => t.replace(/(^|[^\w./]|\.\.\.)(semana|fechamento|aovivo|posjogo|clube|virada|texto|jogo)\.(?=[A-Za-z_])/gm,
+    (_, a, m) => `${a}motor${{ semana: "Semana", fechamento: "Fechamento", aovivo: "AoVivo", posjogo: "PosJogo", clube: "Clube", virada: "Virada", texto: "Texto", jogo: "Jogo" }[m]}().`)
     .replace(/(^|[^\w./]|\.\.\.)calendario\.(?=[A-Za-z_])/gm, '$1motorModulo("calendario").');
   // Definições por módulo: só o que o módulo exporta volta para a página (os
   // atalhos locais do cabeçalho, como myLeaguePosition, não substituem nada),
   // e cada atalho da página volta com a definição do módulo que ele chama
   // (há nomes iguais em módulos diferentes, como simulateRound).
-  const MOD = { Semana: "semana", Texto: "texto", Fechamento: "fechamento", AoVivo: "aovivo", PosJogo: "posjogo", Clube: "clube", Virada: "virada", Ponte: "ponte", Jogo: "jogo" };
-  const crus = { semana, texto, fechamento, aovivo, posjogo, clube, virada, ponte, jogo };
+  const MOD = { Semana: "semana", Texto: "texto", Fechamento: "fechamento", AoVivo: "aovivo", PosJogo: "posjogo", Clube: "clube", Virada: "virada", Ponte: "ponte", Jogo: "jogo", Carga: "carga" };
+  const crus = { semana, texto, fechamento, aovivo, posjogo, clube, virada, ponte, jogo, carga };
   const defs = {};
   for (const [mod, cru] of Object.entries(crus)) {
     defs[mod] = {};
     if (!cru) continue;
     const exportados = new Set([...cru.matchAll(/^export (?:async )?(?:function|const) (\w+)/gm)].map((m) => m[1]));
-    const blocos = mod === "jogo" ? nsDeVolta(comoPagina(cru)) : comoPagina(cru);
+    const blocos = mod === "jogo" || mod === "carga" ? nsDeVolta(comoPagina(cru)) : comoPagina(cru);
     for (const m of blocos.matchAll(/^((?:async )?function (\w+)\(|const (\w+) = )/gm)) {
       const nome = m[2] || m[3];
       if (!exportados.has(nome)) continue;
@@ -112,7 +124,7 @@ function paginaComoAntes(src, rev, so) {
     }
   }
   return src
-    .replace(/^((?:async )?function (\w+)\([^\n]*\) \{\n  (?:\/\/[^\n]*\n  )?return motor(Semana|Texto|Fechamento|AoVivo|PosJogo|Clube|Virada|Ponte|Jogo)\(\)\.\w+\([^\n]*\);\n\})/gm, (bloco, _, nome, m) => defs[MOD[m]][nome] || bloco)
-    .replace(/^Object\.defineProperty\(window, "(\w+)", \{ configurable: true, get\(\) \{ return motor(Semana|Fechamento|AoVivo|PosJogo|Clube|Virada|Ponte|Jogo)\(\)\.\w+; \} \}\);$/gm, (linha, nome, m) => defs[MOD[m]][nome] || linha);
+    .replace(/^((?:async )?function (\w+)\([^\n]*\) \{\n  (?:\/\/[^\n]*\n  )?return motor(Semana|Texto|Fechamento|AoVivo|PosJogo|Clube|Virada|Ponte|Jogo|Carga)\(\)\.\w+\([^\n]*\);\n\})/gm, (bloco, _, nome, m) => defs[MOD[m]][nome] || bloco)
+    .replace(/^Object\.defineProperty\(window, "(\w+)", \{ configurable: true, get\(\) \{ return motor(Semana|Fechamento|AoVivo|PosJogo|Clube|Virada|Ponte|Jogo|Carga)\(\)\.\w+; \} \}\);$/gm, (linha, nome, m) => defs[MOD[m]][nome] || linha);
 }
 module.exports = { motorCode, ORDER, paginaComoAntes };
