@@ -39,3 +39,4 @@ export function suggestMarket(...args: any[]): any;
 export function suggestTactics(...args: any[]): any;
 export function suggestTraining(...args: any[]): any;
 export function teamLogoSrc(...args: any[]): any;
+export function fetchRealPlayers(...args: any[]): Promise<any>;

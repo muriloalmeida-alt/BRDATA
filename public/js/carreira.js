@@ -1144,15 +1144,8 @@ function fmtBRLShort(v) {
 // tentem a API real só porque a divisão da carreira está ao vivo (e
 // vice-versa) — cada competição resolve sua própria fonte de dado,
 // independente das outras 2.
-async function fetchRealPlayers(teamId, competitionId = CURRENT_COMPETITION_ID) {
-  if (!LIVE_MODE_BY_COMPETITION[competitionId]) {
-    const demo = DEMO_DATA_BY_COMPETITION[competitionId] || { players: DEMO_PLAYERS };
-    return demo.players.filter((p) => String(p.teamId) === String(teamId));
-  }
-  try {
-    const data = await fetchJSON(`/api/career/teams/${teamId}/players?season=${LIVE_SEASON}&competition=${competitionId}`);
-    return data.players || [];
-  } catch { return []; }
+async function fetchRealPlayers(teamId, competitionId) {
+  return motorCarga().fetchRealPlayers(teamId, competitionId);
 }
 function mapPositionGroup(raw) {
   return motorVirada().mapPositionGroup(raw);

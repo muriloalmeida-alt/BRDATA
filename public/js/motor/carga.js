@@ -1260,3 +1260,16 @@ export const comandosCarga = {
       return { ok: true, som: !!ambiente.somLigado() };
     },
 };
+
+// Etapa G2a (10/11): os jogadores de cada clube (API ou exemplo), antes da página.
+// O ambiente.buscarJogadores da página chama esta função.
+export async function fetchRealPlayers(teamId, competitionId = competicaoAtual()) {
+  if (!estado.modoRealPorCompeticao()[competitionId]) {
+    const demo = DEMO_DATA_BY_COMPETITION[competitionId] || { players: DEMO_PLAYERS };
+    return demo.players.filter((p) => String(p.teamId) === String(teamId));
+  }
+  try {
+    const data = await fetchJSON(`/api/career/teams/${teamId}/players?season=${estado.temporadaReal()}&competition=${competitionId}`);
+    return data.players || [];
+  } catch { return []; }
+}
