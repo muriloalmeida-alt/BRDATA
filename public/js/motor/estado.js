@@ -118,6 +118,21 @@ export function definirColetivaEncadeada(v) { coletivaNoPosJogo = !!v; return co
 let resumo = null;
 export function resumoDaRodada() { return resumo; }
 export function definirResumoDaRodada(r) { resumo = r == null ? null : r; return resumo; }
+// Etapa G1c1 (10/11): o que a página guardava em variáveis e o jogo usa — a conta
+// logada (ME, de /api/auth/me), a fonte de dados (LIVE_MODE, real ou exemplo, e
+// por competição), a temporada real dos dados (LIVE_SEASON) e a herança do
+// técnico que trocou de clube (TECHNICIAN_CARRY). Nunca gravados no save.
+const pagina = { conta: null, modoReal: false, modoRealPorCompeticao: {}, temporadaReal: new Date().getFullYear(), herancaDoTecnico: null };
+export function conta() { return pagina.conta; }
+export function definirConta(v) { pagina.conta = v; return v; }
+export function modoReal() { return pagina.modoReal; }
+export function definirModoReal(v) { pagina.modoReal = v; return v; }
+export function modoRealPorCompeticao() { return pagina.modoRealPorCompeticao; }
+export function definirModoRealPorCompeticao(v) { pagina.modoRealPorCompeticao = v; return v; }
+export function temporadaReal() { return pagina.temporadaReal; }
+export function definirTemporadaReal(v) { pagina.temporadaReal = v; return v; }
+export function herancaDoTecnico() { return pagina.herancaDoTecnico; }
+export function definirHerancaDoTecnico(v) { pagina.herancaDoTecnico = v; return v; }
 export function definirCompeticaoAtual(id) { mundo.competicaoAtual = id; return id; }
 
 // Time pelo id: primeiro a liga atual (com a competição atual), depois os
