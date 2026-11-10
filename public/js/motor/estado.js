@@ -113,6 +113,11 @@ export function coletivaPendente() { return coletiva; }
 export function definirColetivaPendente(c) { coletiva = c == null ? null : c; return coletiva; }
 export function coletivaEncadeada() { return coletivaNoPosJogo; }
 export function definirColetivaEncadeada(v) { coletivaNoPosJogo = !!v; return coletivaNoPosJogo; }
+// Etapa G1b (10/11): o resumo da rodada jogada, entre o detalhe do jogo e os
+// resultados da rodada (PENDING_ROUND_SUMMARY). Nunca gravado.
+let resumo = null;
+export function resumoDaRodada() { return resumo; }
+export function definirResumoDaRodada(r) { resumo = r == null ? null : r; return resumo; }
 export function definirCompeticaoAtual(id) { mundo.competicaoAtual = id; return id; }
 
 // Time pelo id: primeiro a liga atual (com a competição atual), depois os

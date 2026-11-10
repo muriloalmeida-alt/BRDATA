@@ -5,7 +5,9 @@ export interface Ambiente { primeirosNomes: string[]; sobrenomes: string[]; rngD
   buscarJogadores?: (teamId: string | number, competitionId?: string) => Promise<any[]>; timesSerieD?: () => any[]; escudo?: (time: any) => string | null;
   modoReal?: () => boolean; herancaDoTecnico?: () => { reputation: number; clubHistory: any[] } | null;
   // Etapa G1a (ponte): gravar como a página, som ligado e nome do técnico.
-  gravar?: () => Promise<{ ok: boolean; motivo?: string }>; somLigado?: () => boolean; nomeTecnico?: () => string | null }
+  gravar?: () => Promise<{ ok: boolean; motivo?: string }>; somLigado?: () => boolean; nomeTecnico?: () => string | null;
+  // Etapa G1b (jogo): relógio da partida, gravar, modo ponte e o botão Simular.
+  agendar?: (fn: () => void, ms: number) => unknown; cancelar?: (id: unknown) => void; persistir?: () => Promise<boolean>; modoPonte?: () => boolean; botaoSimular?: () => { disabled?: boolean } | null }
 export const ambiente: Ambiente;
 export function avisar(input: string | { title: string; detail?: string }, opts?: { type?: string; durationMs?: number }): void;
 export const CALENDAR_PHASE_BY_MONTH: string[];
