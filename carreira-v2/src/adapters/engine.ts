@@ -8,6 +8,7 @@
 // versão do save do motor (updatedAt) com a do servidor e, se diferem,
 // recarrega o motor antes de devolver a sessão.
 import { openMatchSession, type MatchSession, type OpenOptions } from "./match.ts";
+import { openHostedSession, usarModulo } from "./hosted.ts";
 
 export interface EngineDeps {
   open: (opts: OpenOptions) => Promise<MatchSession>;
@@ -16,7 +17,9 @@ export interface EngineDeps {
 }
 
 const defaultDeps: EngineDeps = {
-  open: (opts) => openMatchSession(opts),
+  // Etapa G2b: com a chave ligada (?motor=modulo), o motor abre como módulo,
+  // sem o quadro escondido (adapters/hosted.ts); senão, o quadro de sempre.
+  open: (opts) => (usarModulo() ? openHostedSession(opts) : openMatchSession(opts)),
   serverVersion: async () => {
     const res = await fetch("/api/career", { credentials: "same-origin", cache: "no-store", headers: { Accept: "application/json" } });
     if (!res.ok) return null;
