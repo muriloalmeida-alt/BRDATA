@@ -94,3 +94,4 @@ Os comandos da ponte que conduzem o jogo foram para `public/js/motor/jogo.js`, *
 - **Testes das etapas anteriores:** usam a página como era antes da F e da G.
 - **Testes do motor:** todos passam (17 arquivos).
 - **Suíte completa (com o Postgres temporário):** 208/208.
+- **Teste antigo corrigido (`test_modals`):** falhou no CI da G1b pelo mesmo defeito de ordem já corrigido no `test_coletiva_imprensa` (D2) e no `test_noticias_fullscreen_fluxo` (E). Recusada a proposta por jogador, o pós-jogo abre a Tabela, que tapa o menu. O teste agora fecha a Tabela depois de recusar; passou 3 vezes seguidas.
