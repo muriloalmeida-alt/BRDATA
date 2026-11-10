@@ -1,0 +1,35 @@
+// Tipos de public/js/motor/ponte.js (etapa G1a): os comandos de consulta e de
+// gestão da ponte e o estado dela, extraídos de carreira.js sem mudar o texto.
+export const ponte: Record<string, any>;
+export const comandosGestao: Record<string, (...args: any[]) => any>;
+export const ACHIEVEMENT_CATEGORY_LABEL: any;
+export const BOOST_CATEGORY_LABEL: any;
+export const BOOST_ITEMS: any;
+export const COMISSAO_COND_DESGASTE: any;
+export const COMISSAO_POSTURAS: any;
+export const CREDIT_PACKAGES: any;
+export const LOAN_HALF_SEASON_ROUNDS: any;
+export const MAX_TACTICAL_SCHEMES: any;
+export const SECTOR_LABEL: any;
+export const SPONSOR_KIND_LABEL: any;
+export const TRAINING_DURATION_MIN: any;
+export const TRAINING_GROUP_LABEL: any;
+export function applyTacticalScheme(...args: any[]): any;
+export function comissaoChave(...args: any[]): any;
+export function comissaoEscalacao(...args: any[]): any;
+export function comissaoForca(...args: any[]): any;
+export function comissaoFormacao(...args: any[]): any;
+export function comissaoJogador(...args: any[]): any;
+export function comissaoNome(...args: any[]): any;
+export function comissaoPostura(...args: any[]): any;
+export function comissaoProximoJogo(...args: any[]): any;
+export function comissaoRecomendacoes(...args: any[]): any;
+export function comissaoReservasDisponiveis(...args: any[]): any;
+export function deleteTacticalScheme(...args: any[]): any;
+export function isProtectedTrainingDay(...args: any[]): any;
+export function nextOpponentId(...args: any[]): any;
+export function ponteOpcoesEmprestimo(...args: any[]): any;
+export function projectWeekPeakFatigue(...args: any[]): any;
+export function renameTacticalScheme(...args: any[]): any;
+export function saveTacticalScheme(...args: any[]): any;
+export function trainingTargets(...args: any[]): any;

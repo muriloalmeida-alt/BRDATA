@@ -13,7 +13,7 @@ const { execSync } = require("child_process");
 
 const ROOT = path.resolve(__dirname, "../..");
 // Ordem de dependência (quem importa vem depois).
-const ORDER = ["partida", "tabela", "calendario", "rodada", "financas", "treino", "mercado", "temporada", "estado", "eventos", "registro", "texto", "semana", "fechamento", "aovivo", "posjogo", "clube", "virada"];
+const ORDER = ["partida", "tabela", "calendario", "rodada", "financas", "treino", "mercado", "temporada", "estado", "eventos", "registro", "texto", "semana", "fechamento", "aovivo", "posjogo", "clube", "virada", "ponte"];
 
 function readModule(name, rev) {
   try {
@@ -47,7 +47,7 @@ function motorCode(rev, transform) {
 // remonta a página de antes da etapa F, para os testes das etapas anteriores).
 function paginaComoAntes(src, rev, so) {
   const ler = (m) => (so && !so.includes(m) ? "" : readModule(m, rev));
-  const semana = ler("semana"), texto = ler("texto"), fechamento = ler("fechamento"), aovivo = ler("aovivo"), posjogo = ler("posjogo"), clube = ler("clube"), virada = ler("virada");
+  const semana = ler("semana"), texto = ler("texto"), fechamento = ler("fechamento"), aovivo = ler("aovivo"), posjogo = ler("posjogo"), clube = ler("clube"), virada = ler("virada"), ponte = ler("ponte");
   if (semana == null || (so && !so.length)) return src;
   const comoPagina = (t) => t.replace(/^export /gm, "").replace(/ *const CAREER = carreiraAtual\(\);\n?/g, "")
     .replace(/\bconst CAREER = carreiraAtual\(\); /g, "")
@@ -62,6 +62,10 @@ function paginaComoAntes(src, rev, so) {
     .replace(/\bambiente\.timesSerieD\(\)/g, "DEMO_TEAMS_SERIE_D").replace(/\bambiente\.temporadaReal\(\)/g, "LIVE_SEASON")
     .replace(/\bambiente\.buscarJogadores\(/g, "fetchRealPlayers(").replace(/\benvJogador\(\)/g, "playerBuildEnv()")
     .replace(/\bambiente\.contaCriadaEm\(\)/g, "ME && ME.createdAt")
+    // etapa G1a: estado da partida e da coletiva, o da ponte e o que vem da página
+    .replace(/\bpartidaAtual\(\)/g, "LIVE_MATCH").replace(/\bcoletivaPendente\(\)/g, "PENDING_PRESS")
+    .replace(/(^|[^\w.])ponte\./gm, "$1PONTE.").replace(/\bambiente\.gravar\(\)/g, "ponteGravar()")
+    .replace(/\bambiente\.somLigado\(\)/g, "SFX_ENABLED").replace(/\bambiente\.nomeTecnico\(\)/g, "(ME && ME.name)")
     .replace(/(^|[^\w./]|\.\.\.)(estado|calendario)\.(?=[A-Za-z_])/gm, (_, a, m) => m === "estado" ? `${a}motorEstado().` : `${a}motorModulo("calendario").`)
     .replace(/tela\("fecharOverlay", "(\w+)"\);/g, 'document.getElementById("$1").classList.remove("open");')
     .replace(/tela\("(\w+)"\)/g, "$1()").replace(/tela\("(\w+)", /g, "$1(")
@@ -69,9 +73,9 @@ function paginaComoAntes(src, rev, so) {
   const defs = {};
   // Só o que o módulo exporta volta para a página (os atalhos locais do
   // cabeçalho de cada módulo, como myLeaguePosition, não substituem nada).
-  const crus = [semana, texto, fechamento, aovivo, posjogo, clube, virada].map((t) => t || "").join("\n");
+  const crus = [semana, texto, fechamento, aovivo, posjogo, clube, virada, ponte].map((t) => t || "").join("\n");
   const exportados = new Set([...crus.matchAll(/^export (?:async )?(?:function|const) (\w+)/gm)].map((m) => m[1]));
-  const blocos = comoPagina(semana + "\n" + (texto || "") + "\n" + (fechamento || "") + "\n" + (aovivo || "") + "\n" + (posjogo || "") + "\n" + (clube || "") + "\n" + (virada || ""));
+  const blocos = comoPagina(semana + "\n" + (texto || "") + "\n" + (fechamento || "") + "\n" + (aovivo || "") + "\n" + (posjogo || "") + "\n" + (clube || "") + "\n" + (virada || "") + "\n" + (ponte || ""));
   for (const m of blocos.matchAll(/^((?:async )?function (\w+)\(|const (\w+) = )/gm)) {
     const nome = m[2] || m[3];
     // Função: do "{" que fecha a primeira linha ("...) {") até a chave que
@@ -88,7 +92,7 @@ function paginaComoAntes(src, rev, so) {
     defs[nome] = blocos.slice(i, fim);
   }
   return src
-    .replace(/^((?:async )?function (\w+)\([^\n]*\) \{\n  (?:\/\/[^\n]*\n  )?return motor(?:Semana|Texto|Fechamento|AoVivo|PosJogo|Clube|Virada)\(\)\.\w+\([^\n]*\);\n\})/gm, (bloco, _, nome) => (exportados.has(nome) && defs[nome]) || bloco)
-    .replace(/^Object\.defineProperty\(window, "(\w+)", \{ configurable: true, get\(\) \{ return motor(?:Semana|Fechamento|AoVivo|PosJogo|Clube|Virada)\(\)\.\w+; \} \}\);$/gm, (linha, nome) => (exportados.has(nome) && defs[nome]) || linha);
+    .replace(/^((?:async )?function (\w+)\([^\n]*\) \{\n  (?:\/\/[^\n]*\n  )?return motor(?:Semana|Texto|Fechamento|AoVivo|PosJogo|Clube|Virada|Ponte)\(\)\.\w+\([^\n]*\);\n\})/gm, (bloco, _, nome) => (exportados.has(nome) && defs[nome]) || bloco)
+    .replace(/^Object\.defineProperty\(window, "(\w+)", \{ configurable: true, get\(\) \{ return motor(?:Semana|Fechamento|AoVivo|PosJogo|Clube|Virada|Ponte)\(\)\.\w+; \} \}\);$/gm, (linha, nome) => (exportados.has(nome) && defs[nome]) || linha);
 }
 module.exports = { motorCode, ORDER, paginaComoAntes };
