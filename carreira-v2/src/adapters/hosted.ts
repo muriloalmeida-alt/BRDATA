@@ -1,18 +1,19 @@
 // Plano "sem página escondida", etapa G2b: a sessão do motor SEM o quadro
 // escondido. Carrega o /js/data.js (dados de exemplo, nomes e o sorteio por
 // chave) e importa o hospedeiro do motor (/js/motor/v2.js, etapa G2a), que
-// devolve a mesma ponte de comandos da página antiga. Por enquanto atrás de
-// uma chave (ver usarModulo); o padrão continua sendo o quadro (match.ts).
+// devolve a mesma ponte de comandos da página antiga. Desde a etapa G2c é o
+// padrão; o quadro (match.ts) só abre com a chave ?motor=quadro, até a G2d.
 import type { MatchSession, MatchSnapshot, OpenOptions } from "./match.ts";
 
-// Chave: ?motor=modulo na URL (fica guardada) ou localStorage "brdata_motor".
+// Chave: ?motor=quadro na URL (fica guardada em localStorage "brdata_motor")
+// volta ao quadro escondido; ?motor=modulo volta ao padrão. Sem chave, módulo.
 export function usarModulo(): boolean {
   try {
     const q = new URLSearchParams(location.search).get("motor");
     if (q === "modulo" || q === "quadro") localStorage.setItem("brdata_motor", q);
-    return localStorage.getItem("brdata_motor") === "modulo";
+    return localStorage.getItem("brdata_motor") !== "quadro";
   } catch {
-    return false;
+    return true;
   }
 }
 

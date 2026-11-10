@@ -133,6 +133,9 @@ const ROTEIRO = (seed) => `(async () => {
     reg("desconhecido", P.executar("naoExiste")); reg("executarRecursivo", P.executar("executar", "mercado"));
     reg("preferencias", P.executar("preferencias")); reg("somAtivo", P.somAtivo(r() < 0.5)); reg("preferencias", P.executar("preferencias"));
     reg("historicoTreinador", P.executar("historicoTreinador"));
+    // G2c: comandos de clube com custos e totais (achados pela v2 sem o quadro).
+    reg("comissao", P.executar("comissao")); reg("olheiros", P.executar("olheiros"));
+    reg("patrocinios", await P.executar("patrocinios"));
   }
   // Reabrir o jogo com o save do servidor.
   window.BRDATA_MOTOR.estado.definirCarreira(null);

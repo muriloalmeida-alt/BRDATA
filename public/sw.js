@@ -101,6 +101,9 @@ const APP_SHELL = [
   "/js/motor/ponte.js",
   "/js/motor/jogo.js",
   "/js/motor/carga.js",
+  // Etapa G2c: a v2 abre o motor como módulo por este hospedeiro (com o
+  // /js/data.js, já acima), sem a página escondida.
+  "/js/motor/v2.js",
   "/manifest-treinador.json",
   "/img/brand-icon.png",
   "/img/icons/apple-touch-icon.png",

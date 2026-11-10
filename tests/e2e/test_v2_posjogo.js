@@ -16,7 +16,7 @@
 //     /carreira-old e o motor nunca aparece.
 const { chromium } = require("playwright-core");
 const { check } = require("./_check");
-const { newCareer, serverCareer, ponteFrame, playV2MatchToEnd } = require("./_v2_match");
+const { newCareer, serverCareer, motorNaPagina, playV2MatchToEnd } = require("./_v2_match");
 
 const base = "http://localhost:8787";
 
@@ -33,7 +33,8 @@ const base = "http://localhost:8787";
   const visited = [];
   v2.on("framenavigated", (f) => { if (f === v2.mainFrame()) visited.push(new URL(f.url()).pathname); });
   let motorShown = false;
-  const watchMotor = async () => { motorShown = motorShown || await v2.evaluate(() => [...document.querySelectorAll("iframe")].some((f) => f.getBoundingClientRect().width > 1 || f.getAttribute("aria-hidden") !== "true")); };
+  // Desde a G2c o motor é módulo na página: nenhum quadro, nem escondido.
+  const watchMotor = async () => { motorShown = motorShown || await v2.evaluate(() => document.querySelectorAll("iframe").length > 0); };
   const sizes = {};
   const at360 = async (k) => {
     await v2.setViewportSize({ width: 360, height: 780 });
@@ -49,12 +50,16 @@ const base = "http://localhost:8787";
   const playAndForce = async (persistOffer) => {
     await playV2MatchToEnd(v2);
     await v2.waitForSelector('.pz-foot .cta[data-save="saved"]:not([aria-disabled])', { timeout: 30000 });
-    return ponteFrame(v2).evaluate(async (persistOffer) => {
-      firePressConference("01", CAREER.currentRound - 1, true);
+    await motorNaPagina(v2);
+    return v2.evaluate(async (persistOffer) => {
+      const { estado, posjogo, carga } = __motor;
+      const CAREER = estado.carreiraAtual(), LEAGUE_TEAMS = estado.ligaAtual();
+      posjogo.firePressConference("01", CAREER.currentRound - 1, true);
+      const PENDING_PRESS = estado.coletivaPendente();
       const p = CAREER.squad.find((x) => !CAREER.lineup.starters.includes(x.id) && x.value) || CAREER.squad[CAREER.squad.length - 1];
       const club = LEAGUE_TEAMS.find((t) => String(t.id) !== String(CAREER.clubId));
       CAREER.pendingOffer = { playerId: p.id, playerName: p.name, clubId: String(club.id), clubName: club.name, fee: 4_321_000, round: CAREER.currentRound };
-      if (persistOffer) await persistCareer();
+      if (persistOffer) await carga.persistCareer();
       return { question: PENDING_PRESS.entry.pergunta, answers: PENDING_PRESS.entry.respostas.length, player: p.id, playerName: p.name, club: club.name, round: CAREER.currentRound };
     }, persistOffer);
   };

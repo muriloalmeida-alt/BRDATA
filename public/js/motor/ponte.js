@@ -51,10 +51,10 @@ function reputationLabel(rep) {
   return temporada.reputationLabel(rep);
 }
 function scoutsMonthlyCost() {
-  return financas.scoutsMonthlyCost(CAREER.scouts);
+  return financas.scoutsMonthlyCost(carreiraAtual().scouts);
 }
 function sponsorshipSeasonTotal() {
-  return financas.sponsorshipSeasonTotal(CAREER.sponsorship);
+  return financas.sponsorshipSeasonTotal(carreiraAtual().sponsorship);
 }
 function stadiumCapacityFor(club) {
   return financas.stadiumCapacity(club, ambiente.rngDaChave(`stadium:${club.id}`), stadiumUpgradeBonusFor(club));

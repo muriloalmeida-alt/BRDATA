@@ -13,7 +13,7 @@
 //     OUTRA conta é recusado e não grava nada nela; com a mesma conta, grava.
 const { chromium } = require("playwright-core");
 const { check } = require("./_check");
-const { newCareer, signup, serverCareer, playV2MatchToEnd, ponteFrame, continueToHome, sameSave } = require("./_v2_match");
+const { newCareer, signup, serverCareer, playV2MatchToEnd, motorNaPagina, continueToHome, sameSave } = require("./_v2_match");
 
 (async () => {
   const browser = await chromium.launch({ executablePath: process.env.PW_CHROMIUM_PATH || undefined, headless: true, args: ["--host-resolver-rules=MAP fonts.googleapis.com 127.0.0.1,MAP fonts.gstatic.com 127.0.0.1"] });
@@ -45,7 +45,8 @@ const { newCareer, signup, serverCareer, playV2MatchToEnd, ponteFrame, continueT
     if (mode === "lost") { await route.fetch(); return route.abort("failed"); } // gravou no servidor; a resposta se perde
     return route.continue();
   });
-  const frameCareer = () => ponteFrame(v2).evaluate(() => JSON.parse(JSON.stringify(CAREER)));
+  // Carreira na memória do motor (módulo na página da v2, etapa G2c).
+  const frameCareer = async () => { await motorNaPagina(v2); return v2.evaluate(() => JSON.parse(JSON.stringify(__motor.estado.carreiraAtual()))); };
   const btn = () => v2.evaluate(() => { const b = document.querySelector(".pz-foot .cta"); return { save: b.dataset.save, text: b.textContent.trim(), aria: b.getAttribute("aria-disabled"), err: document.querySelector(".pz-foot .inline-error")?.textContent || "" }; });
 
   // 1) Falha de rede no PUT final.
@@ -63,7 +64,7 @@ const { newCareer, signup, serverCareer, playV2MatchToEnd, ponteFrame, continueT
   check("1b) Rodapé de falha em 360 px sem rolagem horizontal e botão ≥ 44 px:", fail360.overflow <= 0 && fail360.btnH >= 44, JSON.stringify(fail360));
   const s1 = await serverCareer(v2);
   const mem1 = await frameCareer();
-  const blocked = await ponteFrame(v2).evaluate(() => BRDATA_PONTE.iniciarPosJogo());
+  const blocked = await v2.evaluate(() => __motor.ponte.iniciarPosJogo());
   check("1) Falha de rede: Resultado mostra a falha e 'Tentar salvar novamente' (sem 'Continuar'); nada gravado; pós-jogo bloqueado na ponte:",
     b1.text === "Tentar salvar novamente" && /Não foi possível salvar o resultado/.test(b1.err) && s1.currentRound === before.currentRound
       && mem1.currentRound === before.currentRound + 1 && blocked.ok === false && blocked.motivo === "nao-salvo",
@@ -94,7 +95,7 @@ const { newCareer, signup, serverCareer, playV2MatchToEnd, ponteFrame, continueT
   const steps3 = await continueToHome(v2);
   const home3 = await v2.evaluate(() => ({ line: document.querySelector(".home-date")?.textContent || "", frames: document.querySelectorAll("iframe").length, shown: [...document.querySelectorAll("iframe")].filter((f) => f.getBoundingClientRect().width > 1 || f.getAttribute("aria-hidden") !== "true").length }));
   check("3b) 'Continuar' segue o pós-jogo até o Início na rodada seguinte, com o motor escondido (no máximo um, reaproveitado):",
-    steps3.length >= 1 && home3.line.endsWith(`RODADA ${before.currentRound + 1}`) && home3.frames <= 1 && home3.shown === 0, JSON.stringify({ steps3, home3 }));
+    steps3.length >= 1 && home3.line.endsWith(`RODADA ${before.currentRound + 1}`) && home3.frames === 0 && home3.shown === 0, JSON.stringify({ steps3, home3 }));
 
   // 4) Resposta perdida depois de o servidor gravar.
   const before4 = await serverCareer(v2);
@@ -125,7 +126,8 @@ const { newCareer, signup, serverCareer, playV2MatchToEnd, ponteFrame, continueT
   await v2.click(".mt-skip");
   await v2.waitForSelector('.pz-foot .cta[data-save="session"]', { timeout: 30000 });
   const b5 = await btn();
-  const shownLegacyLogin = await ponteFrame(v2).evaluate(() => !document.getElementById("screenLoginRequired").classList.contains("hidden"));
+  // Sem o quadro escondido (G2c) não há tela de login do motor: nenhum iframe na página.
+  const shownLegacyLogin = await v2.evaluate(() => document.querySelectorAll("iframe").length > 0);
   await v2.click(".pz-foot .cta"); // Entrar para salvar
   await v2.waitForSelector('[role="dialog"] input[type="email"]', { timeout: 5000 });
   const sheet = await v2.evaluate(() => ({ focusEmail: document.activeElement?.type === "email", rootInert: document.getElementById("root").hasAttribute("inert"), title: document.querySelector("#lg-t")?.textContent }));
@@ -152,7 +154,8 @@ const { newCareer, signup, serverCareer, playV2MatchToEnd, ponteFrame, continueT
   await v2.waitForSelector('[role="dialog"] .inline-error', { timeout: 10000 });
   const errB = await v2.locator('[role="dialog"] .inline-error').textContent();
   const careerB = await serverCareer(v2); // sessão agora é a da conta B
-  const ponteB = await ponteFrame(v2).evaluate(() => BRDATA_PONTE.salvarDeNovo());
+  await motorNaPagina(v2);
+  const ponteB = await v2.evaluate(() => __motor.ponte.salvarDeNovo());
   const careerB2 = await serverCareer(v2);
   check("5a) Sessão expirada: 'Entrar para salvar' abre o login da v2 (foco no e-mail, fundo inerte); a tela de login do motor não aparece; com OUTRA conta, recusa e não grava nada nela (nem pela ponte):",
     b5.text === "Entrar para salvar" && /sessão expirou/.test(b5.err) && !shownLegacyLogin && sheet.focusEmail && sheet.rootInert
