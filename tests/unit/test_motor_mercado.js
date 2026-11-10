@@ -138,14 +138,11 @@ const call = (sb, expr) => vm.runInContext(expr, sb);
   const mercado = await import(pathToFileURL(path.join(ROOT, "public/js/motor/mercado.js")).href);
   const beforeSrc = fs.readFileSync(path.join(__dirname, "ref_mercado_antes.js"), "utf8");
   const nowSrc = fs.readFileSync(path.join(ROOT, "public/js/carreira.js"), "utf8");
-  // Etapa C2 (09/11): parte destas funções (e o marketClub) passou para
-  // motor/semana.js, sem mudar o texto; lá elas leem a carreira do módulo
-  // de estado e o mercado por import. Aqui voltam ao formato da página
-  // (CAREER, ALL_TEAMS_FLAT, motorMercado()) para rodar no mesmo vm.
-  const semanaSrc = fs.readFileSync(path.join(ROOT, "public/js/motor/semana.js"), "utf8")
-    .replace(/^export /gm, "").replace(/ *const CAREER = carreiraAtual\(\);\n?/g, "")
-    .replace(/\btodosTimes\(\)/g, "ALL_TEAMS_FLAT").replace(/\bligaAtual\(\)/g, "LEAGUE_TEAMS").replace(/\bmercado\./g, "motorMercado().");
-  const fromNow = (nm) => { try { return extract(semanaSrc, nm); } catch (_) { return extract(nowSrc, nm); } };
+  // Etapas C2 e E (09/11): parte destas funções (e o marketClub) passou para
+  // o motor (semana.js e clube.js) sem mudar o texto; paginaComoAntes
+  // remonta o carreira.js no formato da página para rodar no mesmo vm.
+  const pagina = require("../e2e/_motor_vm").paginaComoAntes(nowSrc);
+  const fromNow = (nm) => extract(pagina, nm);
   const afterSrc = ["motorModulo", "motorMercado", "marketClub", ...PUBLIC_API].map(fromNow).join("");
   const A = makeSide(beforeSrc, financas, mercado);
   const B = makeSide(afterSrc, financas, mercado);
