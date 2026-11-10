@@ -249,7 +249,7 @@ const limpa = (x) => JSON.parse(JSON.stringify(x, (k, v) => (k === "ts" && typeo
 (async () => {
   // A página como antes da etapa F (a virada, a Copa, a criação e a ponte de volta a ela):
   // o resto do jogo que este teste usa de igual nos dois lados.
-  const nowSrc = require("../e2e/_motor_vm").paginaComoAntes(fs.readFileSync(path.join(ROOT, "public/js/carreira.js"), "utf8"), undefined, ["virada", "ponte", "jogo"]);
+  const nowSrc = require("../e2e/_motor_vm").paginaComoAntes(fs.readFileSync(path.join(ROOT, "public/js/carreira.js"), "utf8"), undefined, ["virada", "ponte", "jogo", "carga"]);
   const refSrc = fs.readFileSync(path.join(__dirname, "ref_posjogo_antes.js"), "utf8");
   const dataSrc = fs.readFileSync(path.join(ROOT, "public/js/data.js"), "utf8");
   const comuns = COMUNS.map((nm) => extract(nowSrc, nm)).join("");

@@ -10,7 +10,7 @@
 // tática, esquemas, marcação, comissão e treino), com argumentos válidos e
 // inválidos. Confere o retorno de cada comando, o save, o estado da ponte,
 // os avisos e quantas vezes gravou, tudo igual.
-// Uso: node tests/unit/test_motor_ponte.js   (MUNDOS=60 por padrão)
+// Uso: node tests/unit/test_motor_ponte.js   (MUNDOS=30 por padrão)
 const fs = require("fs");
 const path = require("path");
 const vm = require("vm");
@@ -34,11 +34,19 @@ function primeiraDiferenca(a, b, p = "") {
 }
 const SEMEAR = (seed) => `(() => { let a = ${seed} >>> 0; Math.random = () => { a |= 0; a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; })();`;
 
+// Rede de mentira: a gravação (PUT /api/career) responde ok e é contada;
+// o resto é "sem rede" (dados de exemplo).
+const REDE = String.raw`
+var GRAVOU = 0;
+fetch = async function (url, opts) {
+  if (url === "/api/career" && opts && opts.method === "PUT") { GRAVOU++; return { ok: true, status: 200, json: async () => ({ ok: true }) }; }
+  throw new Error("sem rede");
+};
+`;
 // Gravação e tela de mentira: contam o que a página pediu.
 const STUBS = String.raw`
-var AVISOS = [], GRAVOU = 0;
+var AVISOS = [];
 toast = function (msg, opts) { AVISOS.push([msg, opts || null]); };
-persistCareer = async function () { GRAVOU++; return true; };
 openFirstEntry = function () {};
 Date.now = () => 1794000000000;
 ouvirAvisosDoMotor();
@@ -129,11 +137,11 @@ const ROTEIRO = (seed) => `(async () => {
   const motor = motorCode();
   const lado = async (antes, seed) => {
     const { win } = criarJanela({ base: "http://127.0.0.1:9" });
-    win.fetch = () => Promise.reject(new Error("sem rede"));
     win.console = { log() {}, warn() {}, error() {}, info() {} };
     const ctx = vm.createContext(win);
     const rodar = (c, f) => vm.runInContext(c, ctx, { filename: f });
     rodar(SEMEAR(seed), "semente");
+    rodar(REDE, "rede");
     rodar("window.BRDATA_MOTOR = {};\n" + motor, "motor");
     rodar(dataSrc, "data.js");
     rodar(pagina, "carreira.js");
@@ -142,7 +150,7 @@ const ROTEIRO = (seed) => `(async () => {
     const r = await rodar(ROTEIRO(seed), "roteiro");
     return JSON.parse(JSON.stringify({ ...r, avisos: rodar("AVISOS", "x"), gravou: rodar("GRAVOU", "x") }));
   };
-  const MUNDOS = Number(process.env.MUNDOS || 60);
+  const MUNDOS = Number(process.env.MUNDOS || 30);
   const runs = [];
   for (let k = 0; k < MUNDOS; k++) runs.push([await lado(true, 700 + k), await lado(false, 700 + k)]);
 

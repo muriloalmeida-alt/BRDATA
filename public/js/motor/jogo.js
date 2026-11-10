@@ -52,7 +52,7 @@ function tela(nome, ...args) { emitir("tela", { nome, args }); }
 // Espelhos das 3 funções de tela que tinham lógica no modo ponte.
 // renderAll: no modo ponte, só a lógica do desenho (objetivos do dia e da
 // semana, conquistas que faltam).
-function desenharTudo() {
+export function desenharTudo() {
   if (ambiente.modoPonte()) {
     const CAREER = carreiraAtual();
     if (!CAREER) return;
@@ -63,7 +63,7 @@ function desenharTudo() {
   tela("renderAll");
 }
 // renderLiveMatch: no modo ponte, guarda a partida para a v2 e a avisa.
-function desenharPartida() {
+export function desenharPartida() {
   if (ambiente.modoPonte()) {
     const lm = partidaAtual();
     if (!lm) return;
@@ -74,7 +74,7 @@ function desenharPartida() {
   tela("renderLiveMatch");
 }
 // commitLineupTactics: no modo ponte, a tática vem só do save.
-function lerTaticaDaTela() {
+export function lerTaticaDaTela() {
   if (ambiente.modoPonte()) return;
   tela("commitLineupTactics");
 }

@@ -50,11 +50,19 @@ function proximoTimer() {
   const x = FILA.shift(); AGORA = x.t; x.fn(); return true;
 }
 `;
+// Rede de mentira: a gravação (PUT /api/career) responde ok e é contada;
+// o resto é "sem rede" (dados de exemplo).
+const REDE = String.raw`
+var GRAVOU = 0;
+fetch = async function (url, opts) {
+  if (url === "/api/career" && opts && opts.method === "PUT") { GRAVOU++; return { ok: true, status: 200, json: async () => ({ ok: true }) }; }
+  throw new Error("sem rede");
+};
+`;
 // Gravação e tela de mentira; registro das chamadas de desenho e som.
 const STUBS = String.raw`
-var AVISOS = [], GRAVOU = 0, CHAMADAS = [], AVISOS_V2 = 0;
+var AVISOS = [], CHAMADAS = [], AVISOS_V2 = 0;
 toast = function (msg, opts) { AVISOS.push([msg, opts || null]); };
-persistCareer = async function () { GRAVOU++; return true; };
 openFirstEntry = function () {};
 Date.now = () => 1794000000000;
 ouvirAvisosDoMotor();
@@ -161,11 +169,11 @@ const ROTEIRO = (seed) => `(async () => {
   const motor = motorCode();
   const lado = async (antes, seed) => {
     const { win } = criarJanela({ base: "http://127.0.0.1:9" });
-    win.fetch = () => Promise.reject(new Error("sem rede"));
     win.console = { log() {}, warn() {}, error() {}, info() {} };
     const ctx = vm.createContext(win);
     const rodar = (c, f) => vm.runInContext(c, ctx, { filename: f });
     rodar(SEMEAR(seed), "semente");
+    rodar(REDE, "rede");
     rodar(RELOGIO, "relogio");
     rodar("window.BRDATA_MOTOR = {};\n" + motor, "motor");
     rodar(dataSrc, "data.js");
