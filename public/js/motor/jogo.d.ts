@@ -1,0 +1,31 @@
+// Tipos de public/js/motor/jogo.js (etapa G1b): os comandos de partida, pós-jogo,
+// semana e temporada da ponte e a condução da partida, extraídos de carreira.js.
+export const comandosJogo: Record<string, (...args: any[]) => any>;
+export const CUP_PHASE_LABEL: any;
+export const MONTH_SHORT: any;
+export function calendarDateLabel(...args: any[]): any;
+export function continueFromHalftime(...args: any[]): any;
+export function dismissGoalHighlight(...args: any[]): any;
+export function friendlySlotThisWeek(...args: any[]): any;
+export function finishCupLegLive(...args: any[]): Promise<any>;
+export function finishFriendlyLive(...args: any[]): Promise<any>;
+export function finishLiveMatch(...args: any[]): Promise<any>;
+export function goToMatch(...args: any[]): Promise<any>;
+export function humanDivisionMove(...args: any[]): any;
+export function maybeStartPendingCupLegLive(...args: any[]): any;
+export function pauseLiveMatch(...args: any[]): any;
+export function ponteAvisar(...args: any[]): any;
+export function ponteEtapaPosJogo(...args: any[]): any;
+export function ponteFim(...args: any[]): any;
+export function ponteFotoSemana(...args: any[]): any;
+export function ponteResumoSemana(...args: any[]): any;
+export function queueGoalHighlights(...args: any[]): any;
+export function resolveLiveChunk(...args: any[]): any;
+export function resumeLiveMatch(...args: any[]): any;
+export function scheduleNextChunk(...args: any[]): any;
+export function showNextGoalHighlight(...args: any[]): any;
+export function simulateRound(...args: any[]): any;
+export function skipLiveMatch(...args: any[]): any;
+export function startCupLegLive(...args: any[]): any;
+export function startFriendlyLive(...args: any[]): any;
+export function startLiveMatch(...args: any[]): any;

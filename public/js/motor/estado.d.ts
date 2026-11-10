@@ -31,3 +31,5 @@ export function coletivaPendente(): { entry: any; roundPlayed: number } | null;
 export function definirColetivaPendente<T>(c: T): T | null;
 export function coletivaEncadeada(): boolean;
 export function definirColetivaEncadeada(v: unknown): boolean;
+export function resumoDaRodada(): any;
+export function definirResumoDaRodada(r: any): any;

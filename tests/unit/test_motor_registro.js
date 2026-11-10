@@ -125,7 +125,7 @@ const limpa = (x) => JSON.parse(JSON.stringify(x, (k, v) => (k === "ts" || k ===
   const tabela = await imp("tabela"), estado = await imp("estado"), eventos = await imp("eventos"), registro = await imp("registro");
   // A página como antes da etapa F (a virada, a Copa, a criação e a ponte de volta a ela):
   // o resto do jogo que este teste usa de igual nos dois lados.
-  const nowSrc = require("../e2e/_motor_vm").paginaComoAntes(fs.readFileSync(path.join(ROOT, "public/js/carreira.js"), "utf8"), undefined, ["virada", "ponte"]);
+  const nowSrc = require("../e2e/_motor_vm").paginaComoAntes(fs.readFileSync(path.join(ROOT, "public/js/carreira.js"), "utf8"), undefined, ["virada", "ponte", "jogo"]);
   const refSrc = fs.readFileSync(path.join(__dirname, "ref_registro_antes.js"), "utf8");
 
   // ANTES: as funções congeladas com o CAREER e o mundo como variáveis soltas.
