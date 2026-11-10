@@ -77,9 +77,15 @@ async function playRound(page, hooks = {}) {
   // Começa só com a tela do jogo limpa (nenhuma tela por cima) — o
   // clique abaixo não passa pelo teste de ponteiro, então não pode
   // acontecer com alguma tela ainda aberta.
-  await closeLeftoverTabela(page);
-  const clean = await page.waitForFunction(() => !document.getElementById("btnSimulate").disabled
-    && ![...document.querySelectorAll(".ct-modal-overlay.open")].some((e) => e.id !== "actionLoadingOverlay"), null, { timeout: 15000 }).then(() => true, () => false);
+  // A Tabela pode abrir um pouco depois (fim do fluxo pós-jogo de uma
+  // proposta recusada): enquanto espera a tela limpa, fecha a Tabela toda vez
+  // que ela aparecer, até 15 s.
+  let clean = false;
+  for (const t0 = Date.now(); !clean && Date.now() - t0 < 15000;) {
+    await closeLeftoverTabela(page);
+    clean = await page.waitForFunction(() => !document.getElementById("btnSimulate").disabled
+      && ![...document.querySelectorAll(".ct-modal-overlay.open")].some((e) => e.id !== "actionLoadingOverlay"), null, { timeout: 1500 }).then(() => true, () => false);
+  }
   if (!clean) {
     const st = await readState(page);
     // O que está no lugar do "Fechar" da Tabela (se ela sobrou aberta):

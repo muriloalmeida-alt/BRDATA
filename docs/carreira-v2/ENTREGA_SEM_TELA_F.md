@@ -81,3 +81,7 @@ A virada de temporada, a montagem da Copa e a regra da criação de carreira for
 - **Testes das etapas anteriores:** os 8 que pegam funções da página (semana, fechamento, partida ao vivo, pós-jogo, clube, registro, temporada e o avanço rápido da Copa) usam a página como era antes da F. Assim continuam comparando o que comparavam.
 - **Testes do motor:** todos passam.
 - **Suíte completa (com o Postgres temporário):** 205/205.
+- **Ajudante de rodada dos testes antigos (`tests/e2e/_round.js`):**
+  - **O problema:** o `test_save` falhou no CI da F porque a Tabela abriu um instante depois de o ajudante fechá-la. É a mesma abertura tardia, no fim do pós-jogo de uma proposta recusada, já vista na D2 e na E. O ajudante fechava a Tabela uma vez só, antes de esperar a tela limpa.
+  - **Correção:** enquanto espera a tela limpa (até 15 s), o ajudante fecha a Tabela toda vez que ela aparece.
+  - **Resultado:** os 22 testes que usam o ajudante passaram.
