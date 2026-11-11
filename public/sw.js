@@ -76,10 +76,10 @@ const APP_SHELL = [
   // nunca ter aberto o site principal, o app shell abaixo garante que
   // a tela abre mesmo assim — dados de carreira (fetch/api) continuam
   // exigindo rede na 1ª vez, como já era.
-  // Fase 11: /carreira.html virou redirecionamento para "/" (já acima);
-  // carreira.js segue no shell porque o motor da v2 (/carreira/motor) usa.
-  "/js/carreira.js",
-  // Fase 12: núcleo do motor (carreira.html importa estes módulos).
+  // Fase 11: /carreira.html virou redirecionamento para "/" (já acima).
+  // Etapa G2d: carreira.js saiu do shell (nenhuma página do app o carrega
+  // mais; a v2 abre o motor como módulo, /js/motor/v2.js).
+  // Fase 12: núcleo do motor (a v2 importa estes módulos).
   "/js/motor/partida.js",
   "/js/motor/tabela.js",
   "/js/motor/calendario.js",

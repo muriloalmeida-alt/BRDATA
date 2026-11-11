@@ -7,8 +7,8 @@
 // comando que grava, sobrescreveria a mudança. Por isso `get()` compara a
 // versão do save do motor (updatedAt) com a do servidor e, se diferem,
 // recarrega o motor antes de devolver a sessão.
-import { openMatchSession, type MatchSession, type OpenOptions } from "./match.ts";
-import { openHostedSession, usarModulo } from "./hosted.ts";
+import type { MatchSession, OpenOptions } from "./match.ts";
+import { openHostedSession } from "./hosted.ts";
 
 export interface EngineDeps {
   open: (opts: OpenOptions) => Promise<MatchSession>;
@@ -17,9 +17,9 @@ export interface EngineDeps {
 }
 
 const defaultDeps: EngineDeps = {
-  // Etapas G2b/G2c: o motor abre como módulo, sem o quadro escondido
-  // (adapters/hosted.ts); com a chave ?motor=quadro, o quadro de antes (até a G2d).
-  open: (opts) => (usarModulo() ? openHostedSession(opts) : openMatchSession(opts)),
+  // Plano "sem página escondida" (G2b–G2d): o motor abre como módulo
+  // (adapters/hosted.ts), sem página escondida.
+  open: (opts) => openHostedSession(opts),
   serverVersion: async () => {
     const res = await fetch("/api/career", { credentials: "same-origin", cache: "no-store", headers: { Accept: "application/json" } });
     if (!res.ok) return null;
@@ -52,15 +52,13 @@ export function createEngine(deps: EngineDeps = defaultDeps) {
     if (session) return Promise.resolve(session);
     if (!opening) {
       openCount++;
-      opening = deps.open({ onFocusEscaped: refocus }).then(
+      opening = deps.open({}).then(
         (s) => { session = s; opening = null; return s; },
         (e) => { opening = null; throw e; },
       );
     }
     return opening;
   }
-
-  let refocus: (() => void) | undefined;
 
   return {
     // Sessão pronta e com o save do servidor. `signal` só cancela a espera
@@ -86,8 +84,6 @@ export function createEngine(deps: EngineDeps = defaultDeps) {
     current(): MatchSession | null { return session; },
     // Diagnóstico/testes: quantas aberturas aconteceram.
     opens(): number { return openCount; },
-    // Recoloca o foco na tela quando o motor escondido o puxa (AUD-05).
-    setFocusHandler(fn: () => void) { refocus = fn; },
   };
 }
 

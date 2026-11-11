@@ -1,21 +1,9 @@
-// Plano "sem página escondida", etapa G2b: a sessão do motor SEM o quadro
-// escondido. Carrega o /js/data.js (dados de exemplo, nomes e o sorteio por
+// Plano "sem página escondida", etapas G2b–G2d: a sessão do motor, sem página
+// escondida. Carrega o /js/data.js (dados de exemplo, nomes e o sorteio por
 // chave) e importa o hospedeiro do motor (/js/motor/v2.js, etapa G2a), que
-// devolve a mesma ponte de comandos da página antiga. Desde a etapa G2c é o
-// padrão; o quadro (match.ts) só abre com a chave ?motor=quadro, até a G2d.
+// devolve a ponte de comandos (a mesma da página antiga). Desde a G2d é o
+// único caminho: o quadro escondido em /carreira/motor saiu.
 import type { MatchSession, MatchSnapshot, OpenOptions } from "./match.ts";
-
-// Chave: ?motor=quadro na URL (fica guardada em localStorage "brdata_motor")
-// volta ao quadro escondido; ?motor=modulo volta ao padrão. Sem chave, módulo.
-export function usarModulo(): boolean {
-  try {
-    const q = new URLSearchParams(location.search).get("motor");
-    if (q === "modulo" || q === "quadro") localStorage.setItem("brdata_motor", q);
-    return localStorage.getItem("brdata_motor") !== "quadro";
-  } catch {
-    return true;
-  }
-}
 
 type Ponte = {
   estado(): MatchSnapshot;
@@ -25,7 +13,6 @@ type Ponte = {
   velocidade(v: 1 | 2): void; pularParaFim(): void;
   substituir(saiId: string, entraId: string): { ok: boolean; motivo?: string };
   aplicarTatica(t: { formacao: string; eixos: Record<string, number> }): { ok: boolean; motivo?: string };
-  continuarPosJogo(): { ok: boolean; motivo?: string };
   conta(): string | null;
   salvarDeNovo(): Promise<{ ok: boolean; motivo?: string }>;
   versaoSave(): number | null;
@@ -55,9 +42,9 @@ export interface HostedOptions extends OpenOptions {
   importar?: (src: string) => Promise<Hospedeiro>;
 }
 
-// Abre a sessão pelo hospedeiro. Mesmo contrato de openMatchSession: resolve
-// com a ponte pronta (carreira carregada ou escolha de competição), ou
-// rejeita (prazo, sem conta, cancelada).
+// Abre a sessão pelo hospedeiro: resolve com a ponte pronta (carreira
+// carregada ou escolha de competição), ou rejeita (prazo, sem conta,
+// cancelada).
 export async function openHostedSession(opts: HostedOptions = {}): Promise<MatchSession> {
   const timeoutMs = opts.timeoutMs ?? 30000;
   const abortar = () => new DOMException("cancelada", "AbortError");
@@ -87,14 +74,12 @@ export async function openHostedSession(opts: HostedOptions = {}): Promise<Match
     speed: (v) => p.velocidade(v), skip: () => p.pularParaFim(),
     substitute: (o, i) => p.substituir(o, i),
     applyTactics: (f, a) => p.aplicarTatica({ formacao: f, eixos: a }),
-    continuePostMatch: () => p.continuarPosJogo(),
     retrySave: () => p.salvarDeNovo(),
     account: () => p.conta(),
     saveVersion: () => p.versaoSave(),
     discard: () => p.descartar(),
     run: <T,>(name: string, ...args: unknown[]) => p.executar(name, ...args) as T,
-    // Sem quadro: não há página para mostrar nem esconder.
-    reveal: () => {},
+    // Sem página: nada a remover (o motor é módulo da própria v2).
     destroy: () => {},
   };
 }

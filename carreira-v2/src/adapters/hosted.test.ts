@@ -1,18 +1,14 @@
-// Etapa G2b — sessão do motor como módulo (hosted.ts), sem navegador: DOM
+// Etapas G2b–G2d — sessão do motor como módulo (hosted.ts), sem navegador: DOM
 // mínimo falso (só o <script> do data.js) e hospedeiro falso.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { openHostedSession, usarModulo } from "./hosted.ts";
+import { openHostedSession } from "./hosted.ts";
 
 const scripts: { src: string; onload?: () => void; onerror?: () => void }[] = [];
 (globalThis as unknown as { document: unknown }).document = {
   createElement: () => ({ src: "", onload: undefined, onerror: undefined }),
   head: { appendChild: (s: { src: string; onload?: () => void; onerror?: () => void }) => { scripts.push(s); setTimeout(() => s.onload?.(), 5); } },
 };
-const loja = new Map<string, string>();
-(globalThis as unknown as { localStorage: unknown }).localStorage = { getItem: (k: string) => loja.get(k) ?? null, setItem: (k: string, v: string) => { loja.set(k, v); } };
-const local = { search: "" };
-(globalThis as unknown as { location: unknown }).location = local;
 
 function ponteFalsa() {
   const chamadas: unknown[][] = [];
@@ -27,25 +23,11 @@ function ponteFalsa() {
     velocidade: (v: number) => chamadas.push(["velocidade", v]), pularParaFim: () => chamadas.push(["pular"]),
     substituir: (a: string, b: string) => { chamadas.push(["substituir", a, b]); return { ok: true }; },
     aplicarTatica: (t: unknown) => { chamadas.push(["tatica", t]); return { ok: true }; },
-    continuarPosJogo: () => ({ ok: false, motivo: "sem-suporte" }),
     conta: () => "u1", salvarDeNovo: async () => ({ ok: true }), versaoSave: () => 123, descartar: () => ({ ok: true }),
     executar: (nome: string, ...args: unknown[]) => { chamadas.push(["executar", nome, ...args]); return { ok: true, nome }; },
   };
   return p;
 }
-
-test("chave: sem nada, o módulo (G2c); ?motor=quadro volta ao quadro e fica guardada; ?motor=modulo volta ao padrão", () => {
-  loja.clear(); local.search = "";
-  assert.equal(usarModulo(), true, "padrão");
-  local.search = "?motor=quadro";
-  assert.equal(usarModulo(), false);
-  local.search = "";
-  assert.equal(usarModulo(), false, "guardada");
-  local.search = "?motor=modulo";
-  assert.equal(usarModulo(), true);
-  local.search = "";
-  assert.equal(usarModulo(), true);
-});
 
 test("abre: carrega o data.js uma vez só, importa o motor/v2.js e mapeia a ponte como a do quadro", async () => {
   const p = ponteFalsa();
@@ -68,7 +50,7 @@ test("abre: carrega o data.js uma vez só, importa o motor/v2.js e mapeia a pont
   const parar = s1.subscribe((snap) => { n++; assert.equal(snap.fase, "sem-partida"); });
   p.avisar(); parar(); p.avisar();
   assert.equal(n, 1, "assinatura e cancelamento");
-  s1.reveal(true); s1.destroy(); s2.destroy(); // sem quadro: nada a mostrar nem remover
+  s1.destroy(); s2.destroy(); // sem página: nada a remover
 });
 
 test("sem conta logada: rejeita com 'sessao'", async () => {

@@ -125,7 +125,8 @@ const { skipPreseason } = require("./_calendar_skip");
   await errCtx.close();
 
   // 9) Rotas (fase 11): a v2 é a raiz; /carreira/… e /carreira-v2/… levam
-  // ao mesmo caminho na raiz; o motor continua em /carreira/motor.
+  // ao mesmo caminho na raiz; desde a G2d, /carreira/motor também (a página
+  // escondida saiu).
   const r9 = await page.evaluate(async () => {
     const v2 = await (await fetch("/")).text();
     const red = await fetch("/carreira/tabela?divisao=b", { redirect: "manual" });
@@ -138,9 +139,9 @@ const { skipPreseason } = require("./_calendar_skip");
     const type = async (u) => { const r = await fetch(u, { cache: "no-store" }); return `${r.status} ${(r.headers.get("content-type") || "").split(";")[0]}`; };
     const types = { js: await type(js), css: await type(css), webp: await type("/carreira/assets-scene/cen-02-estadio-header.webp"), missing: await type("/carreira/assets/nao-existe-123.js") };
     const path = (r) => new URL(r.url).pathname + new URL(r.url).search;
-    return { v2: v2.includes('id="root"') && v2.includes("/carreira/assets/") && v2.includes("noindex"), motor: motor.includes("btnConfirmClub") && motor.includes('<base href="/">'), red: red.type === "opaqueredirect" || red.status === 301, fol: path(fol), fol2: path(fol2), types };
+    return { v2: v2.includes('id="root"') && v2.includes("/carreira/assets/") && v2.includes("noindex"), motor: !motor.includes("btnConfirmClub") && motor.includes('id="root"'), red: red.type === "opaqueredirect" || red.status === 301, fol: path(fol), fol2: path(fol2), types };
   });
-  check("9) / serve a v2; /carreira/… e /carreira-v2/… redirecionam para a raiz; o motor segue em /carreira/motor; JS/CSS/webp com o tipo certo e arquivo inexistente do bundle = 404:",
+  check("9) / serve a v2; /carreira/… e /carreira-v2/… redirecionam para a raiz (inclusive /carreira/motor, sem a página escondida); JS/CSS/webp com o tipo certo e arquivo inexistente do bundle = 404:",
     r9.v2 && r9.motor && r9.red && r9.fol === "/tabela?divisao=b" && r9.fol2 === "/tabela?divisao=b" && r9.types.js === "200 application/javascript" && r9.types.css === "200 text/css"
       && r9.types.webp === "200 image/webp" && r9.types.missing === "404 text/plain", JSON.stringify(r9));
 

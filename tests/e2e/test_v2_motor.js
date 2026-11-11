@@ -3,8 +3,9 @@
 // escondida", o motor é módulo na própria página da v2 (sem quadro): o
 // "mesmo motor" é a mesma carreira na memória do motor (marca não
 // enumerável, que some se a carreira for recarregada).
-//  1) A v2 abre o motor pelo /js/motor/v2.js e não aponta para /carreira-old;
-//     /carreira/motor ainda responde (só com ?motor=quadro, até a G2d).
+//  1) A v2 abre o motor pelo /js/motor/v2.js e não aponta para /carreira-old
+//     nem para /carreira/motor; desde a G2d, /carreira/motor não serve mais
+//     a página antiga (leva à v2).
 //  2) Pré-carga: com o Início aberto, o motor abre sozinho, sem quadro, e NÃO
 //     grava o save ao abrir.
 //  3) Reaproveitamento: sem mudança no save, a partida usa o MESMO motor
@@ -45,11 +46,11 @@ const { newCareer, serverCareer, continueToHome, motorNaPagina } = require("./_v
     const v2html = await (await fetch("/", { cache: "no-store" })).text();
     const js = v2html.match(/\/carreira\/assets\/[^"]+\.js/)[0];
     const bundle = await (await fetch(js, { cache: "no-store" })).text();
-    return { base: /<head>\s*<base href="\/">/.test(html), legacy: html.includes("ctLoginForm"), noindex: html.includes("noindex"),
-      bundleModulo: bundle.includes("/js/motor/v2.js") && bundle.includes("/js/data.js"), bundlePonteOld: bundle.includes("/carreira-old?ponte") };
+    return { legacy: html.includes("ctLoginForm") || html.includes("btnConfirmClub"), v2: html.includes('id="root"'),
+      bundleModulo: bundle.includes("/js/motor/v2.js") && bundle.includes("/js/data.js"), bundlePonteOld: bundle.includes("/carreira-old?ponte"), bundleQuadro: bundle.includes("/carreira/motor") };
   });
-  check("1) A v2 abre o motor pelo /js/motor/v2.js (com o data.js), não por /carreira-old; /carreira/motor ainda responde (até a G2d):",
-    r1.base && r1.legacy && r1.noindex && r1.bundleModulo && !r1.bundlePonteOld, JSON.stringify(r1));
+  check("1) A v2 abre o motor pelo /js/motor/v2.js (com o data.js), não por /carreira-old nem /carreira/motor; /carreira/motor leva à v2, sem a página antiga:",
+    !r1.legacy && r1.v2 && r1.bundleModulo && !r1.bundlePonteOld && !r1.bundleQuadro, JSON.stringify(r1));
 
   // 2) Pré-carga no Início, escondida e sem gravar.
   const t0 = Date.now();

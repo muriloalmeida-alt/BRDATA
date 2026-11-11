@@ -997,16 +997,16 @@ const server = http.createServer(async (req, res) => {
         res.writeHead(301, { Location: rest + qs });
         return res.end();
       }
-      if (pathname === "/carreira" || (pathname.startsWith("/carreira/") && pathname !== "/carreira/motor" && !path.extname(pathname))) {
+      if (pathname === "/carreira" || (pathname.startsWith("/carreira/") && !path.extname(pathname))) {
         res.writeHead(301, { Location: (pathname.slice("/carreira".length) || "/") + qs });
         return res.end();
       }
       // Carreira 2.0 (React; fonte em carreira-v2/, build em
       // public/carreira/): qualquer caminho SEM extensão fora de /api,
-      // /admin, /carreira/motor e do site serve o index da SPA (deep link
+      // /admin e do site serve o index da SPA (deep link
       // e recarregar funcionam). Arquivos (assets, ícones, sw.js) seguem
       // para o estático normal.
-      if (!path.extname(pathname) && !pathname.startsWith("/api/") && pathname !== "/admin" && pathname !== "/carreira/motor") {
+      if (!path.extname(pathname) && !pathname.startsWith("/api/") && pathname !== "/admin") {
         return fs.readFile(path.join(PUBLIC_DIR, "carreira", "index.html"), (err, data) => {
           if (err) { res.writeHead(404); return res.end("Not found"); }
           res.writeHead(200, { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-cache" });
@@ -1723,19 +1723,10 @@ const server = http.createServer(async (req, res) => {
       });
     }
 
-    // Motor da Carreira 2.0 (plano de independência, fase 1): a página da
-    // versão anterior, em modo ponte, num endereço próprio. Usa caminhos
-    // relativos (css/…, js/…), então ganha <base href="/"> para resolver a
-    // partir da raiz. Só é aberta escondida, por dentro da v2.
-    if (pathname === "/carreira/motor") {
-      return fs.readFile(path.join(PUBLIC_DIR, "carreira.html"), (err, data) => {
-        if (err) { res.writeHead(404); return res.end("Not found"); }
-        res.writeHead(200, { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-cache" });
-        res.end(data.toString("utf8")
-          .replace("<head>", `<head>\n<base href="/">`)
-          .replace("</head>", `<meta name="robots" content="noindex, nofollow">\n</head>`));
-      });
-    }
+    // (Plano "sem página escondida", etapa G2d: saiu a rota /carreira/motor,
+    // que servia a página antiga escondida para a v2. A v2 abre o motor como
+    // módulo, /js/motor/v2.js; /carreira/motor cai no redirecionamento de
+    // /carreira/… para a raiz.)
     // Beacon de analytics de produto (funil de login + páginas mais
     // navegadas — pedido do usuário, ver server/src/analytics.js e
     // GET /api/adminpanel/analytics mais abaixo) — colocado CEDO de
