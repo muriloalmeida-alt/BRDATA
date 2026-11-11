@@ -80,7 +80,7 @@ export function lerTaticaDaTela() {
 }
 
 function countTitlesThisSeason(award) {
-  return temporada.countTitlesThisSeason(award, CAREER.clubId);
+  return temporada.countTitlesThisSeason(award, carreiraAtual().clubId);
 }
 function teamById(id) {
   return estado.timePorId(id);

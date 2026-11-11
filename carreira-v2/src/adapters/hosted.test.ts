@@ -34,15 +34,17 @@ function ponteFalsa() {
   return p;
 }
 
-test("chave: ?motor=modulo liga e fica guardada; ?motor=quadro desliga; sem nada, o quadro", () => {
+test("chave: sem nada, o módulo (G2c); ?motor=quadro volta ao quadro e fica guardada; ?motor=modulo volta ao padrão", () => {
   loja.clear(); local.search = "";
+  assert.equal(usarModulo(), true, "padrão");
+  local.search = "?motor=quadro";
   assert.equal(usarModulo(), false);
+  local.search = "";
+  assert.equal(usarModulo(), false, "guardada");
   local.search = "?motor=modulo";
   assert.equal(usarModulo(), true);
   local.search = "";
-  assert.equal(usarModulo(), true, "guardada");
-  local.search = "?motor=quadro";
-  assert.equal(usarModulo(), false);
+  assert.equal(usarModulo(), true);
 });
 
 test("abre: carrega o data.js uma vez só, importa o motor/v2.js e mapeia a ponte como a do quadro", async () => {

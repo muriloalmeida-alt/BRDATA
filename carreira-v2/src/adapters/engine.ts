@@ -17,8 +17,8 @@ export interface EngineDeps {
 }
 
 const defaultDeps: EngineDeps = {
-  // Etapa G2b: com a chave ligada (?motor=modulo), o motor abre como módulo,
-  // sem o quadro escondido (adapters/hosted.ts); senão, o quadro de sempre.
+  // Etapas G2b/G2c: o motor abre como módulo, sem o quadro escondido
+  // (adapters/hosted.ts); com a chave ?motor=quadro, o quadro de antes (até a G2d).
   open: (opts) => (usarModulo() ? openHostedSession(opts) : openMatchSession(opts)),
   serverVersion: async () => {
     const res = await fetch("/api/career", { credentials: "same-origin", cache: "no-store", headers: { Accept: "application/json" } });

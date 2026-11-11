@@ -7,8 +7,9 @@
 //     devolvem o foco ao botão; Enter escolhe (1 gravação).
 //  3) Partida: foco no título; o minuto correndo não tira o foco do botão;
 //     "Sair da partida?" com foco em ficar, Tab preso, Escape devolve o foco.
-//  4) Ponte cujo documento nunca termina de carregar: erro recuperável no
-//     prazo, sem quadro sobrando; "Tentar novamente" abre uma sessão limpa.
+//  4) Motor que nunca termina de abrir (desde a G2c, módulo na página: a
+//     carga do save não responde): erro recuperável no prazo, sem quadro;
+//     "Tentar novamente" abre uma sessão limpa.
 const { chromium } = require("playwright-core");
 const { check } = require("./_check");
 const { newCareer, serverCareer } = require("./_v2_match");
@@ -122,14 +123,17 @@ const { newCareer, serverCareer } = require("./_v2_match");
   await v2.waitForSelector(".rs-title", { timeout: 30000 });
   await v2.close();
 
-  // 4) Ponte que nunca termina de carregar.
-  // Contexto sem service worker (ele serviria a página da ponte por fora da
-  // interceptação), com a mesma sessão.
+  // 4) Motor que nunca termina de abrir: a carga do save que o motor faz ao
+  // abrir (GET /api/career depois de a v2 pedir o /js/motor/v2.js; o GET de
+  // antes é o da própria v2) não responde.
+  // Contexto sem service worker (ele buscaria por fora da interceptação),
+  // com a mesma sessão.
   const ctx3 = await browser.newContext({ viewport: { width: 390, height: 844 }, serviceWorkers: "block", storageState: await ctx.storageState() });
   const v3 = await ctx3.newPage();
-  let hang = true;
-  await v3.route((u) => { const x = new URL(u); return x.pathname === "/carreira/motor"; }, async (route) => {
-    if (hang) return; // nunca responde: o documento fica carregando
+  let hang = true, motorPedido = false;
+  v3.on("request", (r) => { if (new URL(r.url()).pathname === "/js/motor/v2.js") motorPedido = true; });
+  await v3.route((u) => new URL(u).pathname === "/api/career", async (route) => {
+    if (hang && motorPedido && route.request().method() === "GET") return; // nunca responde
     return route.continue();
   });
   const t0 = Date.now();
@@ -141,8 +145,8 @@ const { newCareer, serverCareer } = require("./_v2_match");
   await v3.click('[role="alert"] .state-btn');
   await v3.waitForFunction(() => /Nenhuma partida em andamento/.test(document.body.textContent), null, { timeout: 40000 });
   const frames = await v3.evaluate(() => document.querySelectorAll("iframe").length);
-  check("4) Documento da ponte que nunca carrega: erro recuperável no prazo (~30 s), sem quadro sobrando; 'Tentar novamente' abre uma única sessão limpa:",
-    /Não foi possível preparar a partida/.test(err.text) && err.frames === 0 && took >= 29000 && took < 45000 && frames === 1,
+  check("4) Motor que nunca termina de abrir: erro recuperável no prazo (~30 s), sem quadro; 'Tentar novamente' abre uma sessão limpa:",
+    /Não foi possível preparar a partida/.test(err.text) && err.frames === 0 && took >= 29000 && took < 45000 && frames === 0,
     JSON.stringify({ took, err, frames }));
 
   await browser.close();

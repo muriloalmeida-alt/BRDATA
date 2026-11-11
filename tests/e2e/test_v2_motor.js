@@ -1,9 +1,12 @@
-// Carreira 2.0 — plano de independência, fase 1: motor invisível em rota
-// própria, reaproveitado entre telas.
-//  1) /carreira/motor serve a página do motor (com <base href="/">, noindex)
-//     e a v2 não aponta mais para /carreira-old para o motor.
-//  2) Pré-carga: com o Início aberto, o motor abre sozinho, escondido
-//     (aria-hidden, inert, 1 px), e NÃO grava o save ao abrir.
+// Carreira 2.0 — plano de independência, fase 1: motor aberto uma vez e
+// reaproveitado entre telas. Desde a etapa G2c do plano "sem página
+// escondida", o motor é módulo na própria página da v2 (sem quadro): o
+// "mesmo motor" é a mesma carreira na memória do motor (marca não
+// enumerável, que some se a carreira for recarregada).
+//  1) A v2 abre o motor pelo /js/motor/v2.js e não aponta para /carreira-old;
+//     /carreira/motor ainda responde (só com ?motor=quadro, até a G2d).
+//  2) Pré-carga: com o Início aberto, o motor abre sozinho, sem quadro, e NÃO
+//     grava o save ao abrir.
 //  3) Reaproveitamento: sem mudança no save, a partida usa o MESMO motor
 //     pré-carregado, que segue aberto e escondido depois do pós-jogo.
 //  4) Save atualizado: a v2 troca a formação com o motor já aberto; ao
@@ -15,7 +18,7 @@
 //  6) Tempo de abertura do motor (medida, para o relatório).
 const { chromium } = require("playwright-core");
 const { check } = require("./_check");
-const { newCareer, serverCareer, continueToHome } = require("./_v2_match");
+const { newCareer, serverCareer, continueToHome, motorNaPagina } = require("./_v2_match");
 
 (async () => {
   const browser = await chromium.launch({ executablePath: process.env.PW_CHROMIUM_PATH || undefined, headless: true, args: ["--host-resolver-rules=MAP fonts.googleapis.com 127.0.0.1,MAP fonts.gstatic.com 127.0.0.1"] });
@@ -28,7 +31,12 @@ const { newCareer, serverCareer, continueToHome } = require("./_v2_match");
   const v2 = await ctx.newPage();
   v2.on("pageerror", (err) => console.log("PAGE ERROR:", err.message));
   const puts = [];
-  v2.on("request", (r) => { if (r.method() === "PUT" && new URL(r.url()).pathname === "/api/career") puts.push(Date.now()); });
+  let motorPedido = false;
+  v2.on("request", (r) => {
+    const path = new URL(r.url()).pathname;
+    if (r.method() === "PUT" && path === "/api/career") puts.push(Date.now());
+    if (path === "/js/motor/v2.js") motorPedido = true;
+  });
 
   // 1) Rota do motor e bundle da v2.
   await v2.goto("http://localhost:8787/privacidade.html", { waitUntil: "domcontentloaded" });
@@ -38,35 +46,36 @@ const { newCareer, serverCareer, continueToHome } = require("./_v2_match");
     const js = v2html.match(/\/carreira\/assets\/[^"]+\.js/)[0];
     const bundle = await (await fetch(js, { cache: "no-store" })).text();
     return { base: /<head>\s*<base href="\/">/.test(html), legacy: html.includes("ctLoginForm"), noindex: html.includes("noindex"),
-      bundleMotor: bundle.includes("/carreira/motor"), bundlePonteOld: bundle.includes("/carreira-old?ponte") };
+      bundleModulo: bundle.includes("/js/motor/v2.js") && bundle.includes("/js/data.js"), bundlePonteOld: bundle.includes("/carreira-old?ponte") };
   });
-  check("1) /carreira/motor serve a página do motor (base href, noindex) e a v2 aponta para ela, não para /carreira-old:",
-    r1.base && r1.legacy && r1.noindex && r1.bundleMotor && !r1.bundlePonteOld, JSON.stringify(r1));
+  check("1) A v2 abre o motor pelo /js/motor/v2.js (com o data.js), não por /carreira-old; /carreira/motor ainda responde (até a G2d):",
+    r1.base && r1.legacy && r1.noindex && r1.bundleModulo && !r1.bundlePonteOld, JSON.stringify(r1));
 
   // 2) Pré-carga no Início, escondida e sem gravar.
   const t0 = Date.now();
   await v2.goto("http://localhost:8787/", { waitUntil: "domcontentloaded" });
   await v2.waitForSelector(".home", { timeout: 15000 });
-  const motorFrame = () => v2.frames().find((f) => f.url().includes("/carreira/motor"));
+  // Pronto = a v2 já pediu o hospedeiro e o motor tem a carreira carregada.
   let ready = false;
   for (let i = 0; i < 120 && !ready; i++) {
-    const f = motorFrame();
-    ready = !!f && await f.evaluate(() => !!window.BRDATA_PONTE && BRDATA_PONTE.estado().fase !== "carregando").catch(() => false);
+    ready = motorPedido && await v2.evaluate(async () => {
+      if (typeof DEMO_FIRST_NAMES === "undefined") return false; // data.js ainda não carregou
+      const e = await import("/js/motor/estado.js");
+      return !!e.carreiraAtual();
+    }).catch(() => false);
     if (!ready) await v2.waitForTimeout(250);
   }
   const loadMs = Date.now() - t0;
-  const pre = await v2.evaluate(() => {
-    const fs = [...document.querySelectorAll("iframe")];
-    const f = fs[0]; const r = f && f.getBoundingClientRect();
-    return { count: fs.length, hidden: !!f && f.getAttribute("aria-hidden") === "true" && f.hasAttribute("inert") && r.width <= 1 && r.height <= 1, src: f && f.getAttribute("src") };
-  });
-  check("2) Com o Início aberto, o motor pré-carrega sozinho, escondido (aria-hidden, inert, 1 px), e não grava o save ao abrir:",
-    ready && pre.count === 1 && pre.hidden && pre.src === "/carreira/motor" && puts.length === 0, JSON.stringify({ ready, pre, puts: puts.length, loadMs }));
-  await v2.evaluate(() => { document.querySelector("iframe").dataset.marca = "pre"; });
+  await motorNaPagina(v2);
+  const pre = await v2.evaluate(() => ({ count: document.querySelectorAll("iframe").length, fase: __motor.ponte.estado().fase }));
+  check("2) Com o Início aberto, o motor pré-carrega sozinho, sem quadro, e não grava o save ao abrir:",
+    ready && pre.count === 0 && pre.fase !== "carregando" && puts.length === 0, JSON.stringify({ ready, pre, puts: puts.length, loadMs }));
+  // Marca a carreira em memória: se o motor recarregar, a marca some.
+  const marcar = (m) => v2.evaluate((m) => { Object.defineProperty(__motor.estado.carreiraAtual(), "__marca", { value: m, configurable: true }); }, m);
+  await marcar("pre");
   // Navegação DENTRO da v2 (sem recarregar a página, que recriaria tudo).
   const go = (path) => v2.evaluate((p) => { history.pushState({}, "", p); dispatchEvent(new Event("bd:navigate")); }, path);
-  const frameInfo = () => v2.evaluate(() => ({ count: document.querySelectorAll("iframe").length, marca: document.querySelector("iframe")?.dataset.marca || null,
-    shown: [...document.querySelectorAll("iframe")].filter((f) => f.getBoundingClientRect().width > 1).length }));
+  const frameInfo = () => v2.evaluate(() => ({ count: document.querySelectorAll("iframe").length, marca: (__motor.estado.carreiraAtual() || {}).__marca || null, shown: 0 }));
 
   // 3) Sem mudança no save: a partida usa o MESMO motor pré-carregado.
   const before = await serverCareer(v2);
@@ -80,8 +89,8 @@ const { newCareer, serverCareer, continueToHome } = require("./_v2_match");
   await continueToHome(v2);
   const home1 = await frameInfo();
   const after1 = await serverCareer(v2);
-  check("3) Sem mudança no save, a partida usa o mesmo motor pré-carregado; depois do pós-jogo ele segue aberto, único e escondido:",
-    reuse.count === 1 && reuse.marca === "pre" && home1.count === 1 && home1.marca === "pre" && home1.shown === 0 && after1.currentRound === before.currentRound + 1,
+  check("3) Sem mudança no save, a partida usa o mesmo motor pré-carregado; depois do pós-jogo ele segue aberto, sem quadro:",
+    reuse.count === 0 && reuse.marca === "pre" && home1.count === 0 && home1.marca === "pre" && home1.shown === 0 && after1.currentRound === before.currentRound + 1,
     JSON.stringify({ reuse, home1, round: [before.currentRound, after1.currentRound] }));
 
   // 4) A v2 grava a formação com o motor aberto: ao iniciar, o motor é
@@ -103,18 +112,18 @@ const { newCareer, serverCareer, continueToHome } = require("./_v2_match");
   await v2.click(".mt-skip");
   await v2.waitForSelector('.pz-foot .cta[data-save="saved"]:not([aria-disabled])', { timeout: 30000 });
   const after2 = await serverCareer(v2);
-  check("4) Formação gravada pela v2 com o motor aberto: ao iniciar, o motor é recarregado (um só quadro) e o resultado gravado mantém a formação nova:",
-    lineupSaved === target && stillPre && reloaded.count === 1 && reloaded.marca === null && after2.currentRound === after1.currentRound + 1 && after2.lineup.formation === target,
+  check("4) Formação gravada pela v2 com o motor aberto: ao iniciar, o motor é recarregado (sem quadro) e o resultado gravado mantém a formação nova:",
+    lineupSaved === target && stillPre && reloaded.count === 0 && reloaded.marca === null && after2.currentRound === after1.currentRound + 1 && after2.lineup.formation === target,
     JSON.stringify({ target, lineupSaved, stillPre, reloaded, round: [after1.currentRound, after2.currentRound], formation: after2.lineup.formation }));
 
   // 5) Depois do pós-jogo, abrir a Partida de novo não reapresenta o jogo.
-  await v2.evaluate(() => { document.querySelector("iframe").dataset.marca = "partida"; });
+  await marcar("partida");
   await continueToHome(v2);
   await go("/partida");
   await v2.waitForFunction(() => /Nenhuma partida em andamento/.test(document.body.textContent), null, { timeout: 20000 });
   const after5 = await frameInfo();
-  check("5) Abrir a Partida depois do pós-jogo não reapresenta o jogo encerrado; continua o mesmo motor, escondido:",
-    after5.count === 1 && after5.marca === "partida" && after5.shown === 0, JSON.stringify(after5));
+  check("5) Abrir a Partida depois do pós-jogo não reapresenta o jogo encerrado; continua o mesmo motor, sem quadro:",
+    after5.count === 0 && after5.marca === "partida" && after5.shown === 0, JSON.stringify(after5));
 
   // 6) Medida (não é critério): abertura do motor até ficar pronto.
   check(`6) Tempo de abertura do motor (pré-carga, inclui 1,5 s de espera): ${loadMs} ms`, loadMs < 60000, String(loadMs));

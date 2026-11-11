@@ -46,7 +46,19 @@ async function playV2MatchToEnd(v2) {
   await v2.waitForSelector(".rs-title", { timeout: 30000 });
 }
 
-const ponteFrame = (v2) => v2.frames().find((f) => f.url().includes("/carreira/motor"));
+// Desde a etapa G2c a v2 roda o motor como módulo na própria página, sem o
+// quadro escondido. motorNaPagina(v2) deixa em window.__motor os módulos do
+// motor (as mesmas instâncias que a v2 usa: o navegador guarda um módulo por
+// URL) e uma ponte montada deles; depois, v2.evaluate(() => __motor...).
+async function motorNaPagina(v2) {
+  await v2.evaluate(async () => {
+    if (window.__motor) return;
+    const nomes = ["estado", "aovivo", "posjogo", "carga", "semana", "v2"];
+    const m = await Promise.all(nomes.map((n) => import(`/js/motor/${n}.js`)));
+    const mods = Object.fromEntries(nomes.map((n, i) => [n, m[i]]));
+    window.__motor = { ...mods, ponte: mods.v2.criarPonte() };
+  });
+}
 
 // "Continuar" e o pós-jogo da v2 (fase 4) até voltar ao Início. Devolve as
 // etapas atravessadas, na ordem: "coletiva", "noticias", "resultados",
@@ -96,7 +108,7 @@ function sameSave(a, b) {
   return strip(a) === strip(b);
 }
 
-module.exports = { base, signup, newCareer, serverCareer, playV2MatchToEnd, ponteFrame, continueToHome, sameSave };
+module.exports = { base, signup, newCareer, serverCareer, playV2MatchToEnd, motorNaPagina, continueToHome, sameSave };
 
 // Fase 2: a v2 abre a recompensa diária sozinha se ela não foi recebida
 // hoje. enterGame() da versão anterior só a recebe se o modal abrir em 3 s;

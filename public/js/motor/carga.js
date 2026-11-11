@@ -71,7 +71,7 @@ function computeContractFields(overall, age, potential, rng) {
   return temporada.computeContractFields(overall, age, potential, rng, estado.temporadaReal());
 }
 function countTitlesThisSeason(award) {
-  return temporada.countTitlesThisSeason(award, CAREER.clubId);
+  return temporada.countTitlesThisSeason(award, carreiraAtual().clubId);
 }
 function defaultTrainingPlan(schemeId) { return treino.defaultTrainingPlan(schemeId); }
 function ensureObjectivesFresh() {
@@ -91,7 +91,7 @@ function teamById(id) {
   return estado.timePorId(id);
 }
 function technicalStaffMonthlyCost() {
-  return financas.staffMonthlyCost(CAREER.squad); // 5% da folha (motor/financas.js)
+  return financas.staffMonthlyCost(carreiraAtual().squad); // 5% da folha (motor/financas.js)
 }
 function wageBillOf(squad) {
   // "loan" conta pro teto igual "principal" — você paga o salário

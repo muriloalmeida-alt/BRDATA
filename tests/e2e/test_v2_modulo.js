@@ -1,6 +1,7 @@
-// Plano "sem página escondida", etapa G2b: a v2 com o motor como módulo
-// (chave ?motor=modulo / localStorage "brdata_motor"), sem o quadro escondido
-// em /carreira/motor. Pela UI real da v2, sem a tela antiga:
+// Plano "sem página escondida", etapa G2b: a v2 com o motor como módulo,
+// sem o quadro escondido em /carreira/motor (desde a G2c é o padrão; o teste
+// ainda liga a chave ?motor=modulo / localStorage "brdata_motor", que
+// sobrepõe um ?motor=quadro guardado). Pela UI real da v2, sem a tela antiga:
 //   conta e carreira novas pela v2, semanas até o jogo, partida ao vivo até o
 //   fim, o pós-jogo até o Início e a rodada gravada no servidor; nenhum quadro
 //   /carreira/motor aberto e nenhuma requisição para ele; sem erro na página.

@@ -6,7 +6,7 @@
 // partida continua pausada durante os ajustes; 360 px.
 const { chromium } = require("playwright-core");
 const { check } = require("./_check");
-const { ensureDailyClaimed, ponteFrame } = require("./_v2_match");
+const { ensureDailyClaimed, motorNaPagina } = require("./_v2_match");
 const { passCareerSetup, enterGame } = require("./_startup");
 const { skipPreseason } = require("./_calendar_skip");
 
@@ -47,7 +47,8 @@ const { skipPreseason } = require("./_calendar_skip");
   // Total de substituições da partida: 5, mais 1 por vermelho do seu time
   // (subsBonus do motor) — um vermelho no 1º trecho é sorteio da partida
   // (CI, PR #73), então o total vem do motor em vez de fixo em 5.
-  const subsTotal = await ponteFrame(v2).evaluate(() => MAX_SUBS_PER_MATCH + LIVE_MATCH.subsBonus);
+  await motorNaPagina(v2);
+  const subsTotal = await v2.evaluate(() => __motor.aovivo.MAX_SUBS_PER_MATCH + __motor.estado.partidaAtual().subsBonus);
 
   // 1) Quem sai: titulares em campo; cancelar não troca.
   await v2.click(".pz-row[href$='tela=sai']");

@@ -7,7 +7,7 @@
 // onboarding; versão atual normal sem a ponte; 360 px.
 const { chromium } = require("playwright-core");
 const { check } = require("./_check");
-const { ensureDailyClaimed } = require("./_v2_match");
+const { ensureDailyClaimed, motorNaPagina } = require("./_v2_match");
 const { passCareerSetup, enterGame, waitForBoot } = require("./_startup");
 const { skipPreseason } = require("./_calendar_skip");
 
@@ -42,6 +42,15 @@ const { skipPreseason } = require("./_calendar_skip");
 
   // 1) Pré-jogo ainda abre a versão atual; /partida sem início não começa nada.
   const v2 = await ctx.newPage();
+  // Som: conta os AudioContext criados na página da v2 (o motor roda nela
+  // como módulo desde a etapa G2c; no modo ponte, nenhum som).
+  await v2.addInitScript(() => {
+    window.__audios = 0;
+    for (const k of ["AudioContext", "webkitAudioContext"]) {
+      const A = window[k];
+      if (A) window[k] = class extends A { constructor(...a) { super(...a); window.__audios++; } };
+    }
+  });
   await v2.goto(base + "/pre-jogo", { waitUntil: "domcontentloaded" });
   await v2.waitForSelector(".pm-cta", { timeout: 15000 });
   const preHref = await v2.locator(".pm-cta").getAttribute("href");
@@ -95,8 +104,8 @@ const { skipPreseason } = require("./_calendar_skip");
       && (await v2.locator(".pz-foot .cta").textContent()).includes("Continuar"), JSON.stringify({ shown, last, round: after.currentRound, j: myRow.j }));
 
   // 6) Modo ponte: sem som e sem marcar onboarding/assistente.
-  const frame = v2.frames().find((f) => f.url().includes("/carreira/motor"));
-  const silent = frame ? await frame.evaluate(() => sfxCtx() === null && V2_PONTE === true) : false;
+  await motorNaPagina(v2);
+  const silent = await v2.evaluate(() => window.__audios === 0 && __motor.semana.ambiente.modoPonte() === true && document.querySelectorAll("iframe").length === 0);
   const meAfter = await v2.evaluate(async () => (await (await fetch("/api/auth/me")).json()).user);
   check("6) Ponte em silêncio e sem alterar onboarding da conta:", silent && meAfter.onboardingSeen === meBefore.onboardingSeen, JSON.stringify({ silent, before: meBefore.onboardingSeen, after: meAfter.onboardingSeen }));
 
