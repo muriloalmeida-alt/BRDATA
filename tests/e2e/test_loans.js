@@ -121,8 +121,13 @@ async function putCareer(page, career) {
   await page.click("#btnAdvanceSeason");
   await page.waitForTimeout(200);
   await page.click("#confirmOkBtn");
-  await page.waitForTimeout(500);
-  career = await getCareer(page);
+  // Espera a virada chegar ao servidor (rodada sai da 39), até 15 s — antes
+  // 500 ms fixos, curto no CI (como no passo 3).
+  for (const t0 = Date.now(); Date.now() - t0 < 15000;) {
+    career = await getCareer(page);
+    if (career.currentRound !== 39) break;
+    await page.waitForTimeout(200);
+  }
   const outPlayerBack = career.squad.some((p) => p.id === outPlayer.id);
   const inPlayerGone = !career.squad.some((p) => p.id === otherEntry.id);
   const inPlayerBackAtOriginalClub = (career.leagueSquads[String(otherEntry.clubId)] || []).find((p) => p.id === otherEntry.id);

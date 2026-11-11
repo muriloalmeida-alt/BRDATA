@@ -34,8 +34,16 @@ runs:
       shell: bash
       working-directory: tests/e2e
       run: npx playwright-core install --with-deps chromium
+    # A imagem do runner já traz as bibliotecas do Chromium; o que costuma
+    # faltar são só fontes extras. Se os espelhos do Ubuntu estiverem fora do
+    # ar (11/11/2026: DNS do apt falhando, 10–20 min por tentativa e nenhum
+    # teste rodado), segue com aviso em até 3 min em vez de derrubar o job:
+    # se faltar algo de verdade, os testes falham e mostram o quê.
     - name: Dependências de sistema do Chromium (cache reaproveitado)
       if: steps.cache-pw.outputs.cache-hit == 'true'
       shell: bash
       working-directory: tests/e2e
-      run: npx playwright-core install-deps chromium
+      run: |
+        if ! timeout 180 npx playwright-core install-deps chromium; then
+          echo "::warning::Não foi possível instalar as dependências de sistema do Chromium (espelhos do apt indisponíveis?); seguindo com as da imagem do runner."
+        fi
