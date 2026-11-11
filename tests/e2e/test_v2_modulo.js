@@ -1,7 +1,6 @@
-// Plano "sem página escondida", etapa G2b: a v2 com o motor como módulo,
-// sem o quadro escondido em /carreira/motor (desde a G2c é o padrão; o teste
-// ainda liga a chave ?motor=modulo / localStorage "brdata_motor", que
-// sobrepõe um ?motor=quadro guardado). Pela UI real da v2, sem a tela antiga:
+// Plano "sem página escondida", etapas G2b–G2d: a v2 com o motor como módulo,
+// sem o quadro escondido em /carreira/motor (desde a G2d, o único caminho).
+// Pela UI real da v2, sem a tela antiga:
 //   conta e carreira novas pela v2, semanas até o jogo, partida ao vivo até o
 //   fim, o pós-jogo até o Início e a rodada gravada no servidor; nenhum quadro
 //   /carreira/motor aberto e nenhuma requisição para ele; sem erro na página.
@@ -21,9 +20,6 @@ const { novaCarreiraV2, saveNoServidor, base } = require("./_v2_carreira");
   const quadros = [];
   page.on("frameattached", (f) => quadros.push(f.url()));
 
-  // Liga a chave antes de qualquer tela da carreira.
-  await page.goto(base + "/?motor=modulo", { waitUntil: "domcontentloaded" });
-  await page.evaluate(() => localStorage.setItem("brdata_motor", "modulo"));
   const save0 = await novaCarreiraV2(page, `v2modulo${Date.now()}@teste.com`);
   check("1) Conta e carreira criadas pela v2 com o motor como módulo, até o Início:", !!(save0 && save0.clubId) && (await page.locator(".home").count()) > 0, JSON.stringify({ clube: save0 && save0.clubId, rodada: save0 && save0.currentRound }));
 

@@ -74,21 +74,20 @@ export function Match({ start, sub, outId, competitionId, competitionName, teamB
     // destruída ao sair da tela; get() já confere se o save é o do servidor.
     const ac = new AbortController();
     setView({ kind: "loading" });
-    engine.setFocusHandler(refocusIfLost);
     engine.get(ac.signal).then((s) => {
       if (!alive) return;
       session.current = s;
       const apply = () => {
         const snap = s.snapshot();
-        // Pós-jogo na versão atual (tela cheia): quando a sequência termina,
-        // esconde a ponte e volta ao Início com o save relido.
+        // Pós-jogo da ponte: quando a sequência termina, volta ao Início com
+        // o save relido.
         if (snap.fase === "pos-jogo") {
           // Duas leituras seguidas (≥ 0,6 s) sem modal aberto: evita fechar
           // na troca de um modal para o próximo da sequência.
           doneReads.current = snap.posJogo === "concluido" ? doneReads.current + 1 : 0;
           // Fase 1: o motor fica aberto; descarta a partida encerrada para não
           // reapresentá-la na próxima abertura da Partida.
-          if (doneReads.current >= 2) { s.reveal(false); s.discard(); onFinished(); navigate(`${BASE}/`, { replace: true }); }
+          if (doneReads.current >= 2) { s.discard(); onFinished(); navigate(`${BASE}/`, { replace: true }); }
           return;
         }
         const m = buildMatch(snap, competitionId);
@@ -137,13 +136,11 @@ export function Match({ start, sub, outId, competitionId, competitionName, teamB
     const poll = setInterval(() => { const ss = session.current; if (ss && ss.snapshot().fase === "pos-jogo") applyRef.current?.(); }, 600);
     return () => {
       alive = false; ac.abort(); clearInterval(poll); if (unsub) unsub();
-      // Nunca deixa o motor visível ao sair da tela; a sessão continua viva,
-      // mas sem resto de partida: encerrada e gravada → descartada; pós-jogo
+      // Ao sair da tela, a sessão continua viva, mas sem resto de partida: encerrada e gravada → descartada; pós-jogo
       // interrompido ou resultado não gravado → motor recarregado (como a
       // tela fazia antes, ao destruir a sessão). Partida em andamento segue.
       const ss = session.current;
       if (ss) {
-        ss.reveal(false);
         const snap = ss.snapshot();
         if (snap.fase === "pos-jogo" || (snap.fase === "encerrada" && snap.gravada !== true)) engine.reset();
         else if (snap.fase === "encerrada") ss.discard();

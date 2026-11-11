@@ -1,8 +1,9 @@
 // Carreira 2.0 — fase 11 (corte). A v2 é a raiz do domínio, o site do
-// Brasileirão mora em /brasileirao/* e a versão anterior só existe como
-// motor escondido (/carreira/motor).
+// Brasileirão mora em /brasileirao/* e a versão anterior não é mais aberta
+// (desde a etapa G2d do plano "sem página escondida", nem como motor
+// escondido em /carreira/motor: a v2 abre o motor como módulo).
 //  1) O build da v2 não cita "carreira-old" nem carreira.html, e só usa
-//     /carreira/… para o motor e para os próprios arquivos.
+//     /carreira/… para os próprios arquivos.
 //  2) Roteamento de produção (cabeçalho x-brdata-producao, ver server.js):
 //     /carreira.html e /carreira-old vão para "/" com a query (convite,
 //     retorno do pagamento, source=pwa); /carreira/… e /carreira-v2/… vão
@@ -35,10 +36,10 @@ const PROD = { "x-brdata-producao": "1" };
   const hits = {};
   for (const f of files) {
     const txt = fs.readFileSync(f, "utf8");
-    const bad = [...txt.matchAll(/carreira-old|carreira\.html|\/carreira\/(?!motor|assets)[a-z-]*/g)].map((m) => m[0]);
+    const bad = [...txt.matchAll(/carreira-old|carreira\.html|\/carreira\/(?!assets)[a-z-]*/g)].map((m) => m[0]);
     if (bad.length) hits[path.basename(f)] = [...new Set(bad)];
   }
-  check("1) Build da v2 sem 'carreira-old', sem carreira.html e sem /carreira/… fora do motor e dos arquivos:", Object.keys(hits).length === 0 && files.length >= 3, JSON.stringify(hits));
+  check("1) Build da v2 sem 'carreira-old', sem carreira.html e sem /carreira/… fora dos arquivos (nem o motor escondido):", Object.keys(hits).length === 0 && files.length >= 3, JSON.stringify(hits));
 
   // 2) Roteamento de produção.
   const ctxP = await browser.newContext({ extraHTTPHeaders: PROD });
@@ -58,14 +59,16 @@ const PROD = { "x-brdata-producao": "1" };
     "/seja-premium?x=1": "301 /brasileirao/seja-premium?x=1",
     "/apoie?status=approved": "301 /brasileirao/apoie?status=approved",
     "/brasileirao/apoie?status=approved": "301 /brasileirao/seja-premium?status=approved",
+    // Etapa G2d: a página escondida saiu; /carreira/motor é como /carreira/….
+    "/carreira/motor": "301 /motor",
   };
   const got = {};
   for (const u of Object.keys(routes)) got[u] = await loc(u);
   const wrong = Object.entries(routes).filter(([u, exp]) => got[u] !== exp).map(([u, exp]) => ({ u, exp, got: got[u] }));
   const page200 = async (u) => { const r = await rq.get(base + u); const t = await r.text(); return { s: r.status(), v2: t.includes('id="root"') && t.includes("/carreira/assets/"), site: t.includes('id="authGate"'), motor: t.includes("btnConfirmClub") && t.includes('<base href="/">') }; };
   const pages = { root: await page200("/"), tabela: await page200("/tabela"), loja: await page200("/loja?status=approved"), site: await page200("/brasileirao"), siteTabela: await page200("/brasileirao/tabela"), motor: await page200("/carreira/motor") };
-  check("2) Produção: /carreira.html e /carreira-old → / com a query; /carreira/… e /carreira-v2/… → raiz; site antigo → /brasileirao/… (301); / e /tabela são a v2, /brasileirao é o site, o motor segue em /carreira/motor:",
-    wrong.length === 0 && pages.root.v2 && pages.tabela.v2 && pages.loja.v2 && pages.site.site && pages.siteTabela.site && pages.motor.motor && !pages.root.site,
+  check("2) Produção: /carreira.html e /carreira-old → / com a query; /carreira/… e /carreira-v2/… → raiz; site antigo → /brasileirao/… (301); / e /tabela são a v2, /brasileirao é o site; /carreira/motor leva à v2 (sem a página escondida):",
+    wrong.length === 0 && pages.root.v2 && pages.tabela.v2 && pages.loja.v2 && pages.site.site && pages.siteTabela.site && pages.motor.v2 && !pages.motor.motor && !pages.root.site,
     JSON.stringify({ wrong, pages }));
 
   // 3) SEO.

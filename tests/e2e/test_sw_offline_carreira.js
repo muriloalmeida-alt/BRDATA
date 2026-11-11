@@ -4,8 +4,10 @@
 // carreira.js só entram em cache depois do 1º acesso online. Ajuste
 // pequeno pra funcionar offline com mais confiança."
 // Valida: o service worker pré-carrega a Carreira (desde a fase 11, a v2
-// na raiz, com o JS/CSS do build), carreira.js e manifest-treinador.json
-// na INSTALAÇÃO, e a tela abre de verdade offline logo na 1ª visita.
+// na raiz, com o JS/CSS do build), o motor (desde a etapa G2d do plano "sem
+// página escondida", o módulo /js/motor/v2.js com o /js/data.js; antes,
+// carreira.js) e manifest-treinador.json na INSTALAÇÃO, e a tela abre de
+// verdade offline logo na 1ª visita.
 const { chromium } = require("playwright-core");
 const { check } = require("./_check");
 
@@ -27,7 +29,8 @@ const { check } = require("./_check");
 
   // 2) Fase 11: a Carreira é a raiz ("/", a v2). O documento, o JS/CSS do
   // build da v2 (lista injetada pelo servidor no sw.js), o motor
-  // (carreira.js) e o manifest já estão em cache sem nenhuma visita.
+  // (/js/motor/v2.js e /js/data.js) e o manifest já estão em cache sem
+  // nenhuma visita; carreira.js (só a página antiga usa) não.
   const v2Html = await (await fetch(base + "/")).text();
   const v2Assets = [...new Set(v2Html.match(/\/carreira\/assets\/[^"]+\.(?:js|css)/g) || [])];
   const cached = await page.evaluate(async (v2Assets) => {
@@ -35,15 +38,16 @@ const { check } = require("./_check");
     const shellKey = keys.find((k) => k.startsWith("brdata-shell-"));
     if (!shellKey) return { error: "cache shell não encontrado", keys };
     const cache = await caches.open(shellKey);
-    const paths = ["/", ...v2Assets, "/js/carreira.js", "/manifest-treinador.json", "/img/brand-icon.png"];
+    const paths = ["/", ...v2Assets, "/js/motor/v2.js", "/js/data.js", "/manifest-treinador.json", "/img/brand-icon.png"];
     const results = {};
     for (const p of paths) results[p] = !!(await cache.match(p));
     results.carreiraHtml = !!(await cache.match("/carreira.html"));
+    results.carreiraJs = !!(await cache.match("/js/carreira.js"));
     return results;
   }, v2Assets);
-  const { carreiraHtml, ...must } = cached;
-  check("1) a v2 (documento e JS/CSS do build), carreira.js, manifest-treinador.json e brand-icon já em cache sem nunca ter aberto a Carreira; /carreira.html (agora redirecionamento) fora do cache:",
-    v2Assets.length >= 2 && Object.values(must).every(Boolean) && carreiraHtml === false, JSON.stringify(cached));
+  const { carreiraHtml, carreiraJs, ...must } = cached;
+  check("1) a v2 (documento e JS/CSS do build), o motor (motor/v2.js e data.js), manifest-treinador.json e brand-icon já em cache sem nunca ter aberto a Carreira; /carreira.html (redirecionamento) e carreira.js (página antiga) fora do cache:",
+    v2Assets.length >= 2 && Object.values(must).every(Boolean) && carreiraHtml === false && carreiraJs === false, JSON.stringify(cached));
 
   // 3) Fica OFFLINE de verdade e abre "/" direto (1ª vez) — a v2 tem que
   // carregar do cache e desenhar alguma tela, não só dar erro de rede.
