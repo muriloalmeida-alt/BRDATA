@@ -1,7 +1,7 @@
 # Carreira 2.0: plano para tirar a página escondida
 
 - **Data:** 06/11/2026.
-- **Status:** aprovado pelo Murilo (07/11), com as 3 recomendações. Etapa A em andamento.
+- **Status:** aprovado pelo Murilo (07/11), com as 3 recomendações. **Concluído em 11/11/2026** com a etapa G2d (#99): a v2 abre o motor como módulo e `/carreira/motor` saiu. As entregas estão nos `ENTREGA_SEM_TELA_*.md`.
 - **Origem:** decisão de 06/11 ("Plano à parte"). A fase 12 fecha com a etapa 6, e este plano trata do que sobra.
 
 ## 1. Onde estamos

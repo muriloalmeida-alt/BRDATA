@@ -1,5 +1,11 @@
 #!/usr/bin/env node
-/* Carreira 2.0 — captura real do Resultado e do pós-jogo da v2 (A4).
+/* DEPRECIADO (11/11/2026, etapa G2d do plano "sem página escondida"): esta
+   captura atravessa o pós-jogo pela página antiga escondida em
+   /carreira/motor, que saiu. Não roda mais; fica só como registro da
+   entrega A4. Para capturas do Resultado e do pós-jogo, escreva uma nova
+   pelas telas da v2 (como tests/e2e/test_v2_posjogo.js).
+
+   Carreira 2.0 — captura real do Resultado e do pós-jogo da v2 (A4).
    Uso: node tools/capture/capture-v2-resultado.js <baseUrl> <saída> [rodadas] [w×h,...]
    Cria conta, cria carreira (Flamengo, Série A) pela tela atual, joga N
    rodadas pela interface (mesmo caminho dos testes E2E) e fotografa
@@ -11,6 +17,9 @@ const { chromium } = require("playwright");
 const { passCareerSetup, enterGame } = require("../../tests/e2e/_startup");
 const { skipPreseason } = require("../../tests/e2e/_calendar_skip");
 const { playRound, closeLeftoverTabela } = require("../../tests/e2e/_round");
+
+console.error("capture-v2-resultado.js está depreciado: usava a página escondida /carreira/motor, que saiu na etapa G2d. Veja o comentário no início do arquivo.");
+process.exit(1);
 
 const base = process.argv[2] || "http://localhost:8791";
 const out = process.argv[3] || "/tmp/v2";

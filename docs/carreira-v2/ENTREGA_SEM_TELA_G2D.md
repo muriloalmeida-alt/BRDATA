@@ -56,6 +56,10 @@ Medi o tempo de abertura e o tamanho do que é baixado, com CPU 4× mais lenta (
   - A única falha foi `test_sw_offline_carreira`, que ainda esperava o `carreira.js` no cache. Foi ajustado e passou.
 
 ## Fica para depois (não mudei, precisa de decisão)
+> **Resolvido em 11/11/2026, depois do merge**, a pedido do Murilo:
+> - a regra 3 da seção 0 do `CLAUDE.md` foi atualizada;
+> - `capture-v2-resultado.js` foi depreciado: tem um aviso no início e encerra com erro se for rodado.
+
 - **`CLAUDE.md`, seção 0, regra 3:** fala em "manter a ponte que a v2 usa enquanto a página escondida existir (`/carreira/motor`, até a etapa G)". A página escondida não existe mais. A ponte do `carreira.js` hoje só serve de referência para os testes de equivalência. O texto da constituição é do Murilo; sugiro atualizar a regra.
 - **`tools/capture/capture-v2-resultado.js`:** ferramenta de capturas da entrega A4, fora do CI. Ainda procura o quadro `/carreira/motor` para atravessar o pós-jogo antigo, que já tinha saído na fase 4. Está obsoleta; pode ser apagada ou reescrita quando precisar de capturas de novo.
 - **Limite já registrado na G2c:** se `data.js` ou `motor/v2.js` ficarem pendurados na rede, o "Tentar novamente" só funciona recarregando a página.
