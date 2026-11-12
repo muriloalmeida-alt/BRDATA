@@ -46,6 +46,7 @@ O `test_pin_data_source` já tem a sua dentro: o passo 2 reproduz o defeito sem 
 - **Opções:**
   - reconstruir os elencos na carga (o `buildLeagueSquads` que a criação usa); ou
   - deixar como está, se não houver mais saves tão antigos em produção.
+- **Decisão do Murilo (12/11/2026):** "Saves antigos serão descartados". O motor fica como está, sem reconstrução. O descarte dos saves é uma operação de banco, feita por ele; o agente não apaga nada.
 
 ## Testes
 - **Os 11 reescritos ou ajustados:** passam.
