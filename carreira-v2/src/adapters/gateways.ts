@@ -5,7 +5,7 @@
 // e aplica só a mudança de escalação por cima dele (o servidor não tem
 // controle de conflito; ver inventário R2).
 import type { Career, Team } from "../domain/types.ts";
-import { applyLineupChange, type LineupChange } from "../domain/lineup.ts";
+import { applyLineupChange, type LineupChange, type Recomposicao } from "../domain/lineup.ts";
 
 export class HttpError extends Error {
   constructor(public status: number, message: string) { super(message); }
@@ -66,11 +66,14 @@ export const CareerGateway = {
   // Relê → aplica a mudança → grava (mesmo corpo e mesmo campo updatedAt
   // que persistCareer() do legado). Devolve a carreira gravada, ou o
   // motivo do conflito (nada gravado).
-  async updateLineup(change: LineupChange): Promise<{ career: Career } | { conflict: string }> {
+  // FASE1-ESC: a escalação é revalidada sobre o save relido (vagas,
+  // elegibilidade e quem estava na vaga); troca que tira o goleiro do banco
+  // devolve a recomposição para confirmar junto; sem goleiro, o bloqueio.
+  async updateLineup(change: LineupChange): Promise<{ career: Career } | { conflict: string } | { recompose: Recomposicao } | { blocked: string }> {
     const fresh = await this.loadActive();
     if (!fresh) throw new HttpError(404, "Carreira não encontrada.");
     const next = applyLineupChange(fresh, change);
-    if ("conflict" in next) return next;
+    if ("conflict" in next || "recompose" in next || "blocked" in next) return next;
     next.updatedAt = Date.now();
     const res = await fetch("/api/career", { method: "PUT", credentials: "same-origin", headers: { "Content-Type": "application/json", Accept: "application/json" }, body: JSON.stringify(next) });
     const body = await res.json().catch(() => ({}));

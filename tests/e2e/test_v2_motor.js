@@ -19,7 +19,7 @@
 //  6) Tempo de abertura do motor (medida, para o relatório).
 const { chromium } = require("playwright-core");
 const { check } = require("./_check");
-const { newCareer, serverCareer, continueToHome, motorNaPagina } = require("./_v2_carreira");
+const { newCareer, serverCareer, continueToHome, motorNaPagina, iniciarPeloPreJogo } = require("./_v2_carreira");
 
 (async () => {
   const browser = await chromium.launch({ executablePath: process.env.PW_CHROMIUM_PATH || undefined, headless: true, args: ["--host-resolver-rules=MAP fonts.googleapis.com 127.0.0.1,MAP fonts.gstatic.com 127.0.0.1"] });
@@ -81,8 +81,7 @@ const { newCareer, serverCareer, continueToHome, motorNaPagina } = require("./_v
   // 3) Sem mudança no save: a partida usa o MESMO motor pré-carregado.
   const before = await serverCareer(v2);
   await go("/pre-jogo");
-  await v2.waitForSelector(".pm-cta", { timeout: 15000 });
-  await v2.click(".pm-cta");
+  await iniciarPeloPreJogo(v2);
   await v2.waitForSelector(".mt-skip", { timeout: 40000 });
   const reuse = await frameInfo();
   await v2.click(".mt-skip");
@@ -106,8 +105,7 @@ const { newCareer, serverCareer, continueToHome, motorNaPagina } = require("./_v
   const lineupSaved = (await serverCareer(v2)).lineup.formation;
   const stillPre = (await frameInfo()).marca === "pre";
   await go("/pre-jogo");
-  await v2.waitForSelector(".pm-cta", { timeout: 15000 });
-  await v2.click(".pm-cta");
+  await iniciarPeloPreJogo(v2);
   await v2.waitForSelector(".mt-skip", { timeout: 40000 });
   const reloaded = await frameInfo();
   await v2.click(".mt-skip");

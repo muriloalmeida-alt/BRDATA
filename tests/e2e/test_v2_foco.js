@@ -12,7 +12,7 @@
 //     "Tentar novamente" abre uma sessão limpa.
 const { chromium } = require("playwright-core");
 const { check } = require("./_check");
-const { newCareer, serverCareer } = require("./_v2_carreira");
+const { newCareer, serverCareer, iniciarPeloPreJogo } = require("./_v2_carreira");
 
 (async () => {
   const browser = await chromium.launch({ executablePath: process.env.PW_CHROMIUM_PATH || undefined, headless: true, args: ["--host-resolver-rules=MAP fonts.googleapis.com 127.0.0.1,MAP fonts.gstatic.com 127.0.0.1"] });
@@ -94,8 +94,7 @@ const { newCareer, serverCareer } = require("./_v2_carreira");
   await v2.goto("http://localhost:8787/", { waitUntil: "domcontentloaded" });
   await v2.waitForSelector(".home");
   await v2.click(".home-main .cta");
-  await v2.waitForSelector(".pm-cta");
-  await v2.click(".pm-cta");
+  await iniciarPeloPreJogo(v2);
   await v2.waitForSelector(".mt-score", { timeout: 40000 });
   await v2.waitForTimeout(300);
   const fm = await focused();

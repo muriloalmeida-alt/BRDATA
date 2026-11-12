@@ -37,6 +37,7 @@ import * as registro from "./registro.js";
 import * as estado from "./estado.js";
 import * as calendario from "./calendario.js";
 import * as rodada from "./rodada.js";
+import * as escalacao from "./escalacao.js";
 
 function achievementProgressFor(id) {
   return registro.achievementProgressFor(id);
@@ -209,10 +210,20 @@ export function comissaoEscalacao() {
   if (!slots || !CAREER.squad.length) return { estado: "sem-dados" };
   const reservas = comissaoReservasDisponiveis();
   const melhor = (lista) => lista.slice().sort((a, b) => b.overall - a.overall)[0] || null;
-  const troca = (idx, sai, entra, motivo, nota) => ({
-    estado: "mudanca", resumo: `${comissaoNome(entra)} no lugar de ${sai ? comissaoNome(sai) : "vaga vazia"}`, motivo, nota,
-    detalhe: { slot: idx, sai: sai ? { id: sai.id, nome: comissaoNome(sai) } : null, entra: { id: entra.id, nome: comissaoNome(entra) } },
-  });
+  // FASE1-ESC: a orientação usa a mesma troca da escalação manual
+  // (motor/escalacao.js). Se a troca tirar o goleiro do banco, a sugestão
+  // já traz a recomposição (aplicada junto, num toque só); sem goleiro
+  // para recompor, não sugere a troca e explica.
+  const troca = (idx, sai, entra, motivo, nota) => {
+    const r = escalacao.trocarComRecomposicao(CAREER.lineup, CAREER.squad, CAREER.currentRound, { alvo: { tipo: "titular", vaga: idx }, saiEsperado: sai ? sai.id : null, entraId: entra.id });
+    if (r.bloqueio || r.conflito) return { estado: "manter", resumo: "Manter escalação atual", motivo: r.mensagem || r.conflito };
+    const rec = r.precisaRecompor ? r.proposta : null;
+    const recTexto = rec ? ` · ${comissaoNome(comissaoJogador(rec.entra))} no banco${rec.sai ? ` no lugar de ${comissaoNome(comissaoJogador(rec.sai))}` : ""}` : "";
+    return {
+      estado: "mudanca", resumo: `${comissaoNome(entra)} no lugar de ${sai ? comissaoNome(sai) : "vaga vazia"}${recTexto}`, motivo, nota,
+      detalhe: { slot: idx, sai: sai ? { id: sai.id, nome: comissaoNome(sai) } : null, entra: { id: entra.id, nome: comissaoNome(entra) }, ...(rec ? { recomposicao: rec } : {}) },
+    };
+  };
   // 1) Titular indisponível (lesão, suspensão, fora do elenco).
   for (let i = 0; i < slots.length; i++) {
     const p = comissaoJogador(CAREER.lineup.starters[i]);
@@ -735,12 +746,15 @@ export const comandosGestao = {
       if (item.chave !== chave) return { ok: false, motivo: "desatualizada", ...atual };
       const l = CAREER.lineup;
       let desfazer;
+      // FASE1-ESC (ESC-04): a escalação confirmada antes do toque volta
+      // inteira se a gravação falhar.
+      const confirmada = { formation: l.formation, starters: [...l.starters], bench: [...(l.bench || [])], tactics: { ...(l.tactics || {}) } };
       if (cat === "escalacao") {
-        const { slot, sai, entra } = item.detalhe;
-        const benchIdx = l.bench.indexOf(entra.id);
-        desfazer = { categoria: cat, slot, sai: sai ? sai.id : null, entra: entra.id, benchIdx, resumo: item.resumo };
-        l.starters[slot] = entra.id;
-        if (benchIdx >= 0) { if (sai) l.bench[benchIdx] = sai.id; else l.bench.splice(benchIdx, 1); }
+        const { slot, sai, entra, recomposicao } = item.detalhe;
+        const r = escalacao.trocarComRecomposicao(l, CAREER.squad, CAREER.currentRound, { alvo: { tipo: "titular", vaga: slot }, saiEsperado: sai ? sai.id : null, entraId: entra.id, recomposicao: recomposicao || undefined });
+        if (!r.lineup) return { ok: false, motivo: "desatualizada", ...atual };
+        desfazer = { categoria: cat, antes: { starters: [...l.starters], bench: [...l.bench] }, depois: { starters: [...r.lineup.starters], bench: [...r.lineup.bench] }, resumo: item.resumo };
+        l.starters = r.lineup.starters; l.bench = r.lineup.bench;
       } else if (cat === "formacao") {
         const d = item.detalhe;
         desfazer = { categoria: cat, antes: { formation: l.formation, starters: [...l.starters], bench: [...l.bench] }, depois: { formation: d.para, starters: [...d.starters], bench: [...d.bench] }, resumo: item.resumo };
@@ -753,7 +767,7 @@ export const comandosGestao = {
       }
       markLineupDirty();
       const r = await ambiente.gravar();
-      if (!r.ok) return r;
+      if (!r.ok) { Object.assign(l, confirmada); return r; }
       return { ok: true, desfazer, ...comissaoRecomendacoes() };
     },
     async comissaoDesfazer(d) {
@@ -762,9 +776,8 @@ export const comandosGestao = {
       if (partidaAtual() && !partidaAtual().finished) return { ok: false, motivo: "partida" };
       const l = CAREER.lineup;
       if (d.categoria === "escalacao") {
-        if (l.starters[d.slot] !== d.entra || (d.benchIdx >= 0 && d.sai && l.bench[d.benchIdx] !== d.sai)) return { ok: false, motivo: "mudou" };
-        l.starters[d.slot] = d.sai;
-        if (d.benchIdx >= 0) { if (d.sai) l.bench[d.benchIdx] = d.entra; else l.bench.splice(d.benchIdx, 0, d.entra); }
+        if (!d.antes || !d.depois || JSON.stringify(l.starters) !== JSON.stringify(d.depois.starters) || JSON.stringify(l.bench) !== JSON.stringify(d.depois.bench)) return { ok: false, motivo: "mudou" };
+        l.starters = [...d.antes.starters]; l.bench = [...d.antes.bench];
       } else if (d.categoria === "formacao") {
         if (l.formation !== d.depois.formation || JSON.stringify(l.starters) !== JSON.stringify(d.depois.starters) || JSON.stringify(l.bench) !== JSON.stringify(d.depois.bench)) return { ok: false, motivo: "mudou" };
         l.formation = d.antes.formation; l.starters = [...d.antes.starters]; l.bench = [...d.antes.bench];
@@ -827,6 +840,25 @@ export const comandosGestao = {
       if (!CAREER || !(CAREER.tacticalSchemes || []).some((sc) => sc.id === id)) return { ok: false, motivo: "esquema-invalido" };
       deleteTacticalScheme(id);
       return ambiente.gravar();
+    },
+    // "Completar automaticamente" (bloqueio do início do jogo, 12/11/2026):
+    // corrige só as vagas com problema (motor/escalacao.js). Se a gravação
+    // falhar, a escalação de antes volta inteira.
+    async completarEscalacao() {
+      const CAREER = carreiraAtual();
+      if (!CAREER) return { ok: false, motivo: "sem-carreira" };
+      if (partidaAtual() && !partidaAtual().finished) return { ok: false, motivo: "partida" };
+      const l = CAREER.lineup;
+      const grupos = (FORMATIONS[l.formation] || []).map((s) => s[0]);
+      const r = escalacao.completarEscalacao(l, CAREER.squad, CAREER.currentRound, grupos);
+      if (r.mudou) {
+        const antes = { starters: [...l.starters], bench: [...(l.bench || [])] };
+        l.starters = r.lineup.starters; l.bench = r.lineup.bench;
+        markLineupDirty();
+        const g = await ambiente.gravar();
+        if (!g.ok) { Object.assign(l, antes); return g; }
+      }
+      return { ok: true, mudou: r.mudou, valida: r.valida, pendencias: r.pendencias };
     },
     async escalarAutomaticamente(incluirBase) {
       const CAREER = carreiraAtual();

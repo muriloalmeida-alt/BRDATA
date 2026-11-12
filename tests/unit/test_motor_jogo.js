@@ -76,6 +76,14 @@ for (const nome of ["renderGoalHighlight", "playWhistle", "playGoal", "startCrow
 }
 `;
 
+// Desde 12/11 o motor só começa um jogo com a escalação válida (FASE1-ESC);
+// a referência congelada (ANTES) não tem essa regra. Antes de cada início,
+// o roteiro completa a escalação nos DOIS mundos com a mesma função pura do
+// motor (motor/escalacao.js, carregada aqui como código de teste), para a
+// comparação seguir sendo a da partida. O bloqueio tem testes próprios
+// (tests/unit/test_motor_escalacao.js e tests/e2e/test_v2_esc.js).
+const ESCALACAO_SRC = fs.readFileSync(path.join(__dirname, "..", "..", "public", "js", "motor", "escalacao.js"), "utf8").replace(/^export /gm, "");
+const ESC_TESTE = `var ESC_TESTE = (function () { ${ESCALACAO_SRC}; return { completarEscalacao }; })();`;
 const ROTEIRO = (seed) => `(async () => {
   let s = ${seed} >>> 0; const r = () => { s |= 0; s = (s + 0x6D2B79F5) | 0; let t = Math.imul(s ^ (s >>> 15), 1 | s); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
   const pick = (l) => (l && l.length ? l[Math.floor(r() * l.length)] : undefined);
@@ -88,6 +96,7 @@ const ROTEIRO = (seed) => `(async () => {
   PONTE.pronta = true;
   P.aoMudar(() => { AVISOS_V2++; });
   const out = [];
+  const completa = () => { const c = ESC_TESTE.completarEscalacao(CAREER.lineup, CAREER.squad, CAREER.currentRound, (FORMATIONS[CAREER.lineup.formation] || []).map((x) => x[0])); CAREER.lineup.starters = c.lineup.starters; CAREER.lineup.bench = c.lineup.bench; };
   const reg = (nome, ret) => out.push([nome, ret === undefined ? null : JSON.parse(JSON.stringify(ret))]);
   const foto = () => { const lm = LIVE_MATCH; return lm ? { m: lm.minute, gh: lm.gh, ga: lm.ga, p: !!lm.paused, h: !!lm.halftime, f: !!lm.finished, sp: lm.speed, b: lm.chunkIndex } : null; };
   // Partida ao vivo: entre os blocos, ações sorteadas como a v2.
@@ -122,7 +131,7 @@ const ROTEIRO = (seed) => `(async () => {
       const e = P.posJogo(); reg("posJogo", e);
       if (e.etapa === "coletiva") reg("responderColetiva", await P.responderColetiva(pick(["A", "B", "C", "Z"])));
       else if (e.etapa === "noticias" || e.etapa === "resultados") reg("concluirEtapa", P.concluirEtapa(r() < 0.1 ? "x" : e.etapa));
-      else if (e.etapa === "copa") { reg("iniciarPernaCopa", P.iniciarPernaCopa()); await jogar(); }
+      else if (e.etapa === "copa") { completa(); reg("iniciarPernaCopa", P.iniciarPernaCopa()); await jogar(); }
       else if (e.etapa === "proposta") reg("responderProposta", await P.responderProposta(pick(["aceitar", "recusar", "depois", "x"])));
       else break;
       await espera();
@@ -139,7 +148,7 @@ const ROTEIRO = (seed) => `(async () => {
       const slot = friendlySlotThisWeek();
       if (slot && r() < 0.8) {
         if (slot.invites && slot.invites.length && !slot.opp) reg("escolherAmistoso", await P.escolherAmistoso(r() < 0.1 ? "x" : pick(slot.invites)));
-        reg("iniciarAmistoso", P.iniciarAmistoso());
+        completa(); reg("iniciarAmistoso", P.iniciarAmistoso());
         if (LIVE_MATCH) { await jogar(); reg("resumoSemana", P.resumoSemana()); continue; }
       }
       reg("avancarSemana", await P.avancarSemana(r() < 0.5));
@@ -147,7 +156,7 @@ const ROTEIRO = (seed) => `(async () => {
       continue;
     }
     rodadas++;
-    reg("iniciar", P.iniciar());
+    completa(); reg("iniciar", P.iniciar());
     await jogar();
     await posJogo();
   }
@@ -180,6 +189,7 @@ const ROTEIRO = (seed) => `(async () => {
     rodar(pagina, "carreira.js");
     if (antes) rodar(ref, "ref_jogo_antes.js");
     rodar(STUBS, "stubs");
+    rodar(ESC_TESTE, "escalacao");
     const r = await rodar(ROTEIRO(seed), "roteiro");
     return JSON.parse(JSON.stringify({ ...r, avisos: rodar("AVISOS", "x"), gravou: rodar("GRAVOU", "x"), chamadas: rodar("CHAMADAS", "x"), timers: rodar("TIMERS", "x"), avisosV2: rodar("AVISOS_V2", "x") }));
   };

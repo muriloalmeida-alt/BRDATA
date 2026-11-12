@@ -92,6 +92,16 @@ export function Lineup({ m, cta, onFormation, onAutoLineup }: {
         </button>
       </div>
 
+      {m.issues.length > 0 && (
+        // FASE1-ESC (ESC-03/04): escalação com pendência (save antigo com
+        // banco menor, lesão nova): o que falta e como resolver.
+        <section className="lu-issues" role="status" aria-labelledby="lu-issues-t">
+          <h2 className="kicker-caps" id="lu-issues-t">Revise a escalação</h2>
+          <ul>{m.issues.map((t) => <li key={t}>{t}</li>)}</ul>
+          <p className="lu-issues-hint">Toque no jogador ou na vaga para trocar. A partida só começa com a escalação completa: 11 titulares (com um goleiro) e 11 reservas (com um goleiro), todos disponíveis.</p>
+        </section>
+      )}
+
       <section className="lu-pitch" aria-label={`Titulares, formação ${m.formation}`}>
         <PitchPlayers rows={m.rows} slotHref={(i) => `${BASE}/escalacao/trocar?vaga=${i}`} />
       </section>
@@ -101,7 +111,7 @@ export function Lineup({ m, cta, onFormation, onAutoLineup }: {
           <h2 className="kicker-caps" id="lu-bench-title">Banco de reservas</h2>
           <Link className="lu-more" to={`${BASE}/elenco`}>Ver elenco<IconArrow /></Link>
         </div>
-        {m.bench.length ? (
+        {m.bench.length || m.emptyBench ? (
           <div className="lu-bench-grid">
             {m.bench.map(({ player, out }) => (
               <Link key={player.id} to={`${BASE}/escalacao/trocar?reserva=${encodeURIComponent(player.id)}`} className="lu-res"
@@ -111,6 +121,12 @@ export function Lineup({ m, cta, onFormation, onAutoLineup }: {
                   {out && <span className="lu-out" aria-hidden="true">!</span>}
                 </span>
                 <span className="lu-name">{shortName(player.name)}</span>
+              </Link>
+            ))}
+            {Array.from({ length: m.emptyBench }, (_, i) => (
+              <Link key={`vazia-${i}`} to={`${BASE}/escalacao/trocar?reserva=vazia`} className="lu-res lu-res--empty" aria-label="Vaga no banco. Escolher reserva">
+                <span className="lu-jersey"><Jersey empty /></span>
+                <span className="lu-name">Vaga no banco</span>
               </Link>
             ))}
           </div>

@@ -124,7 +124,11 @@ const ROTEIRO = (seed) => `(async () => {
     let ret;
     try { ret = await P[c](...a); } catch (e) { ret = { erro: String(e && e.message) }; }
     if (c === "comissaoAplicar" && ret && ret.desfazer) desfazer = ret.desfazer;
-    out.push([c, JSON.parse(JSON.stringify(ret === undefined ? null : ret))]);
+    // FASE1-ESC (12/11): o "desfazer" da comissão é um token opaco que cada
+    // lado devolve a si mesmo (a v2 faz igual); o formato dele mudou de
+    // propósito (escalação antes/depois), então não entra na comparação.
+    const vis = ret && ret.desfazer ? { ...ret, desfazer: "<token>" } : ret;
+    out.push([c, JSON.parse(JSON.stringify(vis === undefined ? null : vis))]);
   }
   const ponte = {}; Object.keys(PONTE).forEach((k) => { if (k !== "ouvintes") ponte[k] = PONTE[k]; });
   return { out, career: JSON.parse(JSON.stringify(CAREER)), ponte: JSON.parse(JSON.stringify(ponte)) };

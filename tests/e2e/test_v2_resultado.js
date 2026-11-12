@@ -7,7 +7,7 @@
 // seguinte; 360 px.
 const { chromium } = require("playwright-core");
 const { check } = require("./_check");
-const { newCareer, noMotor } = require("./_v2_carreira");
+const { newCareer, noMotor, iniciarPeloPreJogo } = require("./_v2_carreira");
 
 (async () => {
   const browser = await chromium.launch({ executablePath: process.env.PW_CHROMIUM_PATH || undefined, headless: true, args: ["--host-resolver-rules=MAP fonts.googleapis.com 127.0.0.1,MAP fonts.gstatic.com 127.0.0.1"] });
@@ -28,8 +28,7 @@ const { newCareer, noMotor } = require("./_v2_carreira");
   await v2.goto(base + "/", { waitUntil: "domcontentloaded" });
   await v2.waitForSelector(".home", { timeout: 15000 });
   await v2.click(".home-main .cta"); // Preparar partida
-  await v2.waitForSelector(".pm-cta", { timeout: 10000 });
-  await v2.click(".pm-cta"); // Iniciar partida
+  await iniciarPeloPreJogo(v2);
   await v2.waitForSelector(".mt-score", { timeout: 40000 });
   await v2.waitForFunction(() => /^(15|30)/.test(document.querySelector(".mt-min")?.textContent || ""), null, { timeout: 20000 });
   await v2.goBack();

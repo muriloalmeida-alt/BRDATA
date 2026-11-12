@@ -13,7 +13,7 @@
 //     OUTRA conta é recusado e não grava nada nela; com a mesma conta, grava.
 const { chromium } = require("playwright-core");
 const { check } = require("./_check");
-const { newCareer, signup, serverCareer, playV2MatchToEnd, motorNaPagina, continueToHome, sameSave } = require("./_v2_carreira");
+const { newCareer, signup, serverCareer, playV2MatchToEnd, motorNaPagina, continueToHome, sameSave, iniciarPeloPreJogo } = require("./_v2_carreira");
 
 (async () => {
   const browser = await chromium.launch({ executablePath: process.env.PW_CHROMIUM_PATH || undefined, headless: true, args: ["--host-resolver-rules=MAP fonts.googleapis.com 127.0.0.1,MAP fonts.gstatic.com 127.0.0.1"] });
@@ -119,8 +119,7 @@ const { newCareer, signup, serverCareer, playV2MatchToEnd, motorNaPagina, contin
   await v2.goto("http://localhost:8787/", { waitUntil: "domcontentloaded" });
   await v2.waitForSelector(".home", { timeout: 15000 });
   await v2.click(".home-main .cta");
-  await v2.waitForSelector(".pm-cta", { timeout: 10000 });
-  await v2.click(".pm-cta");
+  await iniciarPeloPreJogo(v2);
   await v2.waitForSelector(".mt-skip", { timeout: 40000 });
   await v2.evaluate(() => fetch("/api/auth/logout", { method: "POST" }));
   await v2.click(".mt-skip");

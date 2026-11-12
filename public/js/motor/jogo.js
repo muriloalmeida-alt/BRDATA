@@ -45,6 +45,7 @@ import * as posjogo from "./posjogo.js";
 import * as clube from "./clube.js";
 import * as virada from "./virada.js";
 import * as texto from "./texto.js";
+import * as escalacao from "./escalacao.js";
 
 // Desenho, sons, telas e modais da página antiga: o evento "tela", na mesma ordem.
 function tela(nome, ...args) { emitir("tela", { nome, args }); }
@@ -531,6 +532,15 @@ export function ponteResumoSemana(antes, giros, extra) {
   };
 }
 
+// Início do jogo (decisão do Murilo, 12/11/2026): liga, perna da Copa e
+// amistoso só começam com a escalação válida (motor/escalacao.js). O
+// pré-jogo oferece "Completar automaticamente" (ponte.completarEscalacao).
+function bloqueioEscalacao() {
+  const CAREER = carreiraAtual();
+  const b = escalacao.bloqueioInicio(CAREER.lineup, CAREER.squad, CAREER.currentRound);
+  return b ? { ok: false, motivo: "escalacao", pendencias: b.pendencias } : null;
+}
+
 // Comandos de partida, pós-jogo, semana e temporada da ponte (mesmo texto de window.BRDATA_PONTE).
 export const comandosJogo = {
     iniciar() {
@@ -539,6 +549,8 @@ export const comandosJogo = {
       if (partidaAtual()) return { ok: false, motivo: "em-andamento" };
       const w = calendarWeek();
       if ((w && !w.r) || CAREER.currentRound > 38) return { ok: false, motivo: "sem-jogo" };
+      const bloq = bloqueioEscalacao();
+      if (bloq) return bloq;
       ponte.ultimo = null; ponte.fim = null; ponte.resumo = null; ponte.posJogo = false; ponte.erroGravacao = null;
       goToMatch();
       return { ok: true, aoVivo: !!partidaAtual() };
@@ -622,6 +634,8 @@ export const comandosJogo = {
     iniciarPernaCopa() {
       if (!ponte.seq) return { ok: false, motivo: "sem-pos-jogo" };
       if (partidaAtual()) return { ok: false, motivo: "em-andamento" };
+      const bloq = bloqueioEscalacao();
+      if (bloq) return bloq;
       ponte.ultimo = null; ponte.fim = null; ponte.resumo = null; ponte.erroGravacao = null;
       ponte.seq.feitas.add("copa");
       if (!maybeStartPendingCupLegLive()) return { ok: false, motivo: "sem-copa" };
@@ -689,6 +703,8 @@ export const comandosJogo = {
       if (partidaAtual()) return { ok: false, motivo: "em-andamento" };
       const slot = friendlySlotThisWeek();
       if (!slot || (slot.optional && !slot.opp)) return { ok: false, motivo: "sem-amistoso" };
+      const bloq = bloqueioEscalacao();
+      if (bloq) return bloq;
       ponte.ultimo = null; ponte.fim = null; ponte.resumo = null; ponte.posJogo = false; ponte.erroGravacao = null;
       ponte.semana = null;
       ponte.antesSemana = ponteFotoSemana();

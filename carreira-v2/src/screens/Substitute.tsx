@@ -1,8 +1,13 @@
 // CAP03-T02 — Escolher substituto (referencias_anteriores/escolher_substituto.png).
 // "Vai sair" + elenco disponível (mesmo universo do seletor do legado).
 // A troca só é gravada em "Confirmar troca"; "Cancelar" volta sem mexer.
-import { useState } from "react";
-import { GROUP_WORD, shortName, type SubstituteModel } from "../domain/lineup.ts";
+// FASE1-ESC: troca que tira o goleiro do banco pede confirmar a
+// recomposição junto (as duas trocas numa gravação); sem goleiro para o
+// banco, o motivo aparece e nada é gravado.
+import { useRef, useState } from "react";
+import { GROUP_WORD, shortName, type Recomposicao, type SubstituteModel } from "../domain/lineup.ts";
+import { Sheet } from "../ui/dialog.tsx";
+import type { SaveOutcome } from "../App.tsx";
 import { Jersey, Wordmark } from "../ui/components.tsx";
 import { IconArrow, IconBack, IconCheck } from "../ui/icons.tsx";
 import { BASE, goBackTo } from "../ui/router.tsx";
@@ -10,21 +15,33 @@ import "./lineup.css";
 
 const WHERE = { titular: "Titular", banco: "No banco" } as const;
 
-export function Substitute({ m, onConfirm }: { m: SubstituteModel; onConfirm: (playerId: string) => Promise<string | null> }) {
+export function Substitute({ m, onConfirm, names }: { m: SubstituteModel; onConfirm: (playerId: string, recompose?: Recomposicao) => Promise<SaveOutcome>; names: Record<string, string> }) {
   const [sel, setSel] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [rec, setRec] = useState<Recomposicao | null>(null);
+  // FASE1-ESC (aceite 3): trava síncrona contra toque duplo — o estado
+  // `busy` só vale depois do próximo render, e dois toques no mesmo instante
+  // passariam os dois.
+  const inFlight = useRef(false);
   const back = () => goBackTo(`${BASE}/escalacao`);
   const out = m.outgoing;
   const chosen = m.options.find((o) => o.player.id === sel)?.player || null;
   const outName = out ? shortName(out.name) : null;
 
-  const confirm = async () => {
-    if (!sel || busy) return;
+  const confirm = async (recompose?: Recomposicao) => {
+    if (!sel || inFlight.current) return;
+    inFlight.current = true;
     setBusy(true); setError(null);
-    const err = await onConfirm(sel);
-    if (err) { setError(err); setBusy(false); }
+    try {
+      const out = await onConfirm(sel, recompose);
+      if (out && typeof out === "object") { setRec(out.recompose); setBusy(false); return; }
+      if (out) { setError(out); setBusy(false); setRec(null); }
+    } finally {
+      inFlight.current = false;
+    }
   };
+  const nome = (id: string | null) => (id && names[id] ? shortName(names[id]) : "");
 
   return (
     <div className="qs">
@@ -80,11 +97,21 @@ export function Substitute({ m, onConfirm }: { m: SubstituteModel; onConfirm: (p
       <div className="qs-foot">
         {chosen && <p className="qs-summary" aria-live="polite">{outName || m.slotLabel}<IconArrow />{shortName(chosen.name)}</p>}
         {error && <p className="inline-error" role="alert">{error}</p>}
-        <button type="button" className="cta cta--inline" disabled={!sel || busy} onClick={confirm}>
+        <button type="button" className="cta cta--inline" disabled={!sel || busy} onClick={() => confirm()}>
           {busy ? "Salvando…" : "Confirmar troca"}{!busy && <IconArrow className="cta-arrow" />}
         </button>
         <button type="button" className="text-btn" onClick={back} disabled={busy}>Cancelar</button>
       </div>
+      {rec && (
+        <Sheet alert labelledBy="qs-rec-t" describedBy="qs-rec-d" onDismiss={busy ? undefined : () => setRec(null)}>
+          <h2 id="qs-rec-t" className="sheet-title">Manter um goleiro no banco</h2>
+          <p id="qs-rec-d" className="lu-auto-text">
+            Com essa troca o banco fica sem goleiro disponível. {nome(rec.entra)} entra no banco{rec.sai ? ` no lugar de ${nome(rec.sai)}` : ""}. As duas trocas são salvas juntas.
+          </p>
+          <button type="button" className="cta" aria-disabled={busy || undefined} onClick={() => confirm(rec)}>{busy ? "Salvando…" : "Confirmar as duas trocas"}</button>
+          <button type="button" className="text-btn" data-autofocus disabled={busy} onClick={() => setRec(null)}>Cancelar</button>
+        </Sheet>
+      )}
     </div>
   );
 }

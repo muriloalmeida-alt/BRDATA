@@ -11,7 +11,39 @@ Demandas vigentes
 
 FASE1-ESC — Fase 1: escalação e orientação da comissão técnica
 
-Status: PRONTO PARA IMPLEMENTAÇÃO
+Status: APROVADO (Murilo, 12/11/2026, "Aprovado" sobre a recomendação
+abaixo; PR #105). Decisões:
+1) REVISTA pelo Murilo (12/11): "Escalação incompleta e sem goleiro titular
+   deve bloquear início do jogo". Implementação aprovada por ele em 12/11
+   ("Continue", em resposta ao pedido de aprovação desta versão). Escopo escolhido por ele: qualquer
+   pendência dos 11 titulares + 11 reservas (inclui banco de save antigo e
+   banco sem goleiro) mais goleiro disponível entre os titulares. No
+   Pré-jogo: aviso com o que falta e "Completar automaticamente".
+   - Motor: `escalacao.bloqueioInicio` (liga, perna da Copa e amistoso
+     recusam com motivo "escalacao"); `escalacao.completarEscalacao` e o
+     comando `completarEscalacao` da ponte (corrige só as vagas com
+     problema; nunca inventa atleta; falha de gravação devolve a escalação
+     de antes). Nova pendência "sem-goleiro-titular".
+   - v2: Pré-jogo troca "Iniciar partida" por "Completar automaticamente"
+     enquanto houver pendência; a Partida (amistoso e perna da Copa)
+     mostra o mesmo bloqueio com as duas ações.
+   - Efeito no jogo: lesão, suspensão ou venda de quem está na escalação
+     passa a exigir correção antes do próximo jogo (antes o time entrava
+     com força reduzida).
+   - Validação: motor 21/21 (`test_motor_escalacao`, +7 casos),
+     equivalência `test_motor_jogo` 3/3 (o roteiro completa a escalação
+     nos dois mundos antes de cada início), v2 121/121, `test_v2_esc`
+     item 7 (Pré-jogo bloqueado e completado) e `test_v2_tabela_partida`
+     item 4 (perna da Copa bloqueada no pós-jogo, completada na Partida,
+     pós-jogo até o fim). Contraprova: sem o bloqueio, o item 7 falha.
+     Suíte completa 210/211; a falha (`test_botoes_rodape`, tela antiga,
+     espera fixa de 150 ms) passou 2/2 sozinha e não passa pelo início
+     da partida do motor.
+   - Ponto de atenção: com menos de 22 jogadores disponíveis (principal
+     + base), "Completar" não resolve tudo e o jogo fica bloqueado até
+     contratar ou recuperar alguém. A tela explica isso.
+2) Revisão da escalação, não do save inteiro.
+3) Aceite em modo avião fica para a OFFLINE-001.
 Origem: documento do Murilo (12/11/2026), guardado sem alteração em
 `docs/carreira-v2/fase1/01_Requisitos_Escalacao.md` (ESC-01 a ESC-05 e
 aceite). A especificação é esse documento; abaixo, só o que o PM
@@ -40,11 +72,107 @@ Leitura do PM (o que já existe e o que falta, conferido no código de
 Entrega: PR próprio, relatório nesta seção e status REVISÃO DO PM
 NECESSÁRIA; o merge espera a aprovação do Murilo.
 
+Relatório de implementação (12/11/2026)
+
+O que foi feito:
+- Motor: novo módulo puro `public/js/motor/escalacao.js` (+ `.d.ts`), sem
+  ler CAREER, tela ou rede. Funções:
+  - `validarEscalacao`: as pendências da escalação confirmada (11
+    titulares, 11 reservas, sem repetição, do elenco, disponíveis, com
+    goleiro disponível no banco);
+  - `trocar`: a troca titular–reserva da ESC-02, com conferência de quem
+    estava na vaga; inclui a vaga vazia do banco, só para quem está fora
+    da escalação;
+  - `recomposicaoGoleiro` e `aplicarRecomposicao`: a ESC-03; o candidato é
+    sempre um goleiro disponível de fora da escalação, nunca inventado;
+  - `trocarComRecomposicao`: a confirmação conjunta.
+- Uma operação só (pedido central da ESC):
+  - a troca manual da v2 (`carreira-v2/src/domain/lineup.ts`, que importa
+    o módulo no build) e a orientação da comissão técnica
+    (`comissaoEscalacao`/`comissaoAplicar` em `motor/ponte.js`) usam a
+    mesma `trocarComRecomposicao`;
+  - a sugestão da comissão já traz a recomposição quando precisa ("… · X no
+    banco no lugar de Y"), aplicada no mesmo toque;
+  - sem goleiro para recompor, a comissão não sugere a troca e explica.
+- ESC-04, falha de escrita: na comissão, a escalação confirmada volta
+  inteira se a gravação falhar. Na v2, a troca já é "relê → aplica →
+  grava", e na falha nada muda.
+- v2, tela:
+  - "Quem entra?" abre a folha "Manter um goleiro no banco" quando a troca
+    tiraria o goleiro do banco (as duas trocas numa gravação) e mostra o
+    bloqueio com o motivo;
+  - a Escalação mostra "Revise a escalação" com as pendências (modo de
+    revisão do save antigo) e as vagas vazias do banco ("Vaga no banco").
+- Defeito achado e corrigido: na v2, dois toques no mesmo instante em
+  "Confirmar troca" passavam os dois (a trava era estado React, que só
+  vale depois do render). As duas gravações disputavam e a tela travava.
+  Agora a trava é síncrona. O teste novo do aceite 3 achou o defeito.
+
+Arquivos:
+- Novos:
+  - `public/js/motor/escalacao.js` e `escalacao.d.ts`;
+  - `tests/unit/test_motor_escalacao.js` (14 casos do aceite);
+  - `tests/e2e/test_v2_esc.js` (aceites 1 a 3 e a comissão, pelas telas e pelo motor da v2).
+- Alterados:
+  - `public/js/motor/ponte.js` (comissão);
+  - `carreira-v2/src/domain/lineup.ts`, `adapters/gateways.ts`, `App.tsx`,
+    `screens/Substitute.tsx`, `screens/Lineup.tsx`, `screens/lineup.css` e
+    `domain/lineup.test.ts` (+4 casos);
+  - `public/sw.js` (o módulo novo no app shell);
+  - `tests/e2e/_motor_vm.js` e `_v2_carreira.js` (o módulo novo nas listas);
+  - `tests/unit/test_motor_ponte.js` (o token "desfazer" da comissão, que
+    mudou de formato de propósito, não entra na comparação);
+  - `tests/e2e/test_v2_escalacao.js` (mensagem do item 6 mais detalhada);
+  - build da v2.
+
+Testes:
+- motor 14/14;
+- v2 120/120, com tipos e build;
+- `test_v2_esc` (6 verificações);
+- testes do motor, incluindo a equivalência da ponte em 30 mundos;
+- suíte completa (com o Postgres temporário): 211/211.
+- Contraprova: com a recomposição desligada no motor, 4 casos do motor e 2
+  da v2 falham.
+
+Divergências e decisões para o Murilo:
+1. "O jogo só confirma a lista válida" (ESC-03).
+   - Implementado: a troca que quebraria uma escalação válida não é
+     gravada sem a recomposição.
+   - Em revisão (save antigo, lesão nova), a edição pode gravar com
+     pendência visível, como o próprio texto permite.
+   - NÃO foi implementado bloquear o início da partida enquanto houver
+     pendência. Isso muda a regra do jogo de hoje: o pré-jogo aceita a
+     escalação como está.
+   - Decisão sua: bloquear o início (com uma ação "completar
+     automaticamente") ou manter como está.
+2. "Revisão do save ao confirmar" (ESC-01).
+   - Implementado como revisão da ESCALAÇÃO: quem estava em cada vaga mais a
+     revalidação completa sobre o save relido do servidor. Não é o
+     carimbo do save inteiro.
+   - Motivo: assim uma mudança em outra parte do save (por exemplo, uma
+     notícia lida) não invalida a troca.
+   - Se preferir o save inteiro, é uma linha.
+3. Aceite 1, "após reabrir em modo avião": depende da OFFLINE-001. Hoje o
+   teste reabre o jogo (o motor recarrega do servidor) e confere as
+   contagens. Fica pendente até existir o modo offline.
+
+Riscos: baixos. A escalação automática (`autoLineup`) não mudou. O que
+muda é a troca manual e a da comissão, cobertas pelos testes acima.
+
+Observação de teste:
+- Uma execução de `test_v2_escalacao` falhou uma vez no item 6 (formação),
+  em paralelo com o teste novo.
+- Não reproduziu em 6 execuções seguintes, sozinho e em paralelo.
+- A mensagem do item agora mostra as duas escalações, para a causa
+  aparecer se voltar.
+
+Recomendação: aprovar com as decisões 1 e 2 acima.
+
 ⸻
 
 FASE1-MER — Fase 1: mercado, empréstimos e contratação
 
-Status: PRONTO PARA IMPLEMENTAÇÃO (começa depois da FASE1-ESC)
+Status: PRONTO PARA IMPLEMENTAÇÃO (começa depois do lote L3 de testes; FASE1-ESC aprovada)
 Origem: `docs/carreira-v2/fase1/02_Requisitos_Mercado.md` (MER-01 a
 MER-07 e matriz de aceite), sem alteração.
 Ordem: antes de mexer nas regras do mercado, o lote L3 do plano

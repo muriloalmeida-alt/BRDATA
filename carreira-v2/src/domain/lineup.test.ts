@@ -109,3 +109,52 @@ test("nome abreviado como no legado", () => {
   assert.equal(shortName("Kevin Viveiros"), "K. Viveiros");
   assert.equal(shortName("Pedro"), "Pedro");
 });
+
+// ---------------- FASE1-ESC (12/11/2026) ----------------
+// Escalação válida: 11 titulares + 11 reservas, com goleiro no banco (g2) e
+// um goleiro fora da escalação (g3).
+function careerValida(): Career {
+  const c = career();
+  c.squad = [
+    ...c.squad.filter((p) => p.id !== "d5"),
+    P("d5", "D", 64), P("d6", "D", 63), P("d7", "D", 62), P("m5", "M", 61), P("m6", "M", 60), P("f5", "F", 59), P("f6", "F", 58), P("g3", "G", 55),
+  ];
+  c.lineup = { formation: "4-3-3", starters: ["g1", "d1", "d2", "d3", "d4", "m1", "m2", "m3", "f1", "f2", "f3"], bench: ["g2", "m4", "f4", "d5", "d6", "d7", "m5", "m6", "f5", "f6", "x1"], tactics: { tempo: 3 } };
+  return c;
+}
+
+test("ESC: a escalação válida não tem pendência; save antigo com banco menor mostra o que falta e as vagas vazias", () => {
+  assert.deepEqual(buildLineup(careerValida()).issues, []);
+  const old = buildLineup(career()); // banco de 4, com um lesionado
+  assert.equal(old.emptyBench, MAX_BENCH - 4);
+  assert.ok(old.issues.some((t) => /11 reservas/.test(t)) && old.issues.some((t) => /lesionado/.test(t)), old.issues.join(" | "));
+});
+
+test("ESC-03: a troca que tira o único goleiro do banco devolve a recomposição (g3) e não grava sozinha; com ela, grava as duas", () => {
+  const c = careerValida();
+  const r = applyLineupChange(c, { kind: "swap", target: { kind: "starter", index: 10 }, expectOutgoing: "f3", playerId: "g2" });
+  assert.ok("recompose" in r, JSON.stringify(r));
+  const rec = (r as { recompose: { entra: string; sai: string | null } }).recompose;
+  assert.equal(rec.entra, "g3");
+  const ok = applyLineupChange(c, { kind: "swap", target: { kind: "starter", index: 10 }, expectOutgoing: "f3", playerId: "g2", recompose: rec }) as Career;
+  assert.ok(ok.lineup, JSON.stringify(ok));
+  assert.equal(ok.lineup!.starters[10], "g2");
+  assert.ok(ok.lineup!.bench.includes("g3") && ok.lineup!.bench.length === 11);
+  assert.deepEqual(buildLineup(ok).issues, []);
+});
+
+test("ESC-03: sem goleiro para o banco, a troca fica bloqueada com o motivo", () => {
+  const c = careerValida();
+  c.squad = c.squad.map((p) => (p.id === "g3" ? { ...p, status: "suspenso", outUntilRound: 7 } : p));
+  const r = applyLineupChange(c, { kind: "swap", target: { kind: "starter", index: 10 }, expectOutgoing: "f3", playerId: "g2" });
+  assert.ok("blocked" in r && /goleiro/i.test((r as { blocked: string }).blocked), JSON.stringify(r));
+});
+
+test("ESC-04: vaga vazia no banco só oferece quem está fora da escalação e completa o banco", () => {
+  const c = career();
+  const m = buildSubstitute(c, { kind: "bench-empty" })!;
+  assert.ok(m.options.every((o) => o.where === null), JSON.stringify(m.options.map((o) => o.where)));
+  const r = applyLineupChange(c, { kind: "swap", target: { kind: "bench-empty" }, expectOutgoing: null, playerId: "x1" }) as Career;
+  assert.equal(r.lineup!.bench.length, 5);
+  assert.ok(r.lineup!.bench.includes("x1"));
+});

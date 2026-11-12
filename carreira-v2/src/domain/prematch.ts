@@ -4,6 +4,7 @@
 import type { Career, Team } from "./types.ts";
 import { COMPETITION_NAME, buildHome, matchDay } from "./home.ts";
 import { buildLineup, currentLineup, shortName, type LineupModel } from "./lineup.ts";
+import { bloqueioInicio } from "../../../public/js/motor/escalacao.js";
 
 export interface PreMatchAlert { id: "incompleta" | "indisponivel" | "rodizio"; title: string; sub: string }
 export interface PreMatchModel {
@@ -13,6 +14,10 @@ export interface PreMatchModel {
   formation: string;
   rows: LineupModel["rows"];
   alerts: PreMatchAlert[];
+  // Decisão do Murilo (12/11/2026): com pendência na escalação (11 + 11,
+  // todos disponíveis, goleiro titular e no banco) a partida não começa.
+  // Textos das pendências; vazio = pode começar.
+  blocked: string[];
 }
 
 export function buildPreMatch(career: Career, teamById: (id: string | number) => Team): PreMatchModel {
@@ -27,7 +32,7 @@ export function buildPreMatch(career: Career, teamById: (id: string | number) =>
   // Mesmos avisos da confirmação atual, mesmos critérios.
   const { starters } = currentLineup(career);
   const filled = starters.filter(Boolean).length;
-  if (filled < 11) alerts.push({ id: "incompleta", title: "Escalação incompleta", sub: `${filled}/11 titulares definidos — o time entra com força reduzida.` });
+  if (filled < 11) alerts.push({ id: "incompleta", title: "Escalação incompleta", sub: `${filled}/11 titulares definidos — complete para jogar.` });
   const out = lineup.rows.flat().filter((s) => s.player && s.out).map((s) => `${shortName(s.player!.name)} (${s.out!.toLowerCase()})`);
   if (out.length) alerts.push({ id: "indisponivel", title: out.length > 1 ? "Titulares indisponíveis" : "Titular indisponível", sub: out.join(", ") });
   const week = career.calendar?.weeks?.[career.calendar.idx];
@@ -47,5 +52,6 @@ export function buildPreMatch(career: Career, teamById: (id: string | number) =>
     formation: lineup.formation,
     rows: lineup.rows,
     alerts,
+    blocked: (bloqueioInicio(currentLineup(career), career.squad || [], round)?.pendencias || []).map((p) => p.mensagem),
   };
 }
