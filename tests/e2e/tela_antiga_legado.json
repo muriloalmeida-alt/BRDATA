@@ -88,10 +88,6 @@
     "tests/e2e/test_s4_b2_003_tatica.js",
     "tests/e2e/test_s4_b2_004_treino.js",
     "tests/e2e/test_s4_b2_005_perfil.js",
-    "tests/e2e/test_s4_b3_001_transfer_contract_card.js",
-    "tests/e2e/test_s4_b3_002_mercado.js",
-    "tests/e2e/test_s4_b3_003_negociacao.js",
-    "tests/e2e/test_s4_b3_004_contratos.js",
     "tests/e2e/test_s4_b3_005_matchcard_financialsummary.js",
     "tests/e2e/test_s4_b3_006_resumo_rodada.js",
     "tests/e2e/test_s4_b4_001_onboarding.js",
@@ -115,7 +111,6 @@
     "tests/e2e/test_treinos.js",
     "tests/e2e/test_ux_estatisticas_check.js",
     "tests/e2e/test_ux_fechar_voltar_inicio.js",
-    "tests/e2e/test_ux_mercado_001.js",
     "tests/e2e/test_ux_nomes_clicaveis.js",
     "tests/e2e/test_ux_zoom_scroll.js"
   ],

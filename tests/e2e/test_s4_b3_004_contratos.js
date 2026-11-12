@@ -1,128 +1,79 @@
-// Testa a tela "Contratos" (S4-B3-004, issue #20 — criada do zero por
-// decisão do PM, depois de a demanda original ter sido bloqueada por
-// essa tela não existir no app). Cobre: acesso pelo menu, ContractCard
-// por jogador (exclui emprestados), ordenação por proximidade do
-// vencimento, filtro Todos/Vencendo, nome clicável abrindo o Perfil, e
-// as 2 ações reaproveitadas (Renovar/Dispensar) — nenhuma regra de
-// contrato nova, só consumo do que já existe (computeContractFields/
-// isContractExpiring/proposeRenewal/handlePlayerAction).
+// Tela "Contratos": acesso, um contrato por jogador (sem emprestados),
+// ordem por vencimento, filtro Todos/Vencendo, nome levando à ficha,
+// "Renovar" abrindo a renovação e o estado vazio do "Vencendo".
+// Lote L3d (12/11/2026, plano "testes sem a tela antiga"): antes pela tela
+// antiga (menu "Equipe & Treinos" → Contratos, ContractCard). Agora pela
+// tela "Cuide da continuidade." da v2 (/contratos), aberta pelo Elenco.
+// "Dispensar" (item 6 antigo) fica na ficha do jogador na v2 e é coberto
+// pelo test_v2_elenco_avancado (item 6); a renovação em si, pelos itens 3 e 4
+// dele.
 const { chromium } = require("playwright-core");
 const { check } = require("./_check");
-const { enterGame } = require("./_startup");
+const { newCareer, noMotor, saveNoServidor, base } = require("./_v2_carreira");
 
 (async () => {
   const browser = await chromium.launch({ executablePath: process.env.PW_CHROMIUM_PATH || undefined, headless: true, args: ["--host-resolver-rules=MAP fonts.googleapis.com 127.0.0.1,MAP fonts.gstatic.com 127.0.0.1"] });
   const page = await browser.newPage({ viewport: { width: 390, height: 900 } });
   page.on("dialog", (d) => d.dismiss());
-  page.on("pageerror", (err) => console.log("PAGE ERROR:", err.message));
-  page.on("console", (msg) => { if (msg.type() === "error") console.log("CONSOLE ERROR:", msg.text()); });
-  const base = "http://localhost:8787";
-  const email = `s4b3004${Date.now()}@teste.com`;
-
-  await page.goto(base + "/", { waitUntil: "domcontentloaded" });
-  await page.evaluate(async ({ email }) => {
-    await fetch("/api/auth/signup", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: "S4B3004 Teste", email, password: "senha123", phone: "11999999999", plan: "freemium" }) });
-    await fetch("/api/auth/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, password: "senha123" }) });
-  }, { email });
-  await page.goto(base + "/carreira.html", { waitUntil: "domcontentloaded" });
-  await page.waitForTimeout(400);
-  await page.click('.mt-competition-card[data-competition="brasileirao"]');
-  await page.waitForTimeout(300);
-  await page.click(".m3-club-row");
-  await page.waitForTimeout(150);
-  await page.click("#btnConfirmClub");
-  await enterGame(page);
-
-  // Setup: força pelo menos 1 jogador com contrato vencendo (mesma
-  // temporada) e confirma que há emprestados suficientes pro squad
-  // (se houver) pra testar a exclusão.
-  await page.evaluate(() => {
-    const p = CAREER.squad.find((x) => x.origin !== "loan");
+  const erros = [];
+  page.on("pageerror", (err) => erros.push(err.message));
+  await newCareer(page, `contratos${Date.now()}@teste.com`);
+  // Garante ao menos um contrato vencendo nesta temporada.
+  const vencendoId = await noMotor(page, async ({ CAREER, persistir }) => {
+    const p = CAREER.squad.find((x) => x.origin === "principal");
     p.contractUntil = CAREER.seasonYear;
+    await persistir();
+    return p.id;
   });
+  const h1 = (t) => page.waitForFunction((t) => (document.querySelector("h1") || {}).textContent === t, t, { timeout: 20000 });
+  const linhas = () => page.evaluate(() => [...document.querySelectorAll(".pr-plist > li")].map((li) => ({
+    href: (li.querySelector("a") || {}).getAttribute ? li.querySelector("a").getAttribute("href") : null,
+    texto: li.textContent,
+    renovar: !!li.querySelector("button.pr-row"),
+  })));
 
-  // 1) Abrir "Contratos" pelo menu "☰ Equipe & Treinos".
-  await page.click("#btnBottomMenu");
-  await page.waitForTimeout(150);
-  await page.click("#topbarMenu .mt-topbar-menu-item.group[data-submenu='equipe']");
-  await page.click("#btnOpenContratos");
-  await page.waitForTimeout(200);
-  const opened = await page.evaluate(() => document.getElementById("contratosOverlay").classList.contains("open"));
-  check("1) Menu 'Equipe & Treinos' → 'Contratos' abre a tela:", opened);
+  // 1) Acesso pelo Elenco.
+  await page.goto(base + "/elenco", { waitUntil: "domcontentloaded" });
+  await page.waitForSelector(".sq-legacy", { timeout: 20000 });
+  await page.click(".sq-legacy");
+  await h1("Cuide da continuidade.");
+  check("1) O Elenco leva à tela de Contratos:", new URL(page.url()).pathname === "/contratos", page.url());
 
-  // 2) Lista mostra ContractCard por jogador, exclui emprestados, e
-  // vem ordenada por proximidade do vencimento (ascendente).
-  const check2 = await page.evaluate(() => {
-    const nonLoanCount = CAREER.squad.filter((p) => p.origin !== "loan").length;
-    const cards = [...document.querySelectorAll("#contratosList .m3-op-card")];
-    const years = cards.map((c) => {
-      const detail = c.querySelector(".m3-op-detail")?.textContent || "";
-      const m = detail.match(/até (\d+)/);
-      return m ? Number(m[1]) : null;
-    });
-    const sorted = years.every((y, i) => i === 0 || years[i - 1] <= y);
-    return { cardCount: cards.length, nonLoanCount, sorted, hasBadge: !!cards[0]?.querySelector(".mt-ovr-badge"), hasName: !!cards[0]?.querySelector(".m3-op-name") };
-  });
-  check("2) Lista mostra 1 ContractCard por jogador não-emprestado, ordenada por vencimento:",
-    check2.cardCount === check2.nonLoanCount && check2.sorted && check2.hasBadge && check2.hasName, JSON.stringify(check2));
+  // 2) Um contrato por jogador não emprestado, ordenado por vencimento.
+  const save = await saveNoServidor(page);
+  const esperado = save.squad.filter((p) => p.origin !== "loan");
+  const l2 = await linhas();
+  const anos = l2.map((l) => Number((/Término(\d{4})/.exec(l.texto) || [])[1]));
+  check("2) A lista mostra um contrato por jogador não emprestado, ordenada por vencimento:",
+    l2.length === esperado.length && anos.every((a, i) => i === 0 || a >= anos[i - 1]), JSON.stringify({ linhas: l2.length, esperado: esperado.length, anos: anos.slice(0, 5) }));
 
-  // 3) Filtro "Vencendo" mostra só quem tem isContractExpiring true.
-  await page.click('[data-contratosfilter="vencendo"]');
-  await page.waitForTimeout(150);
-  const check3 = await page.evaluate(() => {
-    const expiringCount = CAREER.squad.filter((p) => isContractExpiring(p)).length;
-    const cards = document.querySelectorAll("#contratosList .m3-op-card").length;
-    const allHaveFimDeContrato = [...document.querySelectorAll("#contratosList .m3-op-card")].every((c) => c.textContent.includes("Fim de contrato"));
-    return { expiringCount, cards, allHaveFimDeContrato };
-  });
-  check("3) Filtro 'Vencendo' mostra só contratos com isContractExpiring:",
-    check3.cards === check3.expiringCount && check3.allHaveFimDeContrato && check3.cards > 0, JSON.stringify(check3));
+  // 3) "Vencendo": só contratos que terminam nesta temporada, com "Renovar".
+  await page.locator('[role="tab"]', { hasText: "Vencendo" }).click();
+  const l3 = await linhas();
+  const vencendo = esperado.filter((p) => p.contractUntil === save.seasonYear);
+  check("3) O filtro \"Vencendo\" mostra só os contratos desta temporada, cada um com \"Renovar\":",
+    l3.length === vencendo.length && l3.length > 0 && l3.every((l) => l.renovar), JSON.stringify({ linhas: l3.length, vencendo: vencendo.length }));
 
-  // 4) Nome do jogador é clicável e abre o Perfil (openDetail).
-  await page.click("#contratosList .m3-op-info");
-  await page.waitForTimeout(150);
-  const profileOpen = await page.evaluate(() => document.getElementById("detailOverlay").classList.contains("open"));
-  check("4) Nome do jogador no ContractCard abre o Perfil:", profileOpen);
-  await page.evaluate(() => document.getElementById("detailOverlay").classList.remove("open"));
+  // 4) O nome leva à ficha do jogador.
+  const href = l3.find((l) => l.href && l.href.includes(encodeURIComponent(vencendoId)));
+  check("4) O nome do jogador leva à ficha dele:", !!href && href.href.startsWith("/elenco/ficha?id="), JSON.stringify(href));
 
-  // 5) Botão "Renovar" (só em quem está vencendo) abre o mesmo modal de
-  // renovação do Perfil (openRenewModal/#renewOverlay).
-  const hasRenewBtn = await page.evaluate(() => !!document.querySelector("#contratosList [data-contratorenew]"));
-  await page.click("#contratosList [data-contratorenew]");
-  await page.waitForTimeout(150);
-  const renewOpen = await page.evaluate(() => document.getElementById("renewOverlay").classList.contains("open"));
-  check("5) Botão 'Renovar' abre o mesmo modal de renovação do Perfil:", hasRenewBtn && renewOpen);
-  await page.evaluate(() => { document.getElementById("renewOverlay").classList.remove("open"); RENEW_CTX = null; });
+  // 5) "Renovar" abre a renovação.
+  await page.locator(".pr-plist button.pr-row", { hasText: "Renovar" }).first().click();
+  await page.waitForSelector("#rn-t", { timeout: 10000 });
+  check("5) \"Renovar\" abre a renovação do contrato:", true, await page.textContent("#rn-t"));
 
-  // 6) Botão "Dispensar" reaproveita a mesma ação (release) do Perfil —
-  // remove do elenco de verdade, some da lista.
-  await page.click('[data-contratosfilter="todos"]');
-  await page.waitForTimeout(150);
-  const check6 = await page.evaluate(async () => {
-    const squadBefore = CAREER.squad.length;
-    const card = document.querySelector("#contratosList .m3-op-card[data-id]");
-    const id = card.dataset.id;
-    document.querySelector(`#contratosList [data-contratorelease="${id}"]`).click();
-    await new Promise((r) => setTimeout(r, 50));
-    return {
-      squadReduced: CAREER.squad.length === squadBefore - 1,
-      noLongerInSquad: !CAREER.squad.find((p) => p.id === id),
-      cardGone: !document.querySelector(`#contratosList .m3-op-card[data-id="${id}"]`),
-    };
-  });
-  check("6) Botão 'Dispensar' remove o jogador de verdade (mesma ação do Perfil) e some da lista:",
-    check6.squadReduced && check6.noLongerInSquad && check6.cardGone, JSON.stringify(check6));
-
-  // 7) Estado vazio: filtro "Vencendo" sem ninguém vencendo mostra a
-  // mensagem, não uma lista em branco silenciosa.
-  await page.click('[data-contratosfilter="vencendo"]');
-  await page.waitForTimeout(100);
-  const check7 = await page.evaluate(() => {
+  // 7) Estado vazio do "Vencendo".
+  await noMotor(page, async ({ CAREER, persistir }) => {
     CAREER.squad.forEach((p) => { if (p.origin !== "loan") p.contractUntil = CAREER.seasonYear + 3; });
-    renderContratos();
-    return { emptyVisible: !document.getElementById("contratosEmpty").classList.contains("hidden"), listEmpty: document.getElementById("contratosList").innerHTML.trim() === "" };
+    await persistir();
   });
-  check("7) Estado vazio do filtro 'Vencendo' mostra a mensagem tratada:", check7.emptyVisible && check7.listEmpty, JSON.stringify(check7));
+  await page.goto(base + "/contratos", { waitUntil: "domcontentloaded" });
+  await h1("Cuide da continuidade.");
+  await page.locator('[role="tab"]', { hasText: "Vencendo" }).click();
+  const vazio = await page.evaluate(() => ({ nota: (document.querySelector('[role="tabpanel"] .wk-note') || {}).textContent || "", linhas: document.querySelectorAll(".pr-plist > li").length }));
+  check("7) Sem contrato vencendo, o filtro \"Vencendo\" mostra a mensagem do estado vazio:", vazio.linhas === 0 && /Nenhum contrato termina em \d{4}/.test(vazio.nota), JSON.stringify(vazio));
 
+  check("8) Sem erro na página:", erros.length === 0, erros.slice(0, 3).join(" | "));
   await browser.close();
 })().catch((e) => { console.error("FATAL:", e); process.exit(1); });
