@@ -1,138 +1,107 @@
+// Empréstimos: de ida (OUT) e de vinda (IN), o salário de quem chega, a
+// etiqueta no Elenco, o que o perfil do emprestado não oferece, a folha e a
+// volta dos dois na virada de temporada.
+// Lote L3b (12/11/2026, plano "testes sem a tela antiga"): antes pela tela
+// antiga (#marketSearch, [data-loanout], #loanOverlay, #detailOverlay,
+// #btnAdvanceSeason). Agora as regras pelos comandos do motor que as telas
+// de mercado da v2 usam (prepararEmprestimo/emprestar, pegarEmprestado,
+// proximaTemporada) e o que é tela pelas telas da v2 (Elenco e perfil).
 const { chromium } = require("playwright-core");
 const { check } = require("./_check");
-const { enterGame, waitForBoot } = require("./_startup");
-
-async function newCareer(page, base, email) {
-  await page.goto(base + "/", { waitUntil: "load" });
-  await page.evaluate(async ({ email }) => {
-    await fetch("/api/auth/signup", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: "Loan Test", email, password: "senha123", phone: "11999999999", plan: "freemium" }) });
-    await fetch("/api/auth/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, password: "senha123" }) });
-  }, { email });
-  await page.goto(base + "/carreira.html", { waitUntil: "load" });
-  await page.click('.mt-competition-card[data-competition="brasileirao"]');
-  await page.waitForTimeout(200);
-  await page.click(".m3-club-row");
-  await page.waitForTimeout(150);
-  await page.click("#btnConfirmClub");
-  await enterGame(page);
-}
-async function getCareer(page) {
-  return page.evaluate(async () => (await (await fetch("/api/career")).json()).career);
-}
-async function putCareer(page, career) {
-  await page.evaluate(async (career) => {
-    await fetch("/api/career", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(career) });
-  }, career);
-}
+const { carreiraV2, signup, ensureDailyClaimed, noMotor, saveNoServidor, base } = require("./_v2_carreira");
 
 (async () => {
-  const browser = await chromium.launch({
-    executablePath: process.env.PW_CHROMIUM_PATH || undefined,
-    headless: true,
-  });
+  const browser = await chromium.launch({ executablePath: process.env.PW_CHROMIUM_PATH || undefined, headless: true, args: ["--host-resolver-rules=MAP fonts.googleapis.com 127.0.0.1,MAP fonts.gstatic.com 127.0.0.1"] });
   const page = await browser.newPage({ viewport: { width: 390, height: 900 } });
   page.on("dialog", (d) => d.dismiss());
-  page.on("pageerror", (err) => console.log("PAGE ERROR:", err.message));
+  const erros = [];
+  page.on("pageerror", (err) => erros.push(err.message));
+  // Pré-temporada: a janela de transferências está aberta (com calendário,
+  // a janela é a fase do ano).
+  await carreiraV2(page, `loans${Date.now()}@teste.com`, { clube: "fla", criarConta: signup, preTemporada: true });
+  await ensureDailyClaimed(page);
 
-  const base = "http://localhost:8787";
-  await newCareer(page, base, `loans${Date.now()}@teste.com`);
-
-  // 1) Empréstimo OUT: força comprador garantido (random alto).
-  let career = await getCareer(page);
-  const outPlayer = career.squad.find((p) => p.origin === "principal");
-  await page.click(".m3-nav-item[data-panel='mercado']");
-  await page.waitForTimeout(300);
-  await page.evaluate(() => { Math.random = () => 0.99; });
-  const cashBefore = career.finances.cash;
-  // Busca pelo nome pra garantir que aparece na lista (sem busca só
-  // mostra os 40 mais valiosos, ver renderMercado).
-  await page.fill("#marketSearch", outPlayer.name);
-  await page.waitForTimeout(200);
-  await page.click(`[data-loanout="${outPlayer.id}"]`);
-  await page.waitForSelector("#loanOverlay.open");
-  await page.click("#btnLoanConfirm");
-  await page.waitForTimeout(300);
-  career = await getCareer(page);
-  const stillMine = career.squad.some((p) => p.id === outPlayer.id);
+  // 1) Empréstimo OUT (comprador garantido: sorteio alto, como antes).
+  const out = await noMotor(page, async ({ CAREER, ponte }) => {
+    const escalados = new Set([...CAREER.lineup.starters, ...CAREER.lineup.bench]);
+    const p = CAREER.squad.filter((x) => x.origin === "principal" && !escalados.has(x.id)).sort((a, b) => a.overall - b.overall)[0];
+    const rnd = Math.random; Math.random = () => 0.99;
+    try {
+      const cashBefore = CAREER.finances.cash;
+      const prep = await ponte.prepararEmprestimo(p.id);
+      const r = prep.ok ? await ponte.emprestar(p.id, "temporada", "nenhuma", 0) : prep;
+      return { id: p.id, prep, r, cashBefore };
+    } finally { Math.random = rnd; }
+  });
+  let career = await saveNoServidor(page);
   let foundInClub = null;
   for (const [clubId, squad] of Object.entries(career.leagueSquads)) {
-    const found = squad.find((p) => p.id === outPlayer.id);
+    const found = squad.find((p) => p.id === out.id);
     if (found) { foundInClub = { clubId, onLoanFromClubId: found.onLoanFromClubId }; break; }
   }
-  check("1) Empréstimo OUT -- saiu do meu elenco:", !stillMine, "| encontrado em outro clube com onLoanFromClubId correto:", foundInClub && String(foundInClub.onLoanFromClubId) === String(career.clubId));
-  console.log("   Caixa aumentou (taxa de empréstimo):", career.finances.cash > cashBefore, "| delta:", career.finances.cash - cashBefore);
+  check("1) Empréstimo OUT: saiu do meu elenco e está em outro clube com onLoanFromClubId do meu clube:",
+    out.r.ok && !career.squad.some((p) => p.id === out.id) && !!foundInClub && String(foundInClub.onLoanFromClubId) === String(career.clubId),
+    JSON.stringify({ r: out.r, foundInClub }));
+  console.log("   Caixa aumentou (taxa de empréstimo):", career.finances.cash > out.cashBefore, "| delta:", career.finances.cash - out.cashBefore);
 
-  // 2) Jogador emprestado NÃO aparece na lista de "outros" do Mercado (allMarketPlayers)
-  const marketHasLoanedPlayer = await page.evaluate((id) => {
-    return allMarketPlayers().some((entry) => entry.p.id === id);
-  }, outPlayer.id);
-  check("2) Jogador emprestado NÃO aparece no Mercado:", !marketHasLoanedPlayer, "| aparece (deve ser false):", marketHasLoanedPlayer);
+  // 2) O emprestado não aparece no mercado (allMarketPlayers).
+  const noMercado = await noMotor(page, ({ semana }, id) => semana.allMarketPlayers().some((e) => e.p.id === id), out.id);
+  check("2) Jogador emprestado NÃO aparece no Mercado:", !noMercado, noMercado);
 
-  // 3) Empréstimo IN: pega um jogador de outro clube emprestado.
-  const otherEntry = await page.evaluate(() => {
-    const entry = allMarketPlayers().find((e) => !e.mine);
-    return { id: entry.p.id, name: entry.p.name, clubId: entry.club.id, wage: entry.p.wage, contractUntil: entry.p.contractUntil };
+  // 3) Empréstimo IN, pagando 50% do salário (o que o modal antigo fazia).
+  const inn = await noMotor(page, async ({ ponte, semana, clube }) => {
+    const e = semana.allMarketPlayers().find((x) => !x.mine && !clube.isLoanOutRefused(x.p));
+    const info = { id: e.p.id, name: e.p.name, clubId: String(e.club.id), wage: e.p.wage };
+    const r = await ponte.pegarEmprestado(info.clubId, info.id, "temporada", 50, "nenhuma", 0);
+    return { ...info, r };
   });
-  await page.fill("#marketSearch", otherEntry.name);
-  await page.waitForTimeout(200);
-  await page.click(`[data-loanin="${otherEntry.id}"]`);
-  await page.waitForSelector("#loanOverlay.open");
-  await page.click("#btnLoanConfirm");
-  // Espera o save chegar ao servidor (estado), até 10 s — antes 300 ms
-  // fixos e leitura do servidor, curto no CI.
-  for (const t0 = Date.now(); Date.now() - t0 < 10000;) {
-    career = await getCareer(page);
-    if (career.squad.some((p) => p.id === otherEntry.id)) break;
-    await page.waitForTimeout(200);
-  }
-  const loanedInPlayer = career.squad.find((p) => p.id === otherEntry.id);
-  check("3) Jogador emprestado IN entrou no elenco:", !!loanedInPlayer, "| origin:", loanedInPlayer && loanedInPlayer.origin, "| salário reduzido pra metade:", loanedInPlayer && loanedInPlayer.wage === Math.round((otherEntry.wage * 0.5) / 100) * 100, "| loanOriginalWage guardado:", loanedInPlayer && loanedInPlayer.loanOriginalWage === otherEntry.wage);
+  career = await saveNoServidor(page);
+  const loanedIn = career.squad.find((p) => p.id === inn.id);
+  check("3) Jogador emprestado IN entrou no elenco, com metade do salário e o salário original guardado:",
+    inn.r.ok && !!loanedIn && loanedIn.origin === "loan" && loanedIn.wage === Math.round((inn.wage * 0.5) / 100) * 100 && loanedIn.loanOriginalWage === inn.wage,
+    JSON.stringify({ r: inn.r, origin: loanedIn && loanedIn.origin, wage: loanedIn && loanedIn.wage, original: inn.wage, guardado: loanedIn && loanedIn.loanOriginalWage }));
 
-  // 4) Aparece no Elenco (Elenco principal) com tag "emprestado"
-  await page.click(".m3-nav-item[data-panel='elenco']");
-  await page.waitForTimeout(300);
+  // 4) Elenco (v2): a linha do emprestado tem a etiqueta "Emprestado".
+  await page.goto(base + "/elenco", { waitUntil: "domcontentloaded" });
+  await page.waitForSelector(".sq-row", { timeout: 20000 });
   const rowText = await page.evaluate((id) => {
-    const row = document.querySelector(`[data-id="${id}"]`);
-    return row ? row.textContent : null;
-  }, otherEntry.id);
-  check("4) Jogador emprestado aparece na lista do Elenco com tag:", rowText ? rowText.includes("emprestado") : "NÃO ENCONTRADO NA LISTA");
+    const a = [...document.querySelectorAll("a.sq-row")].find((x) => x.getAttribute("href").endsWith(`id=${encodeURIComponent(id)}`));
+    return a ? a.textContent : null;
+  }, inn.id);
+  check("4) Jogador emprestado aparece no Elenco com a etiqueta \"Emprestado\":", !!rowText && rowText.includes("Emprestado"), rowText);
 
-  // 5) Detalhe do jogador emprestado -- sem vender/dispensar/renovar
-  await page.click(`[data-id="${otherEntry.id}"]`);
-  await page.waitForSelector("#detailOverlay.open");
-  await page.waitForTimeout(200);
-  const detailButtons = await page.evaluate(() => Array.from(document.querySelectorAll("#detailBody [data-act]")).map((b) => b.dataset.act));
-  const detailText = await page.evaluate(() => document.getElementById("detailBody").textContent);
-  check("5) Botões no detalhe do emprestado (não deve ter sell/release/renew/promote/demote):", !detailButtons.some((a) => ["sell", "release", "renew", "promote", "demote"].includes(a)), detailButtons);
-  console.log("   Texto explicativo de empréstimo presente:", detailText.includes("Emprestado do"));
-  await page.click("#detailClose");
-  await page.waitForTimeout(200);
+  // 5) Ficha do emprestado (v2, o que o detalhe antigo era): sem vender, emprestar, dispensar,
+  // promover ou mandar para a base; renovar desativado com o motivo.
+  await page.goto(base + `/elenco/ficha?id=${encodeURIComponent(inn.id)}`, { waitUntil: "domcontentloaded" });
+  await page.waitForSelector(".cal-foot .cta", { timeout: 20000 });
+  const perfil = await page.evaluate(() => ({
+    acoes: [...document.querySelectorAll(".row-title")].map((t) => t.textContent),
+    renovar: document.querySelector(".cal-foot .cta").getAttribute("aria-disabled"),
+    motivo: (document.querySelector(".sp-why") || {}).textContent || "",
+  }));
+  const proibidas = ["Colocar à venda", "Emprestar", "Dispensar", "Promover ao elenco principal", "Enviar para a base"];
+  check("5) Perfil do emprestado sem vender/emprestar/dispensar/promover/enviar para a base; renovar desativado com o motivo:",
+    !perfil.acoes.some((a) => proibidas.includes(a)) && perfil.renovar === "true" && /emprestado/i.test(perfil.motivo), JSON.stringify(perfil));
 
-  // 6) wageBillOf inclui o salário do emprestado
-  const wageBillIncludesLoan = await page.evaluate(() => wageBillOf(CAREER.squad) > 0);
-  check("6) wageBillOf > 0 (inclui loan):", wageBillIncludesLoan);
+  // 6) A folha inclui o salário do emprestado.
+  const folha = await noMotor(page, ({ CAREER, financas }, id) => ({ total: financas.wageBill(CAREER.squad), semEle: financas.wageBill(CAREER.squad.filter((p) => p.id !== id)) }), inn.id);
+  check("6) A folha (wageBill) inclui o salário do emprestado:", folha.total > folha.semEle && folha.total > 0, JSON.stringify(folha));
 
-  // 7) Virada de temporada -- os 2 empréstimos voltam pro dono de origem
-  career = await getCareer(page);
-  career.currentRound = 39;
-  await putCareer(page, career);
-  await page.reload({ waitUntil: "load" });
-  await waitForBoot(page);
-  await page.click("#btnAdvanceSeason");
-  await page.waitForTimeout(200);
-  await page.click("#confirmOkBtn");
-  // Espera a virada chegar ao servidor (rodada sai da 39), até 15 s — antes
-  // 500 ms fixos, curto no CI (como no passo 3).
+  // 7) Virada de temporada: os dois empréstimos voltam para o dono.
+  const virada = await noMotor(page, async ({ CAREER, persistir, ponte }) => {
+    CAREER.currentRound = 39;
+    await persistir();
+    return ponte.proximaTemporada();
+  });
   for (const t0 = Date.now(); Date.now() - t0 < 15000;) {
-    career = await getCareer(page);
+    career = await saveNoServidor(page);
     if (career.currentRound !== 39) break;
     await page.waitForTimeout(200);
   }
-  const outPlayerBack = career.squad.some((p) => p.id === outPlayer.id);
-  const inPlayerGone = !career.squad.some((p) => p.id === otherEntry.id);
-  const inPlayerBackAtOriginalClub = (career.leagueSquads[String(otherEntry.clubId)] || []).find((p) => p.id === otherEntry.id);
-  check("7) Empréstimo OUT voltou pro meu elenco:", outPlayerBack);
-  console.log("   Empréstimo IN saiu do meu elenco:", inPlayerGone, "| voltou pro clube de origem com salário original restaurado:", inPlayerBackAtOriginalClub && inPlayerBackAtOriginalClub.wage === otherEntry.wage && inPlayerBackAtOriginalClub.origin === "principal");
+  const voltouAoDono = (career.leagueSquads[inn.clubId] || []).find((p) => p.id === inn.id);
+  check("7) Empréstimo OUT voltou para o meu elenco:", career.squad.some((p) => p.id === out.id), JSON.stringify({ virada: virada && virada.ok, round: career.currentRound }));
+  console.log("   Empréstimo IN saiu do meu elenco:", !career.squad.some((p) => p.id === inn.id), "| voltou ao clube de origem com o salário original:", !!voltouAoDono && voltouAoDono.wage === inn.wage && voltouAoDono.origin === "principal");
 
+  check("8) Sem erro na página:", erros.length === 0, erros.slice(0, 3).join(" | "));
   await browser.close();
 })().catch((e) => { console.error("FATAL:", e); process.exit(1); });

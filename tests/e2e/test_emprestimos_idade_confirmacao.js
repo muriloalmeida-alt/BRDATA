@@ -1,22 +1,18 @@
+// Ajustes de empréstimo e idade: idade real vinda da API, fator de
+// reclamação por idade/overall, empréstimo recusado por jogador de destaque.
+// Lote L3b (12/11/2026, plano "testes sem a tela antiga"):
+// - itens 1 a 3 (regras): os mesmos trechos, na página da v2 com as funções
+//   do motor (globaisDoMotor), no lugar da tela antiga;
+// - item 4 ("Emprestar" desativado no detalhe antigo): na v2 a recusa
+//   aparece ao abrir "Combine o empréstimo" (/mercado/emprestimo), com o
+//   motivo e o botão de propor desativado;
+// - itens 5, 5b, 5c e 6 (confirmação de escalação antes de simular, na tela
+//   antiga) saíram: o Pré-jogo da v2 cobre o mesmo em test_v2_prejogo
+//   (itens 2, 3 e 7: titulares e adversário, "Revisar escalação" e voltar,
+//   "Iniciar partida" começa o jogo).
 const { chromium } = require("playwright-core");
 const { check } = require("./_check");
-const { enterGame } = require("./_startup");
-const { skipPreseason } = require("./_calendar_skip");
-
-async function newCareer(page, base, email) {
-  await page.goto(base + "/", { waitUntil: "domcontentloaded" });
-  await page.evaluate(async ({ email }) => {
-    await fetch("/api/auth/signup", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: "Ajustes Test", email, password: "senha123", phone: "11999999999", plan: "freemium" }) });
-    await fetch("/api/auth/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, password: "senha123" }) });
-  }, { email });
-  await page.goto(base + "/carreira.html", { waitUntil: "domcontentloaded" });
-  await page.click('.mt-competition-card[data-competition="brasileirao"]');
-  await page.waitForTimeout(200);
-  await page.click(".m3-club-row");
-  await page.waitForTimeout(150);
-  await page.click("#btnConfirmClub");
-  await enterGame(page);
-}
+const { carreiraV2, signup, ensureDailyClaimed, globaisDoMotor, noMotor, base } = require("./_v2_carreira");
 
 (async () => {
   const browser = await chromium.launch({
@@ -26,11 +22,13 @@ async function newCareer(page, base, email) {
   });
   const page = await browser.newPage({ viewport: { width: 390, height: 900 } });
   page.on("dialog", (d) => d.dismiss());
-  page.on("pageerror", (err) => console.log("PAGE ERROR:", err.message));
-  page.on("console", (m) => { if (m.type() === "error" && !m.text().includes("fonts.googleapis") && !m.text().includes("fundingchoices")) console.log("CONSOLE ERROR:", m.text()); });
+  const erros = [];
+  page.on("pageerror", (err) => erros.push(err.message));
 
-  const base = "http://localhost:8787";
-  await newCareer(page, base, `ajustes${Date.now()}@teste.com`);
+  // Pré-temporada: a janela de transferências está aberta (item 4).
+  await carreiraV2(page, `ajustes${Date.now()}@teste.com`, { clube: "fla", criarConta: signup, preTemporada: true });
+  await ensureDailyClaimed(page);
+  await globaisDoMotor(page);
 
   // ---------- 1) Idade real vinda da API ----------
   const ageCheck = await page.evaluate(() => {
@@ -82,77 +80,23 @@ async function newCareer(page, base, email) {
   check("3) Jogador de destaque (prime + overall alto) tem empréstimo recusado:", loanCheck.okDestaque === false && loanCheck.aindaNoElenco === true);
   console.log("   Jogador de overall baixo consegue ser emprestado (mesma idade):", loanCheck.okReserva === true);
 
-  // ---------- 4) Botão "Emprestar" desabilitado pro destaque no detalhe ----------
-  const destaqueId = await page.evaluate(() => {
-    const p = CAREER.squad.find((x) => x.origin === "principal");
+  // ---------- 4) Empréstimo do destaque recusado na tela da v2 ----------
+  const destaque = await noMotor(page, async ({ CAREER, persistir }) => {
+    const p = CAREER.squad.find((x) => x.origin === "principal" && x.id !== CAREER.lineup.starters[0]);
     p.overall = 90; p.age = 26;
-    return p.id;
+    await persistir();
+    return { id: p.id };
   });
-  await page.click(".m3-nav-item[data-panel='elenco']");
-  await page.waitForTimeout(300);
-  await page.click(`[data-id="${destaqueId}"]`);
-  await page.waitForSelector("#detailOverlay.open");
-  await page.waitForTimeout(200);
-  const loanBtnDisabled = await page.evaluate(() => {
-    const btn = document.querySelector('[data-act="loanout"]');
-    return btn ? btn.disabled : "botão não existe";
-  });
-  check("4) Botão 'Emprestar' vem desabilitado pro destaque, com tooltip explicando:", loanBtnDisabled === true);
-  await page.click("#detailClose");
-  await page.waitForTimeout(200);
-
-  // ---------- 5) Confirmar escalação antes de simular ----------
-  await page.click(".m3-nav-item[data-panel='central']");
-  await page.waitForTimeout(300);
-  await skipPreseason(page); // GE-CALENDAR-001: carreira nova começa na pré-temporada
-  await page.click("#btnSimulate");
-  await page.waitForSelector("#preMatchOverlay.open", { timeout: 5000 });
-  const preMatchState = await page.evaluate(() => ({
-    isFullscreen: document.getElementById("preMatchOverlay").classList.contains("ct-modal-fullscreen"),
-    liveNotOpenYet: !document.getElementById("liveMatchOverlay").classList.contains("open"),
-    lineupRows: document.querySelectorAll("#preMatchLineup .ct-prematch-row").length,
-    opponentText: document.getElementById("preMatchOpponent").textContent.trim().length > 0,
+  await page.goto(base + `/mercado/emprestimo?id=${encodeURIComponent(destaque.id)}`, { waitUntil: "domcontentloaded" });
+  await page.waitForSelector(".wk-sec .inline-error", { timeout: 20000 });
+  const tela4 = await page.evaluate(() => ({
+    motivo: document.querySelector(".wk-sec .inline-error").textContent,
+    propor: document.querySelector(".cal-foot .cta").getAttribute("aria-disabled"),
+    campos: document.querySelectorAll('[aria-labelledby="ln-d"]').length,
   }));
-  check("5) 'Simular rodada' abre a confirmação de escalação em tela cheia, SEM simular ainda:", preMatchState.isFullscreen && preMatchState.liveNotOpenYet);
-  console.log("   Lista os 11 titulares e o adversário:", preMatchState.lineupRows === 11 && preMatchState.opponentText);
+  check("4) Empréstimo do destaque: a tela da v2 mostra a recusa com o motivo e não deixa propor:",
+    /não aceita ser emprestado/.test(tela4.motivo) && tela4.propor === "true" && tela4.campos === 0, JSON.stringify(tela4));
 
-  // 5b) X fecha sem simular.
-  await page.click("#preMatchClose");
-  await page.waitForTimeout(200);
-  const afterX = await page.evaluate(() => ({
-    preMatchClosed: !document.getElementById("preMatchOverlay").classList.contains("open"),
-    stillNotSimulated: !document.getElementById("liveMatchOverlay").classList.contains("open") && !document.getElementById("matchDetailOverlay").classList.contains("open"),
-  }));
-  console.log("   X fecha sem simular nada:", afterX.preMatchClosed && afterX.stillNotSimulated);
-
-  // 5c) "Ajustar escalação" abre a aba Escalação inteira POR CIMA da
-  // confirmação (mudança pré-existente, sem relação com o checklist de
-  // UX desta etapa — a confirmação continua aberta por baixo, não
-  // navega mais de aba; ver "Ajustar escalação no pré-jogo vira
-  // modal"). Fecha com o X do ajuste, que devolve o painel pro lugar.
-  await page.click("#btnSimulate");
-  await page.waitForSelector("#preMatchOverlay.open");
-  await page.click("#btnPreMatchAdjust");
-  await page.waitForTimeout(200);
-  const afterAdjust = await page.evaluate(() => ({
-    adjustOpen: document.getElementById("adjustLineupOverlay").classList.contains("open"),
-    preMatchStillOpenUnder: document.getElementById("preMatchOverlay").classList.contains("open"),
-  }));
-  console.log("   'Ajustar escalação' abre a aba Escalação por cima (confirmação continua aberta por baixo):", afterAdjust.adjustOpen && afterAdjust.preMatchStillOpenUnder);
-  await page.click("#adjustLineupClose");
-  await page.waitForTimeout(200);
-  await page.click("#preMatchClose");
-  await page.waitForTimeout(200);
-
-  // 5d) "Ir para o jogo" de fato simula.
-  await page.click(".m3-nav-item[data-panel='central']");
-  await page.waitForTimeout(300);
-  await page.click("#btnSimulate");
-  await page.waitForSelector("#preMatchOverlay.open");
-  await page.click("#btnPreMatchGo");
-  await page.waitForSelector("#liveMatchOverlay.open, #matchDetailOverlay.open", { timeout: 20000 });
-  const wentToMatch = await page.evaluate(() => document.getElementById("liveMatchOverlay").classList.contains("open") || document.getElementById("matchDetailOverlay").classList.contains("open"));
-  check("6) 'Ir para o jogo' de fato dispara a simulação:", wentToMatch);
-
+  check("5) Sem erro na página:", erros.length === 0, erros.slice(0, 3).join(" | "));
   await browser.close();
 })().catch((e) => { console.error("FATAL:", e); process.exit(1); });

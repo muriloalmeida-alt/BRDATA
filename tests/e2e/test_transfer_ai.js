@@ -7,7 +7,7 @@
 // simulateAiTransfers/findInterestedBuyer numa carreira real.
 const { chromium } = require("playwright-core");
 const { check } = require("./_check");
-const { enterGame } = require("./_startup");
+const { newCareer, globaisDoMotor } = require("./_v2_carreira");
 
 (async () => {
   const browser = await chromium.launch({ executablePath: process.env.PW_CHROMIUM_PATH || undefined, headless: true, args: ["--host-resolver-rules=MAP fonts.googleapis.com 127.0.0.1,MAP fonts.gstatic.com 127.0.0.1"] });
@@ -16,19 +16,10 @@ const { enterGame } = require("./_startup");
   page.on("pageerror", (err) => console.log("PAGE ERROR:", err.message));
   const base = "http://localhost:8787";
   const email = `transferai${Date.now()}@teste.com`;
-  await page.goto(base + "/", { waitUntil: "domcontentloaded" });
-  await page.evaluate(async ({ email }) => {
-    await fetch("/api/auth/signup", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: "Transfer AI Teste", email, password: "senha123", phone: "11999999999", plan: "freemium" }) });
-    await fetch("/api/auth/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, password: "senha123" }) });
-  }, { email });
-  await page.goto(base + "/carreira.html", { waitUntil: "domcontentloaded" });
-  await page.waitForTimeout(400);
-  await page.click('.mt-competition-card[data-competition="brasileirao"]');
-  await page.waitForSelector(".m3-club-row", { timeout: 15000 });
-  await page.click(".m3-club-row");
-  await page.waitForTimeout(150);
-  await page.click("#btnConfirmClub");
-  await enterGame(page);
+  // Lote L3: carreira nova pela v2 e as funções do jogo vindas do motor
+  // (antes: a tela antiga, carreira.html, como contexto).
+  await newCareer(page, email);
+  await globaisDoMotor(page);
 
   // ---------- Teste 11 — curva de adequação: crescente até diff=20,
   // depois decrescente suave, nunca toca 0 nem satura em 1 antes de
@@ -120,10 +111,6 @@ const { enterGame } = require("./_startup");
   // ---------- Comportamento observável: findInterestedBuyer(excludeId, player)
   // ainda funciona (assinatura nova, compat mantida) e simulateAiTransfers
   // roda sem erro por várias rodadas, sem estourar limites de elenco.
-  await page.click("#btnBottomMenu");
-  await page.waitForTimeout(150);
-  await page.click("#btnOpenMercado").catch(() => {});
-  await page.waitForTimeout(200);
   const squadLimitsBefore = await page.evaluate(() => {
     const bad = [];
     Object.keys(CAREER.leagueSquads || {}).forEach((id) => {
