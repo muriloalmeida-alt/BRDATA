@@ -5,6 +5,10 @@
 // vagas, mesma ordem, mesma troca simples, mesmo teto de banco. Funções
 // puras — quem grava é o gateway (ver CareerGateway.updateLineup).
 import type { Career, Lineup, Player, PlayerGroup } from "./types.ts";
+// FASE1-ESC (12/11): a troca e a validação da escalação confirmada são do
+// motor (public/js/motor/escalacao.js), a mesma operação que a comissão
+// técnica usa na orientação.
+import { RESERVAS, trocarComRecomposicao, validarEscalacao, type Recomposicao } from "../../../public/js/motor/escalacao.js";
 
 // Espelho EXATO de FORMATIONS do legado (grupo real + rótulo da vaga).
 // Paridade verificada em lineup.test.ts lendo o próprio carreira.js.
@@ -59,6 +63,10 @@ export interface LineupModel {
   formation: string;
   rows: PitchSlot[][]; // ataque em cima, goleiro embaixo (legado: renderPitch)
   bench: { player: Player; out: "Lesionado" | "Suspenso" | null }[];
+  // FASE1-ESC: vagas vazias no banco (save antigo com banco menor) e as
+  // pendências da escalação (lista vazia = escalação válida).
+  emptyBench: number;
+  issues: string[];
 }
 
 export function currentLineup(career: Career): Required<Pick<Lineup, "formation" | "starters" | "bench">> {
@@ -79,11 +87,15 @@ export function buildLineup(career: Career): LineupModel {
   });
   const rows = (["F", "M", "D", "G"] as PlayerGroup[]).map((g) => slots.filter((s) => s.group === g)).filter((r) => r.length);
   const benchPlayers = bench.map((id) => byId.get(id)).filter((p): p is Player => !!p).sort((a, b) => sortKey(a) - sortKey(b));
-  return { clubName: career.clubName, formation, rows, bench: benchPlayers.map((player) => ({ player, out: unavailableReason(player, round) })) };
+  const v = validarEscalacao({ formation, starters, bench }, career.squad || [], round);
+  return {
+    clubName: career.clubName, formation, rows, bench: benchPlayers.map((player) => ({ player, out: unavailableReason(player, round) })),
+    emptyBench: Math.max(0, RESERVAS - bench.length), issues: v.pendencias.map((x) => x.mensagem),
+  };
 }
 
 // Alvo da troca: vaga de titular (índice) ou reserva (id de quem está lá).
-export type SwapTarget = { kind: "starter"; index: number } | { kind: "bench"; playerId: string };
+export type SwapTarget = { kind: "starter"; index: number } | { kind: "bench"; playerId: string } | { kind: "bench-empty" };
 
 export interface SubstituteModel {
   target: SwapTarget;
@@ -107,14 +119,20 @@ export function buildSubstitute(career: Career, target: SwapTarget): SubstituteM
     if (target.index < 0 || target.index >= FORMATIONS[formation].length) return null;
     outgoingId = starters[target.index] || null;
     slotLabel = FORMATIONS[formation][target.index][1];
-  } else {
+  } else if (target.kind === "bench") {
     if (!bench.includes(target.playerId)) return null;
     outgoingId = target.playerId;
+  } else {
+    // Vaga vazia no banco: só jogador de fora da escalação.
+    if (bench.length >= MAX_BENCH) return null;
+    outgoingId = null;
+    slotLabel = "Reserva";
   }
   const outgoing = (outgoingId && byId.get(outgoingId)) || null;
   const outGroup = outgoing?.group || (target.kind === "starter" ? FORMATIONS[formation][target.index][0] : null);
   const options = squad
     .filter((p) => p.id !== outgoingId && isAvailable(p, career.currentRound))
+    .filter((p) => target.kind !== "bench-empty" || (!starters.includes(p.id) && !bench.includes(p.id)))
     .sort((a, b) => {
       const g = outGroup ? Number(b.group === outGroup) - Number(a.group === outGroup) : 0;
       return g || sortKey(a) - sortKey(b);
@@ -123,46 +141,35 @@ export function buildSubstitute(career: Career, target: SwapTarget): SubstituteM
   return { target, outgoing, slotLabel, options };
 }
 
-type Loc = { kind: "starter" | "bench"; idx: number };
-function locate(l: { starters: (string | null)[]; bench: string[] }, id: string | null): Loc | null {
-  if (!id) return null;
-  const si = l.starters.indexOf(id);
-  if (si >= 0) return { kind: "starter", idx: si };
-  const bi = l.bench.indexOf(id);
-  return bi >= 0 ? { kind: "bench", idx: bi } : null;
-}
-function placeAt(l: { starters: (string | null)[]; bench: string[] }, loc: Loc, id: string | null) {
-  if (loc.kind === "starter") l.starters[loc.idx] = id;
-  else if (id) l.bench[loc.idx] = id;
-  else l.bench.splice(loc.idx, 1);
-}
-
 export type LineupChange =
-  | { kind: "swap"; target: SwapTarget; expectOutgoing: string | null; playerId: string }
+  | { kind: "swap"; target: SwapTarget; expectOutgoing: string | null; playerId: string; recompose?: Recomposicao }
   | { kind: "formation"; formation: string };
+export type { Recomposicao };
+// Resultado de aplicar: a carreira nova; um conflito (nada gravado); a troca
+// pede recompor o banco com um goleiro (confirmação conjunta, ESC-03); ou a
+// troca está bloqueada (sem goleiro para o banco).
+export type LineupChangeResult = Career | { conflict: string } | { recompose: Recomposicao } | { blocked: string };
 
 // Aplica a mudança numa CÓPIA da carreira recém-lida do servidor.
 // Devolve a carreira nova, ou um motivo quando o save mudou desde que a
 // tela foi aberta (outra aba/versão mexeu na escalação) — nesse caso nada
 // é gravado.
-export function applyLineupChange(career: Career, change: LineupChange): Career | { conflict: string } {
+export function applyLineupChange(career: Career, change: LineupChange): LineupChangeResult {
   const cur = currentLineup(career);
   const l = { formation: cur.formation, starters: [...cur.starters], bench: [...cur.bench] };
   if (change.kind === "formation") {
     if (!FORMATIONS[change.formation]) return { conflict: "Formação inválida." };
     l.formation = change.formation; // legado: só troca o esquema; titulares ficam nas mesmas vagas
   } else {
+    // A mesma troca da comissão técnica (motor/escalacao.js).
     const t = change.target;
-    const target: Loc | null = t.kind === "starter" ? { kind: "starter", idx: t.index } : locate(l, t.playerId);
-    if (!target) return { conflict: "A escalação mudou. Revise e tente de novo." };
-    const outgoing = target.kind === "starter" ? l.starters[target.idx] || null : l.bench[target.idx];
-    const incoming = (career.squad || []).find((p) => p.id === change.playerId);
-    if (outgoing !== change.expectOutgoing || !incoming || !isAvailable(incoming, career.currentRound)) {
-      return { conflict: "A escalação mudou. Revise e tente de novo." };
-    }
-    const source = locate(l, change.playerId);
-    if (source && !(source.kind === target.kind && source.idx === target.idx)) placeAt(l, source, outgoing);
-    placeAt(l, target, change.playerId);
+    const alvo = t.kind === "starter" ? { tipo: "titular" as const, vaga: t.index } : t.kind === "bench" ? { tipo: "reserva" as const, id: t.playerId } : { tipo: "banco-vazio" as const };
+    const r = trocarComRecomposicao(l, career.squad || [], career.currentRound, { alvo, saiEsperado: change.expectOutgoing, entraId: change.playerId, recomposicao: change.recompose });
+    if ("conflito" in r && r.conflito) return { conflict: r.conflito };
+    if ("bloqueio" in r && r.bloqueio) return { blocked: r.mensagem };
+    if ("precisaRecompor" in r && r.precisaRecompor) return { recompose: r.proposta };
+    if (!("lineup" in r) || !r.lineup) return { conflict: "A escalação mudou. Revise e tente de novo." };
+    l.starters = r.lineup.starters; l.bench = r.lineup.bench;
   }
   const next: Career = { ...career, lineup: { ...(career.lineup || { starters: [] }), ...l } };
   // legado: markLineupDirty — edição manual desvincula do esquema salvo.

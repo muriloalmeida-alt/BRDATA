@@ -2,7 +2,9 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { CareerGateway, ClubCatalogGateway, HttpError, SessionGateway, type SessionUser } from "./adapters/gateways.ts";
 import { consumeInvite } from "./adapters/invite.ts";
 import { buildHome } from "./domain/home.ts";
-import { buildLineup, buildSubstitute, currentLineup, shortName, type LineupChange, type SwapTarget } from "./domain/lineup.ts";
+import { buildLineup, buildSubstitute, currentLineup, shortName, type LineupChange, type Recomposicao, type SwapTarget } from "./domain/lineup.ts";
+// FASE1-ESC: resultado de gravar a escalação (ver save).
+export type SaveOutcome = string | null | { recompose: Recomposicao };
 import type { Career, Team } from "./domain/types.ts";
 import { Home } from "./screens/Home.tsx";
 import { Lineup } from "./screens/Lineup.tsx";
@@ -85,10 +87,13 @@ export function App() {
   useEffect(() => { load(); }, [load]);
 
   // Grava uma mudança de escalação (relê → aplica → PUT). Devolve a
-  // mensagem de erro para a tela, ou null se gravou.
-  const save = useCallback(async (change: LineupChange): Promise<string | null> => {
+  // mensagem de erro para a tela, null se gravou, ou a recomposição do banco
+  // a confirmar junto (FASE1-ESC).
+  const save = useCallback(async (change: LineupChange): Promise<SaveOutcome> => {
     try {
       const r = await CareerGateway.updateLineup(change);
+      if ("recompose" in r) return { recompose: r.recompose };
+      if ("blocked" in r) return r.blocked;
       if ("conflict" in r) {
         const fresh = await CareerGateway.loadActive().catch(() => null);
         if (fresh) setState((s) => s.kind === "ready" ? { kind: "ready", data: { ...s.data, career: fresh } } : s);
@@ -369,7 +374,7 @@ export function App() {
     return <PreMatch m={pm} myId={String(data.career.clubId)} />;
   }
   if (loc.path === `${BASE}/escalacao`) {
-    return <Lineup m={buildLineup(data.career)} cta={home.cta} onFormation={(formation) => save({ kind: "formation", formation })}
+    return <Lineup m={buildLineup(data.career)} cta={home.cta} onFormation={async (formation) => { const o = await save({ kind: "formation", formation }); return typeof o === "string" || o === null ? o : null; }}
       onAutoLineup={async (includeBase) => {
         const r = await PrepGateway.autoLineup(includeBase);
         if (!r.ok) { if (r.motivo === "sessao") setExpired(true); return "Não foi possível escalar. Tente de novo."; }
@@ -380,6 +385,7 @@ export function App() {
   if (loc.path === `${BASE}/escalacao/trocar`) {
     const q = new URLSearchParams(loc.search);
     const target: SwapTarget | null = q.has("vaga") ? { kind: "starter", index: Number(q.get("vaga")) }
+      : q.get("reserva") === "vazia" ? { kind: "bench-empty" }
       : q.get("reserva") ? { kind: "bench", playerId: String(q.get("reserva")) } : null;
     const m = target && Number.isInteger(target.kind === "starter" ? target.index : 0) ? buildSubstitute(data.career, target) : null;
     if (!m) {
@@ -388,12 +394,13 @@ export function App() {
       return null;
     }
     const { starters, bench } = currentLineup(data.career);
-    const expectOutgoing = m.target.kind === "starter" ? starters[m.target.index] || null : bench.includes(m.target.playerId) ? m.target.playerId : null;
+    const t = m.target;
+    const expectOutgoing = t.kind === "starter" ? starters[t.index] || null : t.kind === "bench" && bench.includes(t.playerId) ? t.playerId : null;
     return (
-      <Substitute key={loc.search} m={m} onConfirm={async (playerId) => {
-        const err = await save({ kind: "swap", target: m.target, expectOutgoing, playerId });
-        if (!err) goBackTo(`${BASE}/escalacao`);
-        return err;
+      <Substitute key={loc.search} m={m} names={Object.fromEntries((data.career.squad || []).map((p) => [p.id, p.name]))} onConfirm={async (playerId, recompose) => {
+        const out = await save({ kind: "swap", target: m.target, expectOutgoing, playerId, recompose });
+        if (out === null) goBackTo(`${BASE}/escalacao`);
+        return out;
       }} />
     );
   }

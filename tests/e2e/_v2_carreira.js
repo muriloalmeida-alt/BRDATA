@@ -94,7 +94,7 @@ async function motorPronto(page, { comCarreira = true, timeout = 40000 } = {}) {
 async function noMotor(page, fn, arg, { comCarreira = true } = {}) {
   await motorPronto(page, { comCarreira });
   return page.evaluate(async ({ src, arg }) => {
-    const nomes = ["estado", "semana", "carga", "jogo", "posjogo", "aovivo", "virada", "clube", "mercado", "temporada", "financas", "treino", "registro", "fechamento", "v2"];
+    const nomes = ["estado", "semana", "carga", "jogo", "posjogo", "aovivo", "virada", "clube", "mercado", "temporada", "financas", "treino", "registro", "fechamento", "escalacao", "v2"];
     const mods = Object.fromEntries(await Promise.all(nomes.map(async (n) => [n, await import(`/js/motor/${n}.js`)])));
     const M = { ...mods, ponte: mods.v2.criarPonte(), persistir: () => mods.carga.persistCareer() };
     Object.defineProperty(M, "CAREER", { get: () => mods.estado.carreiraAtual() });

@@ -13,7 +13,7 @@ const { execSync } = require("child_process");
 
 const ROOT = path.resolve(__dirname, "../..");
 // Ordem de dependência (quem importa vem depois).
-const ORDER = ["partida", "tabela", "calendario", "rodada", "financas", "treino", "mercado", "temporada", "estado", "eventos", "registro", "texto", "semana", "fechamento", "aovivo", "posjogo", "clube", "virada", "ponte", "jogo", "carga", "v2"];
+const ORDER = ["partida", "tabela", "calendario", "rodada", "financas", "treino", "mercado", "temporada", "estado", "eventos", "registro", "texto", "semana", "fechamento", "aovivo", "posjogo", "clube", "virada", "escalacao", "ponte", "jogo", "carga", "v2"];
 
 function readModule(name, rev) {
   try {

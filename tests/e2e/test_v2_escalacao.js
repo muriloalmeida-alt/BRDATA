@@ -101,7 +101,7 @@ const strip = (c) => { const x = JSON.parse(JSON.stringify(c)); delete x.lineup;
   await v2.waitForSelector(".sheet", { state: "detached", timeout: 10000 });
   const f = await api.get();
   check("6) Formação 4-4-2 gravada pelo seletor, titulares nas mesmas vagas:",
-    f.lineup.formation === "4-4-2" && JSON.stringify(f.lineup.starters) === JSON.stringify(after.lineup.starters) && (await v2.locator("#lu-form-val").textContent()) === "4-4-2", f.lineup.formation);
+    f.lineup.formation === "4-4-2" && JSON.stringify(f.lineup.starters) === JSON.stringify(after.lineup.starters) && (await v2.locator("#lu-form-val").textContent()) === "4-4-2", JSON.stringify({ formation: f.lineup.formation, antes: after.lineup.starters, depois: f.lineup.starters }));
 
   // 7) Conflito: outra aba muda a vaga depois que "Quem entra?" abriu → nada gravado.
   await v2.click(`.lu-slot[href$="vaga=${idx}"]`);
