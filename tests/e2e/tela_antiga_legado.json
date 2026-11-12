@@ -17,7 +17,6 @@
     "tests/e2e/test_botoes_rodape.js",
     "tests/e2e/test_coletiva_imprensa.js",
     "tests/e2e/test_coletiva_renovacao.js",
-    "tests/e2e/test_comissao_mercado_proposta.js",
     "tests/e2e/test_comissao_resumo_inicio.js",
     "tests/e2e/test_comissao_tecnica.js",
     "tests/e2e/test_comparar_jogadores.js",
@@ -123,8 +122,7 @@
     "tests/e2e/test_ux_fechar_voltar_inicio.js",
     "tests/e2e/test_ux_mercado_001.js",
     "tests/e2e/test_ux_nomes_clicaveis.js",
-    "tests/e2e/test_ux_zoom_scroll.js",
-    "tests/e2e/test_wagecap_block.js"
+    "tests/e2e/test_ux_zoom_scroll.js"
   ],
   "soRedirecionamento": [
     "tests/e2e/test_v2_corte.js"
