@@ -107,6 +107,47 @@ async function noMotor(page, fn, arg, { comCarreira = true } = {}) {
   }, { src: fn.toString(), arg });
 }
 
+// Lote L3 (testes sem a tela antiga): os testes de regra antigos rodavam
+// trechos `page.evaluate(() => transferScore(...))` na página antiga, que
+// tinha as funções do jogo como globais (atalhos para o motor desde a
+// etapa G). Aqui, na página da v2, as mesmas funções vêm dos módulos do
+// motor com os nomes de sempre, mais CAREER (o save do motor),
+// persistCareer e os atalhos da página antiga que não são exports
+// (teamById, sortedStandings, squadAvgOverallOf, motorMercado e o mundo:
+// LEAGUE_TEAMS, ALL_TEAMS_FLAT, CURRENT_COMPETITION_ID). Quando dois
+// módulos exportam o mesmo nome, vale o da camada com o save (semana,
+// clube...), que era o global da página; os puros (mercado...) vêm por
+// último. Nada é reimplementado: são as funções do motor.
+async function globaisDoMotor(page) {
+  await motorPronto(page, { comCarreira: true });
+  return page.evaluate(async () => {
+    const ordem = ["semana", "clube", "fechamento", "carga", "virada", "temporada", "aovivo", "posjogo", "jogo", "ponte", "estado", "escalacao", "tabela", "registro", "treino", "financas", "partida", "rodada", "calendario", "mercado"];
+    const mods = {};
+    for (const n of ordem) mods[n] = await import(`/js/motor/${n}.js`);
+    const def = (k, v) => { if (!(k in window)) window[k] = v; };
+    window.clubBudgetProxy = (clubId) => mods.mercado.clubBudget(mods.semana.marketClub(clubId));
+    // Os 4 globais da página antiga que chamavam o mercado puro com o clube
+    // montado (marketClub) e não têm versão com id em outro módulo.
+    const S = mods.semana, Mm = mods.mercado;
+    window.transferValuation = (player, buyingClubId, sellingClubId, context = {}) => Mm.transferValuation(player, S.marketClub(buyingClubId), S.marketClub(sellingClubId), { ...context, seasonYear: mods.estado.carreiraAtual().seasonYear });
+    window.adequacaoScore = (candidate, squad, buyingClubId) => Mm.adequacaoScore(candidate, squad, S.marketClub(buyingClubId));
+    window.contextoScore = (candidate, squad, buyingClubId) => Mm.contextoScore(candidate, squad, S.marketClub(buyingClubId));
+    window.buyerNegotiationDecision = (counterValue, initialOfferValue, player, buyingClubId, context = {}) => Mm.buyerNegotiationDecision(counterValue, initialOfferValue, player, S.marketClub(buyingClubId), context);
+    for (const n of ordem) for (const [k, v] of Object.entries(mods[n])) def(k, v);
+    const E = mods.estado;
+    Object.defineProperty(window, "CAREER", { configurable: true, get: () => E.carreiraAtual(), set: (v) => E.definirCarreira(v) });
+    Object.defineProperty(window, "LEAGUE_TEAMS", { configurable: true, get: () => E.ligaAtual() });
+    Object.defineProperty(window, "ALL_TEAMS_FLAT", { configurable: true, get: () => E.todosTimes() });
+    Object.defineProperty(window, "CURRENT_COMPETITION_ID", { configurable: true, get: () => E.competicaoAtual() });
+    window.persistCareer = () => mods.carga.persistCareer();
+    window.teamById = (id) => E.timePorId(id);
+    window.squadAvgOverallOf = (id) => E.forcaMediaDoElenco(id);
+    window.sortedStandings = () => mods.tabela.sortRows(E.carreiraAtual().standings);
+    window.motorMercado = () => mods.mercado;
+    return Object.keys(mods).length;
+  });
+}
+
 // Conta nova + carreira em `competicao` com o clube de id `clube` (padrão:
 // o 1º da lista), criada pelo motor da v2 (escolherCompeticao/criarCarreira,
 // os mesmos comandos da tela de criação). A primeira entrada sai pelos
@@ -337,5 +378,5 @@ async function skipAutoOpen(page, timeout = 30000) {
   return false;
 }
 
-module.exports = { iniciarPeloPreJogo, base, contaNova, saveNoServidor, novaCarreiraV2, ateOInicio, motorPronto, noMotor, carreiraV2, pularPreTemporada, jogarRodadaV2,
+module.exports = { globaisDoMotor, iniciarPeloPreJogo, base, contaNova, saveNoServidor, novaCarreiraV2, ateOInicio, motorPronto, noMotor, carreiraV2, pularPreTemporada, jogarRodadaV2,
   signup, newCareer, serverCareer, playV2MatchToEnd, motorNaPagina, continueToHome, sameSave, ensureDailyClaimed, skipAutoOpen };
