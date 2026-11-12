@@ -40,7 +40,10 @@
       "test_v2_gravacao.js",
       "test_v2_motor.js",
       "test_v2_acesso.js",
-      "test_v2_corte.js"
+      "test_v2_corte.js",
+      "test_v2_modulo.js",
+      "test_v2_inicio.js",
+      "test_v2_ajudante_carreira.js"
     ]
   },
   "exclusive": {

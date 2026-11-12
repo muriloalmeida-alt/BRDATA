@@ -72,6 +72,8 @@ const { carreiraV2, signup, ensureDailyClaimed, noMotor, saveNoServidor, base } 
 
   // 5) Ficha do emprestado (v2, o que o detalhe antigo era): sem vender, emprestar, dispensar,
   // promover ou mandar para a base; renovar desativado com o motivo.
+  // As ações ficam em duas telas da ficha: a principal (dispensar, promover,
+  // base, renovar) e "A temporada em números" (vender e emprestar).
   await page.goto(base + `/elenco/ficha?id=${encodeURIComponent(inn.id)}`, { waitUntil: "domcontentloaded" });
   await page.waitForSelector(".cal-foot .cta", { timeout: 20000 });
   const perfil = await page.evaluate(() => ({
@@ -79,6 +81,9 @@ const { carreiraV2, signup, ensureDailyClaimed, noMotor, saveNoServidor, base } 
     renovar: document.querySelector(".cal-foot .cta").getAttribute("aria-disabled"),
     motivo: (document.querySelector(".sp-why") || {}).textContent || "",
   }));
+  await page.goto(base + `/elenco/ficha?id=${encodeURIComponent(inn.id)}&tela=numeros`, { waitUntil: "domcontentloaded" });
+  await page.waitForFunction(() => (document.querySelector("h1") || {}).textContent === "A temporada em números.", null, { timeout: 20000 });
+  perfil.acoes.push(...(await page.evaluate(() => [...document.querySelectorAll(".row-title")].map((t) => t.textContent))));
   const proibidas = ["Colocar à venda", "Emprestar", "Dispensar", "Promover ao elenco principal", "Enviar para a base"];
   check("5) Perfil do emprestado sem vender/emprestar/dispensar/promover/enviar para a base; renovar desativado com o motivo:",
     !perfil.acoes.some((a) => proibidas.includes(a)) && perfil.renovar === "true" && /emprestado/i.test(perfil.motivo), JSON.stringify(perfil));

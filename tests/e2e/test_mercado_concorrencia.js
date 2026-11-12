@@ -1,40 +1,39 @@
-// Nova feature (Bloco 3, 2/4 — pedido do usuário, mockup
-// brtreinadorbloco3pendentes.html "Comparar propostas") — concorrência
-// real por um alvo: um clube CPU pode também ofertar pelo mesmo
-// jogador enquanto sua proposta espera; comparação lado a lado +
-// análise; quem "pesa" mais tem mais chance de vencer.
+// Proposta concorrente (rival) numa compra: nasce uma vez, aparece na
+// negociação com a comparação e a análise, "aumentar" sugere o valor do
+// rival, e a disputa é resolvida pelo peso das propostas.
+// Lote L3c (12/11/2026, plano "testes sem a tela antiga"):
+// - itens 1, 2, 6 e 7 (regras): os mesmos trechos, na página da v2 com as
+//   funções do motor (globaisDoMotor);
+// - itens 3, 4 e 5 (telas "Minhas propostas", "Comparar propostas" e o
+//   aumentar da comparação, da tela antiga): pelas telas da v2 — o selo
+//   "Concorrência" em "Minhas propostas"; a negociação com a seção
+//   "Proposta concorrente" e a análise; "Aumentar proposta" sugerindo o
+//   valor do concorrente.
 const { chromium } = require("playwright-core");
 const { check } = require("./_check");
-const { enterGame } = require("./_startup");
+const { carreiraV2, signup, ensureDailyClaimed, globaisDoMotor, saveNoServidor, base } = require("./_v2_carreira");
 
 (async () => {
   const browser = await chromium.launch({ executablePath: process.env.PW_CHROMIUM_PATH || undefined, headless: true, args: ["--host-resolver-rules=MAP fonts.googleapis.com 127.0.0.1,MAP fonts.gstatic.com 127.0.0.1"] });
   const page = await browser.newPage({ viewport: { width: 390, height: 900 } });
   page.on("dialog", (d) => d.dismiss());
-  page.on("pageerror", (err) => console.log("PAGE ERROR:", err.message));
-  const base = "http://localhost:8787";
-  const email = `mercadoconc${Date.now()}@teste.com`;
-  await page.goto(base + "/", { waitUntil: "domcontentloaded" });
-  await page.evaluate(async ({ email }) => {
-    await fetch("/api/auth/signup", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: "Neg Concorrencia", email, password: "senha123", phone: "11999999999", plan: "freemium" }) });
-    await fetch("/api/auth/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, password: "senha123" }) });
-  }, { email });
-  await page.goto(base + "/carreira.html", { waitUntil: "domcontentloaded" });
-  await page.click('.mt-competition-card[data-competition="brasileirao"]');
-  await page.waitForTimeout(300);
-  await page.click(".m3-club-row");
-  await page.waitForTimeout(150);
-  await page.click("#btnConfirmClub");
-  await enterGame(page);
-  await page.click(".m3-nav-item[data-panel='mercado']");
-  await page.waitForTimeout(300);
+  const erros = [];
+  page.on("pageerror", (err) => erros.push(err.message));
+  // Pré-temporada: a janela de transferências está aberta.
+  await carreiraV2(page, `concorrencia${Date.now()}@teste.com`, { clube: "fla", criarConta: signup, preTemporada: true });
+  await ensureDailyClaimed(page);
+  await globaisDoMotor(page);
+  const alvo = () => page.evaluate(() => {
+    const pend = new Set((CAREER.pendingOffersOut || []).map((o) => String(o.playerId)));
+    const l = allMarketPlayers().filter((e) => !e.mine && !pend.has(String(e.p.id)) && e.p.value > 0).sort((a, b) => a.p.value - b.p.value);
+    const e = l[Math.floor(l.length / 2)];
+    return { clubId: String(e.club.id), playerId: e.p.id };
+  });
+  const h1 = (t) => page.waitForFunction((t) => (document.querySelector("h1") || {}).textContent === t, t, { timeout: 20000 });
 
   // 1) Um concorrente NASCE (RNG forçado dentro da chance) numa
   // proposta pendente sem concorrente ainda.
-  const target = await page.evaluate(() => {
-    const row = document.querySelector("#marketList [data-buy]");
-    return { clubId: row.dataset.club, playerId: row.dataset.buy };
-  });
+  const target = await alvo();
   const check1 = await page.evaluate((t) => {
     const p = leagueSquadFor(t.clubId).find((x) => x.id === t.playerId);
     CAREER.pendingOffersOut.push({
@@ -63,65 +62,42 @@ const { enterGame } = require("./_startup");
   });
   check("2) Não nasce um 2º concorrente pra mesma proposta:", check2.sameRival, JSON.stringify(check2));
 
-  // 3) "Minhas propostas" mostra o selo de concorrência + botão
-  // "Comparar" (não "Aumentar" direto).
-  await page.click("#btnOpenMyOffers");
-  await page.waitForTimeout(200);
-  const check3 = await page.evaluate(() => {
-    const row = [...document.querySelectorAll("#myOffersList .m3-op-card")].find((r) => r.querySelector('[data-compare="test_rival_spawn"]'));
-    return {
-      hasBadge: row ? row.textContent.includes("Concorrência") : false,
-      hasCompareBtn: !!row?.querySelector('[data-compare="test_rival_spawn"]'),
-      hasIncreaseBtn: !!row?.querySelector('[data-increase="test_rival_spawn"]'),
-    };
-  });
-  check("3) 'Minhas propostas' mostra selo de concorrência + botão Comparar (não Aumentar direto):",
-    check3.hasBadge && check3.hasCompareBtn && !check3.hasIncreaseBtn, JSON.stringify(check3));
+  // A proposta com o concorrente vai para o save (as telas leem do servidor).
+  await page.evaluate(() => persistCareer());
 
-  // 4) Abrir "Comparar propostas" mostra as 2 colunas com os valores
-  // certos + análise não-vazia.
-  await page.click('[data-compare="test_rival_spawn"]');
-  await page.waitForTimeout(200);
+  // 3) "Minhas propostas": a proposta com o selo "Concorrência".
+  await page.goto(base + "/mercado/propostas", { waitUntil: "domcontentloaded" });
+  await h1("Suas negociações.");
+  const linha = await page.evaluate(() => [...document.querySelectorAll(".wk-sec a.pr-row")].map((a) => ({ href: a.getAttribute("href"), text: a.textContent })).find((r) => r.href.includes("test_rival_spawn")) || null);
+  check("3) \"Minhas propostas\" mostra a proposta com o selo \"Concorrência\":", !!linha && linha.text.includes("Concorrência"), JSON.stringify(linha));
+
+  // 4) A negociação compara as duas propostas, com a análise.
+  const rival = await page.evaluate(async () => { const c = (await (await fetch("/api/career", { cache: "no-store" })).json()).career; return c.pendingOffersOut.find((x) => x.id === "test_rival_spawn").rivalOffer; });
+  await page.goto(base + "/mercado/negociacao?id=test_rival_spawn", { waitUntil: "domcontentloaded" });
+  await h1("A negociação continua.");
+  await page.waitForSelector("#ng-r", { timeout: 20000 });
   const check4 = await page.evaluate(() => {
-    const o = CAREER.pendingOffersOut.find((x) => x.id === "test_rival_spawn");
-    const cols = [...document.querySelectorAll("#offerCompareCard .mt-offercmp-col")];
-    return {
-      open: document.getElementById("offerCompareOverlay").classList.contains("open"),
-      colCount: cols.length,
-      hasMineValue: cols[0]?.textContent.includes(String(o.offerValue).slice(0, 3)), // aproximação (fmtBRL formata)
-      hasRivalClub: cols[1]?.textContent.includes(o.rivalOffer.clubName),
-      analysisLength: document.getElementById("offerCompareAnalysis").textContent.length,
-      oneColLead: cols.some((c) => c.classList.contains("lead")) && !cols.every((c) => c.classList.contains("lead")),
-    };
+    const sec = document.getElementById("ng-r").closest("section");
+    return { minha: !!document.getElementById("ng-m"), rivalTexto: sec.textContent, analise: (sec.querySelector(".wk-note") || {}).textContent || "" };
   });
-  check("4) 'Comparar propostas' abre com as 2 colunas e uma análise não-vazia, só 1 lado em destaque:",
-    check4.open && check4.colCount === 2 && check4.hasRivalClub && check4.analysisLength > 20 && check4.oneColLead, JSON.stringify(check4));
-  await page.screenshot({ path: "screens/mercado_comparar_propostas.png" });
+  check("4) A negociação mostra a sua proposta e a \"Proposta concorrente\" (clube do rival) com uma análise:",
+    check4.minha && check4.rivalTexto.includes(rival.clubName) && check4.analise.length > 20, JSON.stringify(check4));
 
-  // 5) "Aumentar proposta" (FAB da comparação) sobe pro valor do
-  // concorrente e fecha a tela, voltando pra Minhas propostas.
-  const rivalValueBefore = await page.evaluate(() => CAREER.pendingOffersOut.find((x) => x.id === "test_rival_spawn").rivalOffer.offerValue);
-  await page.click("#btnOfferCompareIncrease");
-  await page.waitForTimeout(200);
-  const check5 = await page.evaluate((rivalVal) => {
-    const o = CAREER.pendingOffersOut.find((x) => x.id === "test_rival_spawn");
-    return {
-      compareClosed: !document.getElementById("offerCompareOverlay").classList.contains("open"),
-      newOfferValue: o.offerValue,
-      matchesRival: o.offerValue >= rivalVal,
-      roundsReset: o.roundsLeft,
-    };
-  }, rivalValueBefore);
-  check("5) 'Aumentar proposta' sobe pro valor do concorrente e fecha a tela:",
-    check5.compareClosed && check5.matchesRival, JSON.stringify(check5));
+  // 5) "Aumentar proposta" sugere o valor do concorrente; enviar grava.
+  await page.locator("button.pr-row", { hasText: "Aumentar proposta" }).click();
+  await page.waitForSelector("#rs-v", { timeout: 10000 });
+  const sugerido = Number(await page.inputValue("#rs-v"));
+  await page.click('[role="dialog"] .sp-sheet-cta');
+  await page.waitForSelector(".pr-ok", { timeout: 30000 });
+  const o5 = (await saveNoServidor(page)).pendingOffersOut.find((x) => x.id === "test_rival_spawn");
+  check("5) \"Aumentar proposta\" sugere o valor do concorrente e a proposta sobe para ele:",
+    sugerido >= rival.offerValue && o5.offerValue >= rival.offerValue, JSON.stringify({ sugerido, rival: rival.offerValue, nova: o5.offerValue }));
+  await globaisDoMotor(page);
 
   // 6) Resolução COM concorrente: minha proposta "pesa mais" (valor
   // maior, mesmas parcelas) -- RNG forçado pra dentro da faixa de
   // vitória (80%) -- fecha o negócio de verdade.
-  const target2 = await page.evaluate(() => {
-    const row = document.querySelector("#marketList [data-buy]");
-    return { clubId: row.dataset.club, playerId: row.dataset.buy };
-  });
+  const target2 = await alvo();
   const check6 = await page.evaluate((t) => {
     const p = leagueSquadFor(t.clubId).find((x) => x.id === t.playerId);
     CAREER.finances.wageCap = 999999999; CAREER.finances.cash = 999999999;
@@ -139,17 +115,10 @@ const { enterGame } = require("./_startup");
   check("6) Minha proposta pesa mais que a do concorrente e vence (RNG dentro dos 80%):",
     check6.inSquad && !check6.stillPending, JSON.stringify(check6));
 
-  await page.click('#pressOptions [data-press]').catch(() => {});
-  await page.waitForTimeout(150);
-  await page.evaluate(() => renderMercado());
-
   // 7) Resolução COM concorrente: minha proposta pesa MENOS -- RNG
   // forçado pra fora dos 25% de chance -- perco a disputa, sem entrar
   // no elenco nem gastar nada.
-  const target3 = await page.evaluate(() => {
-    const row = document.querySelector("#marketList [data-buy]");
-    return { clubId: row.dataset.club, playerId: row.dataset.buy };
-  });
+  const target3 = await alvo();
   const check7 = await page.evaluate((t) => {
     const p = leagueSquadFor(t.clubId).find((x) => x.id === t.playerId);
     const cashBefore = CAREER.finances.cash;
@@ -171,5 +140,6 @@ const { enterGame } = require("./_startup");
   check("7) Minha proposta pesa menos e perco a disputa (RNG fora dos 25%), sem afetar meu caixa/elenco:",
     check7.cashUnchanged && check7.notInMySquad && !check7.stillPending, JSON.stringify(check7));
 
+  check("8) Sem erro na página:", erros.length === 0, erros.slice(0, 3).join(" | "));
   await browser.close();
 })().catch((e) => { console.error("FATAL:", e); process.exit(1); });

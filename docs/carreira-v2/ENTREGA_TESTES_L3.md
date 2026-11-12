@@ -1,8 +1,8 @@
-# Entrega — testes sem a tela antiga, lote L3a (IA de mercado) e L3b (empréstimos)
+# Entrega — testes sem a tela antiga, lote L3 (mercado), partes a, b e c
 
 **Data:** 12/11/2026
 **Plano:** `docs/carreira-v2/PLANO_TESTES_TELA_ANTIGA.md` (lote L3, dividido em partes como o plano permite)
-**Lista congelada:** 137 → 131 (L3a) → 128 (L3b)
+**Lista congelada:** 137 → 131 (L3a) → 128 (L3b) → 122 (L3c)
 
 ## O que mudou
 
@@ -63,10 +63,50 @@ Todas as 96 verificações continuam nos mesmos arquivos, com o mesmo texto e o 
 
 **Validação L3b:** `test_loans` 8/8, `test_loan_advanced` 5/5, `test_emprestimos_idade_confirmacao` 5/5.
 
+## L3c — negociação, concorrência, histórico, venda, comissão e teto (6 testes)
+
+| Teste | Verificação antiga | Para onde foi |
+|---|---|---|
+| `test_mercado_negociacao.js` | 1) a proposta abre com o valor preenchido | "Faça sua oferta." da v2 (`#pp-v`) |
+| | 2) 70% em 2x vira proposta pendente, caixa intacto | mesma tela, enviando; conferido no save |
+| | 3) "Minhas propostas" com 1 | Mercado da v2: "Minhas propostas" com 1 e o jogador com "proposta enviada" |
+| | 4) retirar volta ao normal | `withdrawOffer` (o mesmo do "Desistir"); a lista volta ao normal |
+| | 5, 5b, 6, 7, 7c) aceite com parcelas, parcelas por rodada, recusa, contraproposta, aceitar contraproposta | os mesmos trechos, com `globaisDoMotor` |
+| | 7b) contraproposta com botão de aceitar | já é o item 3 do `test_v2_mercado` |
+| `test_mercado_concorrencia.js` | 1, 2, 6, 7) concorrente nasce uma vez; disputa ganha e perdida | os mesmos trechos, com `globaisDoMotor` |
+| | 3) selo de concorrência em "Minhas propostas" | "Minhas propostas" da v2: "Concorrência" |
+| | 4) "Comparar propostas" com as duas colunas e a análise | negociação da v2: "Proposta concorrente" (clube do rival) e a análise |
+| | 5) "Aumentar" sobe para o valor do concorrente | "Aumentar proposta" da v2 sugere o valor do rival; enviar grava |
+| `test_historico_negociacoes.js` | 1) vazio no início | "Seu histórico começa." da v2 |
+| | 2a) o anúncio recebe proposta | o mesmo laço de rodadas de exposição, pelo motor |
+| | 2) compra e venda na timeline com o ícone certo | abas "Compras" e "Vendas" da v2 |
+| | 3) contador do botão e card "Transferências recentes"; 4) "Fechar" do rodapé | **saíram:** só existiam na tela antiga |
+| `test_colocar_a_venda.js` | 1) abre com o valor de mercado | ficha da v2 → "Colocar à venda" (`#ls-v`) |
+| | 2) anuncia sem vender | conferido no save |
+| | 9/9b) "Vender" no detalhe e o botão vira "Ver anúncio de venda" | ficha da v2 (aba "A temporada em números") |
+| | 3, 4b) "Minhas vendas" sem e com proposta | "Jogadores no mercado." e "Escolha a melhor oferta." da v2 |
+| | 5) recusar só a proposta | "Recusar só a do …" |
+| | 8) cancelar o anúncio | "Retirar do mercado", com confirmação |
+| | 4, 6, 7, 7b) proposta nasce; à vista; parcelado com recebíveis | os mesmos trechos, pelo motor |
+
+| `test_comissao_mercado_proposta.js` | 1) sugestão de Mercado da comissão clicável | tela "Fortaleça a comissão." da v2 (`/comissao`): sugestão "Mercado" com o botão "Fazer proposta" |
+| | 1b) diálogo intermediário com "Fazer proposta" | **saiu:** na v2 o próprio botão da sugestão é "Fazer proposta" |
+| | 2, 2b) abre a proposta real, sem comprar e sem aviso de "aplicada" | leva a "Faça sua oferta."; caixa, elenco e propostas intactos |
+| | 3) confirmar cria a proposta | "Enviar proposta" → "Proposta enviada." e a proposta no save |
+| `test_wagecap_block.js` | (sem verificação; só imprimia) promover da base com teto baixo | ficha da v2: "Promover ao elenco principal" com o teto em 1 mostra "estouraria o teto salarial" e o jogador continua na base (agora é uma verificação) |
+
+**Correção no `test_loans` (do L3b, já mergeado):**
+- O item 5 olhava só a primeira tela da ficha.
+- Vender e emprestar ficam na aba "A temporada em números", então a ausência dessas duas ações não era conferida de fato.
+- Agora o item confere as duas telas. Achei isso ao escrever o `test_colocar_a_venda`.
+
+**Validação L3c:** `test_mercado_negociacao` 10/10, `test_mercado_concorrencia` 8/8, `test_historico_negociacoes` 4/4, `test_colocar_a_venda` 13/13, `test_comissao_mercado_proposta` 5/5, `test_wagecap_block` 2/2, `test_loans` 8/8. Todos rodados com a saída gravada.
+
 ## Próximas partes do L3
 
-- **20 arquivos restantes.** São testes de tela, com 5 a 30 interações cada. Serão lidos um a um, como decidido na D1:
+- **12 arquivos de mercado restantes.** São testes de tela, com 5 a 30 interações cada. Serão lidos um a um, como decidido na D1:
   - verificação de regra → motor ou ponte;
   - verificação de tela com equivalente na v2 → tela da v2;
   - verificação de recurso que só existe na tela antiga → sai, com registro.
-- **Ordem:** negociação e propostas, depois busca e filtros (20 arquivos).
+- **Ordem:** busca, filtros e cards (`test_mercado2`, `test_mercado_filtros_ampliados`, `test_mercado_multi_*`, `test_s4_b3_*`, `test_ux_mercado_001`), depois olheiros (`test_scout`, `test_indicacoes_olheiros`).
+- **Movidos para o L4 (temporada e mundo):** `test_reputacao_propostas` (reputação do técnico e propostas de clubes) e `test_intervalo_noticias_proposta_destino` (notícias e propostas pelo técnico). O nome os trouxe para o mercado por engano.

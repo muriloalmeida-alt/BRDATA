@@ -1,110 +1,72 @@
-// Nova feature (pedido do usuário: "no Mercado deu certo mas precisa
-// funcionar também na Comissão Técnica") — aceitar a sugestão de
-// Mercado da Comissão Técnica (Início ou tela cheia) agora abre a
-// MESMA proposta real do Mercado (openOfferModal), em vez de comprar
-// na hora (buyPlayer, removida). Ver suggestMarket em carreira.js.
+// Sugestão de Mercado da Comissão Técnica: aceitar abre a MESMA proposta
+// real do Mercado, em vez de comprar na hora.
+// Lote L3c (12/11/2026, plano "testes sem a tela antiga"): antes pelo menu e
+// pelos diálogos da tela antiga (#btnOpenCommission, ícone "Mercado:",
+// #btnOfferConfirm). Agora pela tela "Fortaleça a comissão." da v2
+// (/comissao): contratar, a sugestão de Mercado com "Fazer proposta", que
+// leva a "Faça sua oferta." (a proposta real), e enviar.
+// O diálogo intermediário da tela antiga (item 1b) não existe na v2: o
+// próprio botão da sugestão diz "Fazer proposta".
 const { chromium } = require("playwright-core");
 const { check } = require("./_check");
-const { enterGame } = require("./_startup");
+const { carreiraV2, signup, ensureDailyClaimed, noMotor, saveNoServidor, base } = require("./_v2_carreira");
 
 (async () => {
   const browser = await chromium.launch({ executablePath: process.env.PW_CHROMIUM_PATH || undefined, headless: true, args: ["--host-resolver-rules=MAP fonts.googleapis.com 127.0.0.1,MAP fonts.gstatic.com 127.0.0.1"] });
   const page = await browser.newPage({ viewport: { width: 390, height: 900 } });
   page.on("dialog", (d) => d.dismiss());
-  page.on("pageerror", (err) => console.log("PAGE ERROR:", err.message));
-  const base = "http://localhost:8787";
-  const email = `comissaomercado${Date.now()}@teste.com`;
-  await page.goto(base + "/", { waitUntil: "domcontentloaded" });
-  await page.evaluate(async ({ email }) => {
-    await fetch("/api/auth/signup", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: "Comissao Mercado", email, password: "senha123", phone: "11999999999", plan: "freemium" }) });
-    await fetch("/api/auth/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, password: "senha123" }) });
-  }, { email });
-  await page.goto(base + "/carreira.html", { waitUntil: "domcontentloaded" });
-  await page.click('.mt-competition-card[data-competition="brasileirao"]');
-  await page.waitForTimeout(300);
-  await page.click(".m3-club-row");
-  await page.waitForTimeout(150);
-  await page.click("#btnConfirmClub");
-  await enterGame(page);
+  const erros = [];
+  page.on("pageerror", (err) => erros.push(err.message));
+  // Pré-temporada: a janela de transferências está aberta.
+  await carreiraV2(page, `comissaomercado${Date.now()}@teste.com`, { clube: "fla", criarConta: signup, preTemporada: true });
+  await ensureDailyClaimed(page);
+  const h1 = (t) => page.waitForFunction((t) => (document.querySelector("h1") || {}).textContent === t, t, { timeout: 20000 });
 
-  // Contrata a Comissão Técnica (Menu > Equipe & Treinos).
-  await page.click("#btnBottomMenu");
-  await page.waitForTimeout(150);
-  await page.click("#topbarMenu .mt-topbar-menu-item.group[data-submenu='equipe']");
-  await page.click("#btnOpenCommission");
-  await page.waitForTimeout(200);
-  await page.click("#btnHireCommission");
-  await page.waitForTimeout(150);
-  await page.click("#confirmOkBtn");
-  await page.waitForTimeout(200);
-  await page.click("#commissionClose");
-  await page.click(".m3-nav-item[data-panel='central']");
-  await page.waitForTimeout(300);
+  // Contrata a comissão técnica pela tela da v2.
+  await page.goto(base + "/comissao", { waitUntil: "domcontentloaded" });
+  await h1("Fortaleça a comissão.");
+  await page.locator(".cal-foot .cta, .wk-foot .cta, button.cta", { hasText: "Contratar comissão técnica" }).click();
+  await page.locator('[role="alertdialog"] button, [role="dialog"] button', { hasText: "Contratar" }).first().click();
+  await page.waitForSelector("#cm-g", { timeout: 20000 });
 
-  // Se não houver sugestão de mercado agora (depende do elenco
-  // sorteado), força uma via evaluate -- sem inventar uma mecânica
-  // nova, só garante que o teste sempre tem o que clicar.
-  await page.evaluate(() => {
-    const s = suggestMarket();
+  // Se não houver sugestão de mercado agora (depende do elenco sorteado),
+  // um titular fraco garante uma — sem inventar mecânica, só o cenário.
+  await noMotor(page, async ({ CAREER, carga, persistir }) => {
+    const s = carga.COMMISSION_AREAS.find((a) => a.id === "market").fn();
     if (!s.canApply) {
-      // Fallback: monta um cenário trivial (titular mais fraco vs. um
-      // jogador melhor barato de outro time) só pra garantir canApply.
       const starter = CAREER.squad.find((p) => CAREER.lineup.starters.includes(p.id));
       if (starter) starter.overall = 40;
+      await persistir();
     }
-    renderAll();
   });
-  await page.waitForTimeout(200);
-
-  const suggestionBefore = await page.evaluate(() => suggestMarket());
-  const marketBtnInfo = await page.evaluate(() => {
-    const btn = [...document.querySelectorAll("#commissionSummaryList .m3-commission-icon-btn")].find((b) => b.title.startsWith("Mercado:"));
-    return btn ? { disabled: btn.disabled, hasSuggestion: btn.classList.contains("has-suggestion"), title: btn.title } : null;
+  await page.goto(base + "/comissao", { waitUntil: "domcontentloaded" });
+  await h1("Fortaleça a comissão.");
+  await page.waitForSelector("#cm-g", { timeout: 20000 });
+  const sug = await page.evaluate(() => {
+    const box = [...document.querySelectorAll(".cl-sug")].find((b) => (b.querySelector(".cl-sug-t") || {}).textContent === "Mercado");
+    const btn = box && box.querySelector("button");
+    return box ? { texto: box.textContent, botao: btn ? btn.textContent : null, desativado: btn ? btn.disabled : null } : null;
   });
-  check("1) Botão de Mercado está clicável (has-suggestion) com sugestão de verdade:",
-    !!marketBtnInfo && !marketBtnInfo.disabled && marketBtnInfo.hasSuggestion, JSON.stringify({ suggestionBefore, marketBtnInfo }));
+  check("1) A sugestão de Mercado da comissão está disponível, com o botão \"Fazer proposta\":", !!sug && sug.botao === "Fazer proposta" && sug.desativado === false, JSON.stringify(sug));
 
-  const cashBefore = await page.evaluate(() => CAREER.finances.cash);
-  const squadCountBefore = await page.evaluate(() => CAREER.squad.length);
+  // 2) Tocar NÃO compra na hora: abre a proposta real, com caixa e elenco intactos.
+  const antes = await saveNoServidor(page);
+  await page.locator(".cl-sug", { hasText: "Mercado" }).locator("button", { hasText: "Fazer proposta" }).click();
+  await h1("Faça sua oferta.");
+  const depois = await saveNoServidor(page);
+  const tela2 = await page.evaluate(() => ({ url: location.pathname + location.search, ok: (document.querySelector(".pr-ok") || {}).textContent || "" }));
+  check("2) \"Fazer proposta\" abre a proposta real (não compra na hora: caixa e elenco intactos):",
+    tela2.url.startsWith("/mercado/proposta?") && depois.finances.cash === antes.finances.cash && depois.squad.length === antes.squad.length && (depois.pendingOffersOut || []).length === 0,
+    JSON.stringify({ tela2, caixa: [antes.finances.cash, depois.finances.cash] }));
+  check("2b) Sem aviso de \"sugestão aplicada\" precoce (a confirmação é a própria proposta):", !/aplicada/i.test(tela2.ok), tela2.ok);
 
-  await page.click('#commissionSummaryList .m3-commission-icon-btn[title^="Mercado:"]');
-  await page.waitForTimeout(300);
-  // UX-COMISSAO-001 — o ícone abre primeiro a sugestão num diálogo de
-  // confirmação; "Fazer proposta" é que abre a proposta real.
-  const confirmLabel = await page.evaluate(() => document.querySelector('.m3-dialog-overlay [data-commission-act="apply"]')?.textContent || "");
-  check("1b) Ícone abre a sugestão com 'Fazer proposta' (nada aberto/comprado ainda):", confirmLabel === "Fazer proposta" && !(await page.evaluate(() => OFFER_CTX)), confirmLabel);
-  await page.click('.m3-dialog-overlay [data-commission-act="apply"]');
-  await page.waitForTimeout(300);
+  // 3) Enviar cria a proposta de verdade.
+  await page.waitForFunction(() => Number((document.getElementById("pp-v") || {}).value) > 0, null, { timeout: 20000 });
+  await page.click(".pr .cal-foot .cta");
+  await h1("Proposta enviada.");
+  const s3 = await saveNoServidor(page);
+  check("3) Enviar cria a proposta de verdade (pendingOffersOut) e mostra \"Proposta enviada.\":", (s3.pendingOffersOut || []).length === 1, JSON.stringify(s3.pendingOffersOut));
 
-  // 2) Clicar NÃO compra na hora -- abre a proposta real (offerOverlay),
-  // pré-preenchida com o jogador/clube certos, sem tocar no caixa/elenco.
-  const afterClick = await page.evaluate(() => ({
-    offerOpen: !!document.getElementById("btnOfferConfirm"),
-    offerSub: document.getElementById("btnOfferConfirm")?.closest(".m3-dialog")?.querySelector(".m3-dialog-sub")?.textContent || "",
-    offerCtx: OFFER_CTX,
-    cash: CAREER.finances.cash,
-    squadCount: CAREER.squad.length,
-    toastVisible: getComputedStyle(document.getElementById("toast")).display !== "none" && document.getElementById("toast").classList.contains("show"),
-  }));
-  check("2) Clicar abre a proposta real (não compra na hora, caixa/elenco intactos):",
-    afterClick.offerOpen && !!afterClick.offerCtx && afterClick.cash === cashBefore && afterClick.squadCount === squadCountBefore,
-    JSON.stringify({ offerOpen: afterClick.offerOpen, offerSub: afterClick.offerSub, offerCtx: afterClick.offerCtx, cashChanged: afterClick.cash !== cashBefore, squadChanged: afterClick.squadCount !== squadCountBefore }));
-
-  // 2b) Não mostra o toast genérico de "aceita/aplicada" (seria
-  // enganoso -- nada foi decidido ainda, só abriu a tela).
-  check("2b) Sem toast de 'aceita' precoce (a confirmação real é dentro da proposta):", !afterClick.toastVisible, afterClick.toastVisible);
-
-  // 3) Confirmar a proposta dentro do modal cria a negociação de
-  // verdade (CAREER.pendingOffersOut), com o toast certo de "enviada".
-  await page.click("#btnOfferConfirm");
-  await page.waitForTimeout(300);
-  const afterConfirm = await page.evaluate(() => ({
-    offerClosed: !document.getElementById("btnOfferConfirm"),
-    pendingCount: (CAREER.pendingOffersOut || []).length,
-    toastTitle: document.querySelector("#toast .ct-toast-title")?.textContent || document.getElementById("toast").textContent,
-  }));
-  check("3) Confirmar dentro do modal cria a proposta de verdade (pendingOffersOut) e mostra 'enviada ao <clube>':",
-    afterConfirm.offerClosed && afterConfirm.pendingCount === 1 && afterConfirm.toastTitle.includes("enviada"), JSON.stringify(afterConfirm));
-
+  check("4) Sem erro na página:", erros.length === 0, erros.slice(0, 3).join(" | "));
   await browser.close();
 })().catch((e) => { console.error("FATAL:", e); process.exit(1); });
