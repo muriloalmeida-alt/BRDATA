@@ -9,6 +9,85 @@ divergências, aprovação) — elas não são repetidas aqui.
 
 Demandas vigentes
 
+FASE1-ESC — Fase 1: escalação e orientação da comissão técnica
+
+Status: PRONTO PARA IMPLEMENTAÇÃO
+Origem: documento do Murilo (12/11/2026), guardado sem alteração em
+`docs/carreira-v2/fase1/01_Requisitos_Escalacao.md` (ESC-01 a ESC-05 e
+aceite). A especificação é esse documento; abaixo, só o que o PM
+acrescenta.
+Prioridade: 1ª das frentes novas (decisão do Murilo, 12/11: Fase 1 →
+Série D → Offline).
+
+Leitura do PM (o que já existe e o que falta, conferido no código de
+`main` em 12/11):
+- "Orientação lateral" = a sugestão de escalação da comissão técnica
+  (aba lateral no Início, Escalação e Pré-jogo; `comissaoAplicar` em
+  `public/js/motor/ponte.js`). Hoje ela faz a própria troca, separada da
+  troca manual da v2 (`applyLineupChange` em
+  `carreira-v2/src/domain/lineup.ts`). ESC pede uma operação só.
+- A escalação automática (`autoLineup`, `motor/virada.js`) já monta 11
+  titulares + banco de 11 com goleiro (`MAX_BENCH = 11`). Falta garantir
+  isso nas trocas manuais e na orientação (ESC-01/03), a recomposição com
+  confirmação (ESC-03), o modo de revisão para save antigo com banco menor
+  (ESC-04) e a gravação transacional com toque duplo/falha (ESC-02/04).
+- Regra do jogo nova vai para `public/js/motor/` com teste; a tela, para
+  `carreira-v2/` (CLAUDE.md, seção 0).
+- "Reabrir em modo avião" (aceite 1) depende do Offline: até lá, o aceite
+  confere reabrir o jogo (motor recarregado do servidor). Registrado como
+  pendência do aceite, a fechar quando o Offline existir.
+
+Entrega: PR próprio, relatório nesta seção e status REVISÃO DO PM
+NECESSÁRIA; o merge espera a aprovação do Murilo.
+
+⸻
+
+FASE1-MER — Fase 1: mercado, empréstimos e contratação
+
+Status: PRONTO PARA IMPLEMENTAÇÃO (começa depois da FASE1-ESC)
+Origem: `docs/carreira-v2/fase1/02_Requisitos_Mercado.md` (MER-01 a
+MER-07 e matriz de aceite), sem alteração.
+Ordem: antes de mexer nas regras do mercado, o lote L3 do plano
+`docs/carreira-v2/PLANO_TESTES_TELA_ANTIGA.md` (os 22 testes de mercado
+saem da tela antiga), para as regras novas já nascerem com teste.
+Leitura do PM: o motor já tem IA de mercado, avaliação, propostas,
+empréstimo e parcelamento (`motor/mercado.js`, `motor/clube.js`); MER
+evolui o que existe (CLAUDE.md, seções 5 e 21), com calibração
+registrada (MER-06).
+
+⸻
+
+SERIED-001 — Catálogo da Série D e integração com a Copa do Brasil
+
+Status: BLOQUEADO (aguarda a Fase 1: ordem de prioridade decidida pelo Murilo, 12/11)
+Origem: `docs/carreira-v2/serie-d/03_Catalogo_e_Integracao.md` e o
+catálogo `serie_d_40_clubes.json`/`.csv` (40 clubes, edição 2026), sem
+alteração.
+Leitura do PM: hoje a Série D é um conjunto de 20 clubes de exemplo
+(`DEMO_TEAMS_SERIE_D` em `public/js/data.js`, `serieDPool` na virada,
+`motor/virada.js`). O catálogo novo substitui esse conjunto. Os escudos
+estão "pendente" em todos os 40 registros: pela regra do próprio
+documento, a integração só fica completa com cada escudo verificado em
+fonte oficial e empacotado localmente.
+
+⸻
+
+OFFLINE-001 — Modo Carreira offline
+
+Status: BLOQUEADO (aguarda a Fase 1 e a SERIED-001: ordem de prioridade decidida pelo Murilo, 12/11)
+Origem: `docs/carreira-v2/offline/BRDATA_Plano_Offline_Claude.md`, sem
+alteração.
+Decisão registrada (Murilo, 12/11): a carreira continua na raiz do site
+("/"), como desde a fase 11; onde o plano diz "abertura do Treinador em
+/carreira/", lê-se "a carreira na raiz" (manifest `start_url`
+"/?source=pwa", scope "/").
+Pendências que o plano já prevê e que serão levadas ao Murilo antes da
+implementação: política offline da recompensa diária e dos itens que
+afetam a economia; homologação em iPhone real (feita pelo Murilo).
+
+⸻
+
+
 S4-AUDIT-BACKLOG-001 — Auditoria de prontidão das demandas #12 a #21
 
 Status: APROVADO
