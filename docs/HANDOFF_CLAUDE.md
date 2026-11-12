@@ -172,8 +172,10 @@ Recomendação: aprovar com as decisões 1 e 2 acima.
 
 V2-ANTIGA-01 — Dois recursos da tela antiga trazidos para a v2
 
-Status: APROVADO (Murilo, 12/11/2026: "1. Sim! 2. Sim", sobre as diferenças
-achadas no lote L3 de testes, docs/carreira-v2/ENTREGA_TESTES_L3.md).
+Status: REVISÃO DO PM NECESSÁRIA. A demanda foi aprovada pelo Murilo em
+12/11/2026 ("1. Sim! 2. Sim", sobre as diferenças achadas no lote L3 de
+testes, docs/carreira-v2/ENTREGA_TESTES_L3.md); falta aprovar a
+implementação para o merge.
 1. Nome do jogador nos lances da partida.
    - Na partida encerrada ("Ver lances"), o nome do jogador do lance (gol,
      cartão, lesão) é link.
