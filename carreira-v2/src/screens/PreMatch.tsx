@@ -3,6 +3,7 @@
 // avisos da confirmação atual como linhas de alerta, "Revisar escalação"
 // (v2) e "Iniciar partida", que abre a Partida da v2 (A4; antes, #iniciar
 // na versão atual).
+import { useRef, useState } from "react";
 import type { PreMatchModel } from "../domain/prematch.ts";
 import { Crest, Wordmark } from "../ui/components.tsx";
 import { IconAlert, IconArrow, IconBack, IconChevron, IconPitch } from "../ui/icons.tsx";
@@ -12,7 +13,15 @@ import "./home.css";
 import "./lineup.css";
 import "./prematch.css";
 
-export function PreMatch({ m, myId }: { m: PreMatchModel; myId: string }) {
+export function PreMatch({ m, myId, onComplete }: { m: PreMatchModel; myId: string; onComplete: () => Promise<string | null> }) {
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  const inFlight = useRef(false);
+  const complete = async () => {
+    if (inFlight.current) return;
+    inFlight.current = true; setBusy(true); setErr(null);
+    try { setErr(await onComplete()); } finally { inFlight.current = false; setBusy(false); }
+  };
   const opp = m.next ? (String(m.next.home.id) === String(myId) ? m.next.away : m.next.home) : null;
   const back = () => goBack(`${BASE}/`);
   return (
@@ -50,6 +59,15 @@ export function PreMatch({ m, myId }: { m: PreMatchModel; myId: string }) {
         <PitchPlayers rows={m.rows} />
       </section>
 
+      {m.blocked.length > 0 && (
+        <section className="lu-issues pm-blocked" role="status" aria-labelledby="pm-blocked-t">
+          <h2 className="kicker-caps" id="pm-blocked-t">Complete a escalação para jogar</h2>
+          <ul>{m.blocked.map((t) => <li key={t}>{t}</li>)}</ul>
+          <p className="lu-issues-hint">A partida só começa com 11 titulares (com um goleiro) e 11 reservas (com um goleiro), todos disponíveis. "Completar automaticamente" troca só o que falta; o resto fica como você deixou.</p>
+          {err && <p className="pm-blocked-err" role="alert">{err}</p>}
+        </section>
+      )}
+
       <div className="pm-foot">
         <nav aria-label="Ações">
           {m.alerts.map((a) => (
@@ -71,7 +89,9 @@ export function PreMatch({ m, myId }: { m: PreMatchModel; myId: string }) {
             </Link>
           )}
         </nav>
-        <Link className="cta pm-cta" to={`${BASE}/partida?iniciar=1`}>Iniciar partida<IconArrow className="cta-arrow" /></Link>
+        {m.blocked.length > 0
+          ? <button type="button" className="cta pm-cta" aria-disabled={busy || undefined} onClick={complete}>{busy ? "Completando…" : "Completar automaticamente"}</button>
+          : <Link className="cta pm-cta" to={`${BASE}/partida?iniciar=1`}>Iniciar partida<IconArrow className="cta-arrow" /></Link>}
         <button type="button" className="text-btn" onClick={back}>Voltar</button>
       </div>
     </div>

@@ -371,7 +371,12 @@ export function App() {
       queueMicrotask(() => navigate(`${BASE}/`, { replace: true }));
       return null;
     }
-    return <PreMatch m={pm} myId={String(data.career.clubId)} />;
+    return <PreMatch m={pm} myId={String(data.career.clubId)} onComplete={async () => {
+      const r = await PrepGateway.completeLineup();
+      await reloadCareer();
+      if (!r.ok) return "Não foi possível completar agora. Tente de novo.";
+      return r.valida ? null : "Faltam jogadores disponíveis no elenco para completar tudo. Revise na Escalação.";
+    }} />;
   }
   if (loc.path === `${BASE}/escalacao`) {
     return <Lineup m={buildLineup(data.career)} cta={home.cta} onFormation={async (formation) => { const o = await save({ kind: "formation", formation }); return typeof o === "string" || o === null ? o : null; }}

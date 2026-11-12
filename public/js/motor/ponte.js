@@ -841,6 +841,25 @@ export const comandosGestao = {
       deleteTacticalScheme(id);
       return ambiente.gravar();
     },
+    // "Completar automaticamente" (bloqueio do início do jogo, 12/11/2026):
+    // corrige só as vagas com problema (motor/escalacao.js). Se a gravação
+    // falhar, a escalação de antes volta inteira.
+    async completarEscalacao() {
+      const CAREER = carreiraAtual();
+      if (!CAREER) return { ok: false, motivo: "sem-carreira" };
+      if (partidaAtual() && !partidaAtual().finished) return { ok: false, motivo: "partida" };
+      const l = CAREER.lineup;
+      const grupos = (FORMATIONS[l.formation] || []).map((s) => s[0]);
+      const r = escalacao.completarEscalacao(l, CAREER.squad, CAREER.currentRound, grupos);
+      if (r.mudou) {
+        const antes = { starters: [...l.starters], bench: [...(l.bench || [])] };
+        l.starters = r.lineup.starters; l.bench = r.lineup.bench;
+        markLineupDirty();
+        const g = await ambiente.gravar();
+        if (!g.ok) { Object.assign(l, antes); return g; }
+      }
+      return { ok: true, mudou: r.mudou, valida: r.valida, pendencias: r.pendencias };
+    },
     async escalarAutomaticamente(incluirBase) {
       const CAREER = carreiraAtual();
       if (!CAREER) return { ok: false, motivo: "sem-carreira" };

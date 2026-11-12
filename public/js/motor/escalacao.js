@@ -61,7 +61,93 @@ export function validarEscalacao(lineup, elenco, rodada) {
   if (!l.bench.some((id) => ehGoleiro(porId.get(id)) && disponivel(porId.get(id), rodada))) {
     pend.push({ tipo: "banco-sem-goleiro", ids: [], mensagem: "O banco precisa de um goleiro disponível." });
   }
+  // Decisão do Murilo (12/11): sem goleiro titular disponível o jogo não começa.
+  if (!titulares.some((id) => ehGoleiro(porId.get(id)) && disponivel(porId.get(id), rodada))) {
+    pend.push({ tipo: "sem-goleiro-titular", ids: [], mensagem: "Os titulares precisam de um goleiro disponível." });
+  }
   return { valida: pend.length === 0, pendencias: pend };
+}
+
+// Início do jogo (decisão do Murilo, 12/11/2026): a partida só começa com
+// a escalação válida (11 titulares + 11 reservas, todos disponíveis, goleiro
+// entre os titulares e no banco). Devolve null (pode começar) ou o motivo.
+export function bloqueioInicio(lineup, elenco, rodada) {
+  const v = validarEscalacao(lineup, elenco, rodada);
+  return v.valida ? null : { motivo: "escalacao", pendencias: v.pendencias };
+}
+
+// "Completar automaticamente" (bloqueio do início): corrige só as vagas com
+// problema e mantém o resto como o técnico deixou.
+// - tira da escalação quem saiu do elenco, quem aparece repetido e quem está
+//   lesionado ou suspenso;
+// - põe um goleiro disponível no gol se não houver (a vaga de goleiro da
+//   formação, `grupos`, ou a 1ª);
+// - preenche cada vaga titular vazia com o melhor disponível do grupo da
+//   vaga (do banco ou de fora), depois de qualquer grupo;
+// - completa o banco até 11, com goleiro, com os melhores de fora.
+// Prefere o elenco principal (e emprestados) à base, como a escalação
+// automática. Nunca inventa atleta: com elenco curto, sobra pendência.
+// `grupos`: o grupo de cada vaga da formação ("G", "D", "M", "F").
+// Devolve { lineup, mudou, valida, pendencias }.
+export function completarEscalacao(lineup, elenco, rodada, grupos) {
+  const l = copia(lineup || {});
+  const porId = new Map((elenco || []).map((p) => [p.id, p]));
+  const ok = (id) => porId.has(id) && disponivel(porId.get(id), rodada);
+  const antes = JSON.stringify([l.starters, l.bench]);
+  const vistos = new Set();
+  const manter = (id) => { if (!id || !ok(id) || vistos.has(id)) return false; vistos.add(id); return true; };
+  l.starters = Array.from({ length: TITULARES }, (_, i) => (manter(l.starters[i]) ? l.starters[i] : null));
+  l.bench = l.bench.filter(manter);
+  const base = (p) => (p.origin === "base" ? 1 : 0);
+  const ordem = (a, b) => base(a) - base(b) || (b.overall || 0) - (a.overall || 0);
+  const livres = (grp) => (elenco || []).filter((p) => disponivel(p, rodada) && !l.starters.includes(p.id) && (!grp || p.group === grp)).sort(ordem);
+  const tirarDoBanco = (id) => { l.bench = l.bench.filter((x) => x !== id); };
+  const vagaDoGol = Math.max(0, (grupos || []).indexOf("G"));
+  // Goleiro titular.
+  if (!l.starters.some((id) => id && ehGoleiro(porId.get(id)))) {
+    const g = livres("G")[0];
+    if (g) {
+      const vaga = l.starters[vagaDoGol] == null ? vagaDoGol : l.starters.findIndex((id) => id == null);
+      const alvo = vaga >= 0 ? vaga : vagaDoGol;
+      const sai = l.starters[alvo];
+      tirarDoBanco(g.id);
+      l.starters[alvo] = g.id;
+      if (sai && l.bench.length < RESERVAS) l.bench.push(sai);
+    }
+  }
+  // Vagas titulares vazias.
+  l.starters.forEach((id, i) => {
+    if (id) return;
+    const grp = (grupos || [])[i];
+    const p = (grp && livres(grp)[0]) || livres(null).filter((x) => !ehGoleiro(x))[0] || livres(null)[0];
+    if (p) { tirarDoBanco(p.id); l.starters[i] = p.id; }
+  });
+  // Banco: goleiro e depois até 11.
+  const naEscalacao = () => new Set([...l.starters.filter(Boolean), ...l.bench]);
+  const deFora = (grp) => (elenco || []).filter((p) => disponivel(p, rodada) && !naEscalacao().has(p.id) && (!grp || p.group === grp)).sort(ordem);
+  if (!l.bench.some((id) => ehGoleiro(porId.get(id)))) {
+    const g = deFora("G")[0];
+    if (g) {
+      if (l.bench.length >= RESERVAS) {
+        const sai = l.bench.map((id) => porId.get(id)).filter((p) => !ehGoleiro(p)).sort((a, b) => (a.overall || 0) - (b.overall || 0))[0];
+        if (sai) tirarDoBanco(sai.id);
+      }
+      if (l.bench.length < RESERVAS) l.bench.push(g.id);
+    }
+  }
+  // Banco maior que 11 (save muito antigo): saem os reservas de linha de menor overall.
+  while (l.bench.length > RESERVAS) {
+    const temOutroGoleiro = (id) => l.bench.some((x) => x !== id && ehGoleiro(porId.get(x)));
+    const sai = l.bench.map((id) => porId.get(id)).filter((p) => !ehGoleiro(p) || temOutroGoleiro(p.id)).sort((a, b) => (a.overall || 0) - (b.overall || 0))[0];
+    tirarDoBanco(sai.id);
+  }
+  while (l.bench.length < RESERVAS) {
+    const p = deFora(null)[0];
+    if (!p) break;
+    l.bench.push(p.id);
+  }
+  const v = validarEscalacao(l, elenco, rodada);
+  return { lineup: l, mudou: JSON.stringify([l.starters, l.bench]) !== antes, valida: v.valida, pendencias: v.pendencias };
 }
 
 // Onde está o jogador na escalação.

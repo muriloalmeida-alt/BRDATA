@@ -5,7 +5,7 @@
 // partida" abre a Partida da v2 (A4; antes, #iniciar na versão atual).
 const { chromium } = require("playwright-core");
 const { check } = require("./_check");
-const { signup, carreiraV2, ensureDailyClaimed, pularPreTemporada, noMotor } = require("./_v2_carreira");
+const { signup, carreiraV2, ensureDailyClaimed, pularPreTemporada, noMotor, iniciarPeloPreJogo } = require("./_v2_carreira");
 
 (async () => {
   const browser = await chromium.launch({ executablePath: process.env.PW_CHROMIUM_PATH || undefined, headless: true, args: ["--host-resolver-rules=MAP fonts.googleapis.com 127.0.0.1,MAP fonts.gstatic.com 127.0.0.1"] });
@@ -76,8 +76,12 @@ const { signup, carreiraV2, ensureDailyClaimed, pularPreTemporada, noMotor } = r
   await v2.reload({ waitUntil: "domcontentloaded" });
   await v2.waitForSelector(".pm-pitch", { timeout: 15000 });
   const al = await v2.evaluate(() => [...document.querySelectorAll(".pm-foot nav .row")].map((r) => r.textContent));
-  check("4) Avisos como linhas no estilo do Início (incompleta 10/11, titular lesionado):",
-    al.length === 4 && /Histórico do duelo/.test(al[3]) && /Escalação incompleta10\/11 titulares/.test(al[0]) && al[1].startsWith("Titular indisponível") && al[1].includes("(lesionado)"), JSON.stringify(al));
+  // Desde 12/11 essa escalação não começa o jogo: o Pré-jogo lista as
+  // pendências e troca "Iniciar partida" por "Completar automaticamente".
+  const bl = await v2.evaluate(() => ({ itens: [...document.querySelectorAll(".pm-blocked li")].map((li) => li.textContent), cta: document.querySelector(".pm-cta").textContent, link: !!document.querySelector('a[href$="partida?iniciar=1"]') }));
+  check("4) Avisos como linhas no estilo do Início (incompleta 10/11, titular lesionado) e o início bloqueado com \"Completar automaticamente\":",
+    al.length === 4 && /Histórico do duelo/.test(al[3]) && /Escalação incompleta10\/11 titulares/.test(al[0]) && al[1].startsWith("Titular indisponível") && al[1].includes("(lesionado)")
+      && bl.itens.some((t) => /11 titulares/.test(t)) && bl.itens.some((t) => /lesionado ou suspenso/.test(t)) && bl.cta === "Completar automaticamente" && !bl.link, JSON.stringify({ al, bl }));
   check("5) Abrir o Pré-jogo não grava nada no save:", writes.length === 0, JSON.stringify(writes));
 
   // 6) 360 px: sem rolagem horizontal, alvos ≥ 44 px.
@@ -88,9 +92,9 @@ const { signup, carreiraV2, ensureDailyClaimed, pularPreTemporada, noMotor } = r
   }));
   check("6) 360 px sem rolagem horizontal e alvos ≥ 44 px:", a.overflow <= 0 && a.small.length === 0, JSON.stringify(a));
 
-  // 7) Iniciar partida (A4): abre a Partida da v2 e o jogo começa pela ponte.
+  // 7) Completar e Iniciar partida (A4): abre a Partida da v2 e o jogo começa pela ponte.
   await page.goto("about:blank");
-  await v2.click(".pm-cta");
+  await iniciarPeloPreJogo(v2);
   await v2.waitForSelector(".mt-score", { timeout: 40000 });
   const live = await v2.evaluate(() => ({ path: location.pathname, search: location.search, kicker: document.querySelector(".mt-kicker").textContent }));
   check("7) Iniciar partida abre a Partida da v2 (endereço limpo) com a rodada atual:", live.path === "/partida" && live.search === "" && /Rodada/.test(live.kicker), JSON.stringify(live));

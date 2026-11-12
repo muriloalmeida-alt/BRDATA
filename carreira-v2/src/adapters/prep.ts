@@ -41,6 +41,8 @@ export const PrepGateway = {
   renameScheme: (id: string, name: string) => write("renomearEsquema", id, name),
   deleteScheme: (id: string) => write("excluirEsquema", id),
   autoLineup: (includeBase: boolean) => write("escalarAutomaticamente", includeBase),
+  // Bloqueio do início do jogo (12/11): corrige só as vagas com problema.
+  completeLineup: () => write<{ mudou: boolean; valida: boolean; pendencias: { tipo: string; mensagem: string }[] }>("completarEscalacao"),
   marking: () => read<MarkingData>("marcacao"),
   saveMarking: (mine: string | null, rival: string | null) => write("salvarMarcacao", mine, rival),
   training: () => read<TrainingData>("treino"),

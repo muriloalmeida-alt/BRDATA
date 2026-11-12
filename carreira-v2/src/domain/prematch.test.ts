@@ -47,3 +47,19 @@ test("fora da semana de jogo não está disponível", () => {
   const c = career(); c.calendar!.idx = 29;
   assert.equal(buildPreMatch(c, byId).available, false);
 });
+
+test("bloqueio do início (12/11): pendência da escalação bloqueia; 11 + 11 com goleiros libera", () => {
+  const c = career();
+  // Banco vazio (fixture): bloqueado, com os textos das pendências.
+  const b = buildPreMatch(c, byId).blocked;
+  assert.ok(b.some((t) => /11 reservas/.test(t)));
+  assert.ok(b.some((t) => /goleiro/.test(t)));
+  // 11 reservas com goleiro: libera.
+  const bench = ["g2", "d5", "d6", "d7", "d8", "m4", "m5", "m6", "f4", "f5", "f6"];
+  c.squad!.push(...bench.map((id) => P(id, id[0] === "g" ? "G" : id[0] === "d" ? "D" : id[0] === "m" ? "M" : "F")));
+  c.lineup!.bench = bench;
+  assert.deepEqual(buildPreMatch(c, byId).blocked, []);
+  // Sem goleiro titular: bloqueia.
+  c.lineup!.starters[0] = "d8"; c.lineup!.bench[4] = "g1";
+  assert.deepEqual(buildPreMatch(c, byId).blocked, ["Os titulares precisam de um goleiro disponível."]);
+});

@@ -74,7 +74,11 @@ async function jogarRodada(P) {
   const passos = [];
   const s = await P.avancarSemana(true);
   passos.push(`semana:${s && s.ok ? "ok" : s && s.motivo}`);
-  const i = P.iniciar();
+  // Escalação com pendência: o jogo não começa (12/11). A ponte da página
+  // antiga não tem o "Completar automaticamente"; a escalação automática
+  // de sempre (com a base, como o "Completar automaticamente") deixa 11 + 11.
+  let i = P.iniciar();
+  if (i && i.motivo === "escalacao") { await P.escalarAutomaticamente(true); passos.push("escalou"); i = P.iniciar(); if (i && i.pendencias) passos.push(JSON.stringify(i.pendencias)); }
   passos.push(`iniciar:${i && i.ok ? (i.aoVivo ? "ao-vivo" : "direto") : i && i.motivo}`);
   if (!i || !i.ok) return { ok: false, passos };
   P.pularParaFim();
@@ -88,7 +92,8 @@ async function jogarRodada(P) {
     else if (etapa.etapa === "noticias" || etapa.etapa === "resultados") etapa = P.concluirEtapa(etapa.etapa);
     else if (etapa.etapa === "proposta") etapa = await P.responderProposta("recusar");
     else if (etapa.etapa === "copa") {
-      const c = P.iniciarPernaCopa();
+      let c = P.iniciarPernaCopa();
+      if (c.motivo === "escalacao") { await P.escalarAutomaticamente(true); c = P.iniciarPernaCopa(); }
       if (c.ok && c.aoVivo) { P.pularParaFim(); await ate(() => { const e = P.estado(); return e.fase === "encerrada" && e.gravada != null; }, 60000); }
       etapa = P.posJogo();
     } else break;

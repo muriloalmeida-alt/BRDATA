@@ -12,9 +12,37 @@ Demandas vigentes
 FASE1-ESC — Fase 1: escalação e orientação da comissão técnica
 
 Status: APROVADO (Murilo, 12/11/2026, "Aprovado" sobre a recomendação
-abaixo; PR #105). Decisões: 1) o início da partida NÃO é bloqueado por
-pendência (fica como hoje); 2) revisão da escalação, não do save
-inteiro; 3) aceite em modo avião fica para a OFFLINE-001.
+abaixo; PR #105). Decisões:
+1) REVISTA pelo Murilo (12/11): "Escalação incompleta e sem goleiro titular
+   deve bloquear início do jogo". Escopo escolhido por ele: qualquer
+   pendência dos 11 titulares + 11 reservas (inclui banco de save antigo e
+   banco sem goleiro) mais goleiro disponível entre os titulares. No
+   Pré-jogo: aviso com o que falta e "Completar automaticamente".
+   - Motor: `escalacao.bloqueioInicio` (liga, perna da Copa e amistoso
+     recusam com motivo "escalacao"); `escalacao.completarEscalacao` e o
+     comando `completarEscalacao` da ponte (corrige só as vagas com
+     problema; nunca inventa atleta; falha de gravação devolve a escalação
+     de antes). Nova pendência "sem-goleiro-titular".
+   - v2: Pré-jogo troca "Iniciar partida" por "Completar automaticamente"
+     enquanto houver pendência; a Partida (amistoso e perna da Copa)
+     mostra o mesmo bloqueio com as duas ações.
+   - Efeito no jogo: lesão, suspensão ou venda de quem está na escalação
+     passa a exigir correção antes do próximo jogo (antes o time entrava
+     com força reduzida).
+   - Validação: motor 21/21 (`test_motor_escalacao`, +7 casos),
+     equivalência `test_motor_jogo` 3/3 (o roteiro completa a escalação
+     nos dois mundos antes de cada início), v2 121/121, `test_v2_esc`
+     item 7 (Pré-jogo bloqueado e completado) e `test_v2_tabela_partida`
+     item 4 (perna da Copa bloqueada no pós-jogo, completada na Partida,
+     pós-jogo até o fim). Contraprova: sem o bloqueio, o item 7 falha.
+     Suíte completa 210/211; a falha (`test_botoes_rodape`, tela antiga,
+     espera fixa de 150 ms) passou 2/2 sozinha e não passa pelo início
+     da partida do motor.
+   - Ponto de atenção: com menos de 22 jogadores disponíveis (principal
+     + base), "Completar" não resolve tudo e o jogo fica bloqueado até
+     contratar ou recuperar alguém. A tela explica isso.
+2) Revisão da escalação, não do save inteiro.
+3) Aceite em modo avião fica para a OFFLINE-001.
 Origem: documento do Murilo (12/11/2026), guardado sem alteração em
 `docs/carreira-v2/fase1/01_Requisitos_Escalacao.md` (ESC-01 a ESC-05 e
 aceite). A especificação é esse documento; abaixo, só o que o PM

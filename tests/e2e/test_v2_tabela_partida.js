@@ -13,7 +13,7 @@
 //     rodada 4; perna gravada, nada pendente, nenhum quadro.
 const { chromium } = require("playwright-core");
 const { check } = require("./_check");
-const { newCareer, serverCareer, motorNaPagina, continueToHome, noMotor, jogarRodadaV2 } = require("./_v2_carreira");
+const { newCareer, serverCareer, motorNaPagina, continueToHome, noMotor, jogarRodadaV2, iniciarPeloPreJogo } = require("./_v2_carreira");
 
 (async () => {
   const browser = await chromium.launch({ executablePath: process.env.PW_CHROMIUM_PATH || undefined, headless: true, args: ["--host-resolver-rules=MAP fonts.googleapis.com 127.0.0.1,MAP fonts.gstatic.com 127.0.0.1"] });
@@ -33,8 +33,7 @@ const { newCareer, serverCareer, motorNaPagina, continueToHome, noMotor, jogarRo
   await v2.goto("http://localhost:8787/", { waitUntil: "domcontentloaded" });
   await v2.waitForSelector(".home", { timeout: 15000 });
   await v2.click(".home-main .cta");
-  await v2.waitForSelector(".pm-cta", { timeout: 10000 });
-  await v2.click(".pm-cta");
+  await iniciarPeloPreJogo(v2);
   await v2.waitForSelector(".mt-skip", { timeout: 40000 });
   await v2.click(".mt-skip");
   await v2.waitForSelector('.pz-foot .cta[data-save="saved"]:not([aria-disabled])', { timeout: 30000 });
@@ -93,13 +92,21 @@ const { newCareer, serverCareer, motorNaPagina, continueToHome, noMotor, jogarRo
       && after3.path === "/partida" && after3.search === "" && after3.frames === 0 && after3.marca === "original",
     JSON.stringify({ score0, score3, ask3, after3 }));
 
-  // 4) Continuar: pós-jogo completo, com a perna da Copa ao vivo.
+  // 4) Continuar: pós-jogo completo, com a perna da Copa ao vivo. Antes, um
+  // titular lesionado (dado de teste, no motor): a perna da Copa é bloqueada
+  // pela escalação (12/11); "Completar automaticamente" na Partida joga a
+  // perna sem perder o pós-jogo em andamento.
+  const lesionado = await noMotor(v2, ({ CAREER }) => {
+    const p = CAREER.squad.find((x) => x.id === CAREER.lineup.starters[5]);
+    p.status = "contundido"; p.outUntilRound = CAREER.currentRound + 3;
+    return p.id;
+  });
   const steps = await continueToHome(v2);
   const saved = await serverCareer(v2);
   const home = await v2.evaluate(() => ({ line: document.querySelector(".home-date")?.textContent || "", frames: document.querySelectorAll("iframe").length, shown: [...document.querySelectorAll("iframe")].filter((f) => f.getBoundingClientRect().width > 1 || f.getAttribute("aria-hidden") !== "true").length }));
   const tie = (saved.cup.ties.fase1 || []).find((t) => String(t.home) === String(saved.clubId) || String(t.away) === String(saved.clubId));
-  check("4) Continuar: pós-jogo completo com a perna da Copa ao vivo; Início na rodada 4; ida gravada, nada pendente, sem quadro:",
-    steps.includes("copa") && home.line.endsWith("RODADA 4") && home.frames === 0 && home.shown === 0 && saved.currentRound === 4 && !saved.cup.pendingLiveLeg && tie && tie.leg1.gh != null,
+  check("4) Continuar: pós-jogo completo com a perna da Copa ao vivo (bloqueada pelo titular lesionado e completada na Partida, sem perder o pós-jogo); Início na rodada 4; ida gravada, nada pendente, sem quadro:",
+    steps.includes("completou") && steps.includes("copa") && !saved.lineup.starters.includes(lesionado) && home.line.endsWith("RODADA 4") && home.frames === 0 && home.shown === 0 && saved.currentRound === 4 && !saved.cup.pendingLiveLeg && tie && tie.leg1.gh != null,
     JSON.stringify({ steps, home, round: saved.currentRound, pending: saved.cup.pendingLiveLeg, leg1: tie && tie.leg1 }));
 
   await browser.close();

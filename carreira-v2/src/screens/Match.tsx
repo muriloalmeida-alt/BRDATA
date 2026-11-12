@@ -12,6 +12,7 @@ import { useEffect, useRef, useState } from "react";
 import { type MatchSession, type SaveError } from "../adapters/match.ts";
 import { engine } from "../adapters/engine.ts";
 import { WeekGateway, weekStore } from "../adapters/week.ts";
+import { PrepGateway } from "../adapters/prep.ts";
 import type { TableMatchContext } from "./Table.tsx";
 import { Sheet } from "../ui/dialog.tsx";
 import { LoginSheet } from "../ui/session.tsx";
@@ -37,7 +38,8 @@ import "./match.css";
 type Leave = { kind: "live" } | { kind: "result"; to: string | null; club?: string };
 // Estado da gravação do resultado (AUD-02).
 type SaveStatus = "saving" | "saved" | "failed" | "session" | "other-account";
-type View = { kind: "loading" } | { kind: "error"; message: string } | { kind: "none"; message: string } | { kind: "live"; m: MatchModel; snap: MatchSnapshot };
+type View = { kind: "loading" } | { kind: "error"; message: string } | { kind: "none"; message: string }
+  | { kind: "blocked"; start: "jogo" | "amistoso" | "copa"; issues: string[]; error: string | null } | { kind: "live"; m: MatchModel; snap: MatchSnapshot };
 export type MatchSub = "pausa" | "time" | "sai" | "entra" | "tatica" | "lances" | "tabela" | null;
 const PARTIDA = `${BASE}/partida`;
 
@@ -65,6 +67,8 @@ export function Match({ start, sub, outId, competitionId, competitionName, teamB
   const session = useRef<MatchSession | null>(null);
   const finishedOnce = useRef(false);
   const [attempt, setAttempt] = useState(0);
+  const completing = useRef(false);
+  const beginRef = useRef<((kind: "jogo" | "amistoso" | "copa") => void) | null>(null);
 
   useEffect(() => {
     let alive = true;
@@ -112,10 +116,18 @@ export function Match({ start, sub, outId, competitionId, competitionName, teamB
         navigate(PARTIDA, { replace: true });
         // Fase 3: o amistoso usa o mesmo motor ao vivo (iniciarAmistoso).
         // Fase 4: a perna da Copa do pós-jogo também (iniciarPernaCopa).
-        const r = kind === "amistoso" ? s.run<{ ok: boolean; motivo?: string }>("iniciarAmistoso")
-          : kind === "copa" ? s.run<{ ok: boolean; motivo?: string }>("iniciarPernaCopa") : s.start();
-        if (!r.ok) setView({ kind: "none", message: r.motivo === "sem-jogo" ? "Não há jogo do seu clube nesta semana." : r.motivo === "sem-amistoso" ? "Não há amistoso nesta semana." : "Não foi possível iniciar a partida." });
-        else apply();
+        beginRef.current = (kind) => {
+          const r = kind === "amistoso" ? s.run<{ ok: boolean; motivo?: string }>("iniciarAmistoso")
+            : kind === "copa" ? s.run<{ ok: boolean; motivo?: string }>("iniciarPernaCopa") : s.start();
+          // Escalação com pendência (decisão de 12/11): a partida não começa.
+          // "Completar automaticamente" tenta de novo por aqui, na mesma
+          // sessão (remontar reiniciaria o motor e perderia o pós-jogo da Copa).
+          const rb = r as { ok: boolean; motivo?: string; pendencias?: { mensagem: string }[] };
+          if (!rb.ok && rb.motivo === "escalacao") setView({ kind: "blocked", start: kind, issues: (rb.pendencias || []).map((p) => p.mensagem), error: null });
+          else if (!r.ok) setView({ kind: "none", message: r.motivo === "sem-jogo" ? "Não há jogo do seu clube nesta semana." : r.motivo === "sem-amistoso" ? "Não há amistoso nesta semana." : "Não foi possível iniciar a partida." });
+          else apply();
+        };
+        beginRef.current(kind);
       } else {
         // Sem ?iniciar: com o motor reaproveitado, uma partida em andamento
         // (ex.: voltou à tela no meio do jogo) continua de onde está. Partida
@@ -178,6 +190,28 @@ export function Match({ start, sub, outId, competitionId, competitionName, teamB
 
   if (view.kind === "loading") return <div className="state" role="status" aria-live="polite"><div className="state-line" />Preparando a partida…</div>;
   if (view.kind === "error") return <div className="state" role="alert">{view.message}<button className="state-btn" onClick={() => { engine.reset(); setAttempt((n) => n + 1); }}>Tentar novamente</button></div>;
+  if (view.kind === "blocked") {
+    const complete = async () => {
+      if (completing.current) return;
+      completing.current = true;
+      try {
+        const r = await PrepGateway.completeLineup();
+        if (r.ok && r.valida) { beginRef.current?.(view.start); return; }
+        setView({ ...view, error: r.ok ? "Faltam jogadores disponíveis no elenco para completar tudo. Revise na Escalação." : "Não foi possível completar agora. Tente de novo." });
+      } finally { completing.current = false; }
+    };
+    return (
+      <div className="state" role="alert">
+        <section className="lu-issues pm-blocked" aria-labelledby="mt-blocked-t">
+          <h1 className="kicker-caps" id="mt-blocked-t" data-screen-title>Complete a escalação para jogar</h1>
+          <ul>{view.issues.map((t) => <li key={t}>{t}</li>)}</ul>
+          {view.error && <p className="pm-blocked-err">{view.error}</p>}
+        </section>
+        <button type="button" className="state-btn" onClick={complete}>Completar automaticamente</button>
+        <button type="button" className="text-btn" onClick={() => navigate(`${BASE}/escalacao`)}>Revisar escalação</button>
+      </div>
+    );
+  }
   if (view.kind === "none") return <div className="state">{view.message}<button className="state-btn" onClick={() => navigate(`${BASE}/`, { replace: true })}>Ir para o início</button></div>;
 
   const m = view.m;

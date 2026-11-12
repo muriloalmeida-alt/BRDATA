@@ -29,6 +29,7 @@ function escalacao() {
 }
 const tipos = (v) => v.pendencias.map((x) => x.tipo).sort();
 const ids = (l) => [...l.starters, ...l.bench];
+const porGrupo = (id) => (id ? id[0] : null);
 
 (async () => {
   const E = await import(pathToFileURL(path.join(__dirname, "..", "..", "public", "js", "motor", "escalacao.js")).href);
@@ -147,6 +148,76 @@ const ids = (l) => [...l.starters, ...l.bench];
     assert.ok(r.lineup && r.lineup.bench.length === 11 && r.lineup.bench[10] === "M8", JSON.stringify(r));
     assert.ok(E.trocar(l, elenco(), R, { alvo: { tipo: "banco-vazio" }, saiEsperado: null, entraId: "F1" }).conflito, "titular não vai para a vaga vazia");
     assert.ok(E.trocar(r.lineup, elenco(), R, { alvo: { tipo: "banco-vazio" }, saiEsperado: null, entraId: "D9" }).conflito, "banco completo");
+  });
+
+  // Bloqueio do início do jogo e "Completar automaticamente" (decisão do Murilo, 12/11).
+  const G442 = ["G", "D", "D", "D", "D", "M", "M", "M", "M", "F", "F"];
+
+  await check("Início: escalação válida começa; sem goleiro titular disponível, bloqueia com a pendência própria", () => {
+    assert.strictEqual(E.bloqueioInicio(escalacao(), elenco(), R), null);
+    const l = escalacao(); l.starters[0] = "D9"; // jogador de linha no gol
+    const b = E.bloqueioInicio(l, elenco(), R);
+    assert.strictEqual(b.motivo, "escalacao");
+    assert.deepStrictEqual(b.pendencias.map((x) => x.tipo), ["sem-goleiro-titular"]);
+  });
+
+  await check("Início: titular lesionado, banco de save antigo (7) ou banco sem goleiro bloqueiam", () => {
+    const el = elenco().map((p) => (p.id === "D2" ? { ...p, status: "contundido", outUntilRound: R + 1 } : p));
+    assert.deepStrictEqual(E.bloqueioInicio(escalacao(), el, R).pendencias.map((x) => x.tipo), ["titular-indisponivel"]);
+    const velho = escalacao(); velho.bench = ["D5", "D6", "M5", "M6", "F3", "F4", "F5"];
+    assert.ok(E.bloqueioInicio(velho, elenco(), R));
+    const semG = escalacao(); semG.bench[0] = "D9";
+    assert.deepStrictEqual(E.bloqueioInicio(semG, elenco(), R).pendencias.map((x) => x.tipo), ["banco-sem-goleiro"]);
+  });
+
+  await check("Completar: titular lesionado sai e entra o melhor do mesmo grupo; o banco volta a 11 com goleiro; o resto fica igual", () => {
+    const el = elenco().map((p) => (p.id === "D2" ? { ...p, status: "contundido", outUntilRound: R + 1 } : p));
+    const l = escalacao();
+    const r = E.completarEscalacao(l, el, R, G442);
+    assert.ok(r.mudou && r.valida, JSON.stringify(r));
+    assert.strictEqual(r.lineup.starters[2], "D5"); // melhor defensor disponível fora dos titulares (estava no banco)
+    assert.ok(!ids(r.lineup).includes("D2"));
+    assert.strictEqual(r.lineup.bench.length, 11);
+    r.lineup.starters.forEach((id, i) => { if (i !== 2) assert.strictEqual(id, l.starters[i]); });
+    assert.strictEqual(new Set(ids(r.lineup)).size, 22);
+  });
+
+  await check("Completar: save antigo (banco 7, sem goleiro) fica 11 + 11 válido sem mexer nos titulares", () => {
+    const l = escalacao(); l.bench = ["D5", "D6", "M5", "M6", "F3", "F4", "F5"];
+    const r = E.completarEscalacao(l, elenco(), R, G442);
+    assert.ok(r.valida, JSON.stringify(r.pendencias));
+    assert.deepStrictEqual(r.lineup.starters, l.starters);
+    assert.ok(r.lineup.bench.includes("G2"));
+    assert.deepStrictEqual(r.lineup.bench.slice(0, 7), l.bench);
+  });
+
+  await check("Completar: jogador de linha no gol vai para o banco e o melhor goleiro de fora entra na vaga de goleiro", () => {
+    const l = escalacao(); l.starters[0] = "D9"; // G1 fora da escalação
+    const r = E.completarEscalacao(l, elenco(), R, G442);
+    assert.ok(r.valida, JSON.stringify(r.pendencias));
+    assert.strictEqual(r.lineup.starters[0], "G1");
+    assert.ok(r.lineup.bench.includes("D9") || !ids(r.lineup).includes("D9"));
+  });
+
+  await check("Completar: vaga vazia, repetido e quem saiu do elenco são corrigidos; escalação já válida não muda", () => {
+    const l = escalacao(); l.starters[5] = null; l.bench[3] = "D1"; l.bench[4] = "X99";
+    const r = E.completarEscalacao(l, elenco(), R, G442);
+    assert.ok(r.valida, JSON.stringify(r.pendencias));
+    assert.strictEqual(porGrupo(r.lineup.starters[5]), "M");
+    const igual = E.completarEscalacao(escalacao(), elenco(), R, G442);
+    assert.strictEqual(igual.mudou, false);
+    assert.deepStrictEqual(igual.lineup.starters, escalacao().starters);
+  });
+
+  await check("Completar: elenco curto não inventa atleta (sobra pendência) e prefere o principal à base", () => {
+    const curto = elenco().slice(0, 15);
+    const r = E.completarEscalacao(escalacao(), curto, R, G442);
+    assert.strictEqual(r.valida, false);
+    assert.ok(ids(r.lineup).every((id) => curto.some((p) => p.id === id)));
+    const comBase = elenco().map((p) => (p.id === "D9" ? { ...p, origin: "base", overall: 99 } : { ...p, origin: "principal" }));
+    const l = escalacao(); l.bench = l.bench.filter((id) => id !== "D8"); // falta um reserva
+    const c = E.completarEscalacao(l, comBase, R, G442);
+    assert.ok(!c.lineup.bench.includes("D9"), "base só quando o principal acaba");
   });
 
   process.exit(failed ? 1 : 0);

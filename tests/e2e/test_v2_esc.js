@@ -179,6 +179,38 @@ const { newCareer, noMotor, saveNoServidor, base } = require("./_v2_carreira");
       && aplicado.ok && aplicado.b.includes(prep.gkFora) && valida,
     JSON.stringify({ item: s5.item && { estado: s5.item.estado, resumo: s5.item.resumo, rec }, falhaOk: falha.ok, aplicadoOk: aplicado.ok, valida }));
 
+  // 7) Início do jogo bloqueado (decisão do Murilo, 12/11): sem goleiro
+  // titular o motor não começa a partida; com titular lesionado, o Pré-jogo
+  // mostra o que falta e "Completar automaticamente" no lugar de "Iniciar
+  // partida"; completar troca só a vaga com problema e libera o início.
+  const s7 = await noMotor(page, async ({ CAREER, persistir, virada, ponte }) => {
+    CAREER.lineup = { ...CAREER.lineup, ...virada.autoLineup(CAREER.squad, CAREER.lineup.formation, false) };
+    const l = CAREER.lineup;
+    const gk = l.starters[0], linha = l.bench.find((id) => CAREER.squad.find((p) => p.id === id).group !== "G");
+    l.bench = l.bench.map((id) => (id === linha ? gk : id)); l.starters[0] = linha; // jogador de linha no gol
+    const semGoleiro = ponte.iniciar();
+    l.bench = l.bench.map((id) => (id === gk ? linha : id)); l.starters[0] = gk;
+    const lesionado = CAREER.squad.find((p) => p.id === l.starters[5]);
+    lesionado.status = "contundido"; lesionado.outUntilRound = CAREER.currentRound + 2;
+    await persistir();
+    return { semGoleiro, lesionado: lesionado.id, starters: [...l.starters] };
+  });
+  await page.goto(base + "/pre-jogo", { waitUntil: "domcontentloaded" });
+  await page.waitForSelector(".pm-blocked", { timeout: 20000 });
+  const tela7 = await page.evaluate(() => ({ itens: [...document.querySelectorAll(".pm-blocked li")].map((li) => li.textContent), iniciar: !!document.querySelector('a[href$="partida?iniciar=1"]'), cta: (document.querySelector(".pm-cta") || {}).textContent }));
+  await page.click("button.pm-cta");
+  await page.waitForSelector('a[href$="partida?iniciar=1"]', { timeout: 20000 });
+  const l7 = await lineupServidor();
+  const valida7 = await noMotor(page, async ({ CAREER }) => {
+    const E = await import("/js/motor/escalacao.js");
+    return E.validarEscalacao(CAREER.lineup, CAREER.squad, CAREER.currentRound).valida;
+  });
+  check("7) Início bloqueado: sem goleiro titular o motor recusa; com titular lesionado o Pré-jogo lista a pendência e troca \"Iniciar partida\" por \"Completar automaticamente\", que troca só essa vaga e libera o início:",
+    s7.semGoleiro && s7.semGoleiro.motivo === "escalacao" && (s7.semGoleiro.pendencias || []).some((p) => p.tipo === "sem-goleiro-titular")
+      && tela7.itens.some((t) => /lesionado ou suspenso/.test(t)) && !tela7.iniciar && /Completar automaticamente/.test(tela7.cta)
+      && !l7.starters.includes(s7.lesionado) && l7.starters.every((id, i) => i === 5 || id === s7.starters[i]) && valida7,
+    JSON.stringify({ semGoleiro: s7.semGoleiro, tela7, l7: l7.starters, valida7 }));
+
   check("6) Sem erro na página:", erros.length === 0, erros.slice(0, 3).join(" | "));
   await browser.close();
 })().catch((e) => { console.error("FATAL:", e); process.exit(1); });

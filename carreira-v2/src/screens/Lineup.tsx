@@ -98,7 +98,7 @@ export function Lineup({ m, cta, onFormation, onAutoLineup }: {
         <section className="lu-issues" role="status" aria-labelledby="lu-issues-t">
           <h2 className="kicker-caps" id="lu-issues-t">Revise a escalação</h2>
           <ul>{m.issues.map((t) => <li key={t}>{t}</li>)}</ul>
-          <p className="lu-issues-hint">Toque no jogador ou na vaga para trocar. O jogo só confirma a escalação completa: 11 titulares e 11 reservas, com um goleiro no banco.</p>
+          <p className="lu-issues-hint">Toque no jogador ou na vaga para trocar. A partida só começa com a escalação completa: 11 titulares (com um goleiro) e 11 reservas (com um goleiro), todos disponíveis.</p>
         </section>
       )}
 

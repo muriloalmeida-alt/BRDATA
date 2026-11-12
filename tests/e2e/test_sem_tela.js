@@ -121,7 +121,7 @@ const CARREIRA_COM_TELA = CARREIRA_JS
     const depois = (await api("/api/career")).career;
     check("9) Save antigo (sem schemaVersion) abre migrado para a versão 1 e é gravado assim na próxima jogada, sem perder nada:",
       put.ok && semCampo && naMemoria === 1 && r.ok && depois.schemaVersion === 1 && depois.version === 1 && depois.currentRound === salvo.currentRound + 1,
-      JSON.stringify({ put: put.status, semCampo, naMemoria, rodada: r.ok, gravado: depois.schemaVersion }));
+      JSON.stringify({ put: put.status, semCampo, naMemoria, rodada: r.ok, passos: r.passos, gravado: depois.schemaVersion }));
   }
 
   // ---------- 2. O desenho não muda o jogo ----------

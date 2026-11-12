@@ -168,7 +168,10 @@ async function jogarRodadaV2(page) {
     const passos = [];
     const s = await P.avancarSemana(true);
     passos.push(`semana:${s && s.ok ? "ok" : s && s.motivo}`);
-    const i = P.iniciar();
+    // Escalação com pendência (lesão, suspensão, venda): o jogo não começa
+    // (12/11); o técnico toca em "Completar automaticamente" do Pré-jogo.
+    let i = P.iniciar();
+    if (i && i.motivo === "escalacao") { const c = await P.completarEscalacao(); passos.push(`completou:${c.ok && c.valida}`); i = P.iniciar(); }
     passos.push(`iniciar:${i && i.ok ? (i.aoVivo ? "ao-vivo" : "direto") : i && i.motivo}`);
     if (!i || !i.ok) return { ok: false, passos };
     P.pularParaFim();
@@ -182,7 +185,8 @@ async function jogarRodadaV2(page) {
       else if (etapa.etapa === "noticias" || etapa.etapa === "resultados") etapa = P.concluirEtapa(etapa.etapa);
       else if (etapa.etapa === "proposta") etapa = await P.responderProposta("recusar");
       else if (etapa.etapa === "copa") {
-        const c = P.iniciarPernaCopa();
+        let c = P.iniciarPernaCopa();
+        if (c.motivo === "escalacao") { await P.completarEscalacao(); c = P.iniciarPernaCopa(); }
         if (c.ok && c.aoVivo) { P.pularParaFim(); await ate(() => { const e = P.estado(); return e.fase === "encerrada" && e.gravada != null; }); }
         etapa = P.posJogo();
       } else break;
@@ -216,13 +220,25 @@ async function newCareer(page, email, club = "fla") {
 
 const serverCareer = saveNoServidor;
 
+// "Iniciar partida" no Pré-jogo. Com pendência na escalação (lesão,
+// suspensão, venda) a partida não começa (decisão de 12/11): o botão é
+// "Completar automaticamente"; toca nele e depois em "Iniciar partida",
+// como o técnico faria.
+async function iniciarPeloPreJogo(v2) {
+  await v2.waitForSelector(".pm-cta", { timeout: 15000 });
+  if (await v2.locator("button.pm-cta").count()) {
+    await v2.click("button.pm-cta");
+    await v2.waitForSelector("a.pm-cta", { timeout: 20000 });
+  }
+  await v2.click("a.pm-cta");
+}
+
 // Início → Preparar partida → Iniciar partida → "Pular para o fim".
 async function playV2MatchToEnd(v2) {
   await v2.goto(base + "/", { waitUntil: "domcontentloaded" });
   await v2.waitForSelector(".home", { timeout: 15000 });
   await v2.click(".home-main .cta");
-  await v2.waitForSelector(".pm-cta", { timeout: 10000 });
-  await v2.click(".pm-cta");
+  await iniciarPeloPreJogo(v2);
   await v2.waitForSelector(".mt-skip", { timeout: 40000 });
   await v2.click(".mt-skip");
   await v2.waitForSelector(".rs-title", { timeout: 30000 });
@@ -256,6 +272,8 @@ async function continueToHome(v2, opts = {}) {
       const h1 = (document.querySelector("h1") || {}).textContent || "";
       const ready = document.querySelector('.pz-foot .cta[data-save="saved"]:not([aria-disabled])');
       if (document.querySelector(".mt-skip")) return "live";
+      // Perna da Copa bloqueada por pendência na escalação (12/11): o técnico completa.
+      if (document.querySelector(".state .pm-blocked")) return "bloqueada";
       if (ready) return "copa-fim";
       if (document.querySelector(".pj-answer")) return document.querySelector(".pj-effect") ? "coletiva-ok" : "coletiva";
       if (h1 === "Nos bastidores." && document.querySelector(".pj")) return "noticias";
@@ -263,7 +281,8 @@ async function continueToHome(v2, opts = {}) {
       if (h1 === "Uma oferta chegou.") return "proposta";
       return null;
     }).catch(() => null);
-    if (st === "live") { if (!steps.includes("copa")) steps.push("copa"); await v2.click(".mt-skip").catch(() => {}); }
+    if (st === "bloqueada") { if (!steps.includes("completou")) steps.push("completou"); await v2.click(".state .state-btn").catch(() => {}); }
+    else if (st === "live") { if (!steps.includes("copa")) steps.push("copa"); await v2.click(".mt-skip").catch(() => {}); }
     else if (st === "copa-fim") await v2.click(".pz-foot .cta").catch(() => {});
     else if (st === "coletiva") {
       steps.push("coletiva");
@@ -318,5 +337,5 @@ async function skipAutoOpen(page, timeout = 30000) {
   return false;
 }
 
-module.exports = { base, contaNova, saveNoServidor, novaCarreiraV2, ateOInicio, motorPronto, noMotor, carreiraV2, pularPreTemporada, jogarRodadaV2,
+module.exports = { iniciarPeloPreJogo, base, contaNova, saveNoServidor, novaCarreiraV2, ateOInicio, motorPronto, noMotor, carreiraV2, pularPreTemporada, jogarRodadaV2,
   signup, newCareer, serverCareer, playV2MatchToEnd, motorNaPagina, continueToHome, sameSave, ensureDailyClaimed, skipAutoOpen };
