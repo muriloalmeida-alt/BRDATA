@@ -1,48 +1,37 @@
-// Confere que a virada de temporada não reenche elenco de time de
-// outra divisão até o piso maior (16) por engano -- deve continuar no
-// piso menor (12, MIN_LEAGUE_SQUAD_OTHER_DIVISION).
+// Confere que a virada de temporada não reenche elenco de time de outra
+// divisão até o piso maior (16) por engano — deve ficar no piso menor (12,
+// MIN_LEAGUE_SQUAD_OTHER_DIVISION).
+// Lote L3d (12/11/2026, plano "testes sem a tela antiga"): antes a virada
+// pela tela antiga (#btnAdvanceSeason); agora pelo comando do motor da v2
+// (proximaTemporada), gravando a rodada 39 e reabrindo antes, como antes.
 const { chromium } = require("playwright-core");
 const { check } = require("./_check");
-const { enterGame, waitForBoot } = require("./_startup");
+const { newCareer, noMotor, saveNoServidor, base } = require("./_v2_carreira");
+
 (async () => {
-  const browser = await chromium.launch({ executablePath: process.env.PW_CHROMIUM_PATH || undefined, headless: true });
+  const browser = await chromium.launch({ executablePath: process.env.PW_CHROMIUM_PATH || undefined, headless: true, args: ["--host-resolver-rules=MAP fonts.googleapis.com 127.0.0.1,MAP fonts.gstatic.com 127.0.0.1"] });
   const page = await browser.newPage({ viewport: { width: 390, height: 900 } });
   page.on("dialog", (d) => d.dismiss());
-  const base = "http://localhost:8787";
-  const email = `mercadoseason${Date.now()}@teste.com`;
-  await page.goto(base + "/", { waitUntil: "domcontentloaded" });
-  await page.evaluate(async ({ email }) => {
-    await fetch("/api/auth/signup", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: "Mercado Season", email, password: "senha123", phone: "11999999999", plan: "freemium" }) });
-    await fetch("/api/auth/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, password: "senha123" }) });
-  }, { email });
-  await page.goto(base + "/carreira.html", { waitUntil: "domcontentloaded" });
-  await page.click('.mt-competition-card[data-competition="brasileirao"]');
-  await page.waitForTimeout(300);
-  await page.click(".m3-club-row");
-  await page.waitForTimeout(150);
-  await page.click("#btnConfirmClub");
-  await enterGame(page);
+  const erros = [];
+  page.on("pageerror", (err) => erros.push(err.message));
+  await newCareer(page, `mercadoseason${Date.now()}@teste.com`);
 
-  // Força elenco de um time de fora bem pequeno (abaixo do piso) e
-  // avança temporada -- confere que reenche só até 12, não 16.
-  const before = await page.evaluate(() => {
+  // Elenco de um time de fora bem pequeno (abaixo do piso) e rodada 39.
+  const before = await noMotor(page, async ({ CAREER, persistir }) => {
     const ownIds = new Set(Object.keys(CAREER.standings));
     const [otherId] = Object.keys(CAREER.leagueSquads).filter((id) => !ownIds.has(id));
     CAREER.leagueSquads[otherId] = CAREER.leagueSquads[otherId].slice(0, 5); // força bem pequeno
+    CAREER.currentRound = 39;
+    await persistir();
     return { otherId, sizeBefore: CAREER.leagueSquads[otherId].length };
   });
-  await page.evaluate(async () => {
-    CAREER.currentRound = 39;
-    await fetch("/api/career", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(CAREER) });
-  });
-  await page.reload({ waitUntil: "domcontentloaded" });
-  await waitForBoot(page);
-  await page.click("#btnAdvanceSeason");
-  await page.waitForTimeout(300);
-  await page.click("#confirmOkBtn");
-  await page.waitForTimeout(600);
-  const after = await page.evaluate((otherId) => ({ sizeAfter: CAREER.leagueSquads[otherId].length }), before.otherId);
+  await page.goto(base + "/", { waitUntil: "domcontentloaded" });
+  const virada = await noMotor(page, ({ ponte }) => ponte.proximaTemporada());
+  let saved = await saveNoServidor(page);
+  for (const t0 = Date.now(); saved.currentRound === 39 && Date.now() - t0 < 15000; await page.waitForTimeout(200)) saved = await saveNoServidor(page);
+  const after = { sizeAfter: (saved.leagueSquads[before.otherId] || []).length, round: saved.currentRound, virada: virada && virada.ok };
   check("1) Elenco de time de fora reenchido até o piso MENOR (12), não o de sempre (16):", after.sizeAfter === 12, JSON.stringify({ before, after }));
 
+  check("2) Sem erro na página:", erros.length === 0, erros.slice(0, 3).join(" | "));
   await browser.close();
 })().catch((e) => { console.error("FATAL:", e); process.exit(1); });
