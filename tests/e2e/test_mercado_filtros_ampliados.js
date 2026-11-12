@@ -1,115 +1,91 @@
-// Pedido do usuário: "A tela de mercado me impede de procurar mais
-// jogadores. Ampliem os filtros." — valida os 2 filtros novos (clube
-// específico, nível mínimo) + a paginação real ("Carregar mais") no
-// lugar do teto fixo de 40/60 que existia antes.
+// Mercado: paginação ("Mostrando 40 de N" e "Carregar mais"), filtros
+// (posição, clube, faixa de overall), busca por nome e o caminho para propor.
+// Lote L3d (12/11/2026, plano "testes sem a tela antiga"): antes pela lista
+// da tela antiga (#marketList, selects de filtro). Agora pelo Mercado da v2
+// ("Busque seu reforço.") e a folha "Refine sua busca."; a regra dos filtros
+// também tem teste no domínio da v2 (carreira-v2/src/domain/market.test.ts).
 const { chromium } = require("playwright-core");
 const { check } = require("./_check");
-const { enterGame } = require("./_startup");
+const { newCareer, base } = require("./_v2_carreira");
 
 (async () => {
-  const browser = await chromium.launch({
-    executablePath: process.env.PW_CHROMIUM_PATH || undefined,
-    headless: true,
-    args: ["--host-resolver-rules=MAP fonts.googleapis.com 127.0.0.1,MAP fonts.gstatic.com 127.0.0.1"],
-  });
+  const browser = await chromium.launch({ executablePath: process.env.PW_CHROMIUM_PATH || undefined, headless: true, args: ["--host-resolver-rules=MAP fonts.googleapis.com 127.0.0.1,MAP fonts.gstatic.com 127.0.0.1"] });
   const page = await browser.newPage({ viewport: { width: 390, height: 900 } });
-  page.on("pageerror", (err) => console.log("PAGE ERROR:", err.message));
-  const base = "http://localhost:8787";
-  const email = `mktfiltros${Date.now()}@teste.com`;
+  page.on("dialog", (d) => d.dismiss());
+  const erros = [];
+  page.on("pageerror", (err) => erros.push(err.message));
+  await newCareer(page, `mercfiltros${Date.now()}@teste.com`);
+  await page.goto(base + "/mercado", { waitUntil: "domcontentloaded" });
+  await page.waitForSelector(".mk-list li", { timeout: 20000 });
+  const lista = () => page.evaluate(() => ({
+    rows: document.querySelectorAll(".mk-list li").length,
+    count: (document.querySelector(".sq-count") || {}).textContent || "",
+    subs: [...document.querySelectorAll(".mk-list .row-sub")].map((s) => s.textContent),
+    clubs: [...document.querySelectorAll(".mk-list .wk-item dt")].map((d) => d.textContent),
+    hrefs: [...document.querySelectorAll(".mk-list a.sp-player")].map((a) => a.getAttribute("href")),
+  }));
+  const filtros = async (fn) => {
+    await page.click(".sq-filter");
+    await page.waitForSelector("#mf-t", { timeout: 10000 });
+    await fn();
+    await page.locator('[role="dialog"] .cta', { hasText: "Aplicar filtros" }).click();
+    await page.waitForFunction(() => !document.getElementById("mf-t"), null, { timeout: 10000 });
+    await page.waitForTimeout(150);
+  };
 
-  await page.goto(base + "/", { waitUntil: "domcontentloaded" });
-  await page.evaluate(async ({ email }) => {
-    await fetch("/api/auth/signup", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: "Mkt Filtros", email, password: "senha123", phone: "11999999999", plan: "freemium" }) });
-    await fetch("/api/auth/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, password: "senha123" }) });
-  }, { email });
-  await page.goto(base + "/carreira.html", { waitUntil: "domcontentloaded" });
-  await page.waitForTimeout(400);
-  await page.click('.mt-competition-card[data-competition="brasileirao"]');
-  await page.waitForTimeout(300);
-  await page.click(".m3-club-row");
+  // 1) Lista inicial: 40 jogadores, com o total no contador.
+  const l1 = await lista();
+  check("1) Lista inicial com 40 jogadores (\"Mostrando 40 de N\"):", l1.rows === 40 && /^Mostrando 40 de \d+/.test(l1.count), JSON.stringify({ rows: l1.rows, count: l1.count }));
+
+  // 2) "Carregar mais" faz a lista crescer.
+  await page.click(".mk-more");
   await page.waitForTimeout(150);
-  await page.click("#btnConfirmClub");
-  await enterGame(page);
+  const l2 = await lista();
+  check("2) Depois de \"Carregar mais\", a lista cresce:", l2.rows > l1.rows, JSON.stringify({ rows: l2.rows, count: l2.count }));
 
-  // Abre o Mercado (via nav direta, ver Fundação M3).
-  await page.click(".m3-nav-item[data-panel='mercado']");
-  await page.waitForTimeout(500);
+  // 3) Trocar o filtro de posição volta para a 1ª página (<= 40).
+  await filtros(() => page.locator('[aria-labelledby="mf-pos"] [role="radio"]', { hasText: "Goleiro" }).click());
+  const l3 = await lista();
+  check("3) Trocar o filtro de posição reinicia a paginação (<= 40 resultados) e só mostra goleiros:",
+    l3.rows > 0 && l3.rows <= 40 && l3.subs.every((s) => s.startsWith("Goleiro")), JSON.stringify({ rows: l3.rows, count: l3.count }));
 
-  // 1) Sem filtro nenhum: começa em 40, mostra contador certo e o
-  // botão "Carregar mais" aparece se o pool total for maior que 40.
-  const initial = await page.evaluate(() => ({
-    rows: document.querySelectorAll("#marketList .m3-op-card").length,
-    countText: document.getElementById("marketResultCount").textContent,
-    loadMoreHidden: document.getElementById("btnMarketLoadMore").classList.contains("hidden"),
-    clubOptions: document.getElementById("marketClubFilter").options.length,
-  }));
-  check("1) Lista inicial com 40 jogadores:", initial.rows === 40, "| contador:", JSON.stringify(initial.countText));
-  console.log("   'Carregar mais' visível (pool > 40):", !initial.loadMoreHidden);
-  console.log("   Filtro de clube populado (>1 opção, incluindo 'Todos'):", initial.clubOptions > 1, "| total opções:", initial.clubOptions);
-
-  // 2) "Carregar mais" soma +60 (sem resetar o pool) e o contador
-  // reflete o novo total mostrado.
-  await page.click("#btnMarketLoadMore");
-  await page.waitForTimeout(200);
-  const afterMore = await page.evaluate(() => ({
-    rows: document.querySelectorAll("#marketList .m3-op-card").length,
-    countText: document.getElementById("marketResultCount").textContent,
-  }));
-  check("2) Depois de 'Carregar mais', lista cresce (100 ou o total, o que for menor):", afterMore.rows > initial.rows, "| contador:", JSON.stringify(afterMore.countText));
-
-  // 3) Trocar de filtro (posição) reseta a paginação de volta pro
-  // início (não soma ao "carregado" anterior de um pool diferente).
-  await page.selectOption("#marketPosFilter", "F", { force: true }); // UX-MERCADO-001: filtros ficam no estado escondido (ver openMarketFiltersSheet)
-  await page.waitForTimeout(200);
-  const afterPosFilter = await page.evaluate(() => document.querySelectorAll("#marketList .m3-op-card").length);
-  check("3) Trocar filtro de posição reseta a paginação (<= 40 resultados de novo):", afterPosFilter <= 40);
-  await page.selectOption("#marketPosFilter", "", { force: true }); // UX-MERCADO-001: filtros ficam no estado escondido (ver openMarketFiltersSheet)
-  await page.waitForTimeout(200);
-
-  // 4) Filtro de clube específico: escolhe uma opção real da lista e
-  // confirma que TODAS as linhas mostradas são desse clube.
-  const clubValue = await page.evaluate(() => document.getElementById("marketClubFilter").options[1]?.value);
-  const clubLabel = await page.evaluate(() => document.getElementById("marketClubFilter").options[1]?.textContent);
-  await page.selectOption("#marketClubFilter", clubValue, { force: true }); // UX-MERCADO-001: filtros ficam no estado escondido (ver openMarketFiltersSheet)
-  await page.waitForTimeout(200);
-  const clubFilterOk = await page.evaluate((label) => {
-    const rows = [...document.querySelectorAll("#marketList .m3-op-tags .m3-op-club")];
-    return rows.length > 0 && rows.every((el) => el.textContent.trim() === label.trim() || label.includes(el.textContent.trim()) || el.textContent.trim().length > 0);
-  }, clubLabel);
-  const clubRowsCount = await page.evaluate(() => document.querySelectorAll("#marketList .m3-op-card").length);
-  check(`4) Filtro de clube ("${clubLabel}") mostra só jogadores desse clube:`, clubFilterOk, "| linhas:", clubRowsCount);
-  await page.selectOption("#marketClubFilter", "", { force: true }); // UX-MERCADO-001: filtros ficam no estado escondido (ver openMarketFiltersSheet)
-  await page.waitForTimeout(200);
-
-  // 5) Filtro de nível mínimo (OVR 80+): confirma que nenhum badge de
-  // OVR mostrado é menor que 80.
-  await page.selectOption("#marketOvrFilter", "80", { force: true }); // UX-MERCADO-001: filtros ficam no estado escondido (ver openMarketFiltersSheet)
-  await page.waitForTimeout(200);
-  const ovrFilterOk = await page.evaluate(() => {
-    const badges = [...document.querySelectorAll("#marketList .mt-ovr-badge")].map((b) => Number(b.textContent.trim()));
-    return badges.length >= 0 && badges.every((n) => n >= 80);
+  // 4) Filtro de clube: só jogadores desse clube.
+  let clube = "";
+  await filtros(async () => {
+    await page.locator('[aria-labelledby="mf-pos"] [role="radio"]', { hasText: "Todas" }).click().catch(() => {});
+    const opt = await page.evaluate(() => { const o = document.querySelectorAll("#mf-club option")[1]; return { v: o.value, t: o.textContent }; });
+    clube = opt.t;
+    await page.selectOption("#mf-club", opt.v);
   });
-  const ovrRowsCount = await page.evaluate(() => document.querySelectorAll("#marketList .mt-ovr-badge").length);
-  check("5) Filtro de nível mínimo (80+) — todos os badges são >= 80:", ovrFilterOk, "| linhas:", ovrRowsCount);
-  await page.selectOption("#marketOvrFilter", "", { force: true }); // UX-MERCADO-001: filtros ficam no estado escondido (ver openMarketFiltersSheet)
-  await page.waitForTimeout(200);
+  const l4 = await lista();
+  check(`4) Filtro de clube ("${clube}") mostra só jogadores desse clube:`, l4.rows > 0 && l4.clubs.every((c) => c.startsWith(clube)), JSON.stringify({ rows: l4.rows, amostra: l4.clubs.slice(0, 3) }));
 
-  // 6) Busca por nome ainda funciona normal (não quebrou com os
-  // filtros novos), combinada com o filtro de posição.
-  await page.fill("#marketSearch", "a");
-  await page.waitForTimeout(250);
-  const searchRows = await page.evaluate(() => document.querySelectorAll("#marketList .m3-op-card").length);
-  check("6) Busca por nome continua funcionando (tem resultado):", searchRows > 0);
-  await page.fill("#marketSearch", "");
-  await page.waitForTimeout(200);
+  // 5) Faixa de overall a partir de 80: todos >= 80.
+  await filtros(async () => {
+    await page.selectOption("#mf-club", "");
+    await page.fill('[aria-label="Faixa de overall: de"]', "80");
+  });
+  const l5 = await lista();
+  const ovr = l5.subs.map((s) => Number((/overall (\d+)/.exec(s) || [])[1]));
+  check("5) Faixa de overall a partir de 80: todos os jogadores têm overall >= 80:", l5.rows > 0 && ovr.every((o) => o >= 80), JSON.stringify({ rows: l5.rows, ovr: ovr.slice(0, 5) }));
 
-  // 7) Ação de comprar continua funcionando depois de tudo isso
-  // (garante que popular o select de clube a cada render não quebrou
-  // o wiring dos botões da lista).
-  const buyBtn = await page.$("[data-buy]");
-  const buyBtnExists = !!buyBtn;
-  check("7) Botão de propor compra ainda presente/funcional na lista:", buyBtnExists);
+  // 6) Busca por nome (com os filtros limpos).
+  await page.click(".sq-filter");
+  await page.waitForSelector("#mf-t", { timeout: 10000 });
+  await page.locator('[role="dialog"] .text-btn', { hasText: "Limpar filtros" }).click();
+  await page.waitForFunction(() => !document.getElementById("mf-t"), null, { timeout: 10000 });
+  const nome = (await lista()).hrefs.length ? await page.evaluate(() => document.querySelector(".mk-list .row-title").textContent.split(" ").pop()) : "";
+  await page.fill("#mk-q", nome);
+  await page.waitForTimeout(300);
+  const l6 = await lista();
+  check("6) Busca por nome tem resultado:", !!nome && l6.rows > 0, JSON.stringify({ nome, rows: l6.rows }));
 
+  // 7) Cada jogador leva ao perfil do alvo, com "Fazer proposta".
+  await page.click(".mk-list a.sp-player >> nth=0");
+  await page.waitForFunction(() => (document.querySelector("h1") || {}).textContent === "Conheça seu reforço.", null, { timeout: 20000 });
+  const cta = await page.textContent(".pr .cal-foot .cta");
+  check("7) O jogador da lista leva ao perfil do alvo com \"Fazer proposta\":", /Fazer proposta|Ver negociação/.test(cta), cta);
+
+  check("8) Sem erro na página:", erros.length === 0, erros.slice(0, 3).join(" | "));
   await browser.close();
-  console.log("OK");
 })().catch((e) => { console.error("FATAL:", e); process.exit(1); });

@@ -18,3 +18,21 @@ test("Faixa de potencial idêntica à do jogo (scoutedPotentialRange), por idade
   assert.equal(potentialText({ id: "n", overall: 80, potential: 80, age: 25 }), null);
   assert.equal(potentialText({ id: "r", overall: 50, potential: 70, age: 16, scoutRevealed: true }), "70");
 });
+
+// Lote L3d (12/11/2026): os limites que o test_scout antigo conferia na tela
+// antiga — determinística, mínimo >= overall, máximo <= 99, mínimo <= máximo
+// — e sem faixa quando não há espaço de crescimento.
+test("Faixa de potencial: determinística e dentro dos limites; sem espaço de crescimento, sem faixa", () => {
+  let n = 0;
+  for (let i = 0; i < 300; i++) {
+    const age = 15 + (i % 8), overall = 35 + (i % 50), potential = Math.min(99, overall + (i % 30));
+    const p = { id: `base_${i}`, age, overall, potential };
+    const r1 = scoutedPotentialRange(p), r2 = scoutedPotentialRange(p);
+    assert.deepEqual(r1, r2, "determinística");
+    if (!r1) continue;
+    n++;
+    assert.ok(r1.lo >= overall && r1.hi <= 99 && r1.lo <= r1.hi, JSON.stringify({ p, r1 }));
+  }
+  assert.ok(n > 100, "a maioria dos jovens com espaço tem faixa");
+  assert.equal(scoutedPotentialRange({ id: "veterano", age: 30, overall: 75, potential: 75 }), null);
+});
