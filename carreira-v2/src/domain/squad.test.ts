@@ -52,3 +52,12 @@ test("perfil: dados esportivos sem idade/salário; padrões do legado para condi
   assert.equal(buildProfile(c, "zz"), null);
   assert.equal(Object.fromEntries(buildProfile(c, "g1")!.facts.map((x) => [x.label, x.value]))["Condição"], "100%");
 });
+
+test("Elenco (12/11/2026): a linha do jovem da base mostra a faixa do olheiro; o principal não", () => {
+  const c = career();
+  c.squad!.push(P("b2", "M", 50, { origin: "base", age: 17, potential: 70 }));
+  const m = buildSquad(c);
+  const b2 = m.base.find((r) => r.player.id === "b2")!;
+  assert.match(b2.pot || "", /^\d+(–\d+)?$/);
+  assert.ok(m.groups.flatMap((g) => g.rows).every((r) => r.pot === null));
+});

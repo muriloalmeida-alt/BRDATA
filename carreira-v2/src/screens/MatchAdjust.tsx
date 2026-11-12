@@ -164,7 +164,9 @@ export function TacticsView({ m, tatica, teamById, onApply, onCancel }: {
   );
 }
 
-export function EventsView({ m, teamById, onBack }: { m: MatchModel; teamById: TeamById; onBack: () => void }) {
+// onPlayer: com a partida encerrada, o nome do jogador do lance abre a ficha
+// (seu) ou o perfil no Mercado (adversário), pela confirmação de saída.
+export function EventsView({ m, teamById, onBack, onPlayer }: { m: MatchModel; teamById: TeamById; onBack: () => void; onPlayer?: (href: string, name: string) => void }) {
   return (
     <div className="mt pz">
       <Head onBack={onBack} label="Voltar" />
@@ -176,7 +178,12 @@ export function EventsView({ m, teamById, onBack }: { m: MatchModel; teamById: T
           <li key={t.key} className="ev-item">
             <span className="ev-min">{t.minute}’</span>
             {t.kind === "gol-meu" || t.kind === "gol" ? <IconBall className={`ev-ico${t.kind === "gol-meu" ? " is-mine" : ""}`} /> : <span className={`ev-dot${t.kind === "inicio" ? " is-start" : ""}`} aria-hidden="true" />}
-            <span className="ev-body"><b>{t.title}</b><span>{t.sub}</span></span>
+            <span className="ev-body">
+              {onPlayer && t.player
+                ? <b>{t.title.slice(0, t.title.length - t.player.label.length)}<button type="button" className="ev-player" aria-label={`${t.player.label}: ${t.player.mine ? "ver ficha" : "ver no Mercado"}`} onClick={() => onPlayer(t.player!.href, t.player!.label)}>{t.player.label}</button></b>
+                : <b>{t.title}</b>}
+              <span>{t.sub}</span>
+            </span>
           </li>
         ))}
       </ol>

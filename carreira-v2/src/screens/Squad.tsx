@@ -18,11 +18,11 @@ import "./squad.css";
 function Row({ r }: { r: SquadRow }) {
   return (
     <Link className="sq-row" to={`${BASE}/elenco/jogador?id=${encodeURIComponent(r.player.id)}`}
-      aria-label={`${r.player.name}, overall ${r.player.overall}, ${r.situation.text}. Ver perfil`}>
+      aria-label={`${r.player.name}, overall ${r.player.overall}, ${r.situation.text}${r.pot ? `, potencial estimado ${r.pot}` : ""}. Ver perfil`}>
       <Jersey value={r.player.overall} gk={r.player.group === "G"} size={44} />
       <span className="sq-body">
         <span className="sq-name">{r.short}</span>
-        <span className={`sq-sit${r.situation.tone ? ` sq-sit--${r.situation.tone}` : ""}`}>{r.situation.text}</span>
+        <span className={`sq-sit${r.situation.tone ? ` sq-sit--${r.situation.tone}` : ""}`}>{r.situation.text}{r.pot && <span className="sq-pot"> · pot. {r.pot}</span>}</span>
       </span>
       <IconChevron className="row-chevron" />
     </Link>

@@ -101,3 +101,20 @@ test("resultado: título e frase pelo placar (pontos só na liga) e gols em orde
   s.ga = 2; assert.equal(buildResult(s, "x")!.line, "Palmeiras e Flamengo empataram: um ponto para cada lado.");
   s.contexto = "copa"; assert.equal(buildResult(s, "x")!.line, "Palmeiras e Flamengo empataram.");
 });
+
+test("lances: o jogador do lance vira link (seu → ficha; do adversário → perfil no Mercado); sem id ou substituição, sem link", () => {
+  const s = snap();
+  s.eventos = [
+    ev(10, "gol", true, { jogador: "Bruno Henrique", jogadorId: "real_9" }),
+    ev(20, "amarelo", false, { jogador: "Raphael Veiga", jogadorId: "pal_7" }),
+    ev(25, "gol", false, { jogador: "Endrick Felipe" }), // sem id: sem link
+    ev(30, "substituicao", true, { entra: "Pedro Guilherme", sai: "Bruno Henrique" }),
+  ];
+  const t = buildMatch(s)!.timeline;
+  const by = (min: number) => t.find((x) => x.minute === min)!;
+  assert.deepEqual(by(10).player, { label: "B. Henrique", mine: true, href: "/elenco/ficha?id=real_9" });
+  assert.deepEqual(by(20).player, { label: "R. Veiga", mine: false, href: "/mercado/alvo?clube=pal&id=pal_7" });
+  assert.ok(by(10).title.endsWith(by(10).player!.label) && by(20).title.endsWith(by(20).player!.label));
+  assert.equal(by(25).player, undefined);
+  assert.equal(by(30).player, undefined);
+});
