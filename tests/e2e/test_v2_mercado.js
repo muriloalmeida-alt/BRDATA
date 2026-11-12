@@ -16,7 +16,7 @@
 //  9) 360 px sem rolagem horizontal e alvos ≥ 44 px; nada por /carreira-old.
 const { chromium } = require("playwright-core");
 const { check } = require("./_check");
-const { newCareer, serverCareer } = require("./_v2_match");
+const { newCareer, serverCareer } = require("./_v2_carreira");
 
 const base = "http://localhost:8787";
 

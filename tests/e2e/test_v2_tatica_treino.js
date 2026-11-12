@@ -16,7 +16,7 @@
 //  9) 360 px sem rolagem horizontal e alvos ≥ 44 px; nada por /carreira-old.
 const { chromium } = require("playwright-core");
 const { check } = require("./_check");
-const { newCareer, serverCareer } = require("./_v2_match");
+const { newCareer, serverCareer, noMotor } = require("./_v2_carreira");
 
 const base = "http://localhost:8787";
 
@@ -27,7 +27,8 @@ const base = "http://localhost:8787";
   page.on("dialog", (d) => d.dismiss());
   await newCareer(page, `v2tat${Date.now()}@teste.com`);
   // Campo novo da fase 6: a virada guarda o overall no histórico do jogador.
-  const snap = await page.evaluate(() => { const p = CAREER.squad[0]; snapshotPlayerSeasonHistory(p, CAREER.clubName); const h = p.seasonHistory.shift(); return { overall: h.overall, expected: p.overall }; });
+  // (snapshotPlayerSeasonHistory da tela antiga = temporada.snapshotSeason do motor.)
+  const snap = await noMotor(page, (M) => { const p = M.CAREER.squad[0]; M.temporada.snapshotSeason(p, M.CAREER.seasonYear, M.CAREER.clubName); const h = p.seasonHistory.shift(); return { overall: h.overall, expected: p.overall }; });
   await page.close();
 
   const v2 = await ctx.newPage();

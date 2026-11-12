@@ -12,9 +12,16 @@
 
    Conta como "usa a tela antiga" (tests/e2e/test_*.js e tests/unit):
    - abrir /carreira.html ou /carreira-old;
-   - entrar na página escondida (/carreira/motor) pelo navegador;
    - usar os ajudantes que passam por ela (_startup, _round,
      _calendar_skip, _v2_match).
+   (A página escondida /carreira/motor saiu na etapa G2d: o endereço leva à
+   v2, então pedir por ele não abre mais a tela antiga.)
+
+   Exceção explícita ("soRedirecionamento" na mesma lista): testes que só
+   abrem /carreira.html ou /carreira-old com o cabeçalho de produção, para
+   conferir que os links antigos levam à v2 (301). Em produção esses
+   endereços nunca mostram a tela antiga. Eles continuam proibidos de usar
+   os ajudantes antigos.
    Uso: node .github/scripts/verificar-tela-antiga.js */
 const fs = require("fs");
 const path = require("path");
@@ -24,7 +31,6 @@ const LISTA = path.join(ROOT, "tests", "e2e", "tela_antiga_legado.json");
 // Uso de verdade (navegar, buscar, entrar no quadro), fora de comentários.
 const SINAIS = [
   [/\b(goto|fetch|open)\(\s*[`"'][^`"']*(\/carreira\.html|\/carreira-old)|\b(goto|fetch)\([^)]*\+\s*[`"'](\/carreira\.html|\/carreira-old)/, "abre a tela antiga"],
-  [/\b(goto|fetch)\([^)]*carreira\/motor|frames\(\)[^;]*carreira\/motor/, "entra na página escondida pelo navegador"],
   [/require\(\s*["']\.\/(_startup|_round|_calendar_skip|_v2_match)["']\s*\)/, "usa ajudante da tela antiga"],
 ];
 const semComentarios = (src) => src.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:"'`\\])\/\/.*$/gm, "$1");
@@ -42,8 +48,10 @@ function motivos(arquivo) {
 }
 
 if (require.main === module) {
-  const permitidos = new Set(JSON.parse(fs.readFileSync(LISTA, "utf8")).testes);
-  const usam = arquivosDeTeste().map((f) => [f, motivos(f)]).filter(([, m]) => m.length);
+  const lista = JSON.parse(fs.readFileSync(LISTA, "utf8"));
+  const permitidos = new Set(lista.testes);
+  const soRedir = new Set(lista.soRedirecionamento || []);
+  const usam = arquivosDeTeste().map((f) => [f, motivos(f).filter((m) => !(soRedir.has(f) && m === "abre a tela antiga"))]).filter(([, m]) => m.length);
   const novos = usam.filter(([f]) => !permitidos.has(f));
   const naoUsamMais = [...permitidos].filter((f) => !usam.some(([u]) => u === f));
   if (naoUsamMais.length) {

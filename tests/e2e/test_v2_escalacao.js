@@ -1,13 +1,11 @@
 // Carreira 2.0 — Entrega 02 (Escalação + Quem entra?, /escalacao).
 // Pela UI real: dados do save, troca titular↔reserva gravada pelo mesmo
-// PUT da versão atual e lida por ela, cancelar sem gravar, formação,
+// PUT da versão atual e lida pelo motor, cancelar sem gravar, formação,
 // conflito (escalação mudou em outra aba → nada gravado), indisponível
 // marcado e fora da lista, resto do save intacto, 360 px e acessibilidade.
 const { chromium } = require("playwright-core");
 const { check } = require("./_check");
-const { ensureDailyClaimed } = require("./_v2_match");
-const { passCareerSetup, enterGame } = require("./_startup");
-const { skipPreseason } = require("./_calendar_skip");
+const { newCareer, noMotor } = require("./_v2_carreira");
 
 const strip = (c) => { const x = JSON.parse(JSON.stringify(c)); delete x.lineup; delete x.updatedAt; delete x.activeSchemeId; return x; };
 
@@ -20,21 +18,9 @@ const strip = (c) => { const x = JSON.parse(JSON.stringify(c)); delete x.lineup;
   const base = "http://localhost:8787";
 
   const email = `v2esc${Date.now()}@teste.com`;
-  await page.goto(base + "/", { waitUntil: "domcontentloaded" });
-  await page.evaluate(async ({ email }) => {
-    await fetch("/api/auth/signup", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: "Murilo Almeida", email, password: "senha123", phone: "11999999999", plan: "freemium" }) });
-    await fetch("/api/auth/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, password: "senha123" }) });
-  }, { email });
-  await page.goto(base + "/carreira-old", { waitUntil: "domcontentloaded" });
-  await page.click('.mt-competition-card[data-competition="brasileirao"]');
-  await page.waitForSelector(".m3-club-row", { timeout: 20000 });
-  await page.click('.m3-club-row[data-id="fla"]');
-  await page.click("#btnConfirmClub");
-  await passCareerSetup(page);
-  await enterGame(page);
-  await ensureDailyClaimed(page);
-  await skipPreseason(page);
-  await page.evaluate(() => { CAREER.lineup.formation = "4-3-3"; CAREER.activeSchemeId = "scheme_teste"; return persistCareer(); });
+  // Conta e carreira pelo motor da v2 (sem a tela antiga), já na rodada 1.
+  await newCareer(page, email);
+  await noMotor(page, (M) => { M.CAREER.lineup.formation = "4-3-3"; M.CAREER.activeSchemeId = "scheme_teste"; return M.persistir(); });
   const api = {
     get: () => page.evaluate(async () => (await (await fetch("/api/career", { cache: "no-store" })).json()).career),
     put: (c) => page.evaluate(async (c) => (await fetch("/api/career", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(c) })).status, c),
@@ -103,10 +89,10 @@ const strip = (c) => { const x = JSON.parse(JSON.stringify(c)); delete x.lineup;
       && slotName === inName && summary.includes(inName) && after.activeSchemeId === null, JSON.stringify({ writes, summary, slotName, inName }));
   check("4) Resto do save intacto (só lineup/updatedAt/activeSchemeId mudam):",
     JSON.stringify(strip(after)) === JSON.stringify(strip(before)) && JSON.stringify(after.lineup.tactics) === JSON.stringify(before.lineup.tactics), "");
-  await page.goto(base + "/carreira-old", { waitUntil: "domcontentloaded" });
-  await page.waitForFunction(() => typeof CAREER !== "undefined" && CAREER && CAREER.lineup, null, { timeout: 20000 });
-  const legacySees = await page.evaluate((idx) => CAREER.lineup.starters[idx], idx);
-  check("5) A versão atual lê a troca feita na v2:", legacySees === inId && inP, legacySees);
+  // O motor recarregado do servidor (outra página da v2; antes, a tela antiga) lê a troca.
+  await page.goto(base + "/", { waitUntil: "domcontentloaded" });
+  const legacySees = await noMotor(page, (M, idx) => M.CAREER.lineup.starters[idx], idx);
+  check("5) O motor, recarregado do servidor, lê a troca feita na v2:", legacySees === inId && inP, legacySees);
 
   // 6) Formação pelo seletor: grava e mantém titulares nas vagas.
   await v2.click(".lu-form-btn");

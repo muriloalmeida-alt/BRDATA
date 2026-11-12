@@ -18,8 +18,7 @@
 //     notícias); nenhuma navegação passou por /carreira-old.
 const { chromium } = require("playwright-core");
 const { check } = require("./_check");
-const { signup, serverCareer, ensureDailyClaimed } = require("./_v2_match");
-const { passCareerSetup, enterGame } = require("./_startup");
+const { signup, serverCareer, ensureDailyClaimed, carreiraV2, noMotor } = require("./_v2_carreira");
 
 const base = "http://localhost:8787";
 
@@ -28,21 +27,16 @@ const base = "http://localhost:8787";
   const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
   const old = await ctx.newPage();
   old.on("dialog", (d) => d.dismiss());
-  await signup(old, `v2sem${Date.now()}@teste.com`);
-  await old.goto(base + "/carreira-old", { waitUntil: "domcontentloaded" });
-  await old.click('.mt-competition-card[data-competition="brasileirao"]');
-  await old.waitForSelector(".m3-club-row", { timeout: 20000 });
-  await old.click('.m3-club-row[data-id="fla"]');
-  await old.click("#btnConfirmClub");
-  await passCareerSetup(old);
-  await enterGame(old);
+  // Conta e carreira pelo motor da v2 (sem a tela antiga), na pré-temporada.
+  await carreiraV2(old, `v2sem${Date.now()}@teste.com`, { clube: "fla", preTemporada: true, criarConta: signup });
   await ensureDailyClaimed(old);
 
-  // Coloca a carreira numa semana (pela versão anterior, que grava).
+  // Coloca a carreira numa semana pelo motor (página auxiliar da v2,
+  // recarregada para ler o save atual do servidor) e grava.
   const setWeek = async (pick) => {
-    await old.goto(base + "/carreira-old", { waitUntil: "domcontentloaded" });
-    await old.waitForFunction(() => typeof CAREER !== "undefined" && CAREER && CAREER.calendar, null, { timeout: 20000 });
-    return old.evaluate(async (pick) => {
+    await old.goto(base + "/", { waitUntil: "domcontentloaded" });
+    return noMotor(old, async (M, pick) => {
+      const CAREER = M.CAREER;
       const cal = CAREER.calendar;
       const fr = cal.friendlies;
       const pre = fr.filter((f) => !f.optional), opt = fr.filter((f) => f.optional);
@@ -51,7 +45,7 @@ const base = "http://localhost:8787";
       cal.idx = wi;
       fr.forEach((f) => { f.played = false; f.opp = null; f.result = null; });
       CAREER.trainingAppliedForRound = null;
-      await persistCareer();
+      await M.persistir();
       return { wi, phase: cal.weeks[wi].p, round: CAREER.currentRound, friendly: fr.find((f) => f.wi === wi) || null };
     }, pick);
   };
@@ -156,9 +150,9 @@ const base = "http://localhost:8787";
 
   // 6) Notícias (o amistoso do passo 3 pode ter deixado outro lesionado: a
   // verificação procura o lesionado injetado aqui, sem exigir que seja o único).
-  await old.goto(base + "/carreira-old", { waitUntil: "domcontentloaded" });
-  await old.waitForFunction(() => typeof CAREER !== "undefined" && CAREER && CAREER.squad, null, { timeout: 20000 });
-  await old.evaluate(async () => {
+  await old.goto(base + "/", { waitUntil: "domcontentloaded" });
+  await noMotor(old, async ({ CAREER, persistir: persistCareer, registro }) => {
+    const pushNotification = registro.pushNotification;
     CAREER.newsFeed = [{ type: "lider", texto: "Flamengo assume a ponta", round: 4, seasonYear: CAREER.seasonYear, mine: true }];
     const p = CAREER.squad[0]; p.status = "contundido"; p.outUntilRound = 6;
     CAREER.notifications = [];

@@ -5,7 +5,7 @@
 //     em Tabela, Diretoria, Finanças e Perfil do jogador.
 const { chromium } = require("playwright-core");
 const { check } = require("./_check");
-const { newCareer } = require("./_v2_match");
+const { newCareer, noMotor } = require("./_v2_carreira");
 
 (async () => {
   const browser = await chromium.launch({ executablePath: process.env.PW_CHROMIUM_PATH || undefined, headless: true, args: ["--host-resolver-rules=MAP fonts.googleapis.com 127.0.0.1,MAP fonts.gstatic.com 127.0.0.1"] });
@@ -13,7 +13,7 @@ const { newCareer } = require("./_v2_match");
   const page = await ctx.newPage();
   page.on("dialog", (d) => d.dismiss());
   await newCareer(page, `v2sis${Date.now()}@teste.com`);
-  const playerId = await page.evaluate(() => CAREER.lineup.starters[0]);
+  const playerId = await noMotor(page, (M) => M.CAREER.lineup.starters[0]);
   await page.close();
   const v2 = await ctx.newPage();
   v2.on("pageerror", (err) => console.log("PAGE ERROR:", err.message));
