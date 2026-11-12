@@ -48,12 +48,12 @@ Cada lote é um PR com:
 
 | Lote | Conteúdo | Testes |
 |---|---|---|
-| L1 | Ajudantes novos: montar carreira e ajustar o save sem a tela antiga (`_v2_carreira`, `_sem_tela`); grupo A (testes da v2) | 30 |
-| L2 | Grupo F (save e dados) e os do site/conta do grupo B | ~18 |
+| L1 | Ajudantes novos: montar carreira e ajustar o save sem a tela antiga (`_v2_carreira`, `_sem_tela`); grupo A (testes da v2) | 30 (#102, mergeado) |
+| L2 | Grupo F (save e dados) e os do site/conta do grupo B (loja, pagamento real, push e convite foram para o L6: são recursos da tela antiga) | 14 (#103) |
 | L3 | Grupo C (mercado) | 22 |
 | L4 | Grupo D (temporada e mundo) | 25 |
 | L5 | Grupo E (elenco e semana) | 24 |
-| L6 | O resto do grupo B (tela antiga em si), conforme a D1 | ~62 |
+| L6 | O resto do grupo B (tela antiga em si, mais loja, pagamento real, push e convite), conforme a D1 | ~66 |
 | L7 | Lista zerada; os ajudantes antigos (`_startup`, `_round`, `_calendar_skip`, `newCareer`) saem | — |
 
 **Os maiores lotes podem ser divididos** (como na etapa G), se ficarem grandes demais para revisar.
