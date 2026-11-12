@@ -1,68 +1,46 @@
+// Migração de save MUITO antigo: sem nenhum campo das fases 2/3 (finanças,
+// elencos da liga, estatísticas, histórico…) e sem salário, valor e
+// contrato nos jogadores. Ao carregar, o motor completa os campos
+// (migrateCareerDefaults) e a v2 abre normalmente.
+// Lote L2 do plano "testes sem a tela antiga": antes este teste só
+// imprimia o resultado (sem verificação) e usava a tela antiga; agora
+// verifica, pelo motor da v2.
 const { chromium } = require("playwright-core");
-const { enterGame, waitForBoot } = require("./_startup");
+const { check } = require("./_check");
+const { carreiraV2, noMotor, base } = require("./_v2_carreira");
 
 (async () => {
-  const browser = await chromium.launch({
-    executablePath: process.env.PW_CHROMIUM_PATH || undefined,
-    headless: true,
-  });
+  const browser = await chromium.launch({ executablePath: process.env.PW_CHROMIUM_PATH || undefined, headless: true });
   const page = await browser.newPage({ viewport: { width: 390, height: 900 } });
-  page.on("pageerror", (err) => console.log("PAGE ERROR:", err.message));
-
-  const base = "http://localhost:8787";
-  const email = `migration${Date.now()}@teste.com`;
-
-  await page.goto(base + "/", { waitUntil: "load" });
-  await page.evaluate(async ({ email }) => {
-    await fetch("/api/auth/signup", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: "Migration Teste", email, password: "senha123", phone: "11999999999", plan: "freemium" }) });
-    await fetch("/api/auth/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, password: "senha123" }) });
-  }, { email });
-
-  await page.goto(base + "/carreira.html", { waitUntil: "load" });
-  await page.click('.mt-competition-card[data-competition="brasileirao"]');
-  await page.waitForTimeout(200);
-  await page.click(".m3-club-row");
-  await page.waitForTimeout(150);
-  await page.click("#btnConfirmClub");
-  await enterGame(page);
-
-  // Simula um save BEM ANTIGO: remove TODOS os campos de todas as
-  // fases 2/3, e também remove wage/value/contractUntil de cada
-  // jogador (pra simular squad criado antes da Fase 2b existir).
-  await page.evaluate(async () => {
-    const r = await fetch("/api/career");
-    const data = await r.json();
-    delete data.career.finances;
-    delete data.career.leagueSquads;
-    delete data.career.teamStats;
-    delete data.career.transferLog;
-    delete data.career.pendingOffer;
-    delete data.career.lastBoardRequestRound;
-    delete data.career.boardDecision;
-    delete data.career.recentForm;
-    delete data.career.seasonYear;
-    delete data.career.seasonHistory;
+  const erros = [];
+  page.on("pageerror", (err) => erros.push(err.message));
+  await carreiraV2(page, `migration${Date.now()}@teste.com`, { preTemporada: true });
+  // Simula um save BEM ANTIGO pelo servidor.
+  const put = await page.evaluate(async () => {
+    const data = await (await fetch("/api/career", { cache: "no-store" })).json();
+    for (const k of ["finances", "leagueSquads", "teamStats", "transferLog", "pendingOffer", "lastBoardRequestRound", "boardDecision", "recentForm", "seasonYear", "seasonHistory"]) delete data.career[k];
     data.career.squad.forEach((p) => { delete p.wage; delete p.value; delete p.contractUntil; });
-    await fetch("/api/career", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data.career) });
+    return (await fetch("/api/career", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data.career) })).status;
   });
-
-  await page.reload({ waitUntil: "load" });
-  await waitForBoot(page);
-  const bodyText = await page.evaluate(() => document.body.innerText.slice(0, 400));
-  console.log("BODY (save pré-Fase2 inteiro):", bodyText);
-  await page.screenshot({ path: "migration-fixed.png" });
-
-  // Confirma que persistiu os campos migrados
-  const afterMigration = await page.evaluate(async () => {
-    const r = await fetch("/api/career");
-    const data = await r.json();
-    return {
-      finances: data.career.finances,
-      seasonYear: data.career.seasonYear,
-      firstPlayerWage: data.career.squad[0].wage,
-    };
-  });
-  console.log("Depois da migração (persistido):", JSON.stringify(afterMigration));
-
+  // Recarrega: a v2 abre o motor, que carrega e migra o save.
+  await page.goto(base + "/", { waitUntil: "domcontentloaded" });
+  await page.waitForSelector(".home", { timeout: 30000 });
+  const mem = await noMotor(page, ({ CAREER }) => ({
+    finances: !!CAREER.finances && typeof CAREER.finances.cash === "number",
+    // Só existe: um save sem elencos da liga volta com o objeto vazio, e
+    // nada os reconstrói (comportamento de antes, registrado no relatório
+    // ENTREGA_TESTES_L2.md para decisão).
+    leagueSquads: !!CAREER.leagueSquads && typeof CAREER.leagueSquads === "object",
+    seasonYear: CAREER.seasonYear,
+    seasonHistory: Array.isArray(CAREER.seasonHistory),
+    jogadores: CAREER.squad.every((p) => typeof p.wage === "number" && typeof p.value === "number" && p.contractUntil != null),
+  }));
+  check("1) Save antigo gravado (PUT) e a v2 abre o Início sem erro na página:", put === 200 && erros.length === 0, JSON.stringify({ put, erros: erros.slice(0, 2) }));
+  check("2) O motor completa os campos ao carregar (finanças, elencos da liga como objeto, temporada, histórico; salário, valor e contrato de cada jogador):",
+    mem.finances && mem.leagueSquads && typeof mem.seasonYear === "number" && mem.seasonHistory && mem.jogadores, JSON.stringify(mem));
+  // Gravar de novo grava o save já completo.
+  await noMotor(page, (M) => M.persistir());
+  const salvo = await page.evaluate(async () => { const c = (await (await fetch("/api/career", { cache: "no-store" })).json()).career; return { finances: !!c.finances, seasonYear: c.seasonYear, wage: c.squad[0].wage }; });
+  check("3) Ao gravar, o save completo vai para o servidor:", salvo.finances && typeof salvo.seasonYear === "number" && typeof salvo.wage === "number", JSON.stringify(salvo));
   await browser.close();
 })().catch((e) => { console.error("FATAL:", e); process.exit(1); });
