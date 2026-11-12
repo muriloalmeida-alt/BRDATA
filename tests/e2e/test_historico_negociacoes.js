@@ -1,146 +1,70 @@
-// Nova feature (Bloco 3, 4/4 — pedido do usuário) — "Histórico de
-// negociações": timeline dedicada com todo o CAREER.transferLog (o
-// card "Transferências recentes" do Mercado só mostra as 5 mais
-// recentes). Ver openTransferHistoryScreen/renderTransferHistoryScreen
-// em carreira.js.
+// Histórico de negociações: começa vazio; uma compra e uma venda de verdade
+// aparecem nele, cada uma na sua classificação.
+// Lote L3c (12/11/2026, plano "testes sem a tela antiga"): antes a timeline
+// da tela antiga (#transferHistoryOverlay). Agora a tela "Histórico de
+// negociações" da v2 (/mercado/historico), com as abas Compras, Vendas e
+// Empréstimos; a compra e a venda pelos comandos do motor que as telas de
+// mercado da v2 usam (fazerProposta, anunciar) e as regras de resposta.
+// Saíram, por serem só da tela antiga: o contador no botão do histórico e o
+// card "Transferências recentes" (item 3) e o "Fechar" do rodapé (item 4).
 const { chromium } = require("playwright-core");
 const { check } = require("./_check");
-const { enterGame } = require("./_startup");
+const { carreiraV2, signup, ensureDailyClaimed, globaisDoMotor, noMotor, base } = require("./_v2_carreira");
 
 (async () => {
   const browser = await chromium.launch({ executablePath: process.env.PW_CHROMIUM_PATH || undefined, headless: true, args: ["--host-resolver-rules=MAP fonts.googleapis.com 127.0.0.1,MAP fonts.gstatic.com 127.0.0.1"] });
   const page = await browser.newPage({ viewport: { width: 390, height: 900 } });
   page.on("dialog", (d) => d.dismiss());
-  page.on("pageerror", (err) => console.log("PAGE ERROR:", err.message));
-  const base = "http://localhost:8787";
-  const email = `historiconeg${Date.now()}@teste.com`;
-  await page.goto(base + "/", { waitUntil: "domcontentloaded" });
-  await page.evaluate(async ({ email }) => {
-    await fetch("/api/auth/signup", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: "Historico Teste", email, password: "senha123", phone: "11999999999", plan: "freemium" }) });
-    await fetch("/api/auth/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, password: "senha123" }) });
-  }, { email });
-  await page.goto(base + "/carreira.html", { waitUntil: "domcontentloaded" });
-  await page.click('.mt-competition-card[data-competition="brasileirao"]');
-  await page.waitForTimeout(300);
-  await page.click(".m3-club-row");
-  await page.waitForTimeout(150);
-  await page.click("#btnConfirmClub");
-  await enterGame(page);
-  await page.click(".m3-nav-item[data-panel='mercado']");
-  await page.waitForTimeout(300);
-  await page.evaluate(() => { CAREER.finances.wageCap = 999999999; CAREER.finances.cash = 999999999; });
+  const erros = [];
+  page.on("pageerror", (err) => erros.push(err.message));
+  // Pré-temporada: a janela de transferências está aberta.
+  await carreiraV2(page, `historico${Date.now()}@teste.com`, { clube: "fla", criarConta: signup, preTemporada: true });
+  await ensureDailyClaimed(page);
+  const h1 = (t) => page.waitForFunction((t) => (document.querySelector("h1") || {}).textContent === t, t, { timeout: 20000 });
 
-  // 1) Vazio no início — carreira nova, sem nenhuma negociação.
-  await page.click("#btnOpenTransferHistory");
-  await page.waitForTimeout(200);
-  const check1 = await page.evaluate(() => ({
-    open: document.getElementById("transferHistoryOverlay").classList.contains("open"),
-    countLabel: document.getElementById("transferHistoryCountLabel").textContent,
-    hasEmptyMsg: !document.getElementById("transferHistoryEmpty").classList.contains("hidden"),
-  }));
-  check("1) Abre vazio, sem nenhuma negociação ainda:",
-    check1.open && check1.hasEmptyMsg && check1.countLabel === "Nenhuma negociação ainda", JSON.stringify(check1));
-  await page.click("#transferHistoryClose");
-  await page.waitForTimeout(150);
+  // 1) Vazio no início.
+  await page.goto(base + "/mercado/historico", { waitUntil: "domcontentloaded" });
+  await h1("Seu histórico começa.");
+  const vazio = await page.evaluate(() => (document.querySelector(".wk-note") || {}).textContent || "");
+  check("1) O histórico abre vazio, sem nenhuma negociação ainda:", /Ainda não há compras, vendas ou empréstimos/.test(vazio), vazio);
 
-  // 2) Compra + venda de verdade (via UI) aparecem na tela, com o
-  // ícone/classificação certos, e o card "Transferências recentes"
-  // mostra o mesmo total no badge.
-  const buyBtn = await page.$("[data-buy]");
-  await buyBtn.click();
-  // S4-B3-003 — "Fazer proposta" virou Dialog dinâmico (.m3-dialog-overlay).
-  await page.waitForSelector(".m3-dialog-overlay.open", { timeout: 5000 });
-  await page.click("#btnOfferConfirm");
-  await page.waitForTimeout(200);
-  await page.evaluate(async () => {
-    const orig = Math.random;
-    Math.random = () => 0.01;
-    resolvePendingOffersOutRound(CAREER.currentRound);
-    resolvePendingOffersOutRound(CAREER.currentRound);
-    Math.random = orig;
-    renderMercado();
+  // 2) Uma compra (proposta pelo valor de mercado, aceita) e uma venda
+  // (anúncio do mais barato do elenco, com proposta e aceite).
+  await globaisDoMotor(page);
+  const compra = await noMotor(page, async ({ CAREER, ponte, semana }) => {
+    CAREER.finances.wageCap = 999999999; CAREER.finances.cash = 999999999;
+    const l = semana.allMarketPlayers().filter((e) => !e.mine && e.p.value > 0).sort((a, b) => a.p.value - b.p.value);
+    const e = l[Math.floor(l.length / 2)];
+    const r = await ponte.fazerProposta(String(e.club.id), e.p.id, e.p.value, 1);
+    const orig = Math.random; Math.random = () => 0.01;
+    try { semana.resolvePendingOffersOutRound(CAREER.currentRound); semana.resolvePendingOffersOutRound(CAREER.currentRound); } finally { Math.random = orig; }
+    return { ok: r.ok, id: e.p.id, comprado: CAREER.squad.some((p) => p.id === e.p.id) };
   });
-  await page.waitForTimeout(200);
-  if (await page.evaluate(() => document.getElementById("pressOverlay").classList.contains("open"))) {
-    await page.click("#pressOptions [data-press]");
-    await page.waitForTimeout(200);
-  }
-
-  // Enviar a proposta (#btnOfferConfirm) já fechou tudo e voltou pra
-  // Início (Task #72) -- volta pro Mercado antes de continuar.
-  await page.evaluate(() => switchToPanel("mercado"));
-  await page.waitForTimeout(150);
-
-  // Anuncia o jogador mais barato do elenco: o 1º da lista costuma ser o
-  // recém-comprado (R$ 50M+), acima do caixa de qualquer clube CPU —
-  // ninguém paga esse valor de mercado (recusa legítima, buyerHardCap).
-  const cheapest = await page.evaluate(() => {
+  const venda = await noMotor(page, async ({ CAREER, ponte, semana, clube, persistir }) => {
     const p = CAREER.squad.filter((x) => x.origin === "principal").sort((a, b) => a.value - b.value)[0];
-    return { id: p.id, name: p.name };
-  });
-  await page.fill("#marketSearch", cheapest.name);
-  await page.waitForTimeout(200);
-  await page.click(`[data-list="${cheapest.id}"]`);
-  await page.waitForSelector("#listOverlay.open", { timeout: 5000 });
-  await page.click("#btnListConfirm");
-  await page.waitForTimeout(200);
-  // Rodadas de exposição do anúncio até chegar proposta (sorteio normal).
-  // Antes forçava Math.random = 0.01, o que sempre escolhe o MESMO clube
-  // — e ele pode não ter caixa pra esse jogador (buyerHardCap), recusa
-  // legítima. 200 rodadas: só fica sem proposta se o anúncio nunca vende
-  // (o bug P2 de docs/MOTOR_TESTES_FASE_B.md).
-  const spawn = await page.evaluate(() => {
-    const listing = CAREER.pendingListings[0];
+    const r = await ponte.anunciar(p.id, p.value);
+    const listing = CAREER.pendingListings.find((x) => String(x.playerId) === String(p.id));
+    // Rodadas de exposição do anúncio até chegar proposta (sorteio normal).
     let rounds = 0;
-    while (!listing.offers.length && rounds < 200) { rounds++; maybeSpawnListingOffer(listing); }
-    return { rounds, offers: listing.offers.length };
+    while (listing && !listing.offers.length && rounds < 200) { rounds++; semana.maybeSpawnListingOffer(listing); }
+    const ofertas = listing ? listing.offers.length : 0;
+    if (ofertas) clube.acceptListingOffer(listing.id, listing.offers[0].id);
+    await persistir();
+    return { ok: r.ok, rounds, ofertas, vendido: !CAREER.squad.some((x) => x.id === p.id) };
   });
-  check("2a) Anúncio recebe proposta em rodadas de exposição normais:", spawn.offers > 0, JSON.stringify(spawn));
-  await page.evaluate(() => {
-    const listing = CAREER.pendingListings[0];
-    acceptListingOffer(listing.id, listing.offers[0].id);
-  });
-  await page.waitForTimeout(200);
-  if (await page.evaluate(() => document.getElementById("pressOverlay").classList.contains("open"))) {
-    await page.click("#pressOptions [data-press]");
-    await page.waitForTimeout(200);
-  }
+  check("2a) Anúncio recebe proposta em rodadas de exposição normais:", venda.ok && venda.ofertas > 0, JSON.stringify(venda));
 
-  // Confirmar o anúncio (#btnListConfirm) já fechou tudo e voltou pra
-  // Início (Task #72) -- volta pro Mercado antes de continuar.
-  await page.evaluate(() => switchToPanel("mercado"));
-  await page.waitForTimeout(150);
+  await page.goto(base + "/mercado/historico", { waitUntil: "domcontentloaded" });
+  await h1("O mercado do clube.");
+  const aba = async (nome) => {
+    await page.locator('[role="tab"]', { hasText: nome }).click();
+    return page.evaluate(() => [...document.querySelectorAll('[role="tabpanel"] .mk-log dd')].map((d) => d.textContent));
+  };
+  const compras = await aba("Compras");
+  const vendas = await aba("Vendas");
+  check("2) A compra e a venda de verdade aparecem no histórico, cada uma na sua aba (Compras/Vendas):",
+    compra.ok && compra.comprado && venda.vendido && compras.length >= 1 && vendas.length >= 1, JSON.stringify({ compra, compras, vendas }));
 
-  await page.click("#btnOpenTransferHistory");
-  await page.waitForTimeout(200);
-  const check2 = await page.evaluate(() => {
-    const items = [...document.querySelectorAll("#transferHistoryList .mt-transfer-item")];
-    const dots = items.map((it) => it.querySelector(".mt-transfer-dot").className);
-    const texts = items.map((it) => it.querySelector(".mt-transfer-text").textContent);
-    return {
-      count: items.length,
-      hasBuyDot: dots.some((c) => c.includes(" buy")),
-      hasSellDot: dots.some((c) => c.includes(" sell")),
-      textsSample: texts.slice(0, 3),
-      countLabel: document.getElementById("transferHistoryCountLabel").textContent,
-    };
-  });
-  check("2) Compra e venda de verdade aparecem na timeline, com ícone certo (buy/sell):",
-    check2.count >= 2 && check2.hasBuyDot && check2.hasSellDot, JSON.stringify(check2));
-
-  const badgeInfo = await page.evaluate(() => ({
-    badge: document.getElementById("transferHistoryBadge").textContent,
-    logLength: (CAREER.transferLog || []).length,
-    feedRows: document.querySelectorAll("#transferFeed .ct-transfer-feed-item").length,
-  }));
-  check("3) Badge do botão bate com o tamanho real do log, card compacto mostra só até 5:",
-    Number(badgeInfo.badge) === badgeInfo.logLength && badgeInfo.feedRows <= 5, JSON.stringify(badgeInfo));
-
-  // 4) Fechar (rodapé) fecha a tela sem efeito colateral.
-  await page.click("#btnTransferHistoryCloseFooter");
-  await page.waitForTimeout(150);
-  const check4 = await page.evaluate(() => !document.getElementById("transferHistoryOverlay").classList.contains("open"));
-  check("4) 'Fechar' no rodapé fecha a tela:", check4);
-
+  check("3) Sem erro na página:", erros.length === 0, erros.slice(0, 3).join(" | "));
   await browser.close();
 })().catch((e) => { console.error("FATAL:", e); process.exit(1); });

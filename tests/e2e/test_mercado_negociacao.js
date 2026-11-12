@@ -1,116 +1,84 @@
-// Nova feature (Bloco 3 — pedido do usuário, mockups
-// brtreinadorbloco3mercado.html/brtreinadorbloco3pendentes.html) —
-// negociação de compra: proposta demora rodadas pra responder, pode
-// aumentar/retirar, contraproposta do clube, parcelamento real.
+// Negociação de compra: a proposta demora rodadas, pode ser retirada,
+// aceita (com parcelamento real), recusada ou virar contraproposta.
+// Lote L3c (12/11/2026, plano "testes sem a tela antiga"):
+// - itens 1, 2, 3 e 4 (tela de proposta, "Minhas propostas", retirar): pelas
+//   telas de mercado da v2 ("Faça sua oferta.", Mercado). O resto do fluxo
+//   de tela (aumentar, contraproposta mostrada e aceita com a confirmação,
+//   desistir com confirmação) já é do test_v2_mercado (itens 2, 3 e 4);
+// - itens 5 a 7c (regras): os mesmos trechos, na página da v2 com as
+//   funções do motor (globaisDoMotor). O 7b (contraproposta com botão de
+//   aceitar em "Minhas propostas") é o item 3 do test_v2_mercado.
 const { chromium } = require("playwright-core");
 const { check } = require("./_check");
-const { enterGame } = require("./_startup");
+const { carreiraV2, signup, ensureDailyClaimed, globaisDoMotor, saveNoServidor, base } = require("./_v2_carreira");
 
 (async () => {
   const browser = await chromium.launch({ executablePath: process.env.PW_CHROMIUM_PATH || undefined, headless: true, args: ["--host-resolver-rules=MAP fonts.googleapis.com 127.0.0.1,MAP fonts.gstatic.com 127.0.0.1"] });
   const page = await browser.newPage({ viewport: { width: 390, height: 900 } });
   page.on("dialog", (d) => d.dismiss());
-  page.on("pageerror", (err) => console.log("PAGE ERROR:", err.message));
-  const base = "http://localhost:8787";
-  const email = `mercadoneg${Date.now()}@teste.com`;
-  await page.goto(base + "/", { waitUntil: "domcontentloaded" });
-  await page.evaluate(async ({ email }) => {
-    await fetch("/api/auth/signup", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: "Neg Mercado", email, password: "senha123", phone: "11999999999", plan: "freemium" }) });
-    await fetch("/api/auth/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, password: "senha123" }) });
-  }, { email });
-  await page.goto(base + "/carreira.html", { waitUntil: "domcontentloaded" });
-  await page.click('.mt-competition-card[data-competition="brasileirao"]');
-  await page.waitForTimeout(300);
-  await page.click(".m3-club-row");
-  await page.waitForTimeout(150);
-  await page.click("#btnConfirmClub");
-  await enterGame(page);
-
-  await page.click(".m3-nav-item[data-panel='mercado']");
-  await page.waitForTimeout(300);
-
-  // 1) Clicar "Comprar" abre a modal de PROPOSTA (não compra na hora)
-  // -- valor pré-preenchido com o de mercado.
-  const buyBtnInfo = await page.evaluate(() => {
-    const btn = document.querySelector("#marketList [data-buy]");
-    return { exists: !!btn, club: btn?.dataset.club, playerId: btn?.dataset.buy };
+  const erros = [];
+  page.on("pageerror", (err) => erros.push(err.message));
+  // Pré-temporada: a janela de transferências está aberta.
+  await carreiraV2(page, `mercadoneg${Date.now()}@teste.com`, { clube: "fla", criarConta: signup, preTemporada: true });
+  await ensureDailyClaimed(page);
+  await globaisDoMotor(page);
+  // Um alvo comprável de outro clube, sem proposta (o 1º da lista antiga
+  // era o mais valioso; aqui um de valor médio, para o caixa e o teto).
+  const alvo = () => page.evaluate(() => {
+    const pend = new Set((CAREER.pendingOffersOut || []).map((o) => String(o.playerId)));
+    const l = allMarketPlayers().filter((e) => !e.mine && !pend.has(String(e.p.id)) && e.p.value > 0).sort((a, b) => a.p.value - b.p.value);
+    const e = l[Math.floor(l.length / 2)];
+    return { clubId: String(e.club.id), playerId: e.p.id, name: e.p.name };
   });
-  check("0) Achou um botão de propor no Mercado:", buyBtnInfo.exists, JSON.stringify(buyBtnInfo));
-  await page.click("#marketList [data-buy]");
-  await page.waitForTimeout(200);
-  const modalInfo = await page.evaluate(() => ({
-    // S4-B3-003 — "Fazer proposta" virou Dialog dinâmico
-    // (.m3-dialog-overlay, S3-DS20-S4-PREP-001), não mais #offerOverlay
-    // estático.
-    open: !!document.querySelector(".m3-dialog-overlay.open"),
-    value: Number(document.getElementById("offerValueInput").value),
-    sub: document.querySelector(".m3-dialog-overlay.open .m3-dialog-sub")?.textContent || "",
-  }));
-  check("1) Clicar 'Comprar' abre a modal de proposta com o valor de mercado pré-preenchido:",
-    modalInfo.open && modalInfo.value > 0 && modalInfo.sub.length > 5, JSON.stringify(modalInfo));
+  const h1 = (t) => page.waitForFunction((t) => (document.querySelector("h1") || {}).textContent === t, t, { timeout: 20000 });
 
-  // 2) Propor um valor MENOR que o de mercado, parcelado em 2x -- vira
-  // pendingOffersOut, some da lista de compra (vira o ícone de
-  // pendente), cash NÃO muda ainda (só quando aceitar).
-  const cashBefore = await page.evaluate(() => CAREER.finances.cash);
-  await page.evaluate((info) => {
-    document.getElementById("offerValueInput").value = Math.round(info.value * 0.7);
-    document.getElementById("offerInstallmentsSelect").value = "2";
-  }, modalInfo);
-  await page.click("#btnOfferConfirm");
-  await page.waitForTimeout(200);
-  const afterOffer = await page.evaluate((info) => {
-    const o = CAREER.pendingOffersOut.find((x) => String(x.playerId) === String(info.playerId));
-    return {
-      cashUnchanged: CAREER.finances.cash === info.cashBefore,
-      offer: o ? { offerValue: o.offerValue, installments: o.installments, roundsLeft: o.roundsLeft, status: o.status } : null,
-      pendingIconShown: !!document.querySelector(`#marketList [data-viewoffer="${info.playerId}"]`),
-      modalClosed: !document.querySelector(".m3-dialog-overlay.open"),
-    };
-  }, { playerId: buyBtnInfo.playerId, cashBefore });
-  check("2) Propor valor menor (70%) parcelado em 2x cria a proposta, cash não muda ainda, ícone vira 'pendente':",
-    afterOffer.cashUnchanged && afterOffer.offer && afterOffer.offer.installments === 2 && afterOffer.offer.status === "pending"
-    && afterOffer.pendingIconShown && afterOffer.modalClosed, JSON.stringify(afterOffer));
+  // 1) "Fazer proposta" abre a oferta com o valor sugerido preenchido.
+  const t1 = await alvo();
+  await page.goto(base + `/mercado/proposta?clube=${encodeURIComponent(t1.clubId)}&id=${encodeURIComponent(t1.playerId)}`, { waitUntil: "domcontentloaded" });
+  await h1("Faça sua oferta.");
+  await page.waitForFunction(() => Number((document.getElementById("pp-v") || {}).value) > 0, null, { timeout: 20000 });
+  const sugerido = Number(await page.inputValue("#pp-v"));
+  check("1) A proposta abre com o valor sugerido preenchido:", sugerido > 0, sugerido);
 
-  // Enviar a proposta (#btnOfferConfirm) já fechou tudo e voltou pra
-  // Início (Task #72) -- volta pro Mercado antes de continuar.
-  await page.evaluate(() => switchToPanel("mercado"));
-  await page.waitForTimeout(150);
+  // 2) 70% em 2x: vira proposta pendente; o caixa não muda.
+  const cashBefore = (await saveNoServidor(page)).finances.cash;
+  await page.fill("#pp-v", String(Math.round(sugerido * 0.7)));
+  await page.locator('[aria-labelledby="pp-n"] .pr-seg-btn', { hasText: "2x" }).click();
+  await page.click(".pr .cal-foot .cta");
+  await h1("Proposta enviada.");
+  let career = await saveNoServidor(page);
+  const o2 = (career.pendingOffersOut || []).find((x) => String(x.playerId) === String(t1.playerId));
+  check("2) Propor 70% em 2x cria a proposta pendente e o caixa não muda:",
+    !!o2 && o2.installments === 2 && o2.status === "pending" && career.finances.cash === cashBefore, JSON.stringify({ o2, cash: [cashBefore, career.finances.cash] }));
 
-  // 3) "Minhas propostas" mostra a proposta em andamento com o badge
-  // certo; clicar no ícone de pendente no Mercado também abre essa tela.
-  await page.click(`#marketList [data-viewoffer="${buyBtnInfo.playerId}"]`);
-  await page.waitForTimeout(200);
-  const myOffersInfo = await page.evaluate(() => ({
-    open: document.getElementById("myOffersOverlay").classList.contains("open"),
-    rowCount: document.querySelectorAll("#myOffersList .m3-op-card").length,
-    badgeText: document.getElementById("myOffersBadge").textContent,
-    badgeHidden: document.getElementById("myOffersBadge").classList.contains("hidden"),
-  }));
-  check("3) 'Minhas propostas' abre com 1 proposta listada e o badge mostrando 1:",
-    myOffersInfo.open && myOffersInfo.rowCount === 1 && myOffersInfo.badgeText === "1" && !myOffersInfo.badgeHidden, JSON.stringify(myOffersInfo));
-  await page.click("#myOffersClose");
-  await page.waitForTimeout(150);
+  // 3) Mercado: "Minhas propostas" com 1 e o jogador marcado.
+  const mercado = async () => {
+    await page.goto(base + "/mercado", { waitUntil: "domcontentloaded" });
+    await h1("Busque seu reforço.");
+    await page.fill("#mk-q", t1.name);
+    await page.waitForTimeout(300);
+    return page.evaluate(() => ({
+      minhas: [...document.querySelectorAll("nav .row")].map((r) => r.textContent).find((t) => t.startsWith("Minhas propostas")) || "",
+      marcado: [...document.querySelectorAll(".mk-list .row-sub")].some((s) => s.textContent.includes("proposta enviada")),
+    }));
+  };
+  const m3 = await mercado();
+  check("3) No Mercado, \"Minhas propostas\" mostra 1 e o jogador aparece com \"proposta enviada\":", m3.minhas === "Minhas propostas1" && m3.marcado, JSON.stringify(m3));
 
-  // 4) Retirar a proposta -- some de pendingOffersOut, volta o ícone
-  // de "Comprar" normal no Mercado.
-  const offerId1 = await page.evaluate((pid) => CAREER.pendingOffersOut.find((x) => String(x.playerId) === String(pid)).id, buyBtnInfo.playerId);
-  await page.evaluate((id) => withdrawOffer(id), offerId1);
-  await page.waitForTimeout(150);
-  const afterWithdraw = await page.evaluate((pid) => ({
-    stillPending: !!CAREER.pendingOffersOut.find((x) => String(x.playerId) === String(pid)),
-    buyIconBack: !!document.querySelector(`#marketList [data-buy="${pid}"]`),
-  }), buyBtnInfo.playerId);
-  check("4) Retirar a proposta some da lista e volta o botão de propor normal:",
-    !afterWithdraw.stillPending && afterWithdraw.buyIconBack, JSON.stringify(afterWithdraw));
+  // 4) Retirar a proposta (o mesmo withdrawOffer do "Desistir"): some do
+  // save e da marca na lista.
+  await globaisDoMotor(page);
+  await page.evaluate(async (id) => { withdrawOffer(id); await persistCareer(); }, o2.id);
+  career = await saveNoServidor(page);
+  const m4 = await mercado();
+  check("4) Retirar a proposta tira do save e a lista volta ao normal:",
+    !(career.pendingOffersOut || []).some((x) => x.id === o2.id) && !m4.marcado && m4.minhas === "Minhas propostas", JSON.stringify(m4));
+  await globaisDoMotor(page);
 
   // 5) Proposta ACEITA (ratio 1.0, RNG forçado pra dentro da faixa de
   // aceite alta) -- parcelada em 3x: jogador entra no elenco, cash
   // desconta só a 1ª parcela, o resto vai pra pendingInstallments.
-  const target = await page.evaluate(() => {
-    const row = [...document.querySelectorAll("#marketList [data-buy]")][0];
-    return { clubId: row.dataset.club, playerId: row.dataset.buy };
-  });
+  const target = await alvo();
   const check5 = await page.evaluate((t) => {
     const p = leagueSquadFor(t.clubId).find((x) => x.id === t.playerId);
     const cashBefore = CAREER.finances.cash;
@@ -158,23 +126,12 @@ const { enterGame } = require("./_startup");
   // finalizeIncomingPurchase) dispara uma coletiva de imprensa por
   // cima de tudo (mesmo clique defensivo já usado em outros testes
   // desta sessão pra esse mesmo modal).
-  await page.click('#pressOptions [data-press]').catch(() => {});
-  await page.waitForTimeout(150);
 
-  // Re-renderiza o Mercado -- os passos 5/5b manipularam CAREER direto
-  // via evaluate (sem passar pelos handlers de botão, que já chamam
-  // renderMercado()/renderAll() sozinhos), então o DOM ainda mostra o
-  // estado de ANTES da compra (real_19 apareceria como comprável de
-  // novo, mesmo já estando no MEU elenco agora).
-  await page.evaluate(() => renderMercado());
 
   // 6) Proposta RECUSADA (ratio bem baixo, RNG forçado pra fora de
   // qualquer faixa de aceite/contraproposta) -- jogador continua no
   // elenco de origem, cash intocado.
-  const target2 = await page.evaluate(() => {
-    const row = [...document.querySelectorAll("#marketList [data-buy]")][0];
-    return { clubId: row.dataset.club, playerId: row.dataset.buy };
-  });
+  const target2 = await alvo();
   const check6 = await page.evaluate((t) => {
     const p = leagueSquadFor(t.clubId).find((x) => x.id === t.playerId);
     const cashBefore = CAREER.finances.cash;
@@ -191,14 +148,10 @@ const { enterGame } = require("./_startup");
   }, target2);
   check("6) Proposta muito abaixo do valor de mercado (50%) é recusada direto, sem afetar nada:",
     check6.cashUnchanged && check6.stillInLeagueSquad && !check6.stillPending, JSON.stringify(check6));
-  await page.evaluate(() => renderMercado());
 
   // 7) Contraproposta (ratio no meio-termo, RNG forçado pra cair
   // nessa faixa) -- vira status "countered", aceitar fecha na hora.
-  const target3 = await page.evaluate(() => {
-    const row = [...document.querySelectorAll("#marketList [data-buy]")][0];
-    return { clubId: row.dataset.club, playerId: row.dataset.buy };
-  });
+  const target3 = await alvo();
   const check7 = await page.evaluate((t) => {
     const p = leagueSquadFor(t.clubId).find((x) => x.id === t.playerId);
     // Fase 1.4 do mercado: o vendedor CPU decide pela proporção sobre a
@@ -217,19 +170,6 @@ const { enterGame } = require("./_startup");
   }, target3);
   check("7) Proposta no meio-termo (85% da reserva do vendedor) vira contraproposta (não recusa nem aceita direto):",
     check7.countered && check7.counterValue > check7.offerValue && check7.counterValue <= check7.reservation * 1.05, JSON.stringify(check7));
-
-  // Responder a coletiva de imprensa da contratação polêmica (se
-  // apareceu, ver comentário acima) também já fecha tudo e volta pra
-  // Início (Task #72) -- volta pro Mercado antes de continuar.
-  await page.evaluate(() => switchToPanel("mercado"));
-  await page.waitForTimeout(150);
-  await page.click("#btnOpenMyOffers");
-  await page.waitForTimeout(200);
-  const counterRowInfo = await page.evaluate(() => ({
-    hasAcceptBtn: !!document.querySelector('[data-acceptcounter="test_offer_counter"]'),
-    text: document.getElementById("myOffersList").textContent,
-  }));
-  check("7b) 'Minhas propostas' mostra a contraproposta com botão de aceitar:", counterRowInfo.hasAcceptBtn && counterRowInfo.text.includes("Contraproposta"), JSON.stringify({ hasAcceptBtn: counterRowInfo.hasAcceptBtn }));
 
   // Passos anteriores já compraram/parcelaram um craque nesta mesma
   // carreira de teste, deixando pouca (ou nenhuma) folga real de teto
@@ -253,7 +193,6 @@ const { enterGame } = require("./_startup");
   check("7c) Aceitar a contraproposta fecha na hora, cobrando o valor pedido pelo clube:",
     check7c.cashDelta === check7c.counterValue && check7c.inSquad && !check7c.stillPending, JSON.stringify(check7c));
 
-  await page.screenshot({ path: "screens/mercado_minhas_propostas.png" });
-
+  check("8) Sem erro na página:", erros.length === 0, erros.slice(0, 3).join(" | "));
   await browser.close();
 })().catch((e) => { console.error("FATAL:", e); process.exit(1); });
