@@ -17,7 +17,6 @@
     "tests/e2e/test_botoes_rodape.js",
     "tests/e2e/test_coletiva_imprensa.js",
     "tests/e2e/test_coletiva_renovacao.js",
-    "tests/e2e/test_colocar_a_venda.js",
     "tests/e2e/test_comissao_mercado_proposta.js",
     "tests/e2e/test_comissao_resumo_inicio.js",
     "tests/e2e/test_comissao_tecnica.js",
