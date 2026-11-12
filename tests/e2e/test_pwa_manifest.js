@@ -1,5 +1,5 @@
-// Verifica o manifest e as tags PWA da página do Modo Técnico
-// (carreira.html) sem afetar o manifest/instalação do site principal.
+// Verifica o manifest e as tags PWA da carreira (a v2, na raiz) sem
+// afetar o manifest/instalação do site principal.
 const { chromium } = require("playwright-core");
 const { check } = require("./_check");
 
@@ -10,30 +10,22 @@ const { check } = require("./_check");
   page.on("pageerror", (err) => console.log("PAGE ERROR:", err.message));
   const base = "http://localhost:8787";
 
-  // 1) carreira.html referencia o manifest PRÓPRIO, não o do site
-  // principal, e as tags de ícone/nome batem com "BR Treinador".
-  await page.goto(base + "/carreira.html", { waitUntil: "domcontentloaded" });
-  const headInfo = await page.evaluate(() => {
-    const manifestLink = document.querySelector('link[rel="manifest"]');
-    return {
-      manifestHref: manifestLink ? manifestLink.getAttribute("href") : null,
-      appleTitle: document.querySelector('meta[name="apple-mobile-web-app-title"]')?.getAttribute("content"),
-      appleTouchIcon: document.querySelector('link[rel="apple-touch-icon"]')?.getAttribute("href"),
-      themeColor: document.querySelector('meta[name="theme-color"]')?.getAttribute("content"),
-      mobileWebAppCapable: document.querySelector('meta[name="mobile-web-app-capable"]')?.getAttribute("content"),
-      pageTitle: document.title,
-    };
-  });
-  check("1) carreira.html referencia manifest-treinador.json (próprio, não o do site):", headInfo.manifestHref === "manifest-treinador.json");
-  console.log("   apple-mobile-web-app-title = 'BR Treinador':", headInfo.appleTitle === "BR Treinador");
-  console.log("   apple-touch-icon presente:", !!headInfo.appleTouchIcon);
-  console.log("   theme-color definida:", !!headInfo.themeColor);
-  console.log("   mobile-web-app-capable = yes:", headInfo.mobileWebAppCapable === "yes");
-  console.log("   <title> da aba continua igual (não mexido):", headInfo.pageTitle === "Modo Técnico · BR Data");
+  // 1) A carreira (a v2, na raiz) referencia o manifest PRÓPRIO, não o do
+  // site principal, com as tags de ícone e cor. (Antes conferia o
+  // carreira.html, que não é mais aberto: lote L2 do plano "testes sem a
+  // tela antiga".)
+  await page.goto(base + "/", { waitUntil: "domcontentloaded" });
+  const headInfo = await page.evaluate(() => ({
+    manifestHref: document.querySelector('link[rel="manifest"]')?.getAttribute("href") || null,
+    appleTouchIcon: document.querySelector('link[rel="apple-touch-icon"]')?.getAttribute("href"),
+    themeColor: document.querySelector('meta[name="theme-color"]')?.getAttribute("content"),
+  }));
+  check("1) A v2 (raiz) referencia /manifest-treinador.json (próprio, não o do site), com apple-touch-icon e theme-color:",
+    headInfo.manifestHref === "/manifest-treinador.json" && !!headInfo.appleTouchIcon && !!headInfo.themeColor, JSON.stringify(headInfo));
 
   // 2) O manifest resolve de verdade (fetch real, o mesmo que o Chrome
   // faz pra montar a modal de instalação) com nome/ícones certos.
-  const manifestUrl = new URL(headInfo.manifestHref, base + "/carreira.html").href;
+  const manifestUrl = new URL(headInfo.manifestHref, base + "/").href;
   const manifestRes = await page.evaluate(async (url) => {
     const res = await fetch(url);
     return { ok: res.ok, contentType: res.headers.get("content-type"), body: await res.json() };
@@ -67,10 +59,6 @@ const { check } = require("./_check");
   console.log("   manifest.json do site principal continua 'BR Data' (intacto):", mainManifest.name === "BR Data — Brasileirão 2026" && mainManifest.short_name === "BR Data");
   check("5) o app do site abre em /brasileirao:", mainManifest.start_url === "/brasileirao?source=pwa", mainManifest.start_url);
 
-  // 6) A v2 (raiz) declara o mesmo manifest do app da Carreira.
-  await page.goto(base + "/", { waitUntil: "domcontentloaded" });
-  const v2ManifestHref = await page.evaluate(() => document.querySelector('link[rel="manifest"]')?.getAttribute("href"));
-  check("6) a v2 (raiz) referencia /manifest-treinador.json:", v2ManifestHref === "/manifest-treinador.json", v2ManifestHref);
 
   await browser.close();
 })().catch((e) => { console.error("FATAL:", e); process.exit(1); });

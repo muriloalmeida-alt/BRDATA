@@ -4,7 +4,6 @@
     "_doc": "Smoke de fluxos críticos: boot/login, persistência/migração, motor de partida/Copa, treino, mercado, temporada/divisões, olheiros, diretoria, estatísticas + testes unitários. Todos passaram nas 3 execuções do baseline, mediana <= 20s.",
     "tests": [
       "test_s4_b2_001_loading.js",
-      "test_carreira_login_form.js",
       "test_migration.js",
       "test_save_limit_001.js",
       "test_p0_ids_001.js",
@@ -80,7 +79,6 @@
   },
   "durationsMs": {
     "_doc": "Duração mediana de cada teste (ms) em 3 execuções completas (commit 410d3f9, 4 CPUs, concorrência 10). Usada SÓ pra dividir a suíte com --shard=I/N de forma equilibrada e igual em qualquer máquina; atualizar quando a suíte mudar muito (teste novo sem entrada usa 10 s, ou 60 s se for da classe long).",
-    "test_401.js": 13600,
     "test_ajustar_escalacao_modal.js": 16000,
     "test_ao_vivo.js": 17400,
     "test_assistente_inicio.js": 21400,
@@ -94,7 +92,6 @@
     "test_board_goals.js": 19700,
     "test_botao_ir_pro_jogo_e_financas_noticias.js": 18300,
     "test_botoes_rodape.js": 17200,
-    "test_carreira_login_form.js": 4700,
     "test_coletiva_imprensa.js": 21500,
     "test_coletiva_renovacao.js": 10400,
     "test_colocar_a_venda.js": 13000,
@@ -200,7 +197,6 @@
     "test_s4_b4_005_noticias_newscard.js": 10800,
     "test_s4_b4_006_estatisticas.js": 13900,
     "test_save.js": 101400,
-    "test_save2.js": 42600,
     "test_save_limit_001.js": 9700,
     "test_save_limit_001_careerstore.js": 1800,
     "test_scout.js": 14700,

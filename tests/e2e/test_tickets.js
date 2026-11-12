@@ -1,58 +1,23 @@
+// Bilheteria: o primeiro jogo em casa gera a renda de bilheteria (no caixa
+// e no extrato, "Renda de bilheteria (jogo em casa)"), e jogo fora não gera.
+// Lote L2 do plano "testes sem a tela antiga": as rodadas passam pela
+// ponte do motor da v2; a verificação olha o extrato do save (que a v2
+// mostra em Finanças → Extrato, filtro Bilheteria). Antes, o detalhe da
+// partida da tela antiga.
 const { chromium } = require("playwright-core");
-const { enterGame } = require("./_startup");
 const { check } = require("./_check");
-const { playNextMatchRound, closeLeftoverTabela } = require("./_round");
+const { carreiraV2, saveNoServidor } = require("./_v2_carreira");
+const { primeiraBilheteria } = require("./_bilheteria_v2");
 
 (async () => {
-  const browser = await chromium.launch({
-    executablePath: process.env.PW_CHROMIUM_PATH || undefined,
-    headless: true,
-  });
+  const browser = await chromium.launch({ executablePath: process.env.PW_CHROMIUM_PATH || undefined, headless: true });
   const page = await browser.newPage({ viewport: { width: 390, height: 900 } });
   page.on("pageerror", (err) => console.log("PAGE ERROR:", err.message));
-
-  const base = "http://localhost:8787";
-  const email = `tickets${Date.now()}@teste.com`;
-
-  await page.goto(base + "/", { waitUntil: "load" });
-  await page.evaluate(async ({ email }) => {
-    await fetch("/api/auth/signup", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: "Tickets Teste", email, password: "senha123", phone: "11999999999", plan: "freemium" }) });
-    await fetch("/api/auth/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, password: "senha123" }) });
-  }, { email });
-
-  await page.goto(base + "/carreira.html", { waitUntil: "load" });
-  await page.click('.mt-competition-card[data-competition="brasileirao"]');
-  await page.waitForTimeout(200);
-  await page.click(".m3-club-row");
-  await page.waitForTimeout(150);
-  await page.click("#btnConfirmClub");
-  await enterGame(page);
-  await page.click(".m3-nav-item[data-panel='central']");
-  await page.waitForTimeout(300);
-
-  let sawHomeGame = false;
-  // Até 8 jogos oficiais pela interface (fluxo atual, ver _round.js),
-  // parando no primeiro em casa (o detalhe "Seu jogo" mostra a bilheteria).
-  for (let i = 0; i < 8 && !sawHomeGame; i++) {
-    const r = await playNextMatchRound(page, {
-      onMatchDetail: async (p) => {
-        const ticketsText = await p.evaluate(() => document.getElementById("matchDetailTickets").textContent);
-        if (ticketsText) {
-          sawHomeGame = true;
-          console.log(`Rodada ${i + 1} (casa):`, ticketsText);
-          await p.screenshot({ path: "tickets-home-game.png" });
-        }
-      },
-    });
-    if (r.stoppedAt === "playerOfferOverlay") { await page.click("#btnPlayerOfferDecline"); await closeLeftoverTabela(page); }
-    else if (r.stoppedAt) throw new Error(`jogo ${i + 1} parou numa tela inesperada: ${r.stoppedAt}`);
-    await page.click(".m3-nav-item[data-panel='central']").catch(() => {});
-  }
-  const finalCash = await page.evaluate(async () => (await (await fetch("/api/career")).json()).career.finances.cash);
-  const recentForm = await page.evaluate(async () => (await (await fetch("/api/career")).json()).career.recentForm);
-  check("1) Jogo em casa mostra a receita de bilheteria no detalhe:", sawHomeGame);
-  console.log("Caixa final:", finalCash);
-  console.log("Forma recente:", JSON.stringify(recentForm));
-
+  await carreiraV2(page, `tickets${Date.now()}@teste.com`);
+  const b = await primeiraBilheteria(page);
+  const saved = await saveNoServidor(page);
+  const noServidor = b && (saved.financeLedger || []).some((t) => t.type === "bilheteria" && t.round === b.r && t.amount > 0);
+  check("1) Jogo em casa gera a renda de bilheteria (extrato do save, gravado no servidor); jogo fora não gera:",
+    !!b && !b.foraComBilheteria && b.lancamentos.length === 1 && b.lancamentos[0].amount > 0 && noServidor, JSON.stringify(b));
   await browser.close();
 })().catch((e) => { console.error("FATAL:", e); process.exit(1); });
