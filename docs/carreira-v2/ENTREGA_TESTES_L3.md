@@ -1,8 +1,8 @@
-# Entrega — testes sem a tela antiga, lote L3 (mercado), partes a, b e c
+# Entrega — testes sem a tela antiga, lote L3 (mercado), partes a, b, c e d
 
 **Data:** 12/11/2026
 **Plano:** `docs/carreira-v2/PLANO_TESTES_TELA_ANTIGA.md` (lote L3, dividido em partes como o plano permite)
-**Lista congelada:** 137 → 131 (L3a) → 128 (L3b) → 122 (L3c)
+**Lista congelada:** 137 → 131 (L3a) → 128 (L3b) → 122 (L3c) → 110 (L3d)
 
 ## O que mudou
 
@@ -102,11 +102,31 @@ Todas as 96 verificações continuam nos mesmos arquivos, com o mesmo texto e o 
 
 **Validação L3c:** `test_mercado_negociacao` 10/10, `test_mercado_concorrencia` 8/8, `test_historico_negociacoes` 4/4, `test_colocar_a_venda` 13/13, `test_comissao_mercado_proposta` 5/5, `test_wagecap_block` 2/2, `test_loans` 8/8. Todos rodados com a saída gravada.
 
-## Próximas partes do L3
+## L3d — busca, filtros, divisões, cards, contratos e olheiros (12 testes)
 
-- **12 arquivos de mercado restantes.** São testes de tela, com 5 a 30 interações cada. Serão lidos um a um, como decidido na D1:
-  - verificação de regra → motor ou ponte;
-  - verificação de tela com equivalente na v2 → tela da v2;
-  - verificação de recurso que só existe na tela antiga → sai, com registro.
-- **Ordem:** busca, filtros e cards (`test_mercado2`, `test_mercado_filtros_ampliados`, `test_mercado_multi_*`, `test_s4_b3_*`, `test_ux_mercado_001`), depois olheiros (`test_scout`, `test_indicacoes_olheiros`).
-- **Movidos para o L4 (temporada e mundo):** `test_reputacao_propostas` (reputação do técnico e propostas de clubes) e `test_intervalo_noticias_proposta_destino` (notícias e propostas pelo técnico). O nome os trouxe para o mercado por engano.
+| Teste | Para onde foi |
+|---|---|
+| `test_mercado2.js` | **saiu:** não tinha nenhuma verificação (só imprimia). Os três cenários são conferidos em outros testes: vender (`test_colocar_a_venda`), comprar (`test_mercado_negociacao`) e filtrar por goleiro (`test_v2_mercado` item 1, `test_mercado_filtros_ampliados` item 3) |
+| `test_mercado_filtros_ampliados.js` | Mercado da v2: "Mostrando 40 de N", "Carregar mais", posição, clube, faixa de overall, busca e o perfil do alvo. A regra dos filtros também está no domínio da v2 (`market.test.ts`) |
+| `test_mercado_multi_divisao.js` | regras (carreira multi, três divisões, CPU x CPU, teto de 16) pelo motor; filtro de divisão e compra da Série B pelas telas da v2 |
+| `test_mercado_multi_persist.js` | rodada pela ponte do motor da v2; save no servidor na rodada 2, abaixo de 768 KB |
+| `test_mercado_multi_season.js` | virada pelo comando do motor; elenco de fora volta ao piso de 12 |
+| `test_s4_b3_001_transfer_contract_card.js` | **saiu:** testava só a API dos componentes HTML da tela antiga (`transferCardHTML`, `contractCardHTML`). A v2 tem componentes próprios |
+| `test_s4_b3_002_mercado.js` | **saiu:** testava a troca dos cards da lista antiga. Busca, abrir o perfil e propor estão nos testes acima |
+| `test_s4_b3_003_negociacao.js` | **saiu:** testava o diálogo da proposta da tela antiga (Esc, camada). Propor e retirar estão no `test_mercado_negociacao`; o foco e o Esc dos diálogos da v2 estão nos testes de foco da v2 (AUD-04/05) |
+| `test_s4_b3_004_contratos.js` | tela "Cuide da continuidade." da v2: acesso pelo Elenco, um contrato por jogador (sem emprestados) em ordem de vencimento, "Vencendo", nome levando à ficha, "Renovar" e o estado vazio. "Dispensar" fica na ficha da v2 (`test_v2_elenco_avancado` item 6) |
+| `test_ux_mercado_001.js` | Mercado da v2: janela no topo, atalhos acima da lista, filtros com contador, ordenar por idade, as três ações no perfil do alvo e ficar no Mercado depois de propor |
+| `test_scout.js` | a regra da faixa de potencial foi para o domínio da v2 (`potential.test.ts`, caso novo com os limites); a ficha da v2 mostra a faixa para o jovem e "Não avaliado" para quem não tem espaço |
+| `test_indicacoes_olheiros.js` | estado sem indicação e "Contratar olheiro" pelas telas da v2; missão Profissional pelos comandos do motor, com as indicações (faixa e relatório, sem potencial exato) na tela da v2; catálogo só nacional pelo motor. "Recusar" e "Propor" são o item 8 do `test_v2_clube` |
+
+**Diferenças da v2 em relação à tela antiga (para decisão):**
+1. **Nome de jogador num lance da partida** (`test_ux_mercado_001` item 6). Na tela antiga, tocar no nome abria o perfil com as ações de negociação. Os lances da v2 não têm o nome como link.
+2. **Faixa de potencial na lista do Elenco** (`test_scout` item 3). A tela antiga mostrava "pot." na linha de cada jovem da base. A v2 mostra a faixa só na ficha.
+3. **Card "Mercado" no Início** (`test_ux_mercado_001` item 1). Na v2 o Mercado abre pelo hub do Clube, e a janela aparece no topo do Mercado. Este é desenho já aprovado nas fases da v2, registrado só para constar.
+
+**Validação L3d:** todos rodados com a saída gravada; todas as verificações deram `true`. `test_mercado_filtros_ampliados` 8/8, `test_mercado_multi_divisao` 8/8, `test_mercado_multi_persist` 2/2, `test_mercado_multi_season` 2/2, `test_s4_b3_004_contratos` 7/7, `test_ux_mercado_001` 7/7, `test_scout` 3/3, `test_indicacoes_olheiros` 4/4; v2 122/122.
+
+## Fim do L3
+- Os testes de mercado saíram todos da tela antiga.
+- `test_reputacao_propostas`, `test_intervalo_noticias_proposta_destino`, `test_s4_b3_005_matchcard_financialsummary` e `test_s4_b3_006_resumo_rodada` não são de mercado e vão para o L4.
+- **Lista congelada:** 137 → **110**.
