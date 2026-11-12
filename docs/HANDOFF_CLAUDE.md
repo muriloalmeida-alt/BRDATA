@@ -14,7 +14,8 @@ FASE1-ESC — Fase 1: escalação e orientação da comissão técnica
 Status: APROVADO (Murilo, 12/11/2026, "Aprovado" sobre a recomendação
 abaixo; PR #105). Decisões:
 1) REVISTA pelo Murilo (12/11): "Escalação incompleta e sem goleiro titular
-   deve bloquear início do jogo". Escopo escolhido por ele: qualquer
+   deve bloquear início do jogo". Implementação aprovada por ele em 12/11
+   ("Continue", em resposta ao pedido de aprovação desta versão). Escopo escolhido por ele: qualquer
    pendência dos 11 titulares + 11 reservas (inclui banco de save antigo e
    banco sem goleiro) mais goleiro disponível entre os titulares. No
    Pré-jogo: aviso com o que falta e "Completar automaticamente".
