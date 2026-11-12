@@ -11,8 +11,10 @@ Demandas vigentes
 
 FASE1-ESC — Fase 1: escalação e orientação da comissão técnica
 
-Status: REVISÃO DO PM NECESSÁRIA (implementação em PR próprio, branch
-`fase1-esc`; merge só depois da decisão do Murilo)
+Status: APROVADO (Murilo, 12/11/2026, "Aprovado" sobre a recomendação
+abaixo; PR #105). Decisões: 1) o início da partida NÃO é bloqueado por
+pendência (fica como hoje); 2) revisão da escalação, não do save
+inteiro; 3) aceite em modo avião fica para a OFFLINE-001.
 Origem: documento do Murilo (12/11/2026), guardado sem alteração em
 `docs/carreira-v2/fase1/01_Requisitos_Escalacao.md` (ESC-01 a ESC-05 e
 aceite). A especificação é esse documento; abaixo, só o que o PM
@@ -141,7 +143,7 @@ Recomendação: aprovar com as decisões 1 e 2 acima.
 
 FASE1-MER — Fase 1: mercado, empréstimos e contratação
 
-Status: PRONTO PARA IMPLEMENTAÇÃO (começa depois da FASE1-ESC)
+Status: PRONTO PARA IMPLEMENTAÇÃO (começa depois do lote L3 de testes; FASE1-ESC aprovada)
 Origem: `docs/carreira-v2/fase1/02_Requisitos_Mercado.md` (MER-01 a
 MER-07 e matriz de aceite), sem alteração.
 Ordem: antes de mexer nas regras do mercado, o lote L3 do plano
