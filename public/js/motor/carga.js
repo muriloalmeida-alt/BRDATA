@@ -978,6 +978,8 @@ export function ponteEstado() {
     eventos: lm.events.map((e) => ({
       minuto: e.minute, tipo: e.type, meu: e.mine === true,
       jogador: e.player || null, assistencia: e.assistPlayer || null, entra: e.entra || null, sai: e.saiu || null, penalti: !!e.penalty,
+      // Nome clicável nos lances da v2 (decisão do Murilo, 12/11/2026).
+      jogadorId: e.playerId || null, assistenciaId: e.assistPlayerId || null,
     })),
   };
 }

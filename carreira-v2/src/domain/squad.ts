@@ -5,6 +5,7 @@
 // posição específica (decisões de 01/11). Só leitura.
 import type { Career, Player, PlayerGroup } from "./types.ts";
 import { isAvailable, shortName, sortKey } from "./lineup.ts";
+import { potentialText } from "./potential.ts";
 
 export const SECTION_TITLE: Record<PlayerGroup, string> = { G: "Goleiros", D: "Defesa", M: "Meio-campo", F: "Ataque" };
 // Posição por extenso como na prancha do Perfil ("Ataque").
@@ -32,7 +33,10 @@ export function situationOf(career: Career, p: Player): Situation {
   return { text: "Fora da lista", tone: null };
 }
 
-export interface SquadRow { player: Player; short: string; situation: Situation }
+// pot: faixa do olheiro na linha dos jovens da base (decisão do Murilo,
+// 12/11/2026, como a lista antiga); null para os demais.
+export interface SquadRow { player: Player; short: string; situation: Situation; pot: string | null }
+export const potOf = (p: Player): string | null => (p.origin === "base" ? potentialText(p) : null);
 export interface SquadModel {
   groups: { group: PlayerGroup; title: string; rows: SquadRow[] }[];
   base: SquadRow[];
@@ -41,7 +45,7 @@ export interface SquadModel {
 
 export function buildSquad(career: Career): SquadModel {
   const squad = career.squad || [];
-  const row = (p: Player): SquadRow => ({ player: p, short: shortName(p.name), situation: situationOf(career, p) });
+  const row = (p: Player): SquadRow => ({ player: p, short: shortName(p.name), situation: situationOf(career, p), pot: potOf(p) });
   // legado: principal = origin "principal" ou "loan" (emprestado entra no elenco principal)
   const main = squad.filter((p) => p.origin !== "base").sort((a, b) => sortKey(a) - sortKey(b));
   const base = squad.filter((p) => p.origin === "base").sort((a, b) => sortKey(a) - sortKey(b));

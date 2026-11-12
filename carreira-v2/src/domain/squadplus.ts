@@ -13,7 +13,7 @@ import type { Career, Player, PlayerGroup } from "./types.ts";
 import { moneyShort, sortedStandings } from "./home.ts";
 import { sortRows } from "../../../public/js/motor/tabela.js";
 import { isAvailable, shortName, sortKey } from "./lineup.ts";
-import { situationOf, type SquadRow } from "./squad.ts";
+import { potOf, situationOf, type SquadRow } from "./squad.ts";
 import { potentialText } from "./potential.ts";
 
 export const POSITION: Record<PlayerGroup, string> = { G: "Goleiro", D: "Defensor", M: "Meio-campo", F: "Atacante" };
@@ -65,7 +65,7 @@ export function filterSquad(career: Career, f: SquadFilters): SquadRow[] {
       }
     })
     .sort(sorters[f.sort])
-    .map((p) => ({ player: p, short: shortName(p.name), situation: situationOf(career, p) }));
+    .map((p) => ({ player: p, short: shortName(p.name), situation: situationOf(career, p), pot: potOf(p) }));
 }
 
 // ---------- Ficha completa ----------

@@ -145,3 +145,7 @@
 /* Fase 4 (P6/P5): agregado na volta da Copa e quem passou, na faixa aprovada. */
 .mt-cupline { position: relative; margin: 10px var(--bd-gutter) 0; text-align: center; font-family: var(--bd-font-display); font-weight: 600; font-size: 17px; text-shadow: 0 1px 6px rgba(0, 0, 0, .8); }
 .mt-cupline--out { margin-top: 2px; color: var(--bd-accent); }
+/* Nome do jogador no lance (12/11/2026): link para a ficha ou o Mercado,
+   com alvo de toque de 44 px sem mudar a altura da linha. */
+.ev-player { font: inherit; color: var(--bd-gold); background: none; border: 0; padding: 12px 0; margin: -12px 0; min-height: 44px; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+.ev-player:focus-visible { outline: 2px solid var(--bd-gold); outline-offset: 2px; }

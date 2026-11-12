@@ -35,7 +35,7 @@ import "./match.css";
 
 // Saída pedida: no meio do jogo (simula o resto) ou a partir do Resultado
 // (para o Início, ou para o elenco de um clube tocado na Tabela).
-type Leave = { kind: "live" } | { kind: "result"; to: string | null; club?: string };
+type Leave = { kind: "live" } | { kind: "result"; to: string | null; club?: string; player?: string };
 // Estado da gravação do resultado (AUD-02).
 type SaveStatus = "saving" | "saved" | "failed" | "session" | "other-account";
 type View = { kind: "loading" } | { kind: "error"; message: string } | { kind: "none"; message: string }
@@ -272,7 +272,8 @@ export function Match({ start, sub, outId, competitionId, competitionName, teamB
     <TacticsView m={m} tatica={snap.tatica} teamById={teamById} onCancel={() => backToPause(1)}
       onApply={(f, a) => { const r = s.applyTactics(f, a); if (r.ok) backToPause(1); return r; }} />
   );
-  if (sub === "lances") return <EventsView m={m} teamById={teamById} onBack={() => (ended ? goBackTo(PARTIDA) : backToPause(1))} />;
+  if (sub === "lances") return <EventsView m={m} teamById={teamById} onBack={() => (ended ? goBackTo(PARTIDA) : backToPause(1))}
+    onPlayer={ended ? (href, name) => setLeave({ kind: "result", to: href, player: name }) : undefined} />;
   if (postMatch) return <div className="state" role="status" aria-live="polite"><div className="state-line" />Continuando…</div>;
   if (ended && sub === "tabela") return renderTable({
     onBack: () => goBackTo(PARTIDA),
@@ -409,7 +410,7 @@ function LeaveSheet({ leave, saved, friendly, onStay, onLeave }: { leave: Leave;
         ? "A rodada já está salva. O que vem em “Continuar” — coletiva, resumo da rodada e jogo de Copa pendente — pode não ser mostrado se você sair agora."
         : "O resultado desta partida ainda não foi salvo. Se você sair agora, ele será perdido."}</p>
       <button type="button" className="cta" data-autofocus onClick={onStay}>{saved ? "Voltar ao resultado" : "Ficar e salvar"}</button>
-      <button type="button" className="text-btn" onClick={onLeave}>{club ? `Sair e abrir o elenco do ${club}` : saved ? "Sair mesmo assim" : "Sair sem salvar"}</button>
+      <button type="button" className="text-btn" onClick={onLeave}>{club ? `Sair e abrir o elenco do ${club}` : leave.player ? `Sair e ver ${leave.player}` : saved ? "Sair mesmo assim" : "Sair sem salvar"}</button>
     </Sheet>
   );
 }

@@ -170,6 +170,30 @@ Recomendação: aprovar com as decisões 1 e 2 acima.
 
 ⸻
 
+V2-ANTIGA-01 — Dois recursos da tela antiga trazidos para a v2
+
+Status: APROVADO (Murilo, 12/11/2026: "1. Sim! 2. Sim", sobre as diferenças
+achadas no lote L3 de testes, docs/carreira-v2/ENTREGA_TESTES_L3.md).
+1. Nome do jogador nos lances da partida.
+   - Na partida encerrada ("Ver lances"), o nome do jogador do lance (gol,
+     cartão, lesão) é link.
+   - O seu jogador abre a ficha; o do adversário, o perfil no Mercado
+     ("Conheça seu reforço.", com "Fazer proposta").
+   - Passa pela confirmação de saída do Resultado ("Sair e ver …"), porque
+     sair pode pular o pós-jogo, como tocar num clube na Tabela.
+   - Com a partida ao vivo, os nomes ficam como texto: sair simularia o
+     resto do jogo.
+   - Motor: os lances que vão para a v2 passam a levar `jogadorId` e
+     `assistenciaId` (campos novos; o resto igual).
+2. Faixa de potencial no Elenco.
+   - A linha de cada jovem da base mostra "pot. …" (a mesma faixa do
+     olheiro da ficha), também no texto lido pelo leitor de tela.
+Testes: domínio da v2 +2 casos (123/123); motor ponte 3/3, jogo 3/3,
+hospedeiro 4/4, ao vivo 3/3; e2e novo `test_v2_nomes_lances` (3/3) e os
+testes da partida, do Elenco, de foco e de sistema (10/10).
+
+⸻
+
 FASE1-MER — Fase 1: mercado, empréstimos e contratação
 
 Status: PRONTO PARA IMPLEMENTAÇÃO (começa depois do lote L3 de testes; FASE1-ESC aprovada)

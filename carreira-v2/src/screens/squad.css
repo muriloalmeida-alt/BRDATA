@@ -36,3 +36,4 @@
 .sq-search { flex: 1; min-width: 0; }
 .sq-filter { flex: none; }
 .sq-count { margin: 4px 0 6px; font-size: 14px; color: var(--bd-muted); }
+.sq-pot { color: var(--bd-muted); }

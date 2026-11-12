@@ -8,7 +8,17 @@ import { CUP_PHASE_LABEL } from "./table.ts";
 import { buildLineup, shortName, type LineupModel } from "./lineup.ts";
 import type { Career } from "./types.ts";
 
-export interface TimelineItem { key: string; minute: number; title: string; sub: string; kind: "gol-meu" | "gol" | "neutro" | "inicio" }
+// player: o jogador do lance como link (decisão do Murilo, 12/11/2026) —
+// o seu vai para a ficha; o do adversário, para o perfil no Mercado. O
+// título termina com `player.label`.
+export interface TimelinePlayer { label: string; href: string; mine: boolean }
+export interface TimelineItem { key: string; minute: number; title: string; sub: string; kind: "gol-meu" | "gol" | "neutro" | "inicio"; player?: TimelinePlayer }
+const LINKED = new Set(["gol", "amarelo", "vermelho", "lesao", "chance_perdida", "defesa", "penalty_missed"]);
+export function eventPlayer(e: MatchEvent, oppId: string | number): TimelinePlayer | undefined {
+  if (!e.jogadorId || !e.jogador || !LINKED.has(e.tipo)) return undefined;
+  const id = encodeURIComponent(String(e.jogadorId));
+  return { label: nm(e.jogador), mine: e.meu, href: e.meu ? `/elenco/ficha?id=${id}` : `/mercado/alvo?clube=${encodeURIComponent(String(oppId))}&id=${id}` };
+}
 export interface MatchModel {
   phase: MatchSnapshot["fase"];
   saved: boolean | null;
@@ -61,7 +71,8 @@ export function buildMatch(s: MatchSnapshot, competitionId?: string): MatchModel
   const timeline: TimelineItem[] = ordered.map(({ e, i }) => {
     const d = describe(e, teamOf(e));
     const kind: TimelineItem["kind"] = e.tipo === "gol" ? (e.meu ? "gol-meu" : "gol") : "neutro";
-    return { key: `e${i}`, minute: e.minuto, ...d, kind };
+    const player = eventPlayer(e, opp.id);
+    return { key: `e${i}`, minute: e.minuto, ...d, kind, ...(player ? { player } : {}) };
   });
   timeline.push({ key: "inicio", minute: 0, title: "Início da partida", sub: `${s.mandante.nome} × ${s.visitante.nome}`, kind: "inicio" });
   const lastKey = ordered.find(({ e }) => rank(e.tipo) > 0)?.e;
