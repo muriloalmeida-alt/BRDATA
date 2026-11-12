@@ -1,94 +1,53 @@
+// Avaliação do olheiro (faixa de potencial): aparece para quem ainda tem
+// espaço de crescimento e não aparece para quem já chegou ao teto.
+// Lote L3d (12/11/2026, plano "testes sem a tela antiga"):
+// - itens 1 e 2 (a regra da faixa: determinística, mínimo >= overall,
+//   máximo <= 99, mínimo <= máximo; sem faixa sem espaço de crescimento)
+//   foram para o domínio da v2 (carreira-v2/src/domain/potential.test.ts),
+//   que também confere que a faixa é idêntica à do jogo;
+// - itens 4 e 5 (detalhe do jogador): na ficha da v2, o fato "Potencial"
+//   mostra a faixa do olheiro para o jovem da base e "Não avaliado" para
+//   quem não tem espaço de crescimento;
+// - o item 3 antigo (a faixa na linha da base, na lista do Elenco) não tem
+//   equivalente: o Elenco da v2 mostra a faixa só na ficha. Registrado em
+//   docs/carreira-v2/ENTREGA_TESTES_L3.md.
 const { chromium } = require("playwright-core");
 const { check } = require("./_check");
-const { enterGame } = require("./_startup");
+const { newCareer, noMotor, base } = require("./_v2_carreira");
 
 (async () => {
-  const browser = await chromium.launch({
-    executablePath: process.env.PW_CHROMIUM_PATH || undefined,
-    headless: true,
-  });
+  const browser = await chromium.launch({ executablePath: process.env.PW_CHROMIUM_PATH || undefined, headless: true, args: ["--host-resolver-rules=MAP fonts.googleapis.com 127.0.0.1,MAP fonts.gstatic.com 127.0.0.1"] });
   const page = await browser.newPage({ viewport: { width: 390, height: 900 } });
   page.on("dialog", (d) => d.dismiss());
-  page.on("pageerror", (err) => console.log("PAGE ERROR:", err.message));
+  const erros = [];
+  page.on("pageerror", (err) => erros.push(err.message));
+  await newCareer(page, `scout${Date.now()}@teste.com`);
 
-  const base = "http://localhost:8787";
-  const email = `scout${Date.now()}@teste.com`;
-  await page.goto(base + "/", { waitUntil: "load" });
-  await page.evaluate(async ({ email }) => {
-    await fetch("/api/auth/signup", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: "Scout Test", email, password: "senha123", phone: "11999999999", plan: "freemium" }) });
-    await fetch("/api/auth/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, password: "senha123" }) });
-  }, { email });
-  await page.goto(base + "/carreira.html", { waitUntil: "load" });
-  await page.click('.mt-competition-card[data-competition="brasileirao"]');
-  await page.waitForTimeout(200);
-  await page.click(".m3-club-row");
-  await page.waitForTimeout(150);
-  await page.click("#btnConfirmClub");
-  await enterGame(page);
-
-  // 1) Determinismo + limites da faixa (rodado direto no client)
-  const stats = await page.evaluate(() => {
-    const base = CAREER.squad.filter((p) => p.origin === "base");
-    return base.map((p) => {
-      const r1 = scoutedPotentialRange(p);
-      const r2 = scoutedPotentialRange(p);
-      return {
-        deterministico: r1.lo === r2.lo && r1.hi === r2.hi,
-        loMaiorOuIgualOverall: r1.lo >= p.overall,
-        hiMenorOuIgual99: r1.hi <= 99,
-        loMenorOuIgualHi: r1.lo <= r1.hi,
-        potencialDentroDaFaixaOuPerto: p.potential >= r1.lo - 1 && p.potential <= r1.hi + 1, // tolerância de arredondamento
-      };
+  const ids = await noMotor(page, async ({ CAREER, persistir }) => {
+    const jovem = CAREER.squad.find((p) => p.origin === "base" && p.potential > p.overall && !p.scoutRevealed);
+    const veterano = CAREER.squad.find((p) => p.origin === "principal");
+    veterano.potential = veterano.overall; // sem espaço de crescimento, como um veterano de verdade
+    await persistir();
+    return { jovem: jovem.id, veterano: veterano.id, faixa: [jovem.overall, jovem.potential] };
+  });
+  const potencial = async (id) => {
+    await page.goto(base + `/elenco/ficha?id=${encodeURIComponent(id)}`, { waitUntil: "domcontentloaded" });
+    await page.waitForSelector(".cal-foot .cta", { timeout: 20000 });
+    return page.evaluate(() => {
+      const item = [...document.querySelectorAll(".wk-item")].find((d) => (d.querySelector("dt") || {}).textContent === "Potencial");
+      return item ? item.querySelector("dd").textContent : null;
     });
-  });
-  // Fase B: as 4 condições abaixo eram só console.log (não reprovavam).
-  check(`1) Faixa de potencial dos ${stats.length} jogadores da base: determinística, lo >= overall, hi <= 99, lo <= hi:`,
-    stats.length > 0 && stats.every((s) => s.deterministico && s.loMaiorOuIgualOverall && s.hiMenorOuIgual99 && s.loMenorOuIgualHi));
-  console.log("   Todos determinísticos:", stats.every((s) => s.deterministico));
-  console.log("   Todos com lo >= overall:", stats.every((s) => s.loMaiorOuIgualOverall));
-  console.log("   Todos com hi <= 99:", stats.every((s) => s.hiMenorOuIgual99));
-  console.log("   Todos com lo <= hi:", stats.every((s) => s.loMenorOuIgualHi));
+  };
 
-  // 2) Jogador principal SEM espaço real de crescimento (potential ===
-  // overall, ver derivePotentialForAdult -- todo adulto agora tem
-  // potential, mas só mostra faixa de olheiro quando ainda há espaço
-  // de verdade) não tem faixa.
-  const noRangeForReal = await page.evaluate(() => {
-    const real = CAREER.squad.find((p) => p.origin === "principal");
-    real.potential = real.overall; // força "sem espaço", igual um veterano de verdade
-    return scoutedPotentialRange(real) === null;
-  });
-  check("2) Jogador principal sem espaço real de crescimento não tem faixa:", noRangeForReal);
+  const p4 = await potencial(ids.jovem);
+  const m = /^(\d+)(?:–(\d+))?$/.exec(p4 || "");
+  const lo = m ? Number(m[1]) : NaN, hi = m ? Number(m[2] || m[1]) : NaN;
+  check("4) A ficha do jovem da base mostra a avaliação do olheiro (faixa de potencial, a partir do overall):",
+    !!m && lo >= ids.faixa[0] && hi <= 99 && lo <= hi, JSON.stringify({ potencial: p4, overallEPotencial: ids.faixa }));
 
-  // 3) Aparece na lista do Elenco (categoria de base)
-  await page.click("#btnClaimDailyLogin", { timeout: 3000 }).catch(() => {});
-  await page.click(".m3-nav-item[data-panel='elenco']");
-  await page.waitForTimeout(300);
-  const baseRowText = await page.evaluate(() => {
-    const list = document.getElementById("squadBaseList");
-    return list.querySelector(".m3-list-item").textContent;
-  });
-  check("3) Texto da 1ª linha da base (deve conter 'pot.'):", /pot\.|Potencial/.test(baseRowText), baseRowText.replace(/\s+/g, " ").trim());
+  const p5 = await potencial(ids.veterano);
+  check("5) Jogador sem espaço de crescimento não tem avaliação do olheiro (\"Não avaliado\"):", p5 === "Não avaliado", p5);
 
-  // 4) Aparece no detalhe do jogador
-  const baseId = await page.evaluate(() => CAREER.squad.find((p) => p.origin === "base").id);
-  await page.click(`#squadBaseList [data-id="${baseId}"]`);
-  await page.waitForSelector("#detailOverlay.open");
-  await page.waitForTimeout(200);
-  const detailText = await page.evaluate(() => document.getElementById("detailBody").textContent);
-  check("4) Avaliação do olheiro aparece no detalhe:", detailText.includes("Avaliação do olheiro"));
-  await page.click("#detailClose");
-  await page.waitForTimeout(200);
-
-  // 5) Jogador principal REAL não mostra "Avaliação do olheiro" no detalhe
-  const realId = await page.evaluate(() => CAREER.squad.find((p) => p.origin === "principal").id);
-  await page.click(".m3-nav-item[data-panel='elenco']");
-  await page.waitForTimeout(300);
-  await page.click(`#squadMainList [data-id="${realId}"]`);
-  await page.waitForSelector("#detailOverlay.open");
-  await page.waitForTimeout(200);
-  const detailTextReal = await page.evaluate(() => document.getElementById("detailBody").textContent);
-  check("5) Jogador principal NÃO mostra avaliação do olheiro:", !detailTextReal.includes("Avaliação do olheiro"));
-
+  check("6) Sem erro na página:", erros.length === 0, erros.slice(0, 3).join(" | "));
   await browser.close();
 })().catch((e) => { console.error("FATAL:", e); process.exit(1); });
