@@ -13,8 +13,7 @@
 //     rodada 4; perna gravada, nada pendente, nenhum quadro.
 const { chromium } = require("playwright-core");
 const { check } = require("./_check");
-const { newCareer, serverCareer, motorNaPagina, continueToHome } = require("./_v2_match");
-const { playRound, closeLeftoverTabela } = require("./_round");
+const { newCareer, serverCareer, motorNaPagina, continueToHome, noMotor, jogarRodadaV2 } = require("./_v2_carreira");
 
 (async () => {
   const browser = await chromium.launch({ executablePath: process.env.PW_CHROMIUM_PATH || undefined, headless: true, args: ["--host-resolver-rules=MAP fonts.googleapis.com 127.0.0.1,MAP fonts.gstatic.com 127.0.0.1"] });
@@ -22,11 +21,9 @@ const { playRound, closeLeftoverTabela } = require("./_round");
   const page = await ctx.newPage();
   page.on("dialog", (d) => d.dismiss());
   await newCareer(page, `v2tbp${Date.now()}@teste.com`, "cui");
-  const inCup = await page.evaluate(() => (CAREER.cup.ties.fase1 || []).some((t) => String(t.home) === String(CAREER.clubId) || String(t.away) === String(CAREER.clubId)));
-  const declineOffer = () => page.evaluate(() => { const o = document.getElementById("playerOfferOverlay"); if (o && o.classList.contains("open")) document.getElementById("btnPlayerOfferDecline").click(); });
-  for (let i = 0; i < 2; i++) { await closeLeftoverTabela(page); await declineOffer(); await page.waitForTimeout(150); await playRound(page); }
-  await declineOffer(); await closeLeftoverTabela(page);
-  await page.evaluate(() => persistCareer());
+  const inCup = await noMotor(page, ({ CAREER }) => (CAREER.cup.ties.fase1 || []).some((t) => String(t.home) === String(CAREER.clubId) || String(t.away) === String(CAREER.clubId)));
+  // Duas rodadas pela ponte do motor da v2 (proposta por jogador: recusa).
+  for (let i = 0; i < 2; i++) { const r = await jogarRodadaV2(page); if (!r.ok) throw new Error("rodada: " + r.passos.join(" ")); }
   const before = await serverCareer(page);
   check("0) Preparação: rodada 3 (ida da 1ª fase da Copa) e o clube está na 1ª fase:", before.currentRound === 3 && inCup, JSON.stringify({ round: before.currentRound, inCup }));
   await page.close();

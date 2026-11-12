@@ -6,10 +6,7 @@
 // nada gravado; 360 px.
 const { chromium } = require("playwright-core");
 const { check } = require("./_check");
-const { ensureDailyClaimed } = require("./_v2_match");
-const { passCareerSetup, enterGame, waitForBoot } = require("./_startup");
-const { skipPreseason } = require("./_calendar_skip");
-const { playRound, closeLeftoverTabela } = require("./_round");
+const { newCareer, noMotor, jogarRodadaV2 } = require("./_v2_carreira");
 
 (async () => {
   const browser = await chromium.launch({ executablePath: process.env.PW_CHROMIUM_PATH || undefined, headless: true, args: ["--host-resolver-rules=MAP fonts.googleapis.com 127.0.0.1,MAP fonts.gstatic.com 127.0.0.1"] });
@@ -20,28 +17,15 @@ const { playRound, closeLeftoverTabela } = require("./_round");
   const base = "http://localhost:8787";
 
   const email = `v2fn${Date.now()}@teste.com`;
-  await page.goto(base + "/", { waitUntil: "domcontentloaded" });
-  await page.evaluate(async ({ email }) => {
-    await fetch("/api/auth/signup", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: "Murilo Almeida", email, password: "senha123", phone: "11999999999", plan: "freemium" }) });
-    await fetch("/api/auth/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, password: "senha123" }) });
-  }, { email });
-  await page.goto(base + "/carreira-old", { waitUntil: "domcontentloaded" });
-  await page.click('.mt-competition-card[data-competition="brasileirao"]');
-  await page.waitForSelector(".m3-club-row", { timeout: 20000 });
-  await page.click('.m3-club-row[data-id="fla"]');
-  await page.click("#btnConfirmClub");
-  await passCareerSetup(page);
-  await enterGame(page);
-  await ensureDailyClaimed(page);
-  await skipPreseason(page);
-  const declineOffer = () => page.evaluate(() => { const o = document.getElementById("playerOfferOverlay"); if (o && o.classList.contains("open")) document.getElementById("btnPlayerOfferDecline").click(); });
-  for (let i = 0; i < 2; i++) { await closeLeftoverTabela(page); await declineOffer(); await page.waitForTimeout(150); await playRound(page); }
-  await declineOffer(); await closeLeftoverTabela(page);
+  // Conta e carreira pelo motor da v2 (sem a tela antiga), já na rodada 1.
+  await newCareer(page, email);
+  // Duas rodadas pela ponte do motor da v2 (proposta por jogador: recusa).
+  for (let i = 0; i < 2; i++) { const r = await jogarRodadaV2(page); if (!r.ok) throw new Error("rodada: " + r.passos.join(" ")); }
   // Extrato com mais de 5 lançamentos (formato de pushLedger da versão atual).
-  await page.evaluate(() => { for (let i = 0; i < 4; i++) pushLedger("estadio", `Lançamento de teste ${i + 1}`, -(i + 1) * 10000, CAREER.currentRound - 1); return persistCareer(); });
-  await page.waitForTimeout(300);
-  const legacy = await page.evaluate(() => ({
-    cash: fmtBRLShort(CAREER.finances.cash), bill: fmtBRLShort(wageBillOf(CAREER.squad)), cap: fmtBRLShort(CAREER.finances.wageCap),
+  await noMotor(page, (M) => { for (let i = 0; i < 4; i++) M.semana.pushLedger("estadio", `Lançamento de teste ${i + 1}`, -(i + 1) * 10000, M.CAREER.currentRound - 1); return M.persistir(); });
+  // Valores pelas funções do motor (as mesmas que a tela antiga chamava).
+  const legacy = await noMotor(page, ({ CAREER, clube, financas }) => ({
+    cash: clube.fmtBRLShort(CAREER.finances.cash), bill: clube.fmtBRLShort(financas.wageBill(CAREER.squad)), cap: clube.fmtBRLShort(CAREER.finances.wageCap),
     ledger: CAREER.financeLedger.map((t) => t.label),
   }));
 

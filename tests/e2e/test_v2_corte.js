@@ -23,7 +23,7 @@ const fs = require("fs");
 const path = require("path");
 const { chromium } = require("playwright-core");
 const { check } = require("./_check");
-const { base, signup, newCareer } = require("./_v2_match");
+const { base, signup, newCareer } = require("./_v2_carreira");
 
 const PROD = { "x-brdata-producao": "1" };
 

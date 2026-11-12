@@ -15,7 +15,7 @@
 //     alvos ≥ 44 px.
 const { chromium } = require("playwright-core");
 const { check } = require("./_check");
-const { base, signup, serverCareer } = require("./_v2_match");
+const { base, signup, serverCareer } = require("./_v2_carreira");
 
 (async () => {
   const browser = await chromium.launch({ executablePath: process.env.PW_CHROMIUM_PATH || undefined, headless: true, args: ["--host-resolver-rules=MAP fonts.googleapis.com 127.0.0.1,MAP fonts.gstatic.com 127.0.0.1"] });

@@ -8,12 +8,13 @@
 //     volta para a tela Clube.
 //  4) Mais: os 9 itens da prancha (CAP07-T01), na ordem; "Sair" encerra a
 //     sessão e mostra o login da v2.
-//  5) A versão anterior não abre mais telas pelos links que vinham da v2.
+//  5) (Saiu no lote L1 do plano "testes sem a tela antiga": conferia que a
+//     tela antiga não abria telas por links vindos da v2; a tela antiga não
+//     é mais aberta por nada.)
 //  6) Jogos, Clube e Mais em 360 px: sem rolagem horizontal, alvos ≥ 44 px.
 const { chromium } = require("playwright-core");
 const { check } = require("./_check");
-const { newCareer } = require("./_v2_match");
-const { waitForBoot } = require("./_startup");
+const { newCareer } = require("./_v2_carreira");
 
 (async () => {
   const browser = await chromium.launch({ executablePath: process.env.PW_CHROMIUM_PATH || undefined, headless: true, args: ["--host-resolver-rules=MAP fonts.googleapis.com 127.0.0.1,MAP fonts.gstatic.com 127.0.0.1"] });
@@ -23,20 +24,6 @@ const { waitForBoot } = require("./_startup");
   page.on("dialog", (d) => d.dismiss());
   await newCareer(page, `v2nav${Date.now()}@teste.com`);
 
-  // 5) Fase 11: os links diretos que a v2 usava na versão anterior foram
-  // retirados (V2_DEEP_LINKS) — o fragmento não abre mais nenhuma tela.
-  const deep = {};
-  const targets = { contratos: "#contratosOverlay.open", loja: "#panel-loja.active", configuracoes: "#settingsOverlay.open" };
-  for (const [key, sel] of Object.entries(targets)) {
-    await page.goto("about:blank");
-    await page.goto(`${base}/carreira-old#${key}`, { waitUntil: "domcontentloaded" });
-    await waitForBoot(page);
-    await page.waitForTimeout(1500);
-    deep[key] = await page.$(sel).then((el) => !!el);
-  }
-  const deepOpen = Object.entries(deep).filter(([, v]) => v).map(([k]) => k);
-  check("5) A versão anterior não abre mais telas por links vindos da v2 (contratos, loja, configurações):",
-    deepOpen.length === 0, JSON.stringify({ deepOpen }));
   await page.close();
 
   const v2 = await ctx.newPage();

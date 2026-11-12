@@ -16,7 +16,7 @@
 //     /carreira-old e o motor nunca aparece.
 const { chromium } = require("playwright-core");
 const { check } = require("./_check");
-const { newCareer, serverCareer, motorNaPagina, playV2MatchToEnd } = require("./_v2_match");
+const { newCareer, serverCareer, motorNaPagina, playV2MatchToEnd } = require("./_v2_carreira");
 
 const base = "http://localhost:8787";
 

@@ -6,9 +6,7 @@
 // tempo"; Ajustes também abre a Pausa; a partida termina e grava; 360 px.
 const { chromium } = require("playwright-core");
 const { check } = require("./_check");
-const { ensureDailyClaimed } = require("./_v2_match");
-const { passCareerSetup, enterGame } = require("./_startup");
-const { skipPreseason } = require("./_calendar_skip");
+const { newCareer, noMotor } = require("./_v2_carreira");
 
 (async () => {
   const browser = await chromium.launch({ executablePath: process.env.PW_CHROMIUM_PATH || undefined, headless: true, args: ["--host-resolver-rules=MAP fonts.googleapis.com 127.0.0.1,MAP fonts.gstatic.com 127.0.0.1"] });
@@ -19,22 +17,9 @@ const { skipPreseason } = require("./_calendar_skip");
   const base = "http://localhost:8787";
 
   const email = `v2pz${Date.now()}@teste.com`;
-  await page.goto(base + "/", { waitUntil: "domcontentloaded" });
-  await page.evaluate(async ({ email }) => {
-    await fetch("/api/auth/signup", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: "Murilo Almeida", email, password: "senha123", phone: "11999999999", plan: "freemium" }) });
-    await fetch("/api/auth/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, password: "senha123" }) });
-  }, { email });
-  await page.goto(base + "/carreira-old", { waitUntil: "domcontentloaded" });
-  await page.click('.mt-competition-card[data-competition="brasileirao"]');
-  await page.waitForSelector(".m3-club-row", { timeout: 20000 });
-  await page.click('.m3-club-row[data-id="fla"]');
-  await page.click("#btnConfirmClub");
-  await passCareerSetup(page);
-  await enterGame(page);
-  await ensureDailyClaimed(page);
-  await skipPreseason(page);
-  await page.evaluate(() => persistCareer());
-  const saved = await page.evaluate(() => ({ round: CAREER.currentRound, formation: CAREER.lineup.formation, gk: CAREER.squad.find((p) => p.id === CAREER.lineup.starters[0]).overall, bench: CAREER.lineup.bench.length }));
+  // Conta e carreira pelo motor da v2 (sem a tela antiga), já na rodada 1.
+  await newCareer(page, email);
+  const saved = await noMotor(page, ({ CAREER }) => ({ round: CAREER.currentRound, formation: CAREER.lineup.formation, gk: CAREER.squad.find((p) => p.id === CAREER.lineup.starters[0]).overall, bench: CAREER.lineup.bench.length }));
   await page.goto("about:blank");
 
   const v2 = await ctx.newPage();

@@ -1,13 +1,12 @@
 // Carreira 2.0 — Entrega 01 (Início, /). Pela UI real:
 // redirecionamentos sem sessão/carreira, dados do save (pré-temporada e
-// semana de jogo), escudo oficial, NENHUMA escrita no save pela v2, sem
-// links diretos na versão anterior (fase 11), acessibilidade/360 px e
-// estado de erro com "Tentar novamente".
+// semana de jogo), escudo oficial, NENHUMA escrita no save pela v2,
+// acessibilidade/360 px e estado de erro com "Tentar novamente". (O item
+// 7, "a versão anterior não trata links vindos da v2", saiu no lote L1 do
+// plano "testes sem a tela antiga": a tela antiga não é mais aberta.)
 const { chromium } = require("playwright-core");
 const { check } = require("./_check");
-const { ensureDailyClaimed } = require("./_v2_match");
-const { passCareerSetup, enterGame, waitForBoot } = require("./_startup");
-const { skipPreseason } = require("./_calendar_skip");
+const { ensureDailyClaimed, noMotor, ateOInicio, pularPreTemporada } = require("./_v2_carreira");
 
 (async () => {
   const browser = await chromium.launch({ executablePath: process.env.PW_CHROMIUM_PATH || undefined, headless: true, args: ["--host-resolver-rules=MAP fonts.googleapis.com 127.0.0.1,MAP fonts.gstatic.com 127.0.0.1"] });
@@ -33,19 +32,15 @@ const { skipPreseason } = require("./_calendar_skip");
   await page.goto(base + "/", { waitUntil: "domcontentloaded" });
   await page.waitForURL(/\/nova$/, { timeout: 10000 }).catch(() => {});
   check("2) Sem carreira, / abre a criação de carreira da v2 (/nova):", /\/nova$/.test(page.url()), page.url());
-  // O resto deste teste cria a carreira pela versão anterior, como antes.
-  await page.goto(base + "/carreira-old", { waitUntil: "domcontentloaded" });
-
-  await waitForBoot(page);
-  await page.click('.mt-competition-card[data-competition="brasileirao"]');
-  await page.waitForSelector(".m3-club-row", { timeout: 20000 });
-  await page.click('.m3-club-row[data-id="fla"]');
-  await page.click("#btnConfirmClub");
-  await passCareerSetup(page);
-  await enterGame(page);
+  // A carreira é criada pelo motor da v2 (os mesmos comandos da tela de
+  // criação), ainda na pré-temporada; a primeira entrada, pelas telas da v2.
+  const criada = await noMotor(page, async (M) => { const c = await M.ponte.escolherCompeticao("brasileirao"); return c.ok ? M.ponte.criarCarreira("fla") : c; }, null, { comCarreira: false });
+  if (!criada || !criada.ok) throw new Error("criar: " + JSON.stringify(criada));
+  await page.goto(base + "/", { waitUntil: "domcontentloaded" });
+  await ateOInicio(page);
   await ensureDailyClaimed(page);
-  await page.evaluate(() => persistCareer());
-  const legacy = await page.evaluate(() => ({ cash: fmtBRLShort(CAREER.finances.cash), goal: CAREER.boardGoal.label }));
+  const legacy = await noMotor(page, ({ CAREER, clube }) => ({ cash: clube.fmtBRLShort(CAREER.finances.cash), goal: CAREER.boardGoal.label }));
+  await page.goto("about:blank");
 
   // 3) Pré-temporada: composição da referência com dados reais.
   const v2 = await ctx.newPage();
@@ -76,9 +71,7 @@ const { skipPreseason } = require("./_calendar_skip");
     pre.rows.includes(legacy.goal) && pre.value === legacy.cash && JSON.stringify(pre.tabs) === JSON.stringify(["Início", "Elenco", "Jogos", "Mais"]), JSON.stringify({ pre, legacy }));
 
   // 4) Semana de jogo: CTA Preparar partida.
-  await skipPreseason(page);
-  await page.evaluate(() => persistCareer());
-  await page.waitForTimeout(300);
+  await pularPreTemporada(page);
   await v2.reload({ waitUntil: "domcontentloaded" });
   await v2.waitForSelector(".home", { timeout: 15000 });
   const match = await v2.evaluate(() => ({ cta: document.querySelector(".cta").textContent.trim(), href: document.querySelector(".cta").getAttribute("href"), line: document.querySelector(".home-date").textContent, phase: !!document.querySelector(".home-phase") }));
@@ -97,15 +90,6 @@ const { skipPreseason } = require("./_calendar_skip");
   }));
   check("6) Zoom liberado, sem rolagem horizontal em 360 px, alvos ≥ 44 px, lang pt-BR:",
     !/user-scalable\s*=\s*no|maximum-scale\s*=\s*1/.test(a11y.viewport) && a11y.overflow <= 0 && a11y.small.length === 0 && a11y.lang === "pt-BR", JSON.stringify(a11y));
-
-  // 7) Fase 11: a versão anterior não trata mais os links que vinham da v2
-  // (V2_DEEP_LINKS): o fragmento fica onde está e a aba não muda.
-  await page.goto("about:blank");
-  await page.goto(base + "/carreira-old#escalacao", { waitUntil: "domcontentloaded" });
-  await waitForBoot(page);
-  await page.waitForTimeout(1500);
-  const deep = await page.evaluate(() => ({ active: document.getElementById("panel-escalacao").classList.contains("active"), hash: location.hash, fn: typeof window.applyV2DeepLink }));
-  check("7) A versão anterior não trata mais links vindos da v2 (#escalacao não muda a aba):", !deep.active && deep.hash === "#escalacao" && deep.fn === "undefined", JSON.stringify(deep));
 
   // 8) Erro de rede ao carregar a carreira: estado de erro com retry
   // funcional. Contexto sem service worker (o SW da raiz, registrado pela

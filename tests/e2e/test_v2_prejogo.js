@@ -5,9 +5,7 @@
 // partida" abre a Partida da v2 (A4; antes, #iniciar na versão atual).
 const { chromium } = require("playwright-core");
 const { check } = require("./_check");
-const { ensureDailyClaimed } = require("./_v2_match");
-const { passCareerSetup, enterGame, waitForBoot } = require("./_startup");
-const { skipPreseason } = require("./_calendar_skip");
+const { signup, carreiraV2, ensureDailyClaimed, pularPreTemporada, noMotor } = require("./_v2_carreira");
 
 (async () => {
   const browser = await chromium.launch({ executablePath: process.env.PW_CHROMIUM_PATH || undefined, headless: true, args: ["--host-resolver-rules=MAP fonts.googleapis.com 127.0.0.1,MAP fonts.gstatic.com 127.0.0.1"] });
@@ -18,22 +16,11 @@ const { skipPreseason } = require("./_calendar_skip");
   const base = "http://localhost:8787";
 
   const email = `v2pre${Date.now()}@teste.com`;
-  await page.goto(base + "/", { waitUntil: "domcontentloaded" });
-  await page.evaluate(async ({ email }) => {
-    await fetch("/api/auth/signup", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: "Murilo Almeida", email, password: "senha123", phone: "11999999999", plan: "freemium" }) });
-    await fetch("/api/auth/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, password: "senha123" }) });
-  }, { email });
-  await page.goto(base + "/carreira-old", { waitUntil: "domcontentloaded" });
-  await page.click('.mt-competition-card[data-competition="brasileirao"]');
-  await page.waitForSelector(".m3-club-row", { timeout: 20000 });
-  await page.click('.m3-club-row[data-id="fla"]');
-  await page.click("#btnConfirmClub");
-  await passCareerSetup(page);
-  await enterGame(page);
+  // Conta e carreira pelo motor da v2 (sem a tela antiga), ainda na pré-temporada.
+  await carreiraV2(page, email, { clube: "fla", preTemporada: true, criarConta: signup });
   await ensureDailyClaimed(page);
 
   // 1) Fora da semana de jogo (pré-temporada): /pre-jogo volta ao Início.
-  await page.evaluate(() => persistCareer());
   const v2 = await ctx.newPage();
   const writes = [];
   v2.on("request", (r) => { if (r.url().includes("/api/career") && r.method() !== "GET") writes.push(r.method()); });
@@ -41,9 +28,9 @@ const { skipPreseason } = require("./_calendar_skip");
   await v2.waitForSelector(".home", { timeout: 15000 });
   check("1) Pré-temporada: /pre-jogo volta ao Início:", new URL(v2.url()).pathname === "/", v2.url());
 
-  await skipPreseason(page);
-  await page.evaluate(() => persistCareer());
-  const legacy = await page.evaluate(() => {
+  await pularPreTemporada(page);
+  const legacy = await noMotor(page, ({ CAREER, estado }) => {
+    const teamById = (id) => estado.timePorId(id);
     const fx = CAREER.schedule[CAREER.currentRound].find((m) => String(m.home) === String(CAREER.clubId) || String(m.away) === String(CAREER.clubId));
     return { round: CAREER.currentRound, home: teamById(fx.home).name, away: teamById(fx.away).name, formation: CAREER.lineup.formation, gk: CAREER.squad.find((p) => p.id === CAREER.lineup.starters[0]).overall };
   });

@@ -5,10 +5,7 @@
 // temporadas anteriores; Ver classificação; Voltar ao clube; nada gravado.
 const { chromium } = require("playwright-core");
 const { check } = require("./_check");
-const { ensureDailyClaimed } = require("./_v2_match");
-const { passCareerSetup, enterGame } = require("./_startup");
-const { skipPreseason } = require("./_calendar_skip");
-const { playRound, closeLeftoverTabela } = require("./_round");
+const { signup, carreiraV2, ensureDailyClaimed, pularPreTemporada, jogarRodadaV2, noMotor } = require("./_v2_carreira");
 
 (async () => {
   const browser = await chromium.launch({ executablePath: process.env.PW_CHROMIUM_PATH || undefined, headless: true, args: ["--host-resolver-rules=MAP fonts.googleapis.com 127.0.0.1,MAP fonts.gstatic.com 127.0.0.1"] });
@@ -19,21 +16,10 @@ const { playRound, closeLeftoverTabela } = require("./_round");
   const base = "http://localhost:8787";
 
   const email = `v2bd${Date.now()}@teste.com`;
-  await page.goto(base + "/", { waitUntil: "domcontentloaded" });
-  await page.evaluate(async ({ email }) => {
-    await fetch("/api/auth/signup", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: "Murilo Almeida", email, password: "senha123", phone: "11999999999", plan: "freemium" }) });
-    await fetch("/api/auth/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, password: "senha123" }) });
-  }, { email });
-  await page.goto(base + "/carreira-old", { waitUntil: "domcontentloaded" });
-  await page.click('.mt-competition-card[data-competition="brasileirao"]');
-  await page.waitForSelector(".m3-club-row", { timeout: 20000 });
-  await page.click('.m3-club-row[data-id="fla"]');
-  await page.click("#btnConfirmClub");
-  await passCareerSetup(page);
-  await enterGame(page);
+  // Conta e carreira pelo motor da v2 (sem a tela antiga), ainda na pré-temporada.
+  await carreiraV2(page, email, { clube: "fla", preTemporada: true, criarConta: signup });
   await ensureDailyClaimed(page);
-  await page.evaluate(() => persistCareer());
-  const goal = await page.evaluate(() => CAREER.boardGoal.label);
+  const goal = await noMotor(page, ({ CAREER }) => CAREER.boardGoal.label);
 
   const v2 = await ctx.newPage();
   const writes = [];
@@ -57,15 +43,12 @@ const { playRound, closeLeftoverTabela } = require("./_round");
       && pre.items[1][0] === "Temporada ainda não começou" && pre.items[1].length === 1 && !/%|confian/i.test(pre.text), JSON.stringify(pre.items));
 
   // 2) Depois de 1 rodada: posição e "Dentro da meta" pelo critério da versão atual.
-  await skipPreseason(page);
-  const declineOffer = () => page.evaluate(() => { const o = document.getElementById("playerOfferOverlay"); if (o && o.classList.contains("open")) document.getElementById("btnPlayerOfferDecline").click(); });
-  await closeLeftoverTabela(page); await declineOffer(); await page.waitForTimeout(150); await playRound(page);
-  await declineOffer(); await closeLeftoverTabela(page);
-  await page.evaluate(() => persistCareer());
-  await page.waitForTimeout(400);
-  const legacy = await page.evaluate(() => {
-    const pos = myLeaguePosition();
-    return { pos, met: boardGoalMet(pos, CAREER.boardGoal), objectives: ((CAREER.objectives && CAREER.objectives.season) || []).length };
+  await pularPreTemporada(page);
+  // Uma rodada pela ponte do motor da v2 (proposta por jogador: recusa).
+  { const r = await jogarRodadaV2(page); if (!r.ok) throw new Error("rodada: " + r.passos.join(" ")); }
+  const legacy = await noMotor(page, ({ CAREER, fechamento, temporada }) => {
+    const pos = fechamento.myLeaguePosition();
+    return { pos, met: temporada.boardGoalMet(pos, CAREER.boardGoal), objectives: ((CAREER.objectives && CAREER.objectives.season) || []).length };
   });
   writes.length = 0;
   await v2.reload({ waitUntil: "domcontentloaded" });
