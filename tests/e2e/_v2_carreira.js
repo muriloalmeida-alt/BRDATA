@@ -47,8 +47,12 @@ async function ateOInicio(page) {
   // Nesse caso o clique falha rápido e a volta seguinte olha de novo.
   const clicar = (sel) => page.click(sel, { timeout: 2000 }).catch(() => {});
   // Prazo por tempo (sob carga, cada tela demora mais): até 60 s.
-  for (const t0 = Date.now(); Date.now() - t0 < 60000;) {
-    if (await page.locator(".home").count()) break;
+  // O Início aparece por um instante antes de a v2 abrir sozinha o
+  // tutorial, o assistente ou a recompensa (efeito depois do 1º desenho):
+  // só sai do laço com o Início estável por ~1 s.
+  for (let estavel = 0, t0 = Date.now(); Date.now() - t0 < 60000;) {
+    if (await page.locator(".home").count()) { if (++estavel >= 4) break; await page.waitForTimeout(250); continue; }
+    estavel = 0;
     if (await page.locator(".ob-skip").count()) await clicar(".ob-skip");
     else if (await page.locator(".wz-skip").count()) await clicar(".wz-skip");
     else if (await page.locator(".wz-next").count()) await clicar(".wz-next");
