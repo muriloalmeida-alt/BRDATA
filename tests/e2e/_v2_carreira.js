@@ -313,6 +313,8 @@ async function continueToHome(v2, opts = {}) {
       const h1 = (document.querySelector("h1") || {}).textContent || "";
       const ready = document.querySelector('.pz-foot .cta[data-save="saved"]:not([aria-disabled])');
       if (document.querySelector(".mt-skip")) return "live";
+      // Perna da Copa no intervalo (a v2 abre a Pausa sozinha): volta à partida para pular.
+      if (document.querySelector('[aria-label="Voltar à partida"]')) return "pausa";
       // Perna da Copa bloqueada por pendência na escalação (12/11): o técnico completa.
       if (document.querySelector(".state .pm-blocked")) return "bloqueada";
       if (ready) return "copa-fim";
@@ -322,7 +324,8 @@ async function continueToHome(v2, opts = {}) {
       if (h1 === "Uma oferta chegou.") return "proposta";
       return null;
     }).catch(() => null);
-    if (st === "bloqueada") { if (!steps.includes("completou")) steps.push("completou"); await v2.click(".state .state-btn").catch(() => {}); }
+    if (st === "pausa") await v2.click('[aria-label="Voltar à partida"]').catch(() => {});
+    else if (st === "bloqueada") { if (!steps.includes("completou")) steps.push("completou"); await v2.click(".state .state-btn").catch(() => {}); }
     else if (st === "live") { if (!steps.includes("copa")) steps.push("copa"); await v2.click(".mt-skip").catch(() => {}); }
     else if (st === "copa-fim") await v2.click(".pz-foot .cta").catch(() => {});
     else if (st === "coletiva") {
@@ -340,7 +343,10 @@ async function continueToHome(v2, opts = {}) {
     }
     await v2.waitForTimeout(400);
   }
-  await v2.waitForSelector(".home", { timeout: 30000 });
+  await v2.waitForSelector(".home", { timeout: 30000 }).catch(async (e) => {
+    const onde = await v2.evaluate(() => `${location.pathname}${location.search} | ${(document.querySelector("h1") || {}).textContent || ""}`).catch(() => "?");
+    throw new Error(`continueToHome: não chegou ao Início (parou em ${onde}; passos: ${steps.join(",")}) — ${e.message.split("\n")[0]}`);
+  });
   return steps;
 }
 
