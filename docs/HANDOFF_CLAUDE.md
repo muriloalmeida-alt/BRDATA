@@ -172,10 +172,10 @@ Recomendação: aprovar com as decisões 1 e 2 acima.
 
 V2-ANTIGA-01 — Dois recursos da tela antiga trazidos para a v2
 
-Status: REVISÃO DO PM NECESSÁRIA. A demanda foi aprovada pelo Murilo em
-12/11/2026 ("1. Sim! 2. Sim", sobre as diferenças achadas no lote L3 de
-testes, docs/carreira-v2/ENTREGA_TESTES_L3.md); falta aprovar a
-implementação para o merge.
+Status: APROVADO. A demanda foi aprovada pelo Murilo em 12/11/2026
+("1. Sim! 2. Sim", sobre as diferenças achadas no lote L3 de testes,
+docs/carreira-v2/ENTREGA_TESTES_L3.md), e a implementação em 12/11
+("Aprovado"). Mergeado no PR #109.
 1. Nome do jogador nos lances da partida.
    - Na partida encerrada ("Ver lances"), o nome do jogador do lance (gol,
      cartão, lesão) é link.
@@ -198,7 +198,14 @@ testes da partida, do Elenco, de foco e de sistema (10/10).
 
 FASE1-MER — Fase 1: mercado, empréstimos e contratação
 
-Status: PRONTO PARA IMPLEMENTAÇÃO (começa depois do lote L3 de testes; FASE1-ESC aprovada)
+Status: EM IMPLEMENTAÇÃO (L3 concluído em 12/11).
+Plano: `docs/carreira-v2/fase1/PLANO_MER.md`. Decisões do Murilo (13/11):
+1) a proposta leva salário, papel prometido e duração, e o atleta decide
+   junto com o clube;
+2) decisões determinísticas (MER-06);
+3) a promessa de papel vale já nesta fase: deixar no banco quem foi
+   prometido titular derruba a moral e pode gerar pedido de saída;
+4) entrega num PR só.
 Origem: `docs/carreira-v2/fase1/02_Requisitos_Mercado.md` (MER-01 a
 MER-07 e matriz de aceite), sem alteração.
 Ordem: antes de mexer nas regras do mercado, o lote L3 do plano
