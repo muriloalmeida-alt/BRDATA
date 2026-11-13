@@ -43,3 +43,5 @@ export function temporadaReal(): number;
 export function definirTemporadaReal(v: number): number;
 export function herancaDoTecnico(): { reputation: number; clubHistory: any[] } | null;
 export function definirHerancaDoTecnico(v: { reputation: number; clubHistory: any[] } | null): any;
+// SERIED-001: ganchos de módulos carregados depois (elenco gerado da Série D).
+export const ganchosMundo: { elencoGerado: ((club: any) => any[]) | null };

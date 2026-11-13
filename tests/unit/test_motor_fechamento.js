@@ -164,6 +164,10 @@ const ROTEIRO = (seed) => `(() => {
   CAREER.standings = motorTabela().emptyStandings(LEAGUE_TEAMS.map((t) => String(t.id)));
   CAREER.resultsByRound = {};
   if (__m.multi) initDivisionSystem();
+  // SERIED-001 (13/11/2026): sem a Série D na Copa, que ganhou a fase
+  // preliminar (a cópia congelada não a conhece; teste próprio em
+  // tests/unit/test_motor_serie_d.js).
+  if (CAREER.serieDPool) CAREER.serieDPool = [];
   // Avanço rápido da Copa (save antigo no meio da temporada) só na Copa
   // expandida: na antiga, com o seu clube fora dos 16, o avanço não termina
   // (defeito anterior, registrado no relatório da C3).
@@ -236,7 +240,10 @@ const limpa = (x) => JSON.parse(JSON.stringify(x, (k, v) => (k === "ts" && typeo
     vm.runInContext("AVISOS = []; COLETIVAS = []; CAREER = __m.career; LEAGUE_TEAMS = __m.liga; ALL_TEAMS_FLAT = __m.todos;", sb);
     sb.Math.random = seeded(seed);
     const out = vm.runInContext(ROTEIRO(seed), sb);
-    return limpa({ out, career: vm.runInContext("CAREER", sb), avisos: vm.runInContext("AVISOS", sb), coletivas: vm.runInContext("COLETIVAS", sb) });
+    // SERIED-001 (13/11/2026): o histórico por edição da Copa é novo (a cópia
+    // congelada não o grava); tem teste próprio em test_motor_serie_d.js.
+    const career = vm.runInContext("CAREER", sb); delete career.copaHistorico;
+    return limpa({ out, career, avisos: vm.runInContext("AVISOS", sb), coletivas: vm.runInContext("COLETIVAS", sb) });
   };
   const MUNDOS = Number(process.env.MUNDOS || 120);
   const runs = [];

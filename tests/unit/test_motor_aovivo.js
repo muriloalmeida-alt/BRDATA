@@ -189,6 +189,10 @@ const ROTEIRO = (seed) => `(async () => {
   CAREER.currentUnbeatenStreak = Math.floor(r() * 12);
   CAREER.recentForm = Array.from({ length: Math.floor(r() * 6) }, () => [0, 1, 3][Math.floor(r() * 3)]);
   if (__m.multi) initDivisionSystem();
+  // SERIED-001 (13/11/2026): sem a Série D na Copa, que ganhou a fase
+  // preliminar (a cópia congelada não a conhece; teste próprio em
+  // tests/unit/test_motor_serie_d.js).
+  if (CAREER.serieDPool) CAREER.serieDPool = [];
   setupCup();
   if (r() < 0.3) CAREER.manMarking = { opponentId: "x", rivalPlayerId: "y" };
   for (let k = 0; k < 4; k++) {

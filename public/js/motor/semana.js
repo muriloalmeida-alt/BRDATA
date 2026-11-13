@@ -112,7 +112,10 @@ export const MIN_LEAGUE_SQUAD_OTHER_DIVISION = 12;
 
 export function leagueSquadFor(clubId) {
   const CAREER = carreiraAtual();
-  return (CAREER.leagueSquads && CAREER.leagueSquads[String(clubId)]) || [];
+  return (CAREER.leagueSquads && CAREER.leagueSquads[String(clubId)])
+    // SERIED-001: elenco de clube da Série D, materializado quando ele cruza
+    // com o técnico na Copa (CAREER.elencosSerieD).
+    || (CAREER.elencosSerieD && CAREER.elencosSerieD[String(clubId)]) || [];
 }
 
 export const TRANSFER_LOG_MAX = 60;

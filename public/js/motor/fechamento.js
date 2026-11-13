@@ -18,7 +18,7 @@
    Lê e grava a carreira de motor/estado.js. Não chama a tela: avisos
    viram o evento "aviso" (motor/eventos.js).
 =================================================================== */
-import { carreiraAtual, ligaAtual, todosTimes, timePorId, forcaMediaDoElenco } from "./estado.js";
+import { carreiraAtual, ligaAtual, todosTimes, timePorId, forcaMediaDoElenco, ganchosMundo } from "./estado.js";
 import { pushNotification, generateRoundNews } from "./registro.js";
 import { fmtBRL, abbreviateName } from "./texto.js";
 import { advanceCalendarWeek, ambiente, applyFinanceEntries, avisar, calendarOn, finalizeIncomingPurchase, leagueSquadFor, maybeGenerateOffer, processPendingInstallments, processPendingReceivables, pushLedger, pushTransferLog, refreshAvailability, resolvePendingListingsRound, resolvePendingOffersOutRound, simulateAiTransfers, tickScoutMissions, tickStadiumUpgrade, transferWindowStatus } from "./semana.js";
@@ -182,6 +182,10 @@ export const CUP_PRIZE = {
 };
 
 export const CUP_PHASES_EXPANDED = ["fase1", "r32", "r16", "qf", "sf", "final"];
+// SERIED-001: a fase preliminar (jogo único, rodada 1) só existe nas edições
+// com a Série D (CAREER.cup.prelim); fica fora das listas acima de propósito
+// (as edições sem a D seguem iguais).
+export const CUP_PRELIM_ROUND = 1;
 
 export const CUP_ROUNDS_EXPANDED = {
   fase1: { ida: 3, volta: 6 }, r32: { ida: 9, volta: 12 }, r16: { ida: 15, volta: 18 },
@@ -327,6 +331,7 @@ export function resolveCupPhaseExpanded(round, { silent = false } = {}) {
   const CAREER = carreiraAtual();
   const cup = CAREER.cup;
   const phase = cup.phase;
+  if (phase === "prelim") return resolvePrelim(round, silent);
   const rounds = CUP_ROUNDS_EXPANDED[phase];
   const ties = cup.ties[phase];
   let leg;
@@ -373,7 +378,7 @@ export function finalizeCupPhaseExpanded(phase, round, silent) {
       // ver checkpoint de desenho aprovado). Mesmo enviesamento leve
       // do formato legado.
       penalties = true;
-      winner = partida.cupPenaltyHomeWins(squadAvgOverallOf(tie.home), squadAvgOverallOf(tie.away), Math.random) ? tie.home : tie.away;
+      winner = partida.cupPenaltyHomeWins(forcaCopa(tie.home), forcaCopa(tie.away), Math.random) ? tie.home : tie.away;
     }
     tie.winner = winner; tie.penalties = penalties;
     const humanInvolved = String(tie.home) === String(CAREER.clubId) || String(tie.away) === String(CAREER.clubId);
@@ -387,6 +392,7 @@ export function finalizeCupPhaseExpanded(phase, round, silent) {
     cup.champion = ties[0].winner;
     cup.championIsHuman = String(cup.champion) === String(CAREER.clubId);
     cup.phase = "done";
+    registrarEdicaoDaCopa(ties[0]);
     if (!silent && cup.championIsHuman) {
       CAREER.titlesWonCopa = (CAREER.titlesWonCopa || 0) + 1;
       evaluateAlwaysCheckableAchievements();
@@ -408,9 +414,105 @@ export function finalizeCupPhaseExpanded(phase, round, silent) {
     }
     cup.ties[nextPhase] = nextTies;
     cup.phase = nextPhase;
+    materializarAdversarioDaCopa();
   }
   return { phase, leg: 2, results };
 }
+
+// ---------- SERIED-001: Série D na Copa ----------
+
+// Força para pênaltis e sorteios: a do elenco (o da D vem do elenco gerado).
+export function forcaCopa(clubId) {
+  return squadAvgOverallOf(clubId);
+}
+
+// Fase preliminar (jogo único, rodada 1): só nas edições com a Série D.
+export function resolvePrelim(round, silent = false) {
+  const CAREER = carreiraAtual();
+  const cup = CAREER.cup;
+  if (!silent && round !== CUP_PRELIM_ROUND) return null;
+  let deferred = false;
+  cup.ties.prelim.forEach((tie) => {
+    if (tie.winner != null) return;
+    const humanInvolved = String(tie.home) === String(CAREER.clubId) || String(tie.away) === String(CAREER.clubId);
+    if (humanInvolved && !silent) {
+      cup.pendingLiveLeg = { phase: "prelim", leg: 1, round };
+      deferred = true;
+      return;
+    }
+    const r = silent
+      ? { gh: 0, ga: 0, penalties: true, winner: (forcaCopa(tie.home) + Math.random() * 10) >= (forcaCopa(tie.away) + Math.random() * 10) ? tie.home : tie.away }
+      : simulateCupTie(tie.home, tie.away, round);
+    tie.leg1.gh = r.gh; tie.leg1.ga = r.ga; tie.winner = r.winner; tie.penalties = r.penalties;
+  });
+  if (deferred) return { phase: "prelim", leg: 1, deferred: true, results: cup.ties.prelim.map((t) => ({ ...t })) };
+  return finalizePrelim(round, silent);
+}
+
+// Decide o jogo único do técnico na preliminar (o placar já está no leg1).
+export function decidirPrelimDoTecnico(tie) {
+  if (tie.leg1.gh > tie.leg1.ga) { tie.winner = tie.home; tie.penalties = false; }
+  else if (tie.leg1.ga > tie.leg1.gh) { tie.winner = tie.away; tie.penalties = false; }
+  else { tie.penalties = true; tie.winner = partida.cupPenaltyHomeWins(forcaCopa(tie.home), forcaCopa(tie.away), Math.random) ? tie.home : tie.away; }
+}
+
+// Fecha a preliminar: o resultado do técnico (se jogou) e o sorteio da fase 1
+// com os vencedores e quem entrou direto.
+export function finalizePrelim(round, silent = false) {
+  const CAREER = carreiraAtual();
+  const cup = CAREER.cup;
+  const ties = cup.ties.prelim;
+  ties.forEach((tie) => {
+    const isHome = String(tie.home) === String(CAREER.clubId);
+    if (!isHome && String(tie.away) !== String(CAREER.clubId)) return;
+    settleCupTieOutcome({ phase: "prelim", winner: tie.winner, myGoals: isHome ? tie.leg1.gh : tie.leg1.ga, oppGoals: isHome ? tie.leg1.ga : tie.leg1.gh, round, silent, nextPrizeKey: "fase1" });
+  });
+  const pool = shuffleWithRng([...ties.map((t) => t.winner), ...(cup.prelim.direct || [])], ambiente.rngDaChave(`cup-fase1-draw:${CAREER.clubId}:${CAREER.seasonYear}`));
+  const fase1 = [];
+  for (let i = 0; i < pool.length; i += 2) fase1.push(freshCupTie(pool[i], pool[i + 1]));
+  cup.ties.fase1 = fase1;
+  cup.phase = "fase1";
+  materializarAdversarioDaCopa();
+  return { phase: "prelim", leg: 1, results: ties.map((t) => ({ ...t })) };
+}
+
+// O adversário do técnico na Copa, se for da Série D, ganha elenco no save
+// (gerado uma vez, o mesmo que teria ao subir) para a partida ao vivo.
+export function materializarAdversarioDaCopa() {
+  const CAREER = carreiraAtual();
+  const cup = CAREER.cup;
+  if (!cup || !cup.ties || cup.phase === "done" || !ganchosMundo.elencoGerado) return;
+  const tie = (cup.ties[cup.phase] || []).find((t) => String(t.home) === String(CAREER.clubId) || String(t.away) === String(CAREER.clubId));
+  if (!tie) return;
+  const opp = String(String(tie.home) === String(CAREER.clubId) ? tie.away : tie.home);
+  const d = (CAREER.serieDPool || []).find((t) => String(t.id) === opp);
+  if (!d || (CAREER.leagueSquads || {})[opp] || (CAREER.elencosSerieD || {})[opp]) return;
+  CAREER.elencosSerieD = CAREER.elencosSerieD || {};
+  CAREER.elencosSerieD[opp] = ganchosMundo.elencoGerado(d).map((p) => ({ ...p }));
+}
+
+// Histórico por edição (separado das ligas): campeão, vice e a campanha do
+// técnico. Guarda as últimas MAX_COPA_HISTORICO edições.
+export const MAX_COPA_HISTORICO = 15;
+export function registrarEdicaoDaCopa(finalTie) {
+  const CAREER = carreiraAtual();
+  const cup = CAREER.cup;
+  if (!cup || !cup.expanded) return;
+  const me = String(CAREER.clubId);
+  const meus = [];
+  ["prelim", ...CUP_PHASES_EXPANDED].forEach((ph) => ((cup.ties || {})[ph] || []).forEach((t) => {
+    if (String(t.home) !== me && String(t.away) !== me) return;
+    const casa = String(t.home) === me;
+    const placar = (l) => (l && l.gh != null ? (casa ? [l.gh, l.ga] : [l.ga, l.gh]) : null);
+    meus.push({ fase: ph, adversario: String(casa ? t.away : t.home), ida: placar(t.leg1), volta: ph === "prelim" ? null : placar(t.leg2), venceu: String(t.winner) === me, penaltis: !!t.penalties });
+  }));
+  const vice = String(finalTie.winner) === String(finalTie.home) ? finalTie.away : finalTie.home;
+  CAREER.copaHistorico = [...(CAREER.copaHistorico || []), {
+    ano: CAREER.seasonYear, campeao: String(cup.champion), vice: String(vice), participantes: cup.participantes || null,
+    fase: cup.championIsHuman ? "campeao" : (cup.humanEliminatedStage || null), jogos: meus,
+  }].slice(-MAX_COPA_HISTORICO);
+}
+
 
 export const CPU_XI_MIX = { G: 1, D: 4, M: 4, F: 2 };
 

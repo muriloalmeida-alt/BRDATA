@@ -87,7 +87,7 @@ function teamById(id) {
   return estado.timePorId(id);
 }
 
-export const CUP_PHASE_LABEL = { fase1: "1ª fase", r32: "2ª fase", r16: "Oitavas de final", qf: "Quartas de final", sf: "Semifinal", final: "Final" };
+export const CUP_PHASE_LABEL = { prelim: "Fase preliminar", fase1: "1ª fase", r32: "2ª fase", r16: "Oitavas de final", qf: "Quartas de final", sf: "Semifinal", final: "Final" };
 
 export const MONTH_SHORT = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
 
@@ -294,7 +294,7 @@ export function startCupLegLive(tie, phase, leg, round) {
   // Nenhum aviso de "adversário motivado" aqui — GE-BALANCE-001 é
   // deliberadamente só Brasileirão (ver opponentMotivationMod), a
   // sequência de invencibilidade não é lida nem afetada pela Copa.
-  avisar({ title: `Copa do Brasil — ${leg === 1 ? "Ida" : "Volta"}`, detail: `${CUP_PHASE_LABEL[phase]} contra ${isHome ? away.name : home.name}.` }, { type: "info" });
+  avisar({ title: `Copa do Brasil — ${phase === "prelim" ? "Jogo único" : leg === 1 ? "Ida" : "Volta"}`, detail: `${CUP_PHASE_LABEL[phase]} contra ${isHome ? away.name : home.name}.` }, { type: "info" });
   scheduleNextChunk();
 }
 
@@ -318,7 +318,10 @@ export async function finishCupLegLive() {
   const isHomeTieNow = String(tie.home) === String(CAREER.clubId);
   const myLegGoals = isHomeTieNow ? legScore.gh : legScore.ga, oppLegGoals = isHomeTieNow ? legScore.ga : legScore.gh;
   let detail = `${myLegGoals} x ${oppLegGoals}${summaryEvents.some((e) => e.type !== "gol") ? " — ver Copa do Brasil pra detalhes de cartão" : ""}.`;
-  if (leg === 2) {
+  if (phase === "prelim") {
+    const won = String(tie.winner) === String(CAREER.clubId);
+    detail = `${myLegGoals} x ${oppLegGoals}${tie.penalties ? " (pênaltis)" : ""} — ${won ? "classificado para a 1ª fase" : "eliminado na fase preliminar"}.`;
+  } else if (leg === 2) {
     const won = String(tie.winner) === String(CAREER.clubId);
     const aggMine = isHomeTieNow ? tie.leg1.gh + tie.leg2.gh : tie.leg1.ga + tie.leg2.ga;
     const aggOpp = isHomeTieNow ? tie.leg1.ga + tie.leg2.ga : tie.leg1.gh + tie.leg2.gh;
@@ -467,7 +470,7 @@ export function ponteEtapaPosJogo() {
         fase: cup.phase, perna: CAREER.cup && CAREER.cup.expanded ? cup.leg : null, adiado: !!cup.deferred,
         jogos: (cup.results || []).filter((t) => !(cup.deferred && (String(t.home) === String(CAREER.clubId) || String(t.away) === String(CAREER.clubId)))).map((t) => {
           const sc = CAREER.cup && CAREER.cup.expanded ? (cup.leg === 1 ? t.leg1 : t.leg2) : t;
-          return { mandante: nome(t.home), visitante: nome(t.away), gh: sc.gh, ga: sc.ga, penaltis: (!(CAREER.cup && CAREER.cup.expanded) || cup.leg === 2) && !!t.penalties };
+          return { mandante: nome(t.home), visitante: nome(t.away), gh: sc.gh, ga: sc.ga, penaltis: (!(CAREER.cup && CAREER.cup.expanded) || cup.leg === 2 || cup.phase === "prelim") && !!t.penalties };
         }),
       } : null,
     };

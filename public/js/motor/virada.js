@@ -21,7 +21,7 @@
 import { carreiraAtual, definirCarreira, ligaAtual, definirLigaAtual, todosTimes, definirTodosTimes, competicaoAtual, definirCompeticaoAtual, timePorId, forcaMediaDoElenco } from "./estado.js";
 import * as estado from "./estado.js";
 import { CALENDAR_PHASE_BY_MONTH, MAX_LEAGUE_SQUAD, MAX_LEAGUE_SQUAD_OTHER_DIVISION, MAX_PRINCIPAL, MIN_LEAGUE_SQUAD, MIN_LEAGUE_SQUAD_OTHER_DIVISION, ambiente, applyCalendarMonthlyFinances, avisar, leagueSquadFor, marketTeamsPool, minSquadSizeFor, pushTransferLog } from "./semana.js";
-import { CUP_ROUNDS, CUP_ROUNDS_EXPANDED, FORMATIONS, SECTOR_IDS, SECTOR_INSTRUCTIONS, freshCareerTotals, freshCupTie, resolveCupPhase, settleLoanIn, settleLoanOut, shuffleWithRng } from "./fechamento.js";
+import { CUP_PRELIM_ROUND, CUP_ROUNDS, CUP_ROUNDS_EXPANDED, FORMATIONS, SECTOR_IDS, SECTOR_INSTRUCTIONS, freshCareerTotals, freshCupTie, materializarAdversarioDaCopa, resolveCupPhase, settleLoanIn, settleLoanOut, shuffleWithRng } from "./fechamento.js";
 import { ensureObjectivesFresh, evaluateSeasonEndAchievements, freshAchievementsState, freshObjectiveList, freshObjectivesState, pushNotification } from "./registro.js";
 import { freshTeamStats } from "./aovivo.js";
 import { boardGoalMet, derivePotentialForAdult, promotionRelegation, seasonAwards } from "./temporada.js";
@@ -248,43 +248,92 @@ export function setupCupLegacy(fastForwardFromRound) {
 export function setupCupExpanded(fastForwardFromRound) {
   const CAREER = carreiraAtual();
   const allTeams = todosTimes();
-  const strengths = allTeams.map((t) => ({ id: String(t.id), avg: squadAvgOverallOf(t.id) }));
-  strengths.sort((a, b) => b.avg - a.avg);
-  const seeds = strengths.slice(0, CUP_SEED_COUNT).map((s) => s.id);
-  const seedSet = new Set(seeds);
-  const others = allTeams.map((t) => String(t.id)).filter((id) => !seedSet.has(id));
-  const rng = ambiente.rngDaChave(`cup-draw:${CAREER.clubId}:${CAREER.seasonYear}`);
-  const shuffled = shuffleWithRng(others, rng);
-  const fase1 = [];
-  for (let i = 0; i < shuffled.length; i += 2) fase1.push(freshCupTie(shuffled[i], shuffled[i + 1]));
-  CAREER.cup = {
-    expanded: true,
-    active: true,
-    phase: "fase1",
-    seeds,
-    pendingLiveLeg: null,
-    humanAlive: true,
-    humanEliminatedAtRound: null,
-    humanEliminatedStage: null,
-    champion: null,
-    championIsHuman: false,
-    ties: { fase1, r32: [], r16: [], qf: [], sf: [], final: [] },
-  };
+  // SERIED-001: com a Série D, a Copa tem mais de 64 clubes e ganha uma fase
+  // preliminar em jogo único (decisão do Murilo, 13/11).
+  const dTeams = (CAREER.serieDPool || []).filter((t) => !allTeams.some((x) => String(x.id) === String(t.id)));
+  if (allTeams.length + dTeams.length > 64) setupCupComPreliminar(allTeams, dTeams);
+  else {
+    const strengths = allTeams.map((t) => ({ id: String(t.id), avg: squadAvgOverallOf(t.id) }));
+    strengths.sort((a, b) => b.avg - a.avg);
+    const seeds = strengths.slice(0, CUP_SEED_COUNT).map((s) => s.id);
+    const seedSet = new Set(seeds);
+    const others = allTeams.map((t) => String(t.id)).filter((id) => !seedSet.has(id));
+    const rng = ambiente.rngDaChave(`cup-draw:${CAREER.clubId}:${CAREER.seasonYear}`);
+    const shuffled = shuffleWithRng(others, rng);
+    const fase1 = [];
+    for (let i = 0; i < shuffled.length; i += 2) fase1.push(freshCupTie(shuffled[i], shuffled[i + 1]));
+    CAREER.cup = {
+      expanded: true,
+      active: true,
+      phase: "fase1",
+      seeds,
+      pendingLiveLeg: null,
+      humanAlive: true,
+      humanEliminatedAtRound: null,
+      humanEliminatedStage: null,
+      champion: null,
+      championIsHuman: false,
+      ties: { fase1, r32: [], r16: [], qf: [], sf: [], final: [] },
+    };
+  }
   if (!CAREER.careerTotals) CAREER.careerTotals = freshCareerTotals();
   CAREER.careerTotals.copaEditions = (CAREER.careerTotals.copaEditions || 0) + 1;
   // Mesmo espírito do fast-forward legado (ver setupCupLegacy) — fecha
   // por trás (silent) qualquer perna cujo round já passou numa
   // migração no meio da temporada.
   if (fastForwardFromRound != null) {
-    let guard = 0; // defensivo — nunca deveria passar de 12 pernas (6 fases x 2)
+    let guard = 0; // defensivo — nunca deveria passar de 13 pernas (7 fases)
     while (CAREER.cup.phase !== "done" && guard++ < 20) {
-      const rounds = CUP_ROUNDS_EXPANDED[CAREER.cup.phase];
-      const nextRound = CAREER.cup.ties[CAREER.cup.phase].some((t) => t.leg1.gh == null) ? rounds.ida : rounds.volta;
+      const rounds = CAREER.cup.phase === "prelim" ? { ida: CUP_PRELIM_ROUND, volta: null } : CUP_ROUNDS_EXPANDED[CAREER.cup.phase];
+      const nextRound = rounds.volta == null || CAREER.cup.ties[CAREER.cup.phase].some((t) => t.leg1.gh == null) ? rounds.ida : rounds.volta;
       if (nextRound >= fastForwardFromRound) break;
       resolveCupPhase(nextRound, { silent: true });
     }
   }
 }
+
+function novaCopa({ phase, seeds, ties, prelim, participantes }) {
+  return {
+    expanded: true, active: true, phase, seeds, prelim, participantes,
+    pendingLiveLeg: null, humanAlive: true, humanEliminatedAtRound: null, humanEliminatedStage: null,
+    champion: null, championIsHuman: false, ties,
+  };
+}
+
+// Preliminar (SERIED-001): para chegar a 64 na fase 1, os 2 x (N - 64) clubes
+// de menor divisão (D, depois C, depois os mais fracos da B...) jogam um jogo
+// único; os outros entram direto na fase 1. Sem cabeças de chave.
+export function setupCupComPreliminar(allTeams, dTeams) {
+  const CAREER = carreiraAtual();
+  const ordemDiv = { brasileirao: 0, serie_b: 1, serie_c: 2, serie_d: 3 };
+  const todos = [...allTeams.map((t) => ({ id: String(t.id), div: ordemDiv[t.competitionId] ?? 2 })), ...dTeams.map((t) => ({ id: String(t.id), div: 3 }))];
+  const forca = new Map(todos.map((t) => [t.id, squadAvgOverallOf(t.id)]));
+  // Ordem de entrada: divisão mais alta primeiro; na mesma divisão, o mais forte.
+  todos.sort((a, b) => (a.div - b.div) || (forca.get(b.id) - forca.get(a.id)) || a.id.localeCompare(b.id));
+  const N = todos.length;
+  const nPrelim = Math.min(N, 2 * (N - 64));
+  const direct = todos.slice(0, N - nPrelim).map((t) => t.id);
+  const prelimIds = todos.slice(N - nPrelim).map((t) => t.id);
+  const shuffled = shuffleWithRng(prelimIds, ambiente.rngDaChave(`cup-prelim-draw:${CAREER.clubId}:${CAREER.seasonYear}`));
+  const prelim = [];
+  for (let i = 0; i < shuffled.length; i += 2) prelim.push(freshCupTie(shuffled[i], shuffled[i + 1]));
+  CAREER.cup = novaCopa({ phase: "prelim", seeds: [], prelim: { direct, round: CUP_PRELIM_ROUND }, participantes: N, ties: { prelim, fase1: [], r32: [], r16: [], qf: [], sf: [], final: [] } });
+  materializarAdversarioDaCopa();
+}
+
+// Elenco de um clube da Série D (gerado, como o de quem sobe sem dado real):
+// para a força na Copa e para enfrentar o técnico. Mesma semente de
+// buildLeagueSquad: se o clube subir, os jogadores são os mesmos.
+const elencosGerados = new Map();
+export function elencoSerieD(club) {
+  const chave = `${club.id}:${ambiente.temporadaReal()}`;
+  if (!elencosGerados.has(chave)) {
+    const rng = ambiente.rngDaChave(`league-squad:${club.id}:${ambiente.temporadaReal()}`);
+    elencosGerados.set(chave, Array.from({ length: MIN_LEAGUE_SQUAD_OTHER_DIVISION }, (_, i) => buildGeneratedProPlayer(club, i, rng)));
+  }
+  return elencosGerados.get(chave);
+}
+estado.ganchosMundo.elencoGerado = elencoSerieD;
 
 export function initialStadium() {
   return { capacityBonus: 0, pendingUpgrade: null, completed: [] };
@@ -488,6 +537,8 @@ export async function advanceSeason() {
   // de antes do calendário) começa em janeiro, nas férias, com a folha
   // de janeiro já cobrada (12 meses por ano, ver applyCalendarMonthlyFinances).
   CAREER.calendar = buildSeasonCalendar(CAREER.seasonYear);
+  // SERIED-001: a semana da preliminar da Copa (com a Série D) tem 2 jogos.
+  if (CAREER.cup && CAREER.cup.prelim) CAREER.calendar.weeks.forEach((w) => { if (w.r === CAREER.cup.prelim.round) w.c = 1; });
   CAREER.calendar.friendlies = buildFriendlySlots(CAREER.calendar);
   applyCalendarMonthlyFinances(0);
   // P0-IDS-001 — reposição de base/elenco e times vindos da Série D
@@ -630,6 +681,8 @@ export async function applyPromotionRelegation() {
     serie_c: newC.map((t) => ({ ...t, competitionId: "serie_c" })),
   };
   CAREER.serieDPool = newDPool.map((t) => ({ ...t, competitionId: "serie_d" }));
+  // SERIED-001: elencos da D materializados para a Copa valem só na edição.
+  delete CAREER.elencosSerieD;
 
   if (divisionChanged) {
     // GE-BALANCE-004 — explica o contexto da força nova (CLAUDE.md §45).
@@ -963,6 +1016,8 @@ export function montarCarreira(club, squad, leagueSquads, liveModeByCompetition)
   CAREER.negativeSeasonsStreak = 0;
   // FASE 2 (a) — chaveamento da Copa do Brasil da 1ª temporada.
   setupCup();
+  // SERIED-001: a semana da preliminar da Copa (com a Série D) tem 2 jogos.
+  if (CAREER.cup && CAREER.cup.prelim) CAREER.calendar.weeks.forEach((w) => { if (w.r === CAREER.cup.prelim.round) w.c = 1; });
   // FASE 4 (item 5) — contrato inicial de patrocínio/material
   // esportivo (ver initSponsorship).
   initSponsorship();

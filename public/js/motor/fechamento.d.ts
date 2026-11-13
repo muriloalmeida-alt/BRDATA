@@ -49,3 +49,12 @@ export function simulateCupLeg(...args: any[]): any;
 export function simulateCupTie(...args: any[]): any;
 export function simulatePlayerEvents(...args: any[]): any;
 export function tacticAxisMod(...args: any[]): any;
+// SERIED-001: Série D na Copa.
+export const MAX_COPA_HISTORICO: number;
+export function forcaCopa(...args: any[]): any;
+export function resolvePrelim(...args: any[]): any;
+export function decidirPrelimDoTecnico(...args: any[]): any;
+export function finalizePrelim(...args: any[]): any;
+export function materializarAdversarioDaCopa(...args: any[]): any;
+export function registrarEdicaoDaCopa(...args: any[]): any;
+export const CUP_PRELIM_ROUND: number;

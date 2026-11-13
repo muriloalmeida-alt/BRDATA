@@ -39,3 +39,6 @@ export function setupCup(...args: any[]): any;
 export function setupCupExpanded(...args: any[]): any;
 export function setupCupLegacy(...args: any[]): any;
 export function sponsorshipTier(...args: any[]): any;
+// SERIED-001: Série D na Copa.
+export function setupCupComPreliminar(...args: any[]): any;
+export function elencoSerieD(...args: any[]): any;
