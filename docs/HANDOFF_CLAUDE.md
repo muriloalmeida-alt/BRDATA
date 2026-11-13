@@ -248,7 +248,8 @@ registrada (MER-06).
 
 SERIED-001 — Catálogo da Série D e integração com a Copa do Brasil
 
-Status: REVISÃO DO PM NECESSÁRIA (implementado em 13/11; merge só com a aprovação do Murilo)
+Status: APROVADO (Murilo, 13/11/2026, "Aprovado"; PR #111). Os 20 escudos de
+uso restrito ficam no jogo (Murilo, 13/11: "Ficam no jogo").
 Plano: `docs/carreira-v2/serie-d/PLANO_SERIED.md` (seção 7: decisões e relatório).
 Decisões do Murilo (13/11):
 1) ABC, Retrô, CSA e Tombense continuam na Série C;
@@ -275,7 +276,8 @@ fonte oficial e empacotado localmente.
 
 OFFLINE-001 — Modo Carreira offline
 
-Status: BLOQUEADO (aguarda a Fase 1 e a SERIED-001: ordem de prioridade decidida pelo Murilo, 12/11)
+Status: EM PLANEJAMENTO (etapa 0 feita em 13/11; decisões pedidas ao Murilo)
+Plano: `docs/carreira-v2/offline/PLANO_OFFLINE.md` (inventário de rede e linha de base).
 Origem: `docs/carreira-v2/offline/BRDATA_Plano_Offline_Claude.md`, sem
 alteração.
 Decisão registrada (Murilo, 12/11): a carreira continua na raiz do site
