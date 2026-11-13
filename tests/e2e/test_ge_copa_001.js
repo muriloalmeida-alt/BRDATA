@@ -54,7 +54,11 @@ async function newCareer(page, base, email) {
   // (silent:true bypassa o vivo, mesma função real usada por
   // migração) e confere: 60 únicos no total, cada fase com o tamanho
   // certo, exatamente 1 campeão no fim.
+  // SERIED-001 (13/11/2026): estes itens validam o formato de 60 clubes
+  // (edição sem a Série D). A Copa com a D (96, com a preliminar) tem testes
+  // próprios: tests/unit/test_motor_serie_d.js e tests/e2e/test_v2_serie_d.js.
   const integrity = await page.evaluate(() => {
+    CAREER.serieDPool = [];
     setupCupExpanded();
     const cup = CAREER.cup;
     const seen = new Set();
@@ -81,6 +85,7 @@ async function newCareer(page, base, email) {
   // #liveMatchOverlay do Brasileirão), decide pelos mesmos tempos, e
   // fecha gravando o placar na perna certa do tie.
   const liveIda = await page.evaluate(async () => {
+    CAREER.serieDPool = [];
     setupCupExpanded();
     const cup = CAREER.cup;
     const myTie = cup.ties.fase1.find((t) => String(t.home) === String(CAREER.clubId) || String(t.away) === String(CAREER.clubId));

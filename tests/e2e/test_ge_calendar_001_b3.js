@@ -43,12 +43,13 @@ const { skipOnboarding } = require("./_startup");
     months: document.querySelectorAll("#calendarList .mt-cal-month").length,
     now: !!document.getElementById("calendarNowRow"),
     friendlies: [...document.querySelectorAll("#calendarList .mt-cal-week")].filter((r) => /Amistoso/.test(r.textContent)).length,
+    // SERIED-001: 13 = as 12 pernas da Copa + a preliminar (rodada 1).
     cupWeeks: [...document.querySelectorAll("#calendarList .mt-cal-week")].filter((r) => /Copa do Brasil na quarta/.test(r.textContent)).length,
     round1: [...document.querySelectorAll("#calendarList .mt-cal-week")].some((r) => /1ª rodada/.test(r.textContent)),
   }));
   await page.screenshot({ path: "screens/calendario_b3.png" });
   check("2) Tocar na data abre o Calendário: todas as semanas do ano em 12 meses, semana atual destacada, 5 amistosos, 12 semanas de Copa, rodadas listadas:",
-    cal.open && cal.weeks === cal.total && cal.months === 12 && cal.now && cal.friendlies === 5 && cal.cupWeeks === 12 && cal.round1, cal);
+    cal.open && cal.weeks === cal.total && cal.months === 12 && cal.now && cal.friendlies === 5 && cal.cupWeeks === 13 && cal.round1, cal);
   await page.click("#btnCalendarCloseFooter");
   await page.waitForTimeout(200);
 

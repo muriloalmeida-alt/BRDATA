@@ -94,7 +94,7 @@ async function newCareer(page, base, email) {
     const pr = await applyPromotionRelegation();
     return {
       target,
-      countsOk: CAREER.divisionTeams.brasileirao.length === 20 && CAREER.divisionTeams.serie_b.length === 20 && CAREER.divisionTeams.serie_c.length === 20 && CAREER.serieDPool.length === 20,
+      countsOk: CAREER.divisionTeams.brasileirao.length === 20 && CAREER.divisionTeams.serie_b.length === 20 && CAREER.divisionTeams.serie_c.length === 20 && CAREER.serieDPool.length === 36, // SERIED-001: D do catálogo (36)
       relegatedACount: pr.relegatedA.length,
       targetRelegated: pr.relegatedA.some((t) => String(t.id) === target),
       targetStillInA: CAREER.divisionTeams.brasileirao.some((t) => String(t.id) === target),
