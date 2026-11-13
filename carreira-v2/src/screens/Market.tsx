@@ -12,13 +12,13 @@
 // - /carreira/mercado/historico: Histórico (CAP05-T07, 37 col. 2 e 3);
 // - /carreira/mercado/oferta: proposta pendente por um jogador seu (CAP05-T05, 18).
 import { useCallback, useEffect, useState } from "react";
-import { MarketGateway, type LoanPrep, type Preview } from "../adapters/market.ts";
-import { DIVISION, NO_MARKET_FILTERS, buildHistory, buildNegotiation, buildSales, buildTarget, findTarget, initialOffer, installmentsLabel, loanWage, marketFiltersActive, marketList,
+import { MarketGateway, newOpId, type LoanPrep, type OfferPreview, type Preview } from "../adapters/market.ts";
+import { DIVISION, NO_MARKET_FILTERS, ROLE, ROLES, YEARS, buildHistory, buildNegotiation, buildSales, buildTarget, findTarget, initialOffer, installmentsLabel, loanWage, marketFiltersActive, marketList, wageHint, yearsLabel,
   type HistoryTab, type LoanClause, type LoanDuration, type MarketFilters, type MarketInfo, type Range } from "../domain/market.ts";
 import { POSITION } from "../domain/squadplus.ts";
 import { moneyShort } from "../domain/home.ts";
 import { shortName } from "../domain/lineup.ts";
-import type { Career, Player } from "../domain/types.ts";
+import type { Career, OfferRole, Player } from "../domain/types.ts";
 import { Jersey } from "../ui/components.tsx";
 import { Sheet } from "../ui/dialog.tsx";
 import { IconCheck, IconChevron } from "../ui/icons.tsx";
@@ -125,12 +125,23 @@ function FiltersSheet({ f, info, onApply, onClose }: { f: MarketFilters; info: M
 }
 // Filtros valem durante a visita (como os do Elenco), não são gravados.
 let KEPT: MarketFilters = NO_MARKET_FILTERS;
+// MER-02: ao abrir um jogador e voltar, a lista volta com a mesma
+// quantidade carregada e na mesma rolagem (nesta visita ao jogo).
+let KEPT_SHOWN = PAGE;
+let KEPT_SCROLL = 0;
 export function Market({ career }: { career: Career }) {
   const [info] = useInfo();
   const [f, setF] = useState<MarketFilters>(KEPT);
   const [sheet, setSheet] = useState(false);
-  const [shown, setShown] = useState(PAGE);
-  const set = (x: MarketFilters) => { KEPT = x; setF(x); setShown(PAGE); };
+  const [shown, setShownState] = useState(KEPT_SHOWN);
+  const setShown = (n: number) => { KEPT_SHOWN = n; setShownState(n); };
+  const set = (x: MarketFilters) => { KEPT = x; setF(x); setShown(PAGE); KEPT_SCROLL = 0; };
+  const loaded = !!info && info !== "erro";
+  useEffect(() => {
+    if (!loaded || !KEPT_SCROLL) return;
+    const y = KEPT_SCROLL; KEPT_SCROLL = 0;
+    requestAnimationFrame(() => window.scrollTo(0, y));
+  }, [loaded]);
   const offers = (career.pendingOffersOut || []).length;
   const sales = (career.pendingListings || []).length;
   return (
@@ -165,10 +176,10 @@ export function Market({ career }: { career: Career }) {
             <ul className="mk-list">
               {list.slice(0, shown).map((r) => (
                 <li key={`${r.clubId}-${r.player.id}`}>
-                  <Link className="row sp-player" to={ALVO(r.clubId, r.player.id)}>
+                  <Link className="row sp-player" to={ALVO(r.clubId, r.player.id)} onClick={() => { KEPT_SCROLL = window.scrollY; }}>
                     <Jersey value="" size={44} />
                     <span className="row-body"><span className="row-title">{shortName(r.player.name)}</span>
-                      <span className="row-sub">{POSITION[r.player.group]} · overall {r.player.overall}{r.player.age != null ? ` · ${r.player.age} anos` : ""}{r.pendingOfferId ? " · proposta enviada" : ""}</span></span>
+                      <span className="row-sub">{POSITION[r.player.group]} · overall {r.player.overall}{r.player.age != null ? ` · ${r.player.age} anos` : ""}{r.pendingOfferId ? (r.pendingRefused ? " · proposta recusada" : " · proposta enviada") : ""}</span></span>
                     <IconChevron className="row-chevron" />
                   </Link>
                   <dl className="wk-list"><div className="wk-item"><dt>{r.clubName}{r.division && i.multi ? ` · ${r.division}` : ""} · valor de mercado</dt><dd>{r.player.value != null ? moneyShort(r.player.value) : "—"}</dd></div></dl>
@@ -216,9 +227,10 @@ export function Target({ career, clubId, id }: { career: Career; clubId: string;
           <div className="cal-foot">
             <Status err={err} />
             {!t.propose.ok && <p className="sp-why">{t.propose.why}</p>}
+            {t.propose.ok && t.refused && <p className="sp-why">Sua última proposta foi recusada{t.refused.motivo ? `: ${t.refused.motivo}` : "."} Uma nova proposta substitui a anterior.</p>}
             {t.pendingOfferId
               ? <Link className="cta" to={`${M}/negociacao?id=${encodeURIComponent(t.pendingOfferId)}`}>Ver negociação</Link>
-              : <button type="button" className="cta" aria-disabled={!t.propose.ok || undefined} onClick={() => { if (t.propose.ok) navigate(`${M}/proposta?clube=${encodeURIComponent(clubId)}&id=${encodeURIComponent(p.id)}`); }}>Fazer proposta</button>}
+              : <button type="button" className="cta" aria-disabled={!t.propose.ok || undefined} onClick={() => { if (t.propose.ok) navigate(`${M}/proposta?clube=${encodeURIComponent(clubId)}&id=${encodeURIComponent(p.id)}`); }}>{t.refused ? "Fazer nova proposta" : "Fazer proposta"}</button>}
             <button type="button" className="link-back" onClick={() => goBackTo(M)}>Voltar ao mercado</button>
           </div>
         </>);
@@ -253,17 +265,31 @@ export function Propose({ career, clubId, id, onChanged }: { career: Career; clu
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [sent, setSent] = useState<{ id: string; valor: number } | null>(null);
+  // FASE1-MER (MER-03/04): o que o atleta recebe — salário, papel e duração.
+  const [wage, setWage] = useState<string | null>(null);
+  const [role, setRole] = useState<OfferRole>("rotacao");
+  const [years, setYears] = useState(3);
+  const [pv, setPv] = useState<OfferPreview | null>(null);
+  const [opId] = useState(newOpId);
   useEffect(() => { if (!p && !sent) navigate(M, { replace: true }); }, [p, sent]);
   useEffect(() => { if (p && value == null && info && info !== "erro") setValue(String(initialOffer(p, info.desconto))); }, [p, info, value]);
+  useEffect(() => { if (p && wage == null) setWage(String(p.wage || 0)); }, [p, wage]);
+  useEffect(() => {
+    if (!p || sent || !value || !wage) return;
+    let live = true;
+    MarketGateway.offerPreview(clubId, id, Number(value) || 0, n, Number(wage) || 0).then((r) => { if (live && r.ok) setPv(r); });
+    return () => { live = false; };
+  }, [clubId, id, value, n, wage, !!p, !!sent]); // eslint-disable-line react-hooks/exhaustive-deps
   if (!p) return null;
   const back = ALVO(clubId, id);
   const send = async () => {
     if (busy) return;
     setBusy(true); setErr(null);
-    const r = await MarketGateway.propose(clubId, id, Number(value) || 0, n);
+    const r = await MarketGateway.propose(clubId, id, Number(value) || 0, n, { salario: Number(wage) || 0, papel: role, anos: years }, opId);
     setBusy(false);
     if (r.ok) { setSent(r); onChanged(); } else setErr(msgOf(r));
   };
+  const hint = pv ? wageHint(Number(wage) || 0, pv.sugerido[role], p.wage) : null;
   if (sent) return (
     <div className="wk pr">
       <Head ctx="Mercado" back={M} />
@@ -271,8 +297,9 @@ export function Propose({ career, clubId, id, onChanged }: { career: Career; clu
       <span className="tb-bar" aria-hidden="true" />
       <p className="screen-sub">O clube responde em algumas rodadas.</p>
       <section className="wk-sec"><PlayerRow name={shortName(p.name)} position={POSITION[p.group]} />
-        <Rows rows={[{ label: "Sua proposta", value: moneyShort(sent.valor) }, { label: "Parcelamento", value: installmentsLabel(n) }]} />
-        <p className="wk-note">{info && info !== "erro" ? `A resposta chega em ${info.esperaRodadas} rodadas. ` : ""}Acompanhe em Minhas propostas.</p>
+        <Rows rows={[{ label: "Sua proposta", value: moneyShort(sent.valor) }, { label: "Parcelamento", value: installmentsLabel(n) },
+          { label: "Salário oferecido", value: `${moneyShort(Number(wage) || 0)}/mês` }, { label: "Papel prometido", value: ROLE[role] }, { label: "Contrato", value: yearsLabel(years) }]} />
+        <p className="wk-note">{info && info !== "erro" ? `A resposta chega em ${info.esperaRodadas} rodadas. ` : ""}O clube decide o valor; o jogador decide o salário, o papel e a duração. Acompanhe em Minhas propostas.</p>
       </section>
       <div className="cal-foot">
         <Link className="cta" to={`${M}/negociacao?id=${encodeURIComponent(sent.id)}`}>Ver negociação</Link>
@@ -285,7 +312,7 @@ export function Propose({ career, clubId, id, onChanged }: { career: Career; clu
       <Head ctx="Mercado" back={back} />
       <h1 className="screen-title">Faça sua oferta.</h1>
       <span className="tb-bar" aria-hidden="true" />
-      <p className="screen-sub">Negocie a taxa de transferência.</p>
+      <p className="screen-sub">Negocie com o clube e com o jogador.</p>
       <Loading data={info}>{() => (<>
         <section className="wk-sec">
           <PlayerRow name={shortName(p.name)} position={POSITION[p.group]} />
@@ -297,10 +324,28 @@ export function Propose({ career, clubId, id, onChanged }: { career: Career; clu
           <Installments value={n} options={(info as MarketInfo).parcelas} onChange={setN} />
           <p className="wk-note">Propor menos que o valor de mercado é possível, mas o clube pode recusar, pedir mais ou demorar para responder.</p>
         </section>
+        <section className="wk-sec pr-pad" aria-labelledby="pp-at"><h2 className="kicker-caps" id="pp-at">Para o jogador</h2>
+          <MoneyInput id="pp-s" label="Salário mensal oferecido (R$)" value={wage || ""} onChange={setWage} />
+          <Seg id="pp-r" label="Papel prometido" value={role} opts={ROLES.map((r) => [r, ROLE[r]] as [OfferRole, string])} onChange={setRole} />
+          {hint && <p className={`mk-hint${hint.tone === "neg" ? " is-neg" : ""}`}>{hint.text}</p>}
+          <Seg id="pp-y" label="Duração do contrato" value={years} opts={YEARS.map((y) => [y, `${y}`] as [number, string])} onChange={setYears} />
+          <p className="wk-note">{role === "titular" ? "Prometer titularidade convence mais, mas ele cobra: no banco, a moral cai mais rápido nesta temporada." : role === "rotacao" ? "Prometer rotação: fora da lista de jogo, a moral cai mais nesta temporada." : "Sem promessa de jogar: ele tende a pedir mais salário."}</p>
+        </section>
+        {pv && (
+          <section className="wk-sec mk-impact" aria-labelledby="pp-im"><h2 className="kicker-caps" id="pp-im">Antes de enviar</h2>
+            <Rows rows={[
+              { label: "Pago no fechamento", value: pv.parcelas > 1 ? `${moneyShort(pv.primeira)} (1ª de ${pv.parcelas})` : moneyShort(pv.primeira) },
+              { label: "Salário assumido", value: `${moneyShort(pv.salario)}/mês${pv.salarioAtual ? ` (hoje ${moneyShort(pv.salarioAtual)})` : ""}` },
+              { label: "Caixa", value: `${moneyShort(pv.caixaAntes)} → ${moneyShort(pv.caixaDepois)}`, tone: pv.caixaDepois < 0 ? "neg" : undefined },
+              { label: "Folha salarial mensal", value: `${moneyShort(pv.folhaAntes)} → ${moneyShort(pv.folhaDepois)}`, tone: pv.teto != null && pv.folhaDepois > pv.teto ? "neg" : undefined },
+              ...(pv.teto != null ? [{ label: "Teto da folha", value: moneyShort(pv.teto) }] : []),
+            ]} />
+          </section>
+        )}
       </>)}</Loading>
       <div className="cal-foot">
         <Status err={err} />
-        <button type="button" className="cta" aria-disabled={busy || !value || undefined} onClick={() => { if (value) send(); }}>{busy ? "Enviando…" : "Enviar proposta"}</button>
+        <button type="button" className="cta" aria-disabled={busy || !value || !Number(wage) || undefined} onClick={() => { if (value && Number(wage)) send(); }}>{busy ? "Enviando…" : "Enviar proposta"}</button>
         <button type="button" className="link-back" disabled={busy} onClick={() => goBackTo(back)}>Cancelar</button>
       </div>
     </div>
@@ -384,6 +429,7 @@ export function Negotiation({ career, id, onChanged }: { career: Career; id: str
   const [msg, setMsg] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [done, setDone] = useState<{ ok: boolean; text: string; name: string } | null>(null);
+  const [opId, setOpId] = useState(newOpId);
   useEffect(() => { if (!o && !done) navigate(`${M}/propostas`, { replace: true }); }, [o, done]);
   if (done) return (
     <div className="wk pr">
@@ -408,16 +454,31 @@ export function Negotiation({ career, id, onChanged }: { career: Career; id: str
   };
   const accept = async () => {
     setBusy(true); setErr(null);
-    const r = await MarketGateway.acceptCounter(o.id);
+    const r = await MarketGateway.acceptCounter(o.id, opId);
     setBusy(false); setConfirm(null);
     if (!r.ok) { setErr(msgOf(r)); return; }
+    setOpId(newOpId());
+    await onChanged();
+    // O clube aceitou; o jogador pediu mais salário ou recusou: a proposta
+    // fica na lista com o motivo e a próxima ação.
+    if (!r.comprado && r.atleta) { setMsg(r.mensagem); return; }
+    if (r.comprado && r.coletiva) { navigate(`${BASE}/coletiva?volta=${encodeURIComponent(`${BASE}/elenco`)}`, { replace: true }); return; }
+    setDone(r.comprado ? { ok: true, name: n.short, text: `${n.short} chegou do ${n.club}. A compra entrou no caixa e no histórico.` } : { ok: false, name: n.short, text: r.mensagem || "A compra não pôde ser concluída." });
+  };
+  const acceptWage = async () => {
+    setBusy(true); setErr(null);
+    const r = await MarketGateway.acceptWage(o.id, opId);
+    setBusy(false); setConfirm(null);
+    if (!r.ok) { setErr(msgOf(r)); return; }
+    setOpId(newOpId());
     await onChanged();
     if (r.comprado && r.coletiva) { navigate(`${BASE}/coletiva?volta=${encodeURIComponent(`${BASE}/elenco`)}`, { replace: true }); return; }
+    if (!r.comprado && r.mensagem && !/não está mais/.test(r.mensagem)) { setMsg(r.mensagem); return; }
     setDone(r.comprado ? { ok: true, name: n.short, text: `${n.short} chegou do ${n.club}. A compra entrou no caixa e no histórico.` } : { ok: false, name: n.short, text: r.mensagem || "A compra não pôde ser concluída." });
   };
   const withdraw = async () => {
     setBusy(true); setErr(null);
-    const r = await MarketGateway.withdraw(o.id);
+    const r = await (n.open ? MarketGateway.withdraw(o.id) : MarketGateway.dismiss(o.id));
     setBusy(false); setQuit(false);
     if (!r.ok) { setErr(msgOf(r)); return; }
     await onChanged();
@@ -437,9 +498,19 @@ export function Negotiation({ career, id, onChanged }: { career: Career; id: str
         <Rows rows={[{ label: "Parcelamento", value: n.mine.installments }, { label: "Valor de mercado", value: n.market }, { label: "Situação", value: n.status.text }]} />
         {n.wait && <p className="wk-note">{n.wait}</p>}
       </section>
+      {n.terms && (
+        <section className="wk-sec" aria-labelledby="ng-t"><h2 className="kicker-caps" id="ng-t">Para o jogador</h2><Rows rows={n.terms} /></section>
+      )}
       {n.counter && (
         <section className="wk-sec" aria-labelledby="ng-c"><h2 className="kicker-caps" id="ng-c">Contraproposta do clube</h2>
           <p className="mk-big">{n.counter}</p>
+          {n.reason && <p className="wk-note">{n.reason}</p>}
+        </section>
+      )}
+      {!n.counter && n.reason && (
+        <section className="wk-sec" aria-labelledby="ng-why"><h2 className="kicker-caps" id="ng-why">{n.refused ? "Por que recusou" : "O que ele pede"}</h2>
+          {n.askedWage && <p className="mk-big">{n.askedWage}/mês</p>}
+          <p className="wk-note">{n.reason}</p>
         </section>
       )}
       {n.rival && (
@@ -449,12 +520,15 @@ export function Negotiation({ career, id, onChanged }: { career: Career; id: str
         </section>
       )}
       <nav className="wk-sec" aria-label="Ações">
-        <button type="button" className="row pr-row" disabled={busy} onClick={() => setRaise(true)}><span className="row-body"><span className="row-title">Aumentar proposta</span></span><IconChevron className="row-chevron" /></button>
+        {n.open && <button type="button" className="row pr-row" disabled={busy} onClick={() => setRaise(true)}><span className="row-body"><span className="row-title">Aumentar proposta</span></span><IconChevron className="row-chevron" /></button>}
+        {!n.open && target && <NavRow to={`${M}/proposta?clube=${encodeURIComponent(o.clubId)}&id=${encodeURIComponent(o.playerId)}`} title="Fazer nova proposta" sub={n.refused ? "Mude o valor, o salário, o papel ou a duração" : "Ofereça outro salário, papel ou duração"} />}
+        <NavRow to={M} title="Voltar ao mercado" />
       </nav>
       <div className="cal-foot">
         <Status msg={msg} err={err} />
         {n.counter && <button type="button" className="cta" aria-disabled={busy || undefined} onClick={() => { if (!busy) openConfirm(); }}>Aceitar contraproposta</button>}
-        <button type="button" className="link-back" disabled={busy} onClick={() => setQuit(true)}>Desistir</button>
+        {n.askedWage && <button type="button" className="cta" aria-disabled={busy || undefined} onClick={() => { if (!busy) acceptWage(); }}>{busy ? "Concluindo…" : `Aceitar salário pedido (${n.askedWage})`}</button>}
+        <button type="button" className="link-back" disabled={busy} onClick={() => setQuit(true)}>{n.open ? "Desistir" : "Dispensar"}</button>
       </div>
       {raise && <RaiseSheet min={n.minRaise} suggested={n.suggestedRaise} onClose={() => setRaise(false)} onSend={async (v) => {
         const r = await MarketGateway.raise(o.id, v);
@@ -475,10 +549,10 @@ export function Negotiation({ career, id, onChanged }: { career: Career; id: str
       )}
       {quit && (
         <Sheet alert labelledBy="qt-t" describedBy="qt-d" onDismiss={busy ? undefined : () => setQuit(false)}>
-          <h2 id="qt-t" className="sheet-title">Desistir?</h2>
-          <p id="qt-d" className="wk-sheet-text">Sua proposta por {n.short} será retirada.</p>
+          <h2 id="qt-t" className="sheet-title">{n.open ? "Desistir?" : "Dispensar?"}</h2>
+          <p id="qt-d" className="wk-sheet-text">{n.open ? `Sua proposta por ${n.short} será retirada.` : `A proposta por ${n.short} sai da lista.`}</p>
           <button type="button" className="cta" data-autofocus onClick={() => setQuit(false)}>Continuar negociando</button>
-          <button type="button" className="text-btn pr-danger-text" disabled={busy} onClick={withdraw}>{busy ? "…" : "Desistir"}</button>
+          <button type="button" className="text-btn pr-danger-text" disabled={busy} onClick={withdraw}>{busy ? "…" : n.open ? "Desistir" : "Dispensar"}</button>
         </Sheet>
       )}
     </div>
@@ -542,6 +616,7 @@ export function SaleOffers({ career, id, onChanged }: { career: Career; id: stri
   const [msg, setMsg] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [sold, setSold] = useState<string | null>(null);
+  const [saleOp] = useState(newOpId);
   useEffect(() => { if (!sold && (!l || !l.offers.length)) navigate(`${M}/vendas`, { replace: true }); }, [l, sold]);
   if (sold) return (
     <div className="wk pr">
@@ -564,7 +639,7 @@ export function SaleOffers({ career, id, onChanged }: { career: Career; id: stri
   const accept = async () => {
     if (!chosen) return;
     setBusy(true); setErr(null);
-    const r = await MarketGateway.acceptSale(l.id, chosen.id);
+    const r = await MarketGateway.acceptSale(l.id, chosen.id, saleOp);
     setBusy(false); setConfirm(null);
     if (!r.ok) { setErr(msgOf(r)); return; }
     await onChanged();
@@ -675,6 +750,8 @@ export function Loan({ career, clubId, id, onChanged }: { career: Career; clubId
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [done, setDone] = useState<string | null>(null);
+  const [askPct, setAskPct] = useState<number | null>(null);
+  const [loanOp] = useState(newOpId);
   const back = incoming ? ALVO(clubId!, id) : `${BASE}/elenco/ficha?id=${encodeURIComponent(id)}&tela=numeros`;
   useEffect(() => { if (!p && !done) navigate(incoming ? M : `${BASE}/elenco`, { replace: true }); }, [p, done, incoming]);
   // Saída: o clube interessado é sorteado ao abrir, como no jogo.
@@ -695,13 +772,18 @@ export function Loan({ career, clubId, id, onChanged }: { career: Career; clubId
   );
   if (!p) return null;
   const club = incoming ? (career.divisionTeams ? Object.values(career.divisionTeams).flat() : []).find((t) => String(t.id) === clubId) : null;
-  const send = async () => {
+  const send = async (pctNow = pct) => {
     if (busy) return;
-    setBusy(true); setErr(null);
+    setBusy(true); setErr(null); setAskPct(null);
     const value = clause === "nenhuma" ? 0 : Number(cv) || 0;
-    const r = incoming ? await MarketGateway.loanIn(clubId!, id, dur, pct, clause, value) : await MarketGateway.loanOut(id, dur, clause, value);
+    const r = incoming ? await MarketGateway.loanIn(clubId!, id, dur, pctNow, clause, value, loanOp) : await MarketGateway.loanOut(id, dur, clause, value, loanOp);
     setBusy(false);
-    if (!r.ok) { setErr(msgOf(r)); return; }
+    if (!r.ok) {
+      // FASE1-MER (MER-05): o clube de origem pede um percentual maior.
+      const pedido = (r as { pctPedido?: number }).pctPedido;
+      if (r.motivo === "contra" && pedido) { setAskPct(pedido); setErr(msgOf(r)); return; }
+      setErr(msgOf(r)); return;
+    }
     await onChanged();
     const when = dur === "meia" ? "por 6 meses" : "até o fim da temporada";
     setDone(incoming ? `${shortName(p.name)} chega emprestado do ${club ? club.name : "clube"} ${when}, com ${pct}% do salário pago por você.`
@@ -734,7 +816,8 @@ export function Loan({ career, clubId, id, onChanged }: { career: Career; clubId
       )}
       <div className="cal-foot">
         <Status err={err} />
-        <button type="button" className="cta" aria-disabled={busy || blocked || undefined} onClick={() => { if (!blocked) send(); }}>{busy ? "Enviando…" : "Propor empréstimo"}</button>
+        {askPct != null && <button type="button" className="cta" aria-disabled={busy || undefined} onClick={() => { setPct(askPct); send(askPct); }}>{busy ? "Enviando…" : `Aceitar ${askPct}% do salário`}</button>}
+        <button type="button" className={askPct != null ? "state-btn" : "cta"} aria-disabled={busy || blocked || undefined} onClick={() => { if (!blocked) send(); }}>{busy ? "Enviando…" : "Propor empréstimo"}</button>
         <button type="button" className="link-back" disabled={busy} onClick={() => goBackTo(back)}>Cancelar</button>
       </div>
     </div>

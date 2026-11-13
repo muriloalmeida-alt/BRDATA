@@ -122,7 +122,11 @@ export interface OfferOut {
   marketValue: number; offerValue: number; installments: number; roundsLeft: number;
   status: "pending" | "countered" | string; counterValue: number | null; submittedRound?: number; counterRounds?: number;
   rivalOffer?: { clubId: string; clubName: string; offerValue: number; installments: number } | null;
+  // FASE1-MER: termos oferecidos ao atleta e a resposta (motivo).
+  salario?: number; papel?: OfferRole; anos?: number;
+  motivo?: string | null; salarioPedido?: number | null; recusadoPor?: "clube" | "atleta";
 }
+export type OfferRole = "titular" | "rotacao" | "reserva";
 export interface Listing {
   id?: string; playerId: string | number; playerName?: string; askingValue?: number; marketValue?: number; listedRound?: number;
   offers?: { id: string; clubId: string; clubName: string; value: number; installments: number; round?: number }[];

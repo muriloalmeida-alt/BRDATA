@@ -9,7 +9,7 @@
 // empréstimo de saída como o jogo; histórico em abas com a frase do jogo;
 // propostas da venda: escolher (com confirmação), recusar todas ou uma;
 // confirmação da compra; proposta pendente no Mercado.
-import type { Career, OfferOut, Player, PlayerGroup } from "./types.ts";
+import type { Career, OfferOut, OfferRole, Player, PlayerGroup } from "./types.ts";
 import { offerEffectiveValue as effective } from "../../../public/js/motor/mercado.js";
 import { moneyShort } from "./home.ts";
 import { shortName, sortKey } from "./lineup.ts";
@@ -38,11 +38,11 @@ const inRange = (v: number | undefined, r: Range) => (r.min == null || (v ?? -In
 export function marketFiltersActive(f: MarketFilters): number {
   return [f.pos !== "todas", !!f.div, !!f.club, rangeOn(f.ovr), rangeOn(f.age), rangeOn(f.val), f.sort !== "valor"].filter(Boolean).length;
 }
-export interface MarketRow { player: Player; clubId: string; clubName: string; clubShort: string | null; division: string | null; pendingOfferId: string | null }
+export interface MarketRow { player: Player; clubId: string; clubName: string; clubShort: string | null; division: string | null; pendingOfferId: string | null; pendingRefused: boolean }
 // Mesmo universo de allMarketPlayers (sem os seus e sem quem você emprestou)
 // e a mesma ordem de renderMercado (valor; overall; idade).
 export function marketList(career: Career, info: MarketInfo, f: MarketFilters): MarketRow[] {
-  const pending = new Map((career.pendingOffersOut || []).map((o) => [String(o.playerId), o.id]));
+  const pending = new Map((career.pendingOffersOut || []).map((o) => [String(o.playerId), o]));
   const q = norm(f.q.trim());
   const rows: MarketRow[] = [];
   for (const c of info.clubes) {
@@ -55,7 +55,8 @@ export function marketList(career: Career, info: MarketInfo, f: MarketFilters): 
       if (f.pos !== "todas" && p.group !== f.pos) continue;
       if (!inRange(p.overall, f.ovr) || !inRange(p.age, f.age) || !inRange(p.value, f.val)) continue;
       if (q && !clubHit && !norm(p.name).includes(q)) continue;
-      rows.push({ player: p, clubId: c.id, clubName: c.nome, clubShort: c.sigla, division: DIVISION[c.divisao] || null, pendingOfferId: pending.get(String(p.id)) || null });
+      rows.push({ player: p, clubId: c.id, clubName: c.nome, clubShort: c.sigla, division: DIVISION[c.divisao] || null,
+        pendingOfferId: pending.get(String(p.id))?.id || null, pendingRefused: pending.get(String(p.id))?.status === "recusada" });
     }
   }
   const by = { valor: (a: MarketRow, b: MarketRow) => (b.player.value || 0) - (a.player.value || 0),
@@ -69,7 +70,9 @@ export function findTarget(career: Career, clubId: string, playerId: string): Pl
 
 // ---------- Perfil do alvo (CAP05-T02) ----------
 export function buildTarget(career: Career, info: MarketInfo, clubId: string, p: Player) {
-  const pending = (career.pendingOffersOut || []).find((o) => String(o.playerId) === String(p.id)) || null;
+  // Uma proposta recusada não impede outra (a nova substitui a recusada).
+  const pending = (career.pendingOffersOut || []).find((o) => String(o.playerId) === String(p.id) && o.status !== "recusada") || null;
+  const refused = (career.pendingOffersOut || []).find((o) => String(o.playerId) === String(p.id) && o.status === "recusada") || null;
   const open = info.janela.aberta;
   const loanRefused = info.recusaEmprestimo.includes(String(p.id));
   return {
@@ -88,6 +91,7 @@ export function buildTarget(career: Career, info: MarketInfo, clubId: string, p:
       { label: "Físico", value: p.phys != null ? String(p.phys) : "—" },
     ],
     pendingOfferId: pending ? pending.id : null,
+    refused: refused ? { id: refused.id, motivo: refused.motivo || null } : null,
     propose: open && !pending ? { ok: true as const, why: null } : { ok: false as const, why: pending ? "Você já tem uma proposta por esse jogador." : "Janela de contratações fechada: só consulta." },
     loan: !open ? { ok: false as const, why: "Janela de contratações fechada." } : loanRefused ? { ok: false as const, why: "O clube não empresta: é peça importante demais." } : { ok: true as const, why: null },
     clubId,
@@ -101,8 +105,24 @@ export function initialOffer(p: Player, discountPct: number): number {
 }
 export const installmentsLabel = (n: number) => (n > 1 ? `${n}x` : "À vista (1x)");
 
+// ---------- Termos para o atleta (FASE1-MER, MER-03/04) ----------
+export const ROLE: Record<OfferRole, string> = { titular: "Titular", rotacao: "Rotação", reserva: "Reserva" };
+export const ROLES: OfferRole[] = ["titular", "rotacao", "reserva"];
+export const YEARS = [1, 2, 3, 4, 5];
+export const yearsLabel = (n: number) => `${n} ${n === 1 ? "temporada" : "temporadas"}`;
+// O que o atleta deve achar do salário, pela prévia do motor (o salário que
+// ele aceitaria em cada papel). Só orienta: quem decide é o motor.
+export function wageHint(offered: number, expected: number | undefined, current: number | undefined): { text: string; tone: "pos" | "neg" | null } | null {
+  if (!expected || !offered) return null;
+  if (offered >= expected) return { text: `Salário dentro do que ele espera para esse papel (cerca de ${moneyShort(expected)}).`, tone: "pos" };
+  const gap = Math.round((1 - offered / expected) * 100);
+  return { text: `Ele deve esperar cerca de ${moneyShort(expected)} para esse papel${current ? ` (hoje ganha ${moneyShort(current)})` : ""}. Abaixo disso (${gap}% a menos), pode pedir mais ou recusar.`, tone: "neg" };
+}
+
 // ---------- Minhas propostas (CAP05-N02) e negociação (CAP05-T04) ----------
 export function offerStatus(o: OfferOut): { text: string; tone: "gold" | "neg" | null } {
+  if (o.status === "recusada") return { text: o.recusadoPor === "atleta" ? "Recusada pelo jogador" : "Recusada", tone: "neg" };
+  if (o.status === "pede-salario") return { text: "Pede mais salário", tone: "gold" };
   if (o.status === "countered") return { text: "Contraproposta", tone: "gold" };
   if (o.rivalOffer) return { text: "Concorrência", tone: "neg" };
   return { text: "Aguardando", tone: null };
@@ -126,7 +146,17 @@ export function buildNegotiation(o: OfferOut) {
     mine: { value: moneyShort(o.offerValue), installments: installmentsLabel(o.installments) },
     market: moneyShort(o.marketValue),
     counter: o.status === "countered" && o.counterValue != null ? moneyShort(o.counterValue) : null,
-    wait: o.status === "countered" ? null : `O ${o.clubName} responde em ${o.roundsLeft} ${o.roundsLeft === 1 ? "rodada" : "rodadas"}.`,
+    wait: o.status !== "pending" ? null : `O ${o.clubName} responde em ${o.roundsLeft} ${o.roundsLeft === 1 ? "rodada" : "rodadas"}.`,
+    // FASE1-MER: termos oferecidos ao atleta, a resposta e o que dá para fazer.
+    terms: o.salario != null ? [
+      { label: "Salário oferecido", value: `${moneyShort(o.salario)}/mês` },
+      { label: "Papel prometido", value: ROLE[o.papel || "rotacao"] },
+      { label: "Contrato", value: yearsLabel(o.anos || 3) },
+    ] : null,
+    reason: o.motivo || null,
+    askedWage: o.status === "pede-salario" && o.salarioPedido ? moneyShort(o.salarioPedido) : null,
+    refused: o.status === "recusada",
+    open: o.status === "pending" || o.status === "countered",
     rival: rival ? { club: rival.clubName, value: moneyShort(rival.offerValue), installments: installmentsLabel(rival.installments) } : null,
     analysis,
     // Aumentar: no mínimo acima da atual; sugestão = o pedido do clube, o

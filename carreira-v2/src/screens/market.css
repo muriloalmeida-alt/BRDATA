@@ -6,6 +6,7 @@
 .mk-more { width: 100%; margin-top: 12px; }
 .mk-range { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 10px; color: var(--bd-muted); font-size: 14px; }
 .mk-hint { margin: 6px 0 0; font-size: 14px; color: var(--bd-muted); }
+.mk-hint.is-neg { color: var(--bd-danger); }
 .mk-big { margin: 4px 0 6px; font-family: var(--bd-font-display); font-weight: 700; font-size: 28px; color: var(--bd-text); }
 .mk-st.is-gold { color: var(--bd-gold); }
 .mk-st.is-neg { color: var(--bd-danger); }

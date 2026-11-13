@@ -44,8 +44,9 @@ export function useLocation() {
   return loc;
 }
 
-export function Link({ to, ...rest }: AnchorHTMLAttributes<HTMLAnchorElement> & { to: string }) {
+export function Link({ to, onClick: own, ...rest }: AnchorHTMLAttributes<HTMLAnchorElement> & { to: string }) {
   const onClick = (e: MouseEvent<HTMLAnchorElement>) => {
+    if (own) own(e);
     if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
     e.preventDefault();
     navigate(to);
