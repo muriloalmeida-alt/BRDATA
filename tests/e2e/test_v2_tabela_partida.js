@@ -1,7 +1,7 @@
 // Carreira 2.0 — AUD-03: Tabela aberta pelo Resultado preserva a sessão da
 // partida (a ponte guarda o pós-jogo pendente — inclusive a perna da Copa).
 // Rodada 3 = ida da 1ª fase da Copa (CUP_ROUNDS_EXPANDED.fase1.ida): o
-// clube (Cuiabá, fora dos cabeças de chave) tem a perna ao vivo pendente
+// clube (Cuiabá, que entra direto na 1ª fase) tem a perna ao vivo pendente
 // no pós-jogo dessa rodada.
 //  1) Resultado → Ver tabela → Série B → Série C → Série A: continua na rota
 //     da partida, mesma sessão do motor (sem quadro), foco fica na aba.
@@ -21,9 +21,11 @@ const { newCareer, serverCareer, motorNaPagina, continueToHome, noMotor, jogarRo
   const page = await ctx.newPage();
   page.on("dialog", (d) => d.dismiss());
   await newCareer(page, `v2tbp${Date.now()}@teste.com`, "cui");
-  const inCup = await noMotor(page, ({ CAREER }) => (CAREER.cup.ties.fase1 || []).some((t) => String(t.home) === String(CAREER.clubId) || String(t.away) === String(CAREER.clubId)));
   // Duas rodadas pela ponte do motor da v2 (proposta por jogador: recusa).
   for (let i = 0; i < 2; i++) { const r = await jogarRodadaV2(page); if (!r.ok) throw new Error("rodada: " + r.passos.join(" ")); }
+  // SERIED-001: com a Série D, a 1ª fase é sorteada depois da preliminar
+  // (rodada 1); o Cuiabá (Série A) entra direto nela.
+  const inCup = await noMotor(page, ({ CAREER }) => (CAREER.cup.ties.fase1 || []).some((t) => String(t.home) === String(CAREER.clubId) || String(t.away) === String(CAREER.clubId)));
   const before = await serverCareer(page);
   check("0) Preparação: rodada 3 (ida da 1ª fase da Copa) e o clube está na 1ª fase:", before.currentRound === 3 && inCup, JSON.stringify({ round: before.currentRound, inCup }));
   await page.close();

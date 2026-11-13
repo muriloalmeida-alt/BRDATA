@@ -4,7 +4,7 @@
 // - /carreira/retrospecto?id=: Retrospecto H2H (CAP04-N09, 43 col. 1);
 // - /carreira/premiacoes (?ano=): Premiações (CAP07-N04, 45 col. 2).
 import { useState } from "react";
-import { buildAwards, buildCupDetail, buildH2H, buildStats, type CupSide, type StatsPeriod, type StatsScope } from "../domain/games.ts";
+import { buildAwards, buildCupDetail, buildCupEditions, buildH2H, buildStats, type CupSide, type StatsPeriod, type StatsScope } from "../domain/games.ts";
 import type { Career, Team } from "../domain/types.ts";
 import { Crest } from "../ui/components.tsx";
 import { Sheet } from "../ui/dialog.tsx";
@@ -52,6 +52,7 @@ function Picker({ id, label, value, options, onPick }: { id: string; label: stri
 // ---------- Copa do Brasil ----------
 export function CupScreen({ career, teamById, phase }: { career: Career; teamById: TeamById; phase: string | null }) {
   const m = buildCupDetail(career, teamById, phase);
+  const eds = buildCupEditions(career, teamById);
   const back = `${BASE}/jogos`;
   return (
     <div className="wk pr">
@@ -70,6 +71,16 @@ export function CupScreen({ career, teamById, phase }: { career: Career; teamByI
       {m.note && <p className="wk-note pr-pad">{m.note}</p>}
       {m.state === "campeao" && <section className="wk-sec" aria-labelledby="cp-ch"><h2 className="kicker-caps" id="cp-ch">Campeão</h2><p className="mk-big">{teamById(career.clubId).name}</p></section>}
       {m.state === "encerrada" && m.champion && <section className="wk-sec" aria-labelledby="cp-ch"><h2 className="kicker-caps" id="cp-ch">Campeão</h2><p className="mk-big">{m.champion}</p></section>}
+      {eds.length > 0 && (
+        <section className="wk-sec" aria-labelledby="cp-ed"><h2 className="kicker-caps" id="cp-ed">Edições anteriores</h2>
+          {eds.map((e) => (
+            <div key={e.ano} className="cp-ed">
+              <p className="row-title">{e.ano}{e.participantes ? ` · ${e.participantes} clubes` : ""}</p>
+              <Rows rows={[{ label: "Campeão", value: `${e.campeao}${e.mine ? " ★" : ""}` }, { label: "Vice", value: e.vice }, { label: "Sua campanha", value: e.campanha }]} />
+            </div>
+          ))}
+        </section>
+      )}
       <div className="cal-foot"><button type="button" className="link-back" onClick={() => goBackTo(back)}>Voltar aos jogos</button></div>
     </div>
   );

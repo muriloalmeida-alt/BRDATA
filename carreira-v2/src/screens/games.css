@@ -50,3 +50,7 @@
 .mo-sub { display: block; margin-top: 2px; font-family: var(--bd-font-text); font-weight: 400; font-size: 13px; color: var(--bd-muted); }
 .mo-add { margin: 6px 0 0; }
 .mo-pay { margin: 10px var(--bd-gutter) 0; }
+
+/* SERIED-001: edições anteriores da Copa */
+.cp-ed + .cp-ed { margin-top: 16px; }
+.cp-ed .row-title { margin: 0 0 4px; }

@@ -67,3 +67,25 @@ test("H2H e Premiações: V-E-D e jogos nesta carreira; temporada com prêmios e
   assert.equal(a.titles.text, "1× Brasileirão");
   assert.equal(buildAwards({ ...c, seasonAwards: [] }, tb, null).season, null);
 });
+
+// SERIED-001: fase preliminar (jogo único) e edições anteriores.
+test("Copa com a Série D: preliminar em jogo único, eliminação com a frase certa e edições anteriores", async () => {
+  const { buildCupDetail: detail, buildCupEditions } = await import("./games.ts");
+  const teams: Record<string, { id: string; name: string; short: string }> = { me: { id: "me", name: "Meu FC", short: "MEU" }, d1: { id: "d1", name: "Manaus FC", short: "MNA" }, a1: { id: "a1", name: "Flamengo", short: "FLA" }, a2: { id: "a2", name: "Palmeiras", short: "PAL" } };
+  const byId = (id: string | number) => teams[String(id)] as never;
+  const base = { clubId: "me", clubName: "Meu FC", seasonYear: 2027, currentRound: 2, schedule: {}, standings: {}, squad: [] } as never as import("./types.ts").Career;
+  const tie = { home: "me", away: "d1", leg1: { gh: 1, ga: 1 }, leg2: { gh: null, ga: null }, winner: "d1", penalties: true };
+  const c1 = { ...base, cup: { active: true, expanded: true, phase: "fase1", humanAlive: false, humanEliminatedStage: "prelim", humanEliminatedAtRound: 1, prelim: { direct: [] }, ties: { prelim: [tie], fase1: [] } } };
+  const m = detail(c1, byId, null);
+  assert.equal(m.phase, "prelim");
+  assert.equal(m.tie!.volta, null);
+  assert.equal(m.tie!.result, "Eliminado");
+  assert.equal(m.tie!.penalties, true);
+  assert.equal(m.note, "Eliminado na fase preliminar (rodada 1).");
+  const c2 = { ...base, copaHistorico: [
+    { ano: 2026, campeao: "a1", vice: "a2", participantes: 96, fase: "prelim", jogos: [{ fase: "prelim", adversario: "d1", ida: [1, 1], volta: null, venceu: false, penaltis: true }] },
+    { ano: 2027, campeao: "me", vice: "a1", participantes: 96, fase: "campeao", jogos: [] },
+  ] };
+  const eds = buildCupEditions(c2 as never, byId);
+  assert.deepEqual(eds.map((e) => [e.ano, e.campeao, e.campanha, e.mine]), [[2027, "Meu FC", "Campeão", true], [2026, "Flamengo", "Eliminado na fase preliminar pelo Manaus FC", false]]);
+});

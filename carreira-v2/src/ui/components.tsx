@@ -1,3 +1,4 @@
+import { useState } from "react";
 import type { Team } from "../domain/types.ts";
 import { crestSrc } from "../adapters/gateways.ts";
 import { IconArrow, IconHome, IconUsers, IconCalendar, IconMore } from "./icons.tsx";
@@ -8,13 +9,16 @@ export function Wordmark() {
   return <span className="wordmark" role="img" aria-label="BRDATA">BR<b>DATA</b></span>;
 }
 
-// Escudo oficial (public/img/teams/) ou monograma nas cores do clube.
+// Escudo oficial (public/img/teams/ ou URL externa) ou monograma nas cores
+// do clube. SERIED-001: escudo externo que não carrega (sem rede, link fora
+// do ar) cai no monograma.
 export function Crest({ team, size }: { team: Team; size: number }) {
   const src = crestSrc(team);
+  const [failed, setFailed] = useState<string | null>(null);
   return (
     <span className="crest" style={{ width: size, height: size }}>
-      {src
-        ? <img src={src} alt="" width={size} height={size} />
+      {src && failed !== src
+        ? <img src={src} alt="" width={size} height={size} onError={() => setFailed(src)} />
         : <span className="crest-mono" style={{ background: `linear-gradient(160deg, ${team.c1 || "#5b6676"}, ${team.c2 || "#1d2430"})`, fontSize: Math.round(size * 0.32) }}>{(team.short || team.name || "?").slice(0, 3).toUpperCase()}</span>}
     </span>
   );

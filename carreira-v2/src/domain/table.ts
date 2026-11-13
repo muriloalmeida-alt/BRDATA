@@ -90,13 +90,15 @@ export function buildTable(career: Career, teamById: (id: string | number) => Te
 
 // ---- Copa do Brasil (legado: renderCopa) ----
 export const CUP_PHASES = ["r16", "qf", "sf", "final"];
-export const CUP_PHASES_EXPANDED = ["fase1", "r32", "r16", "qf", "sf", "final"];
+// SERIED-001: "prelim" (jogo único, rodada 1) só nas edições com a Série D.
+export const CUP_PHASES_EXPANDED = ["prelim", "fase1", "r32", "r16", "qf", "sf", "final"];
+export const CUP_PRELIM_ROUND = 1;
 const CUP_ROUNDS: Record<string, number> = { r16: 6, qf: 14, sf: 22, final: 30 };
 const CUP_ROUNDS_EXPANDED: Record<string, { ida: number; volta: number }> = {
   fase1: { ida: 3, volta: 6 }, r32: { ida: 9, volta: 12 }, r16: { ida: 15, volta: 18 },
   qf: { ida: 21, volta: 24 }, sf: { ida: 27, volta: 30 }, final: { ida: 33, volta: 36 },
 };
-export const CUP_PHASE_LABEL: Record<string, string> = { fase1: "1ª fase", r32: "2ª fase", r16: "Oitavas de final", qf: "Quartas de final", sf: "Semifinal", final: "Final" };
+export const CUP_PHASE_LABEL: Record<string, string> = { prelim: "Fase preliminar", fase1: "1ª fase", r32: "2ª fase", r16: "Oitavas de final", qf: "Quartas de final", sf: "Semifinal", final: "Final" };
 
 export interface CupTie {
   home: string | number; away: string | number;
@@ -108,7 +110,15 @@ export interface Cup {
   championIsHuman?: boolean; humanAlive?: boolean; humanEliminatedStage?: string; humanEliminatedAtRound?: number | null;
   champion?: string | number;
   seeds?: (string | number)[];
+  prelim?: { direct: (string | number)[]; round?: number } | null; participantes?: number | null;
 }
+// "Eliminado na fase preliminar" / "nas oitavas de final"...
+export function eliminadoEm(stage: string | null | undefined): string {
+  const lbl = CUP_PHASE_LABEL[stage || ""] || stage || "—";
+  return stage === "prelim" || stage === "final" || stage === "sf" ? `na ${lbl.toLowerCase()}` : stage === "fase1" || stage === "r32" ? `na ${lbl}` : `nas ${lbl.toLowerCase()}`;
+}
+// Uma edição passada (CAREER.copaHistorico, motor/fechamento.js).
+export interface CupEdition { ano: number; campeao: string; vice: string; participantes?: number | null; fase: string | null; jogos: { fase: string; adversario: string; ida: [number, number] | null; volta: [number, number] | null; venceu: boolean; penaltis: boolean }[] }
 export interface CupModel {
   status: string;
   outcome: "campeao" | "eliminado" | "vivo" | "encerrada" | "fora";
@@ -130,7 +140,7 @@ export function buildCup(career: Career, teamById: (id: string | number) => Team
   } else if (!cup.humanAlive) {
     outcome = "eliminado";
     const st = cup.humanEliminatedStage || "";
-    status = `Eliminado da Copa do Brasil nas ${CUP_PHASE_LABEL[st] || st}${cup.humanEliminatedAtRound ? ` (rodada ${cup.humanEliminatedAtRound})` : ""}.`;
+    status = `Eliminado da Copa do Brasil ${eliminadoEm(st)}${cup.humanEliminatedAtRound ? ` (rodada ${cup.humanEliminatedAtRound})` : ""}.`;
   } else if (cup.phase === "done") {
     outcome = "encerrada"; status = `Copa do Brasil ${career.seasonYear} encerrada. Campeão: ${teamById(cup.champion ?? "").name}.`;
   } else {
@@ -143,6 +153,10 @@ export function buildCup(career: Career, teamById: (id: string | number) => Team
       // vencedores da 1ª fase + cup.seeds). A versão atual mostra aqui
       // "rodada undefined contra ?" — a v2 descreve o dado real.
       status = `Fase atual: ${CUP_PHASE_LABEL.fase1}. Seu clube é cabeça de chave e entra na ${CUP_PHASE_LABEL.r32} (rodada ${CUP_ROUNDS_EXPANDED.r32.ida}).`;
+    } else if (cup.expanded && tie && phase === "prelim") {
+      status = `Fase atual: ${CUP_PHASE_LABEL.prelim} (jogo único). Próximo confronto: rodada ${CUP_PRELIM_ROUND} contra ${oppName}.`;
+    } else if (cup.expanded && !tie && phase === "prelim") {
+      status = `Fase atual: ${CUP_PHASE_LABEL.prelim}. Seu clube entra direto na ${CUP_PHASE_LABEL.fase1} (rodada ${CUP_ROUNDS_EXPANDED.fase1.ida}).`;
     } else if (cup.expanded && tie) {
       const r = CUP_ROUNDS_EXPANDED[phase];
       const isIda = tie.leg1?.gh == null;
@@ -157,7 +171,11 @@ export function buildCup(career: Career, teamById: (id: string | number) => Team
     if (!tie) continue;
     const isHomeMe = String(tie.home) === me;
     const opp = teamById(isHomeMe ? tie.away : tie.home);
-    if (cup.expanded) {
+    if (cup.expanded && phase === "prelim") {
+      if (!tie.leg1 || tie.leg1.gh == null) continue;
+      const won = String(tie.winner) === me;
+      history.push({ phase: CUP_PHASE_LABEL.prelim, opp, score: `${isHomeMe ? tie.leg1.gh : tie.leg1.ga} x ${isHomeMe ? tie.leg1.ga : tie.leg1.gh}${tie.penalties ? " (pên.)" : ""}`, note: `Jogo único — ${won ? "Classificado" : "Eliminado"}`, won });
+    } else if (cup.expanded) {
       if (!tie.leg1 || tie.leg1.gh == null) continue;
       const lbl = (l: { gh: number | null; ga: number | null }) => (isHomeMe ? `${l.gh} x ${l.ga}` : `${l.ga} x ${l.gh}`);
       const leg2Done = tie.leg2?.gh != null;

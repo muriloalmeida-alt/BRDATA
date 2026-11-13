@@ -9,7 +9,7 @@
 import type { Career, SeasonAward, Team } from "./types.ts";
 import { sortedStandings } from "./home.ts";
 import { shortName } from "./lineup.ts";
-import { CUP_PHASES, CUP_PHASES_EXPANDED, CUP_PHASE_LABEL } from "./table.ts";
+import { CUP_PHASES, CUP_PHASES_EXPANDED, CUP_PHASE_LABEL, eliminadoEm, type CupEdition } from "./table.ts";
 
 type TeamById = (id: string | number) => Team;
 const same = (a: unknown, b: unknown) => a != null && b != null && String(a) === String(b);
@@ -37,15 +37,19 @@ export function buildCupDetail(career: Career, teamById: TeamById, pick: string 
   const sub = `Copa do Brasil · ${state === "campeao" ? "Campeão" : state === "eliminado" ? "Eliminado" : state === "encerrada" ? "Encerrada" : "Em disputa"}`;
   const phase = pick && played.includes(pick) ? pick : played[played.length - 1] || null;
   let note: string | null = null;
-  if (state === "eliminado") note = `Eliminado nas ${CUP_PHASE_LABEL[cup.humanEliminatedStage || ""] || cup.humanEliminatedStage}${cup.humanEliminatedAtRound ? ` (rodada ${cup.humanEliminatedAtRound})` : ""}.`;
-  if (!played.length && state === "vivo") note = (cup.seeds || []).some((id) => same(id, me)) ? "Cabeça de chave: seu clube entra na 2ª fase." : "Seu primeiro confronto ainda vai ser sorteado.";
+  if (state === "eliminado") { const e = eliminadoEm(cup.humanEliminatedStage); note = `Eliminado ${e}${cup.humanEliminatedAtRound ? ` (rodada ${cup.humanEliminatedAtRound})` : ""}.`; }
+  if (!played.length && state === "vivo") note = (cup.seeds || []).some((id) => same(id, me)) ? "Cabeça de chave: seu clube entra na 2ª fase."
+    : cup.phase === "prelim" && (cup.prelim?.direct || []).some((id) => same(id, me)) ? "Seu clube entra direto na 1ª fase; o adversário sai da fase preliminar." : "Seu primeiro confronto ainda vai ser sorteado.";
   let tie: CupDetail["tie"] = null;
   const t = phase ? myTie(phase) : null;
   if (t) {
     const meHome = String(t.home) === me;
     const mine = (h: number | null | undefined, a: number | null | undefined) => (h == null || a == null ? null : meHome ? `${h} × ${a}` : `${a} × ${h}`);
     const opp = teamById(meHome ? t.away : t.home);
-    if (cup.expanded && t.leg1) {
+    if (cup.expanded && phase === "prelim" && t.leg1) {
+      tie = { me: side(teamById(me), true), opp: side(opp, false), meHome, ida: mine(t.leg1.gh, t.leg1.ga) || "— × —", volta: null, agregado: null, penalties: !!t.penalties,
+        result: t.leg1.gh == null ? "Jogo único a disputar." : same(t.winner, me) ? "Classificado" : "Eliminado" };
+    } else if (cup.expanded && t.leg1) {
       const done2 = t.leg2 && t.leg2.gh != null;
       const agg = done2 ? (meHome ? `${t.leg1.gh! + t.leg2!.gh!} × ${t.leg1.ga! + t.leg2!.ga!}` : `${t.leg1.ga! + t.leg2!.ga!} × ${t.leg1.gh! + t.leg2!.gh!}`) : null;
       tie = { me: side(teamById(me), true), opp: side(opp, false), meHome, ida: mine(t.leg1.gh, t.leg1.ga) || "— × —", volta: t.leg2 ? mine(t.leg2.gh, t.leg2.ga) || "— × —" : null, agregado: agg, penalties: !!t.penalties,
@@ -56,6 +60,15 @@ export function buildCupDetail(career: Career, teamById: TeamById, pick: string 
     }
   }
   return { state, title, sub, note, phases: played.map((id) => ({ id, label: CUP_PHASE_LABEL[id] || id })), phase, tie, champion: cup.champion != null && cup.phase === "done" ? teamById(cup.champion).name : null };
+}
+
+// Edições passadas da Copa (SERIED-001): campeão, vice e a sua campanha.
+export function buildCupEditions(career: Career & { copaHistorico?: CupEdition[] }, teamById: TeamById) {
+  return [...(career.copaHistorico || [])].reverse().map((e) => {
+    const ultimo = e.jogos[e.jogos.length - 1];
+    const campanha = e.fase === "campeao" ? "Campeão" : e.fase ? `Eliminado ${eliminadoEm(e.fase)}${ultimo && !ultimo.venceu ? ` pelo ${teamById(ultimo.adversario).name}` : ""}` : "Não disputou";
+    return { ano: e.ano, campeao: teamById(e.campeao).name, vice: teamById(e.vice).name, campanha, participantes: e.participantes || null, mine: same(e.campeao, career.clubId) };
+  });
 }
 
 // ---------- Estatísticas ----------
