@@ -116,10 +116,13 @@ const { newCareer, noMotor, motorNaPagina } = require("./_v2_carreira");
   const after = await v2.evaluate(async () => (await (await fetch("/api/career", { cache: "no-store" })).json()).career);
   // O nome curto pode se repetir no elenco sorteado (dois "G. Costa"):
   // entre os homônimos, vale o que está entre os titulares.
-  const sameShort = after.squad.filter((p) => { const pt = p.name.trim().split(/\s+/); return (pt.length > 1 ? `${pt[0][0].toUpperCase()}. ${pt[pt.length - 1]}` : p.name) === inShort && (after.lineup.starters.includes(p.id) || after.lineup.bench.includes(p.id)); });
-  const inP = sameShort.find((p) => after.lineup.starters.includes(p.id)) || sameShort[0];
+  // Quem entrou e depois foi expulso (ou se lesionou) no resto da partida
+  // sai da escalação de propósito: aí basta ele estar suspenso/lesionado.
+  const fora = (p) => p.status === "suspenso" || p.status === "contundido";
+  const sameShort = after.squad.filter((p) => { const pt = p.name.trim().split(/\s+/); return (pt.length > 1 ? `${pt[0][0].toUpperCase()}. ${pt[pt.length - 1]}` : p.name) === inShort && (after.lineup.starters.includes(p.id) || after.lineup.bench.includes(p.id) || fora(p)); });
+  const inP = sameShort.find((p) => after.lineup.starters.includes(p.id)) || sameShort.find(fora) || sameShort[0];
   check("5) 360 px sem rolagem e alvos ≥ 44 px nas telas de ajuste; ao fim, save com rodada +1, formação 4-4-2, pressão 5 e quem entrou na escalação:",
-    [a1, a2, a3].every((a) => a.overflow <= 0 && a.small.length === 0) && after.currentRound === before.round + 1 && after.lineup.formation === "4-4-2" && after.lineup.tactics.pressao === 5 && !!inP && after.lineup.starters.includes(inP.id),
+    [a1, a2, a3].every((a) => a.overflow <= 0 && a.small.length === 0) && after.currentRound === before.round + 1 && after.lineup.formation === "4-4-2" && after.lineup.tactics.pressao === 5 && !!inP && (after.lineup.starters.includes(inP.id) || fora(inP)),
     JSON.stringify({ a1, a2, a3, round: after.currentRound, f: after.lineup.formation, pressao: after.lineup.tactics.pressao, inP: inP && inP.id }));
 
   await browser.close();
