@@ -1,34 +1,31 @@
-// GE-CALENDAR-001 (B2) — amistosos: 3 na pré-temporada (convites com
-// escolha) + até 2 opcionais em julho. Motor ao vivo reaproveitado; não
-// vale ponto, gol/assistência oficial nem suspensão; bilheteria pequena;
-// a semana fecha sozinha depois do jogo.
+// GE-CALENDAR-001 (B2) — amistosos. Lote L4c (sem a tela antiga): as regras
+// pelo motor na página da v2 (os mesmos comandos da ponte que o Pré-jogo de
+// amistoso e a Semana da v2 usam). As telas do amistoso (convites,
+// "Ir para o amistoso", Partida de amistoso, "Avançar até o próximo jogo",
+// amistoso opcional de julho) estão no test_v2_semana, itens 3 a 5.
+//  1) O calendário nasce com 3 amistosos na pré (obrigatórios) + 2 em julho
+//     (opcionais), 3 convites cada; a 1ª semana não tem amistoso.
+//  2) Na semana do amistoso, "Avançar semana" sem jogar é recusado (o
+//     amistoso da pré é obrigatório).
+//  3) Amistoso jogado contra o convite escolhido, com resultado guardado.
+//  3b) Não mexe na tabela, em gol/assistência oficial nem em cartão/suspensão.
+//  3c) Rende bilheteria e fecha a semana (calendário avança, rodada não).
+//  4) "Avançar até o próximo jogo" chega na rodada 1 e marca os amistosos
+//     pulados como jogados, sem resultado.
+//  5) Em julho o amistoso é opcional: dá para avançar sem convite; com
+//     convite aceito, a semana espera o amistoso.
 const { chromium } = require("playwright-core");
-const { skipOnboarding } = require("./_startup");
+const { carreiraV2, signup, ensureDailyClaimed, globaisDoMotor } = require("./_v2_carreira");
 
 (async () => {
   const browser = await chromium.launch({ executablePath: process.env.PW_CHROMIUM_PATH || undefined, headless: true, args: ["--host-resolver-rules=MAP fonts.googleapis.com 127.0.0.1,MAP fonts.gstatic.com 127.0.0.1"] });
   const page = await browser.newPage({ viewport: { width: 390, height: 900 } });
   page.on("dialog", (d) => d.dismiss());
   page.on("pageerror", (err) => console.log("PAGE ERROR:", err.message));
-  const base = "http://localhost:8787";
-  const email = `gecalb2${Date.now()}@teste.com`;
-  await page.goto(base + "/", { waitUntil: "domcontentloaded" });
-  await page.evaluate(async ({ email }) => {
-    await fetch("/api/auth/signup", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: "Amistosos Teste", email, password: "senha123", phone: "11999999999", plan: "freemium" }) });
-    await fetch("/api/auth/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, password: "senha123" }) });
-  }, { email });
-  await page.goto(base + "/carreira.html", { waitUntil: "domcontentloaded" });
-  await page.click('.mt-competition-card[data-competition="brasileirao"]');
-  await page.waitForTimeout(300);
-  await page.click(".m3-club-row");
-  await page.waitForTimeout(150);
-  await page.click("#btnConfirmClub");
-  await skipOnboarding(page);
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  for (let i = 0; i < 6; i++) { await page.click("#btnWizardSkip", { timeout: 2500 }).catch(() => {}); await page.waitForTimeout(300); }
-  await page.click("#btnClaimDailyLogin", { timeout: 1500 }).catch(() => {});
-  await page.waitForTimeout(500);
+  await carreiraV2(page, `gecalb2${Date.now()}@teste.com`, { clube: "fla", preTemporada: true, criarConta: signup });
+  await ensureDailyClaimed(page);
+  await globaisDoMotor(page);
+  await page.evaluate(async () => { window.P = (await import("/js/motor/v2.js")).criarPonte(); });
   let ok = true;
   const check = (label, cond, extra) => { console.log(label, !!cond, extra !== undefined ? JSON.stringify(extra) : ""); ok = ok && !!cond; };
 
@@ -39,77 +36,72 @@ const { skipOnboarding } = require("./_startup");
   check("1) Calendário nasce com 3 amistosos na pré (obrigatórios) + 2 em julho (opcionais), 3 convites cada:",
     s0.slots.filter((x) => x.phase === "pre" && !x.optional).length === 3 && s0.slots.filter((x) => x.phase === "pausa" && x.optional).length === 2 && s0.slots.every((x) => x.invites === 3) && !s0.thisWeek, s0);
 
-  // 2) Semana seguinte da pré: convites aparecem e o botão vira "Ir para o amistoso".
-  await page.click("#btnSimulate"); // avança a 1ª semana (sem amistoso)
-  // Espera a semana nova desenhar (antes 700 ms fixos, curto sob carga).
-  await page.waitForFunction(() => /Ir para o amistoso/.test(document.getElementById("btnSimulate").textContent), null, { timeout: 15000 }).catch(() => {});
-  const s2 = await page.evaluate(() => ({
-    chips: document.querySelectorAll("#nextMatchBox [data-friendly-pick]").length,
-    fab: document.getElementById("btnSimulate").textContent.trim(),
-  }));
-  check("2) Semana de amistoso mostra 3 convites e o botão 'Ir para o amistoso':", s2.chips === 3 && /Ir para o amistoso/.test(s2.fab), s2);
+  // 2) Avança a 1ª semana (sem amistoso); na seguinte, avançar sem jogar é recusado.
+  const s2 = await page.evaluate(async () => {
+    const a = await P.avancarSemana(false);
+    const slot = friendlySlotThisWeek();
+    const b = await P.avancarSemana(false);
+    return { a: a.ok, temAmistoso: !!slot, convites: slot ? slot.invites.length : 0, recusa: b.motivo };
+  });
+  check("2) Semana de amistoso (3 convites): avançar sem jogar é recusado (amistoso da pré é obrigatório):", s2.a && s2.temAmistoso && s2.convites === 3 && s2.recusa === "amistoso", s2);
 
-  // 3) Escolhe o 2º convite e joga (ao vivo, pulando pro fim).
-  const before = await page.evaluate(() => ({
-    pts: Object.values(CAREER.standings).reduce((a, r) => a + r.pts + r.j, 0),
-    goals: CAREER.squad.reduce((a, p) => a + (p.goalsSeason || 0) + (p.goalsCareer || 0), 0),
-    yellows: CAREER.squad.reduce((a, p) => a + (p.yellowCards || 0), 0),
-    idx: CAREER.calendar.idx, round: CAREER.currentRound,
-    pick: friendlySlotThisWeek().invites[1],
-  }));
-  await page.click(`#nextMatchBox [data-friendly-pick="${before.pick}"]`);
-  await page.waitForTimeout(300);
-  await page.click("#btnSimulate");
-  await page.waitForSelector("#liveMatchOverlay.open", { timeout: 5000 });
-  await page.evaluate(() => skipLiveMatch());
-  await page.waitForTimeout(800);
-  const after = await page.evaluate(({ idxBefore }) => {
-    const slot = CAREER.calendar.friendlies.find((f) => f.wi === idxBefore);
-    return {
-      played: slot.played, opp: slot.opp, result: slot.result,
+  // 3) Joga o amistoso contra o 2º convite.
+  const r3 = await page.evaluate(async () => {
+    const soma = () => ({
       pts: Object.values(CAREER.standings).reduce((a, r) => a + r.pts + r.j, 0),
       goals: CAREER.squad.reduce((a, p) => a + (p.goalsSeason || 0) + (p.goalsCareer || 0), 0),
       yellows: CAREER.squad.reduce((a, p) => a + (p.yellowCards || 0), 0),
-      suspended: CAREER.squad.filter((p) => p.status === "suspenso").length,
       idx: CAREER.calendar.idx, round: CAREER.currentRound,
-      ticket: (CAREER.financeLedger || []).some((l) => l.label === "Bilheteria de amistoso" && l.amount > 0),
-      liveOpen: document.getElementById("liveMatchOverlay").classList.contains("open"),
-    };
-  }, { idxBefore: before.idx });
-  check("3) Amistoso jogado contra o convite escolhido, com resultado guardado:", after.played && after.opp === before.pick && after.result && !after.liveOpen, after);
+    });
+    const before = { ...soma(), pick: friendlySlotThisWeek().invites[1] };
+    await P.escolherAmistoso(before.pick);
+    const i = P.iniciarAmistoso();
+    P.pularParaFim();
+    const t0 = Date.now();
+    while (Date.now() - t0 < 30000 && P.estado().fase !== "encerrada" && P.estado().fase !== "sem-partida") await new Promise((r) => setTimeout(r, 30));
+    await new Promise((r) => setTimeout(r, 300));
+    const slot = CAREER.calendar.friendlies.find((f) => f.wi === before.idx);
+    const after = { ...soma(), played: slot.played, opp: slot.opp, result: slot.result,
+      suspended: CAREER.squad.filter((p) => p.status === "suspenso").length,
+      ticket: (CAREER.financeLedger || []).some((l) => l.label === "Bilheteria de amistoso" && l.amount > 0) };
+    return { iniciou: i.ok, before, after };
+  });
+  const { before, after } = r3;
+  check("3) Amistoso jogado contra o convite escolhido, com resultado guardado:", r3.iniciou && after.played && after.opp === before.pick && !!after.result, after);
   check("3b) Não mexe na tabela, em gol/assistência oficial nem em cartão/suspensão:", after.pts === before.pts && after.goals === before.goals && after.yellows === before.yellows && after.suspended === 0, { before, after });
   check("3c) Rende bilheteria e fecha a semana sozinho (calendário avança, rodada não):", after.ticket && after.idx === before.idx + 1 && after.round === before.round, { idx: [before.idx, after.idx], round: [before.round, after.round] });
 
-  // 4) "Pular até o próximo jogo" abre mão dos amistosos restantes da pré.
-  await page.click("#btnSkipToMatch");
-  await page.waitForTimeout(800);
-  const s4 = await page.evaluate(() => ({
-    round: CAREER.currentRound, week: calendarWeek(),
-    preSlots: CAREER.calendar.friendlies.filter((f) => !f.optional).map((f) => ({ played: f.played, hasResult: !!f.result })),
-  }));
-  check("4) 'Pular até o próximo jogo' chega na rodada 1 e marca os amistosos pulados como não jogados (sem resultado):",
-    s4.week.r === 1 && s4.preSlots.every((f) => f.played) && s4.preSlots.filter((f) => f.hasResult).length === 1, s4);
+  // 4) Avançar até o próximo jogo.
+  const s4 = await page.evaluate(async () => {
+    const r = await P.avancarSemana(true);
+    return { ok: r.ok, round: CAREER.currentRound, week: calendarWeek(),
+      preSlots: CAREER.calendar.friendlies.filter((f) => !f.optional).map((f) => ({ played: f.played, hasResult: !!f.result })) };
+  });
+  check("4) 'Avançar até o próximo jogo' chega na rodada 1 e marca os amistosos pulados como jogados (sem resultado):",
+    s4.ok && s4.week.r === 1 && s4.preSlots.every((f) => f.played) && s4.preSlots.filter((f) => f.hasResult).length === 1, s4);
 
-  // 5) Julho: amistoso opcional — sem aceitar convite o botão só avança a semana.
+  // 5) Julho: amistoso opcional.
   const july = await page.evaluate(async () => {
     let guard = 0;
     while (guard++ < 80) {
       const w = calendarWeek();
       if (!w.r && friendlySlotThisWeek()) break;
       if (!w.r) { runCalendarOffWeek(); continue; }
-      const sum = simulateRound();
-      if (sum === "live") { skipLiveMatch(); if (LIVE_MATCH && !LIVE_MATCH.finished) await finishLiveMatch(); }
+      const j = await jogarPartidaDaRodada();
+      if (!j.ok) return { erro: j.passos };
     }
-    renderAll();
     const slot = friendlySlotThisWeek();
-    return { phase: calendarWeek().p, optional: slot && slot.optional, fab: document.getElementById("btnSimulate").textContent.trim() };
+    const fase = calendarWeek().p, idx = CAREER.calendar.idx;
+    // Com convite aceito, a semana espera o amistoso.
+    slot.opp = slot.invites[0];
+    const comConvite = await P.avancarSemana(false);
+    // Sem convite (opcional), dá para avançar.
+    slot.opp = null;
+    const semConvite = await P.avancarSemana(false);
+    return { fase, optional: slot.optional, comConvite: comConvite.motivo, semConvite: semConvite.ok, avancou: CAREER.calendar.idx === idx + 1 };
   });
-  await page.evaluate(() => { document.querySelectorAll(".ct-modal-overlay.open").forEach((el) => el.classList.remove("open")); });
-  // escolha pela UI já coberta no passo 3; aqui via função (depois do
-  // laço headless a Central re-renderiza seguido e o chip é recriado)
-  const julyFab = await page.evaluate(() => { pickFriendlyOpponent(friendlySlotThisWeek().invites[0]); return document.getElementById("btnSimulate").textContent.trim(); });
-  check("5) Em julho o amistoso é opcional: 'Avançar semana' até aceitar um convite, depois 'Ir para o amistoso':",
-    july.phase === "pausa" && july.optional && /Avançar semana/.test(july.fab) && /Ir para o amistoso/.test(julyFab), { ...july, julyFab });
+  check("5) Em julho o amistoso é opcional: sem convite a semana avança; com convite aceito, espera o amistoso:",
+    july.fase === "pausa" && july.optional && july.comConvite === "amistoso" && july.semConvite && july.avancou, july);
 
   await browser.close();
   process.exit(ok ? 0 : 1);

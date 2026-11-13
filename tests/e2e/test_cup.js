@@ -1,171 +1,80 @@
-// GE-COPA-001 (issue #28) — teste REESCRITO nesta demanda. Antes desta
-// mudança, toda carreira nova tinha uma Copa de 16 clubes/jogo único
-// que fechava/pulava fase inteira num ÚNICO clique de "Simular
-// rodada" (por isso o teste original saltava currentRound direto via
-// API) — agora TODA carreira nova (sistema de divisões sempre ativo)
-// nasce com a Copa EXPANDIDA (60 clubes, ida e volta), que exige as
-// rodadas passarem em ORDEM (a perna de volta depende da de ida já
-// resolvida — pular rodada quebra esse encadeamento, e o jogo de
-// verdade NUNCA pula rodada, só avança 1 de cada vez). Passos
-// adaptados pra avançar rodada a rodada de verdade (mesma função
-// resolveRoundInstant que "Simular rodada" chama, mais
-// maybeStartPendingCupLegLive/skipLiveMatch quando o confronto do
-// técnico vira ao vivo — reaproveita exatamente o que
-// tests/e2e/sim_ge_copa_001.js já validou em escala; este teste foca
-// na REPRESENTAÇÃO NA UI (texto da aba Tabela, seção de Copa no modal
-// de resultados), não na estatística do chaveamento.
+// Copa do Brasil (formato expandido, ida e volta, com a Série D desde a
+// SERIED-001) — lote L4b, sem a tela antiga. O teste antigo verificava só o
+// 1º valor de cada item (o resto era impresso: "Fase 1 tem 56 clubes", "4
+// cabeças de chave"...). Agora, pelo motor e pela tela da Copa da v2:
+//  1) Carreira na Série A: Copa expandida com 96 clubes, começando na fase
+//     preliminar (32 jogos únicos, 64 clubes); os outros 32 (o clube da
+//     Série A entre eles) entram direto na 1ª fase.
+//  2) Rodada a rodada até fechar a rodada 6 (volta da 1ª fase): a Copa
+//     passou da 1ª fase (32 avos) ou o clube foi eliminado.
+//  3) A Copa da v2 mostra o estado certo (título e "Copa do Brasil · …").
+//  4) Campeão: "A Copa é sua." / "Copa do Brasil · Campeão".
+//  5) Não classificado (cup.active = false): "Fora desta Copa."
+//  6) Migração: save sem Copa na rodada 20, ao abrir, monta a Copa e fecha
+//     por trás as fases já passadas (próxima: quartas, ida na rodada 21).
 const { chromium } = require("playwright-core");
 const { check } = require("./_check");
-const { enterGame, waitForBoot } = require("./_startup");
-
-async function newCareer(page, base, email) {
-  await page.goto(base + "/", { waitUntil: "load" });
-  await page.evaluate(async ({ email }) => {
-    await fetch("/api/auth/signup", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: "Cup Test", email, password: "senha123", phone: "11999999999", plan: "freemium" }) });
-    await fetch("/api/auth/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, password: "senha123" }) });
-  }, { email });
-  await page.goto(base + "/carreira.html", { waitUntil: "load" });
-  await page.click('.mt-competition-card[data-competition="brasileirao"]');
-  await page.waitForTimeout(200);
-  await page.click(".m3-club-row");
-  await page.waitForTimeout(150);
-  await page.click("#btnConfirmClub");
-  await enterGame(page);
-}
-async function getCareer(page) {
-  return page.evaluate(async () => (await (await fetch("/api/career")).json()).career);
-}
-async function putCareer(page, career) {
-  await page.evaluate(async (career) => {
-    await fetch("/api/career", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(career) });
-  }, career);
-}
-// Avança exatamente 1 rodada pela pipeline real (mesma função que
-// "Simular rodada" chama por trás — ver simulateRound/resolveRoundInstant),
-// resolvendo ao vivo (via skip, sem esperar timer real) qualquer perna
-// da Copa que sobrar pendente pro confronto do técnico.
-async function resolveOneRoundProgrammatic(page) {
-  return page.evaluate(async () => {
-    const round = CAREER.currentRound;
-    const fixtures = CAREER.schedule[round] || [];
-    const standingsBefore = JSON.parse(JSON.stringify(CAREER.standings));
-    resolveRoundInstant(round, fixtures, standingsBefore);
-    let guard = 0;
-    while (CAREER.cup && CAREER.cup.pendingLiveLeg && guard++ < 3) {
-      if (!maybeStartPendingCupLegLive()) break;
-      pauseLiveMatch();
-      skipLiveMatch();
-      let waited = 0;
-      while (LIVE_MATCH && waited < 750) { await new Promise((r) => setTimeout(r, 20)); waited++; } // até 15 s (antes 2 s: sob carga a perna ao vivo não terminava a tempo)
-    }
-    return CAREER.currentRound;
-  });
-}
+const { newCareer, noMotor, jogarRodadaV2, base } = require("./_v2_carreira");
 
 (async () => {
-  const browser = await chromium.launch({
-    executablePath: process.env.PW_CHROMIUM_PATH || undefined,
-    headless: true,
-  });
-  const page = await browser.newPage({ viewport: { width: 390, height: 900 } });
+  const browser = await chromium.launch({ executablePath: process.env.PW_CHROMIUM_PATH || undefined, headless: true, args: ["--host-resolver-rules=MAP fonts.googleapis.com 127.0.0.1,MAP fonts.gstatic.com 127.0.0.1"] });
+  const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
   page.on("dialog", (d) => d.dismiss());
-  page.on("pageerror", (err) => console.log("PAGE ERROR:", err.message));
+  const erros = [];
+  page.on("pageerror", (err) => erros.push(err.message));
+  await newCareer(page, `cup${Date.now()}@teste.com`);
 
-  const base = "http://localhost:8787";
-  await newCareer(page, base, `cup${Date.now()}@teste.com`);
-
-  // 1) Estrutura inicial do chaveamento expandido — 60 clubes (56 na
-  // Fase 1 + 4 cabeças de chave direto na r32), seu clube em algum dos
-  // 2 grupos.
-  let career = await getCareer(page);
-  const fase1Clubs = career.cup.ties.fase1.flatMap((t) => [String(t.home), String(t.away)]);
-  const seeds = career.cup.seeds || [];
-  check("1) cup.expanded:", career.cup.expanded, "| phase:", career.cup.phase, "| Fase 1 tem 56 clubes (28 confrontos):", fase1Clubs.length === 56, "| 4 cabeças de chave:", seeds.length === 4);
-  const meInFase1 = fase1Clubs.includes(String(career.clubId));
-  const meIsSeed = seeds.map(String).includes(String(career.clubId));
-  console.log("   Meu clube participa (Fase 1 OU cabeça de chave, nunca os 2):", meInFase1 !== meIsSeed);
-
-  // 2) Avança rodada a rodada (3 = ida da Fase 1) ATÉ RESOLVER a
-  // rodada 6 (volta da Fase 1, inclusive) — mesma pipeline real,
-  // decidindo ao vivo se sobrar confronto do técnico pendente.
-  while (await page.evaluate(() => CAREER.currentRound) <= 6) {
-    await resolveOneRoundProgrammatic(page);
-  }
-  // Estado do CLIENTE (CAREER), não do servidor: o save é gravado com
-  // debounce (800 ms) e logo depois de jogar ainda podia estar defasado.
-  career = await page.evaluate(() => JSON.parse(JSON.stringify(CAREER)));
-  check("2) Depois da rodada 6 (volta da Fase 1), avançou pra r32 (se o técnico seguiu vivo) ou ficou eliminado — fase:", career.cup.phase === "r32" || career.cup.humanAlive === false, "| fase:", career.cup.phase, "| humanAlive:", career.cup.humanAlive);
-  console.log("   r32 tem 32 clubes (16 confrontos), se ainda ativo:", career.cup.phase === "r32" ? new Set(career.cup.ties.r32.flatMap((t) => [String(t.home), String(t.away)])).size === 32 : "N/A (eliminado)");
-  // Se o confronto do técnico virou ao vivo em alguma dessas rodadas
-  // (ver finishCupLegLive), a MESMA cadeia normal de pós-rodada já
-  // abriu proposta/Tabela sozinha ao terminar — fecha antes de seguir,
-  // mesmo tratamento que o técnico faria clicando no X.
-  // (proposta ANTES da Tabela: fechar a proposta segue o fluxo e abre a
-  // Tabela — ver closePlayerOfferModal; na ordem inversa a Tabela ficava
-  // aberta por cima do menu, falha intermitente da Fase B.)
-  await page.evaluate(() => {
-    if (document.getElementById("playerOfferOverlay").classList.contains("open")) closePlayerOfferModal();
-    if (document.getElementById("tabelaModalOverlay").classList.contains("open")) closeTabelaModal();
+  // 1) Estrutura.
+  const e1 = await noMotor(page, ({ CAREER }) => {
+    const c = CAREER.cup;
+    const prelim = (c.ties.prelim || []).flatMap((t) => [String(t.home), String(t.away)]);
+    const direct = (c.prelim && c.prelim.direct || []).map(String);
+    return { expanded: c.expanded, participantes: c.participantes, phase: c.phase, prelimJogos: (c.ties.prelim || []).length, prelimClubes: new Set(prelim).size, direct: direct.length,
+      meDireto: direct.includes(String(CAREER.clubId)), meNaPrelim: prelim.includes(String(CAREER.clubId)), divisao: CAREER.competitionId };
   });
+  check("1) Série A: Copa expandida com 96 clubes, começando na preliminar (32 jogos, 64 clubes); os outros 32, com o seu clube, entram direto na 1ª fase:",
+    e1.expanded && e1.participantes === 96 && e1.phase === "prelim" && e1.prelimJogos === 32 && e1.prelimClubes === 64 && e1.direct === 32 && e1.meDireto && !e1.meNaPrelim, JSON.stringify(e1));
 
-  // 3) Tab Tabela mostra o card de Copa com o rótulo certo da fase atual.
-  await page.click("#btnBottomMenu");
-  await page.waitForTimeout(150);
-  await page.click("#topbarMenu .mt-topbar-menu-item.group[data-submenu='competicao']");
-  await page.click("#btnOpenTabela");
-  await page.waitForTimeout(300);
-  const cupStatusText = await page.evaluate(() => document.getElementById("cupStatusText").textContent);
-  check("3) Texto de status na aba Tabela:", !!cupStatusText && cupStatusText.trim().length > 0, cupStatusText);
-  await page.evaluate(() => closeTabelaModal());
-  await page.waitForTimeout(200);
+  // 2) Rodada a rodada até fechar a rodada 6.
+  const passos = [];
+  for (let guard = 0; guard < 10 && (await noMotor(page, ({ CAREER }) => CAREER.currentRound)) <= 6; guard++) {
+    const r = await jogarRodadaV2(page);
+    passos.push(r.ok ? "ok" : r.passos.join(" "));
+    if (!r.ok) break;
+  }
+  const e2 = await noMotor(page, ({ CAREER }) => ({ rodada: CAREER.currentRound, phase: CAREER.cup.phase, vivo: CAREER.cup.humanAlive, r32: (CAREER.cup.ties.r32 || []).length }));
+  check("2) Depois da rodada 6 (volta da 1ª fase): a Copa está nos 32 avos (16 confrontos) ou o clube foi eliminado:",
+    e2.rodada === 7 && ((e2.phase === "r32" && e2.r32 === 16) || e2.vivo === false), JSON.stringify({ e2, passos }));
 
-  // 4) Força estado de CAMPEÃO diretamente (pula pro fim já resolvido)
-  // e confere a renderização — mesmo texto/estilo de sempre, formato
-  // não muda essa parte.
-  career = await getCareer(page);
-  career.cup.phase = "done";
-  career.cup.champion = career.clubId;
-  career.cup.championIsHuman = true;
-  career.cup.humanAlive = true;
-  await putCareer(page, career);
-  await page.reload({ waitUntil: "load" });
-  await waitForBoot(page);
-  await page.click("#btnBottomMenu");
-  await page.waitForTimeout(150);
-  await page.click("#topbarMenu .mt-topbar-menu-item.group[data-submenu='competicao']");
-  await page.click("#btnOpenTabela");
-  await page.waitForTimeout(300);
-  const championText = await page.evaluate(() => document.getElementById("cupStatusText").innerHTML);
-  check("4) Texto de campeão:", !!championText && championText.includes("Campeão"), championText);
+  // 3) Tela da Copa da v2.
+  const copa = async () => {
+    await page.goto(base + "/copa", { waitUntil: "domcontentloaded" });
+    await page.waitForSelector("h1.screen-title", { timeout: 30000 });
+    await page.waitForTimeout(300);
+    return page.evaluate(() => ({ h1: document.querySelector("h1.screen-title").textContent, sub: document.querySelector(".screen-sub")?.textContent || "" }));
+  };
+  const t3 = await copa();
+  const esperado3 = e2.vivo ? ["A caminho da taça.", "Copa do Brasil · Em disputa"] : ["Sua campanha terminou.", "Copa do Brasil · Eliminado"];
+  check("3) A Copa da v2 mostra o estado certo (título e situação):", t3.h1 === esperado3[0] && t3.sub === esperado3[1], JSON.stringify({ t3, esperado3 }));
 
-  // 5) Força "não classificado" (cup.active=false) e confere o texto —
-  // não acontece mais na prática pro formato expandido (todos os 60
-  // participam), mas o código de exibição continua genérico/correto
-  // pra esse estado (só existe de verdade hoje no formato legado).
-  career = await getCareer(page);
-  career.cup.active = false;
-  await putCareer(page, career);
-  await page.reload({ waitUntil: "load" });
-  await waitForBoot(page);
-  await page.click("#btnBottomMenu");
-  await page.waitForTimeout(150);
-  await page.click("#topbarMenu .mt-topbar-menu-item.group[data-submenu='competicao']");
-  await page.click("#btnOpenTabela");
-  await page.waitForTimeout(300);
-  const notQualifiedText = await page.evaluate(() => document.getElementById("cupStatusText").textContent);
-  check("5) Texto de não classificado:", !!notQualifiedText && notQualifiedText.includes("não se classificou"), notQualifiedText);
+  // 4) Campeão.
+  await noMotor(page, ({ CAREER, persistir }) => { Object.assign(CAREER.cup, { phase: "done", champion: CAREER.clubId, championIsHuman: true, humanAlive: true }); return persistir(); });
+  const t4 = await copa();
+  check("4) Campeão: 'A Copa é sua.' e 'Copa do Brasil · Campeão':", t4.h1 === "A Copa é sua." && t4.sub === "Copa do Brasil · Campeão", JSON.stringify(t4));
 
-  // 6) Migração: remove CAREER.cup, força rodada 20 (entre r16.volta=18
-  // e qf.ida=21 no calendário expandido), recarrega — setupCup deve
-  // fechar por trás (silent) até a fase que ainda está por vir.
-  career = await getCareer(page);
-  delete career.cup;
-  career.currentRound = 20;
-  await putCareer(page, career);
-  await page.reload({ waitUntil: "load" });
-  await waitForBoot(page);
-  career = await getCareer(page);
-  check("6) Migração com rodada 20 -- cup existe:", !!career.cup, "| expanded:", career.cup.expanded, "| fase (deve ser 'qf', já fechadas fase1/r32/r16 por trás):", career.cup.phase);
+  // 5) Não classificado.
+  await noMotor(page, ({ CAREER, persistir }) => { CAREER.cup.active = false; return persistir(); });
+  const t5 = await copa();
+  check("5) Não classificado: 'Fora desta Copa.' e 'Copa do Brasil · Não classificado':", t5.h1 === "Fora desta Copa." && t5.sub === "Copa do Brasil · Não classificado", JSON.stringify(t5));
 
+  // 6) Migração: sem Copa, rodada 20; ao abrir, a Copa é montada e as fases
+  // passadas fecham por trás.
+  await noMotor(page, ({ CAREER, persistir }) => { delete CAREER.cup; CAREER.currentRound = 20; return persistir(); });
+  await page.goto(base + "/", { waitUntil: "domcontentloaded" });
+  const e6 = await noMotor(page, ({ CAREER }) => ({ temCopa: !!CAREER.cup, expanded: CAREER.cup && CAREER.cup.expanded, phase: CAREER.cup && CAREER.cup.phase }));
+  check("6) Migração (save sem Copa na rodada 20): ao abrir, a Copa é montada e as fases passadas fecham por trás (próxima: quartas):",
+    e6.temCopa && e6.expanded && e6.phase === "qf", JSON.stringify(e6));
+
+  check("7) Sem erro na página:", erros.length === 0, JSON.stringify(erros.slice(0, 3)));
   await browser.close();
 })().catch((e) => { console.error("FATAL:", e); process.exit(1); });
