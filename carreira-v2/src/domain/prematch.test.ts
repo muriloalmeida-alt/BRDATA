@@ -63,3 +63,16 @@ test("bloqueio do início (12/11): pendência da escalação bloqueia; 11 + 11 c
   c.lineup!.starters[0] = "d8"; c.lineup!.bench[4] = "g1";
   assert.deepEqual(buildPreMatch(c, byId).blocked, ["Os titulares precisam de um goleiro disponível."]);
 });
+
+// SERIED-001: na semana da preliminar da Copa, o aviso de 2 jogos só vale
+// para quem está nela (quem entra direto na 1ª fase joga uma vez só).
+test("Semana da preliminar: aviso de 2 jogos só para quem joga a preliminar", () => {
+  const c = career();
+  c.currentRound = 1;
+  c.schedule = { 1: [{ home: "pal", away: "fla" }] };
+  c.calendar!.weeks[30] = { d: "08-12", p: "temporada", r: 1, c: 1 };
+  c.cup = { active: true, expanded: true, phase: "prelim", humanAlive: true, prelim: { direct: ["fla"], round: 1 }, ties: { prelim: [{ home: "x", away: "y", leg1: { gh: null, ga: null } }] } };
+  assert.ok(!buildPreMatch(c, byId).alerts.some((a) => a.id === "rodizio"));
+  c.cup.ties!.prelim = [{ home: "fla", away: "y", leg1: { gh: null, ga: null } }];
+  assert.ok(buildPreMatch(c, byId).alerts.some((a) => a.id === "rodizio"));
+});
