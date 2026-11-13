@@ -5,7 +5,7 @@
 //  2) Aceite 2: a troca que tira o único goleiro do banco pede confirmar a
 //     recomposição (as duas trocas numa gravação); sem goleiro disponível,
 //     o motivo aparece e nada é gravado.
-//  3) Aceite 3: falha de escrita mantém a escalação inteira anterior (tela e
+//  3) Aceite 3: falha de escrita (no aparelho, OFFLINE-001) mantém a escalação inteira anterior (tela e
 //     servidor); toque duplo grava uma vez só.
 //  4) Aceite 2 / ESC-04: save antigo com banco menor abre em revisão (o que
 //     falta e as vagas vazias); a vaga vazia só aceita quem está fora.
@@ -14,7 +14,7 @@
 //     confirmada volta inteira.
 const { chromium } = require("playwright-core");
 const { check } = require("./_check");
-const { newCareer, noMotor, saveNoServidor, base } = require("./_v2_carreira");
+const { newCareer, noMotor, saveNoServidor, base, falharArmazenamento } = require("./_v2_carreira");
 
 (async () => {
   const browser = await chromium.launch({ executablePath: process.env.PW_CHROMIUM_PATH || undefined, headless: true, args: ["--host-resolver-rules=MAP fonts.googleapis.com 127.0.0.1,MAP fonts.gstatic.com 127.0.0.1"] });
@@ -45,8 +45,6 @@ const { newCareer, noMotor, saveNoServidor, base } = require("./_v2_carreira");
   const lineupServidor = async () => (await saveNoServidor(page)).lineup;
   // Falha de escrita simulada: PUT /api/career abortado (mesmo predicado no
   // route e no unroute, que compara a função por referência).
-  const ehCareer = (u) => new URL(u).pathname === "/api/career";
-  const falharPut = (r) => (r.request().method() === "PUT" ? r.abort("failed") : r.continue());
   const abrirEscalacao = async () => { await page.goto(base + "/escalacao", { waitUntil: "domcontentloaded" }); await page.waitForSelector(".lu-slot", { timeout: 20000 }); };
   const escolher = async (vaga, id) => {
     await page.click(`.lu-slot[href$="vaga=${vaga}"]`);
@@ -110,11 +108,13 @@ const { newCareer, noMotor, saveNoServidor, base } = require("./_v2_carreira");
   await abrirEscalacao();
   const l3 = await lineupServidor();
   const outro = await noMotor(page, ({ CAREER }) => CAREER.lineup.bench.find((id) => CAREER.squad.find((p) => p.id === id).group === "M"));
-  await page.route(ehCareer, falharPut);
+  // OFFLINE-001: a falha de escrita é a do aparelho (o save principal); a
+  // cópia no servidor que falha não é erro para o técnico.
+  await falharArmazenamento(page, true);
   await escolher(5, outro);
   await page.click(".qs-foot .cta");
   await page.waitForSelector(".qs-foot .inline-error", { timeout: 10000 });
-  await page.unroute(ehCareer, falharPut);
+  await falharArmazenamento(page, false);
   const l3b = await lineupServidor();
   check("3) Falha de escrita: erro na tela e a escalação inteira anterior no servidor:", JSON.stringify(l3b.starters) === JSON.stringify(l3.starters) && JSON.stringify(l3b.bench) === JSON.stringify(l3.bench), "");
   const putsC = puts;
@@ -159,12 +159,12 @@ const { newCareer, noMotor, saveNoServidor, base } = require("./_v2_carreira");
   }, prep);
   const rec = s5.item && s5.item.detalhe && s5.item.detalhe.recomposicao;
   // Falha de gravação ao aplicar: a escalação confirmada volta inteira.
-  await page.route(ehCareer, falharPut);
+  await falharArmazenamento(page, true);
   const falha = await noMotor(page, async ({ CAREER, ponte }, chave) => {
     const r = await ponte.comissaoAplicar("escalacao", chave);
     return { ok: r.ok, s: CAREER.lineup.starters, b: CAREER.lineup.bench };
   }, s5.item && s5.item.chave);
-  await page.unroute(ehCareer, falharPut);
+  await falharArmazenamento(page, false);
   const aplicado = await noMotor(page, async ({ CAREER, ponte, escalacao: _ }, chave) => {
     const r = await ponte.comissaoAplicar("escalacao", chave);
     return { ok: r.ok, s: CAREER.lineup.starters, b: CAREER.lineup.bench };

@@ -29,6 +29,7 @@ import { ClubScreen, CompetitionScreen, FirstEntryScreen, LoginScreen, NEW, Setu
 import { DailyReward } from "./screens/DailyReward.tsx";
 import { ClubHub, GamesHub, MoreMenu } from "./screens/Hubs.tsx";
 import { LoginSheet } from "./ui/session.tsx";
+import { online } from "./ui/online.ts";
 import { rewardPending } from "./domain/reward.ts";
 import { autoOpen, wizardPending, wizardStepOf } from "./domain/onboarding.ts";
 import { Tutorial, WizardBar } from "./screens/Onboarding.tsx";
@@ -69,6 +70,22 @@ export function App() {
   useScreenFocus(loc.path + loc.search.replace(/[?&]divisao=[^&]*/, ""));
 
   const [expired, setExpired] = useState(false);
+  // OFFLINE-001: a cópia no servidor não foi por sessão expirada (ou outra
+  // conta no navegador). O progresso já está salvo no aparelho: aviso que
+  // pode ser fechado, uma vez por abertura do app.
+  const [backup, setBackup] = useState<null | "sessao" | "outra-conta">(null);
+  useEffect(() => {
+    let dispensado = false;
+    const on = (ev: Event) => {
+      const copia = (ev as CustomEvent<{ copia: string }>).detail?.copia;
+      if (dispensado || (copia !== "sessao" && copia !== "outra-conta")) return;
+      setBackup(copia);
+    };
+    const fechar = () => { dispensado = true; setBackup(null); };
+    window.addEventListener("brdata:copia", on);
+    window.addEventListener("brdata:copia-dispensada", fechar);
+    return () => { window.removeEventListener("brdata:copia", on); window.removeEventListener("brdata:copia-dispensada", fechar); };
+  }, []);
   const load = useCallback(async () => {
     setState({ kind: "loading" });
     try {
@@ -131,7 +148,9 @@ export function App() {
   const nextAuto = useCallback((d: { user: SessionUser; career: Career }) => autoOpen({
     tutorialSeen: d.user.onboardingSeen !== false,
     wizard: wizardPending(d.career),
-    reward: rewardPending(d.user.dailyLogin),
+    // OFFLINE-001: a recompensa é serviço da conta (só com rede): sem rede ou
+    // sem conta, não abre sozinha.
+    reward: !d.user.offline && !d.user.local && online() && rewardPending(d.user.dailyLogin),
   }), []);
   useEffect(() => {
     if (!readyData || autoDone) return;
@@ -180,9 +199,15 @@ export function App() {
     return <div className="state" role="alert">{state.kind === "error" ? state.message : "Não foi possível carregar."}<button className="state-btn" onClick={load}>Tentar novamente</button></div>;
   }
 
-  const sessionSheet = expired && (
+  const sessionSheet = expired ? (
     <LoginSheet account={data.user.id} onLoggedIn={() => { setExpired(false); reloadCareer(); }} />
-  );
+  ) : backup && !data.user.local ? (
+    <LoginSheet account={data.user.id}
+      title={backup === "sessao" ? "Sua sessão expirou." : "Outra conta está conectada."}
+      lead="Seu progresso está salvo neste aparelho. Entre de novo para guardar a cópia na sua conta."
+      onClose={() => window.dispatchEvent(new Event("brdata:copia-dispensada"))}
+      onLoggedIn={async () => { setBackup(null); await CareerGateway.backupNow(); }} />
+  ) : null;
   if (loc.path === `${NEW}/pronto`) return <FirstEntryScreen home={home} />;
   if (loc.path.startsWith(NEW)) { queueMicrotask(() => navigate(`${BASE}/`, { replace: true })); return null; }
   if (loc.path === `${BASE}/recompensa`) return <DailyReward onClaimed={refreshAfterReward} />;

@@ -2,7 +2,7 @@
 
 **Data:** 13/11/2026
 **Origem:** `docs/carreira-v2/offline/BRDATA_Plano_Offline_Claude.md`, sem alteração. Decisão já registrada: a carreira fica na raiz ("/").
-**Situação:** etapa 0 (inventário e linha de base) feita; aguardando as decisões do Murilo (seção 4).
+**Situação:** etapa 0 feita; decisões do Murilo na seção 5; em implementação.
 
 ## 1. Base
 
@@ -74,3 +74,14 @@
 4. **Entregas.**
    - Recomendado: um PR por etapa (0 + 1, 2, 3, 4), cada um com a sua aprovação. É o que o próprio plano pede.
    - Alternativa: tudo num PR só.
+
+## 5. Decisões do Murilo (13/11/2026)
+
+1. **O save do aparelho é o principal** (recomendado).
+   - Com rede e conta, uma cópia vai ao servidor como backup.
+   - A cópia do servidor só entra no aparelho por importação explícita, ou quando o aparelho não tiver jogado nada desde a última cópia.
+2. **Recompensa diária e loja só com rede** (recomendado).
+   - O que já está no save vale offline.
+   - O saldo da conta fica separado do progresso.
+3. **Carreira criada offline usa uma cópia dos clubes e elencos do servidor**, gerada no deploy e versionada (recomendado).
+4. **Tudo num PR só** (diferente da recomendação). As etapas viram commits do mesmo PR.

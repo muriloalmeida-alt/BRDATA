@@ -393,5 +393,31 @@ async function skipAutoOpen(page, timeout = 30000) {
   return false;
 }
 
-module.exports = { globaisDoMotor, iniciarPeloPreJogo, base, contaNova, saveNoServidor, novaCarreiraV2, ateOInicio, motorPronto, noMotor, carreiraV2, pularPreTemporada, jogarRodadaV2,
+// OFFLINE-001: o save mora no aparelho (IndexedDB), com cópia no servidor.
+// Falha de gravação "de verdade" agora é o aparelho recusar a escrita: liga
+// e desliga essa recusa na página (conta as tentativas em
+// window.__tentativasSave).
+async function falharArmazenamento(page, ligar) {
+  await page.evaluate((ligar) => {
+    const P = IDBObjectStore.prototype;
+    if (!P.__putOriginal) P.__putOriginal = P.put;
+    window.__tentativasSave = window.__tentativasSave || 0;
+    P.put = ligar
+      ? function (v) { if (this.name === "saves") { window.__tentativasSave++; throw new DOMException("Sem espaço (teste)", "QuotaExceededError"); } return P.__putOriginal.apply(this, arguments); }
+      : P.__putOriginal;
+  }, ligar);
+}
+// Registro do save no aparelho (IndexedDB) da conta aberta na página.
+async function saveNoAparelho(page) {
+  return page.evaluate(async () => {
+    const db = await new Promise((res, rej) => { const r = indexedDB.open("brdata-carreira"); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); });
+    const todos = await new Promise((res) => { const r = db.transaction("saves").objectStore("saves").getAll(); r.onsuccess = () => res(r.result); });
+    db.close();
+    const me = await fetch("/api/auth/me", { cache: "no-store" }).then((r) => r.json()).catch(() => null);
+    const id = me && me.user ? String(me.user.id) : null;
+    return todos.find((x) => x.conta === id) || (todos.length === 1 ? todos[0] : null);
+  });
+}
+
+module.exports = { falharArmazenamento, saveNoAparelho, globaisDoMotor, iniciarPeloPreJogo, base, contaNova, saveNoServidor, novaCarreiraV2, ateOInicio, motorPronto, noMotor, carreiraV2, pularPreTemporada, jogarRodadaV2,
   signup, newCareer, serverCareer, playV2MatchToEnd, motorNaPagina, continueToHome, sameSave, ensureDailyClaimed, skipAutoOpen };

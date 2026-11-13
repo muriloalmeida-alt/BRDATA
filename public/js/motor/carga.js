@@ -223,16 +223,39 @@ export function realTeamColor(name) {
   return match ? { c1: match.c1, c2: match.c2, c3: match.c3 } : null;
 }
 
+// OFFLINE-001: cópia dos clubes e elencos do servidor guardada no aparelho
+// (motor/repositorio.js, catalogo()); null sem repositório ou sem cópia.
+async function catalogoOffline() {
+  try { return ambiente.armazem && ambiente.armazem.repo ? await ambiente.armazem.repo.catalogo() : null; } catch (_) { return null; }
+}
+// /api/health; sem rede, o que o catálogo do aparelho diz (com dados reais
+// ou não, e a temporada). Sem catálogo, o modo exemplo de sempre.
+async function saudeDoServidor() {
+  try { return await fetchJSON("/api/health"); } catch (_) {
+    const cat = await catalogoOffline();
+    return cat ? { hasKey: !!cat.hasKey, season: cat.season, offline: true } : { hasKey: false };
+  }
+}
+
 export async function fetchCompetitionTeams(competitionId, health, opts = {}) {
   if (opts.forceDemo || !health.hasKey) {
     return { teams: (DEMO_DATA_BY_COMPETITION[competitionId] || { teams: DEMO_TEAMS }).teams, liveMode: false };
   }
   try {
     const season = health.season ? Number(health.season) || estado.temporadaReal() : estado.temporadaReal();
-    const [teamsData, standingsData] = await Promise.all([
-      fetchJSON(`/api/career/teams?season=${season}&competition=${competitionId}`),
-      fetchJSON(`/api/career/standings?season=${season}&competition=${competitionId}`),
-    ]);
+    let teamsData, standingsData;
+    try {
+      [teamsData, standingsData] = await Promise.all([
+        fetchJSON(`/api/career/teams?season=${season}&competition=${competitionId}`),
+        fetchJSON(`/api/career/standings?season=${season}&competition=${competitionId}`),
+      ]);
+    } catch (err) {
+      // Sem rede (status ausente): a cópia do aparelho, se for da mesma temporada.
+      const cat = err && err.status ? null : await catalogoOffline();
+      const comp = cat && String(cat.season) === String(season) && cat.competicoes && cat.competicoes[competitionId];
+      if (!comp) throw err;
+      teamsData = { teams: comp.teams }; standingsData = { standings: comp.standings };
+    }
     if (!teamsData.teams || !teamsData.teams.length) throw new Error("resposta vazia");
     const strengths = calibrateStrengths(standingsData.standings || []);
     const teams = teamsData.teams.map((t) => {
@@ -254,7 +277,7 @@ export async function fetchCompetitionTeams(competitionId, health, opts = {}) {
 
 export async function loadLeague(competitionId = "brasileirao", opts = {}) {
   definirCompeticaoAtual(competitionId);
-  const health = opts.forceDemo ? { hasKey: false } : await fetchJSON("/api/health").catch(() => ({ hasKey: false }));
+  const health = opts.forceDemo ? { hasKey: false } : await saudeDoServidor();
   if (health.season) estado.definirTemporadaReal(Number(health.season) || estado.temporadaReal());
   const { teams, liveMode } = await fetchCompetitionTeams(competitionId, health, opts);
   definirLigaAtual(teams);
@@ -264,7 +287,7 @@ export async function loadLeague(competitionId = "brasileirao", opts = {}) {
 
 export async function loadOtherCompetitionsTeams(homeCompetitionId, forceDemoMap = {}) {
   const others = ALL_COMPETITIONS_ORDER.filter((c) => c !== homeCompetitionId);
-  const health = await fetchJSON("/api/health").catch(() => ({ hasKey: false }));
+  const health = await saudeDoServidor();
   const liveModeByCompetition = { [homeCompetitionId]: estado.modoReal() };
   const otherTeams = await Promise.all(others.map(async (compId) => {
     const { teams, liveMode } = await fetchCompetitionTeams(compId, health, { forceDemo: forceDemoMap[compId] });
@@ -300,11 +323,18 @@ export function endCurrentClubStint(reason) {
   estado.definirHerancaDoTecnico({ reputation, clubHistory });
 }
 
+// OFFLINE-001: as rotas da carreira (GET/PUT/DELETE /api/career) passam pelo
+// repositório do aparelho quando o hospedeiro o fornece (ambiente.armazem,
+// motor/repositorio.js); sem ele, direto ao servidor, como sempre.
+export function pedirCarreira(url, opts) {
+  return ambiente.armazem ? ambiente.armazem.pedir(url, opts) : fetchJSON(url, opts);
+}
+
 export async function persistCareer() {
   const CAREER = carreiraAtual();
   if (!CAREER) return false;
   // Etapa B: o módulo grava e devolve o motivo; os avisos ficam aqui.
-  const r = await estado.gravarSave(CAREER, fetchJSON);
+  const r = await estado.gravarSave(CAREER, pedirCarreira);
   if (r.ok) return true;
   const err = { status: r.status, message: r.mensagem };
   // BUG CORRIGIDO: qualquer falha (sessão expirada, save grande
@@ -1018,7 +1048,7 @@ export async function enterAfterAuth() {
   // Item 7 da lista de melhorias — mesmo raciocínio, pro retorno do
   // Checkout Pro do Mercado Pago (ver handleLojaReturnIfAny).
   await handleLojaReturnIfAny();
-  const saved = { career: await estado.carregarSave(fetchJSON) };
+  const saved = { career: await estado.carregarSave(pedirCarreira) };
   tela("setBootProgress", 2, 5, "Carregando sua carreira...");
   if (saved && saved.career) {
     // forceDemo só quando a carreira JÁ GRAVOU explicitamente que nasceu
@@ -1171,7 +1201,7 @@ export const comandosCarga = {
       if (!CAREER || CAREER.currentRound <= 38) return { ok: false, motivo: "sem-demissao" };
       if ((CAREER.negativeSeasonsStreak || 0) < temporada.DISMISSAL_STREAK) return { ok: false, motivo: "sem-demissao" };
       endCurrentClubStint("dismissed");
-      try { await fetchJSON("/api/career", { method: "DELETE" }); } catch (err) { return { ok: false, motivo: err.status === 401 ? "sessao" : "falha" }; }
+      try { await pedirCarreira("/api/career", { method: "DELETE" }); } catch (err) { return { ok: false, motivo: err.status === 401 ? "sessao" : "falha" }; }
       CAREER = definirCarreira(null);
       return { ok: true };
     },
@@ -1200,7 +1230,10 @@ export const comandosCarga = {
       let ok = false;
       try {
         let me = null;
-        try { me = await fetchJSON("/api/auth/me"); } catch (err) { ponte.erroGravacao = err.status === 401 ? "sessao" : "falha"; }
+        // OFFLINE-001: com o repositório do aparelho, gravar não depende da
+        // sessão nem da rede (a cópia no servidor vai quando der).
+        if (ambiente.armazem) me = { authenticated: true, user: estado.conta() };
+        else try { me = await fetchJSON("/api/auth/me"); } catch (err) { ponte.erroGravacao = err.status === 401 ? "sessao" : "falha"; }
         if (me && !me.authenticated) ponte.erroGravacao = "sessao";
         else if (me && String(me.user.id) !== String(estado.conta() && estado.conta().id)) ponte.erroGravacao = "outra-conta";
         else if (me) ok = await persistCareer();
@@ -1273,5 +1306,10 @@ export async function fetchRealPlayers(teamId, competitionId = competicaoAtual()
   try {
     const data = await fetchJSON(`/api/career/teams/${teamId}/players?season=${estado.temporadaReal()}&competition=${competitionId}`);
     return data.players || [];
-  } catch { return []; }
+  } catch (err) {
+    // OFFLINE-001: sem rede, o elenco da cópia do aparelho.
+    const cat = err && err.status ? null : await catalogoOffline();
+    const lista = cat && String(cat.season) === String(estado.temporadaReal()) && cat.jogadores && cat.jogadores[`${competitionId}:${teamId}`];
+    return lista || [];
+  }
 }

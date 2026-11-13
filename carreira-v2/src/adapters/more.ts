@@ -5,6 +5,7 @@
 // notificações push (/api/push/*), nome (/api/account/name) e reiniciar a
 // carreira (DELETE /api/career). Nenhum endpoint novo.
 import { engine } from "./engine.ts";
+import { CareerGateway } from "./gateways.ts";
 import type { Res } from "./prep.ts";
 
 const SAFE = new Set(["espera", "item-invalido", "compra-recusada", "opcao-invalida", "nome-vazio", "nome-recusado"]);
@@ -65,7 +66,8 @@ export const MoreGateway = {
   tutorialSeen: () => api("/api/account/onboarding-seen", { method: "POST" }),
   wizardDone: () => run("assistenteVisto"),
   // Reiniciar: mesmo DELETE /api/career do "Apagar e reiniciar".
-  restart: () => api("/api/career", { method: "DELETE" }),
+  // OFFLINE-001: apaga no aparelho e (com rede) no servidor.
+  restart: async () => { try { await CareerGateway.deleteCareer(); return { ok: true as const }; } catch (e) { return { ok: false as const, motivo: (e as { status?: number }).status === 401 ? "sessao" : "falha" }; } },
 };
 
 // Notificações push: mesmo fluxo de enablePushNotifications /

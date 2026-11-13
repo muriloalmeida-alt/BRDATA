@@ -6,9 +6,11 @@
 // controle de conflito; ver inventário R2).
 import type { Career, Team } from "../domain/types.ts";
 import { applyLineupChange, type LineupChange, type Recomposicao } from "../domain/lineup.ts";
+import { contaAtualId, definirContaAtual, localRepo } from "./local.ts";
 
 export class HttpError extends Error {
-  constructor(public status: number, message: string) { super(message); }
+  status: number;
+  constructor(status: number, message: string) { super(message); this.status = status; }
 }
 
 async function getJSON<T>(url: string): Promise<T> {
@@ -24,12 +26,25 @@ export interface SessionUser {
   dailyLogin?: { currentStreakDay: number; lastClaimDate: string | null };
   // Tutorial de boas-vindas já visto pela conta (/api/auth/me).
   onboardingSeen?: boolean;
+  // OFFLINE-001: sem rede (último perfil guardado) ou perfil local (sem conta).
+  offline?: boolean; local?: boolean;
 }
 
 export const SessionGateway = {
   async current(): Promise<SessionUser | null> {
+    const repo = await localRepo();
+    if (repo) {
+      const c = await repo.conta();
+      if (!c) { definirContaAtual(null); return null; }
+      definirContaAtual(String(c.user.id));
+      // OFFLINE-001: catálogo offline (clubes e elencos) em dia, em segundo plano.
+      if (c.online) repo.atualizarCatalogo().catch(() => {});
+      return { ...(c.user as unknown as SessionUser), id: String(c.user.id), offline: !c.online, local: c.local };
+    }
     const me = await getJSON<{ authenticated: boolean; user?: SessionUser }>("/api/auth/me");
-    return me.authenticated && me.user ? { ...me.user, id: String(me.user.id) } : null;
+    const u = me.authenticated && me.user ? { ...me.user, id: String(me.user.id) } : null;
+    definirContaAtual(u ? u.id : null);
+    return u;
   },
   // Novo login no meio da partida (AUD-02, sessão expirada ao gravar o
   // resultado). Mesmo POST /api/auth/login do formulário da versão atual
@@ -60,8 +75,47 @@ export const SessionGateway = {
 export const CareerGateway = {
   // Carreira ativa da conta (GET /api/career). null = sem carreira.
   async loadActive(): Promise<Career | null> {
+    const repo = await localRepo();
+    const conta = contaAtualId();
+    if (repo && conta) {
+      try { return (await repo.ler(conta)).career as Career | null; }
+      catch (e) { if ((e as { status?: number }).status === 401) throw new HttpError(401, "Sessão expirada."); throw e; }
+    }
     const r = await getJSON<{ career: Career | null }>("/api/career");
     return r.career;
+  },
+  // OFFLINE-001: grava a carreira inteira (aparelho primeiro, cópia no servidor).
+  async saveCareer(next: Career): Promise<void> {
+    const repo = await localRepo();
+    const conta = contaAtualId();
+    if (repo && conta) {
+      const r = await repo.gravar(conta, next);
+      if (!r.ok) throw new HttpError(r.motivo === "conflito" ? 409 : 507, r.motivo === "conflito" ? "A carreira mudou em outra aba." : "Sem espaço no aparelho para salvar.");
+      return;
+    }
+    const res = await fetch("/api/career", { method: "PUT", credentials: "same-origin", headers: { "Content-Type": "application/json", Accept: "application/json" }, body: JSON.stringify(next) });
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) throw new HttpError(res.status, (body && body.error) || `Erro ${res.status}`);
+  },
+  // OFFLINE-001: manda já a cópia pendente ao servidor (depois de entrar de novo).
+  async backupNow(): Promise<string> {
+    const repo = await localRepo();
+    const conta = contaAtualId();
+    return repo && conta ? repo.copiarParaServidor(conta) : "ok";
+  },
+  async deleteCareer(): Promise<void> {
+    const repo = await localRepo();
+    const conta = contaAtualId();
+    if (repo && conta) { await repo.apagar(conta); return; }
+    const res = await fetch("/api/career", { method: "DELETE", credentials: "same-origin" });
+    if (!res.ok) throw new HttpError(res.status, `Erro ${res.status}`);
+  },
+  async version(): Promise<number | null> {
+    const repo = await localRepo();
+    const conta = contaAtualId();
+    if (repo && conta) return repo.versao(conta);
+    const r = await getJSON<{ career: Career | null }>("/api/career").catch(() => ({ career: null }));
+    return r.career && r.career.updatedAt != null ? Number(r.career.updatedAt) : null;
   },
   // Relê → aplica a mudança → grava (mesmo corpo e mesmo campo updatedAt
   // que persistCareer() do legado). Devolve a carreira gravada, ou o
@@ -75,9 +129,7 @@ export const CareerGateway = {
     const next = applyLineupChange(fresh, change);
     if ("conflict" in next || "recompose" in next || "blocked" in next) return next;
     next.updatedAt = Date.now();
-    const res = await fetch("/api/career", { method: "PUT", credentials: "same-origin", headers: { "Content-Type": "application/json", Accept: "application/json" }, body: JSON.stringify(next) });
-    const body = await res.json().catch(() => ({}));
-    if (!res.ok) throw new HttpError(res.status, (body && body.error) || `Erro ${res.status}`);
+    await this.saveCareer(next);
     return { career: next };
   },
 };

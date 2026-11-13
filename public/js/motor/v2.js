@@ -25,6 +25,7 @@ import { ouvir } from "./eventos.js";
 import { comandosGestao } from "./ponte.js";
 import { comandosJogo } from "./jogo.js";
 import { comandosCarga, ponteEstado, enterAfterAuth, fetchJSON, fetchRealPlayers, teamLogoSrc, ponteGravar, persistCareer } from "./carga.js";
+import { criarRepositorio } from "./repositorio.js";
 
 // O ambiente que a página dava ao motor (ver motorSemana em carreira.js),
 // agora sem página.
@@ -82,6 +83,21 @@ export function criarPonte() {
 export async function abrirMotor() {
   if (!semana.temAmbiente()) semana.definirAmbiente(ambienteSemPagina());
   ouvirTela();
+  // OFFLINE-001: com IndexedDB, a carreira mora no aparelho (repositório) e a
+  // conta pode ser o último perfil guardado ou um perfil local (sem rede, sem
+  // login). Sem IndexedDB, como sempre: só o servidor.
+  const repo = criarRepositorio();
+  if (await repo.disponivel()) {
+    const c = await repo.conta();
+    if (!c) return { semConta: true };
+    estado.definirConta({ ...c.user, offline: !c.online });
+    semana.definirAmbiente({ armazem: { pedir: repo.pedirDaConta(() => (estado.conta() || {}).id), repo } });
+    // Catálogo offline (clubes e elencos do servidor) em dia, em segundo plano.
+    if (c.online) repo.atualizarCatalogo().catch(() => {});
+    const ponte = criarPonte();
+    await enterAfterAuth();
+    return { ponte };
+  }
   const me = await fetchJSON("/api/auth/me").catch(() => ({ authenticated: false }));
   if (!me || !me.authenticated) return { semConta: true };
   estado.definirConta(me.user);

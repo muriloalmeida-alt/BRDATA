@@ -14,6 +14,7 @@ import { Sheet } from "../ui/dialog.tsx";
 import { IconChevron } from "../ui/icons.tsx";
 import { BASE, goBackTo, navigate } from "../ui/router.tsx";
 import { shareAchievement } from "../ui/share.ts";
+import { OFFLINE_TEXT, useOnline } from "../ui/online.ts";
 import { NavRow, Rows, Status } from "./Market.tsx";
 import { Head, Loading, errText, useRead } from "./Tactics.tsx";
 import "./home.css";
@@ -95,6 +96,7 @@ export function RankingScreen({ tab }: { tab: "all" | "friends" }) {
   const [msg, setMsg] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const me = acc && acc !== "erro" ? acc : null;
+  const on = useOnline();
   const invite = async () => {
     if (!me?.friendCode) return;
     const url = `${location.origin}/?convite=${encodeURIComponent(me.friendCode)}`;
@@ -116,6 +118,7 @@ export function RankingScreen({ tab }: { tab: "all" | "friends" }) {
       <h1 className="screen-title">Veja sua posição.</h1>
       <span className="tb-bar" aria-hidden="true" />
       <p className="screen-sub">Treinadores e pontos no ranking.</p>
+      {!on && <p className="wk-note pr-pad mo-offline" role="status">{OFFLINE_TEXT.ranking}</p>}
       <div className="pr-tabs sp-tabs2" role="tablist" aria-label="Ranking">
         {([["all", "Todos"], ["friends", "Amigos"]] as const).map(([t, l]) => <button key={t} type="button" role="tab" aria-selected={tab === t} className={`pr-tab${tab === t ? " is-on" : ""}`} onClick={() => navigate(`${BASE}/ranking${t === "friends" ? "?aba=amigos" : ""}`, { replace: true })}>{l}</button>)}
       </div>
@@ -141,7 +144,7 @@ export function RankingScreen({ tab }: { tab: "all" | "friends" }) {
         {me?.friendCode && <Rows rows={[{ label: "Seu código", value: me.friendCode }]} />}
         <label className="pr-label" htmlFor="rk-c">Código do amigo</label>
         <div className="sq-tools mo-add"><input id="rk-c" className="pr-input sq-search" value={code} maxLength={12} autoCapitalize="characters" onChange={(e) => setCode(e.target.value)} />
-          <button type="button" className="state-btn sq-filter" disabled={busy || !code.trim()} onClick={add}>Adicionar</button></div>
+          <button type="button" className="state-btn sq-filter" disabled={busy || !code.trim() || !on} onClick={add}>Adicionar</button></div>
       </section>
       <Foot><Status msg={msg} err={err} /><button type="button" className="cta" aria-disabled={!me?.friendCode || undefined} onClick={invite}>Convidar amigo</button></Foot>
     </div>
@@ -179,8 +182,9 @@ export function ShopScreen({ onChanged }: { onChanged: () => Promise<void> | voi
   const [msg, setMsg] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const credits = acc && acc !== "erro" ? acc.creditsBR || 0 : 0;
+  const on = useOnline();
   const confirm = async () => {
-    if (!ask || busy) return;
+    if (!ask || busy || !on) return;
     setBusy(true); setErr(null); setMsg(null);
     if (ask.kind === "package") {
       const r = await MoreGateway.checkout(ask.item.id);
@@ -198,6 +202,7 @@ export function ShopScreen({ onChanged }: { onChanged: () => Promise<void> | voi
       <h1 className="screen-title">Mais opções de jogo.</h1>
       <span className="tb-bar" aria-hidden="true" />
       <p className="screen-sub">Créditos e itens disponíveis.</p>
+      {!on && <p className="wk-note pr-pad mo-offline" role="status">{OFFLINE_TEXT.shop}</p>}
       {payment && <p className={payment === "approved" ? "pr-ok mo-pay" : "wk-note pr-pad mo-pay"} role="status">{(PAY_STATUS[payment] || { text: "Pagamento em processamento: vamos confirmar o status assim que possível." }).text}</p>}
       <Loading data={data}>{() => {
         const d = data as { pacotes: Package[]; itens: BoostItem[]; categorias: Record<string, string> };
@@ -207,14 +212,14 @@ export function ShopScreen({ onChanged }: { onChanged: () => Promise<void> | voi
             <p className="wk-note">Créditos BR compram conveniência e cosméticos. Nenhum pacote aumenta atributos de jogador.</p>
             {d.pacotes.map((p) => (
               <div key={p.id} className="mo-item"><span className="row-body"><span className="row-title">{p.name}{p.featured ? " · melhor valor" : ""}</span><span className="row-sub">{p.totalCoins.toLocaleString("pt-BR")} créditos{p.bonusPct ? ` (+${p.bonusPct}% de bônus)` : ""}</span></span>
-                <button type="button" className="state-btn" onClick={() => setAsk({ kind: "package", item: p })}>{brl(p.priceBRL)}</button></div>
+                <button type="button" className="state-btn" disabled={!on} onClick={() => setAsk({ kind: "package", item: p })}>{brl(p.priceBRL)}</button></div>
             ))}
           </section>
           {Object.entries(d.categorias).map(([cat, label]) => (
             <section key={cat} className="wk-sec" aria-labelledby={`lj-${cat}`}><h2 className="kicker-caps" id={`lj-${cat}`}>Itens com créditos · {label.toLowerCase()}</h2>
               {d.itens.filter((i) => i.category === cat).map((i) => (
                 <div key={i.id} className="mo-item"><span className="row-body"><span className="row-title">{i.icon} {i.name}</span><span className="row-sub">{i.desc} · {i.duration.toLowerCase()}</span></span>
-                  <button type="button" className="state-btn" onClick={() => setAsk({ kind: "boost", item: i })}>{i.priceCredits} créditos</button></div>
+                  <button type="button" className="state-btn" disabled={!on} onClick={() => setAsk({ kind: "boost", item: i })}>{i.priceCredits} créditos</button></div>
               ))}
             </section>
           ))}

@@ -10,6 +10,7 @@ import { TabBar, Wordmark } from "../ui/components.tsx";
 import { IconBack, IconCheck } from "../ui/icons.tsx";
 import { BASE, goBackTo } from "../ui/router.tsx";
 import { Splash } from "./Access.tsx";
+import { OFFLINE_TEXT, useOnline } from "../ui/online.ts";
 import "./access.css";
 
 export function DailyReward({ onClaimed }: { onClaimed: () => void }) {
@@ -18,6 +19,7 @@ export function DailyReward({ onClaimed }: { onClaimed: () => void }) {
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const busyRef = useRef(false);
+  const on = useOnline();
   useEffect(() => {
     let alive = true;
     setSt({ kind: "loading" });
@@ -78,10 +80,10 @@ export function DailyReward({ onClaimed }: { onClaimed: () => void }) {
         <p className="rw-title">{rewardTitle(today.tipo, today.valor)}</p>
         <p className="rw-sub">{rewardSub(today.tipo, today.valor)}</p>
       </section>
-      <p className="rw-state" role="status" aria-live="polite">{msg && msg.ok ? msg.text : r.recebidaHoje ? "Já recebida hoje." : "Receba a recompensa de hoje."}</p>
+      <p className="rw-state" role="status" aria-live="polite">{msg && msg.ok ? msg.text : r.recebidaHoje ? "Já recebida hoje." : !on ? OFFLINE_TEXT.reward : "Receba a recompensa de hoje."}</p>
       {msg && !msg.ok && <p className="inline-error rw-err" role="alert">{msg.text}</p>}
       <div className="ac-foot ac-foot--sticky rw-foot">
-        {!r.recebidaHoje && <button type="button" className="cta" aria-disabled={busy || undefined} onClick={claim}>{busy ? "Recebendo…" : "Receber"}</button>}
+        {!r.recebidaHoje && on && <button type="button" className="cta" aria-disabled={busy || undefined} onClick={claim}>{busy ? "Recebendo…" : "Receber"}</button>}
         <button type="button" className="link-back" onClick={() => goBackTo(`${BASE}/`)}>Voltar ao clube</button>
       </div>
       <TabBar current="inicio" />
