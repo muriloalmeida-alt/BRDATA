@@ -43,13 +43,14 @@ export function contaAtualId(): string | null { return contaAtual; }
 
 // Uma aba por carreira (OFFLINE-001): com o save no aparelho, duas abas
 // abertas gravariam uma por cima da outra (a mais velha desfaria a rodada
-// jogada na outra). A aba que abre segura um Web Lock da conta; outra aba
-// mostra "aberta em outra aba" e pode tomar a vez ("Jogar aqui"). A que
-// perdeu a vez para de gravar (o repositório recusa: motivo "outra-aba").
+// jogada na outra). A aba que abre por último toma a vez (Web Lock da conta,
+// com steal); a outra mostra "aberta em outra aba" e pode tomar a vez de
+// volta ("Jogar aqui"). A que perdeu a vez para de gravar (o repositório
+// recusa: motivo "outra-aba").
 // Sem Web Locks (navegador antigo), segue como antes.
 type Locks = { request(name: string, opts: object, cb: (lock: unknown) => unknown): Promise<unknown> };
 function marcarAba(ativa: boolean) { (globalThis as { __BRDATA_ABA_ATIVA__?: boolean }).__BRDATA_ABA_ATIVA__ = ativa; }
-export function travarAba(conta: string, aoPerder: () => void, tomar = false): Promise<boolean> {
+export function travarAba(conta: string, aoPerder: () => void, tomar = true): Promise<boolean> {
   const locks = (typeof navigator !== "undefined" ? (navigator as unknown as { locks?: Locks }).locks : undefined);
   if (!locks) return Promise.resolve(true);
   return new Promise((resolve) => {

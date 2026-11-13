@@ -2,7 +2,7 @@
 
 **Data:** 13/11/2026
 **Origem:** `docs/carreira-v2/offline/BRDATA_Plano_Offline_Claude.md`, sem alteração. Decisão já registrada: a carreira fica na raiz ("/").
-**Situação:** etapa 0 feita; decisões do Murilo na seção 5; em implementação.
+**Situação:** implementado (13/11), aguardando a revisão do PM e a homologação no iPhone. Relatório na seção 6.
 
 ## 1. Base
 
@@ -85,3 +85,110 @@
    - O saldo da conta fica separado do progresso.
 3. **Carreira criada offline usa uma cópia dos clubes e elencos do servidor**, gerada no deploy e versionada (recomendado).
 4. **Tudo num PR só** (diferente da recomendação). As etapas viram commits do mesmo PR.
+
+## 6. Relatório da implementação (13/11/2026)
+
+Um PR, com as etapas em commits.
+
+### 6.1 O que mudou para o jogador
+
+- **A carreira mora no aparelho:**
+  - fica no IndexedDB, uma por conta (`public/js/motor/repositorio.js`);
+  - toda ação grava primeiro no aparelho; com rede e sessão, uma cópia vai à conta;
+  - sem rede, o jogo segue normalmente: abre a frio, joga rodadas, mercado e Copa.
+- **A cópia da conta só entra no aparelho em dois casos (decisão 1):**
+  - quando o aparelho não jogou nada desde a última cópia;
+  - quando o técnico pede, em Mais › Saves › "Trazer a cópia da conta".
+- **Conflito entre aparelhos:**
+  - se a conta avançou em outro aparelho e este também jogou, nada é sobrescrito sozinho;
+  - o jogo segue com a carreira do aparelho e mostra um aviso;
+  - em Saves, o técnico escolhe: trazer a da conta ou enviar a deste aparelho.
+- **Partida interrompida:** se o app fechar no meio de um jogo da liga, ao reabrir a partida volta pausada, no mesmo minuto e placar.
+  - Isso também impede recomeçar o jogo para sortear outro placar.
+  - Perna da Copa e amistoso voltam como antes, sem checkpoint.
+- **Uma aba por carreira:**
+  - a aba aberta por último assume a carreira;
+  - a outra mostra "aberta em outra aba", para de gravar e pode retomar a vez ("Jogar aqui").
+  - Sem isso, uma aba antiga podia desfazer a rodada jogada na outra.
+- **Saves:**
+  - exportar a carreira em arquivo (formato, versão e hash; sem e-mail ou nome da conta);
+  - importar com verificação e confirmação: arquivo alterado, incompleto ou de versão mais nova é recusado sem mexer em nada.
+- **Armazenamento persistente:** o jogo pede ao navegador para não apagar os dados sozinho.
+- **Recompensa diária, loja, ranking e amigos (decisão 2):**
+  - sem rede, mostram "Sem conexão" e as ações ficam inativas;
+  - a recompensa não abre sozinha sem rede;
+  - o que já está no save continua valendo.
+- **Carreira criada sem rede (decisão 3):**
+  - usa a cópia dos clubes, tabelas e elencos do servidor, guardada no aparelho;
+  - a cópia é gerada uma vez por deploy, com versão pelo conteúdo, e só é baixada de novo quando muda (`GET /api/career/catalogo-offline`, `server/src/catalogoOffline.js`);
+  - sem dados reais no servidor (modo exemplo), vale o `data.js`, igual ao online.
+- **Fontes:** Barlow e Barlow Condensed vão no pacote (`public/fonts`, licença OFL). O app não usa mais o Google Fonts.
+
+### 6.2 Mudanças de comportamento para o PM conferir
+
+1. **AUD-02 (falha ao salvar o resultado):**
+   - "Tentar salvar novamente" agora só aparece quando o aparelho não consegue gravar.
+   - Se só a cópia da conta falhar (sem rede, servidor fora, sessão expirada), o resultado já está salvo e "Continuar" segue.
+2. **Sessão expirada no meio do uso:**
+   - a folha "Sua sessão expirou." continua, mas pode ser fechada: o progresso já está no aparelho;
+   - entrar de novo com a mesma conta manda a cópia; outra conta é recusada e nada é gravado nela.
+3. **Sem rede e sem carreira no aparelho:**
+   - se o aparelho já viu, com rede, que a conta não tinha carreira, a criação segue offline;
+   - senão, aparece "Não foi possível carregar" com "Tentar novamente", para não criar uma carreira que apagaria a da conta.
+4. **Reiniciar sem rede:** apaga no aparelho, e a carreira da conta é apagada quando a rede voltar.
+
+### 6.3 Service worker
+
+- O cache da API guarda só dados públicos (lista fechada). O cache antigo (v1), que tinha respostas privadas por endereço, é apagado na atualização.
+- Conta, sessão, carreira, loja, amigos, ranking e push vão sempre à rede.
+- O shell pré-carrega o motor (com `repositorio.js`) e as fontes.
+- Uma subrota nunca aberta online abre sem rede com a página do app.
+
+### 6.4 Testes
+
+- **Novos:**
+  - `tests/e2e/test_v2_offline.js`: matriz de 10 cenários, incluindo:
+    - SW sem dado privado e fontes locais;
+    - abertura a frio e subrota sem rede;
+    - rodada sem rede e cópia quando a rede volta;
+    - loja e ranking;
+    - checkpoint;
+    - duas abas;
+    - exportar e importar;
+    - conflito;
+    - 360 px.
+  - `tests/e2e/test_v2_offline_catalogo.js` (perfil de servidor frozen): rota do catálogo; carreira criada sem rede com os clubes e elencos reais; cópia quando a rede volta.
+- **Adaptados à decisão 1:**
+  - `test_v2_gravacao` (AUD-02);
+  - `test_v2_esc` (falha de escrita no aparelho).
+- **Suíte completa:** resultado na descrição do PR.
+- **Testes de duas páginas da v2:** o auxiliar `noMotor` reabre a página quando outra tomou a vez. É o que o técnico faria.
+
+### 6.5 Homologação no iPhone (Murilo)
+
+1. Com rede, abrir o app na homologação, entrar e jogar uma rodada. Adicionar à Tela de Início.
+2. Abrir pelo ícone uma vez com rede (instala o pacote e o catálogo).
+3. **Modo avião:**
+   - fechar o app de vez e abrir pelo ícone: o Início deve aparecer;
+   - jogar uma rodada inteira;
+   - abrir Elenco, Tabela e Calendário.
+4. Ainda em modo avião, começar uma partida e fechar o app no meio. Ao reabrir, ela volta pausada no mesmo minuto.
+5. **Tirar o modo avião:**
+   - abrir o app;
+   - em Mais › Saves, "Cópia na conta" deve ficar "Em dia".
+6. Exportar a carreira em Saves (o iOS oferece salvar em Arquivos).
+
+### 6.6 Reversão
+
+- Reverter o commit do PR volta o comportamento anterior: tudo pelo servidor.
+- Os saves não se perdem:
+  - o servidor continua com a última cópia recebida;
+  - o que ficou só no aparelho, sem cópia, não aparece na versão antiga.
+- Para não perder isso, antes de reverter: abrir o app com rede (manda a cópia pendente), ou exportar em Saves.
+- O cache v2 do service worker é trocado sozinho no deploy seguinte.
+
+### 6.7 Fora desta entrega
+
+- **Sincronização automática** entre aparelhos (fusão de progresso): o conflito é resolvido por escolha do técnico.
+- **Checkpoint da perna da Copa e do amistoso.**
+- **Partida ao vivo determinística:** o placar ainda usa `Math.random`. O checkpoint impede o recomeço, mas não torna a partida reproduzível.

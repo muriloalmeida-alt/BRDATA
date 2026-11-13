@@ -96,6 +96,12 @@ async function motorPronto(page, { comCarreira = true, timeout = 40000 } = {}) {
 // `M.persistir()` (grava como o jogo grava). `fn` não pode usar variáveis
 // de fora: o que precisar vai em `arg`.
 async function noMotor(page, fn, arg, { comCarreira = true } = {}) {
+  // OFFLINE-001: uma aba por carreira (a que abre por último toma a vez).
+  // Se outra página da v2 tomou a vez desta, ela volta a ser a da vez como o
+  // técnico faria: reabrindo (o motor relê o save, sem memória velha).
+  if (page.url().startsWith(base) && (await page.evaluate(() => globalThis.__BRDATA_ABA_ATIVA__ === false).catch(() => false))) {
+    await page.goto(base + "/", { waitUntil: "domcontentloaded" });
+  }
   await motorPronto(page, { comCarreira });
   return page.evaluate(async ({ src, arg }) => {
     const nomes = ["estado", "semana", "carga", "jogo", "posjogo", "aovivo", "virada", "clube", "mercado", "temporada", "financas", "treino", "registro", "fechamento", "escalacao", "v2"];

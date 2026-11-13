@@ -276,17 +276,20 @@ fonte oficial e empacotado localmente.
 
 OFFLINE-001 — Modo Carreira offline
 
-Status: EM PLANEJAMENTO (etapa 0 feita em 13/11; decisões pedidas ao Murilo)
-Plano: `docs/carreira-v2/offline/PLANO_OFFLINE.md` (inventário de rede e linha de base).
+Status: IMPLEMENTADO (13/11), aguardando revisão do PM e homologação no
+iPhone (Murilo). Merge só com a aprovação do Murilo.
+Plano e relatório: `docs/carreira-v2/offline/PLANO_OFFLINE.md` (seções 5 e 6).
 Origem: `docs/carreira-v2/offline/BRDATA_Plano_Offline_Claude.md`, sem
 alteração.
-Decisão registrada (Murilo, 12/11): a carreira continua na raiz do site
-("/"), como desde a fase 11; onde o plano diz "abertura do Treinador em
-/carreira/", lê-se "a carreira na raiz" (manifest `start_url`
-"/?source=pwa", scope "/").
-Pendências que o plano já prevê e que serão levadas ao Murilo antes da
-implementação: política offline da recompensa diária e dos itens que
-afetam a economia; homologação em iPhone real (feita pelo Murilo).
+Decisões do Murilo (13/11): 1) o save do aparelho é o principal, com
+cópia no servidor; a da conta só entra se o aparelho não jogou desde a
+última cópia ou por pedido explícito; 2) recompensa diária e loja só com
+rede; 3) carreira criada offline usa a cópia dos clubes e elencos do
+servidor, gerada no deploy e versionada; 4) tudo num PR só.
+Decisão anterior (12/11): a carreira continua na raiz ("/").
+Pontos para o PM conferir (seção 6.2 do plano): o AUD-02 passa a bloquear
+só quando o aparelho não grava; a sessão expirada vira aviso que pode ser
+fechado; conflito entre aparelhos não sobrescreve nada sozinho.
 
 ⸻
 

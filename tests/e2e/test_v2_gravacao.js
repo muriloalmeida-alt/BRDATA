@@ -8,7 +8,7 @@
 //  2) Toques repetidos com a falha: uma tentativa por toque.
 //  3) Aparelho de volta, servidor fora do ar: grava no aparelho (save =
 //     memória, sem efeito em dobro) e "Continuar" segue; a cópia vai ao
-//     servidor na gravação seguinte, quando ele volta.
+//     servidor na gravação ou abertura seguinte, quando ele volta.
 //  4) Resposta perdida da cópia (o servidor gravou, o navegador não soube):
 //     o resultado já está no aparelho; reabrir manda a mesma cópia — a
 //     rodada não anda duas vezes.
@@ -109,6 +109,11 @@ const { newCareer, signup, serverCareer, motorNaPagina, continueToHome, sameSave
   mode = "pass";
   const steps3 = await continueToHome(v2);
   const home3 = await v2.evaluate(() => ({ line: document.querySelector(".home-date")?.textContent || "", frames: document.querySelectorAll("iframe").length }));
+  // A cópia vai na próxima gravação ou na próxima abertura (o pós-jogo nem
+  // sempre grava): reabre o app.
+  await v2.reload({ waitUntil: "domcontentloaded" });
+  await v2.waitForSelector(".home", { timeout: 20000 });
+  await v2.waitForTimeout(500);
   const s3b = await serverCareer(v2);
   const d3b = await saveNoAparelho(v2);
   check("3b) 'Continuar' segue o pós-jogo até o Início na rodada seguinte; com o servidor de volta, a cópia chega (servidor = aparelho):",

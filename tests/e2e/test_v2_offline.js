@@ -10,8 +10,8 @@
 //  5) Loja e ranking sem rede: aviso e ações inativas.
 //  6) Checkpoint: recarregar no meio da partida volta à Partida, pausada,
 //     no mesmo minuto e placar; terminar anda a rodada uma vez só.
-//  7) Duas abas: a segunda mostra "aberta em outra aba"; "Jogar aqui" toma
-//     a vez e a primeira para de gravar.
+//  7) Duas abas: a que abre por último toma a vez; a outra mostra "aberta
+//     em outra aba", para de gravar e pode tomar a vez de volta ("Jogar aqui").
 //  8) Exportar: arquivo com formato, hash e o save do aparelho; arquivo
 //     alterado é recusado sem mexer em nada; arquivo válido substitui
 //     (depois de confirmar) e a cópia vai ao servidor.
@@ -128,14 +128,19 @@ const { carreiraV2, base, saveNoServidor, saveNoAparelho, jogarRodadaV2, iniciar
   check("6b) Terminada a partida retomada, a rodada anda uma vez só e o checkpoint é apagado:",
     sv6.currentRound === antes6.currentRound + 1 && sv6.matchLog.length === antes6.matchLog.length + 1 && cp6.length === 0, JSON.stringify({ antes: antes6.currentRound, depois: sv6.currentRound, cp6 }));
 
-  // 7) Duas abas.
+  // 7) Duas abas: a que abre por último toma a vez.
   const p2 = await ctx.newPage();
   p2.on("pageerror", (err) => erros.push("p2: " + err.message));
   await p2.goto(base + "/", { waitUntil: "domcontentloaded" });
+  const abriu2 = await p2.waitForSelector(".home", { timeout: 30000 }).then(() => true, () => false);
+  const aviso1 = await page.waitForFunction(() => /aberta em outra aba/.test(document.body.textContent), null, { timeout: 20000 }).then(() => true, () => false);
+  // "Jogar aqui" na primeira toma a vez de volta; a segunda mostra o aviso.
+  await page.click(".state-btn");
+  await page.waitForSelector(".home", { timeout: 30000 });
   const aviso2 = await p2.waitForFunction(() => /aberta em outra aba/.test(document.body.textContent), null, { timeout: 20000 }).then(() => true, () => false);
   await p2.click(".state-btn");
   await p2.waitForSelector(".home", { timeout: 30000 });
-  const aviso1 = await page.waitForFunction(() => /aberta em outra aba/.test(document.body.textContent), null, { timeout: 20000 }).then(() => true, () => false);
+  await page.waitForFunction(() => /aberta em outra aba/.test(document.body.textContent), null, { timeout: 20000 }).catch(() => {});
   const recusa1 = await page.evaluate(async () => {
     const m = await import("/js/motor/repositorio.js");
     const me = await fetch("/api/auth/me").then((r) => r.json());
@@ -143,8 +148,8 @@ const { carreiraV2, base, saveNoServidor, saveNoAparelho, jogarRodadaV2, iniciar
     const reg = await repo.registro(String(me.user.id));
     return repo.gravar(String(me.user.id), { ...reg.save, currentRound: 1 });
   });
-  check("7) Duas abas: a segunda mostra 'aberta em outra aba'; 'Jogar aqui' toma a vez, a primeira mostra o aviso e para de gravar:",
-    aviso2 && aviso1 && recusa1.ok === false && recusa1.motivo === "outra-aba", JSON.stringify({ aviso2, aviso1, recusa1 }));
+  check("7) Duas abas: a que abre por último toma a vez e a outra mostra 'aberta em outra aba' e para de gravar; 'Jogar aqui' toma a vez de volta:",
+    abriu2 && aviso1 && aviso2 && recusa1.ok === false && recusa1.motivo === "outra-aba", JSON.stringify({ abriu2, aviso1, aviso2, recusa1 }));
   await page.close();
 
   // 8) Exportar e importar (na aba que ficou).
