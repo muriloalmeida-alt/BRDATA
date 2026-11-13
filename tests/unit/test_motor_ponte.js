@@ -52,8 +52,14 @@ Date.now = () => 1794000000000;
 ouvirAvisosDoMotor();
 `;
 
-const COMANDOS = `renovar coletivaAtual conversar mercado fazerProposta aumentarProposta retirarProposta previaCompra aceitarContraproposta
-anunciar retirarAnuncio previaVenda aceitarOfertaVenda recusarOfertaVenda prepararEmprestimo emprestar pegarEmprestado propostaPendente
+// FASE1-MER (13/11/2026): mercado, fazerProposta, aceitarContraproposta,
+// prepararEmprestimo, emprestar e pegarEmprestado seguem a negociação nova
+// (atleta decide, sorteio com chave, operação com id) e saíram desta
+// comparação com a cópia congelada; o teste deles é
+// tests/unit/test_motor_mer_integracao.js. As propostas que aumentar,
+// retirar e prévia usam são semeadas no começo do roteiro (iguais nos dois lados).
+const COMANDOS = `renovar coletivaAtual conversar aumentarProposta retirarProposta previaCompra
+anunciar retirarAnuncio previaVenda aceitarOfertaVenda recusarOfertaVenda propostaPendente
 contratarComissao demitirComissao estadio iniciarObra patrocinios assinarPatrocinio olheiros contratarOlheiro
 dispensarOlheiro enviarMissao trazerParaBase indicacao pedirOrcamento orcamento conquistas pontuacaoRanking loja preferencias
 assistenteVisto alternarNotificacao tatica comissaoSugestoes comissaoAplicar comissaoDesfazer salvarTatica salvarInstrucoesSetor
@@ -79,6 +85,7 @@ const ROTEIRO = (seed) => `(async () => {
   CAREER.scoutMissionProspects = [{ id: "pr1", name: "Joia", group: "F", age: 16, overall: 40, atk: 50, def: 30, phys: 50, potential: 80, wage: 1000, value: 100000, contractUntil: 2030 }];
   const alvos = () => Object.entries(CAREER.leagueSquads).flatMap(([c, sq]) => sq.map((p) => [c, p]));
   const meu = () => pick(CAREER.squad) || { id: "nada" };
+  if (transferWindowStatus(CAREER.currentRound).open) for (let k = 0; k < 4; k++) { const [c, p] = pick(alvos()); submitOfferOut(c, p.id, Math.round(p.value * (0.4 + r())), pick([1, 2, 3])); }
   let desfazer = null;
   const args = {
     renovar: () => { const p = meu(); return [r() < 0.1 ? "x" : p.id, Math.round((p.wage || 1000) * (0.7 + r())), pick([0, 1, 3, 5, 6])]; },
@@ -120,6 +127,10 @@ const ROTEIRO = (seed) => `(async () => {
   const out = [];
   for (let k = 0; k < 140; k++) {
     const c = pick(${JSON.stringify(COMANDOS)});
+    // FASE1-ESC (12/11): com titular faltando, a comissão orienta de outro
+    // jeito de propósito (test_motor_escalacao cobre); aqui fica de fora.
+    const ids = new Set(CAREER.squad.map((p) => p.id));
+    if (/^comissao/.test(c) && ((CAREER.lineup.starters || []).filter((id) => ids.has(id)).length < 11)) { out.push([c, "escalacao-incompleta"]); continue; }
     const a = args[c] ? args[c]() : [];
     let ret;
     try { ret = await P[c](...a); } catch (e) { ret = { erro: String(e && e.message) }; }

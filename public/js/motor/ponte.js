@@ -38,6 +38,7 @@ import * as estado from "./estado.js";
 import * as calendario from "./calendario.js";
 import * as rodada from "./rodada.js";
 import * as escalacao from "./escalacao.js";
+import * as negociacao from "./negociacao.js";
 
 function achievementProgressFor(id) {
   return registro.achievementProgressFor(id);
@@ -354,6 +355,27 @@ export function ponteOpcoesEmprestimo(duracao, clausula, valorClausula) {
   return { returnRound, buyOption };
 }
 
+// Pedido de empréstimo de entrada (FASE1-MER), sem gravar (comOperacao grava).
+async function pegarEmprestadoAgora(clubId, playerId, duracao, percentual, clausula, valorClausula) {
+      const CAREER = carreiraAtual();
+      if (!transferWindowStatus(CAREER.currentRound).open) return { ok: false, motivo: "janela-fechada", mensagem: "Janela de contratações encerrada — não dá pra pegar jogador emprestado agora." };
+      const p = leagueSquadFor(String(clubId)).find((x) => x.id === playerId);
+      if (!p) return { ok: false, motivo: "indisponivel", mensagem: "Esse jogador não está mais disponível." };
+      const pct = Number(percentual);
+      if (![50, 75, 100].includes(pct)) return { ok: false, motivo: "opcao-invalida" };
+      const opts = ponteOpcoesEmprestimo(duracao, clausula, valorClausula);
+      if (!opts) return { ok: false, motivo: "opcao-invalida" };
+      const av = negociacao.avaliarPedidoDeEmprestimo(clubId, p, duracao, pct);
+      if (av.decisao === "recusa") return { ok: false, motivo: "recusa", mensagem: `${av.lado === "jogador" ? abbreviateName(p.name) : teamById(clubId).name} recusou: ${av.motivo}` };
+      if (av.decisao === "contra") return { ok: false, motivo: "contra", pctPedido: av.pctPedido, mensagem: av.motivo };
+      const loanWage = Math.round((p.wage * (pct / 100)) / 100) * 100;
+      if (wageBillOf(CAREER.squad) + loanWage > CAREER.finances.wageCap) return { ok: false, motivo: "teto", mensagem: `Pegar esse jogador emprestado estouraria o teto salarial (${fmtBRL(CAREER.finances.wageCap)}).` };
+      if (CAREER.squad.length >= MAX_PRINCIPAL + 20) return { ok: false, motivo: "elenco-grande", mensagem: "Elenco já está muito grande — dispense ou negocie alguém antes." };
+      const ok = await finalizeLoanIn(String(clubId), playerId, { ...opts, wagePct: pct, avaliado: true });
+      if (!ok) return { ok: false, motivo: "recusa", mensagem: "O empréstimo não foi feito." };
+      return { ok: true, salario: loanWage };
+}
+
 // Comandos de gestão da ponte (mesmo texto de window.BRDATA_PONTE).
 export const comandosGestao = {
     async renovar(id, salario, anos) {
@@ -396,8 +418,13 @@ export const comandosGestao = {
       const texto = w.open
         ? (w.closesLabel ? `Janela aberta ${w.closesLabel}` : w.closesAtRound ? `Janela aberta até a rodada ${w.closesAtRound}` : "Janela aberta")
         : (w.opensLabel ? `Janela fechada · ${w.opensLabel}` : w.opensAtRound ? `Janela fechada · reabre na rodada ${w.opensAtRound}` : "Janela fechada · próxima temporada");
+      // FASE1-MER: "Pedir empréstimo" fica indisponível quando o clube de
+      // origem recusaria mesmo pagando 100% do salário (avaliação nova).
       const recusaEmprestimo = [];
-      Object.values(CAREER.leagueSquads || {}).forEach((sq) => sq.forEach((p) => { if (isLoanOutRefused(p)) recusaEmprestimo.push(String(p.id)); }));
+      Object.entries(CAREER.leagueSquads || {}).forEach(([cid, sq]) => sq.forEach((p) => {
+        const r = negociacao.avaliarPedidoDeEmprestimo(cid, p, "temporada", 100);
+        if (r.decisao === "recusa") recusaEmprestimo.push(String(p.id));
+      }));
       CAREER.squad.forEach((p) => { if (isLoanOutRefused(p)) recusaEmprestimo.push(String(p.id)); });
       return {
         ok: true, janela: { aberta: !!w.open, texto }, multi: CAREER.marketScope === "multi",
@@ -406,16 +433,47 @@ export const comandosGestao = {
         recusaEmprestimo,
       };
     },
-    async fazerProposta(clubId, playerId, valor, parcelas) {
+    // FASE1-MER: a proposta leva salário, papel prometido e duração
+    // (termos = { salario, papel, anos }); sem termos, os do jogador hoje.
+    // opId: a mesma operação repetida não cria outra proposta (MER-07).
+    async fazerProposta(clubId, playerId, valor, parcelas, termos, opId) {
       const CAREER = carreiraAtual();
       if (!CAREER) return { ok: false, motivo: "sem-carreira" };
-      if (!transferWindowStatus(CAREER.currentRound).open) return { ok: false, motivo: "janela-fechada", mensagem: "Janela de contratações encerrada — não dá pra propor agora." };
-      if (pendingOfferOutFor(playerId)) return { ok: false, motivo: "ja-proposta", mensagem: "Você já tem uma proposta por esse jogador." };
-      if (![1, 2, 3, 4].includes(Number(parcelas))) return { ok: false, motivo: "parcelas-invalidas" };
-      const r = submitOfferOut(String(clubId), playerId, valor, parcelas);
-      if (!r.ok) return { ok: false, motivo: r.motivo, mensagem: r.texto };
-      const g = await ambiente.gravar();
-      return g.ok ? { ok: true, id: r.offer.id, valor: r.value } : g;
+      return negociacao.comOperacao(opId, () => {
+        if (!transferWindowStatus(CAREER.currentRound).open) return { ok: false, motivo: "janela-fechada", mensagem: "Janela de contratações encerrada — não dá pra propor agora." };
+        const anterior = pendingOfferOutFor(playerId);
+        if (anterior && anterior.status !== "recusada") return { ok: false, motivo: "ja-proposta", mensagem: "Você já tem uma proposta por esse jogador." };
+        if (![1, 2, 3, 4].includes(Number(parcelas))) return { ok: false, motivo: "parcelas-invalidas" };
+        const p = leagueSquadFor(String(clubId)).find((x) => x.id === playerId);
+        if (!p) return { ok: false, motivo: "indisponivel", mensagem: "Esse jogador não está mais disponível." };
+        const t = negociacao.termosDaProposta(termos || {}, p);
+        if (termos && (!negociacao.PAPEIS.includes(termos.papel) || !negociacao.ANOS.includes(Number(termos.anos)) || !(Number(termos.salario) > 0))) return { ok: false, motivo: "opcao-invalida" };
+        if (wageBillOf(CAREER.squad) + t.salario > CAREER.finances.wageCap) return { ok: false, motivo: "teto", mensagem: `Esse salário estouraria o teto salarial (${fmtBRL(CAREER.finances.wageCap)}).` };
+        const r = submitOfferOut(String(clubId), playerId, valor, parcelas);
+        if (!r.ok) return { ok: false, motivo: r.motivo, mensagem: r.texto };
+        // Uma nova proposta substitui a recusada pelo mesmo jogador.
+        if (anterior) CAREER.pendingOffersOut = CAREER.pendingOffersOut.filter((x) => x !== anterior);
+        Object.assign(r.offer, t);
+        return { ok: true, id: r.offer.id, valor: r.value };
+      });
+    },
+    // Antes de enviar (MER-03): custo inicial, salário, caixa e folha antes
+    // e depois, teto e o salário que o atleta aceitaria em cada papel.
+    previaProposta(clubId, playerId, valor, parcelas, salario) {
+      const CAREER = carreiraAtual();
+      if (!CAREER) return { ok: false, motivo: "sem-carreira" };
+      const p = leagueSquadFor(String(clubId)).find((x) => x.id === playerId);
+      if (!p) return { ok: false, motivo: "indisponivel", mensagem: "Esse jogador não está mais disponível." };
+      const v = Math.max(1000, Math.round(Number(valor) || p.value));
+      const n = [1, 2, 3, 4].includes(Number(parcelas)) ? Number(parcelas) : 1;
+      const porParcela = Math.round(v / n / 1000) * 1000;
+      const primeira = n === 1 ? v : porParcela;
+      const sal = Math.max(1, Math.round(Number(salario) || p.wage));
+      const ctx = negociacao.contextoDoAtleta(p, clubId);
+      const sugerido = Object.fromEntries(negociacao.PAPEIS.map((papel) => [papel, mercado.salarioSugerido(p, papel, ctx)]));
+      return { ok: true, valor: v, parcelas: n, porParcela, primeira, salarioAtual: p.wage, salario: sal, papelAtual: ctx.papelAtual, sugerido,
+        caixaAntes: CAREER.finances.cash, caixaDepois: CAREER.finances.cash - primeira,
+        folhaAntes: wageBillOf(CAREER.squad), folhaDepois: wageBillOf(CAREER.squad) + sal, teto: CAREER.finances.wageCap };
     },
     async aumentarProposta(offerId, valor) {
       const CAREER = carreiraAtual();
@@ -442,16 +500,38 @@ export const comandosGestao = {
       const perInstallment = Math.round(valor / o.installments / 1000) * 1000;
       const primeira = o.installments === 1 ? valor : perInstallment;
       return { ok: true, valor, parcelas: o.installments, porParcela: perInstallment, primeira, caixaAntes: CAREER.finances.cash, caixaDepois: CAREER.finances.cash - primeira,
-        folhaAntes: wageBillOf(CAREER.squad), folhaDepois: wageBillOf(CAREER.squad) + p.wage, teto: CAREER.finances.wageCap };
+        folhaAntes: wageBillOf(CAREER.squad), folhaDepois: wageBillOf(CAREER.squad) + (o.salario || p.wage), teto: CAREER.finances.wageCap };
     },
-    async aceitarContraproposta(offerId) {
+    // FASE1-MER: o clube aceita o valor e o atleta decide; se ele pedir mais
+    // salário ou recusar, a proposta fica na lista com o motivo.
+    async aceitarContraproposta(offerId, opId) {
+      const CAREER = carreiraAtual();
+      if (!CAREER) return { ok: false, motivo: "sem-carreira" };
+      return negociacao.comOperacao(opId, () => {
+        const o = (CAREER.pendingOffersOut || []).find((x) => x.id === offerId);
+        if (!o || o.counterValue == null) return { ok: false, motivo: "proposta-invalida" };
+        const r = negociacao.aceitarContraDoClube(offerId);
+        return { ok: true, comprado: !!r.comprado, mensagem: r.comprado ? null : r.texto, atleta: r.atleta || null, coletiva: !!(r.comprado && coletivaPendente()) };
+      });
+    },
+    async aceitarSalarioPedido(offerId, opId) {
+      const CAREER = carreiraAtual();
+      if (!CAREER) return { ok: false, motivo: "sem-carreira" };
+      return negociacao.comOperacao(opId, () => {
+        const o = (CAREER.pendingOffersOut || []).find((x) => x.id === offerId);
+        if (!o || o.status !== "pede-salario") return { ok: false, motivo: "proposta-invalida" };
+        if (wageBillOf(CAREER.squad) + o.salarioPedido > CAREER.finances.wageCap) return { ok: false, motivo: "teto", mensagem: `Esse salário estouraria o teto salarial (${fmtBRL(CAREER.finances.wageCap)}).` };
+        const r = negociacao.aceitarSalarioPedido(offerId);
+        return { ok: true, comprado: !!r.comprado, mensagem: r.comprado ? null : r.texto, coletiva: !!(r.comprado && coletivaPendente()) };
+      });
+    },
+    // Tira da lista uma proposta recusada (ou pedido que o técnico não quer).
+    async dispensarProposta(offerId) {
       const CAREER = carreiraAtual();
       const o = CAREER && (CAREER.pendingOffersOut || []).find((x) => x.id === offerId);
-      if (!o || o.counterValue == null) return { ok: false, motivo: "proposta-invalida" };
-      const r = acceptCounterOffer(offerId) || { ok: false, texto: null };
-      const g = await ambiente.gravar();
-      if (!g.ok) return g;
-      return { ok: true, comprado: !!r.ok, mensagem: r.ok ? null : r.texto, coletiva: !!(r.ok && coletivaPendente()) };
+      if (!o || !["recusada", "pede-salario"].includes(o.status)) return { ok: false, motivo: "proposta-invalida" };
+      CAREER.pendingOffersOut = CAREER.pendingOffersOut.filter((x) => x.id !== offerId);
+      return ambiente.gravar();
     },
     async anunciar(playerId, valor) {
       const CAREER = carreiraAtual();
@@ -481,14 +561,14 @@ export const comandosGestao = {
       return { ok: true, valor: o.value, parcelas: o.installments, porParcela: perInstallment, primeira, caixaAntes: CAREER.finances.cash, caixaDepois: CAREER.finances.cash + primeira,
         folhaAntes: wageBillOf(CAREER.squad), folhaDepois: wageBillOf(CAREER.squad) - (p ? p.wage || 0 : 0) };
     },
-    async aceitarOfertaVenda(listingId, offerId) {
+    async aceitarOfertaVenda(listingId, offerId, opId) {
       const CAREER = carreiraAtual();
-      const r = CAREER ? acceptListingOffer(listingId, offerId) : null;
-      if (!r) return { ok: false, motivo: "sem-carreira" };
-      if (!r.ok && /não encontrad/.test(r.texto)) return { ok: false, motivo: "proposta-invalida" };
-      const g = await ambiente.gravar();
-      if (!g.ok) return g;
-      return { ok: true, vendido: !!r.ok, mensagem: r.ok ? null : r.texto, coletiva: !!(r.ok && coletivaPendente()) };
+      if (!CAREER) return { ok: false, motivo: "sem-carreira" };
+      return negociacao.comOperacao(opId, () => {
+        const r = acceptListingOffer(listingId, offerId);
+        if (!r || (!r.ok && /não encontrad/.test(r.texto))) return { ok: false, motivo: "proposta-invalida" };
+        return { ok: true, vendido: !!r.ok, mensagem: r.ok ? null : r.texto, coletiva: !!(r.ok && coletivaPendente()) };
+      });
     },
     async recusarOfertaVenda(listingId, offerId) {
       const CAREER = carreiraAtual();
@@ -508,41 +588,38 @@ export const comandosGestao = {
       if (p.origin !== "principal") return { ok: false, motivo: "nao-principal", mensagem: "Só dá pra emprestar jogador do elenco principal." };
       if (CAREER.squad.filter((x) => x.origin === "principal").length <= 14) return { ok: false, motivo: "minimo", mensagem: "O elenco principal não pode ficar com menos de 14 jogadores." };
       if (isLoanOutRefused(p)) return { ok: false, motivo: "recusa", mensagem: `${abbreviateName(p.name)} não aceita ser emprestado — quer continuar brigando por espaço no elenco principal.` };
-      const buyer = findInterestedBuyer(CAREER.clubId, p);
+      // FASE1-MER: o interessado sai de um sorteio com chave (o mesmo
+      // jogador na mesma semana dá o mesmo clube), e o jogador avalia o
+      // papel que teria lá.
+      const buyer = negociacao.comSorteio(`emprestimo:${p.id}:${calendarTurnKey()}`, () => findInterestedBuyer(CAREER.clubId, p));
       if (!buyer) { ponte.emprestimo = null; return { ok: false, motivo: "sem-interessado", mensagem: `Nenhum time demonstrou interesse em pegar ${abbreviateName(p.name)} emprestado agora.` }; }
+      const aceita = negociacao.jogadorAceitaIrEmprestado(p, buyer.id);
+      if (!aceita.ok) { ponte.emprestimo = null; return { ok: false, motivo: "recusa", mensagem: aceita.motivo }; }
       ponte.emprestimo = { playerId, buyer };
       const taxa = (meia) => Math.round((p.value * 0.10 * (meia ? 0.5 : 1)) / 1000) * 1000;
       return { ok: true, clube: { id: String(buyer.id), nome: buyer.name }, taxaTemporada: taxa(false), taxaMeia: taxa(true), valorMercado: p.value };
     },
-    async emprestar(playerId, duracao, clausula, valorClausula) {
-      const CAREER = carreiraAtual();
-      if (!CAREER || !ponte.emprestimo || ponte.emprestimo.playerId !== playerId) return { ok: false, motivo: "sem-emprestimo" };
-      if (!transferWindowStatus(CAREER.currentRound).open) return { ok: false, motivo: "janela-fechada", mensagem: "Janela de contratações encerrada — não dá pra negociar empréstimo agora." };
-      const opts = ponteOpcoesEmprestimo(duracao, clausula, valorClausula);
-      if (!opts) return { ok: false, motivo: "opcao-invalida" };
-      const ok = await finalizeLoanOut(playerId, { ...opts, buyer: ponte.emprestimo.buyer });
-      ponte.emprestimo = null;
-      if (!ok) return { ok: false, motivo: "recusa", mensagem: "O empréstimo não foi feito." };
-      return ambiente.gravar();
-    },
-    async pegarEmprestado(clubId, playerId, duracao, percentual, clausula, valorClausula) {
+    async emprestar(playerId, duracao, clausula, valorClausula, opId) {
       const CAREER = carreiraAtual();
       if (!CAREER) return { ok: false, motivo: "sem-carreira" };
-      if (!transferWindowStatus(CAREER.currentRound).open) return { ok: false, motivo: "janela-fechada", mensagem: "Janela de contratações encerrada — não dá pra pegar jogador emprestado agora." };
-      const p = leagueSquadFor(String(clubId)).find((x) => x.id === playerId);
-      if (!p) return { ok: false, motivo: "indisponivel", mensagem: "Esse jogador não está mais disponível." };
-      const pct = Number(percentual);
-      if (![50, 75, 100].includes(pct)) return { ok: false, motivo: "opcao-invalida" };
-      const opts = ponteOpcoesEmprestimo(duracao, clausula, valorClausula);
-      if (!opts) return { ok: false, motivo: "opcao-invalida" };
-      if (isLoanOutRefused(p)) return { ok: false, motivo: "recusa", mensagem: `${teamById(clubId).name} recusou emprestar ${abbreviateName(p.name)} — é peça importante demais pro clube.` };
-      const loanWage = Math.round((p.wage * (pct / 100)) / 100) * 100;
-      if (wageBillOf(CAREER.squad) + loanWage > CAREER.finances.wageCap) return { ok: false, motivo: "teto", mensagem: `Pegar esse jogador emprestado estouraria o teto salarial (${fmtBRL(CAREER.finances.wageCap)}).` };
-      if (CAREER.squad.length >= MAX_PRINCIPAL + 20) return { ok: false, motivo: "elenco-grande", mensagem: "Elenco já está muito grande — dispense ou negocie alguém antes." };
-      const ok = await finalizeLoanIn(String(clubId), playerId, { ...opts, wagePct: pct });
-      if (!ok) return { ok: false, motivo: "recusa", mensagem: "O empréstimo não foi feito." };
-      const g = await ambiente.gravar();
-      return g.ok ? { ok: true, salario: loanWage } : g;
+      return negociacao.comOperacao(opId, async () => {
+        if (!ponte.emprestimo || ponte.emprestimo.playerId !== playerId) return { ok: false, motivo: "sem-emprestimo" };
+        if (!transferWindowStatus(CAREER.currentRound).open) return { ok: false, motivo: "janela-fechada", mensagem: "Janela de contratações encerrada — não dá pra negociar empréstimo agora." };
+        const opts = ponteOpcoesEmprestimo(duracao, clausula, valorClausula);
+        if (!opts) return { ok: false, motivo: "opcao-invalida" };
+        const ok = await finalizeLoanOut(playerId, { ...opts, buyer: ponte.emprestimo.buyer });
+        ponte.emprestimo = null;
+        if (!ok) return { ok: false, motivo: "recusa", mensagem: "O empréstimo não foi feito." };
+        return { ok: true };
+      });
+    },
+    // FASE1-MER: o clube de origem e o jogador avaliam (MER-05): aceita,
+    // contrapõe com um percentual de salário maior ("contra", pctPedido)
+    // ou recusa com o motivo. opId: sem duplicar (MER-07).
+    async pegarEmprestado(clubId, playerId, duracao, percentual, clausula, valorClausula, opId) {
+      const CAREER = carreiraAtual();
+      if (!CAREER) return { ok: false, motivo: "sem-carreira" };
+      return negociacao.comOperacao(opId, () => pegarEmprestadoAgora(clubId, playerId, duracao, percentual, clausula, valorClausula));
     },
     async propostaPendente(decisao) {
       const CAREER = carreiraAtual();

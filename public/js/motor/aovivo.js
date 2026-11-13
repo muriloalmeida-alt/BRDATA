@@ -79,6 +79,16 @@ export function applyMoraleAfterMatch(myGoals, oppGoals) {
           : "Fora da lista de jogo nessa rodada";
       }
     }
+    // FASE1-MER (decisão do Murilo, 13/11): promessa feita na contratação.
+    // Prometido titular e fora do time, ou rotação e fora da lista: a moral
+    // cai mais, e com a promessa quebrada por algumas rodadas ele pede para
+    // sair. Vale na temporada da contratação.
+    const promessa = p.promessa && p.promessa.temporada === CAREER.seasonYear ? p.promessa.papel : null;
+    const quebrada = (promessa === "titular" && !starterIds.has(p.id)) || (promessa === "rotacao" && !starterIds.has(p.id) && !benchIds.has(p.id));
+    if (quebrada) {
+      delta += promessa === "titular" ? PROMESSA_PENALIDADE_TITULAR : PROMESSA_PENALIDADE_ROTACAO;
+      reason = promessa === "titular" ? "Prometeram que ele seria titular" : "Prometeram que ele estaria na rotação";
+    }
     const newMorale = clamp(base + delta, 0, 100);
     p.moraleTrend = newMorale > base ? "subindo" : newMorale < base ? "caindo" : "estavel";
     p.morale = newMorale;
@@ -89,9 +99,17 @@ export function applyMoraleAfterMatch(myGoals, oppGoals) {
     // transferência" — só um alerta visível (Elenco + detalhe), sem
     // forçar listagem automática no mercado, que exigiria uma reescrita
     // maior do fluxo de vendas só pra essa flag.
-    p.wantsTransfer = p.benchStreak >= WANTS_TRANSFER_BENCH_STREAK && p.morale <= WANTS_TRANSFER_MORALE_MAX;
+    p.wantsTransfer = (p.benchStreak >= WANTS_TRANSFER_BENCH_STREAK && p.morale <= WANTS_TRANSFER_MORALE_MAX)
+      || (quebrada && p.benchStreak >= PROMESSA_RODADAS_PEDE_SAIDA && p.morale <= PROMESSA_MORAL_PEDE_SAIDA);
   });
 }
+
+// Promessa de papel (FASE1-MER): quanto a mais a moral cai por partida e
+// quando o jogador pede para sair.
+export const PROMESSA_PENALIDADE_TITULAR = -4;
+export const PROMESSA_PENALIDADE_ROTACAO = -2;
+export const PROMESSA_RODADAS_PEDE_SAIDA = 3;
+export const PROMESSA_MORAL_PEDE_SAIDA = 45;
 
 export const TALK_BENCH_STREAK_THRESHOLD = 3;
 

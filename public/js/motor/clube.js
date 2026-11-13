@@ -246,13 +246,14 @@ export async function finalizeLoanOut(id, { returnRound, buyOption, buyer: passe
   return true;
 }
 
-export async function finalizeLoanIn(clubId, playerId, { returnRound, buyOption, wagePct }) {
+export async function finalizeLoanIn(clubId, playerId, { returnRound, buyOption, wagePct, avaliado }) {
   const CAREER = carreiraAtual();
   const squad = leagueSquadFor(clubId);
   const idx = squad.findIndex((x) => x.id === playerId);
   if (idx < 0) return false;
   const p = squad[idx];
-  if (isLoanOutRefused(p)) {
+  // FASE1-MER: quem chama já avaliou com a regra nova (avaliacaoEmprestimo).
+  if (!avaliado && isLoanOutRefused(p)) {
     avisar(`${teamById(clubId).name} recusou emprestar ${abbreviateName(p.name)} — é peça importante demais pro clube.`, { durationMs: 5000, type: "warn" });
     return false;
   }
@@ -393,8 +394,12 @@ export function submitOfferOut(clubId, playerId, rawValue, rawInstallments) {
   if (CAREER.squad.length >= MAX_PRINCIPAL + 20) return { ok: false, motivo: "elenco-grande", texto: "Elenco já está muito grande — dispense ou venda alguém antes." };
   const clubName = teamById(clubId).name;
   CAREER.pendingOffersOut = CAREER.pendingOffersOut || [];
+  // O id leva hora e sorteio; se repetir um da lista (mesmo milissegundo),
+  // ganha um sufixo — dois ids iguais confundiriam aceitar/dispensar.
+  let id = `offerout_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+  for (let k = 2; CAREER.pendingOffersOut.some((o) => o.id === id); k++) id = `${id.replace(/~\d+$/, "")}~${k}`;
   const offer = {
-    id: `offerout_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
+    id,
     playerId: p.id, playerName: p.name, clubId: String(clubId), clubName,
     marketValue: p.value, offerValue: value, installments,
     roundsLeft: OFFER_WAIT_ROUNDS, status: "pending", counterValue: null,
