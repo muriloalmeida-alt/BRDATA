@@ -98,3 +98,24 @@ clubes da Série B 2026, mas só esses 11 batem com o elenco fictício daqui
 pra bater com o documento — só os que já coincidem ganharam escudo real.
 Esses 9 continuam caindo pro fallback de monograma (sigla) que
 `crestImg()` já usa quando não há `logo`.
+
+## Série D (SERIED-001, 13/11/2026)
+
+Os 40 clubes do catálogo da Série D de 2026 (`docs/carreira-v2/serie-d/`)
+têm cópia local do escudo aqui (`<id do catálogo>.png|svg`). A cópia foi
+feita a pedido do Murilo ("Faça uma cópia local das logos obtidas na
+Wikipédia. Para que o jogo funcione offline"). O jogo não carrega imagem
+de fora, e o service worker pré-carrega os 40 arquivos.
+
+- **Origem de cada arquivo:** `docs/carreira-v2/serie-d/escudos_origem.json`
+  (artigo, arquivo original, projeto e licença).
+  - 20 vêm do **Wikimedia Commons** (licença livre).
+  - 20 vêm da **Wikipédia em português**, onde são de **uso restrito**
+    (fair use). Antes de distribuir o app, confirme se podem ficar.
+- **Tratamento:** os SVG estão sem alteração. Os PNG foram reduzidos a
+  160 px com paleta de 128 cores, salvo quando o original já era menor.
+  Total: cerca de 290 KB.
+- **Para trocar ou remover um escudo:** substitua ou apague o arquivo e
+  rode `node scripts/serie_d_catalogo.js --gravar`. Isso atualiza
+  `public/js/data.js` e a lista do service worker. Sem arquivo, o clube
+  aparece com o monograma (sigla nas cores).

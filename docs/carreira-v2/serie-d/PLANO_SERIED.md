@@ -149,9 +149,20 @@ O relatório fica no handoff. O merge espera a aprovação do Murilo.
 - O limite do save é de cerca de 768 KB. A carreira nova já estava em 74% dele antes desta demanda.
 - O "modo avião" fica para a OFFLINE-001.
 
+**Escudos (decisão revista pelo Murilo, 13/11: "Faça uma cópia local das logos obtidas na Wikipédia. Para que o jogo funcione offline"):**
+- **Cópia e tamanho:**
+  - os 40 escudos foram copiados da Wikipédia para `public/img/teams/<id>.png|svg`;
+  - os PNG foram reduzidos a 160 px; o total é de cerca de 290 KB.
+- **Offline:**
+  - o service worker pré-carrega os 40 arquivos;
+  - o jogo não carrega imagem de fora;
+  - teste: `test_v2_serie_d` item 5 abre os escudos sem rede.
+- **Origem:** artigo, arquivo e licença de cada um ficam em `escudos_origem.json`.
+- **Licença — ponto de atenção para o PM:**
+  - 20 vêm do Wikimedia Commons, com licença livre;
+  - 20 vêm da Wikipédia em português, onde são de uso restrito (fair use). Antes de distribuir o app, convém decidir se ficam.
+- **Para trocar ou remover um escudo:** troque ou apague o arquivo e rode `node scripts/serie_d_catalogo.js --gravar`.
+
 **Pendências:**
-- **Escudos:**
-  - as URLs não puderam ser levantadas daqui;
-  - liberei a Wikipédia na rede do ambiente, mas ela recusou as consultas por limite de uso;
-  - quando houver a lista de URLs (uma por id do catálogo), basta preenchê-la em `scripts/serie_d_catalogo.js` (objeto `ESCUDO`) e rodar `--gravar`.
+- Licença dos 20 escudos de uso restrito (decisão do PM).
 - **Homologação:** validar em homologação e no iPhone (Murilo).

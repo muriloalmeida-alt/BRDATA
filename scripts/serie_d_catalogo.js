@@ -61,8 +61,14 @@ const EXTRA = {
   "joinville-sc": ["JOI", "#DC2626", "#1A1A1A", 1.15, 1.09],
   "brasil-pelotas-rs": ["BRP", "#DC2626", "#1A1A1A", 1.07, 1.20],
 };
-// Escudo externo por id (URL https); vazio = monograma provisório.
-const ESCUDO = {};
+// Escudos: cópia local em public/img/teams/<id>.svg|png (decisão do Murilo,
+// 13/11: "Faça uma cópia local das logos obtidas na Wikipédia. Para que o
+// jogo funcione offline"). Origem de cada arquivo em
+// docs/carreira-v2/serie-d/escudos_origem.json. Sem arquivo, monograma.
+const ESCUDO = Object.fromEntries(cat.clubes.map((c) => {
+  const ext = ["svg", "png"].find((e) => fs.existsSync(path.join(ROOT, `public/img/teams/${c.id}.${e}`)));
+  return [c.id, ext ? `img/teams/${c.id}.${ext}` : null];
+}).filter(([, v]) => v));
 
 function conferir() {
   const erros = [];
@@ -73,7 +79,7 @@ function conferir() {
   Object.keys(EXTRA).forEach((id) => { if (!ids.includes(id)) erros.push(`extra de clube fora do catálogo: ${id}`); });
   const siglas = Object.values(EXTRA).map((e) => e[0]);
   if (new Set(siglas).size !== siglas.length) erros.push("siglas repetidas");
-  Object.entries(ESCUDO).forEach(([id, url]) => { if (!/^https:\/\//.test(url)) erros.push(`escudo de ${id} precisa ser https`); });
+  Object.entries(ESCUDO).forEach(([id, arq]) => { if (/^https?:/.test(arq)) erros.push(`escudo de ${id} precisa ser local (offline)`); });
   return erros;
 }
 
@@ -83,7 +89,7 @@ function bloco() {
     const o = {
       id: c.id, name: c.nome_exibicao, short, uf: c.uf, cidade: c.cidade_clube, c1, c2, atk, def,
       venue: { name: c.estadio_mando, city: c.cidade_mando },
-      logo: ESCUDO[c.id] || null, escudo: ESCUDO[c.id] ? "externo" : "provisorio",
+      logo: ESCUDO[c.id] || null, escudo: ESCUDO[c.id] ? "local" : "provisorio",
       ...(NO_JOGO[c.id] ? { noJogo: NO_JOGO[c.id] } : {}),
     };
     return "  " + JSON.stringify(o).replace(/"(\w+)":/g, "$1: ") + ",";
@@ -94,8 +100,9 @@ function bloco() {
     "   docs/carreira-v2/serie-d/serie_d_40_clubes.json (fonte: CBF, em cada",
     "   registro do JSON). Elencos fictícios. Sigla e cores \"a validar\";",
     "   atk/def são PARÂMETROS DE JOGO (não dado real). `noJogo`: o clube já está",
-    "   no jogo com outro id (Série C) e não entra de novo pela D. Escudo: URL",
-    "   externa (`logo`) quando houver; sem ela, monograma provisório. */",
+    "   no jogo com outro id (Série C) e não entra de novo pela D. Escudo: cópia",
+    "   local (`logo`, public/img/teams/; origem em escudos_origem.json); sem ela,",
+    "   monograma provisório. */",
     "const CATALOGO_SERIE_D = [",
     ...linhas,
     "];",
@@ -116,6 +123,12 @@ if (process.argv.includes("--gravar")) {
   const m = fimRx.exec(src.slice(ini));
   const fim = ini + m.index + m[0].length;
   fs.writeFileSync(p, src.slice(0, ini) + novo + src.slice(fim));
+  // Service worker: os escudos locais entram no pré-carregamento (offline).
+  const swp = path.join(ROOT, "public/sw.js");
+  const sw = fs.readFileSync(swp, "utf8");
+  const a = "/*__ESCUDOS_SERIE_D__*/", b = "/*__FIM_ESCUDOS_SERIE_D__*/";
+  const lista = Object.values(ESCUDO).sort().map((arq) => `  "/${arq}",`).join("\n");
+  fs.writeFileSync(swp, sw.slice(0, sw.indexOf(a) + a.length) + "\n" + lista + "\n  " + sw.slice(sw.indexOf(b)));
   console.log("data.js atualizado:", cat.clubes.length, "clubes no catálogo,", cat.clubes.filter((c) => !NO_JOGO[c.id]).length, "na D ativa.");
 } else console.log(novo.split("\n").slice(0, 12).join("\n"), "\n…\nok: catálogo conferido");
 module.exports = { conferir, NO_JOGO, EXTRA };

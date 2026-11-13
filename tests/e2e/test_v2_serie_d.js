@@ -5,8 +5,9 @@
 //  2) a rodada 1 inteira pela ponte (pós-jogo com a perna ao vivo da Copa):
 //     a preliminar é decidida no jogo único (sem volta) e a Copa segue para
 //     a 1ª fase (ou o clube cai, com a frase "na fase preliminar");
-//  3) clube da Série D aparece com nome e monograma (sem escudo quebrado);
-//  4) sem erro na página e 360 px sem rolagem horizontal na Copa.
+//  3) clube da Série D aparece com nome e o escudo local (cópia offline);
+//  4) sem erro na página e 360 px sem rolagem horizontal na Copa;
+//  5) offline: os escudos da D vêm do cache do service worker, sem rede.
 const { chromium } = require("playwright-core");
 const { check } = require("./_check");
 const { carreiraV2, signup, ensureDailyClaimed, noMotor, jogarRodadaV2, saveNoServidor, base } = require("./_v2_carreira");
@@ -37,12 +38,13 @@ const { carreiraV2, signup, ensureDailyClaimed, noMotor, jogarRodadaV2, saveNoSe
   // 1) Copa e calendário antes da rodada 1.
   await page.goto(base + "/copa", { waitUntil: "domcontentloaded" });
   await h1("A caminho da taça.");
+  await page.waitForFunction(() => [...document.querySelectorAll(".crest img")].every((i) => i.complete), null, { timeout: 10000 }).catch(() => {});
   const c1 = await page.evaluate(() => ({
     fase: (document.getElementById("cp-f") ? [...document.querySelectorAll('[aria-labelledby="cp-f"] [role="radio"], #cp-f option')].map((o) => o.textContent) : []),
     linhas: [...document.querySelectorAll(".wk-item")].map((d) => `${d.querySelector("dt").textContent}=${d.querySelector("dd").textContent}`),
     nota: [...document.querySelectorAll(".wk-note")].map((n) => n.textContent).join(" | "),
     duelo: document.body.textContent.includes(""),
-    crest: [...document.querySelectorAll(".crest")].map((c) => (c.querySelector("img") ? "img" : (c.querySelector(".crest-mono") || {}).textContent)),
+    crest: [...document.querySelectorAll(".crest")].map((c) => { const i = c.querySelector("img"); return i ? (i.complete && i.naturalWidth > 0 && /^\/img\/teams\//.test(new URL(i.src).pathname) ? "img-local" : "img-quebrada") : (c.querySelector(".crest-mono") || {}).textContent; }),
   }));
   const temOpp = await page.evaluate((nome) => document.body.textContent.includes(nome), prep.opp);
   await page.goto(base + "/calendario", { waitUntil: "domcontentloaded" });
@@ -65,7 +67,25 @@ const { carreiraV2, signup, ensureDailyClaimed, noMotor, jogarRodadaV2, saveNoSe
     JSON.stringify({ passos: r.passos, tie, fase: s2.cup.phase, vivo: s2.cup.humanAlive, c2 }));
 
   // 3) Clube da D com nome e monograma.
-  check("3) O clube da Série D aparece com nome e monograma (sem escudo quebrado):", temOpp && c1.crest.length > 0 && c1.crest.every((x) => x === "img" || (x && x.length === 3)), JSON.stringify(c1.crest));
+  check("3) O clube da Série D aparece com nome e o escudo local (cópia em /img/teams, sem imagem quebrada):", temOpp && c1.crest.includes("img-local") && !c1.crest.includes("img-quebrada"), JSON.stringify(c1.crest));
+
+  // 5) Offline: com o service worker pronto, sem rede, os escudos da D abrem
+  // do cache (pré-carregados na instalação).
+  const off = await page.evaluate(async () => {
+    if (!("serviceWorker" in navigator)) return { sw: false };
+    const reg = await Promise.race([navigator.serviceWorker.ready, new Promise((r) => setTimeout(() => r(null), 15000))]);
+    if (!reg) return { sw: false };
+    const keys = await caches.keys();
+    const shell = keys.find((k) => k.startsWith("brdata-shell-"));
+    const c = shell ? await caches.open(shell) : null;
+    const ids = ["manaus-am.png", "abc-rn.png", "gama-df.svg", "juazeirense-ba.png"];
+    const noCache = c ? await Promise.all(ids.map(async (f) => !!(await c.match(`/img/teams/${f}`)))) : [];
+    return { sw: true, shell, noCache };
+  });
+  await page.context().setOffline(true);
+  const offFetch = await page.evaluate(async () => Promise.all(["manaus-am.png", "abc-rn.png"].map(async (f) => { try { const r = await fetch(`/img/teams/${f}`); return r.ok && (await r.blob()).size > 200; } catch { return false; } })));
+  await page.context().setOffline(false);
+  check("5) Offline: os escudos da Série D estão no cache do service worker e abrem sem rede:", off.sw && off.noCache.length === 4 && off.noCache.every(Boolean) && offFetch.every(Boolean), JSON.stringify({ off, offFetch }));
 
   // 4) 360 px e erros.
   await page.setViewportSize({ width: 360, height: 780 });

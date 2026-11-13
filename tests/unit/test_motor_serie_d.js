@@ -224,6 +224,22 @@ const ANTIGA = String.raw`(async () => {
     assert.strictEqual(antiga.prelim, 16);
     assert.strictEqual(antiga.fase, "prelim");
   });
+  await check("Escudos: os 40 clubes do catálogo têm cópia local (offline), no pré-carregamento do service worker e com origem registrada", () => {
+    const cat = [];
+    const vmc = vm.createContext({}); vm.runInContext(dataSrc + ";this.C = CATALOGO_SERIE_D;", vmc);
+    const sw = fs.readFileSync(path.join(ROOT, "public/sw.js"), "utf8");
+    const origem = JSON.parse(fs.readFileSync(path.join(ROOT, "docs/carreira-v2/serie-d/escudos_origem.json"), "utf8")).escudos;
+    vmc.C.forEach((t) => {
+      assert.ok(t.logo && /^img\/teams\/[a-z0-9-]+\.(png|svg)$/.test(t.logo), `${t.id}: ${t.logo}`);
+      const arq = path.join(ROOT, "public", t.logo);
+      assert.ok(fs.existsSync(arq) && fs.statSync(arq).size > 200, `arquivo de ${t.id}`);
+      assert.ok(sw.includes(`"/${t.logo}"`), `${t.id} fora do service worker`);
+      assert.ok(origem.some((o) => o.id === t.id && o.arquivo === `public/${t.logo}` && /^https:\/\/upload\.wikimedia\.org\//.test(o.imagem_original)), `origem de ${t.id}`);
+      cat.push(fs.statSync(arq).size);
+    });
+    assert.strictEqual(vmc.C.length, 40);
+    console.log(`   escudos: ${cat.length}, ${Math.round(cat.reduce((a, b) => a + b, 0) / 1024)} KB no total`);
+  });
   await check(`${TEMPORADAS} temporadas, salvando e reabrindo a cada uma: save abaixo de 768 KB, tempo e memória medidos`, () => {
     const t = w.temporadas;
     const kb = t.map((x) => Math.round(x.saveBytes / 1024));
