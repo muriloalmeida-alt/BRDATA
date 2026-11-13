@@ -39,7 +39,7 @@ vm.runInContext(
   "var window = { BRDATA_MOTOR: {} };\n"
   + motorCode(null, (name, text) => (name === "temporada" && GAP_OVERRIDE != null
     ? text.replace(/^export const STRENGTH_DIVISION_GAP_SD = [\d.]+;/m, `export const STRENGTH_DIVISION_GAP_SD = ${GAP_OVERRIDE};`) : text))
-  + ["mulberry32", "seededRngFromKey", "poissonSample", "DEMO_TEAMS", "DEMO_TEAMS_SERIE_B", "DEMO_TEAMS_SERIE_C", "DEMO_TEAMS_SERIE_D"].map((n) => extract(dataJs, n)).join("")
+  + ["mulberry32", "seededRngFromKey", "poissonSample", "DEMO_TEAMS", "DEMO_TEAMS_SERIE_B", "DEMO_TEAMS_SERIE_C", "CATALOGO_SERIE_D", "DEMO_TEAMS_SERIE_D"].map((n) => extract(dataJs, n)).join("")
   + ["clamp", "motorModulo", "motorTemporada", "divisionStrengthScale", "repositionArrivals"].map((n) => extract(src, n)).join("")
   + "var STRENGTH_DIVISION_GAP_SD = window.BRDATA_MOTOR.temporada.STRENGTH_DIVISION_GAP_SD;\n", sb);
 
