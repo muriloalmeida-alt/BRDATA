@@ -10,32 +10,19 @@
 // teste é sobre regressão de wiring/invariantes, não estatística.
 const { chromium } = require("playwright-core");
 const { check } = require("./_check");
-const { enterGame } = require("./_startup");
-
-async function newCareer(page, base, email) {
-  await page.goto(base + "/", { waitUntil: "load" });
-  await page.evaluate(async ({ email }) => {
-    await fetch("/api/auth/signup", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: "GE Balance 002 Test", email, password: "senha123", phone: "11999999999", plan: "freemium" }) });
-    await fetch("/api/auth/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, password: "senha123" }) });
-  }, { email });
-  await page.goto(base + "/carreira.html", { waitUntil: "load" });
-  await page.click('.mt-competition-card[data-competition="brasileirao"]');
-  await page.waitForTimeout(200);
-  await page.click(".m3-club-row");
-  await page.waitForTimeout(150);
-  await page.click("#btnConfirmClub");
-  await enterGame(page);
-}
+const { newCareer, globaisDoMotor } = require("./_v2_carreira");
 
 (async () => {
-  const browser = await chromium.launch({ executablePath: process.env.PW_CHROMIUM_PATH || undefined, headless: true });
+  const browser = await chromium.launch({ executablePath: process.env.PW_CHROMIUM_PATH || undefined, headless: true, args: ["--host-resolver-rules=MAP fonts.googleapis.com 127.0.0.1,MAP fonts.gstatic.com 127.0.0.1"] });
   const page = await browser.newPage({ viewport: { width: 390, height: 900 } });
   page.on("dialog", (d) => d.dismiss());
   page.on("pageerror", (err) => console.log("PAGE ERROR:", err.message));
   page.on("console", (m) => { if (m.type() === "error" && !m.text().includes("fonts.googleapis") && !m.text().includes("fundingchoices")) console.log("CONSOLE ERROR:", m.text()); });
 
-  const base = "http://localhost:8787";
-  await newCareer(page, base, `gebalance002${Date.now()}@teste.com`);
+  // Lote L4c: carreira pela v2 e as funções do jogo pelo motor na página da
+  // v2 (globaisDoMotor), sem a tela antiga.
+  await newCareer(page, `gebalance002${Date.now()}@teste.com`);
+  await globaisDoMotor(page);
 
   // 1) Lista curada de tradição — os 12 clubes esperados, nada a mais.
   const list = await page.evaluate(() => [...motorTemporada().CLUB_TRADITION_IDS].sort());

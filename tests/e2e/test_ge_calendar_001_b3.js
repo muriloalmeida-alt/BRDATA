@@ -1,75 +1,66 @@
-// GE-CALENDAR-001 (B3) — tela Calendário (menu e data do topo), data no
-// topo do Início e aviso de rodízio na confirmação pré-jogo de semana
-// de 2 jogos (Copa na quarta).
+// GE-CALENDAR-001 (B3) — data da semana no Início, o calendário do ano e o
+// aviso de rodízio na semana de 2 jogos (Copa na quarta). Lote L4c (sem a
+// tela antiga):
+//  1) Início da v2 na pré-temporada: "Pré-temporada · semana N de M"
+//     (antes: "Semana de dd/fev" no topo da tela antiga).
+//  2) O calendário do ano (motor): semanas de 12 meses, 5 amistosos, 13
+//     semanas de Copa (a preliminar e as 12 pernas) e a rodada 1. A lista
+//     semana a semana era da tela antiga; o Calendário da v2 (jogos e
+//     próximo compromisso) está no test_v2_calendario, e a Copa nele no
+//     test_v2_serie_d.
+//  3) Semana de 2 jogos (Copa na quarta): o Pré-jogo da v2 mostra "Semana
+//     de 2 jogos" e o Início, a data do jogo com a rodada.
 const { chromium } = require("playwright-core");
-const { skipOnboarding } = require("./_startup");
+const { carreiraV2, signup, ensureDailyClaimed, globaisDoMotor, base } = require("./_v2_carreira");
 
 (async () => {
   const browser = await chromium.launch({ executablePath: process.env.PW_CHROMIUM_PATH || undefined, headless: true, args: ["--host-resolver-rules=MAP fonts.googleapis.com 127.0.0.1,MAP fonts.gstatic.com 127.0.0.1"] });
   const page = await browser.newPage({ viewport: { width: 390, height: 900 } });
   page.on("dialog", (d) => d.dismiss());
   page.on("pageerror", (err) => console.log("PAGE ERROR:", err.message));
-  const base = "http://localhost:8787";
-  const email = `gecalb3${Date.now()}@teste.com`;
-  await page.goto(base + "/", { waitUntil: "domcontentloaded" });
-  await page.evaluate(async ({ email }) => {
-    await fetch("/api/auth/signup", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: "Calendario B3", email, password: "senha123", phone: "11999999999", plan: "freemium" }) });
-    await fetch("/api/auth/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, password: "senha123" }) });
-  }, { email });
-  await page.goto(base + "/carreira.html", { waitUntil: "domcontentloaded" });
-  await page.click('.mt-competition-card[data-competition="brasileirao"]');
-  await page.waitForTimeout(300);
-  await page.click(".m3-club-row");
-  await page.waitForTimeout(150);
-  await page.click("#btnConfirmClub");
-  await skipOnboarding(page);
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  for (let i = 0; i < 6; i++) { await page.click("#btnWizardSkip", { timeout: 2500 }).catch(() => {}); await page.waitForTimeout(300); }
-  await page.click("#btnClaimDailyLogin", { timeout: 1500 }).catch(() => {});
-  await page.waitForTimeout(3500);
+  await carreiraV2(page, `gecalb3${Date.now()}@teste.com`, { clube: "fla", preTemporada: true, criarConta: signup });
+  await ensureDailyClaimed(page);
   let ok = true;
   const check = (label, cond, extra) => { console.log(label, !!cond, extra !== undefined ? JSON.stringify(extra) : ""); ok = ok && !!cond; };
 
-  const pill = await page.evaluate(() => document.getElementById("roundPill").textContent);
-  check("1) Topo do Início mostra a data da semana (pré-temporada):", /^Semana de \d{2}\/fev$/.test(pill), pill);
+  // 1) Início na pré-temporada.
+  await page.goto(base + "/", { waitUntil: "domcontentloaded" });
+  await page.waitForSelector(".home", { timeout: 30000 });
+  const fase = await page.evaluate(() => document.querySelector(".home-phase")?.textContent || "");
+  check("1) Início na pré-temporada mostra a semana: 'Pré-temporada · semana N de M':", /^Pré-temporada · semana \d+ de \d+$/.test(fase), fase);
 
-  await page.click("#roundPill");
-  await page.waitForTimeout(500);
-  const cal = await page.evaluate(() => ({
-    open: document.getElementById("calendarOverlay").classList.contains("open"),
-    weeks: document.querySelectorAll("#calendarList .mt-cal-week").length,
-    total: CAREER.calendar.weeks.length,
-    months: document.querySelectorAll("#calendarList .mt-cal-month").length,
-    now: !!document.getElementById("calendarNowRow"),
-    friendlies: [...document.querySelectorAll("#calendarList .mt-cal-week")].filter((r) => /Amistoso/.test(r.textContent)).length,
-    // SERIED-001: 13 = as 12 pernas da Copa + a preliminar (rodada 1).
-    cupWeeks: [...document.querySelectorAll("#calendarList .mt-cal-week")].filter((r) => /Copa do Brasil na quarta/.test(r.textContent)).length,
-    round1: [...document.querySelectorAll("#calendarList .mt-cal-week")].some((r) => /1ª rodada/.test(r.textContent)),
-  }));
-  await page.screenshot({ path: "screens/calendario_b3.png" });
-  check("2) Tocar na data abre o Calendário: todas as semanas do ano em 12 meses, semana atual destacada, 5 amistosos, 12 semanas de Copa, rodadas listadas:",
-    cal.open && cal.weeks === cal.total && cal.months === 12 && cal.now && cal.friendlies === 5 && cal.cupWeeks === 13 && cal.round1, cal);
-  await page.click("#btnCalendarCloseFooter");
-  await page.waitForTimeout(200);
+  // 2) O calendário do ano, pelo motor.
+  await globaisDoMotor(page);
+  const cal = await page.evaluate(() => {
+    const ws = CAREER.calendar.weeks;
+    const meses = new Set(ws.map((w) => w.d.slice(0, 2)));
+    return { semanas: ws.length, meses: meses.size, amistosos: CAREER.calendar.friendlies.length, copa: ws.filter((w) => w.c).length, rodada1: ws.some((w) => w.r === 1), rodadas: ws.filter((w) => w.r).length };
+  });
+  check("2) O calendário do ano: semanas nos 12 meses, 5 amistosos, 13 semanas de Copa e as 38 rodadas (com a 1ª):",
+    cal.meses === 12 && cal.amistosos === 5 && cal.copa === 13 && cal.rodada1 && cal.rodadas === 38, cal);
 
-  // 3) Semana de Copa: confirmação pré-jogo avisa sobre rodízio.
-  const rot = await page.evaluate(async () => {
+  // 3) Avança até a 1ª semana de 2 jogos em que o clube joga a Copa.
+  const r3 = await page.evaluate(async () => {
     let guard = 0;
-    while (guard++ < 40 && !(calendarWeek().r && calendarWeek().c)) {
+    const me = String(CAREER.clubId);
+    const jogaCopa = () => { const w = calendarWeek(); if (!w || !w.r || !w.c) return false; const cup = CAREER.cup; const pre = cup.prelim && w.r === (cup.prelim.round || 1); return !pre || (cup.ties.prelim || []).some((t) => String(t.home) === me || String(t.away) === me); };
+    while (guard++ < 60 && !jogaCopa()) {
       const w = calendarWeek();
       if (!w.r) { const f = friendlySlotThisWeek(); if (f) f.played = true; runCalendarOffWeek(); continue; }
-      const sum = simulateRound();
-      if (sum === "live") { skipLiveMatch(); if (LIVE_MATCH && !LIVE_MATCH.finished) await finishLiveMatch(); }
+      const j = await jogarPartidaDaRodada();
+      if (!j.ok) return { erro: j.passos };
     }
-    document.querySelectorAll(".ct-modal-overlay.open").forEach((el) => el.classList.remove("open"));
-    renderAll();
-    openPreMatchConfirm();
-    const el = document.getElementById("preMatchRotation");
-    return { round: CAREER.currentRound, cup: !!calendarWeek().c, visible: !el.classList.contains("hidden"), text: el.textContent, pill: document.getElementById("roundPill").textContent };
+    await persistCareer();
+    return { round: CAREER.currentRound, cup: !!calendarWeek().c };
   });
-  check("3) Semana de 2 jogos: confirmação pré-jogo mostra o aviso de rodízio; topo mostra 'Dom dd/mmm · Nª rodada':",
-    rot.cup && rot.visible && /Semana de 2 jogos/.test(rot.text) && /^Dom \d{2}\/\w{3} · \d+ª rodada$/.test(rot.pill), rot);
+  await page.goto(base + "/pre-jogo", { waitUntil: "domcontentloaded" });
+  await page.waitForFunction(() => /Rodada \d+/.test(document.body.textContent), null, { timeout: 30000 }).catch(() => {});
+  const pre = await page.evaluate(() => document.body.innerText);
+  await page.goto(base + "/", { waitUntil: "domcontentloaded" });
+  await page.waitForSelector(".home", { timeout: 30000 });
+  const linha = await page.evaluate(() => document.querySelector(".home-date")?.textContent || "");
+  check("3) Semana de 2 jogos: o Pré-jogo da v2 mostra 'Semana de 2 jogos' (Copa na quarta) e o Início, a data com a rodada:",
+    r3.cup && /Semana de 2 jogos/.test(pre) && /Copa do Brasil na quarta/.test(pre) && new RegExp(`^\\d{2} \\w{3} · RODADA ${r3.round}$`).test(linha), { r3, linha });
 
   await browser.close();
   process.exit(ok ? 0 : 1);

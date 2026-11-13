@@ -1,65 +1,68 @@
 // GE-CALENDAR-001 (B1) — calendário real jan–dez. Cobre: carreira nova
-// nasce na pré-temporada com janela aberta; "Pular até o próximo jogo"
+// nasce na pré-temporada com janela aberta; "Avançar até o próximo jogo"
 // chega na semana da rodada 1 com a janela fechada; 3 temporadas
 // inteiras seguidas sem quebra (38 rodadas cada, 12 meses de folha por
 // temporada completa, janela abrindo/fechando por fase, volume da IA de
 // mercado comparável ao modelo antigo); carreira antiga (sem
 // calendário) segue em rodadas e ganha o calendário na virada.
+// Lote L4c (sem a tela antiga): pelo motor na página da v2. As semanas sem
+// jogo são o mesmo runCalendarOffWeek de antes; o jogo da semana, no lugar
+// do simulateRound da tela antiga, é a ponte (jogarPartidaDaRodada, os
+// passos do Pré-jogo/Partida/pós-jogo da v2). Os botões da tela antiga
+// viraram o CTA do Início da v2 ("Avançar semana" / "Preparar partida").
 const { chromium } = require("playwright-core");
-const { skipOnboarding } = require("./_startup");
+const { carreiraV2, signup, ensureDailyClaimed, globaisDoMotor, base } = require("./_v2_carreira");
 
 (async () => {
   const browser = await chromium.launch({ executablePath: process.env.PW_CHROMIUM_PATH || undefined, headless: true, args: ["--host-resolver-rules=MAP fonts.googleapis.com 127.0.0.1,MAP fonts.gstatic.com 127.0.0.1"] });
   const page = await browser.newPage({ viewport: { width: 390, height: 900 } });
   page.on("dialog", (d) => d.dismiss());
   page.on("pageerror", (err) => console.log("PAGE ERROR:", err.message));
-  const base = "http://localhost:8787";
-  const email = `gecal001${Date.now()}@teste.com`;
-  await page.goto(base + "/", { waitUntil: "domcontentloaded" });
-  await page.evaluate(async ({ email }) => {
-    await fetch("/api/auth/signup", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: "Calendario Teste", email, password: "senha123", phone: "11999999999", plan: "freemium" }) });
-    await fetch("/api/auth/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, password: "senha123" }) });
-  }, { email });
-  await page.goto(base + "/carreira.html", { waitUntil: "domcontentloaded" });
-  await page.click('.mt-competition-card[data-competition="brasileirao"]');
-  await page.waitForTimeout(300);
-  await page.click(".m3-club-row");
-  await page.waitForTimeout(150);
-  await page.click("#btnConfirmClub");
-  await skipOnboarding(page);
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  for (let i = 0; i < 6; i++) { await page.click("#btnWizardSkip", { timeout: 2500 }).catch(() => {}); await page.waitForTimeout(300); }
-  await page.click("#btnClaimDailyLogin", { timeout: 1500 }).catch(() => {});
-  await page.waitForTimeout(500);
-  // Sob carga (CI), a tela pode demorar a montar o botão principal: espera
-  // por ele em vez de confiar só no tempo fixo. A verificação segue igual.
-  await page.waitForFunction(() => /Avançar semana/.test((document.getElementById("btnSimulate") || {}).textContent || ""), null, { timeout: 15000 }).catch(() => {});
+  await carreiraV2(page, `gecal001${Date.now()}@teste.com`, { clube: "fla", preTemporada: true, criarConta: signup });
+  await ensureDailyClaimed(page);
   let ok = true;
   const check = (label, cond, extra) => { console.log(label, !!cond, extra !== undefined ? JSON.stringify(extra) : ""); ok = ok && !!cond; };
+  const ctaDoInicio = async () => {
+    await page.goto(base + "/", { waitUntil: "domcontentloaded" });
+    await page.waitForSelector(".home-main .cta", { timeout: 30000 });
+    const t = await page.evaluate(() => document.querySelector(".home-main .cta").textContent.trim());
+    await globaisDoMotor(page);
+    return t;
+  };
 
-  // 1) Carreira nova: pré-temporada, janela aberta, FAB "Avançar semana".
-  const s1 = await page.evaluate(() => ({
-    phase: calendarWeek().p, win: transferWindowStatus(CAREER.currentRound),
-    fab: document.getElementById("btnSimulate").textContent.trim(),
-    skipVisible: !document.getElementById("btnSkipToMatch").classList.contains("hidden"),
-    tv: CAREER.calendar.tvMonthly,
-  }));
-  check("1) Carreira nova começa na pré-temporada, janela aberta, botão 'Avançar semana':", s1.phase === "pre" && s1.win.open && /Avançar semana/.test(s1.fab) && s1.skipVisible && s1.tv > 0, s1);
+  // 1) Carreira nova na pré-temporada.
+  const cta1 = await ctaDoInicio();
+  const s1 = await page.evaluate(() => ({ phase: calendarWeek().p, win: transferWindowStatus(CAREER.currentRound), tv: CAREER.calendar.tvMonthly }));
+  check("1) Carreira nova começa na pré-temporada, janela aberta, Início com 'Avançar semana':", s1.phase === "pre" && s1.win.open && cta1 === "Avançar semana" && s1.tv > 0, { ...s1, cta1 });
 
-  // Contadores instalados ANTES de qualquer avanço (o pulo do passo 2 já
-  // cruza a virada de fevereiro pra março).
-  // Etapa C2 (09/11): a semana sem jogo mora em motor/semana.js e chama a
-  // cobrança do mês e a IA de mercado por dentro do módulo, então não dá
-  // mais para contar trocando as funções da página. Agora:
-  // - meses cobrados: lançamentos novos "Folha salarial de <mês>" no extrato
-  //   (o efeito de verdade da cobrança);
-  // - IA de mercado: turnos em que a regra a chama (semana sem jogo com a
-  //   janela aberta e índice par, ou rodada com a janela aberta), contados
-  //   antes de cada passo.
-  await page.evaluate(() => {
-    window.__cnt = { monthly: 0, ai: 0 };
-    const vistos = new Set(CAREER.financeLedger || []);
+  // Contadores de folha mensal e de chamadas da IA de mercado. O estado
+  // (lançamentos já vistos e as chamadas da pré-temporada) é guardado aqui
+  // antes de "Avançar até o próximo jogo" e reinstalado depois de abrir o
+  // Início (que recarrega a página).
+  const antes = await page.evaluate(() => {
+    let ai = 0;
+    let i = CAREER.calendar.idx;
+    while (CAREER.calendar.weeks[i] && !CAREER.calendar.weeks[i].r) {
+      if (CALENDAR_WINDOW_PHASES.has(CAREER.calendar.weeks[i].p) && i % 2 === 0) ai++;
+      i++;
+    }
+    return { ai, vistos: (CAREER.financeLedger || []).map((e) => JSON.stringify(e)) };
+  });
+
+  // 2) "Avançar até o próximo jogo" (a ponte da Semana da v2).
+  const avancou = await page.evaluate(async () => (await import("/js/motor/v2.js")).criarPonte().avancarSemana(true));
+  const cta2 = await ctaDoInicio();
+  const s2 = await page.evaluate(() => ({ week: calendarWeek(), round: CAREER.currentRound, win: transferWindowStatus(CAREER.currentRound).open, trainingKey: CAREER.trainingAppliedForRound }));
+  check("2) 'Avançar até o próximo jogo' chega na semana da rodada 1, janela fechada, Início com 'Preparar partida':",
+    avancou.ok && s2.week.r === 1 && s2.round === 1 && !s2.win && cta2 === "Preparar partida" && /w\d+/.test(String(s2.trainingKey)), { ...s2, cta2 });
+
+  await page.evaluate((antes) => {
+    window.__cnt = { monthly: 0, ai: antes.ai };
+    // Os que já existiam antes de recarregar (pelo conteúdo, uma vez só);
+    // daqui em diante, pelo próprio lançamento (objeto), como no teste
+    // antigo: a folha de um mês pode repetir o conteúdo do ano anterior.
+    const jaEram = new Set(antes.vistos);
+    const vistos = new Set((CAREER.financeLedger || []).filter((e) => jaEram.has(JSON.stringify(e))));
     window.__contarMeses = () => {
       (CAREER.financeLedger || []).forEach((e) => {
         if (vistos.has(e)) return;
@@ -73,28 +76,9 @@ const { skipOnboarding } = require("./_startup");
       if (w && w.r) window.__cnt.ai++;
       else if (w && CAREER.calendar.idx % 2 === 0) window.__cnt.ai++;
     };
-  });
+  }, antes);
 
-  // 2) Pular até o próximo jogo (clique real).
-  // O pulo atravessa semanas sem jogo: conta os turnos da IA no caminho.
-  await page.evaluate(() => {
-    let i = CAREER.calendar.idx;
-    while (CAREER.calendar.weeks[i] && !CAREER.calendar.weeks[i].r) {
-      if (CALENDAR_WINDOW_PHASES.has(CAREER.calendar.weeks[i].p) && i % 2 === 0) window.__cnt.ai++;
-      i++;
-    }
-  });
-  await page.click("#btnSkipToMatch");
-  await page.waitForTimeout(800);
-  await page.waitForFunction(() => CAREER.currentRound === 1 && /Ir para o jogo/.test(document.getElementById("btnSimulate").textContent), null, { timeout: 15000 }).catch(() => {});
-  const s2 = await page.evaluate(() => ({
-    week: calendarWeek(), round: CAREER.currentRound, win: transferWindowStatus(CAREER.currentRound).open,
-    fab: document.getElementById("btnSimulate").textContent.trim(),
-    trainingKey: CAREER.trainingAppliedForRound,
-  }));
-  check("2) 'Pular até o próximo jogo' chega na semana da rodada 1, janela fechada, botão 'Ir para o jogo':", s2.week.r === 1 && s2.round === 1 && !s2.win && /Ir para o jogo/.test(s2.fab) && /w\d+/.test(String(s2.trainingKey)), s2);
-
-  // 3) 3 temporadas inteiras, headless (partida ao vivo encerrada na hora).
+  // 3) 3 temporadas seguidas.
   const seasons = await page.evaluate(async () => {
     const count = window.__cnt;
     const out = [];
@@ -107,14 +91,12 @@ const { skipOnboarding } = require("./_startup");
           if (transferWindowStatus(CAREER.currentRound).open) windowOpenWeeks++;
           window.__contarIa();
           if (!w.r) { runCalendarOffWeek(); window.__contarMeses(); offWeeks++; continue; }
-          const sum = simulateRound();
-          if (sum === "live") { skipLiveMatch(); if (LIVE_MATCH && !LIVE_MATCH.finished) await finishLiveMatch(); }
+          const j = await jogarPartidaDaRodada();
+          if (!j.ok) { errors.push(j.passos.join(" ")); break; }
           window.__contarMeses();
           roundsPlayed++;
         } catch (e) { errors.push(String(e && e.message || e)); break; }
       }
-      // meses cobrados NESTA temporada (inclui o janeiro cobrado na
-      // virada anterior) e chamadas da IA de mercado
       window.__contarMeses();
       const monthlyCharges = count.monthly, aiCalls = count.ai;
       count.monthly = 0; count.ai = 0;
@@ -132,22 +114,22 @@ const { skipOnboarding } = require("./_startup");
   check("3c) Virada leva pra janeiro (férias) do ano seguinte:", seasons.every((x) => x.newPhase === "ferias" && x.newYear === x.year + 1));
   check("3d) IA de mercado roda em ~6–7 semanas por temporada completa (modelo antigo: 6 rodadas):", seasons.slice(1).every((x) => x.aiCalls >= 5 && x.aiCalls <= 8), seasons.map((x) => x.aiCalls));
 
-  // 4) Carreira antiga (sem calendário) segue em rodadas e ganha o
-  // calendário na virada.
+  // 4) Carreira sem calendário (save antigo).
   const legacy = await page.evaluate(async () => {
     delete CAREER.calendar;
     const winRound1 = transferWindowStatus(1).open, winRound10 = transferWindowStatus(10).open;
     let guard = 0;
+    const errors = [];
     while (CAREER.currentRound <= 38 && guard++ < 60) {
-      const sum = simulateRound();
-      if (sum === "live") { skipLiveMatch(); if (LIVE_MATCH && !LIVE_MATCH.finished) await finishLiveMatch(); }
+      const j = await jogarPartidaDaRodada();
+      if (!j.ok) { errors.push(j.passos.join(" ")); break; }
     }
     const legacyWageEntries = CAREER.financeLedger.filter((l) => l.label === "Folha salarial do elenco").length;
     CAREER.negativeSeasonsStreak = -99;
     await advanceSeason();
-    return { winRound1, winRound10, legacyWageEntries, hasCalendar: calendarOn(), phase: calendarOn() && calendarWeek().p };
+    return { winRound1, winRound10, legacyWageEntries, errors, hasCalendar: calendarOn(), phase: calendarOn() && calendarWeek().p };
   });
-  check("4) Carreira sem calendário segue no modelo de rodadas (janela 1–3, folha por rodada) e ganha calendário na virada:", legacy.winRound1 && !legacy.winRound10 && legacy.legacyWageEntries > 0 && legacy.hasCalendar && legacy.phase === "ferias", legacy);
+  check("4) Carreira sem calendário segue no modelo de rodadas (janela 1–3, folha por rodada) e ganha calendário na virada:", legacy.winRound1 && !legacy.winRound10 && legacy.legacyWageEntries > 0 && !legacy.errors.length && legacy.hasCalendar && legacy.phase === "ferias", legacy);
 
   await browser.close();
   process.exit(ok ? 0 : 1);
