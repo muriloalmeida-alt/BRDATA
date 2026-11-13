@@ -36,8 +36,17 @@ const { carreiraV2, signup, ensureDailyClaimed, globaisDoMotor, noMotor, base } 
     const l = semana.allMarketPlayers().filter((e) => !e.mine && e.p.value > 0).sort((a, b) => a.p.value - b.p.value);
     const e = l[Math.floor(l.length / 2)];
     const r = await ponte.fazerProposta(String(e.club.id), e.p.id, e.p.value, 1);
-    const orig = Math.random; Math.random = () => 0.01;
-    try { semana.resolvePendingOffersOutRound(CAREER.currentRound); semana.resolvePendingOffersOutRound(CAREER.currentRound); } finally { Math.random = orig; }
+    // FASE1-MER (13/11/2026): a resposta vem do sorteio com chave da oferta
+    // (não de Math.random); o clube pode contrapor e o atleta pedir mais
+    // salário. O técnico aceita o que vier, como em Minhas propostas.
+    for (let k = 0; k < 6; k++) {
+      const o = CAREER.pendingOffersOut.find((x) => String(x.playerId) === String(e.p.id));
+      if (!o) break;
+      if (o.status === "countered") await ponte.aceitarContraproposta(o.id);
+      else if (o.status === "pede-salario") await ponte.aceitarSalarioPedido(o.id);
+      else if (o.status === "pending") semana.resolvePendingOffersOutRound(CAREER.currentRound);
+      else break;
+    }
     return { ok: r.ok, id: e.p.id, comprado: CAREER.squad.some((p) => p.id === e.p.id) };
   });
   const venda = await noMotor(page, async ({ CAREER, ponte, semana, clube, persistir }) => {

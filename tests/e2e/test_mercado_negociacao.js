@@ -86,10 +86,11 @@ const { carreiraV2, signup, ensureDailyClaimed, globaisDoMotor, saveNoServidor, 
       id: "test_offer_accept", playerId: p.id, playerName: p.name, clubId: t.clubId, clubName: teamById(t.clubId).name,
       marketValue: p.value, offerValue: p.value, installments: 3, roundsLeft: 1, status: "pending", counterValue: null,
     });
-    const origRandom = Math.random;
-    Math.random = () => 0.01; // garante aceite (ratio 1.0 cai na 1ª faixa, 85% de chance)
+    // FASE1-MER (13/11/2026): a resposta vem do sorteio com chave da oferta.
+    // Escolhe um id em que o 1º sorteio não traz concorrente e o 2º cai na
+    // faixa de aceite (ratio 1.0: 85% de chance).
+    sorteioNaFaixa(CAREER.pendingOffersOut.find((x) => x.id === "test_offer_accept"), CAREER.currentRound, (v, rng) => v >= RIVAL_OFFER_CHANCE_PER_ROUND && rng() < 0.85);
     resolvePendingOffersOutRound(CAREER.currentRound);
-    Math.random = origRandom;
     const perInstallment = Math.round(p.value / 3 / 1000) * 1000;
     return {
       inSquad: !!CAREER.squad.find((x) => x.id === p.id),
@@ -98,7 +99,7 @@ const { carreiraV2, signup, ensureDailyClaimed, globaisDoMotor, saveNoServidor, 
       installmentsLeft: CAREER.pendingInstallments.filter((i) => i.label.includes(p.name)).length,
       installmentsAmount: CAREER.pendingInstallments.find((i) => i.label.includes(p.name))?.perRoundAmount,
       installmentsRoundsLeft: CAREER.pendingInstallments.find((i) => i.label.includes(p.name))?.roundsLeft,
-      stillPending: !!CAREER.pendingOffersOut.find((x) => x.id === "test_offer_accept"),
+      stillPending: CAREER.pendingOffersOut.some((x) => String(x.playerId) === String(p.id)),
     };
   }, target);
   check("5) Proposta aceita (ratio 1.0) entra no elenco, cobra só a 1ª de 3 parcelas, agenda as outras 2:",

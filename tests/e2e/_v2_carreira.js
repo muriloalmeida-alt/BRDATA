@@ -146,10 +146,11 @@ async function globaisDoMotor(page) {
     window.motorMercado = () => mods.mercado;
     // FASE1-MER: as decisões da negociação usam um sorteio com chave da
     // oferta. Para um teste cair numa faixa (ex.: "vence a disputa"), troca
-    // o id da oferta até o 1º sorteio da chave satisfazer `ok`.
+    // o id da oferta até o 1º sorteio da chave satisfazer `ok` (que recebe
+    // também o sorteio, para conferir os seguintes: ok(1º, rng)).
     window.sorteioNaFaixa = (o, round, ok) => {
       const base = o.id;
-      for (let k = 0; k < 500; k++) { o.id = k ? `${base}_${k}` : base; if (ok(mods.semana.ambiente.rngDaChave(mods.negociacao.chaveDaOferta(o, round))())) return o.id; }
+      for (let k = 0; k < 500; k++) { o.id = k ? `${base}_${k}` : base; const rng = mods.semana.ambiente.rngDaChave(mods.negociacao.chaveDaOferta(o, round)); if (ok(rng(), rng)) return o.id; }
       throw new Error("sorteioNaFaixa: nenhuma chave na faixa");
     };
     return Object.keys(mods).length;
