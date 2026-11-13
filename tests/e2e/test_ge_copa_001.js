@@ -9,32 +9,20 @@
 // estrutural e integração, não estatística.
 const { chromium } = require("playwright-core");
 const { check } = require("./_check");
-const { enterGame } = require("./_startup");
-
-async function newCareer(page, base, email) {
-  await page.goto(base + "/", { waitUntil: "load" });
-  await page.evaluate(async ({ email }) => {
-    await fetch("/api/auth/signup", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: "GE Copa 001 Test", email, password: "senha123", phone: "11999999999", plan: "freemium" }) });
-    await fetch("/api/auth/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, password: "senha123" }) });
-  }, { email });
-  await page.goto(base + "/carreira.html", { waitUntil: "load" });
-  await page.click('.mt-competition-card[data-competition="brasileirao"]');
-  await page.waitForTimeout(200);
-  await page.click(".m3-club-row");
-  await page.waitForTimeout(150);
-  await page.click("#btnConfirmClub");
-  await enterGame(page);
-}
+const { newCareer, globaisDoMotor } = require("./_v2_carreira");
 
 (async () => {
-  const browser = await chromium.launch({ executablePath: process.env.PW_CHROMIUM_PATH || undefined, headless: true });
+  const browser = await chromium.launch({ executablePath: process.env.PW_CHROMIUM_PATH || undefined, headless: true, args: ["--host-resolver-rules=MAP fonts.googleapis.com 127.0.0.1,MAP fonts.gstatic.com 127.0.0.1"] });
   const page = await browser.newPage({ viewport: { width: 390, height: 900 } });
   page.on("dialog", (d) => d.dismiss());
   page.on("pageerror", (err) => console.log("PAGE ERROR:", err.message));
   page.on("console", (m) => { if (m.type() === "error" && !m.text().includes("fonts.googleapis") && !m.text().includes("fundingchoices")) console.log("CONSOLE ERROR:", m.text()); });
 
-  const base = "http://localhost:8787";
-  await newCareer(page, base, `gecopa001b${Date.now()}@teste.com`);
+  // Lote L4b: carreira pela v2 e as funções do jogo pelo motor na página da
+  // v2 (globaisDoMotor), sem a tela antiga.
+  // Cuiabá: não é cabeça de chave (o item 3 precisa do clube na 1ª fase).
+  await newCareer(page, `gecopa001b${Date.now()}@teste.com`, "cui");
+  await globaisDoMotor(page);
 
   // 1) Estrutura: 6 fases na ordem certa, 4 cabeças de chave, prêmios
   // novos somados sem alterar os 5 valores preservados.
@@ -81,8 +69,8 @@ async function newCareer(page, base, email) {
     integrity.totalUniqueClubs === 60 && sizesOk && integrity.phaseFinal === "done" && !!integrity.champion, JSON.stringify(integrity));
 
   // 3) Fluxo ao vivo real: força o confronto do técnico na Fase 1 (ida)
-  // e confere que vira partida ao vivo de verdade (mesmo
-  // #liveMatchOverlay do Brasileirão), decide pelos mesmos tempos, e
+  // e confere que vira partida ao vivo de verdade (a mesma
+  // partida ao vivo do Brasileirão, contexto Copa), decide pelos mesmos tempos, e
   // fecha gravando o placar na perna certa do tie.
   const liveIda = await page.evaluate(async () => {
     CAREER.serieDPool = [];
@@ -92,7 +80,11 @@ async function newCareer(page, base, email) {
     resolveCupPhaseExpanded(CUP_ROUNDS_EXPANDED.fase1.ida); // resolve os OUTROS confrontos, defere o seu
     const deferredBefore = !!cup.pendingLiveLeg;
     const started = maybeStartPendingCupLegLive();
-    const overlayOpen = document.getElementById("liveMatchOverlay").classList.contains("open");
+    // Na v2 a partida ao vivo é a tela Partida, alimentada pela ponte: o
+    // estado da ponte é "jogando", no contexto da Copa (antes: o
+    // #liveMatchOverlay da tela antiga aberto).
+    const est = (await import("/js/motor/carga.js")).ponteEstado();
+    const overlayOpen = est.fase === "jogando" && est.contexto === "copa";
     const isCup = !!(LIVE_MATCH && LIVE_MATCH.cupContext);
     pauseLiveMatch();
     skipLiveMatch();
@@ -104,7 +96,7 @@ async function newCareer(page, base, email) {
       pendingClearedAfter: !cup.pendingLiveLeg,
     };
   });
-  check("3) Confronto do técnico na Fase 1 (ida) vira ao vivo de verdade (reaproveita #liveMatchOverlay/resolveLiveChunk), decide e grava a perna:",
+  check("3) Confronto do técnico na Fase 1 (ida) vira ao vivo de verdade (a partida ao vivo do motor, contexto Copa), decide e grava a perna:",
     liveIda.deferredBefore && liveIda.started && liveIda.overlayOpen && liveIda.isCup && liveIda.liveMatchGone && liveIda.leg1Filled && liveIda.pendingClearedAfter,
     JSON.stringify(liveIda));
 

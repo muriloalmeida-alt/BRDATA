@@ -144,6 +144,7 @@ async function globaisDoMotor(page) {
     Object.defineProperty(window, "CAREER", { configurable: true, get: () => E.carreiraAtual(), set: (v) => E.definirCarreira(v) });
     Object.defineProperty(window, "LEAGUE_TEAMS", { configurable: true, get: () => E.ligaAtual(), set: (v) => E.definirLigaAtual(v) });
     Object.defineProperty(window, "ALL_TEAMS_FLAT", { configurable: true, get: () => E.todosTimes(), set: (v) => E.definirTodosTimes(v) });
+    Object.defineProperty(window, "LIVE_MATCH", { configurable: true, get: () => E.partidaAtual() });
     Object.defineProperty(window, "CURRENT_COMPETITION_ID", { configurable: true, get: () => E.competicaoAtual(), set: (v) => E.definirCompeticaoAtual(v) });
     window.persistCareer = () => mods.carga.persistCareer();
     window.teamById = (id) => E.timePorId(id);
