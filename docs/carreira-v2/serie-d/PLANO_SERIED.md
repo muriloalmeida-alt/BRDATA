@@ -2,7 +2,7 @@
 
 **Data:** 13/11/2026
 **Origem:** `docs/carreira-v2/serie-d/03_Catalogo_e_Integracao.md` e o catálogo `serie_d_40_clubes.json`/`.csv` (40 clubes, edição 2026), sem alteração.
-**Situação:** aguardando as decisões do Murilo (seção 5).
+**Situação:** implementado (13/11), aguardando a revisão do PM. Decisões e relatório na seção 7.
 
 ## 1. O que já existe (motor e v2)
 
@@ -102,3 +102,56 @@ Um PR com commits separados:
 6. simulação de 10 temporadas e medidas.
 
 O relatório fica no handoff. O merge espera a aprovação do Murilo.
+
+## 7. Decisões do Murilo (13/11/2026) e relatório
+
+**Decisões:**
+1. ABC, Retrô, CSA e Tombense continuam na Série C (recomendado). A D ativa tem 36 clubes.
+2. Preliminar em jogo único na rodada 1 (recomendado).
+3. Escudos: "Carregue imagens de site externo" (diferente da recomendação).
+4. Só carreiras novas recebem o catálogo (recomendado).
+
+**O que foi feito:**
+- **Dados:**
+  - `CATALOGO_SERIE_D` (40 clubes) em `public/js/data.js`, gerado e conferido por `scripts/serie_d_catalogo.js`;
+  - sigla e cores ficam "a validar";
+  - força (atk/def) é parâmetro de jogo;
+  - `noJogo` marca os 4 clubes que já estão na C.
+- **Motor:**
+  - Copa com mais de 64 clubes: preliminar com os 2 × (N − 64) clubes de menor divisão, em jogo único, com pênaltis no empate. Os outros entram direto na 1ª fase, sem cabeças de chave.
+  - As edições sem a D seguem iguais: as constantes antigas não mudaram, e a preliminar tem `CUP_PRELIM_ROUND` à parte.
+  - Clube da D:
+    - é encontrado por id;
+    - a força vem do elenco gerado (mesma semente de quem sobe, sem gravar);
+    - o elenco vai para o save só quando o clube cruza com o técnico (`CAREER.elencosSerieD`) e é limpo na virada.
+  - `CAREER.copaHistorico`: as últimas 15 edições, com campeão, vice e a campanha do técnico.
+- **v2:**
+  - Copa:
+    - "Fase preliminar" em jogo único;
+    - "Edições anteriores";
+    - frase de eliminação corrigida.
+  - Calendário com a preliminar.
+  - O adversário da D aparece pelo nome; antes aparecia "Adversário".
+  - Escudo externo que não carrega cai no monograma.
+- **Defeitos antigos expostos e corrigidos:**
+  - o calendário da v2 punha a perna da Copa na quarta-feira antes do domingo da rodada, e a marcava como próximo compromisso. No jogo, ela é disputada depois da rodada;
+  - o Pré-jogo avisava "Semana de 2 jogos" a quem não joga a preliminar.
+
+**Medidas** (`tests/unit/test_motor_serie_d.js`, 10 temporadas sem tela, com a Copa inteira, as pernas do técnico, a virada e salvar/reabrir a cada temporada):
+
+| Medida | Resultado |
+|---|---|
+| Tempo de Copa + virada por temporada | 30 a 75 ms |
+| Memória (heap) | 18 a 38 MB |
+| Save, carreira nova | 573 KB (566 KB antes; +7 KB) |
+| Save, depois da 1ª temporada | cerca de 650 KB, caindo para cerca de 450 KB nas seguintes |
+
+- O limite do save é de cerca de 768 KB. A carreira nova já estava em 74% dele antes desta demanda.
+- O "modo avião" fica para a OFFLINE-001.
+
+**Pendências:**
+- **Escudos:**
+  - as URLs não puderam ser levantadas daqui;
+  - liberei a Wikipédia na rede do ambiente, mas ela recusou as consultas por limite de uso;
+  - quando houver a lista de URLs (uma por id do catálogo), basta preenchê-la em `scripts/serie_d_catalogo.js` (objeto `ESCUDO`) e rodar `--gravar`.
+- **Homologação:** validar em homologação e no iPhone (Murilo).

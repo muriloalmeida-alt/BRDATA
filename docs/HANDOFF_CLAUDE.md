@@ -248,8 +248,16 @@ registrada (MER-06).
 
 SERIED-001 — Catálogo da Série D e integração com a Copa do Brasil
 
-Status: EM PLANEJAMENTO (Fase 1 concluída em 13/11; decisões pedidas ao Murilo)
-Plano: `docs/carreira-v2/serie-d/PLANO_SERIED.md`.
+Status: REVISÃO DO PM NECESSÁRIA (implementado em 13/11; merge só com a aprovação do Murilo)
+Plano: `docs/carreira-v2/serie-d/PLANO_SERIED.md` (seção 7: decisões e relatório).
+Decisões do Murilo (13/11):
+1) ABC, Retrô, CSA e Tombense continuam na Série C;
+2) Copa com a D: preliminar em jogo único na rodada 1;
+3) escudos: "Carregue imagens de site externo" — PENDENTE: as URLs não
+   puderam ser levantadas daqui (a Wikipédia limita as consultas deste
+   ambiente); o campo `logo` está pronto e o jogo mostra o monograma até
+   as URLs chegarem;
+4) só carreiras novas recebem o catálogo.
 Origem: `docs/carreira-v2/serie-d/03_Catalogo_e_Integracao.md` e o
 catálogo `serie_d_40_clubes.json`/`.csv` (40 clubes, edição 2026), sem
 alteração.
