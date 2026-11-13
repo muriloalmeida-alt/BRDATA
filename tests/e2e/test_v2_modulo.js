@@ -38,7 +38,9 @@ const { novaCarreiraV2, saveNoServidor, base } = require("./_v2_carreira");
       if (h1) return "outra:" + h1;
       return "carregando";
     }).catch(() => "carregando");
-    if (passos[passos.length - 1] !== tela) passos.push(tela);
+    // Cada tela nova vai ao log na hora: se o teste esgotar o tempo, o log
+    // mostra onde ele parou (o resumo do item 2 só sai no fim).
+    if (passos[passos.length - 1] !== tela) { passos.push(tela); console.log(`   passo ${k}: ${tela}`); }
     // Para quando a rodada avançou no servidor (amistoso não conta).
     if (tela === "inicio" && jogou && ((await saveNoServidor(page)) || {}).currentRound > save0.currentRound) break;
     if (tela === "partida") { await clicar(".mt-skip"); jogou = true; }
