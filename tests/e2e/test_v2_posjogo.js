@@ -98,7 +98,7 @@ const base = "http://localhost:8787";
   // 3) Resultados da rodada + Ver tabela.
   await waitH1("A disputa continua.");
   await watchMotor();
-  const r3 = await v2.evaluate(() => ({ rows: document.querySelectorAll(".pj-results:first-of-type .pj-res").length, firstMine: document.querySelector(".pj-res").classList.contains("is-mine"), mine: document.querySelectorAll(".pj-res.is-mine").length }));
+  const r3 = await v2.evaluate(() => ({ rows: document.querySelector(".pj-results").querySelectorAll(".pj-res").length, firstMine: document.querySelector(".pj-res").classList.contains("is-mine"), mine: document.querySelectorAll(".pj-res.is-mine").length }));
   await at360("resultados");
   await v2.click(".pj .cal-foot .link-back");
   await v2.waitForSelector(".tb-table", { timeout: 10000 });

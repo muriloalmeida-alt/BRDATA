@@ -61,13 +61,13 @@ export function buildCalendar(career: Career, teamById: (id: string | number) =>
     });
   }
 
-  // Copa do Brasil: quarta da semana da rodada (legado: semana + 2), só
+  // Copa do Brasil: a quarta depois do domingo da rodada (semana + 9), só
   // quando o seu confronto da fase já existe. Na volta o mando inverte e
   // o placar guardado é relativo ao confronto (legado: resolveCupPhase).
   const cup = career.cup;
   if (cup && cup.active && cup.ties) {
     const legs: { phase: string; round: number; leg: 1 | 2 | 0 }[] = cup.expanded
-      ? Object.entries(CUP_ROUNDS_EXPANDED).flatMap(([phase, r]) => [{ phase, round: r.ida, leg: 1 as const }, { phase, round: r.volta, leg: 2 as const }])
+      ? [...(cup.prelim ? [{ phase: "prelim", round: cup.prelim.round || 1, leg: 0 as const }] : []), ...Object.entries(CUP_ROUNDS_EXPANDED).flatMap(([phase, r]) => [{ phase, round: r.ida, leg: 1 as const }, { phase, round: r.volta, leg: 2 as const }])]
       : Object.entries(CUP_ROUNDS).map(([phase, round]) => ({ phase, round, leg: 0 as const }));
     for (const { phase, round, leg } of legs) {
       const tie: CupTie | undefined = (cup.ties[phase] || []).find((t) => String(t.home) === me || String(t.away) === me);
@@ -76,14 +76,18 @@ export function buildCalendar(career: Career, teamById: (id: string | number) =>
       const guest = leg === 2 ? tie.home : tie.away;
       let score: { gh: number; ga: number } | null = null;
       if (leg === 0 && tie.gh != null && tie.ga != null) score = { gh: tie.gh, ga: tie.ga };
+      // Preliminar (jogo único): o placar fica em leg1.
+      if (leg === 0 && phase === "prelim" && tie.leg1 && tie.leg1.gh != null && tie.leg1.ga != null) score = { gh: tie.leg1.gh, ga: tie.leg1.ga };
       if (leg === 1 && tie.leg1 && tie.leg1.gh != null && tie.leg1.ga != null) score = { gh: tie.leg1.gh, ga: tie.leg1.ga };
       if (leg === 2 && tie.leg2 && tie.leg2.gh != null && tie.leg2.ga != null) score = { gh: tie.leg2.ga, ga: tie.leg2.gh };
       const wi = weekOfRound(round);
       items.push({
-        key: `copa-${phase}-${leg}`, sort: (wi >= 0 ? wi : round) * 10 + 2,
-        date: wi >= 0 && cal ? dateOf(cal.year, weeks[wi], 2) : `R${round}`, day: wi >= 0 ? "QUA" : "",
+        // A perna da Copa é jogada depois da rodada (no pós-jogo dela): a
+        // quarta-feira seguinte ao domingo da rodada, depois dela na lista.
+        key: `copa-${phase}-${leg}`, sort: (wi >= 0 ? wi : round) * 10 + 8,
+        date: wi >= 0 && cal ? dateOf(cal.year, weeks[wi], 9) : `R${round}`, day: wi >= 0 ? "QUA" : "",
         where: String(host) === me ? "Casa" : "Fora", home: teamById(host), away: teamById(guest),
-        competition: "copa", label: `Copa do Brasil · ${CUP_PHASE_LABEL[phase]}${leg === 1 ? " · Ida" : leg === 2 ? " · Volta" : ""}`,
+        competition: "copa", label: `Copa do Brasil · ${CUP_PHASE_LABEL[phase]}${leg === 1 ? " · Ida" : leg === 2 ? " · Volta" : phase === "prelim" ? " · Jogo único" : ""}`,
         score, played: score != null,
       });
     }

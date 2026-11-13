@@ -140,6 +140,13 @@ async function newCareer(page, base, email) {
     await advanceSeason();
     return { clubName: CAREER.clubName };
   });
+  // Proposta por jogador (evento sorteado na virada) cobre o menu: recusa,
+  // como nos outros testes do fluxo.
+  await page.waitForTimeout(200);
+  if (await page.evaluate(() => document.getElementById("playerOfferOverlay")?.classList.contains("open"))) {
+    await page.click("#btnPlayerOfferDecline");
+    await page.waitForFunction(() => !document.getElementById("playerOfferOverlay").classList.contains("open"));
+  }
   await page.click("#btnBottomMenu");
   await page.waitForTimeout(150);
   await page.click("#topbarMenu .mt-topbar-menu-item.group[data-submenu='progresso']");

@@ -40,7 +40,7 @@ const { enterGame } = require("./_startup");
     otherHasZeroedStandings: Object.values(CAREER.otherDivisions).every((d) => Object.values(d.standings).every((r) => r.j === 0)),
   }));
   check("1) Carreira nova nasce com o sistema ativado (3x20 + pool de 20 + 2 outras divisões zeradas):",
-    check1.hasDivisionTeams && check1.countA === 20 && check1.countB === 20 && check1.countC === 20 && check1.dPoolCount === 20
+    check1.hasDivisionTeams && check1.countA === 20 && check1.countB === 20 && check1.countC === 20 && check1.dPoolCount === 36
     && JSON.stringify(check1.otherDivisionIds) === JSON.stringify(["serie_b", "serie_c"]) && check1.otherHasSchedule && check1.otherHasZeroedStandings,
     JSON.stringify(check1));
 
@@ -120,7 +120,7 @@ const { enterGame } = require("./_startup");
       prevCompId, newCompId: CURRENT_COMPETITION_ID, divisionChanged: pr.divisionChanged,
       myIdInB: CAREER.divisionTeams.serie_b.some((t) => String(t.id) === String(CAREER.clubId)),
       relegatedAIncludesMe: pr.relegatedA.some((t) => String(t.id) === String(CAREER.clubId)),
-      countsStillOk: CAREER.divisionTeams.brasileirao.length === 20 && CAREER.divisionTeams.serie_b.length === 20 && CAREER.divisionTeams.serie_c.length === 20 && CAREER.serieDPool.length === 20,
+      countsStillOk: CAREER.divisionTeams.brasileirao.length === 20 && CAREER.divisionTeams.serie_b.length === 20 && CAREER.divisionTeams.serie_c.length === 20 && CAREER.serieDPool.length === 36, // SERIED-001: D do catálogo de 2026 (36 ativos)
       promotedBWereInB: pr.promotedB.every((t) => beforeB.has(String(t.id))),
       relegatedAWereInA: pr.relegatedA.every((t) => beforeA.has(String(t.id))),
       dPoolPromotedWereInPool: pr.promotedD.every((t) => beforeDPool.has(String(t.id))),

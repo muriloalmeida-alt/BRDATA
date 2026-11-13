@@ -36,7 +36,10 @@ export function buildPreMatch(career: Career, teamById: (id: string | number) =>
   const out = lineup.rows.flat().filter((s) => s.player && s.out).map((s) => `${shortName(s.player!.name)} (${s.out!.toLowerCase()})`);
   if (out.length) alerts.push({ id: "indisponivel", title: out.length > 1 ? "Titulares indisponíveis" : "Titular indisponível", sub: out.join(", ") });
   const week = career.calendar?.weeks?.[career.calendar.idx];
-  if (week && week.c) {
+  // SERIED-001: na semana da preliminar da Copa, só joga 2 vezes quem está nela.
+  const cup = career.cup;
+  const foraDaPreliminar = !!cup?.prelim && week?.r === (cup.prelim.round || 1) && !(cup.ties?.prelim || []).some((t) => String(t.home) === me || String(t.away) === me);
+  if (week && week.c && !foraDaPreliminar) {
     const squad = career.squad || [];
     const tired = starters.map((id) => (id ? squad.find((p) => p.id === id) : undefined)).filter((p): p is NonNullable<typeof p> => !!p && (p.condition == null ? 100 : p.condition) < 75);
     alerts.push({

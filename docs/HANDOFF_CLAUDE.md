@@ -198,7 +198,8 @@ testes da partida, do Elenco, de foco e de sistema (10/10).
 
 FASE1-MER — Fase 1: mercado, empréstimos e contratação
 
-Status: REVISÃO DO PM NECESSÁRIA (implementado em 13/11, PR único; merge só com a aprovação do Murilo).
+Status: APROVADO (Murilo, 13/11/2026, "APROVADO"; PR #110). Balanceamento
+mantido como calibrado (Murilo, 13/11: "Pode manter o balanceamento").
 Plano: `docs/carreira-v2/fase1/PLANO_MER.md`.
 Calibração: `docs/carreira-v2/fase1/CALIBRACAO_MER.md`. Três pontos de
 balanceamento ficaram para decisão do PM e não foram alterados:
@@ -247,7 +248,19 @@ registrada (MER-06).
 
 SERIED-001 — Catálogo da Série D e integração com a Copa do Brasil
 
-Status: BLOQUEADO (aguarda a Fase 1: ordem de prioridade decidida pelo Murilo, 12/11)
+Status: REVISÃO DO PM NECESSÁRIA (implementado em 13/11; merge só com a aprovação do Murilo)
+Plano: `docs/carreira-v2/serie-d/PLANO_SERIED.md` (seção 7: decisões e relatório).
+Decisões do Murilo (13/11):
+1) ABC, Retrô, CSA e Tombense continuam na Série C;
+2) Copa com a D: preliminar em jogo único na rodada 1;
+3) escudos: revista em 13/11 para "Faça uma cópia local das logos obtidas
+   na Wikipédia. Para que o jogo funcione offline". Feito:
+   - os 40 escudos estão em `public/img/teams/` e no pré-carregamento do
+     service worker;
+   - a origem está em `docs/carreira-v2/serie-d/escudos_origem.json`;
+   - atenção: 20 dos 40 vêm da Wikipédia em português, onde são de uso
+     restrito (fair use), e precisam de decisão do PM antes de distribuir;
+4) só carreiras novas recebem o catálogo.
 Origem: `docs/carreira-v2/serie-d/03_Catalogo_e_Integracao.md` e o
 catálogo `serie_d_40_clubes.json`/`.csv` (40 clubes, edição 2026), sem
 alteração.

@@ -203,6 +203,10 @@ const ROTEIRO = (seed) => `(async () => {
   }
   // Copa expandida: resolve as pernas; a do seu time vai ao vivo.
   initDivisionSystem();
+  // SERIED-001 (13/11/2026): sem a Série D na Copa, que ganhou a fase
+  // preliminar (a cópia congelada não a conhece; teste próprio em
+  // tests/unit/test_motor_serie_d.js).
+  if (CAREER.serieDPool) CAREER.serieDPool = [];
   setupCup();
   for (let passo = 0; passo < 6 && CAREER.cup.phase !== "done"; passo++) {
     const cup = CAREER.cup;

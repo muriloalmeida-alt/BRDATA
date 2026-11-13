@@ -112,6 +112,7 @@ export interface Career {
   boardDecision?: string | null; lastBoardRequestRound?: number | null;
   calendar?: { year: number; idx: number; weeks: CalendarWeek[]; friendlies?: Friendly[] };
   divisionTeams?: Record<string, Team[]>;
+  serieDPool?: Team[];
   notifications?: import("./week.ts").Notice[];
 }
 

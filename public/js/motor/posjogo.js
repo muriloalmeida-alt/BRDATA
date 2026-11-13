@@ -18,7 +18,7 @@
 import { carreiraAtual, timePorId, partidaAtual, definirPartida, definirColetivaPendente, definirColetivaEncadeada } from "./estado.js";
 import { pushNotification } from "./registro.js";
 import { ambiente, calendarTurnKey, leagueSquadFor, pushLedger } from "./semana.js";
-import { applyConditionRecovery, finalizeCupPhaseExpanded, pickCpuXI, settleCupTieOutcome } from "./fechamento.js";
+import { applyConditionRecovery, decidirPrelimDoTecnico, finalizeCupPhaseExpanded, finalizePrelim, pickCpuXI, settleCupTieOutcome } from "./fechamento.js";
 import { pressLibraryEntry, computeTicketRevenue, applyNaturalAgingEvolution } from "./aovivo.js";
 
 const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
@@ -110,7 +110,9 @@ export function encerrarPernaCopa() {
   applyNaturalAgingEvolution(lm.isHome ? lm.lastHsStarters : lm.lastAsStarters);
   CAREER.cup.pendingLiveLeg = null;
   let finalResult = null;
-  if (leg === 2) finalResult = finalizeCupPhaseExpanded(phase, lm.round, false);
+  // SERIED-001: a preliminar é jogo único (empate vai aos pênaltis).
+  if (phase === "prelim") { decidirPrelimDoTecnico(tie); finalResult = finalizePrelim(lm.round, false); }
+  else if (leg === 2) finalResult = finalizeCupPhaseExpanded(phase, lm.round, false);
   return { legScore, summaryEvents, finalResult };
 }
 

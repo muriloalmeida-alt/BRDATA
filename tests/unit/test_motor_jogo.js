@@ -85,6 +85,10 @@ for (const nome of ["renderGoalHighlight", "playWhistle", "playGoal", "startCrow
 const ESCALACAO_SRC = fs.readFileSync(path.join(__dirname, "..", "..", "public", "js", "motor", "escalacao.js"), "utf8").replace(/^export /gm, "");
 const ESC_TESTE = `var ESC_TESTE = (function () { ${ESCALACAO_SRC}; return { completarEscalacao }; })();`;
 const ROTEIRO = (seed) => `(async () => {
+  // SERIED-001 (13/11/2026): a Série D com 4 clubes deixa a Copa com 64 (sem a
+  // fase preliminar, que a cópia congelada não conhece). A Copa com a D tem
+  // teste próprio: tests/unit/test_motor_serie_d.js.
+  if (typeof DEMO_TEAMS_SERIE_D !== "undefined") DEMO_TEAMS_SERIE_D.splice(4);
   let s = ${seed} >>> 0; const r = () => { s |= 0; s = (s + 0x6D2B79F5) | 0; let t = Math.imul(s ^ (s >>> 15), 1 | s); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
   const pick = (l) => (l && l.length ? l[Math.floor(r() * l.length)] : undefined);
   const espera = async () => { for (let k = 0; k < 8; k++) await null; };

@@ -80,7 +80,7 @@ test("Copa: fora, viva (formato expandido), eliminada, campeã — mesmos textos
   ]);
   c.cup = { active: true, humanAlive: false, humanEliminatedStage: "qf", humanEliminatedAtRound: 14, ties: { r16: [{ home: "me", away: "t2", gh: 1, ga: 1, penalties: true, winner: "me" }] } };
   const e = buildCup(c, byId);
-  assert.equal(e.status, "Eliminado da Copa do Brasil nas Quartas de final (rodada 14).");
+  assert.equal(e.status, "Eliminado da Copa do Brasil nas quartas de final (rodada 14).");
   assert.deepEqual(e.history[0], { phase: "Oitavas de final", opp: byId("t2"), score: "1 x 1 (pên.)", note: "Classificado", won: true });
   c.cup = { active: true, expanded: true, humanAlive: true, phase: "fase1", seeds: ["me", "t1"], ties: { fase1: [{ home: "t3", away: "t4", leg1: { gh: null, ga: null } }] } };
   assert.equal(buildCup(c, byId).status, "Fase atual: 1ª fase. Seu clube é cabeça de chave e entra na 2ª fase (rodada 9).");

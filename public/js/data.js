@@ -234,41 +234,66 @@ const DEMO_TEAMS_SERIE_C = [
   { id: "mga", name: "Maringá",         short: "MGA", uf: "PR", c1: "#003DA5", c2: "#FFFFFF", atk: 1.02, def: 1.29, venue: { name: "Willie Davids", city: "Maringá" } },
 ];
 
-/* 20 clubes REPOSITÓRIO da Série D (pedido do usuário: "reinicie o
-   tema do rebaixamento") — NUNCA jogam partida nenhuma neste app
-   (mesmo motivo já documentado pra Série D no site principal: formato
-   real em 8 grupos + mata-mata, incompatível com o motor de pontos
-   corridos, ver engine.js/competitions.js) — só existem como
-   repositório de nomes pra virada de temporada do Modo Carreira: 4
-   times de baixo da Série C descem pra esse pool, 4 times de dentro
-   dele sobem sorteados pra Série C (ver applyPromotionRelegation em
-   carreira.js). Por isso NÃO entra em DEMO_DATA_BY_COMPETITION (não é
-   uma competição carregável/jogável) — atk/def só decidem a força do
-   elenco fictício que ganham ao serem promovidos (buildLeagueSquad já
-   cai pro catálogo gerado quando não há fonte de dado real, mesmo
-   fallback de sempre). */
-const DEMO_TEAMS_SERIE_D = [
-  { id: "mna", name: "Manaus FC",              short: "MNA", uf: "AM", c1: "#0057B8", c2: "#FFFFFF", atk: 1.18, def: 1.06, venue: { name: "Ismael Benigno", city: "Manaus" } },
-  { id: "joi", name: "Joinville",              short: "JOI", uf: "SC", c1: "#DC2626", c2: "#1A1A1A", atk: 1.15, def: 1.09, venue: { name: "Arena Joinville", city: "Joinville" } },
-  { id: "gam", name: "Gama",                   short: "GAM", uf: "DF", c1: "#1A1A1A", c2: "#FFFFFF", atk: 1.13, def: 1.11, venue: { name: "Bezerrão", city: "Brasília" } },
-  { id: "apr", name: "Aparecidense",           short: "APR", uf: "GO", c1: "#003DA5", c2: "#FFFFFF", atk: 1.11, def: 1.13, venue: { name: "Noroeste Goiano", city: "Aparecida de Goiânia" } },
-  { id: "mad", name: "Marcílio Dias",          short: "MAD", uf: "SC", c1: "#DC2626", c2: "#1A1A1A", atk: 1.09, def: 1.15, venue: { name: "Vidal Ramos", city: "Itajaí" } },
-  { id: "rbr", name: "Rio Branco-AC",          short: "RBR", uf: "AC", c1: "#1E7A3D", c2: "#FFFFFF", atk: 1.08, def: 1.17, venue: { name: "Arena da Floresta", city: "Rio Branco" } },
-  { id: "bsl", name: "Brasiliense",            short: "BSL", uf: "DF", c1: "#FFC93C", c2: "#1A1A1A", atk: 1.07, def: 1.19, venue: { name: "Boca do Jacaré", city: "Taguatinga" } },
-  { id: "rbs", name: "Real Brasília",          short: "RBS", uf: "DF", c1: "#003DA5", c2: "#FFFFFF", atk: 1.06, def: 1.21, venue: { name: "Serejão", city: "Ceilândia" } },
-  { id: "srr", name: "São Raimundo-RR",        short: "SRR", uf: "RR", c1: "#DC2626", c2: "#FFFFFF", atk: 1.05, def: 1.23, venue: { name: "Canarinho", city: "Boa Vista" } },
-  { id: "pds", name: "Princesa do Solimões",   short: "PSO", uf: "AM", c1: "#0B6E33", c2: "#FFFFFF", atk: 1.04, def: 1.25, venue: { name: "Ismael Benigno", city: "Manacapuru" } },
-  { id: "cbr", name: "Camboriú",               short: "CAM", uf: "SC", c1: "#1E3A8A", c2: "#FFFFFF", atk: 1.03, def: 1.27, venue: { name: "Ariosto Filho", city: "Balneário Camboriú" } },
-  { id: "jac", name: "Jacuipense",             short: "JAC", uf: "BA", c1: "#DC2626", c2: "#1A1A1A", atk: 1.02, def: 1.29, venue: { name: "Nilton Santos", city: "Riachão do Jacuípe" } },
-  { id: "ala", name: "Atlético de Alagoinhas", short: "ALA", uf: "BA", c1: "#1A1A1A", c2: "#FFC93C", atk: 1.01, def: 1.31, venue: { name: "Joia da Princesa", city: "Alagoinhas" } },
-  { id: "sgp", name: "Sergipe",                short: "SGP", uf: "SE", c1: "#0057B8", c2: "#FFFFFF", atk: 1.00, def: 1.33, venue: { name: "Etelvino Mendonça", city: "Aracaju" } },
-  { id: "ctr", name: "Central",                short: "CEN", uf: "PE", c1: "#1E7A3D", c2: "#FFFFFF", atk: 0.98, def: 1.35, venue: { name: "Central de Caruaru", city: "Caruaru" } },
-  { id: "ptl", name: "Petrolina",              short: "PTL", uf: "PE", c1: "#DC2626", c2: "#FFFFFF", atk: 0.97, def: 1.37, venue: { name: "Adauto Moraes", city: "Petrolina" } },
-  { id: "tze", name: "Treze",                  short: "TRZ", uf: "PB", c1: "#1A1A1A", c2: "#FFFFFF", atk: 0.96, def: 1.39, venue: { name: "Presidente Vargas", city: "Campina Grande" } },
-  { id: "trm", name: "Trem-AP",                short: "TRE", uf: "AP", c1: "#003DA5", c2: "#FFC93C", atk: 0.94, def: 1.41, venue: { name: "Zerão", city: "Macapá" } },
-  { id: "gen", name: "Genus",                  short: "GEN", uf: "AP", c1: "#0B6E33", c2: "#FFFFFF", atk: 0.92, def: 1.43, venue: { name: "Zerão", city: "Macapá" } },
-  { id: "brz", name: "Barra-SC",               short: "BAR", uf: "SC", c1: "#DC2626", c2: "#1A1A1A", atk: 0.90, def: 1.45, venue: { name: "Marcílio de Brito", city: "Barra Velha" } },
+/* Série D: repositório de clubes da virada de temporada do Modo Carreira
+   (4 de baixo da Série C descem para cá, 4 daqui sobem sorteados — ver
+   applyPromotionRelegation, motor/virada.js). Não é liga jogável (o
+   formato real, em grupos + mata-mata, não cabe no motor de pontos
+   corridos), por isso não entra em DEMO_DATA_BY_COMPETITION. Desde a
+   SERIED-001 os clubes da D jogam a Copa do Brasil (fase preliminar) e o
+   conjunto é o catálogo real de 2026 (abaixo). atk/def decidem a força
+   na Copa e a do elenco fictício que ganham ao subir. */
+/* SERIED-001 (13/11/2026) — catálogo da Série D (40 participantes da edição
+   2026), gerado por scripts/serie_d_catalogo.js a partir de
+   docs/carreira-v2/serie-d/serie_d_40_clubes.json (fonte: CBF, em cada
+   registro do JSON). Elencos fictícios. Sigla e cores "a validar";
+   atk/def são PARÂMETROS DE JOGO (não dado real). `noJogo`: o clube já está
+   no jogo com outro id (Série C) e não entra de novo pela D. Escudo: cópia
+   local (`logo`, public/img/teams/; origem em escudos_origem.json); sem ela,
+   monograma provisório. */
+const CATALOGO_SERIE_D = [
+  {id: "manaus-am",name: "Manaus FC",short: "MNA",uf: "AM",cidade: "Manaus",c1: "#0057B8",c2: "#FFFFFF",atk: 1.18,def: 1.06,venue: {name: "Arena da Amazônia",city: "Manaus"},logo: "img/teams/manaus-am.png",escudo: "local"},
+  {id: "monte-roraima-rr",name: "Monte Roraima",short: "MRR",uf: "RR",cidade: "Boa Vista",c1: "#0B6E33",c2: "#FFFFFF",atk: 0.96,def: 1.36,venue: {name: "Canarinho",city: "Boa Vista"},logo: "img/teams/monte-roraima-rr.png",escudo: "local"},
+  {id: "sao-raimundo-rr",name: "São Raimundo",short: "SRR",uf: "RR",cidade: "Boa Vista",c1: "#DC2626",c2: "#FFFFFF",atk: 1.05,def: 1.23,venue: {name: "Canarinho",city: "Boa Vista"},logo: "img/teams/sao-raimundo-rr.png",escudo: "local"},
+  {id: "nacional-am",name: "Nacional-AM",short: "NAC",uf: "AM",cidade: "Manaus",c1: "#003DA5",c2: "#FFFFFF",atk: 1.06,def: 1.22,venue: {name: "Arena da Amazônia",city: "Manaus"},logo: "img/teams/nacional-am.png",escudo: "local"},
+  {id: "porto-velho-ro",name: "Porto Velho",short: "PVE",uf: "RO",cidade: "Porto Velho",c1: "#1E3A8A",c2: "#FFFFFF",atk: 0.99,def: 1.31,venue: {name: "Aluízio Ferreira",city: "Porto Velho"},logo: "img/teams/porto-velho-ro.png",escudo: "local"},
+  {id: "independencia-ac",name: "Independência",short: "IND",uf: "AC",cidade: "Rio Branco",c1: "#DC2626",c2: "#FFFFFF",atk: 0.97,def: 1.34,venue: {name: "Arena da Floresta",city: "Rio Branco"},logo: "img/teams/independencia-ac.png",escudo: "local"},
+  {id: "araguaina-to",name: "Araguaína",short: "ARA",uf: "TO",cidade: "Araguaína",c1: "#DC2626",c2: "#FFFFFF",atk: 0.98,def: 1.33,venue: {name: "Mirandão",city: "Araguaína"},logo: "img/teams/araguaina-to.png",escudo: "local"},
+  {id: "aparecidense-go",name: "Aparecidense",short: "APR",uf: "GO",cidade: "Aparecida de Goiânia",c1: "#003DA5",c2: "#FFFFFF",atk: 1.11,def: 1.13,venue: {name: "Aníbal Batista de Toledo",city: "Aparecida de Goiânia"},logo: "img/teams/aparecidense-go.png",escudo: "local"},
+  {id: "brasiliense-df",name: "Brasiliense",short: "BSL",uf: "DF",cidade: "Taguatinga",c1: "#FFC93C",c2: "#1A1A1A",atk: 1.07,def: 1.19,venue: {name: "Boca do Jacaré",city: "Taguatinga"},logo: "img/teams/brasiliense-df.png",escudo: "local"},
+  {id: "gama-df",name: "Gama",short: "GAM",uf: "DF",cidade: "Gama",c1: "#1A1A1A",c2: "#FFFFFF",atk: 1.13,def: 1.11,venue: {name: "Bezerrão",city: "Gama"},logo: "img/teams/gama-df.svg",escudo: "local"},
+  {id: "luverdense-mt",name: "Luverdense",short: "LUV",uf: "MT",cidade: "Lucas do Rio Verde",c1: "#1E7A3D",c2: "#FFFFFF",atk: 1.04,def: 1.25,venue: {name: "Passo das Emas",city: "Lucas do Rio Verde"},logo: "img/teams/luverdense-mt.png",escudo: "local"},
+  {id: "ceilandia-df",name: "Ceilândia",short: "CEI",uf: "DF",cidade: "Ceilândia",c1: "#DC2626",c2: "#1A1A1A",atk: 1.01,def: 1.29,venue: {name: "Abadião",city: "Ceilândia"},logo: "img/teams/ceilandia-df.png",escudo: "local"},
+  {id: "mixto-mt",name: "Mixto",short: "MIX",uf: "MT",cidade: "Cuiabá",c1: "#1A1A1A",c2: "#FFFFFF",atk: 0.98,def: 1.32,venue: {name: "Presidente Dutra",city: "Cuiabá"},logo: "img/teams/mixto-mt.svg",escudo: "local"},
+  {id: "aguia-maraba-pa",name: "Águia de Marabá",short: "AGU",uf: "PA",cidade: "Marabá",c1: "#003DA5",c2: "#FFFFFF",atk: 1.03,def: 1.26,venue: {name: "Zinho Oliveira",city: "Marabá"},logo: "img/teams/aguia-maraba-pa.png",escudo: "local"},
+  {id: "tocantinopolis-to",name: "Tocantinópolis",short: "TOC",uf: "TO",cidade: "Tocantinópolis",c1: "#1E3A8A",c2: "#FFFFFF",atk: 0.95,def: 1.38,venue: {name: "João Ribeiro",city: "Tocantinópolis"},logo: "img/teams/tocantinopolis-to.svg",escudo: "local"},
+  {id: "imperatriz-ma",name: "Imperatriz",short: "IMP",uf: "MA",cidade: "Imperatriz",c1: "#1E3A8A",c2: "#FFFFFF",atk: 1,def: 1.3,venue: {name: "Frei Epifânio",city: "Imperatriz"},logo: "img/teams/imperatriz-ma.png",escudo: "local"},
+  {id: "sampaio-correa-ma",name: "Sampaio Corrêa",short: "SAM",uf: "MA",cidade: "São Luís",c1: "#FFC93C",c2: "#1E7A3D",atk: 1.12,def: 1.14,venue: {name: "Castelão",city: "São Luís"},logo: "img/teams/sampaio-correa-ma.png",escudo: "local"},
+  {id: "moto-club-ma",name: "Moto Club",short: "MOT",uf: "MA",cidade: "São Luís",c1: "#DC2626",c2: "#1A1A1A",atk: 1.02,def: 1.27,venue: {name: "Castelão",city: "São Luís"},logo: "img/teams/moto-club-ma.png",escudo: "local"},
+  {id: "parnahyba-pi",name: "Parnahyba",short: "PAR",uf: "PI",cidade: "Parnaíba",c1: "#0057B8",c2: "#FFFFFF",atk: 0.97,def: 1.35,venue: {name: "Pedro Alelaf",city: "Parnaíba"},logo: "img/teams/parnahyba-pi.png",escudo: "local"},
+  {id: "ferroviario-ce",name: "Ferroviário",short: "FER",uf: "CE",cidade: "Fortaleza",c1: "#DC2626",c2: "#1A1A1A",atk: 1.1,def: 1.16,venue: {name: "Presidente Vargas",city: "Fortaleza"},logo: "img/teams/ferroviario-ce.png",escudo: "local"},
+  {id: "abc-rn",name: "ABC",short: "ABC",uf: "RN",cidade: "Natal",c1: "#1A1A1A",c2: "#FFFFFF",atk: 1.1,def: 1.15,venue: {name: "Frasqueirão",city: "Natal"},logo: "img/teams/abc-rn.png",escudo: "local",noJogo: "abc"},
+  {id: "america-rn",name: "América-RN",short: "AME",uf: "RN",cidade: "Natal",c1: "#DC2626",c2: "#FFFFFF",atk: 1.08,def: 1.18,venue: {name: "Arena das Dunas",city: "Natal"},logo: "img/teams/america-rn.svg",escudo: "local"},
+  {id: "sousa-pb",name: "Sousa",short: "SOU",uf: "PB",cidade: "Sousa",c1: "#FFC93C",c2: "#1E7A3D",atk: 0.99,def: 1.31,venue: {name: "Marizão",city: "Sousa"},logo: "img/teams/sousa-pb.png",escudo: "local"},
+  {id: "treze-pb",name: "Treze",short: "TRZ",uf: "PB",cidade: "Campina Grande",c1: "#1A1A1A",c2: "#FFFFFF",atk: 0.96,def: 1.39,venue: {name: "Amigão",city: "Campina Grande"},logo: "img/teams/treze-pb.svg",escudo: "local"},
+  {id: "retro-pe",name: "Retrô",short: "RET",uf: "PE",cidade: "Camaragibe",c1: "#1E3A8A",c2: "#FFC93C",atk: 1.05,def: 1.22,venue: {name: "Arena Pernambuco",city: "São Lourenço da Mata"},logo: "img/teams/retro-pe.png",escudo: "local",noJogo: "ret"},
+  {id: "sergipe-se",name: "Sergipe",short: "SGP",uf: "SE",cidade: "Aracaju",c1: "#0057B8",c2: "#FFFFFF",atk: 1,def: 1.33,venue: {name: "Arena Batistão",city: "Aracaju"},logo: "img/teams/sergipe-se.png",escudo: "local"},
+  {id: "asa-al",name: "ASA",short: "ASA",uf: "AL",cidade: "Arapiraca",c1: "#1A1A1A",c2: "#FFFFFF",atk: 1.03,def: 1.26,venue: {name: "Coaracy Fonseca",city: "Arapiraca"},logo: "img/teams/asa-al.png",escudo: "local"},
+  {id: "csa-al",name: "CSA",short: "CSA",uf: "AL",cidade: "Maceió",c1: "#003DA5",c2: "#FFFFFF",atk: 1.09,def: 1.17,venue: {name: "Rei Pelé",city: "Maceió"},logo: "img/teams/csa-al.png",escudo: "local",noJogo: "csa"},
+  {id: "juazeirense-ba",name: "Juazeirense",short: "JUA",uf: "BA",cidade: "Juazeiro",c1: "#DC2626",c2: "#FFFFFF",atk: 1.01,def: 1.28,venue: {name: "Adauto Moraes",city: "Juazeiro"},logo: "img/teams/juazeirense-ba.png",escudo: "local"},
+  {id: "operario-ms",name: "Operário-MS",short: "OPE",uf: "MS",cidade: "Campo Grande",c1: "#1A1A1A",c2: "#FFFFFF",atk: 0.98,def: 1.32,venue: {name: "Jacques da Luz",city: "Campo Grande"},logo: "img/teams/operario-ms.png",escudo: "local"},
+  {id: "uberlandia-mg",name: "Uberlândia",short: "UBE",uf: "MG",cidade: "Uberlândia",c1: "#1E7A3D",c2: "#FFFFFF",atk: 1.02,def: 1.27,venue: {name: "Parque do Sabiá",city: "Uberlândia"},logo: "img/teams/uberlandia-mg.png",escudo: "local"},
+  {id: "tombense-mg",name: "Tombense",short: "TOM",uf: "MG",cidade: "Tombos",c1: "#DC2626",c2: "#FFFFFF",atk: 1.06,def: 1.21,venue: {name: "Antônio de Almeida",city: "Tombos"},logo: "img/teams/tombense-mg.png",escudo: "local",noJogo: "tbe"},
+  {id: "vitoria-es",name: "Vitória-ES",short: "VES",uf: "ES",cidade: "Vitória",c1: "#003DA5",c2: "#FFFFFF",atk: 0.99,def: 1.3,venue: {name: "Salvador Costa",city: "Vitória"},logo: "img/teams/vitoria-es.png",escudo: "local"},
+  {id: "portuguesa-sp",name: "Portuguesa-SP",short: "POR",uf: "SP",cidade: "São Paulo",c1: "#DC2626",c2: "#1E7A3D",atk: 1.11,def: 1.15,venue: {name: "Canindé",city: "São Paulo"},logo: "img/teams/portuguesa-sp.svg",escudo: "local"},
+  {id: "xv-piracicaba-sp",name: "XV de Piracicaba",short: "XVP",uf: "SP",cidade: "Piracicaba",c1: "#1A1A1A",c2: "#FFFFFF",atk: 1.04,def: 1.24,venue: {name: "Barão da Serra Negra",city: "Piracicaba"},logo: "img/teams/xv-piracicaba-sp.png",escudo: "local"},
+  {id: "nova-iguacu-rj",name: "Nova Iguaçu",short: "NIG",uf: "RJ",cidade: "Nova Iguaçu",c1: "#F97316",c2: "#FFFFFF",atk: 1.05,def: 1.23,venue: {name: "Jânio Moraes",city: "Nova Iguaçu"},logo: "img/teams/nova-iguacu-rj.png",escudo: "local"},
+  {id: "cascavel-pr",name: "FC Cascavel",short: "CAS",uf: "PR",cidade: "Cascavel",c1: "#FFC93C",c2: "#1A1A1A",atk: 1.03,def: 1.25,venue: {name: "Olímpico Regional",city: "Cascavel"},logo: "img/teams/cascavel-pr.png",escudo: "local"},
+  {id: "cianorte-pr",name: "Cianorte",short: "CIA",uf: "PR",cidade: "Cianorte",c1: "#003DA5",c2: "#FFFFFF",atk: 1,def: 1.29,venue: {name: "Albino Turbay",city: "Cianorte"},logo: "img/teams/cianorte-pr.png",escudo: "local"},
+  {id: "joinville-sc",name: "Joinville",short: "JOI",uf: "SC",cidade: "Joinville",c1: "#DC2626",c2: "#1A1A1A",atk: 1.15,def: 1.09,venue: {name: "Arena Joinville",city: "Joinville"},logo: "img/teams/joinville-sc.png",escudo: "local"},
+  {id: "brasil-pelotas-rs",name: "Brasil de Pelotas",short: "BRP",uf: "RS",cidade: "Pelotas",c1: "#DC2626",c2: "#1A1A1A",atk: 1.07,def: 1.2,venue: {name: "Bento Freitas",city: "Pelotas"},logo: "img/teams/brasil-pelotas-rs.svg",escudo: "local"},
 ];
+// A D ativa de uma carreira nova: o catálogo sem quem já está no jogo.
+const DEMO_TEAMS_SERIE_D = CATALOGO_SERIE_D.filter((t) => !t.noJogo);
 
 /* Jogadores de exemplo (fictícios) — elenco de 24 por time (3
    goleiros, 8 zagueiros/laterais, 7 meias, 6 atacantes — composição

@@ -142,6 +142,9 @@ export function timePorId(id) {
   if (own) return { ...own, competitionId: mundo.competicaoAtual };
   const other = mundo.todosTimes.find((t) => String(t.id) === String(id));
   if (other) return other;
+  // SERIED-001: clubes da Série D (jogam a Copa do Brasil, fora das ligas).
+  const d = carreira && (carreira.serieDPool || []).find((t) => String(t.id) === String(id));
+  if (d) return d;
   return { id, name: `Time #${id}`, short: String(id).slice(0, 3).toUpperCase(), c1: "#8892A0", c2: "#333" };
 }
 export function mediaOverall(lista) {
@@ -151,5 +154,12 @@ export function mediaOverall(lista) {
 // Força média do elenco de um clube (o seu: só o principal).
 export function forcaMediaDoElenco(clubId) {
   if (String(clubId) === String(carreira.clubId)) return mediaOverall(carreira.squad.filter((p) => p.origin === "principal"));
-  return mediaOverall(carreira.leagueSquads[String(clubId)] || []);
+  const sq = carreira.leagueSquads[String(clubId)] || (carreira.elencosSerieD || {})[String(clubId)];
+  if (sq && sq.length) return mediaOverall(sq);
+  // SERIED-001: clube da Série D sem elenco no save — a força vem do elenco
+  // gerado para ele (o mesmo que ganharia ao subir), sem gravar.
+  const d = (carreira.serieDPool || []).find((t) => String(t.id) === String(clubId));
+  return d && ganchosMundo.elencoGerado ? mediaOverall(ganchosMundo.elencoGerado(d)) : 0;
 }
+// Ganchos preenchidos por módulos carregados depois (motor/virada.js).
+export const ganchosMundo = { elencoGerado: null };

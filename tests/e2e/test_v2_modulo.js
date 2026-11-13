@@ -31,6 +31,8 @@ const { novaCarreiraV2, saveNoServidor, base } = require("./_v2_carreira");
     const tela = await page.evaluate(() => {
       const h1 = (document.querySelector("h1") || {}).textContent || "";
       if (document.querySelector(".mt-skip")) return "partida";
+      // FASE1-ESC: lesão/suspensão (ex.: num amistoso) bloqueia o início até completar.
+      if (document.getElementById("mt-blocked-t")) return "bloqueada";
       if (document.querySelector('.pz-foot .cta[data-save="saved"]:not([aria-disabled])')) return "resultado";
       if (document.querySelector(".pj-answer")) return document.querySelector(".pj-effect") ? "coletiva-ok" : "coletiva";
       if (document.querySelector(".pm-cta")) return "prejogo";
@@ -38,10 +40,13 @@ const { novaCarreiraV2, saveNoServidor, base } = require("./_v2_carreira");
       if (h1) return "outra:" + h1;
       return "carregando";
     }).catch(() => "carregando");
-    if (passos[passos.length - 1] !== tela) passos.push(tela);
+    // Cada tela nova vai ao log na hora: se o teste esgotar o tempo, o log
+    // mostra onde ele parou (o resumo do item 2 só sai no fim).
+    if (passos[passos.length - 1] !== tela) { passos.push(tela); console.log(`   passo ${k}: ${tela}`); }
     // Para quando a rodada avançou no servidor (amistoso não conta).
     if (tela === "inicio" && jogou && ((await saveNoServidor(page)) || {}).currentRound > save0.currentRound) break;
     if (tela === "partida") { await clicar(".mt-skip"); jogou = true; }
+    else if (tela === "bloqueada") await page.getByRole("button", { name: "Completar automaticamente" }).click({ timeout: 2000 }).catch(() => {});
     else if (tela === "resultado") await clicar('.pz-foot .cta[data-save="saved"]');
     else if (tela === "coletiva") await clicar(".pj-answer");
     else if (tela === "coletiva-ok") await clicar(".pj .cal-foot .cta");
