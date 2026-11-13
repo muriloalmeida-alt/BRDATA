@@ -199,6 +199,39 @@ export function resolveLiveChunk() {
   else advanceAfterChunk();
 }
 
+// OFFLINE-001 (13/11/2026): checkpoint da partida DA LIGA em andamento, a
+// cada desenho da partida (bloco, intervalo, substituição, tática), no aparelho (ambiente.checkpoint, dado pelo
+// hospedeiro motor/v2.js -> repositorio.guardarPartida). Fechar o app no
+// meio do jogo não perde o que já foi jogado nem permite começar de novo
+// para sortear outro placar: ao reabrir, a partida volta pausada no mesmo
+// minuto (retomarPartidaSalva). Perna da Copa e amistoso ficam de fora (já
+// voltam pelo caminho de sempre: pendingLiveLeg / semana do amistoso).
+// O clone é feito aqui, na hora (o próximo bloco não pode mudar a cópia).
+export function checkpointPartida() {
+  const lm = partidaAtual();
+  if (!lm || lm.finished || lm.skipping || lm.cupContext || lm.friendlyContext || typeof ambiente.checkpoint !== "function") return;
+  try {
+    // eslint-disable-next-line no-unused-vars
+    const { timerId, goalHighlightOnDone, goalHighlightTimer, goalHighlightQueue, ...resto } = lm;
+    const dados = structuredClone({ career: carreiraAtual(), lm: resto });
+    ambiente.checkpoint(dados);
+  } catch (_) { /* sem checkpoint: segue o jogo */ }
+}
+// Volta a partida guardada por checkpointPartida(): a carreira daquele
+// momento (com as mudanças feitas no jogo) e a partida, pausada.
+export function retomarPartidaSalva(dados) {
+  if (!dados || !dados.career || !dados.lm) return false;
+  estado.definirCarreira(dados.career);
+  // O checkpoint é tirado logo depois do bloco: se foi o dos 45', a
+  // partida volta no intervalo (o 2º tempo espera "Prosseguir").
+  const ultimoMinuto = dados.lm.chunkIndex > 0 ? LIVE_MATCH_CHUNK_MINUTES[dados.lm.chunkIndex - 1] : 0;
+  if (ultimoMinuto === 45) dados.lm.halftime = true;
+  definirPartida({ ...dados.lm, paused: true, timerId: null, goalHighlightQueue: [], goalHighlightOnDone: null, goalHighlightTimer: null, skipping: false, retomada: true });
+  ponte.fim = null;
+  ponteAvisar();
+  return true;
+}
+
 export function queueGoalHighlights(goals, onDone) {
   const lm = partidaAtual();
   lm.goalHighlightQueue = goals.slice();

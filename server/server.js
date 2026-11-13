@@ -340,6 +340,18 @@ function loadDotEnv() {
   });
 }
 
+// OFFLINE-001: catálogo da carreira para jogar sem rede, com as mesmas
+// fontes e chaves de cache das rotas /api/career/* abaixo.
+const catalogoOffline = require("./src/catalogoOffline").criarCatalogoOffline({
+  hasKey: () => liveModeEnabled(),
+  season: LIVE_SEASON,
+  resolverCompeticao: (id) => resolveCompetition({ authUser: null }, new URLSearchParams({ competition: id }), { skipPlanCheck: true }),
+  buscarTimes: (comp, season) => withCache(`teams:${comp.id}:${season}`, TTL.teams, () => dataProvider.getTeams({ leagueId: comp.leagueId, season })),
+  buscarTabela: (comp, season) => withCache(`standings:${comp.id}:${season}`, TTL.standings, () => dataProvider.getStandings({ leagueId: comp.leagueId, season })),
+  buscarJogadores: (comp, teamId, season) => withCache(`teamplayers:${comp.id}:${teamId}:${season}`, TTL.teams, () => dataProvider.getTeamPlayers({ teamId, season, leagueId: comp.leagueId })),
+  log: (m) => console.warn(m),
+});
+
 async function withCache(key, ttl, fetcher) {
   const hit = cache.get(key);
   if (hit) return hit;
@@ -495,6 +507,9 @@ const MIME = {
   // Cenas da Carreira 2.0 (public/carreira/assets-scene/*.webp) — antes saíam
   // como application/octet-stream (AUD-01, conferência de content-type).
   ".webp": "image/webp",
+  // OFFLINE-001: fontes da Carreira empacotadas (public/fonts).
+  ".woff2": "font/woff2",
+  ".txt": "text/plain; charset=utf-8",
 };
 
 // Sem framework de HTML nenhum nesse projeto (zero-dependência de
@@ -1936,6 +1951,13 @@ const server = http.createServer(async (req, res) => {
     // mapeada), que não é sobre plano — se a Série B/C ainda não tiver
     // o id da liga configurado, cai no mesmo catch de sempre e o
     // cliente usa o modo exemplo (ver DEMO_DATA_BY_COMPETITION).
+    // OFFLINE-001: clubes, tabela e elencos das três divisões numa cópia
+    // versionada (uma por deploy), guardada pelo app no aparelho para criar
+    // e reabrir a carreira sem rede (ver server/src/catalogoOffline.js).
+    if (pathname === "/api/career/catalogo-offline") {
+      return sendJSON(res, 200, await catalogoOffline.resposta(searchParams.get("versao")));
+    }
+
     if (pathname === "/api/career/teams") {
       const season = searchParams.get("season");
       if (!season) return sendJSON(res, 400, { error: "parâmetro season é obrigatório" });

@@ -95,6 +95,9 @@ const strip = (c) => { const x = JSON.parse(JSON.stringify(c)); delete x.lineup;
   check("5) O motor, recarregado do servidor, lê a troca feita na v2:", legacySees === inId && inP, legacySees);
 
   // 6) Formação pelo seletor: grava e mantém titulares nas vagas.
+  // (OFFLINE-001: a outra página tomou a vez da carreira; a v2 reabre.)
+  await v2.goto(base + "/escalacao", { waitUntil: "domcontentloaded" });
+  await v2.waitForSelector(".lu-form-btn", { timeout: 20000 });
   await v2.click(".lu-form-btn");
   await v2.waitForSelector(".sheet", { timeout: 5000 });
   await v2.click('.sheet-opt:has-text("4-4-2")');

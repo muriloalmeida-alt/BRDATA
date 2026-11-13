@@ -40,7 +40,11 @@
    limpa o cache antigo), já que a estratégia network-first acima nem
    depende do cache pra quem está online. */
 const CACHE_NAME = "brdata-shell-__DEPLOY_VERSION__";
-const API_CACHE_NAME = "brdata-api-v1";
+// OFFLINE-001 (13/11/2026): v2 — o cache v1 guardava respostas PRIVADAS
+// (/api/auth/me, /api/career...) por endereço, não por conta; o "activate"
+// apaga o v1. A carreira offline mora no repositório do aparelho
+// (IndexedDB, js/motor/repositorio.js), separada por conta.
+const API_CACHE_NAME = "brdata-api-v2";
 
 // Carreira 2.0 (fase 11, a raiz do app instalado): JS/CSS do build da v2,
 // com hash no nome — o servidor troca o comentário abaixo pela lista lida
@@ -103,6 +107,17 @@ const APP_SHELL = [
   "/js/motor/carga.js",
   "/js/motor/escalacao.js",
   "/js/motor/negociacao.js",
+  "/js/motor/repositorio.js",
+  // OFFLINE-001: fontes da Carreira (Barlow), sem Google Fonts.
+  "/fonts/barlow.css",
+  "/fonts/barlow-latin-400-normal.woff2",
+  "/fonts/barlow-latin-500-normal.woff2",
+  "/fonts/barlow-latin-600-normal.woff2",
+  "/fonts/barlow-condensed-latin-500-normal.woff2",
+  "/fonts/barlow-condensed-latin-600-normal.woff2",
+  "/fonts/barlow-condensed-latin-700-normal.woff2",
+  "/fonts/barlow-condensed-latin-700-italic.woff2",
+  "/fonts/barlow-condensed-latin-800-italic.woff2",
   // Etapa G2c: a v2 abre o motor como módulo por este hospedeiro (com o
   // /js/data.js, já acima), sem a página escondida.
   "/js/motor/v2.js",
@@ -194,6 +209,19 @@ function isApiRequest(url) {
   return url.pathname.startsWith("/api/");
 }
 
+const PUBLIC_API = [
+  /^\/api\/health$/,
+  /^\/api\/career\/(teams|standings)(\/|$)/,
+  /^\/api\/(competitions|fixtures|livescores|news|standings|teams|broadcast)(\/|$)/,
+  /^\/api\/players\/leaders$/,
+  /^\/api\/leagues\/search$/,
+  /^\/api\/support\/plans$/,
+  /^\/api\/push\/vapid-public-key$/,
+];
+function isPublicApi(url) {
+  return PUBLIC_API.some((re) => re.test(url.pathname));
+}
+
 // networkFirst genérico — tenta a rede primeiro (cache:"no-store" pra
 // nem o cache HTTP nativo do navegador servir uma cópia antiga sem
 // perguntar pro servidor) e só cai pro cache dado (offline, ou o
@@ -218,7 +246,22 @@ self.addEventListener("fetch", (event) => {
   const url = new URL(request.url);
   if (url.origin !== self.location.origin) return; // deixa passar (fontes externas etc.)
 
+  // OFFLINE-001: só dados PÚBLICOS da API entram no cache (catálogo de
+  // clubes, tabela, site). Conta, sessão, carreira, loja, amigos, ranking e
+  // push vão sempre à rede, sem cópia aqui.
+  if (isApiRequest(url) && !isPublicApi(url)) return;
   const cacheName = isApiRequest(url) ? API_CACHE_NAME : CACHE_NAME;
+  // OFFLINE-001: subrota da Carreira nunca aberta online (ex.: /elenco,
+  // /recompensa) abre sem rede com a página do app ("/", pré-carregada); o
+  // roteador da v2 mostra a tela certa.
+  if (request.mode === "navigate" && !url.pathname.startsWith("/brasileirao")) {
+    event.respondWith(networkFirst(request, cacheName).catch(async () => {
+      const shell = await caches.match("/");
+      if (shell) return shell;
+      throw new Error("offline e sem a página do app em cache");
+    }));
+    return;
+  }
   event.respondWith(networkFirst(request, cacheName));
 });
 

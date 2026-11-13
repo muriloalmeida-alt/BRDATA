@@ -9,6 +9,7 @@
 // recarrega o motor antes de devolver a sessão.
 import type { MatchSession, OpenOptions } from "./match.ts";
 import { openHostedSession } from "./hosted.ts";
+import { contaAtualId, localRepo } from "./local.ts";
 
 export interface EngineDeps {
   open: (opts: OpenOptions) => Promise<MatchSession>;
@@ -20,7 +21,12 @@ const defaultDeps: EngineDeps = {
   // Plano "sem página escondida" (G2b–G2d): o motor abre como módulo
   // (adapters/hosted.ts), sem página escondida.
   open: (opts) => openHostedSession(opts),
+  // OFFLINE-001: a versão do save no aparelho (conciliada com o servidor
+  // quando há rede), pelo mesmo gateway da tela.
   serverVersion: async () => {
+    const repo = await localRepo();
+    const conta = contaAtualId();
+    if (repo && conta) return repo.versao(conta);
     const res = await fetch("/api/career", { credentials: "same-origin", cache: "no-store", headers: { Accept: "application/json" } });
     if (!res.ok) return null;
     const body = await res.json().catch(() => null);

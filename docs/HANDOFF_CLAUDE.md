@@ -248,7 +248,8 @@ registrada (MER-06).
 
 SERIED-001 — Catálogo da Série D e integração com a Copa do Brasil
 
-Status: REVISÃO DO PM NECESSÁRIA (implementado em 13/11; merge só com a aprovação do Murilo)
+Status: APROVADO (Murilo, 13/11/2026, "Aprovado"; PR #111). Os 20 escudos de
+uso restrito ficam no jogo (Murilo, 13/11: "Ficam no jogo").
 Plano: `docs/carreira-v2/serie-d/PLANO_SERIED.md` (seção 7: decisões e relatório).
 Decisões do Murilo (13/11):
 1) ABC, Retrô, CSA e Tombense continuam na Série C;
@@ -275,16 +276,20 @@ fonte oficial e empacotado localmente.
 
 OFFLINE-001 — Modo Carreira offline
 
-Status: BLOQUEADO (aguarda a Fase 1 e a SERIED-001: ordem de prioridade decidida pelo Murilo, 12/11)
+Status: IMPLEMENTADO (13/11), aguardando revisão do PM e homologação no
+iPhone (Murilo). Merge só com a aprovação do Murilo.
+Plano e relatório: `docs/carreira-v2/offline/PLANO_OFFLINE.md` (seções 5 e 6).
 Origem: `docs/carreira-v2/offline/BRDATA_Plano_Offline_Claude.md`, sem
 alteração.
-Decisão registrada (Murilo, 12/11): a carreira continua na raiz do site
-("/"), como desde a fase 11; onde o plano diz "abertura do Treinador em
-/carreira/", lê-se "a carreira na raiz" (manifest `start_url`
-"/?source=pwa", scope "/").
-Pendências que o plano já prevê e que serão levadas ao Murilo antes da
-implementação: política offline da recompensa diária e dos itens que
-afetam a economia; homologação em iPhone real (feita pelo Murilo).
+Decisões do Murilo (13/11): 1) o save do aparelho é o principal, com
+cópia no servidor; a da conta só entra se o aparelho não jogou desde a
+última cópia ou por pedido explícito; 2) recompensa diária e loja só com
+rede; 3) carreira criada offline usa a cópia dos clubes e elencos do
+servidor, gerada no deploy e versionada; 4) tudo num PR só.
+Decisão anterior (12/11): a carreira continua na raiz ("/").
+Pontos para o PM conferir (seção 6.2 do plano): o AUD-02 passa a bloquear
+só quando o aparelho não grava; a sessão expirada vira aviso que pode ser
+fechado; conflito entre aparelhos não sobrescreve nada sozinho.
 
 ⸻
 

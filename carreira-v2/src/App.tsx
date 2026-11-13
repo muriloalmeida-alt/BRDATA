@@ -29,6 +29,9 @@ import { ClubScreen, CompetitionScreen, FirstEntryScreen, LoginScreen, NEW, Setu
 import { DailyReward } from "./screens/DailyReward.tsx";
 import { ClubHub, GamesHub, MoreMenu } from "./screens/Hubs.tsx";
 import { LoginSheet } from "./ui/session.tsx";
+import { Sheet } from "./ui/dialog.tsx";
+import { online } from "./ui/online.ts";
+import { pedirArmazenamentoPersistente, travarAba } from "./adapters/local.ts";
 import { rewardPending } from "./domain/reward.ts";
 import { autoOpen, wizardPending, wizardStepOf } from "./domain/onboarding.ts";
 import { Tutorial, WizardBar } from "./screens/Onboarding.tsx";
@@ -51,9 +54,11 @@ import { History as MarketHistory, Loan, Market, MyOffers, MySales, Negotiation,
 // Tutorial, assistente e recompensa diária: a abertura automática roda no
 // máximo uma vez por carregamento da v2 (sair pelo "Voltar" não reabre).
 let autoDone = false;
+// Conta cuja carreira esta aba segura (travarAba, OFFLINE-001).
+let abaTravada: string | null = null;
 
 type Data = { career: Career; teamById: (id: string | number) => Team; user: SessionUser };
-type State = { kind: "loading" } | { kind: "error"; message: string } | { kind: "login" } | { kind: "nova"; user: SessionUser } | { kind: "ready"; data: Data };
+type State = { kind: "loading" } | { kind: "error"; message: string } | { kind: "outra-aba"; conta: string } | { kind: "login" } | { kind: "nova"; user: SessionUser } | { kind: "ready"; data: Data };
 
 const SAVE_ERROR = "Não foi possível salvar. Tente de novo.";
 
@@ -69,15 +74,45 @@ export function App() {
   useScreenFocus(loc.path + loc.search.replace(/[?&]divisao=[^&]*/, ""));
 
   const [expired, setExpired] = useState(false);
+  // OFFLINE-001: a cópia no servidor não foi por sessão expirada (ou outra
+  // conta no navegador). O progresso já está salvo no aparelho: aviso que
+  // pode ser fechado, uma vez por abertura do app.
+  const [backup, setBackup] = useState<null | "sessao" | "outra-conta">(null);
+  // OFFLINE-001: a conta avançou em outro aparelho e este também jogou
+  // (nada é sobrescrito sozinho): aviso, uma vez por abertura, que leva a Saves.
+  const [conflict, setConflict] = useState(false);
+  useEffect(() => {
+    let dispensado = false;
+    let conflitoVisto = false;
+    const on = (ev: Event) => {
+      const copia = (ev as CustomEvent<{ copia: string }>).detail?.copia;
+      if (copia === "conflito") { if (!conflitoVisto) { conflitoVisto = true; setConflict(true); } return; }
+      if (dispensado || (copia !== "sessao" && copia !== "outra-conta")) return;
+      setBackup(copia);
+    };
+    const fechar = () => { dispensado = true; setBackup(null); };
+    window.addEventListener("brdata:copia", on);
+    window.addEventListener("brdata:copia-dispensada", fechar);
+    return () => { window.removeEventListener("brdata:copia", on); window.removeEventListener("brdata:copia-dispensada", fechar); };
+  }, []);
   const load = useCallback(async () => {
     setState({ kind: "loading" });
     try {
       const user = await SessionGateway.current();
       if (!user) { setState({ kind: "login" }); return; }
+      // OFFLINE-001: uma aba por carreira (o save mora no aparelho).
+      if (abaTravada !== user.id) {
+        const ok = await travarAba(user.id, () => { abaTravada = null; setState({ kind: "outra-aba", conta: user.id }); });
+        if (!ok) { setState({ kind: "outra-aba", conta: user.id }); return; }
+        abaTravada = user.id;
+      }
       consumeInvite(); // convite de amigo guardado (fase 11): usa assim que a conta é conhecida
       const career = await CareerGateway.loadActive();
       if (!career) { setState({ kind: "nova", user }); return; }
       const teamById = await ClubCatalogGateway.forCareer(career);
+      // OFFLINE-001: app fechado no meio de uma partida da liga → ela volta
+      // pausada no mesmo minuto (o motor a retoma ao abrir).
+      if (await CareerGateway.matchInProgress()) { autoDone = true; navigate(`${BASE}/partida`, { replace: true }); }
       setState({ kind: "ready", data: { career, teamById, user } });
     } catch (e) {
       if (e instanceof HttpError && e.status === 401) { setState({ kind: "login" }); return; }
@@ -131,7 +166,9 @@ export function App() {
   const nextAuto = useCallback((d: { user: SessionUser; career: Career }) => autoOpen({
     tutorialSeen: d.user.onboardingSeen !== false,
     wizard: wizardPending(d.career),
-    reward: rewardPending(d.user.dailyLogin),
+    // OFFLINE-001: a recompensa é serviço da conta (só com rede): sem rede ou
+    // sem conta, não abre sozinha.
+    reward: !d.user.offline && !d.user.local && online() && rewardPending(d.user.dailyLogin),
   }), []);
   useEffect(() => {
     if (!readyData || autoDone) return;
@@ -151,6 +188,17 @@ export function App() {
     });
   }, [nextAuto]);
 
+  // OFFLINE-001: a rede voltou → a cópia pendente vai ao servidor já.
+  useEffect(() => {
+    const on = () => { CareerGateway.backupNow().catch(() => {}); };
+    window.addEventListener("online", on);
+    return () => window.removeEventListener("online", on);
+  }, []);
+
+  // OFFLINE-001: com a carreira no aparelho, pede ao navegador para não
+  // apagar os dados do jogo sozinho (uma vez por abertura).
+  useEffect(() => { if (state.kind === "ready") pedirArmazenamentoPersistente(); }, [state.kind]);
+
   // Fase 1: com a carreira carregada, o motor começa a abrir em segundo
   // plano (a 1ª partida não espera a carga da página do motor). Uma vez só.
   // Fase 2: também na criação de carreira (o motor cria a carreira).
@@ -165,6 +213,18 @@ export function App() {
   const home = useMemo(() => data && buildHome(data.career, data.teamById), [data]);
 
   if (state.kind === "loading") return <Splash />;
+  if (state.kind === "outra-aba") {
+    const conta = state.conta;
+    return (
+      <div className="state" role="alert">
+        A carreira está aberta em outra aba ou janela. Para não perder progresso, ela só pode ser jogada em uma por vez.
+        <button className="state-btn" onClick={async () => {
+          engine.reset();
+          if (await travarAba(conta, () => { abaTravada = null; setState({ kind: "outra-aba", conta }); }, true)) { abaTravada = conta; load(); }
+        }}>Jogar aqui</button>
+      </div>
+    );
+  }
   if (state.kind === "login") return <LoginScreen onLoggedIn={load} />;
   if (state.kind === "nova") {
     // Sem carreira: criação pela v2 (CAP01-T03 a T05).
@@ -180,9 +240,22 @@ export function App() {
     return <div className="state" role="alert">{state.kind === "error" ? state.message : "Não foi possível carregar."}<button className="state-btn" onClick={load}>Tentar novamente</button></div>;
   }
 
-  const sessionSheet = expired && (
+  const sessionSheet = expired ? (
     <LoginSheet account={data.user.id} onLoggedIn={() => { setExpired(false); reloadCareer(); }} />
-  );
+  ) : backup && !data.user.local ? (
+    <LoginSheet account={data.user.id}
+      title={backup === "sessao" ? "Sua sessão expirou." : "Outra conta está conectada."}
+      lead="Seu progresso está salvo neste aparelho. Entre de novo para guardar a cópia na sua conta."
+      onClose={() => window.dispatchEvent(new Event("brdata:copia-dispensada"))}
+      onLoggedIn={async () => { setBackup(null); await CareerGateway.backupNow(); }} />
+  ) : conflict && loc.path !== `${BASE}/saves` && loc.path !== `${BASE}/partida` ? (
+    <Sheet labelledBy="cf-t" describedBy="cf-d" onDismiss={() => setConflict(false)}>
+      <h2 id="cf-t" className="sheet-title">A cópia da conta é diferente.</h2>
+      <p id="cf-d" className="lv-text">Sua carreira avançou em outro aparelho, e este aparelho também jogou. Nada foi apagado: você segue jogando a deste aparelho. Em Saves, escolha qual vale na conta.</p>
+      <button type="button" className="cta" data-autofocus onClick={() => { setConflict(false); navigate(`${BASE}/saves`); }}>Ver em Saves</button>
+      <button type="button" className="text-btn" onClick={() => setConflict(false)}>Agora não</button>
+    </Sheet>
+  ) : null;
   if (loc.path === `${NEW}/pronto`) return <FirstEntryScreen home={home} />;
   if (loc.path.startsWith(NEW)) { queueMicrotask(() => navigate(`${BASE}/`, { replace: true })); return null; }
   if (loc.path === `${BASE}/recompensa`) return <DailyReward onClaimed={refreshAfterReward} />;
@@ -233,7 +306,7 @@ export function App() {
     if (loc.path === `${BASE}/configuracoes`) return <SettingsScreen career={c} />;
     if (loc.path === `${BASE}/configuracoes/perfil`) return <EditProfileScreen />;
     if (loc.path === `${BASE}/ajuda`) return <HelpScreen />;
-    if (loc.path === `${BASE}/saves`) return <SavesScreen career={c} />;
+    if (loc.path === `${BASE}/saves`) return <SavesScreen career={c} local={!!data.user.local} />;
     if (loc.path === `${BASE}/diretoria/orcamento`) return <BudgetScreen onChanged={reloadCareer} />;
   }
   // Fase 9 — clube.
