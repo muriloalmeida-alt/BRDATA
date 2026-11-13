@@ -15,6 +15,7 @@ import { IconChevron } from "../ui/icons.tsx";
 import { BASE, goBackTo, navigate } from "../ui/router.tsx";
 import { shareAchievement } from "../ui/share.ts";
 import { OFFLINE_TEXT, useOnline } from "../ui/online.ts";
+import { CareerGateway } from "../adapters/gateways.ts";
 import { NavRow, Rows, Status } from "./Market.tsx";
 import { Head, Loading, errText, useRead } from "./Tactics.tsx";
 import "./home.css";
@@ -395,7 +396,94 @@ export function HelpScreen() {
 }
 
 // ---------- Saves ----------
-export function SavesScreen({ career }: { career: Career }) {
+// OFFLINE-001, etapa 3: exportar, importar e trazer a cópia da conta.
+const SAVE_ERR: Record<string, string> = {
+  formato: "Este arquivo não é uma carreira do BRDATA.",
+  versao: "Este arquivo é de uma versão mais nova do jogo. Atualize o app e tente de novo.",
+  integridade: "O arquivo está incompleto ou foi alterado. Nada foi substituído.",
+  conteudo: "O arquivo não tem uma carreira completa. Nada foi substituído.",
+  armazenamento: "Não foi possível salvar no aparelho. Nada foi substituído.",
+  "outra-aba": "A carreira está aberta em outra aba. Feche a outra e tente de novo.",
+  "sem-copia": "Não há cópia desta conta no servidor.",
+  offline: "Sem conexão. Trazer a cópia da conta precisa de internet.",
+  sessao: "Sua sessão expirou. Entre de novo para usar a cópia da conta.",
+  "outra-conta": "Outra conta está conectada neste navegador. Entre com a conta desta carreira.",
+  falha: "Não foi possível falar com o servidor agora. Tente de novo.",
+  indisponivel: "Este navegador não guarda a carreira no aparelho.",
+};
+type Replace = { from: "arquivo" | "conta" | "aparelho"; clube?: string; temporada?: number; rodada?: number; save?: Career };
+function BackupSection({ career, local }: { career: Career; local: boolean }) {
+  const on = useOnline();
+  const [copia, setCopia] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  const [msg, setMsg] = useState<string | null>(null);
+  const [rep, setRep] = useState<Replace | null>(null);
+  useEffect(() => { CareerGateway.backupState().then(setCopia, () => setCopia(null)); }, []);
+  const exportar = async () => {
+    setErr(null); setMsg(null);
+    const f = await CareerGateway.exportFile();
+    if (!f) { setErr(SAVE_ERR.indisponivel); return; }
+    const url = URL.createObjectURL(new Blob([f.text], { type: "application/json" }));
+    const a = document.createElement("a");
+    a.href = url; a.download = f.name; document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 2000);
+    setMsg(`Arquivo ${f.name} pronto.`);
+  };
+  const lerArquivo = async (file: File | undefined) => {
+    setErr(null); setMsg(null);
+    if (!file) return;
+    if (file.size > 4 * 1024 * 1024) { setErr(SAVE_ERR.formato); return; }
+    const r = CareerGateway.checkFile(await file.text());
+    if (!r.ok) { setErr(SAVE_ERR[r.motivo] || SAVE_ERR.formato); return; }
+    setRep({ from: "arquivo", clube: r.save.clubName, temporada: r.save.seasonYear, rodada: r.save.currentRound, save: r.save });
+  };
+  const daConta = async () => {
+    setErr(null); setMsg(null); setBusy(true);
+    const r = await CareerGateway.serverCopy();
+    setBusy(false);
+    if (!r.ok) { setErr(SAVE_ERR[r.motivo || ""] || "Não foi possível ler a cópia da conta."); return; }
+    if (!r.career) { setErr(SAVE_ERR["sem-copia"]); return; }
+    setRep({ from: "conta", clube: r.career.clubName, temporada: r.career.seasonYear, rodada: r.career.currentRound });
+  };
+  const confirmar = async () => {
+    if (!rep || busy) return;
+    setBusy(true); setErr(null);
+    const r = rep.from === "arquivo" && rep.save ? await CareerGateway.importSave(rep.save)
+      : rep.from === "aparelho" ? await CareerGateway.keepDeviceCopy() : await CareerGateway.restoreFromServer();
+    setBusy(false);
+    if (!r.ok) { setRep(null); setErr(SAVE_ERR[r.motivo || ""] || "Não foi possível substituir a carreira."); return; }
+    location.assign(`${BASE}/`); // recarrega: a carreira nova abre do começo, com o motor limpo
+  };
+  const situacao = local ? "Só neste aparelho (sem conta)" : copia === "em-dia" ? "Em dia"
+    : copia === "conflito" ? "Diferente: a conta avançou em outro aparelho" : copia === "pendente" ? "Pendente: vai quando houver internet e sessão" : "—";
+  return (<>
+    <section className="wk-sec" aria-labelledby="sv-b"><h2 className="kicker-caps" id="sv-b">Neste aparelho</h2>
+      <p className="wk-note">A carreira fica salva neste aparelho e pode ser jogada sem internet. Com internet e conta, uma cópia vai para a sua conta.</p>
+      <Rows rows={[{ label: "Cópia na conta", value: situacao }]} />
+    </section>
+    <nav className="wk-sec" aria-label="Salvar e restaurar">
+      <button type="button" className="row pr-row" onClick={exportar}><span className="row-body"><span className="row-title">Exportar carreira</span><span className="row-sub">Baixa um arquivo com a carreira deste aparelho</span></span><IconChevron className="row-chevron" /></button>
+      <label className="row pr-row sv-file"><span className="row-body"><span className="row-title">Importar arquivo</span><span className="row-sub">Substitui a carreira deste aparelho (pede confirmação)</span></span><IconChevron className="row-chevron" />
+        <input type="file" accept=".json,application/json" className="sr-only" onChange={(e) => { lerArquivo(e.target.files?.[0]); e.target.value = ""; }} /></label>
+      {!local && copia === "conflito" && <button type="button" className="row pr-row" aria-disabled={!on || busy || undefined} onClick={() => { if (on && !busy) { setErr(null); setMsg(null); setRep({ from: "aparelho", clube: career.clubName, temporada: career.seasonYear, rodada: career.currentRound }); } }}><span className="row-body"><span className="row-title">Enviar a deste aparelho para a conta</span><span className="row-sub">{on ? "A cópia da conta passa a ser esta" : "Precisa de internet"}</span></span><IconChevron className="row-chevron" /></button>}
+      {!local && <button type="button" className="row pr-row" aria-disabled={!on || busy || undefined} onClick={() => { if (on && !busy) daConta(); }}><span className="row-body"><span className="row-title">Trazer a cópia da conta</span><span className="row-sub">{on ? "Usa a carreira guardada no servidor" : "Precisa de internet"}</span></span><IconChevron className="row-chevron" /></button>}
+    </nav>
+    {(msg || err) && <div className="pr-pad"><Status msg={msg} err={err} /></div>}
+    {rep && (
+      <Sheet alert labelledBy="sv-rt" describedBy="sv-rd" onDismiss={busy ? undefined : () => setRep(null)}>
+        <h2 id="sv-rt" className="sheet-title">{rep.from === "aparelho" ? "Substituir a cópia da conta?" : "Substituir a carreira deste aparelho?"}</h2>
+        {rep.from === "aparelho"
+          ? <p id="sv-rd" className="wk-sheet-text">A cópia da conta, que avançou em outro aparelho, passa a ser a deste ({career.clubName}, rodada {Math.min(career.currentRound, 38)}). O progresso feito no outro aparelho deixa de estar na conta.</p>
+          : <p id="sv-rd" className="wk-sheet-text">{rep.from === "arquivo" ? "Do arquivo" : "Da sua conta"}: {rep.clube || "carreira"}{rep.temporada ? `, temporada ${rep.temporada}` : ""}{rep.rodada ? `, rodada ${Math.min(rep.rodada, 38)}` : ""}. A carreira atual ({career.clubName}, rodada {Math.min(career.currentRound, 38)}) deixa de valer neste aparelho. Exporte antes se quiser guardá-la.</p>}
+        <button type="button" className="cta" data-autofocus disabled={busy} onClick={() => setRep(null)}>Manter a atual</button>
+        <button type="button" className="text-btn pr-danger-text" disabled={busy} onClick={confirmar}>{busy ? "…" : "Substituir"}</button>
+      </Sheet>
+    )}
+  </>);
+}
+
+export function SavesScreen({ career, local = false }: { career: Career; local?: boolean }) {
   const [ask, setAsk] = useState(false);
   const [typed, setTyped] = useState("");
   const [busy, setBusy] = useState(false);
@@ -413,11 +501,12 @@ export function SavesScreen({ career }: { career: Career }) {
       <Head ctx="Mais" back={MAIS} />
       <h1 className="screen-title">Sua carreira salva.</h1>
       <span className="tb-bar" aria-hidden="true" />
-      <p className="screen-sub">Uma carreira por conta, salva a cada ação.</p>
+      <p className="screen-sub">Uma carreira por conta, salva a cada ação neste aparelho.</p>
       <section className="wk-sec" aria-labelledby="sv-c"><h2 className="kicker-caps" id="sv-c">Carreira atual</h2>
         <Rows rows={[{ label: "Clube", value: career.clubName }, { label: "Temporada", value: String(career.seasonYear) }, { label: "Rodada", value: String(Math.min(career.currentRound, 38)) },
           { label: "Caixa", value: moneyShort(career.finances?.cash || 0) }, ...(last ? [{ label: "Última gravação", value: `${last.toLocaleDateString("pt-BR")} ${last.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}` }] : [])]} />
       </section>
+      <BackupSection career={career} local={local} />
       <nav className="wk-sec" aria-label="Ações"><button type="button" className="row pr-row pr-danger" onClick={() => setAsk(true)}><span className="row-body"><span className="row-title">Reiniciar carreira</span><span className="row-sub">Apaga esta carreira e começa do zero</span></span><IconChevron className="row-chevron" /></button></nav>
       <Foot><Status err={err} /></Foot>
       {ask && (

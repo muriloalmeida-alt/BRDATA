@@ -23,7 +23,8 @@ import * as estado from "./estado.js";
 import * as semana from "./semana.js";
 import { ouvir } from "./eventos.js";
 import { comandosGestao } from "./ponte.js";
-import { comandosJogo } from "./jogo.js";
+import { checkpointPartida, comandosJogo, retomarPartidaSalva } from "./jogo.js";
+import * as modPonte from "./ponte.js";
 import { comandosCarga, ponteEstado, enterAfterAuth, fetchJSON, fetchRealPlayers, teamLogoSrc, ponteGravar, persistCareer } from "./carga.js";
 import { criarRepositorio } from "./repositorio.js";
 
@@ -94,8 +95,32 @@ export async function abrirMotor() {
     semana.definirAmbiente({ armazem: { pedir: repo.pedirDaConta(() => (estado.conta() || {}).id), repo } });
     // Catálogo offline (clubes e elencos do servidor) em dia, em segundo plano.
     if (c.online) repo.atualizarCatalogo().catch(() => {});
+    // Checkpoint da partida em andamento (jogo.js, checkpointPartida).
+    const contaId = () => (estado.conta() || {}).id;
+    semana.definirAmbiente({ checkpoint: (dados) => { repo.guardarPartida(contaId(), dados).catch(() => {}); } });
+    // A cada mudança da partida (bloco, intervalo, substituição, tática), um
+    // checkpoint — só quando algo dela mudou.
+    let ultimo = null;
+    modPonte.ponte.ouvintes.add(() => {
+      const lm = estado.partidaAtual();
+      const car = estado.carreiraAtual();
+      if (!lm || lm.finished) {
+        if (ultimo !== null) repo.apagarPartida(contaId()).catch(() => {});
+        ultimo = null;
+        return;
+      }
+      const chave = [lm.round, lm.chunkIndex, !!lm.halftime, lm.subsUsed, car && car.lineup ? car.lineup.formation : "", car ? JSON.stringify(car.tactics || null) : ""].join("|");
+      if (chave === ultimo) return;
+      ultimo = chave;
+      checkpointPartida();
+    });
     const ponte = criarPonte();
     await enterAfterAuth();
+    // App fechado no meio de uma partida da liga: ela volta pausada.
+    const cp = await repo.partidaPendente(contaId()).catch(() => null);
+    const atual = estado.carreiraAtual();
+    if (cp && atual && cp.career && String(cp.career.clubId) === String(atual.clubId) && cp.career.currentRound === atual.currentRound) retomarPartidaSalva(cp);
+    else if (cp) await repo.apagarPartida(contaId());
     return { ponte };
   }
   const me = await fetchJSON("/api/auth/me").catch(() => ({ authenticated: false }));

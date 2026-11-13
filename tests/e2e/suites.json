@@ -57,7 +57,8 @@
         "DATA_PROVIDER": "frozen"
       },
       "tests": [
-        "test_frozen_provider.js"
+        "test_frozen_provider.js",
+        "test_v2_offline_catalogo.js"
       ]
     },
     "loja-creditos": {

@@ -6,7 +6,7 @@
 // controle de conflito; ver inventário R2).
 import type { Career, Team } from "../domain/types.ts";
 import { applyLineupChange, type LineupChange, type Recomposicao } from "../domain/lineup.ts";
-import { contaAtualId, definirContaAtual, localRepo } from "./local.ts";
+import { conferirArquivoDaCarreira, contaAtualId, definirContaAtual, localRepo } from "./local.ts";
 
 export class HttpError extends Error {
   status: number;
@@ -65,6 +65,12 @@ export const SessionGateway = {
   // Nome do treinador (configurar carreira) — mesmo PUT /api/account/name
   // da versão anterior (submitSetup).
   async updateName(name: string): Promise<SessionUser> {
+    // OFFLINE-001: perfil local (jogando sem conta): o nome fica no aparelho.
+    if (contaAtualId() === "local") {
+      const repo = await localRepo();
+      const u = repo ? await repo.nomeLocal(name) : null;
+      if (u) return u as unknown as SessionUser;
+    }
     const res = await fetch("/api/account/name", { method: "PUT", credentials: "same-origin", headers: { "Content-Type": "application/json", Accept: "application/json" }, body: JSON.stringify({ name }) });
     const body = await res.json().catch(() => ({}));
     if (!res.ok) throw new HttpError(res.status, (body && body.error) || "Não foi possível salvar seu nome.");
@@ -90,12 +96,59 @@ export const CareerGateway = {
     const conta = contaAtualId();
     if (repo && conta) {
       const r = await repo.gravar(conta, next);
-      if (!r.ok) throw new HttpError(r.motivo === "conflito" ? 409 : 507, r.motivo === "conflito" ? "A carreira mudou em outra aba." : "Sem espaço no aparelho para salvar.");
+      if (!r.ok) throw new HttpError(r.motivo === "armazenamento" ? 507 : 409, r.motivo === "armazenamento" ? "Não foi possível salvar no aparelho." : "A carreira está aberta em outra aba.");
       return;
     }
     const res = await fetch("/api/career", { method: "PUT", credentials: "same-origin", headers: { "Content-Type": "application/json", Accept: "application/json" }, body: JSON.stringify(next) });
     const body = await res.json().catch(() => ({}));
     if (!res.ok) throw new HttpError(res.status, (body && body.error) || `Erro ${res.status}`);
+  },
+  // OFFLINE-001: partida da liga interrompida (app fechado no meio do jogo),
+  // guardada no aparelho pelo motor: a v2 volta para a Partida.
+  async matchInProgress(): Promise<boolean> {
+    const repo = await localRepo();
+    const conta = contaAtualId();
+    return !!(repo && conta && (await repo.partidaPendente(conta).catch(() => null)));
+  },
+  // OFFLINE-001, etapa 3: salvar e restaurar.
+  async backupState(): Promise<"em-dia" | "pendente" | "conflito" | "sem-carreira" | null> {
+    const repo = await localRepo(); const conta = contaAtualId();
+    return repo && conta ? repo.situacaoDaCopia(conta) : null;
+  },
+  async exportFile(): Promise<{ name: string; text: string } | null> {
+    const repo = await localRepo(); const conta = contaAtualId();
+    const arq = repo && conta ? await repo.exportar(conta) : null;
+    if (!arq) return null;
+    const d = new Date();
+    const dia = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    const clube = String(arq.resumo.clube || "carreira").normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^A-Za-z0-9]+/g, "-").replace(/^-|-$/g, "").toLowerCase();
+    return { name: `brdata-${clube}-${dia}.json`, text: JSON.stringify(arq) };
+  },
+  // Lê e confere o arquivo; não grava nada (a tela confirma antes).
+  checkFile(text: string): { ok: true; save: Career } | { ok: false; motivo: string } {
+    let obj: unknown;
+    try { obj = JSON.parse(text); } catch { return { ok: false, motivo: "formato" }; }
+    return conferirArquivoDaCarreira(obj) as { ok: true; save: Career } | { ok: false; motivo: string };
+  },
+  async importSave(save: Career): Promise<{ ok: boolean; motivo?: string }> {
+    const repo = await localRepo(); const conta = contaAtualId();
+    if (!repo || !conta) return { ok: false, motivo: "indisponivel" };
+    return repo.importar(conta, save);
+  },
+  async serverCopy(): Promise<{ ok: boolean; motivo?: string; career?: { clubName?: string; seasonYear?: number; currentRound?: number; updatedAt?: number } | null }> {
+    const repo = await localRepo();
+    return repo ? repo.copiaDoServidor() : { ok: false, motivo: "indisponivel" };
+  },
+  // Conflito (a conta avançou em outro aparelho): a deste aparelho passa a valer na conta.
+  async keepDeviceCopy(): Promise<{ ok: boolean; motivo?: string }> {
+    const repo = await localRepo(); const conta = contaAtualId();
+    if (!repo || !conta) return { ok: false, motivo: "indisponivel" };
+    return repo.enviarDoAparelho(conta);
+  },
+  async restoreFromServer(): Promise<{ ok: boolean; motivo?: string }> {
+    const repo = await localRepo(); const conta = contaAtualId();
+    if (!repo || !conta) return { ok: false, motivo: "indisponivel" };
+    return repo.trazerDoServidor(conta);
   },
   // OFFLINE-001: manda já a cópia pendente ao servidor (depois de entrar de novo).
   async backupNow(): Promise<string> {

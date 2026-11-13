@@ -251,6 +251,17 @@ self.addEventListener("fetch", (event) => {
   // push vão sempre à rede, sem cópia aqui.
   if (isApiRequest(url) && !isPublicApi(url)) return;
   const cacheName = isApiRequest(url) ? API_CACHE_NAME : CACHE_NAME;
+  // OFFLINE-001: subrota da Carreira nunca aberta online (ex.: /elenco,
+  // /recompensa) abre sem rede com a página do app ("/", pré-carregada); o
+  // roteador da v2 mostra a tela certa.
+  if (request.mode === "navigate" && !url.pathname.startsWith("/brasileirao")) {
+    event.respondWith(networkFirst(request, cacheName).catch(async () => {
+      const shell = await caches.match("/");
+      if (shell) return shell;
+      throw new Error("offline e sem a página do app em cache");
+    }));
+    return;
+  }
   event.respondWith(networkFirst(request, cacheName));
 });
 
