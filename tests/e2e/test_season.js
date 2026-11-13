@@ -1,83 +1,53 @@
+// Virada de temporada (lote L4a, sem a tela antiga). O teste antigo pulava
+// para o fim da temporada, forçava 3 contratos a vencer e só imprimia o
+// "depois". Agora, pelo comando da virada no motor da página da v2
+// (proximaTemporada, o "Continuar" do Encerramento da v2), as mesmas
+// situações viram verificações:
+//  1) Ano + 1, rodada 1, tabela zerada e a temporada encerrada no histórico.
+//  2) Os 3 com contrato vencendo saem do elenco (ou renovam com contrato
+//     novo); quem fica envelhece 1 ano.
+//  3) O Início da v2 mostra a temporada nova (rodada 1) depois de recarregar.
 const { chromium } = require("playwright-core");
-const { enterGame, waitForBoot } = require("./_startup");
+const { check } = require("./_check");
+const { newCareer, noMotor, base, skipAutoOpen } = require("./_v2_carreira");
 
 (async () => {
-  const browser = await chromium.launch({
-    executablePath: process.env.PW_CHROMIUM_PATH || undefined,
-    headless: true,
-  });
-  const page = await browser.newPage({ viewport: { width: 390, height: 900 } });
-  page.on("pageerror", (err) => console.log("PAGE ERROR:", err.message));
+  const browser = await chromium.launch({ executablePath: process.env.PW_CHROMIUM_PATH || undefined, headless: true, args: ["--host-resolver-rules=MAP fonts.googleapis.com 127.0.0.1,MAP fonts.gstatic.com 127.0.0.1"] });
+  const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
+  page.on("dialog", (d) => d.dismiss());
+  const erros = [];
+  page.on("pageerror", (err) => erros.push(err.message));
+  await newCareer(page, `season${Date.now()}@teste.com`);
 
-  const base = "http://localhost:8787";
-  const email = `season${Date.now()}@teste.com`;
-
-  await page.goto(base + "/", { waitUntil: "load" });
-  await page.evaluate(async ({ email }) => {
-    await fetch("/api/auth/signup", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: "Season Teste", email, password: "senha123", phone: "11999999999", plan: "freemium" }) });
-    await fetch("/api/auth/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, password: "senha123" }) });
-  }, { email });
-
-  await page.goto(base + "/carreira.html", { waitUntil: "load" });
-  await page.click('.mt-competition-card[data-competition="brasileirao"]');
-  await page.waitForTimeout(200);
-  await page.click(".m3-club-row");
-  await page.waitForTimeout(150);
-  await page.click("#btnConfirmClub");
-  await enterGame(page);
-
-  // Força contrato de alguns jogadores pra vencer JÁ (testa a saída de
-  // verdade), e pula direto pro fim da temporada via API (evita simular
-  // 38 rodadas de verdade pelo Playwright).
-  const before = await page.evaluate(async () => {
-    const r = await fetch("/api/career");
-    const data = await r.json();
-    data.career.currentRound = 39;
-    // força alguns contratos a vencer JÁ (contractUntil == seasonYear atual, que vai virar seasonYear+1 na troca)
-    data.career.squad.slice(0, 3).forEach((p) => { p.contractUntil = data.career.seasonYear; });
-    const squadBefore = data.career.squad.length;
-    const baseBefore = data.career.squad.filter((p) => p.origin === "base").length;
-    await fetch("/api/career", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data.career) });
-    return { squadBefore, baseBefore, seasonYear: data.career.seasonYear, ages: data.career.squad.slice(0, 3).map((p) => p.age) };
-  });
-  console.log("Antes de avançar:", JSON.stringify(before));
-
-  await page.reload({ waitUntil: "load" });
-  await waitForBoot(page);
-  await page.screenshot({ path: "season-1-ended.png" });
-
-  const btnVisible = await page.evaluate(() => !document.getElementById("btnAdvanceSeason").classList.contains("hidden"));
-  const simulateHidden = await page.evaluate(() => document.getElementById("btnSimulate").classList.contains("hidden"));
-  console.log("Botão avançar temporada visível:", btnVisible, "| Simular rodada escondido:", simulateHidden);
-
-  // #btnAdvanceSeason abre o confirmModal() próprio do app
-  // (#confirmOverlay), não um diálogo NATIVO -- pré-existente, sem
-  // relação com o checklist de UX desta etapa.
-  await page.click("#btnAdvanceSeason");
-  await page.waitForSelector("#confirmOverlay.open", { timeout: 5000 });
-  await page.click("#confirmOkBtn");
-  await page.waitForTimeout(500);
-  await page.screenshot({ path: "season-2-modal.png" });
-
-  await page.click("#btnSeasonContinue");
-  await page.waitForTimeout(500);
-  await page.screenshot({ path: "season-3-nova-temporada.png" });
-
-  const after = await page.evaluate(async () => {
-    const r = await fetch("/api/career");
-    const data = await r.json();
+  const r = await noMotor(page, async ({ CAREER, ponte }) => {
+    CAREER.currentRound = 39;
+    const vencendo = CAREER.squad.slice(0, 3).map((p) => { p.contractUntil = CAREER.seasonYear; return { id: p.id, name: p.name }; });
+    const idades = Object.fromEntries(CAREER.squad.map((p) => [p.id, p.age]));
+    const ano = CAREER.seasonYear;
+    const hist = (CAREER.seasonHistory || []).length;
+    const v = await ponte.proximaTemporada();
+    const ficaram = CAREER.squad.filter((p) => idades[p.id] != null);
     return {
-      currentRound: data.career.currentRound,
-      seasonYear: data.career.seasonYear,
-      squadLen: data.career.squad.length,
-      baseLen: data.career.squad.filter((p) => p.origin === "base").length,
-      firstThreeAges: data.career.squad.slice(0, 5).map((p) => ({ name: p.name, age: p.age })),
-      finances: data.career.finances,
-      history: data.career.seasonHistory,
-      standingsReset: Object.values(data.career.standings)[0],
+      v, ano, hist,
+      depois: { ano: CAREER.seasonYear, rodada: CAREER.currentRound, hist: (CAREER.seasonHistory || []).length, histAno: (CAREER.seasonHistory || [])[0] && CAREER.seasonHistory[0].year,
+        tabelaZerada: Object.values(CAREER.standings).every((s) => s.j === 0 && s.pts === 0) },
+      vencendo: vencendo.map((x) => { const p = CAREER.squad.find((q) => q.id === x.id); return { ...x, ficou: !!p, contrato: p ? p.contractUntil : null }; }),
+      envelheceram: ficaram.every((p) => p.age === idades[p.id] + 1), ficaram: ficaram.length,
     };
   });
-  console.log("Depois de avançar:", JSON.stringify(after, null, 2));
+  check("1) Virada: ano + 1, rodada 1, tabela zerada e a temporada encerrada no histórico:",
+    r.v.ok && r.v.demitido === false && r.depois.ano === r.ano + 1 && r.depois.rodada === 1 && r.depois.tabelaZerada && r.depois.hist === r.hist + 1 && r.depois.histAno === r.ano,
+    JSON.stringify({ v: { ok: r.v.ok, ano: r.v.ano, saidas: r.v.saidas }, depois: r.depois }));
+  check("2) Os 3 com contrato vencendo saem do elenco (ou ficam com contrato novo, depois do ano que acabou); quem fica envelhece 1 ano:",
+    r.vencendo.every((x) => (!x.ficou && r.v.saidas.includes(x.name)) || (x.ficou && x.contrato > r.ano)) && r.vencendo.some((x) => !x.ficou) && r.envelheceram && r.ficaram > 0,
+    JSON.stringify({ vencendo: r.vencendo, envelheceram: r.envelheceram }));
 
+  await page.goto(base + "/", { waitUntil: "domcontentloaded" });
+  await skipAutoOpen(page);
+  await page.waitForSelector(".home", { timeout: 20000 });
+  const linha = await page.evaluate(() => document.querySelector(".home-date")?.textContent || "");
+  check("3) Depois de recarregar, o Início da v2 está na temporada nova (rodada 1):", /RODADA 1$/.test(linha), linha);
+
+  check("4) Sem erro na página:", erros.length === 0, JSON.stringify(erros.slice(0, 3)));
   await browser.close();
 })().catch((e) => { console.error("FATAL:", e); process.exit(1); });

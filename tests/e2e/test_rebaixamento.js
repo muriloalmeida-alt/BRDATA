@@ -1,30 +1,25 @@
 // Nova feature (pedido do usuário: "reinicie o tema do rebaixamento")
 // — acesso/rebaixamento entre Séries A/B/C + repositório da Série D.
 // Ver initDivisionSystem/resolveOtherDivisionsRound/
-// applyPromotionRelegation em carreira.js.
+// applyPromotionRelegation (hoje no motor: virada.js e fechamento.js).
+// Lote L4a: sem a tela antiga; regras pelo motor na página da v2.
 const { chromium } = require("playwright-core");
 const { check } = require("./_check");
-const { enterGame } = require("./_startup");
+const { newCareer, globaisDoMotor, base } = require("./_v2_carreira");
+
+// Grava o save (resultados da rodada das outras divisões) antes de abrir outra tela.
+async function persistirEReabrir(page) { await page.evaluate(() => persistCareer()); }
 
 (async () => {
   const browser = await chromium.launch({ executablePath: process.env.PW_CHROMIUM_PATH || undefined, headless: true, args: ["--host-resolver-rules=MAP fonts.googleapis.com 127.0.0.1,MAP fonts.gstatic.com 127.0.0.1"] });
   const page = await browser.newPage({ viewport: { width: 390, height: 900 } });
   page.on("dialog", (d) => d.dismiss());
   page.on("pageerror", (err) => console.log("PAGE ERROR:", err.message));
-  const base = "http://localhost:8787";
   const email = `rebaixamento${Date.now()}@teste.com`;
-  await page.goto(base + "/", { waitUntil: "domcontentloaded" });
-  await page.evaluate(async ({ email }) => {
-    await fetch("/api/auth/signup", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: "Rebaixamento Teste", email, password: "senha123", phone: "11999999999", plan: "freemium" }) });
-    await fetch("/api/auth/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, password: "senha123" }) });
-  }, { email });
-  await page.goto(base + "/carreira.html", { waitUntil: "domcontentloaded" });
-  await page.click('.mt-competition-card[data-competition="brasileirao"]');
-  await page.waitForTimeout(300);
-  await page.click(".m3-club-row");
-  await page.waitForTimeout(150);
-  await page.click("#btnConfirmClub");
-  await enterGame(page);
+  // Lote L4a: carreira pela v2 (Flamengo, como o 1º clube da tela antiga) e
+  // as funções do jogo pelo motor na página da v2 (globaisDoMotor).
+  await newCareer(page, email);
+  await globaisDoMotor(page);
 
   // 1) Carreira nova nasce com o sistema ativado: divisionTeams (3 x 20
   // times), serieDPool (20 times) e otherDivisions (as 2 que não são a
@@ -55,34 +50,28 @@ const { enterGame } = require("./_startup");
   check("2) resolveOtherDivisionsRound avança as 2 outras divisões (não só a sua):",
     Object.values(check2).every(Boolean), JSON.stringify(check2));
 
-  // 3) Tela Tabela mostra o seletor de divisão (só em carreira com o
-  // sistema ativado) e trocar de divisão mostra a tabela certa (times
-  // diferentes da própria, sem G6/Libertadores). Tabela mora dentro do
-  // Menu (submenu "Competição"), não na nav direta -- ver Reorganizar
-  // Menu (submenus).
-  await page.click("#btnClaimDailyLogin", { timeout: 3000 }).catch(() => {}); // defensivo -- pode ter aberto depois do 1º clique
-  await page.click("#btnBottomMenu");
-  await page.waitForTimeout(150);
-  await page.click("#topbarMenu .mt-topbar-menu-item.group[data-submenu='competicao']");
-  await page.waitForTimeout(150);
-  await page.click("#btnOpenTabela");
-  await page.waitForTimeout(300);
-  const check3a = await page.evaluate(() => {
-    const wrap = document.getElementById("tabelaDivisionSwitch");
-    return { visible: !wrap.hidden, buttons: [...wrap.querySelectorAll("[data-division]")].map((b) => b.dataset.division) };
-  });
-  await page.click('#tabelaDivisionSwitch [data-division="serie_b"]');
-  await page.waitForTimeout(300);
-  const check3b = await page.evaluate(() => {
-    const rows = [...document.querySelectorAll("#standingsTable .mt-tr")];
-    const namesShown = rows.map((r) => r.querySelector(".name").textContent);
-    const bTeamNames = CAREER.divisionTeams.serie_b.map((t) => t.name);
-    return { rowCount: rows.length, allFromB: namesShown.every((n) => bTeamNames.includes(n)), legendTop: document.getElementById("tabelaLegendTop").textContent, midHidden: document.getElementById("tabelaLegendMidWrap").hidden };
-  });
-  check("3) Seletor de divisão aparece na Tabela e trocar pra Série B mostra os times certos (sem G6/Libertadores):",
-    check3a.visible && JSON.stringify(check3a.buttons) === JSON.stringify(["brasileirao", "serie_b", "serie_c"])
-    && check3b.rowCount === 20 && check3b.allFromB && check3b.legendTop === "Acesso" && check3b.midHidden,
+  // 3) Tabela da v2: as abas das 3 divisões e, na Série B, os times certos
+  // (sem G6/Libertadores; a legenda tem "Acesso"). Antes, a Tabela da tela
+  // antiga (seletor #tabelaDivisionSwitch).
+  const nomesB = await page.evaluate(() => CAREER.divisionTeams.serie_b.map((t) => t.name));
+  await persistirEReabrir(page);
+  await page.goto(base + "/tabela", { waitUntil: "domcontentloaded" });
+  await page.waitForSelector(".tb-seg", { timeout: 20000 });
+  const check3a = await page.evaluate(() => ({ abas: [...document.querySelectorAll(".tb-seg")].map((b) => b.textContent.trim()) }));
+  await page.click('.tb-seg:has-text("Série B")');
+  await page.waitForFunction(() => /divisao=serie_b/.test(location.search) && document.querySelector(".tb-more"), null, { timeout: 20000 });
+  await page.click(".tb-more");
+  await page.waitForFunction(() => document.querySelectorAll(".tb-row").length === 20, null, { timeout: 20000 });
+  const check3b = await page.evaluate((nomesB) => {
+    const nomes = [...document.querySelectorAll(".tb-row .tb-name")].map((n) => n.textContent);
+    const legenda = [...document.querySelectorAll(".tb-legend li")].map((l) => l.textContent);
+    return { rowCount: nomes.length, allFromB: nomes.every((n) => nomesB.includes(n)), legenda };
+  }, nomesB);
+  check("3) Abas das 3 divisões na Tabela da v2 e, na Série B, os times certos (com 'Acesso', sem G6/Libertadores):",
+    check3a.abas.length === 3 && check3a.abas.some((t) => /Série B/.test(t)) && check3a.abas.some((t) => /Série C/.test(t))
+    && check3b.rowCount === 20 && check3b.allFromB && check3b.legenda.some((l) => /Acesso/.test(l)) && !check3b.legenda.some((l) => /Libertadores|G6/.test(l)),
     JSON.stringify({ check3a, check3b }));
+  await globaisDoMotor(page);
 
   // 4) Cascata de acesso/rebaixamento (chamada direto, sem rodar 38
   // rodadas de verdade): força uma tabela final plausível pras 3
