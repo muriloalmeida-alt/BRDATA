@@ -198,8 +198,35 @@ testes da partida, do Elenco, de foco e de sistema (10/10).
 
 FASE1-MER — Fase 1: mercado, empréstimos e contratação
 
-Status: EM IMPLEMENTAÇÃO (L3 concluído em 12/11).
-Plano: `docs/carreira-v2/fase1/PLANO_MER.md`. Decisões do Murilo (13/11):
+Status: REVISÃO DO PM NECESSÁRIA (implementado em 13/11, PR único; merge só com a aprovação do Murilo).
+Plano: `docs/carreira-v2/fase1/PLANO_MER.md`.
+Calibração: `docs/carreira-v2/fase1/CALIBRACAO_MER.md`. Três pontos de
+balanceamento ficaram para decisão do PM e não foram alterados:
+- empréstimo de rotação muito binário;
+- valor de mercado raramente fecha de primeira;
+- força da promessa de titularidade.
+Entregue:
+- motor: `motor/negociacao.js`. O clube vendedor tem reserva nova (papel,
+  cobertura, reposição, fim de janela). O atleta decide salário, papel e
+  duração, com motivo. Empréstimo avaliado dos dois lados. Sorteio com
+  chave, operação com id (MER-07). Promessa cobrando a moral na temporada
+  da contratação.
+- v2:
+  - Elenco > Contratar jogador;
+  - lista do Mercado preservada;
+  - "Faça sua oferta." com salário, papel, duração e resumo;
+  - negociação com motivo e ações (Aceitar salário pedido, Fazer nova
+    proposta, Dispensar);
+  - empréstimo com "Aceitar N% do salário".
+- testes:
+  - novos: `test_motor_mer`, `test_motor_mer_integracao`, `test_v2_mer`
+    e o domínio da v2;
+  - equivalência ajustada só no que mudou de propósito;
+  - script `tests/unit/calibracao_mer.js`.
+- defeitos achados no caminho e corrigidos:
+  - id de proposta podia repetir no mesmo milissegundo;
+  - o Link da v2 descartava um onClick próprio (a navegação virava recarga);
+  - o salário pedido podia arredondar para baixo do oferecido. Decisões do Murilo (13/11):
 1) a proposta leva salário, papel prometido e duração, e o atleta decide
    junto com o clube;
 2) decisões determinísticas (MER-06);

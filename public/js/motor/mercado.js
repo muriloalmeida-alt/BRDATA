@@ -392,7 +392,9 @@ export function avaliacaoAtleta(player, oferta, ctx = {}, P = MER_PARAMETROS) {
   const utilidade = Object.values(termos).reduce((s, x) => s + x, 0);
   if (utilidade >= 0) return { decisao: "aceita", motivo: null, utilidade, termos };
   const semSalario = utilidade - termos.salario;
-  const salarioPedido = Math.round((atual * Math.exp((0.02 - semSalario) / A.salario)) / 100) * 100;
+  // Arredonda para cima (R$ 100) e fica sempre acima do oferecido: pedir o
+  // mesmo salário, ou menos, não faria sentido na tela.
+  const salarioPedido = Math.max(Math.ceil((atual * Math.exp((0.02 - semSalario) / A.salario)) / 100) * 100, Math.ceil((salario + 1) / 100) * 100);
   if (utilidade >= -A.faixaConversa && salarioPedido <= atual * A.salarioPedidoTeto) {
     return { decisao: "pede", salarioPedido, motivo: "Ele aceita com um salário maior.", utilidade, termos };
   }
