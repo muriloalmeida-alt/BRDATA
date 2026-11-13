@@ -45,8 +45,11 @@ const { carreiraV2, signup, ensureDailyClaimed, globaisDoMotor, noMotor, base } 
     const r = await ponte.anunciar(p.id, p.value);
     const listing = CAREER.pendingListings.find((x) => String(x.playerId) === String(p.id));
     // Rodadas de exposição do anúncio até chegar proposta (sorteio normal).
+    // O mais barato do elenco recebe proposta em ~2% das rodadas (média
+    // ~40, medido em 30 execuções): 200 rodadas falhavam de vez em quando,
+    // também no main. 2000 deixa a chance de falhar desprezível.
     let rounds = 0;
-    while (listing && !listing.offers.length && rounds < 200) { rounds++; semana.maybeSpawnListingOffer(listing); }
+    while (listing && !listing.offers.length && rounds < 2000) { rounds++; semana.maybeSpawnListingOffer(listing); }
     const ofertas = listing ? listing.offers.length : 0;
     if (ofertas) clube.acceptListingOffer(listing.id, listing.offers[0].id);
     await persistir();
