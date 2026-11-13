@@ -74,14 +74,25 @@ const { carreiraV2, signup, ensureDailyClaimed, globaisDoMotor, saveNoServidor, 
   await page.click(".pr .cal-foot .cta");
   await h1("Proposta enviada.");
   await globaisDoMotor(page);
-  await page.evaluate(async () => {
-    const orig = Math.random;
-    Math.random = () => 0.01;
-    try { resolvePendingOffersOutRound(CAREER.currentRound); resolvePendingOffersOutRound(CAREER.currentRound); } finally { Math.random = orig; }
+  // FASE1-MER (13/11/2026): a resposta é determinística (sorteio com
+  // chave), e o clube pode contrapor e o atleta pedir mais salário. O
+  // técnico aceita o que vier, como faria na tela de Minhas propostas.
+  const caminho = await page.evaluate(async (id) => {
+    const passos = [];
+    for (let k = 0; k < 6; k++) {
+      const o = CAREER.pendingOffersOut.find((x) => String(x.playerId) === String(id));
+      if (!o) break;
+      passos.push(o.status);
+      if (o.status === "countered") aceitarContraDoClube(o.id);
+      else if (o.status === "pede-salario") aceitarSalarioPedido(o.id);
+      else if (o.status === "pending") resolvePendingOffersOutRound(CAREER.currentRound);
+      else break;
+    }
     await persistCareer();
-  });
+    return passos;
+  }, alvoB.id);
   const after = await saveNoServidor(page);
-  const bought = { targetClub: alvoB.clubId, cashChanged: after.finances.cash < before.finances.cash, squadGrew: after.squad.length === before.squad.length + 1, noElenco: after.squad.some((p) => p.id === alvoB.id) };
+  const bought = { caminho, targetClub: alvoB.clubId, cashChanged: after.finances.cash < before.finances.cash, squadGrew: after.squad.length === before.squad.length + 1, noElenco: after.squad.some((p) => p.id === alvoB.id) };
   check("5) Comprou jogador da Série B pela proposta da v2:", bought.cashChanged && bought.squadGrew && bought.noElenco, JSON.stringify(bought));
 
   // 6) Simula algumas rodadas — negociação CPU x CPU (simulateAiTransfers)

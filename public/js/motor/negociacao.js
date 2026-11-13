@@ -75,7 +75,8 @@ export function comSorteio(chave, fn) {
   Math.random = rng;
   try { return fn(rng); } finally { Math.random = original; }
 }
-const chaveDaOferta = (o, round) => `oferta:${o.id}:${o.offerValue}:${o.installments}:${o.salario || 0}:${o.papel || ""}:${o.anos || 0}:${round}`;
+// A chave do sorteio de uma proposta: muda quando a oferta ou a rodada mudam.
+export const chaveDaOferta = (o, round) => `oferta:${o.id}:${o.offerValue}:${o.installments}:${o.salario || 0}:${o.papel || ""}:${o.anos || 0}:${round}`;
 
 // ---------- Compra ----------
 

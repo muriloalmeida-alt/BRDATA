@@ -143,11 +143,13 @@ const { carreiraV2, signup, ensureDailyClaimed, globaisDoMotor, saveNoServidor, 
     return {
       cashUnchanged: CAREER.finances.cash === cashBefore,
       stillInLeagueSquad: !!leagueSquadFor(t.clubId).find((x) => x.id === p.id),
-      stillPending: !!CAREER.pendingOffersOut.find((x) => x.id === "test_offer_reject"),
+      // FASE1-MER (13/11/2026): a recusa fica na lista, com o motivo, até
+      // o técnico fazer outra proposta ou dispensar.
+      recusa: (({ status, motivo, recusadoPor }) => ({ status, motivo, recusadoPor }))(CAREER.pendingOffersOut.find((x) => x.id === "test_offer_reject") || {}),
     };
   }, target2);
-  check("6) Proposta muito abaixo do valor de mercado (50%) é recusada direto, sem afetar nada:",
-    check6.cashUnchanged && check6.stillInLeagueSquad && !check6.stillPending, JSON.stringify(check6));
+  check("6) Proposta muito abaixo do valor de mercado (50%) é recusada direto, sem afetar nada (fica na lista como recusada, com o motivo do clube):",
+    check6.cashUnchanged && check6.stillInLeagueSquad && check6.recusa.status === "recusada" && check6.recusa.recusadoPor === "clube" && /\S/.test(check6.recusa.motivo || ""), JSON.stringify(check6));
 
   // 7) Contraproposta (ratio no meio-termo, RNG forçado pra cair
   // nessa faixa) -- vira status "countered", aceitar fecha na hora.
