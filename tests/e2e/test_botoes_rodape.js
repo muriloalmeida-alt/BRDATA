@@ -91,6 +91,13 @@ function checkFooter(page, overlayId, btnId) {
   if (await page.evaluate(() => document.getElementById("playerOfferOverlay")?.classList.contains("open"))) {
     await page.click("#btnPlayerOfferDecline");
     await page.waitForFunction(() => !document.getElementById("playerOfferOverlay").classList.contains("open"));
+    // Recusada a proposta, o fluxo pós-jogo segue e abre a Tabela, que tapa o
+    // menu: fecha (mesmo ajuste do test_noticias_fullscreen_fluxo).
+    await page.waitForTimeout(200);
+    if (await page.evaluate(() => document.getElementById("tabelaModalOverlay")?.classList.contains("open"))) {
+      await page.click("#tabelaModalClose");
+      await page.waitForFunction(() => !document.getElementById("tabelaModalOverlay").classList.contains("open"));
+    }
   }
 
   // 5) Notícias aberta pelo menu (só consulta) — rodapé some por
