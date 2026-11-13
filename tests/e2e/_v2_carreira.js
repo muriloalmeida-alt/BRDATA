@@ -142,14 +142,15 @@ async function globaisDoMotor(page) {
     for (const n of ordem) for (const [k, v] of Object.entries(mods[n])) def(k, v);
     const E = mods.estado;
     Object.defineProperty(window, "CAREER", { configurable: true, get: () => E.carreiraAtual(), set: (v) => E.definirCarreira(v) });
-    Object.defineProperty(window, "LEAGUE_TEAMS", { configurable: true, get: () => E.ligaAtual() });
-    Object.defineProperty(window, "ALL_TEAMS_FLAT", { configurable: true, get: () => E.todosTimes() });
-    Object.defineProperty(window, "CURRENT_COMPETITION_ID", { configurable: true, get: () => E.competicaoAtual() });
+    Object.defineProperty(window, "LEAGUE_TEAMS", { configurable: true, get: () => E.ligaAtual(), set: (v) => E.definirLigaAtual(v) });
+    Object.defineProperty(window, "ALL_TEAMS_FLAT", { configurable: true, get: () => E.todosTimes(), set: (v) => E.definirTodosTimes(v) });
+    Object.defineProperty(window, "CURRENT_COMPETITION_ID", { configurable: true, get: () => E.competicaoAtual(), set: (v) => E.definirCompeticaoAtual(v) });
     window.persistCareer = () => mods.carga.persistCareer();
     window.teamById = (id) => E.timePorId(id);
     window.squadAvgOverallOf = (id) => E.forcaMediaDoElenco(id);
     window.sortedStandings = () => mods.tabela.sortRows(E.carreiraAtual().standings);
     window.motorMercado = () => mods.mercado;
+    window.motorTemporada = () => mods.temporada;
     // FASE1-MER: as decisões da negociação usam um sorteio com chave da
     // oferta. Para um teste cair numa faixa (ex.: "vence a disputa"), troca
     // o id da oferta até o 1º sorteio da chave satisfazer `ok` (que recebe
