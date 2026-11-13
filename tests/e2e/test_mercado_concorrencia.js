@@ -106,11 +106,13 @@ const { carreiraV2, signup, ensureDailyClaimed, globaisDoMotor, saveNoServidor, 
       marketValue: p.value, offerValue: p.value, installments: 1, roundsLeft: 1, status: "pending", counterValue: null,
       rivalOffer: { clubId: "xxx", clubName: "Rival FC", offerValue: Math.round(p.value * 0.9), installments: 1 },
     });
-    const orig = Math.random;
-    Math.random = () => 0.01; // dentro dos 80% de chance de vencer (minha oferta > rival)
+    // FASE1-MER (13/11/2026): a disputa usa o sorteio com chave da oferta
+    // (não mais Math.random). Escolhe um id cujo sorteio cai dentro dos 80%.
+    // As outras propostas saem da lista para não resolverem junto.
+    CAREER.pendingOffersOut = CAREER.pendingOffersOut.filter((x) => x.id === "test_rival_win");
+    sorteioNaFaixa(CAREER.pendingOffersOut[0], CAREER.currentRound, (v) => v < 0.8);
     resolvePendingOffersOutRound(CAREER.currentRound);
-    Math.random = orig;
-    return { inSquad: !!CAREER.squad.find((x) => x.id === t.playerId), stillPending: !!CAREER.pendingOffersOut.find((x) => x.id === "test_rival_win") };
+    return { inSquad: !!CAREER.squad.find((x) => x.id === t.playerId), stillPending: CAREER.pendingOffersOut.length > 0 };
   }, target2);
   check("6) Minha proposta pesa mais que a do concorrente e vence (RNG dentro dos 80%):",
     check6.inSquad && !check6.stillPending, JSON.stringify(check6));
@@ -127,14 +129,14 @@ const { carreiraV2, signup, ensureDailyClaimed, globaisDoMotor, saveNoServidor, 
       marketValue: p.value, offerValue: Math.round(p.value * 0.85), installments: 1, roundsLeft: 1, status: "pending", counterValue: null,
       rivalOffer: { clubId: "yyy", clubName: "Concorrente United", offerValue: p.value, installments: 1 },
     });
-    const orig = Math.random;
-    Math.random = () => 0.9; // fora dos 25% de chance (minha oferta < rival)
+    // Sorteio com chave fora dos 25% de chance (minha oferta < rival).
+    CAREER.pendingOffersOut = CAREER.pendingOffersOut.filter((x) => x.id === "test_rival_lose");
+    sorteioNaFaixa(CAREER.pendingOffersOut[0], CAREER.currentRound, (v) => v >= 0.25);
     resolvePendingOffersOutRound(CAREER.currentRound);
-    Math.random = orig;
     return {
       cashUnchanged: CAREER.finances.cash === cashBefore,
       notInMySquad: !CAREER.squad.find((x) => x.id === t.playerId),
-      stillPending: !!CAREER.pendingOffersOut.find((x) => x.id === "test_rival_lose"),
+      stillPending: CAREER.pendingOffersOut.length > 0,
     };
   }, target3);
   check("7) Minha proposta pesa menos e perco a disputa (RNG fora dos 25%), sem afetar meu caixa/elenco:",

@@ -36,3 +36,22 @@ export function buyerHardCap(player: MarketPlayer, buyer: MarketClub, context?: 
 export function buyerNegotiationDecision(counterValue: number, initialOfferValue: number, player: MarketPlayer, buyer: MarketClub, context?: ValuationContext): Decision;
 export function negotiateOffer(player: MarketPlayer, buyer: MarketClub, seller: MarketClub, context: ValuationContext, rng: Rng): Deal;
 export function offerEffectiveValue(offerValue: number, installments: number): number;
+// FASE1-MER (13/11/2026)
+export type Papel = "titular" | "rotacao" | "reserva";
+export const MER_PARAMETROS: {
+  vagasTitular: Record<"G" | "D" | "M" | "F", number>; vagasRotacao: Record<"G" | "D" | "M" | "F", number>;
+  importancia: Record<Papel, number>; coberturaMinima: Record<"G" | "D" | "M" | "F", number>;
+  fatorPorFalta: number; reposicaoMargem: number; fatorSemReposicao: number; fatorFimDeJanela: number; reservaTeto: number;
+  atleta: { salario: number; papel: number; divisao: number; forca: number; reputacao: number; duracaoVeterano: number; jeito: number; faixaConversa: number; salarioPedidoTeto: number };
+  emprestimo: { papel: Record<Papel, number>; semCobertura: number; desenvolvimento: number; meiaTemporada: number; salario: number; faixaConversa: number };
+};
+export interface ContextoAtleta { papelAtual?: Papel; divisaoAtual?: number; divisaoComprador?: number; forcaAtual?: number; forcaComprador?: number; reputacao?: number }
+export interface OfertaAtleta { salario: number; papel: Papel; anos: number }
+export interface AvaliacaoAtleta { decisao: "aceita" | "pede" | "recusa"; salarioPedido?: number; motivo: string | null; utilidade: number; termos: Record<string, number> }
+export function papelNoElenco(player: { id: string; group: string; overall?: number }, roster: { id: string; group: string; overall?: number }[]): Papel;
+export function jeitoDoAtleta(id: string): number;
+export function reservaParaProposta(player: MarketPlayer, seller: MarketClub, ctx?: ValuationContext & { fimDeJanela?: boolean }): { reserva: number; papel: Papel; faltam: number; semReposicao: boolean };
+export function motivoDoVendedor(r: { papel: Papel; faltam: number; semReposicao: boolean }, nomeClube: string): string;
+export function avaliacaoAtleta(player: MarketPlayer, oferta: OfertaAtleta, ctx?: ContextoAtleta): AvaliacaoAtleta;
+export function salarioSugerido(player: MarketPlayer, papel: Papel, ctx?: ContextoAtleta): number;
+export function avaliacaoEmprestimo(player: MarketPlayer, ped: { duracao: "temporada" | "meia"; pct: number }, ctx?: { papelNaOrigem?: Papel; rosterOrigem?: MarketPlayer[]; papelNoDestino?: Papel }): { decisao: "aceita" | "contra" | "recusa"; pctPedido?: number; motivo: string | null; utilidade: number; lado: "clube" | "jogador" };

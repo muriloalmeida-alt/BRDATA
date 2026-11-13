@@ -253,7 +253,10 @@ const limpa = (x) => JSON.parse(JSON.stringify(x, (k, v) => (k === "ts" && typeo
 
   const rodar = async (sb, mundo, seed) => {
     sb.__m = clone(mundo);
-    vm.runInContext("Date.now = () => 1794000000000; AVISOS = []; COLETIVAS = []; TELA = []; CAREER = __m.career; LEAGUE_TEAMS = __m.liga; ALL_TEAMS_FLAT = __m.todos;", sb);
+    // FASE1-MER (13/11/2026): o relógio anda 1 ms por leitura (igual nos dois
+    // lados). Com o relógio parado, os ids de proposta repetiam; o motor agora
+    // evita a repetição (sufixo) e a cópia congelada não.
+    vm.runInContext("globalThis.__agora = 1794000000000; Date.now = () => globalThis.__agora++; AVISOS = []; COLETIVAS = []; TELA = []; CAREER = __m.career; LEAGUE_TEAMS = __m.liga; ALL_TEAMS_FLAT = __m.todos;", sb);
     sb.Math.random = seeded(seed);
     const out = await vm.runInContext(ROTEIRO(seed), sb);
     return limpa({ out, career: vm.runInContext("CAREER", sb), avisos: vm.runInContext("AVISOS", sb), coletivas: vm.runInContext("COLETIVAS", sb), tela: vm.runInContext("TELA", sb) });

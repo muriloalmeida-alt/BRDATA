@@ -121,7 +121,7 @@ async function noMotor(page, fn, arg, { comCarreira = true } = {}) {
 async function globaisDoMotor(page) {
   await motorPronto(page, { comCarreira: true });
   return page.evaluate(async () => {
-    const ordem = ["semana", "clube", "fechamento", "carga", "virada", "temporada", "aovivo", "posjogo", "jogo", "ponte", "estado", "escalacao", "tabela", "registro", "treino", "financas", "partida", "rodada", "calendario", "mercado"];
+    const ordem = ["semana", "clube", "fechamento", "carga", "virada", "temporada", "aovivo", "posjogo", "jogo", "ponte", "estado", "escalacao", "tabela", "registro", "treino", "financas", "partida", "rodada", "calendario", "mercado", "negociacao"];
     const mods = {};
     for (const n of ordem) mods[n] = await import(`/js/motor/${n}.js`);
     const def = (k, v) => { if (!(k in window)) window[k] = v; };
@@ -144,6 +144,15 @@ async function globaisDoMotor(page) {
     window.squadAvgOverallOf = (id) => E.forcaMediaDoElenco(id);
     window.sortedStandings = () => mods.tabela.sortRows(E.carreiraAtual().standings);
     window.motorMercado = () => mods.mercado;
+    // FASE1-MER: as decisões da negociação usam um sorteio com chave da
+    // oferta. Para um teste cair numa faixa (ex.: "vence a disputa"), troca
+    // o id da oferta até o 1º sorteio da chave satisfazer `ok` (que recebe
+    // também o sorteio, para conferir os seguintes: ok(1º, rng)).
+    window.sorteioNaFaixa = (o, round, ok) => {
+      const base = o.id;
+      for (let k = 0; k < 500; k++) { o.id = k ? `${base}_${k}` : base; const rng = mods.semana.ambiente.rngDaChave(mods.negociacao.chaveDaOferta(o, round)); if (ok(rng(), rng)) return o.id; }
+      throw new Error("sorteioNaFaixa: nenhuma chave na faixa");
+    };
     return Object.keys(mods).length;
   });
 }

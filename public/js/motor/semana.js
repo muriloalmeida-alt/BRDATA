@@ -474,7 +474,9 @@ export function finalizeIncomingPurchase(o) {
     return { ok: false, texto: `${abbreviateName(o.playerName)} não está mais disponível — negociação cancelada.` };
   }
   const p = squad[idx];
-  if (wageBillOf(CAREER.squad) + p.wage > CAREER.finances.wageCap) {
+  // FASE1-MER: salário combinado com o atleta (propostas de antes: o atual).
+  const salario = o.salario ? Math.round(o.salario) : p.wage;
+  if (wageBillOf(CAREER.squad) + salario > CAREER.finances.wageCap) {
     avisar(`${o.clubName} aceitou, mas contratar ${abbreviateName(p.name)} agora estouraria seu teto salarial — negociação cancelada.`, { type: "warn" });
     return { ok: false, texto: `Contratar ${abbreviateName(p.name)} agora estouraria seu teto salarial — negociação cancelada.` };
   }
@@ -495,6 +497,10 @@ export function finalizeIncomingPurchase(o) {
     CAREER.pendingInstallments.push({ roundsLeft: o.installments - 1, perRoundAmount: perInstallment, label: `Parcela de ${p.name}` });
   }
   p.origin = "principal";
+  // FASE1-MER: contrato e promessa da proposta (propostas de antes: como eram).
+  if (o.salario) p.wage = salario;
+  if (o.anos) p.contractUntil = CAREER.seasonYear + Math.max(1, Number(o.anos)) - 1;
+  if (o.papel) p.promessa = { papel: o.papel, temporada: CAREER.seasonYear };
   CAREER.squad.push(p);
   pushTransferLog(`Você contratou ${p.name} do ${o.clubName} por ${fmtBRL(o.offerValue)}${o.installments > 1 ? ` (${o.installments}x)` : ""}.`, CAREER.currentRound);
   pushLedger("transferencia", `Contratação — ${p.name} (${o.clubName})${o.installments > 1 ? ` — 1ª de ${o.installments} parcelas` : ""}`, -firstPayment, CAREER.currentRound);
@@ -544,58 +550,16 @@ export function offerEffectiveValue(offerValue, installments) {
 export function resolvePendingOffersOutRound(round) {
   const CAREER = carreiraAtual();
   const list = CAREER.pendingOffersOut || [];
-  const stillPending = [];
-  list.forEach((o) => {
-    if (o.status === "countered") { stillPending.push(o); return; } // esperando o técnico decidir, sem prazo
-    maybeSpawnRivalOffer(o);
-    o.roundsLeft -= 1;
-    if (o.roundsLeft > 0) { stillPending.push(o); return; }
-    if (o.rivalOffer) {
-      const mine = offerEffectiveValue(o.offerValue, o.installments);
-      const rival = offerEffectiveValue(o.rivalOffer.offerValue, o.rivalOffer.installments);
-      const winChance = mine >= rival ? 0.8 : 0.25;
-      if (Math.random() < winChance) { finalizeIncomingPurchase(o); return; }
-      avisar(`${o.clubName} vendeu ${abbreviateName(o.playerName)} pro ${o.rivalOffer.clubName} — a proposta concorrente venceu.`, { type: "warn" });
-      pushTransferLog(`${o.rivalOffer.clubName} venceu a disputa por ${o.playerName} (sua proposta era de ${fmtBRL(o.offerValue)}).`, round);
-      return;
-    }
-    // Fase 1.4 — decisão do vendedor CPU (aceitar/contrapor/recusar a
-    // SUA proposta, digitada livremente em openOfferModal) trocada da
-    // sequência de faixas de ratio ad hoc pras mesmas funções puras
-    // reaproveitadas em todo o resto (calculateSellerReservationValue/
-    // sellerNegotiationDecision) — mesma UI de sempre (contraproposta/
-    // aceitar/retirar em CAREER.pendingOffersOut, nada muda aí).
-    // o.counterRounds (novo campo temporário, só nesta oferta pendente
-    // — não é schema de jogador/clube) limita esta negociação a
-    // MAX_NEGOTIATION_ROUNDS contrapropostas (item 15): sem isso, o
-    // técnico podia aumentar a proposta indefinidamente
-    // (ver increaseOffer) e o vendedor contrapor de novo pra sempre,
-    // sem nenhum teto — um loop sem fim que este item pede pra evitar.
-    const sellerPlayer = leagueSquadFor(o.clubId).find((x) => String(x.id) === String(o.playerId));
-    const reservation = sellerPlayer ? calculateSellerReservationValue(sellerPlayer, o.clubId, { baseValue: o.marketValue }) : o.marketValue;
-    const roundsUsed = o.counterRounds || 0;
-    let decision = sellerNegotiationDecision(o.offerValue, reservation);
-    if (decision.action === "counter" && roundsUsed >= mercado.MAX_NEGOTIATION_ROUNDS) {
-      // esgotou o limite de contrapropostas -> decide definitivamente
-      // agora (aceita se ficou razoavelmente perto da reserva, senão
-      // recusa), nunca mais um ciclo.
-      decision = (o.offerValue / reservation) >= 0.85 ? { action: "accept", value: o.offerValue } : { action: "reject", value: null };
-    }
-    if (decision.action === "accept") { finalizeIncomingPurchase(o); return; }
-    if (decision.action === "counter") {
-      o.counterValue = decision.value;
-      o.counterRounds = roundsUsed + 1;
-      o.status = "countered";
-      stillPending.push(o);
-      avisar({ title: "Contraproposta recebida", detail: `${o.clubName} quer ${fmtBRL(o.counterValue)} por ${abbreviateName(o.playerName)} — veja em Minhas propostas.` }, { type: "warn" });
-      return;
-    }
-    avisar(`${o.clubName} recusou sua proposta de ${fmtBRL(o.offerValue)} por ${abbreviateName(o.playerName)}.`, { type: "warn" });
-    pushTransferLog(`${o.clubName} recusou sua proposta de ${fmtBRL(o.offerValue)} por ${o.playerName}.`, round);
-    pushNotification("proposta", `${o.clubName} recusou sua proposta por ${abbreviateName(o.playerName)}.`);
-  });
-  CAREER.pendingOffersOut = stillPending;
+  // FASE1-MER (13/11/2026): cada proposta do técnico passa pelo clube
+  // vendedor (reserva com importância, cobertura e reposição) e pelo atleta,
+  // com sorteio com chave (motor/negociacao.js). Contraproposta, pedido de
+  // salário e recusa ficam na lista, com o motivo, para a tela.
+  CAREER.pendingOffersOut = list.filter((o) => ganchos.resolverProposta(o, round));
 }
+
+// Ganchos preenchidos por módulos que vêm depois deste (a negociação do
+// técnico, motor/negociacao.js), sem import circular.
+export const ganchos = { resolverProposta: null };
 
 export function processPendingInstallments() {
   const CAREER = carreiraAtual();

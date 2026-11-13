@@ -282,3 +282,174 @@ export function negotiateOffer(player, buyer, seller, context, rng) {
 export function offerEffectiveValue(offerValue, installments) {
   return offerValue * (1 - 0.03 * (installments - 1));
 }
+
+/* ===================================================================
+   FASE1-MER (13/11/2026) — negociação do técnico com o clube e com o
+   atleta, e empréstimos avaliados dos dois lados
+   (docs/carreira-v2/fase1/02_Requisitos_Mercado.md e PLANO_MER.md).
+   Funções puras e determinísticas: a mesma entrada dá a mesma resposta.
+   O jeito de cada atleta vem do id dele (nada de Math.random aqui).
+   Limiares e pesos em MER_PARAMETROS (MER-06); a calibração está em
+   docs/carreira-v2/fase1/CALIBRACAO_MER.md. A IA CPU x CPU segue com as
+   funções acima, sem mudança.
+=================================================================== */
+
+export const MER_PARAMETROS = {
+  // Papel no elenco: quantos de cada grupo são titulares e rotação.
+  vagasTitular: { G: 1, D: 4, M: 4, F: 2 },
+  vagasRotacao: { G: 1, D: 3, M: 3, F: 2 },
+  // Clube vendedor (multiplicam a reserva de sempre).
+  importancia: { titular: 1.20, rotacao: 1.08, reserva: 1.00 },
+  coberturaMinima: { G: 2, D: 5, M: 5, F: 3 },
+  fatorPorFalta: 0.12,       // +12% por jogador que faltaria no grupo
+  reposicaoMargem: 4,        // um substituto até 4 de overall abaixo repõe
+  fatorSemReposicao: 1.10,
+  fatorFimDeJanela: 1.05,
+  reservaTeto: 1.60,         // limite sobre o valor de mercado
+  // Atleta: utilidade = soma dos termos; >= 0 aceita.
+  atleta: {
+    salario: 2.5,            // × ln(salário oferecido / atual)
+    papel: 0.35,             // por degrau (reserva 0, rotação 1, titular 2)
+    divisao: 0.30,           // por divisão de diferença (subir é bom)
+    forca: 0.20,             // força do comprador vs. a do clube atual (por 10 de overall)
+    reputacao: 0.10,         // reputação do técnico (por 50 pontos acima de 50)
+    duracaoVeterano: 0.04,   // a partir de 29 anos, por ano de contrato além de 2
+    jeito: 0.10,             // amplitude do jeito de cada atleta (pelo id)
+    faixaConversa: 0.40,     // de -0.40 a 0: pede mais salário
+    salarioPedidoTeto: 2.5,  // pedido acima de 2.5× o atual vira recusa
+  },
+  // Empréstimo: utilidade do clube de origem; >= 0 aceita.
+  emprestimo: {
+    papel: { titular: -0.60, rotacao: -0.20, reserva: 0.10 },
+    semCobertura: -0.40,
+    desenvolvimento: 0.30,   // jovem (até 21) pouco usado que vai jogar
+    meiaTemporada: 0.10,
+    salario: 0.30,           // (pct - 50) / 50 × isto
+    faixaConversa: 0.30,
+  },
+};
+
+const RANK_PAPEL = { reserva: 0, rotacao: 1, titular: 2 };
+const NOME_PAPEL = { titular: "titular", rotacao: "rotação", reserva: "reserva" };
+
+// Papel do jogador num elenco: pela ordem de overall dentro do grupo.
+export function papelNoElenco(player, roster, P = MER_PARAMETROS) {
+  const grupo = (roster || []).filter((p) => p.group === player.group && String(p.id) !== String(player.id));
+  const acima = grupo.filter((p) => (p.overall || 0) > (player.overall || 0)).length;
+  const t = P.vagasTitular[player.group] || 1, r = P.vagasRotacao[player.group] || 1;
+  return acima < t ? "titular" : acima < t + r ? "rotacao" : "reserva";
+}
+
+// Jeito do atleta, fixo por id, em [-1, 1].
+export function jeitoDoAtleta(id) {
+  let h = 2166136261;
+  for (const c of String(id)) { h ^= c.charCodeAt(0); h = Math.imul(h, 16777619); }
+  return ((h >>> 0) % 2001) / 1000 - 1;
+}
+
+// Clube vendedor: quanto custa perder o jogador, com importância,
+// cobertura da posição, reposição e janela (MER-04). ctx: { baseValue,
+// fimDeJanela }. Devolve { reserva, papel, faltam, semReposicao }.
+export function reservaParaProposta(player, seller, ctx = {}, P = MER_PARAMETROS) {
+  const base = ctx.baseValue != null ? ctx.baseValue : player.value;
+  const roster = seller.roster || seller.squad || [];
+  const papel = papelNoElenco(player, roster, P);
+  const grupo = roster.filter((p) => p.group === player.group && String(p.id) !== String(player.id));
+  const faltam = Math.max(0, (P.coberturaMinima[player.group] || 1) - grupo.length);
+  const semReposicao = papel !== "reserva" && !grupo.some((p) => (p.overall || 0) >= (player.overall || 0) - P.reposicaoMargem);
+  const de_sempre = calculateSellerReservationValue(player, seller, ctx);
+  const fator = P.importancia[papel] * (1 + faltam * P.fatorPorFalta) * (semReposicao ? P.fatorSemReposicao : 1) * (ctx.fimDeJanela ? P.fatorFimDeJanela : 1);
+  const reserva = Math.round(clamp(de_sempre * fator, de_sempre, base * P.reservaTeto) / 1000) * 1000;
+  return { reserva, papel, faltam, semReposicao };
+}
+
+// Motivo do clube vendedor ao recusar ou contrapor (para a tela).
+export function motivoDoVendedor(r, nomeClube) {
+  if (r.semReposicao && r.papel === "titular") return `O ${nomeClube} não quer perder um titular sem ter quem o substitua.`;
+  if (r.faltam > 0) return `O ${nomeClube} ficaria sem peças suficientes nessa posição.`;
+  if (r.papel === "titular") return `É titular do ${nomeClube}: o clube só libera por um valor mais alto.`;
+  return `O ${nomeClube} considera a proposta abaixo do valor do jogador.`;
+}
+
+// Atleta (MER-04): avalia salário, papel, divisão, força do clube e
+// reputação do técnico. oferta: { salario, papel, anos }. ctx: { papelAtual,
+// divisaoAtual, divisaoComprador (0 = Série A), forcaAtual, forcaComprador,
+// reputacao }. Devolve { decisao: "aceita" | "pede" | "recusa",
+// salarioPedido?, motivo, utilidade, termos }.
+export function avaliacaoAtleta(player, oferta, ctx = {}, P = MER_PARAMETROS) {
+  const A = P.atleta;
+  const atual = Math.max(1, player.wage || 1);
+  const salario = Math.max(1, oferta.salario || atual);
+  const termos = {
+    salario: A.salario * Math.log(salario / atual),
+    papel: A.papel * ((RANK_PAPEL[oferta.papel] ?? 1) - (RANK_PAPEL[ctx.papelAtual] ?? 1)),
+    divisao: A.divisao * ((ctx.divisaoAtual ?? 0) - (ctx.divisaoComprador ?? 0)),
+    forca: A.forca * clamp(((ctx.forcaComprador ?? 70) - (ctx.forcaAtual ?? 70)) / 10, -2, 2),
+    reputacao: A.reputacao * clamp(((ctx.reputacao ?? 50) - 50) / 50, -1, 1),
+    duracao: (player.age || 0) >= 29 ? A.duracaoVeterano * ((oferta.anos || 3) - 2) : 0,
+    jeito: A.jeito * jeitoDoAtleta(player.id),
+  };
+  const utilidade = Object.values(termos).reduce((s, x) => s + x, 0);
+  if (utilidade >= 0) return { decisao: "aceita", motivo: null, utilidade, termos };
+  const semSalario = utilidade - termos.salario;
+  // Arredonda para cima (R$ 100) e fica sempre acima do oferecido: pedir o
+  // mesmo salário, ou menos, não faria sentido na tela.
+  const salarioPedido = Math.max(Math.ceil((atual * Math.exp((0.02 - semSalario) / A.salario)) / 100) * 100, Math.ceil((salario + 1) / 100) * 100);
+  if (utilidade >= -A.faixaConversa && salarioPedido <= atual * A.salarioPedidoTeto) {
+    return { decisao: "pede", salarioPedido, motivo: "Ele aceita com um salário maior.", utilidade, termos };
+  }
+  return { decisao: "recusa", motivo: motivoDoAtleta(termos, ctx, oferta), utilidade, termos };
+}
+function motivoDoAtleta(t, ctx, oferta) {
+  const pior = Object.entries(t).filter(([k]) => k !== "jeito").sort((a, b) => a[1] - b[1])[0];
+  switch (pior && pior[0]) {
+    case "divisao": return "Ele não quer jogar numa divisão abaixo da atual.";
+    case "papel": return `Ele quer garantia de jogar: não aceita ser ${NOME_PAPEL[oferta.papel] || "reserva"}${ctx.papelAtual === "titular" ? " sendo titular hoje" : ""}.`;
+    case "forca": return "Ele prefere um clube mais forte que o atual.";
+    case "reputacao": return "Ele não se convenceu do projeto do técnico.";
+    case "salario": return "O salário oferecido está abaixo do que ele ganha.";
+    default: return "Ele não se interessou pela proposta.";
+  }
+}
+
+// Salário sugerido para a tela: o que o atleta aceitaria com o papel
+// dado (arredondado; nunca abaixo do atual).
+export function salarioSugerido(player, papel, ctx = {}, P = MER_PARAMETROS) {
+  const r = avaliacaoAtleta(player, { salario: player.wage, papel, anos: 3 }, ctx, P);
+  return r.decisao === "aceita" ? player.wage : r.salarioPedido || Math.round(player.wage * 1.5 / 100) * 100;
+}
+
+// Empréstimo (MER-05): o clube de origem (dono) e o jogador avaliam.
+// ped: { duracao: "temporada" | "meia", pct: 50 | 75 | 100 }. ctx: {
+// papelNaOrigem, rosterOrigem, papelNoDestino }. Devolve { decisao:
+// "aceita" | "contra" | "recusa", pctPedido?, motivo, utilidade }.
+export function avaliacaoEmprestimo(player, ped, ctx = {}, P = MER_PARAMETROS) {
+  const E = P.emprestimo;
+  const papel = ctx.papelNaOrigem || "reserva";
+  // Jogador: titular na origem que viraria reserva no destino recusa.
+  if (ctx.papelNoDestino && RANK_PAPEL[ctx.papelNoDestino] < RANK_PAPEL[papel] && papel === "titular") {
+    return { decisao: "recusa", motivo: "Ele é titular e não aceita ir para ser reserva.", utilidade: -1, lado: "jogador" };
+  }
+  const grupo = (ctx.rosterOrigem || []).filter((p) => p.group === player.group && String(p.id) !== String(player.id));
+  const semCobertura = grupo.length < (P.coberturaMinima[player.group] || 1);
+  const vaiJogar = ctx.papelNoDestino === "titular" || ctx.papelNoDestino === "rotacao";
+  const termos = {
+    papel: E.papel[papel],
+    cobertura: semCobertura ? E.semCobertura : 0,
+    desenvolvimento: (player.age || 30) <= 21 && papel === "reserva" && vaiJogar ? E.desenvolvimento : 0,
+    duracao: ped.duracao === "meia" ? E.meiaTemporada : 0,
+    salario: E.salario * (((ped.pct || 50) - 50) / 50),
+  };
+  const utilidade = Object.values(termos).reduce((s, x) => s + x, 0);
+  if (utilidade >= 0) return { decisao: "aceita", motivo: null, utilidade, termos, lado: "clube" };
+  if (utilidade >= -E.faixaConversa) {
+    for (const pct of [75, 100]) {
+      if (pct <= (ped.pct || 50)) continue;
+      const u = utilidade + E.salario * ((pct - (ped.pct || 50)) / 50);
+      if (u >= 0) return { decisao: "contra", pctPedido: pct, motivo: `O clube aceita se você pagar ${pct}% do salário.`, utilidade, termos, lado: "clube" };
+    }
+  }
+  const motivo = papel === "titular" ? (semCobertura ? "É titular e o clube não tem quem o substitua." : "É titular: o clube não abre mão dele agora.")
+    : semCobertura ? "O clube ficaria sem peças nessa posição." : "O clube não viu vantagem no empréstimo nessas condições.";
+  return { decisao: "recusa", motivo, utilidade, termos, lado: "clube" };
+}

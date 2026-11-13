@@ -172,10 +172,10 @@ Recomendação: aprovar com as decisões 1 e 2 acima.
 
 V2-ANTIGA-01 — Dois recursos da tela antiga trazidos para a v2
 
-Status: REVISÃO DO PM NECESSÁRIA. A demanda foi aprovada pelo Murilo em
-12/11/2026 ("1. Sim! 2. Sim", sobre as diferenças achadas no lote L3 de
-testes, docs/carreira-v2/ENTREGA_TESTES_L3.md); falta aprovar a
-implementação para o merge.
+Status: APROVADO. A demanda foi aprovada pelo Murilo em 12/11/2026
+("1. Sim! 2. Sim", sobre as diferenças achadas no lote L3 de testes,
+docs/carreira-v2/ENTREGA_TESTES_L3.md), e a implementação em 12/11
+("Aprovado"). Mergeado no PR #109.
 1. Nome do jogador nos lances da partida.
    - Na partida encerrada ("Ver lances"), o nome do jogador do lance (gol,
      cartão, lesão) é link.
@@ -198,7 +198,41 @@ testes da partida, do Elenco, de foco e de sistema (10/10).
 
 FASE1-MER — Fase 1: mercado, empréstimos e contratação
 
-Status: PRONTO PARA IMPLEMENTAÇÃO (começa depois do lote L3 de testes; FASE1-ESC aprovada)
+Status: REVISÃO DO PM NECESSÁRIA (implementado em 13/11, PR único; merge só com a aprovação do Murilo).
+Plano: `docs/carreira-v2/fase1/PLANO_MER.md`.
+Calibração: `docs/carreira-v2/fase1/CALIBRACAO_MER.md`. Três pontos de
+balanceamento ficaram para decisão do PM e não foram alterados:
+- empréstimo de rotação muito binário;
+- valor de mercado raramente fecha de primeira;
+- força da promessa de titularidade.
+Entregue:
+- motor: `motor/negociacao.js`. O clube vendedor tem reserva nova (papel,
+  cobertura, reposição, fim de janela). O atleta decide salário, papel e
+  duração, com motivo. Empréstimo avaliado dos dois lados. Sorteio com
+  chave, operação com id (MER-07). Promessa cobrando a moral na temporada
+  da contratação.
+- v2:
+  - Elenco > Contratar jogador;
+  - lista do Mercado preservada;
+  - "Faça sua oferta." com salário, papel, duração e resumo;
+  - negociação com motivo e ações (Aceitar salário pedido, Fazer nova
+    proposta, Dispensar);
+  - empréstimo com "Aceitar N% do salário".
+- testes:
+  - novos: `test_motor_mer`, `test_motor_mer_integracao`, `test_v2_mer`
+    e o domínio da v2;
+  - equivalência ajustada só no que mudou de propósito;
+  - script `tests/unit/calibracao_mer.js`.
+- defeitos achados no caminho e corrigidos:
+  - id de proposta podia repetir no mesmo milissegundo;
+  - o Link da v2 descartava um onClick próprio (a navegação virava recarga);
+  - o salário pedido podia arredondar para baixo do oferecido. Decisões do Murilo (13/11):
+1) a proposta leva salário, papel prometido e duração, e o atleta decide
+   junto com o clube;
+2) decisões determinísticas (MER-06);
+3) a promessa de papel vale já nesta fase: deixar no banco quem foi
+   prometido titular derruba a moral e pode gerar pedido de saída;
+4) entrega num PR só.
 Origem: `docs/carreira-v2/fase1/02_Requisitos_Mercado.md` (MER-01 a
 MER-07 e matriz de aceite), sem alteração.
 Ordem: antes de mexer nas regras do mercado, o lote L3 do plano

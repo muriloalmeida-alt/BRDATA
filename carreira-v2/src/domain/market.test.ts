@@ -93,3 +93,28 @@ test("Vendas e histórico: anúncio com propostas; abas pela regra do jogo, sem 
   assert.equal(buildHistory(c, "compras").total, 4);
   assert.equal(loanWage(123_456, 75), 92_600);
 });
+
+// FASE1-MER (13/11/2026): termos, recusa e pedido do atleta.
+test("Negociação com termos: recusa e pedido de salário mostram o motivo e a próxima ação", async () => {
+  const { wageHint, ROLE } = await import("./market.ts");
+  const t = buildNegotiation(offer({ salario: 120_000, papel: "titular", anos: 4 }));
+  assert.deepEqual(t.terms!.map((r) => r.value), [`${t.terms![0].value}`, ROLE.titular, "4 temporadas"]);
+  assert.equal(t.open, true);
+  const rec = buildNegotiation(offer({ status: "recusada", recusadoPor: "atleta", motivo: "Ele quer garantia de jogar." }));
+  assert.deepEqual(offerStatus(offer({ status: "recusada", recusadoPor: "atleta" })), { text: "Recusada pelo jogador", tone: "neg" });
+  assert.equal(rec.refused, true); assert.equal(rec.open, false); assert.equal(rec.wait, null); assert.equal(rec.reason, "Ele quer garantia de jogar.");
+  const pede = buildNegotiation(offer({ status: "pede-salario", salarioPedido: 150_000, motivo: "Pede mais." }));
+  assert.equal(offerStatus(offer({ status: "pede-salario" })).text, "Pede mais salário");
+  assert.ok(pede.askedWage); assert.equal(pede.open, false);
+  assert.equal(wageHint(100_000, 120_000, 90_000)!.tone, "neg");
+  assert.equal(wageHint(130_000, 120_000, 90_000)!.tone, "pos");
+  assert.equal(wageHint(100_000, undefined, 90_000), null);
+});
+test("Proposta recusada não bloqueia uma nova e aparece na lista como recusada", () => {
+  const c = career();
+  c.pendingOffersOut = [offer({ status: "recusada", motivo: "Valor baixo." })];
+  const t = buildTarget(c, info(), "pal", c.leagueSquads!.pal[1]);
+  assert.equal(t.propose.ok, true); assert.equal(t.pendingOfferId, null); assert.deepEqual(t.refused, { id: "o1", motivo: "Valor baixo." });
+  const row = marketList(c, info(), NO_MARKET_FILTERS).find((r) => r.player.id === "p2")!;
+  assert.equal(row.pendingRefused, true);
+});

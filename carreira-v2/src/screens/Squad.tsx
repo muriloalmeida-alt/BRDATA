@@ -108,6 +108,11 @@ export function Squad({ m, career }: { m: SquadModel; career: Career }) {
         <span className="row-body"><span className="row-title">Contratos</span><span className="row-sub">Salários, prazos e renovações</span></span>
         <IconChevron className="row-chevron" />
       </Link>
+      {/* FASE1-MER (MER-01): do Elenco direto à busca do Mercado. */}
+      <Link className="row sq-legacy" to={`${BASE}/mercado`}>
+        <span className="row-body"><span className="row-title">Contratar jogador</span><span className="row-sub">Busque reforços no Mercado</span></span>
+        <IconChevron className="row-chevron" />
+      </Link>
 
       <div className="cal-foot"><Link className="cta" to={`${BASE}/escalacao`}>Ajustar escalação</Link></div>
       {sheet && <FiltersSheet f={f} onClose={() => setSheet(false)} onApply={(x) => { set(x); setSheet(false); }} />}

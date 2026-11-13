@@ -102,6 +102,7 @@ const APP_SHELL = [
   "/js/motor/jogo.js",
   "/js/motor/carga.js",
   "/js/motor/escalacao.js",
+  "/js/motor/negociacao.js",
   // Etapa G2c: a v2 abre o motor como módulo por este hospedeiro (com o
   // /js/data.js, já acima), sem a página escondida.
   "/js/motor/v2.js",

@@ -142,7 +142,13 @@ function makeWorld(seed) {
     sponsorship: rng() < 0.2 ? undefined : { master: { empresa: "M", valorTemporada: 12000000, temporadasRestantes: 2 }, material: { empresa: "N", valorTemporada: 6000000, temporadasRestantes: 1 } },
     technicalStaff: { hired: rng() < 0.5 }, scouts: Array.from({ length: Math.floor(rng() * 4) }, (_, i) => scout(i)),
     stadium: rng() < 0.3 ? undefined : { capacityBonus: 0, completed: [], pendingUpgrade: rng() < 0.6 ? { id: "u1", name: "Arquibancada", capacityGain: 3000, roundsLeft: 1 + Math.floor(rng() * 3) } : null },
-    pendingOffersOut: Array.from({ length: Math.floor(rng() * 5) }, (_, i) => ofertaMinha(i)),
+    // FASE1-MER (13/11/2026): as propostas do técnico seguem a negociação
+    // nova (clube vendedor + atleta, determinística), que não é mais igual à
+    // cópia congelada. Ficam fora da comparação (o sorteio do mundo continua
+    // o mesmo) e têm teste próprio em tests/unit/test_motor_mer_integracao.js.
+    // As mesmas ofertas ainda entram na contratação direta, que é igual.
+    pendingOffersOut: [],
+    __ofertas: Array.from({ length: Math.floor(rng() * 5) }, (_, i) => ofertaMinha(i)),
     pendingOffer: null,
     pendingListings: principal.slice(11, 11 + Math.floor(rng() * 3)).map((p) => ({ playerId: p.id, askingValue: Math.round(p.value * (0.8 + rng() * 1.5)), offers: [] })),
     pendingInstallments: parcelas(), pendingReceivables: parcelas(),
@@ -151,7 +157,8 @@ function makeWorld(seed) {
     marketScope: rng() < 0.5 ? "multi" : "single", trainingAppliedForRound: null,
     notificationSettings: rng() < 0.5 ? undefined : { partida: true, loja: false, lesao: rng() < 0.5 },
   };
-  return { liga, todos: [...liga, ...outros], career, plano: pick(["equilibrio", "pre_jogo"]) };
+  const ofertas = career.__ofertas; delete career.__ofertas;
+  return { liga, todos: [...liga, ...outros], career, ofertas, plano: pick(["equilibrio", "pre_jogo"]) };
 }
 
 // Roteiro (o mesmo texto roda nos dois lados). Semana sem jogo: a função da
@@ -207,7 +214,7 @@ const ROTEIRO = (seed) => `(() => {
     if (CAREER.currentRound > 38) break;
   }
   // propostas resolvidas na hora (contratação direta)
-  for (const o of (CAREER.pendingOffersOut || []).slice(0, 2)) out.push(finalizeIncomingPurchase(Object.assign({}, o, { offerValue: 1000, installments: r() < 0.5 ? 1 : 3 })));
+  for (const o of __m.ofertas.slice(0, 2)) out.push(finalizeIncomingPurchase(Object.assign({}, o, { offerValue: 1000, installments: r() < 0.5 ? 1 : 3 })));
   out.push(offerEffectiveValue(1000000, 3), pickRandomOtherClub(CAREER.clubId) ? 1 : 0, calendarWeekMonth({ d: "07-14" }));
   return out;
 })()`;
@@ -249,17 +256,15 @@ const limpa = (x) => JSON.parse(JSON.stringify(x, (k, v) => (k === "ts" && typeo
       assert.deepStrictEqual(b.career, a.career, `save, mundo ${k}`);
     });
   });
-  await check("O roteiro passa de verdade pelas regras (semanas, contratações, contrapropostas, propostas recebidas, indicações e jovens dos olheiros, obras e CPU x CPU)", () => {
+  await check("O roteiro passa de verdade pelas regras (semanas, contratações, propostas recebidas, indicações e jovens dos olheiros, obras e CPU x CPU)", () => {
     const soma = (f) => runs.reduce((s, [a]) => s + f(a), 0);
     const log = (a, rx) => (a.career.transferLog || []).filter((e) => rx.test(e.text)).length;
     const conta = {
       semanas: soma((a) => a.out.filter((x) => x && typeof x === "object" && "phase" in x).length),
       contratacoes: soma((a) => log(a, /^Você contratou/)),
-      recusas: soma((a) => log(a, /recusou sua proposta/)),
       cpu: soma((a) => log(a, / contratou .* do /)),
       obras: soma((a) => log(a, /^Obra concluída/)),
       olheiros: soma((a) => log(a, /voltou da missão/)),
-      contrapropostas: soma((a) => (a.career.pendingOffersOut || []).filter((o) => o.status === "countered").length),
       recebidas: soma((a) => a.out.filter((x) => x && typeof x === "object" && "recebida" in x).length),
       anuncios: soma((a) => (a.career.pendingListings || []).reduce((s, l) => s + l.offers.length, 0)),
       jovens: soma((a) => (a.career.scoutMissionProspects || []).length),
