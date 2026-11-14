@@ -1,209 +1,128 @@
+// Reputação do treinador e propostas de clube — lote L4d, sem a tela antiga.
+// As regras pelo motor na página da v2 (os mesmos comandos da ponte que a v2
+// usa: demitir, criarCarreira, aceitarPropostaClube); o "Reiniciar" pela tela
+// Saves da v2. As telas da proposta (linha no Início, Recusar/Aceitar) e do
+// perfil/histórico do treinador estão no test_v2_temporada (itens 3 a 5).
+//  1) Carreira nova: reputação 50, sem currículo.
+//  2) Meta batida sobe a reputação; não batida, desce.
+//  3) Títulos somam além da meta sozinha.
+//  4) Demissão: o currículo ganha a passagem (motivo "dismissed", 2
+//     temporadas, 1 título, posição média 4, nome do clube) e a reputação
+//     perde a penalidade (60 → 35).
+//  5) A carreira seguinte (outro clube) herda a reputação (35) e o currículo;
+//     a herança é consumida.
+//  6) "Reiniciar carreira" (Saves da v2) não leva a reputação: a carreira
+//     nova nasce com 50 e sem currículo.
+//  7) Reputação baixa não gera proposta; alta, com clube mais forte, gera
+//     uma (clube e orçamento); não empilha a 2ª.
+//  8) Aceitar a proposta: a carreira segue no clube ofertante, com a
+//     passagem anterior no currículo (motivo "accepted_proposal") e a
+//     reputação mantida.
 const { chromium } = require("playwright-core");
 const { check } = require("./_check");
-const { enterGame } = require("./_startup");
-
-async function newCareer(page, base, email) {
-  await page.goto(base + "/", { waitUntil: "domcontentloaded" });
-  await page.evaluate(async ({ email }) => {
-    await fetch("/api/auth/signup", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: "Reputacao Test", email, password: "senha123", phone: "11999999999", plan: "freemium" }) });
-    await fetch("/api/auth/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, password: "senha123" }) });
-  }, { email });
-  await page.goto(base + "/carreira.html", { waitUntil: "domcontentloaded" });
-  await page.click('.mt-competition-card[data-competition="brasileirao"]');
-  await page.waitForTimeout(200);
-  await page.click(".m3-club-row");
-  await page.waitForTimeout(150);
-  await page.click("#btnConfirmClub");
-  await enterGame(page);
-}
+const { newCareer, globaisDoMotor, base } = require("./_v2_carreira");
 
 (async () => {
-  const browser = await chromium.launch({
-    executablePath: process.env.PW_CHROMIUM_PATH || undefined,
-    headless: true,
-    args: ["--host-resolver-rules=MAP fonts.googleapis.com 127.0.0.1,MAP fonts.gstatic.com 127.0.0.1"],
-  });
+  const browser = await chromium.launch({ executablePath: process.env.PW_CHROMIUM_PATH || undefined, headless: true, args: ["--host-resolver-rules=MAP fonts.googleapis.com 127.0.0.1,MAP fonts.gstatic.com 127.0.0.1"] });
   const page = await browser.newPage({ viewport: { width: 390, height: 900 } });
   page.on("dialog", (d) => d.dismiss());
-  page.on("pageerror", (err) => console.log("PAGE ERROR:", err.message));
-  page.on("console", (m) => { if (m.type() === "error" && !m.text().includes("fonts.googleapis") && !m.text().includes("fundingchoices")) console.log("CONSOLE ERROR:", m.text()); });
+  const erros = [];
+  page.on("pageerror", (err) => erros.push(err.message));
+  await newCareer(page, `rep${Date.now()}@teste.com`);
+  await globaisDoMotor(page);
 
-  const base = "http://localhost:8787";
-  await newCareer(page, base, `rep${Date.now()}@teste.com`);
-
+  // 1 a 3) Reputação da temporada.
   const r1 = await page.evaluate(() => {
-    const out = {};
-    out.repStarts50 = CAREER.reputation === 50;
-    out.historyEmpty = (CAREER.clubHistory || []).length === 0;
-
-    // 1) Meta batida sobe reputação; meta não batida desce.
-    const before = CAREER.reputation;
-    const awardNoTitle = { seasonYear: 1, brasileirao: { campeao: "outro", vice: null, artilheiro: null, assistencias: null, melhorJogador: null }, copaDoBrasil: { disputou: false, campeao: null, vice: null } };
-    applySeasonReputationDelta(true, awardNoTitle);
-    out.metaBatidaSobe = CAREER.reputation > before;
-    const afterMet = CAREER.reputation;
-    applySeasonReputationDelta(false, awardNoTitle);
-    out.metaNaoBatidaDesce = CAREER.reputation < afterMet;
-
-    // 2) Título soma reputação.
-    CAREER.reputation = 50;
-    const awardWithTitle = { seasonYear: 1, brasileirao: { campeao: CAREER.clubId, vice: null, artilheiro: null, assistencias: null, melhorJogador: null }, copaDoBrasil: { disputou: true, campeao: CAREER.clubId, vice: "outro" } };
-    applySeasonReputationDelta(true, awardWithTitle); // meta batida + 2 títulos (Brasileirão + Copa)
-    out.doisTitulosSomamMais = CAREER.reputation > (50 + 14 * 0.5); // mais do que só a meta sozinha renderia
-
-    return out;
+    const T = motorTemporada();
+    const me = CAREER.clubId;
+    const semTitulo = { seasonYear: 1, brasileirao: { campeao: "outro" }, copaDoBrasil: { disputou: false } };
+    const doisTitulos = { seasonYear: 1, brasileirao: { campeao: me }, copaDoBrasil: { disputou: true, campeao: me, vice: "outro" } };
+    return {
+      rep: CAREER.reputation, hist: (CAREER.clubHistory || []).length,
+      batida: T.seasonReputation(50, true, semTitulo, me), naoBatida: T.seasonReputation(50, false, semTitulo, me),
+      comTitulos: T.seasonReputation(50, true, doisTitulos, me),
+    };
   });
-  check("1) Reputação nasce em 50, sem currículo:", r1.repStarts50, r1.historyEmpty);
-  check("2) Meta batida sobe / não batida desce:", r1.metaBatidaSobe, r1.metaNaoBatidaDesce);
-  check("3) Títulos somam reputação além da meta sozinha:", r1.doisTitulosSomamMais);
+  check("1) Carreira nova: reputação 50, sem currículo:", r1.rep === 50 && r1.hist === 0, JSON.stringify(r1));
+  check("2) Meta batida sobe a reputação; não batida, desce:", r1.batida > 50 && r1.naoBatida < 50, JSON.stringify(r1));
+  check("3) Dois títulos somam além da meta sozinha:", r1.comTitulos > r1.batida, JSON.stringify(r1));
 
-  // 4) endCurrentClubStint registra no currículo e aplica penalidade de
-  // demissão; TECHNICIAN_CARRY é consumido por startCareer() na
-  // próxima carreira (reputação carrega, histórico também).
-  const r2 = await page.evaluate(() => {
+  // 4) Demissão (ponte.demitir, o mesmo do "O ciclo terminou." da v2).
+  const r4 = await page.evaluate(async () => {
+    const P = (await import("/js/motor/v2.js")).criarPonte();
+    const E = await import("/js/motor/estado.js");
     CAREER.reputation = 60;
     CAREER.seasonHistory = [{ year: 1, position: 3 }, { year: 2, position: 5 }];
     CAREER.seasonAwards = [{ seasonYear: 2, brasileirao: { campeao: null }, copaDoBrasil: { disputou: false } }, { seasonYear: 1, brasileirao: { campeao: CAREER.clubId }, copaDoBrasil: { disputou: false } }];
-    const prevClubName = CAREER.clubName;
-    endCurrentClubStint("dismissed");
-    return {
-      carryReputation: TECHNICIAN_CARRY.reputation,
-      carryHistoryLen: TECHNICIAN_CARRY.clubHistory.length,
-      firstEntry: TECHNICIAN_CARRY.clubHistory[0],
-      prevClubName,
-    };
+    CAREER.currentRound = 39;
+    CAREER.negativeSeasonsStreak = 99;
+    const clube = { id: String(CAREER.clubId), nome: CAREER.clubName };
+    const d = await P.demitir();
+    return { d, clube, heranca: E.herancaDoTecnico(), semCarreira: !CAREER };
   });
-  check("4) Demissão registra no currículo (1 entrada) com reason='dismissed':", r2.carryHistoryLen === 1 && r2.firstEntry.reason === "dismissed");
-  console.log("   Penalidade de demissão aplicada (60 -> 35):", r2.carryReputation === 35);
-  console.log("   Currículo tem 2 temporadas, 1 título, posição média 4:", r2.firstEntry.seasons === 2 && r2.firstEntry.titles === 1 && r2.firstEntry.avgPosition === 4);
-  console.log("   Nome do clube anterior registrado:", r2.firstEntry.clubName === r2.prevClubName);
+  const passagem = r4.heranca && r4.heranca.clubHistory[0];
+  check("4) Demissão: currículo com a passagem (dismissed, 2 temporadas, 1 título, posição média 4, nome do clube) e reputação 60 → 35:",
+    r4.d.ok && r4.semCarreira && r4.heranca.reputation === 35 && r4.heranca.clubHistory.length === 1 && passagem.reason === "dismissed"
+    && passagem.seasons === 2 && passagem.titles === 1 && passagem.avgPosition === 4 && passagem.clubName === r4.clube.nome, JSON.stringify(r4));
 
-  // 5) startCareer() consome TECHNICIAN_CARRY -- reputação e currículo
-  // sobrevivem à troca de "clube" (aqui simulada chamando startCareer
-  // direto, sem passar pela tela, já que TECHNICIAN_CARRY já foi
-  // deixado setado pelo passo anterior).
-  const clubIds = await page.evaluate(() => LEAGUE_TEAMS.map((t) => String(t.id)));
-  const otherClub = await page.evaluate((myId) => LEAGUE_TEAMS.map((t) => String(t.id)).find((id) => id !== String(myId)), await page.evaluate(() => CAREER.clubId));
-  const r3 = await page.evaluate(async (otherClub) => {
-    await startCareer(otherClub);
-    return { reputation: CAREER.reputation, historyLen: (CAREER.clubHistory || []).length, carryCleared: TECHNICIAN_CARRY === null, clubId: CAREER.clubId };
-  }, otherClub);
-  check("5) Reputação sobrevive à troca de clube (35):", r3.reputation === 35, "| currículo com 1 entrada anterior:", r3.historyLen === 1);
-  console.log("   TECHNICIAN_CARRY consumido/limpo:", r3.carryCleared, "| clube realmente trocou:", r3.clubId === otherClub);
-  // startCareer() abre o assistente de início da carreira nova (por cima
-  // do menu) — fecha antes de usar a interface de novo.
-  // (assistente e, em seguida, o login diário — enterGame atravessa a
-  // fila inteira pelo estado.)
-  await enterGame(page);
+  // 5) A carreira seguinte, em outro clube.
+  const r5 = await page.evaluate(async (antigo) => {
+    const P = (await import("/js/motor/v2.js")).criarPonte();
+    const E = await import("/js/motor/estado.js");
+    const c = await P.escolherCompeticao("brasileirao");
+    const outro = c.clubes.find((t) => t.id !== antigo).id;
+    const r = await P.criarCarreira(outro);
+    await P.assistenteVisto(); // como o carreiraV2: a v2 abre direto, sem o assistente
+    return { ok: r.ok, outro, clube: String(CAREER.clubId), rep: CAREER.reputation, hist: (CAREER.clubHistory || []).map((h) => h.reason), heranca: E.herancaDoTecnico() };
+  }, r4.clube.id);
+  check("5) A carreira seguinte (outro clube) herda reputação 35 e o currículo; a herança é consumida:",
+    r5.ok && r5.clube === r5.outro && r5.rep === 35 && r5.hist.length === 1 && r5.hist[0] === "dismissed" && r5.heranca === null, JSON.stringify(r5));
 
-  // 6) "Reiniciar" (via UI de verdade) NÃO carrega reputação -- nasce
-  // limpo de novo (50, sem currículo).
-  await page.click("#btnBottomMenu");
-  await page.waitForTimeout(150);
-  await page.click("#btnRestart");
-  await page.waitForTimeout(200);
-  await page.click("#confirmOkBtn");
-  await page.waitForTimeout(400);
-  await page.click('.mt-competition-card[data-competition="brasileirao"]');
-  await page.waitForTimeout(200);
-  await page.click(".m3-club-row");
-  await page.waitForTimeout(150);
-  await page.click("#btnConfirmClub");
-  await enterGame(page);
-  const r4 = await page.evaluate(() => ({ reputation: CAREER.reputation, historyLen: (CAREER.clubHistory || []).length }));
-  check("6) 'Reiniciar' não carrega reputação (nasce 50, sem currículo):", r4.reputation === 50 && r4.historyLen === 0);
-
-  // 7) maybeGenerateClubProposals gera proposta quando reputação bate o
-  // patamar de um clube mais forte; some quando reputação é baixa.
-  const r5 = await page.evaluate(() => {
-    CAREER.clubProposals = [];
-    CAREER.reputation = 5; // baixa demais pra qualquer proposta
-    maybeGenerateClubProposals();
-    const semProposta = (CAREER.clubProposals || []).length === 0;
-    // Garante um gap de força real: derruba o overall do MEU elenco
-    // principal bem abaixo de qualquer outro clube da liga, pra não
-    // depender de qual clube saiu sorteado no teste.
-    CAREER.squad.filter((p) => p.origin === "principal").forEach((p) => { p.overall = 30; });
-    CAREER.reputation = 99; // alta o bastante pra qualquer clube mais forte
-    maybeGenerateClubProposals();
-    const comProposta = (CAREER.clubProposals || []).length > 0;
-    // Não empilha 2ª proposta em cima da 1ª já pendente.
-    maybeGenerateClubProposals();
-    const naoEmpilha = (CAREER.clubProposals || []).length === 1;
-    // maybeGenerateClubProposals() só mexe em CAREER -- quem decide se
-    // o card aparece é renderCentral() (chamada em todo lugar que MUDA
-    // esse estado de verdade no app; aqui é uma injeção direta via
-    // evaluate, então precisa da mesma chamada manualmente).
-    renderCentral();
-    return { semProposta, comProposta, naoEmpilha, proposal: CAREER.clubProposals[0] };
+  // 6) Reiniciar pela tela Saves da v2.
+  await page.evaluate(async () => { CAREER.reputation = 90; await persistCareer(); });
+  await page.goto(base + "/saves", { waitUntil: "domcontentloaded" });
+  await page.locator("button.pr-row", { hasText: "Reiniciar carreira" }).click();
+  await page.waitForSelector("#sv-t");
+  await page.fill('[role="alertdialog"] input', "reiniciar");
+  await page.click('[role="alertdialog"] .text-btn');
+  await page.waitForFunction(() => location.pathname !== "/saves" && !document.querySelector(".home") && document.querySelector("h1"), null, { timeout: 30000 });
+  const r6 = await page.evaluate(async () => {
+    const P = (await import("/js/motor/v2.js")).criarPonte();
+    const E = await import("/js/motor/estado.js");
+    const c = await P.escolherCompeticao("brasileirao");
+    const r = await P.criarCarreira(c.clubes[0].id);
+    const C = E.carreiraAtual();
+    return { ok: r.ok, rep: C && C.reputation, hist: C && (C.clubHistory || []).length };
   });
-  check("7) Reputação baixa não gera proposta / alta gera:", r5.semProposta, r5.comProposta);
-  console.log("   Não empilha 2ª proposta em cima da pendente:", r5.naoEmpilha);
-  console.log("   Proposta tem clube/orçamento plausíveis:", !!r5.proposal.clubName && r5.proposal.budgetOffered > 0);
+  check("6) 'Reiniciar carreira' (Saves da v2) não leva a reputação: nasce com 50 e sem currículo:", r6.ok && r6.rep === 50 && r6.hist === 0, JSON.stringify(r6));
 
-  // 8) Fluxo real via UI: card na aba Clube aparece (mora lá desde o
-  // Bloco 1/4 -- pré-existente, sem relação com o checklist de UX
-  // desta etapa), abre a modal, RECUSA (fica no mesmo clube, proposta
-  // some).
-  await page.click(".m3-nav-item[data-panel='clube']");
-  await page.waitForTimeout(300);
-  const cardVisible = await page.evaluate(() => document.getElementById("clubProposalCard").style.display !== "none");
-  check("8) Card de proposta aparece na aba Clube:", cardVisible);
-  await page.click("#btnViewClubProposal");
-  await page.waitForSelector("#clubProposalOverlay.open");
-  await page.waitForTimeout(150);
-  const proposalModalText = await page.evaluate(() => document.getElementById("clubProposalText").textContent);
-  console.log("   Modal mostra o clube ofertante:", proposalModalText.length > 20);
-  await page.click("#btnClubProposalDecline");
-  await page.waitForTimeout(300);
-  const afterDecline = await page.evaluate(() => ({ pending: (CAREER.clubProposals || []).length, cardHidden: document.getElementById("clubProposalCard").style.display === "none" }));
-  console.log("   Recusar remove a proposta e some o card:", afterDecline.pending === 0 && afterDecline.cardHidden);
-
-  // 9) Fluxo real via UI: gera proposta de novo, ACEITA -- vai pra tela
-  // de escolha de clube filtrada só no ofertante, com banner de
-  // contexto, e o clique completa a troca.
-  const clubBefore = await page.evaluate(() => {
+  // 7) Propostas.
+  await globaisDoMotor(page);
+  const r7 = await page.evaluate(() => {
     CAREER.clubProposals = [];
+    CAREER.reputation = 5;
+    maybeGenerateClubProposals();
+    const semProposta = CAREER.clubProposals.length === 0;
     CAREER.squad.filter((p) => p.origin === "principal").forEach((p) => { p.overall = 30; });
     CAREER.reputation = 99;
     maybeGenerateClubProposals();
-    persistCareer();
-    renderCentral();
-    return { clubId: CAREER.clubId, clubName: CAREER.clubName, proposalClub: CAREER.clubProposals[0].clubName };
+    const comProposta = CAREER.clubProposals.length === 1;
+    maybeGenerateClubProposals();
+    return { semProposta, comProposta, naoEmpilha: CAREER.clubProposals.length === 1, p: CAREER.clubProposals[0] };
   });
-  await page.click(".m3-nav-item[data-panel='clube']").catch(() => {});
-  await page.waitForTimeout(300);
-  await page.click("#btnViewClubProposal");
-  await page.waitForSelector("#clubProposalOverlay.open");
-  await page.waitForTimeout(150);
-  await page.click("#btnClubProposalAccept");
-  await page.waitForSelector("#screenPicker:not(.hidden)", { timeout: 5000 }).catch(() => {});
-  await page.waitForTimeout(300);
-  const pickerState = await page.evaluate(() => ({
-    cardCount: document.querySelectorAll("#clubGrid .m3-club-row").length,
-    bannerVisible: !document.getElementById("pickerContextBanner").hidden,
-    bannerText: document.getElementById("pickerContextBanner").textContent,
-  }));
-  check("9) Tela de escolha reaparece filtrada só no clube ofertante:", pickerState.cardCount === 1);
-  console.log("   Banner de contexto visível com o clube anterior:", pickerState.bannerVisible && pickerState.bannerText.includes(clubBefore.clubName));
-  await page.click("#clubGrid .m3-club-row");
-  await page.waitForTimeout(150);
-  await page.click("#btnConfirmClub");
-  await enterGame(page);
-  const finalState = await page.evaluate(() => ({ clubName: CAREER.clubName, historyLen: (CAREER.clubHistory || []).length, lastReason: (CAREER.clubHistory || [])[0] && CAREER.clubHistory[0].reason }));
-  console.log("   Clube realmente trocou:", finalState.clubName === clubBefore.proposalClub);
-  console.log("   Currículo ganhou entrada com reason='accepted_proposal':", finalState.historyLen >= 1 && finalState.lastReason === "accepted_proposal");
+  check("7) Reputação baixa não gera proposta; alta (clube mais forte) gera uma, com clube e orçamento; não empilha a 2ª:",
+    r7.semProposta && r7.comProposta && r7.naoEmpilha && !!r7.p.clubName && r7.p.budgetOffered > 0, JSON.stringify(r7));
 
-  // 10) Perfil do técnico mostra reputação + currículo.
-  await page.click("#btnBottomMenu");
-  await page.waitForTimeout(150);
-  await page.click("#topbarMenu .mt-topbar-menu-item.group[data-submenu='imprensa']");
-  await page.click("#btnOpenCoachProfile");
-  await page.waitForSelector("#coachProfileOverlay.open");
-  await page.waitForTimeout(200);
-  const profileText = await page.evaluate(() => document.getElementById("coachProfileBody").textContent);
-  check("10) Perfil do técnico mostra Reputação e o clube anterior no currículo:", profileText.includes("Reputação") && profileText.includes(clubBefore.clubName));
-  await page.click("#coachProfileClose");
+  // 8) Aceitar a proposta (o "Aceitar" da v2).
+  const r8 = await page.evaluate(async () => {
+    const P = (await import("/js/motor/v2.js")).criarPonte();
+    const antes = { clubId: String(CAREER.clubId), clubName: CAREER.clubName, rep: CAREER.reputation, oferta: String(CAREER.clubProposals[0].clubId) };
+    const r = await P.aceitarPropostaClube();
+    return { ok: r.ok, antes, clube: String(CAREER.clubId), rep: CAREER.reputation, h0: (CAREER.clubHistory || [])[0] };
+  });
+  check("8) Aceitar a proposta: carreira no clube ofertante, passagem anterior no currículo (accepted_proposal) e reputação mantida:",
+    r8.ok && r8.clube === r8.antes.oferta && r8.h0 && r8.h0.reason === "accepted_proposal" && r8.h0.clubName === r8.antes.clubName && r8.rep === r8.antes.rep, JSON.stringify(r8));
 
+  check("9) Sem erro na página:", erros.length === 0, JSON.stringify(erros.slice(0, 3)));
   await browser.close();
 })().catch((e) => { console.error("FATAL:", e); process.exit(1); });

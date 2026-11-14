@@ -1,133 +1,69 @@
-// Nova feature — Resumo da rodada: lista TODOS os confrontos da rodada
-// (não só o seu), aberta a qualquer momento pelo Menu, com 2 estados de
-// verdade (Atual = não jogada ainda, Anterior = com placar real).
+// Resumo da rodada — lote L4d, sem a tela antiga. Junta o test_resumo_rodada
+// e o test_s4_b3_006_resumo_rodada (os dois abriam o modal "Resumo da rodada"
+// e o MatchCard da tela antiga). Na v2 os jogos da rodada aparecem na Tabela
+// ("Resultados da rodada", a última disputada) e no pós-jogo (Resultados da
+// rodada, no test_v2_posjogo item 3, com a Copa e os pênaltis no teste de
+// unidade postmatch.test.ts). Aqui, a regra (CAREER.resultsByRound) e a
+// Tabela:
+//  1) Antes de jogar, a Tabela não tem "Resultados da rodada".
+//  2) Rodada 1 jogada: o registro tem os 10 jogos, cada clube da divisão uma
+//     vez, e o meu com o placar do registro de partidas.
+//  3) A Tabela mostra os 10 jogos da rodada 1 com esses placares, o meu
+//     primeiro.
+//  4) Rodada 2 jogada: a Tabela passa a mostrar os jogos da rodada 2.
 const { chromium } = require("playwright-core");
 const { check } = require("./_check");
-const { enterGame } = require("./_startup");
-const { skipPreseason } = require("./_calendar_skip");
+const { newCareer, noMotor, jogarRodadaV2, base } = require("./_v2_carreira");
 
 (async () => {
   const browser = await chromium.launch({ executablePath: process.env.PW_CHROMIUM_PATH || undefined, headless: true, args: ["--host-resolver-rules=MAP fonts.googleapis.com 127.0.0.1,MAP fonts.gstatic.com 127.0.0.1"] });
-  const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
+  const page = await browser.newPage({ viewport: { width: 390, height: 900 } });
   page.on("dialog", (d) => d.dismiss());
-  page.on("pageerror", (err) => console.log("PAGE ERROR:", err.message));
-  const base = "http://localhost:8787";
-  const email = `resumorodada${Date.now()}@teste.com`;
-  await page.goto(base + "/", { waitUntil: "domcontentloaded" });
-  await page.evaluate(async ({ email }) => {
-    await fetch("/api/auth/signup", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: "Resumo Rodada", email, password: "senha123", phone: "11999999999", plan: "freemium" }) });
-    await fetch("/api/auth/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, password: "senha123" }) });
-  }, { email });
-  await page.goto(base + "/carreira.html", { waitUntil: "domcontentloaded" });
-  await page.click('.mt-competition-card[data-competition="brasileirao"]');
-  await page.waitForTimeout(300);
-  await page.click(".m3-club-row");
-  await page.waitForTimeout(150);
-  await page.click("#btnConfirmClub");
-  await enterGame(page);
+  const erros = [];
+  page.on("pageerror", (err) => erros.push(err.message));
+  await newCareer(page, `resumo${Date.now()}@teste.com`);
 
-  // 1) Abre pelo Menu -> mostra a Rodada 1 (atual), sem tab "Anterior"
-  //    (1ª rodada da carreira, nenhuma rodada anterior existe ainda),
-  //    e todo confronto ainda "— x —" (nada foi jogado).
-  await page.click("#btnBottomMenu");
-  await page.waitForTimeout(150);
-  await page.click("#topbarMenu .mt-topbar-menu-item.group[data-submenu='competicao']");
-  await page.click("#btnOpenRodada");
-  await page.waitForTimeout(300);
-  const check1 = await page.evaluate(() => {
-    const open = document.getElementById("rodadaOverlay").classList.contains("open");
-    const label = document.getElementById("rodadaRoundLabel").textContent;
-    const rows = [...document.querySelectorAll("#rodadaList .m3-match-card")];
-    const allPlaceholder = rows.every((r) => r.querySelector(".m3-mc-score").textContent.replace(/\s/g, "").includes("—x—"));
-    const tabAnteriorHidden = document.getElementById("rodadaTabAnterior").classList.contains("hidden");
-    return { open, label, rowCount: rows.length, allPlaceholder, tabAnteriorHidden };
-  });
-  check("1) Modal abre na Rodada 1, sem histórico, 10 confrontos '— x —', sem tab Anterior:",
-    check1.open && check1.label.includes("1") && check1.rowCount === 10 && check1.allPlaceholder && check1.tabAnteriorHidden,
-    JSON.stringify(check1));
-  await page.click("#rodadaClose");
-  await page.waitForTimeout(200);
+  const tabela = async () => {
+    await page.goto(base + "/tabela", { waitUntil: "domcontentloaded" });
+    await page.waitForSelector(".tb-cup", { timeout: 30000 });
+    return page.evaluate(() => ({ titulo: !!document.getElementById("tb-res-title"), jogos: [...document.querySelectorAll(".tb-res")].map((li) => li.getAttribute("aria-label")) }));
+  };
+  const registro = (rodada) => noMotor(page, ({ CAREER }, rodada) => {
+    const nome = (id) => { const t = Object.values(CAREER.divisionTeams || {}).flat().find((x) => String(x.id) === String(id)); return t ? t.name : null; };
+    const jogos = (CAREER.resultsByRound || {})[rodada] || [];
+    const me = String(CAREER.clubId);
+    const log = (CAREER.matchLog || []).find((m) => m.round === rodada && m.seasonYear === CAREER.seasonYear) || (CAREER.matchLog || [])[0];
+    return {
+      jogos: jogos.map((j) => ({ home: String(j.home), away: String(j.away), gh: j.gh, ga: j.ga })),
+      clubes: Object.keys(CAREER.standings).length, me, log: log && { home: log.home, gh: log.gh, ga: log.ga },
+      rotulos: jogos.map((j) => `${nome(j.home)} ${j.gh} a ${j.ga} ${nome(j.away)}`),
+    };
+  }, rodada);
 
-  // 2) Simula a rodada 1 de verdade via UI (Ir para o jogo -> pular ->
-  //    fechar sequência pós-jogo) e reabre o Resumo da rodada: agora
-  //    currentRound é 2, a tab "Anterior" aparece e mostra a Rodada 1
-  //    com placares reais (>=1 gol total esperado entre 10 jogos).
-  await page.click(".m3-nav-item[data-panel='central']");
-  await page.waitForTimeout(200);
-  await skipPreseason(page); // GE-CALENDAR-001: carreira nova começa na pré-temporada
-  await page.click("#btnSimulate");
-  await page.waitForSelector("#preMatchOverlay.open", { timeout: 5000 });
-  await page.click("#btnPreMatchGo");
-  await page.waitForSelector("#liveMatchOverlay.open", { timeout: 5000 }).catch(() => {});
-  await page.click("#btnLiveSkip").catch(() => {});
-  await page.waitForSelector("#matchDetailOverlay.open, #roundResultsOverlay.open", { timeout: 15000 });
-  await page.waitForTimeout(300);
-  if (await page.evaluate(() => document.getElementById("matchDetailOverlay").classList.contains("open"))) {
-    await page.click("#btnMatchDetailContinue");
-    await page.waitForTimeout(300);
-    if (await page.evaluate(() => document.getElementById("pressOverlay").classList.contains("open"))) {
-      await page.click("#pressOptions [data-press]");
-      await page.waitForTimeout(300);
-    }
-    await page.waitForSelector("#newsOverlay.open", { timeout: 5000 });
-    await page.click("#btnNewsContinue");
-    await page.waitForTimeout(300);
-  }
-  if (await page.evaluate(() => document.getElementById("roundResultsOverlay").classList.contains("open"))) {
-    await page.click("#btnRoundResultsCloseFooter");
-    await page.waitForTimeout(200);
-  }
-  if (await page.evaluate(() => document.getElementById("playerOfferOverlay")?.classList.contains("open"))) {
-    await page.click("#playerOfferClose");
-    await page.waitForTimeout(200);
-  }
+  // 1) Antes de jogar.
+  const t1 = await tabela();
+  check("1) Antes de jogar, a Tabela não tem 'Resultados da rodada':", !t1.titulo && t1.jogos.length === 0, JSON.stringify(t1));
 
-  await page.click(".m3-nav-item[data-panel='central']");
-  await page.waitForTimeout(200);
-  await page.click("#btnBottomMenu");
-  await page.waitForTimeout(150);
-  await page.click("#topbarMenu .mt-topbar-menu-item.group[data-submenu='competicao']");
-  await page.click("#btnOpenRodada");
-  await page.waitForTimeout(300);
-  const check2 = await page.evaluate(() => {
-    const currentRound = typeof CAREER !== "undefined" && CAREER ? CAREER.currentRound : null;
-    const label = document.getElementById("rodadaRoundLabel").textContent;
-    const tabAnteriorVisible = !document.getElementById("rodadaTabAnterior").classList.contains("hidden");
-    const rows = [...document.querySelectorAll("#rodadaList .m3-match-card")];
-    const allPlaceholderAtual = rows.every((r) => r.querySelector(".m3-mc-score").textContent.replace(/\s/g, "").includes("—x—"));
-    return { currentRound, label, tabAnteriorVisible, rowCountAtual: rows.length, allPlaceholderAtual };
-  });
-  check("2) Depois de jogar a rodada 1: currentRound=2, mostra Rodada 2 atual (placeholder), tab Anterior visível:",
-    check2.currentRound === 2 && check2.label.includes("2") && check2.tabAnteriorVisible && check2.rowCountAtual === 10 && check2.allPlaceholderAtual,
-    JSON.stringify(check2));
+  // 2) Rodada 1.
+  let r = await jogarRodadaV2(page); if (!r.ok) throw new Error("rodada 1: " + r.passos.join(" "));
+  const g1 = await registro(1);
+  const ids = g1.jogos.flatMap((j) => [j.home, j.away]);
+  const meu = g1.jogos.find((j) => j.home === g1.me || j.away === g1.me);
+  check("2) Rodada 1 jogada: 10 jogos no registro, cada clube uma vez, e o meu com o placar do registro de partidas:",
+    g1.jogos.length === 10 && new Set(ids).size === 20 && g1.clubes === 20 && !!meu && !!g1.log && meu.gh === g1.log.gh && meu.ga === g1.log.ga && (meu.home === g1.me) === !!g1.log.home,
+    JSON.stringify({ meu, log: g1.log, n: g1.jogos.length }));
 
-  // 3) Clica em "Rodada anterior" -> mostra Rodada 1 com placares reais.
-  await page.click("#rodadaTabAnterior");
-  await page.waitForTimeout(200);
-  const check3 = await page.evaluate(() => {
-    const label = document.getElementById("rodadaRoundLabel").textContent;
-    const rows = [...document.querySelectorAll("#rodadaList .m3-match-card")];
-    const scores = rows.map((r) => r.querySelector(".m3-mc-score").textContent.trim());
-    const anyRealScore = scores.some((s) => !s.replace(/\s/g, "").includes("—x—"));
-    // "Destaque do próprio clube" (S4-B3-006) agora é um wrapper externo
-    // (.m3-mc-mine), não mais uma classe no próprio card — ver CSS em
-    // carreira.html.
-    const meRow = rows.find((r) => r.parentElement.classList.contains("m3-mc-mine"));
-    return { label, rowCount: rows.length, anyRealScore, hasMeHighlight: !!meRow, sampleScores: scores.slice(0, 3) };
-  });
-  check("3) Rodada anterior mostra a Rodada 1 com placares reais e destaque do próprio clube:",
-    check3.label.includes("1") && check3.rowCount === 10 && check3.anyRealScore && check3.hasMeHighlight,
-    JSON.stringify(check3));
+  // 3) Tabela com a rodada 1.
+  const t3 = await tabela();
+  const mesmos = t3.jogos.length === 10 && g1.rotulos.every((l) => t3.jogos.includes(l));
+  check("3) A Tabela mostra os 10 jogos da rodada 1 com esses placares, o meu primeiro:", t3.titulo && mesmos && t3.jogos[0] === g1.rotulos[g1.jogos.indexOf(meu)], JSON.stringify({ tabela: t3.jogos.slice(0, 3), registro: g1.rotulos.slice(0, 3) }));
 
-  await page.screenshot({ path: "screens/resumo_rodada_anterior.png" });
-  await page.click("#rodadaTabAtual");
-  await page.waitForTimeout(200);
-  await page.screenshot({ path: "screens/resumo_rodada_atual.png" });
+  // 4) Rodada 2.
+  r = await jogarRodadaV2(page); if (!r.ok) throw new Error("rodada 2: " + r.passos.join(" "));
+  const g2 = await registro(2);
+  const t4 = await tabela();
+  check("4) Rodada 2 jogada: a Tabela passa a mostrar os jogos da rodada 2:", t4.jogos.length === 10 && g2.rotulos.every((l) => t4.jogos.includes(l)) && g2.rotulos.join() !== g1.rotulos.join(), JSON.stringify(t4.jogos.slice(0, 2)));
 
-  await page.click("#btnRodadaCloseFooter");
-  await page.waitForTimeout(150);
-  const check4 = await page.evaluate(() => !document.getElementById("rodadaOverlay").classList.contains("open"));
-  check("4) Fechar fecha o modal:", check4);
-
+  check("5) Sem erro na página:", erros.length === 0, JSON.stringify(erros.slice(0, 3)));
   await browser.close();
 })().catch((e) => { console.error("FATAL:", e); process.exit(1); });

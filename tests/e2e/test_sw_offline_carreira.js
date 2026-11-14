@@ -53,7 +53,15 @@ const { check } = require("./_check");
   // carregar do cache e desenhar alguma tela, não só dar erro de rede.
   await context.setOffline(true);
   const resp = await page.goto(base + "/", { waitUntil: "load" }).catch((e) => ({ error: e.message }));
-  await page.waitForFunction(() => (document.getElementById("root")?.children.length || 0) > 0, null, { timeout: 10000 }).catch(() => {});
+  // Sem carreira, a v2 passa pela Splash, desenha vazio por um instante
+  // (troca de rota para /nova) e abre a criação: a tela vale quando o
+  // desenho fica estável (2 leituras seguidas com conteúdo, 300 ms entre
+  // elas). Antes, uma leitura só podia cair no instante vazio (CI do #116).
+  for (let seguidas = 0, t0 = Date.now(); seguidas < 2 && Date.now() - t0 < 30000;) {
+    const tem = await page.evaluate(() => (document.getElementById("root")?.children.length || 0) > 0).catch(() => false);
+    seguidas = tem ? seguidas + 1 : 0;
+    await new Promise((r) => setTimeout(r, 300));
+  }
   const offlineLoaded = await page.evaluate(() => ({
     hasRoot: !!document.getElementById("root"),
     rendered: (document.getElementById("root")?.children.length || 0) > 0,

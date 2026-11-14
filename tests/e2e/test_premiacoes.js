@@ -1,62 +1,37 @@
+// Premiações da temporada — lote L4d, sem a tela antiga. As regras pelo motor
+// na página da v2 (o mesmo advanceSeason); a tela é a Premiações da v2
+// (Mais → Premiações, "Quem fez a diferença."), no lugar do overlay da tela
+// antiga. Cenário controlado: teamA lidera (campeão), teamB é vice, meu
+// jogador vira artilheiro/assistências/melhor (empatado com um rival de mais
+// jogos, para provar o desempate) e a Copa do Brasil tem teamC campeão.
+//  1) Campeão e vice.  2) Artilheiro é o meu (desempate por menos jogos).
+//  3) Assistências.  4) Melhor jogador.  5) Copa com o campeão certo.
+//  6) A moral do premiado sobe.  7) goalsSeason zera na virada.
+//  8) A tela Premiações da v2 mostra a temporada: Campeão (teamA), Vice,
+//     Artilheiro com o meu jogador (meu clube, 25 gols, ★) e o campeão da Copa.
 const { chromium } = require("playwright-core");
 const { check } = require("./_check");
-const { enterGame } = require("./_startup");
-
-async function newCareer(page, base, email) {
-  await page.goto(base + "/", { waitUntil: "domcontentloaded" });
-  await page.evaluate(async ({ email }) => {
-    await fetch("/api/auth/signup", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: "Premiacoes Test", email, password: "senha123", phone: "11999999999", plan: "freemium" }) });
-    await fetch("/api/auth/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, password: "senha123" }) });
-  }, { email });
-  await page.goto(base + "/carreira.html", { waitUntil: "domcontentloaded" });
-  await page.click('.mt-competition-card[data-competition="brasileirao"]');
-  await page.waitForTimeout(200);
-  await page.click(".m3-club-row");
-  await page.waitForTimeout(150);
-  await page.click("#btnConfirmClub");
-  await enterGame(page);
-}
-async function getCareer(page) {
-  return page.evaluate(async () => (await (await fetch("/api/career")).json()).career);
-}
-async function putCareer(page, career) {
-  await page.evaluate(async (career) => {
-    await fetch("/api/career", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(career) });
-  }, career);
-}
+const { newCareer, globaisDoMotor, base } = require("./_v2_carreira");
 
 (async () => {
-  const browser = await chromium.launch({
-    executablePath: process.env.PW_CHROMIUM_PATH || undefined,
-    headless: true,
-    args: ["--host-resolver-rules=MAP fonts.googleapis.com 127.0.0.1,MAP fonts.gstatic.com 127.0.0.1"],
-  });
+  const browser = await chromium.launch({ executablePath: process.env.PW_CHROMIUM_PATH || undefined, headless: true, args: ["--host-resolver-rules=MAP fonts.googleapis.com 127.0.0.1,MAP fonts.gstatic.com 127.0.0.1"] });
   const page = await browser.newPage({ viewport: { width: 390, height: 900 } });
   page.on("dialog", (d) => d.dismiss());
-  page.on("pageerror", (err) => console.log("PAGE ERROR:", err.message));
-  page.on("console", (m) => { if (m.type() === "error" && !m.text().includes("fonts.googleapis") && !m.text().includes("fundingchoices")) console.log("CONSOLE ERROR:", m.text()); });
+  const erros = [];
+  page.on("pageerror", (err) => erros.push(err.message));
+  await newCareer(page, `premios${Date.now()}@teste.com`);
+  await globaisDoMotor(page);
 
-  const base = "http://localhost:8787";
-  await newCareer(page, base, `premios${Date.now()}@teste.com`);
-
-  const result = await page.evaluate(async () => {
-    const teamIds = Object.keys(CAREER.leagueSquads);
+  const r = await page.evaluate(async () => {
+    const teamIds = Object.keys(CAREER.leagueSquads).filter((id) => String(id) !== String(CAREER.clubId));
     const [teamA, teamB, teamC] = teamIds;
-
-    // Monta um cenário controlado: teamA lidera (campeão), teamB é
-    // vice, meu jogador titular vira artilheiro/assistências/melhor
-    // do torneio (com menos jogos que um "concorrente" empatado, pra
-    // provar o desempate), Copa do Brasil "feita" com teamC campeão.
     Object.values(CAREER.standings).forEach((s, i) => { s.pts = 50 - i; s.v = 10; s.sg = 5; s.gp = 20; });
     CAREER.standings[teamA].pts = 99;
     CAREER.standings[teamB].pts = 90;
 
-    const myPlayer = CAREER.squad.find((p) => p.origin === "principal");
-    myPlayer.goalsSeason = 25; myPlayer.assistsSeason = 15; myPlayer.overall = 99; myPlayer.apps = 30;
-    // "Concorrente" empatado em tudo, mas com MAIS jogos (deve perder
-    // o desempate pro meu jogador, que tem menos apps).
-    const rivalSquad = CAREER.leagueSquads[teamB];
-    const rival = rivalSquad[0];
+    const meu = CAREER.squad.find((p) => p.origin === "principal");
+    meu.goalsSeason = 25; meu.assistsSeason = 15; meu.overall = 99; meu.apps = 30;
+    const rival = CAREER.leagueSquads[teamB][0];
     rival.goalsSeason = 25; rival.assistsSeason = 15; rival.overall = 99; rival.apps = 34;
 
     CAREER.cup = CAREER.cup || {};
@@ -66,51 +41,41 @@ async function putCareer(page, career) {
     CAREER.cup.ties = CAREER.cup.ties || {};
     CAREER.cup.ties.final = [{ home: teamC, away: teamA, winner: teamC }];
 
-    const moraleBefore = myPlayer.morale;
+    const moraleBefore = meu.morale;
     CAREER.currentRound = 39;
+    CAREER.negativeSeasonsStreak = -99; // o teste mede as premiações, não a diretoria
     const summary = await advanceSeason();
+    await persistCareer();
     const award = CAREER.seasonAwards[0];
-    const myPlayerAfter = CAREER.squad.find((p) => p.id === myPlayer.id);
-
+    const depois = CAREER.squad.find((p) => p.id === meu.id);
     return {
-      dismissed: summary.dismissed,
-      campeao: award.brasileirao.campeao,
-      vice: award.brasileirao.vice,
-      teamA, teamB, teamC,
-      artilheiro: award.brasileirao.artilheiro,
-      assistencias: award.brasileirao.assistencias,
-      melhorJogador: award.brasileirao.melhorJogador,
-      myPlayerId: myPlayer.id,
-      copaDoBrasil: award.copaDoBrasil,
-      moraleBefore, moraleAfter: myPlayerAfter ? myPlayerAfter.morale : null,
-      goalsSeasonReset: myPlayerAfter ? myPlayerAfter.goalsSeason : "jogador não encontrado (saiu por fim de contrato)",
+      dismissed: summary && summary.dismissed, teamA, teamB, teamC,
+      nomeA: teamById(teamA).name, nomeC: teamById(teamC).name, meuClube: teamById(CAREER.clubId).name, meuId: meu.id,
+      campeao: award.brasileirao.campeao, vice: award.brasileirao.vice,
+      artilheiro: award.brasileirao.artilheiro, assistencias: award.brasileirao.assistencias, melhor: award.brasileirao.melhorJogador,
+      copa: award.copaDoBrasil, moraleBefore, moraleAfter: depois ? depois.morale : null,
+      gols: depois ? depois.goalsSeason : "saiu",
     };
   });
 
-  check("1) Campeão/vice corretos:", result.campeao === result.teamA, result.vice === result.teamB);
-  check("2) Artilheiro é o MEU jogador (desempate por menos jogos):", result.artilheiro && result.artilheiro.jogadorId === result.myPlayerId, "| gols:", result.artilheiro && result.artilheiro.valor);
-  check("3) Mais assistências é o MEU jogador:", result.assistencias && result.assistencias.jogadorId === result.myPlayerId);
-  check("4) Melhor do torneio é o MEU jogador:", result.melhorJogador && result.melhorJogador.jogadorId === result.myPlayerId);
-  check("5) Copa do Brasil disputada com campeão certo:", result.copaDoBrasil.disputou && result.copaDoBrasil.campeao === result.teamC);
-  check("6) Moral do jogador premiado subiu:", result.moraleAfter > result.moraleBefore, `(${result.moraleBefore} -> ${result.moraleAfter})`);
-  check("7) goalsSeason zerou na virada de temporada:", result.goalsSeasonReset === 0);
+  check("1) Campeão e vice corretos:", r.campeao === r.teamA && r.vice === r.teamB, JSON.stringify({ campeao: r.campeao, vice: r.vice }));
+  check("2) Artilheiro é o meu jogador (desempate por menos jogos):", r.artilheiro && r.artilheiro.jogadorId === r.meuId, JSON.stringify(r.artilheiro));
+  check("3) Mais assistências é o meu jogador:", r.assistencias && r.assistencias.jogadorId === r.meuId, JSON.stringify(r.assistencias));
+  check("4) Melhor jogador é o meu:", r.melhor && r.melhor.jogadorId === r.meuId, JSON.stringify(r.melhor));
+  check("5) Copa do Brasil disputada, com o campeão certo:", r.copa && r.copa.disputou && r.copa.campeao === r.teamC, JSON.stringify(r.copa));
+  check("6) A moral do premiado subiu:", r.moraleAfter > r.moraleBefore, `${r.moraleBefore} -> ${r.moraleAfter}`);
+  check("7) goalsSeason zerou na virada:", r.gols === 0, String(r.gols));
 
-  // 8) Tela de premiações (menu ≡) mostra a temporada com destaque
-  // dourado pro que é meu.
-  await page.click("#btnBottomMenu");
-  await page.waitForTimeout(200);
-  await page.click("#topbarMenu .mt-topbar-menu-item.group[data-submenu='progresso']");
-  await page.click("#btnOpenAwards");
-  await page.waitForSelector("#awardsOverlay.open");
-  await page.waitForTimeout(200);
-  const awardsText = await page.evaluate(() => document.getElementById("awardsList").textContent);
-  // AJUSTE (design novo, ver renderAwardsScreen): destaque dourado
-  // agora é classe CSS (.mine / .champion / .ribbon), não mais style
-  // inline — checa pelas classes novas em vez do seletor antigo.
-  const hasGold = await page.evaluate(() => !!document.querySelector("#awardsList .champion, #awardsList .mine, #awardsList .ribbon"));
-  check("8) Tela de premiações mostra Campeão/Artilheiro/Copa do Brasil:", awardsText.includes("Campeão") && awardsText.includes("Artilheiro") && awardsText.includes("Copa do Brasil"), "| tem destaque dourado:", hasGold);
-  await page.click("#awardsClose");
-  await page.waitForTimeout(200);
+  // 8) Tela Premiações da v2.
+  await page.goto(base + "/premiacoes", { waitUntil: "domcontentloaded" });
+  await page.waitForFunction(() => (document.querySelector("h1") || {}).textContent === "Quem fez a diferença.", null, { timeout: 30000 }).catch(() => {});
+  const tela = await page.evaluate(() => ({ h1: (document.querySelector("h1") || {}).textContent, txt: document.querySelector(".wk").innerText }));
+  const linha = (rotulo) => (tela.txt.split("\n").map((l, i, a) => (l.trim() === rotulo ? a[i + 1] : null)).find(Boolean) || "");
+  const art = tela.txt.split("\n").find((l, i, a) => a[i - 1] && a[i - 1].trim() === "Artilheiro") || "";
+  check("8) A Premiações da v2 mostra Campeão (o líder), Artilheiro (o meu, com ★) e a Copa do Brasil (o campeão dela):",
+    tela.h1 === "Quem fez a diferença." && tela.txt.includes(r.nomeA) && /Copa do Brasil/i.test(tela.txt) && tela.txt.includes(r.nomeC)
+    && art.includes(`(${r.meuClube})`) && art.includes("25 gols") && art.includes("★"), JSON.stringify({ h1: tela.h1, art, campeao: linha("Campeão") }));
 
+  check("9) Sem erro na página:", erros.length === 0, JSON.stringify(erros.slice(0, 3)));
   await browser.close();
 })().catch((e) => { console.error("FATAL:", e); process.exit(1); });

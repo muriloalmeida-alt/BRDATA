@@ -276,7 +276,7 @@ fonte oficial e empacotado localmente.
 
 ESCUDOS-001 — elencos reais, escudos locais e escudo original
 
-Status: IMPLEMENTADO (14/11), aguardando aprovação do Murilo para o merge.
+Status: APROVADO (Murilo, 14/11, "Aprovado"; PR #115).
 Plano e relatório: `docs/carreira-v2/escudos/PLANO_ESCUDOS.md`.
 Origem: relato do Murilo (13/11): elencos falsos, escudos que não carregam
 e escudos em negativo.
@@ -286,8 +286,20 @@ Decisões do Murilo (13/11):
    LIVE_SEASON=2026); passos na seção 4 do plano;
 2) cópia local dos escudos das Séries A, B e C;
 3) escudo original sobre chapinha clara (sem negativo).
-Pendente com o Murilo: configurar as variáveis na produção; licença dos
-escudos de uso restrito antes de distribuir em loja.
+Pendente com o Murilo: configurar as variáveis na produção.
+Decisão do Murilo (14/11) sobre a licença dos escudos de uso restrito
+(Séries A–D): "Manter todos" — ficam no jogo, sem nova decisão antes da loja.
+
+⸻
+
+AVISO-MOTIVADO — aviso "Adversário motivado" no Pré-jogo da v2
+
+Status: DECIDIDO, a implementar depois do lote L4 de testes.
+Origem: diferença da v2 achada no lote L4c (docs/carreira-v2/ENTREGA_TESTES_L4.md):
+o motor aplica o bônus do adversário em sequência invicta e emite o aviso,
+mas nenhuma tela da v2 o mostra.
+Decisão do Murilo (14/11): "Mostrar no Pré-jogo" (recomendado) — alerta
+ao lado de "Semana de 2 jogos", com a sequência de jogos sem perder.
 
 ⸻
 
