@@ -115,9 +115,10 @@ export function startLiveMatch(round, fixtures, humanFx, standingsBefore) {
   // §45): o bônus de motivação do adversário (ver opponentMotivationMod)
   // não deve ser um efeito silencioso — avisa ANTES da partida começar,
   // só quando ele está de fato ativo pra essa sequência.
-  const preMatchMotivation = opponentMotivationMod();
-  if (preMatchMotivation > 1) {
-    avisar({ title: "Adversário motivado", detail: `Você chega com ${CAREER.currentUnbeatenStreak} jogos de invencibilidade — o rival hoje entra mais ligado para tentar frear a sequência.` }, { durationMs: 5000, type: "warn" });
+  // O Pré-jogo da v2 mostra o mesmo aviso (AVISO-MOTIVADO, partida.js).
+  const motivado = opponentMotivationMod() > 1 ? partida.avisoAdversarioMotivado(CAREER.currentUnbeatenStreak) : null;
+  if (motivado) {
+    avisar({ title: motivado.titulo, detail: motivado.detalhe }, { durationMs: 5000, type: "warn" });
   }
   scheduleNextChunk();
 }

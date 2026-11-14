@@ -3,17 +3,19 @@
 // (princípio de explicabilidade, CLAUDE.md §45) e que uma carreira nova (sem
 // sequência) continua sem esse bônus.
 // Lote L4c (sem a tela antiga): pelo motor na página da v2. O aviso antes da
-// partida é o evento "aviso" do motor (antes, o toast da tela antiga). A v2
-// ainda não mostra esse aviso na tela: registrado no relatório do L4
-// (docs/carreira-v2/ENTREGA_TESTES_L4.md) para decisão.
+// partida é o evento "aviso" do motor (antes, o toast da tela antiga).
+// AVISO-MOTIVADO (decisão do Murilo, 14/11): o Pré-jogo da v2 mostra o mesmo
+// aviso (item 2b).
 //  1) Degraus de opponentMotivationMod.
 //  2) Carreira nova (sem sequência): a partida começa sem o aviso.
+//  2b) Pré-jogo da v2: sem sequência, sem o aviso; com 14 jogos invicto, o
+//     alerta "Adversário motivado" com o 14 (o mesmo texto do motor).
 //  3) Sequência de 14 jogos invicto: o aviso "Adversário motivado" (com 14)
 //     sai antes da partida.
 //  4) A partida com o adversário motivado termina e grava (rodada avança).
 const { chromium } = require("playwright-core");
 const { check } = require("./_check");
-const { newCareer, globaisDoMotor, noMotor, jogarRodadaV2 } = require("./_v2_carreira");
+const { newCareer, globaisDoMotor, noMotor, jogarRodadaV2, base } = require("./_v2_carreira");
 
 (async () => {
   const browser = await chromium.launch({ executablePath: process.env.PW_CHROMIUM_PATH || undefined, headless: true, args: ["--host-resolver-rules=MAP fonts.googleapis.com 127.0.0.1,MAP fonts.gstatic.com 127.0.0.1"] });
@@ -67,6 +69,19 @@ const { newCareer, globaisDoMotor, noMotor, jogarRodadaV2 } = require("./_v2_car
     }
     ponte.encerrarPosJogo();
   });
+
+  // 2b) Pré-jogo da v2.
+  const preJogo = async (seq) => {
+    await noMotor(page, async ({ CAREER, ponte, persistir }, seq) => { await ponte.avancarSemana(true); CAREER.currentUnbeatenStreak = seq; return persistir(); }, seq);
+    await page.goto(base + "/pre-jogo", { waitUntil: "domcontentloaded" });
+    await page.waitForSelector(".pm-foot", { timeout: 30000 });
+    return page.evaluate(() => [...document.querySelectorAll(".pm-foot .row")].map((r) => r.innerText.replace(/\s+/g, " ").trim()));
+  };
+  const sem = await preJogo(0);
+  const com = await preJogo(14);
+  const alerta = com.find((t) => t.startsWith("Adversário motivado")) || "";
+  check("2b) Pré-jogo da v2: sem sequência, sem o aviso; com 14 jogos invicto, 'Adversário motivado' com o 14:",
+    !sem.some((t) => t.startsWith("Adversário motivado")) && /Você chega com 14 jogos de invencibilidade/.test(alerta), JSON.stringify({ sem, alerta }));
 
   // 3 e 4) Sequência de 14.
   const p3 = await partida(14);

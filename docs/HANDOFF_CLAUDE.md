@@ -294,12 +294,24 @@ Decisão do Murilo (14/11) sobre a licença dos escudos de uso restrito
 
 AVISO-MOTIVADO — aviso "Adversário motivado" no Pré-jogo da v2
 
-Status: DECIDIDO, a implementar depois do lote L4 de testes.
+Status: IMPLEMENTADO, aguardando aprovação do Murilo (PR desta entrega).
 Origem: diferença da v2 achada no lote L4c (docs/carreira-v2/ENTREGA_TESTES_L4.md):
 o motor aplica o bônus do adversário em sequência invicta e emite o aviso,
 mas nenhuma tela da v2 o mostra.
 Decisão do Murilo (14/11): "Mostrar no Pré-jogo" (recomendado) — alerta
 ao lado de "Semana de 2 jogos", com a sequência de jogos sem perder.
+Implementação:
+- Regra e texto num lugar só, no núcleo puro `public/js/motor/partida.js`:
+  `OPPONENT_MOTIVATION_STREAK_STEPS` (os mesmos degraus: 5 → 1,04;
+  8 → 1,08; 12 → 1,12), `motivacaoDoAdversario(sequencia)` e
+  `avisoAdversarioMotivado(sequencia)`. `aovivo.js` (bônus na partida) e
+  `jogo.js` (evento "aviso") usam essas funções; nenhuma regra mudou.
+- Pré-jogo da v2 (`domain/prematch.ts`): alerta "Adversário motivado"
+  com o texto do motor ("Você chega com N jogos de invencibilidade — …"),
+  depois de "Semana de 2 jogos". Sem save novo nem campo novo.
+- Testes: unitário da v2 (`prematch.test.ts`) e item 2b do
+  `test_ge_balance_001` (Pré-jogo sem sequência e com 14). Contraprova:
+  aviso desligado no núcleo → o unitário e o item 3 falham.
 
 ⸻
 

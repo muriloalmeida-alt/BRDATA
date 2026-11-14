@@ -76,3 +76,15 @@ test("Semana da preliminar: aviso de 2 jogos só para quem joga a preliminar", (
   c.cup.ties!.prelim = [{ home: "fla", away: "y", leg1: { gh: null, ga: null } }];
   assert.ok(buildPreMatch(c, byId).alerts.some((a) => a.id === "rodizio"));
 });
+
+test("AVISO-MOTIVADO: com 5+ jogos sem perder, o aviso 'Adversário motivado' (texto do motor); com 4, não", () => {
+  const c = career();
+  c.currentUnbeatenStreak = 4;
+  assert.ok(!buildPreMatch(c, byId).alerts.some((a) => a.id === "motivado"));
+  c.currentUnbeatenStreak = 14;
+  const a = buildPreMatch(c, byId).alerts.find((x) => x.id === "motivado");
+  assert.equal(a?.title, "Adversário motivado");
+  assert.equal(a?.sub, "Você chega com 14 jogos de invencibilidade — o rival hoje entra mais ligado para tentar frear a sequência.");
+  c.calendar!.weeks[30].c = 1; // junto da semana de 2 jogos: os dois avisos, rodízio antes
+  assert.deepEqual(buildPreMatch(c, byId).alerts.map((x) => x.id), ["rodizio", "motivado"]);
+});

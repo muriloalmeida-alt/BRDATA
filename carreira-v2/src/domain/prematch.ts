@@ -5,8 +5,9 @@ import type { Career, Team } from "./types.ts";
 import { COMPETITION_NAME, buildHome, matchDay } from "./home.ts";
 import { buildLineup, currentLineup, shortName, type LineupModel } from "./lineup.ts";
 import { bloqueioInicio } from "../../../public/js/motor/escalacao.js";
+import { avisoAdversarioMotivado } from "../../../public/js/motor/partida.js";
 
-export interface PreMatchAlert { id: "incompleta" | "indisponivel" | "rodizio"; title: string; sub: string }
+export interface PreMatchAlert { id: "incompleta" | "indisponivel" | "rodizio" | "motivado"; title: string; sub: string }
 export interface PreMatchModel {
   available: boolean; // false = não é semana de jogo da liga (a rota volta ao Início)
   subtitle: string;
@@ -47,6 +48,12 @@ export function buildPreMatch(career: Career, teamById: (id: string | number) =>
       sub: tired.length ? `Copa do Brasil na quarta. Titulares cansados: ${tired.map((p) => `${shortName(p.name)} (${Math.round(p.condition!)}%)`).join(", ")} — considere rodar o elenco.` : "Copa do Brasil na quarta. Titulares em boa condição.",
     });
   }
+
+  // AVISO-MOTIVADO (decisão do Murilo, 14/11): o bônus do adversário contra a
+  // sequência de invencibilidade (só no Brasileirão, que é o jogo do Pré-jogo)
+  // aparece antes da partida, com o texto do motor (CLAUDE.md §45).
+  const motivado = avisoAdversarioMotivado(career.currentUnbeatenStreak || 0);
+  if (motivado) alerts.push({ id: "motivado", title: motivado.titulo, sub: motivado.detalhe });
 
   return {
     available: home.state === "match",

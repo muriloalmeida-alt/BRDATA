@@ -17,6 +17,9 @@ export function goalLambdas(home: Side, away: Side, share?: number): { home: num
 export function scoreGoals(home: Side, away: Side, share: number, rng: Rng): { gh: number; ga: number };
 export function withFormationPenalty<S extends Side>(side: S): S;
 export function withMotivation<S extends Side>(side: S, mod: number): S;
+export const OPPONENT_MOTIVATION_STREAK_STEPS: { minStreak: number; mod: number }[];
+export function motivacaoDoAdversario(sequencia: number | null | undefined): number;
+export function avisoAdversarioMotivado(sequencia: number | null | undefined): { titulo: string; detalhe: string } | null;
 export function moraleFactor(p: { morale?: number | null }): number;
 export function pickGoalAuthors<P extends MatchPlayer>(starters: P[], goals: number, rng: Rng, suppress?: { playerId: string; factor: number } | null): GoalPick<P>[];
 export function goalEvents(picks: GoalPick[]): MatchEvent[];

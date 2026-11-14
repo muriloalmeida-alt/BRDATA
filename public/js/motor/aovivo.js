@@ -213,17 +213,13 @@ export function tallyMatchOutcomeStats(myGoals, oppGoals, isHome, opponentId, ro
   total.longestUnbeatenStreak = Math.max(total.longestUnbeatenStreak || 0, CAREER.currentUnbeatenStreak);
 }
 
-export const OPPONENT_MOTIVATION_STREAK_STEPS = [
-  { minStreak: 12, mod: 1.12 },
-  { minStreak: 8, mod: 1.08 },
-  { minStreak: 5, mod: 1.04 },
-];
+// Os degraus e a regra moram no núcleo puro (partida.js), também usado pelo
+// Pré-jogo da v2 (AVISO-MOTIVADO).
+export const OPPONENT_MOTIVATION_STREAK_STEPS = partida.OPPONENT_MOTIVATION_STREAK_STEPS;
 
 export function opponentMotivationMod() {
   const CAREER = carreiraAtual();
-  const streak = CAREER.currentUnbeatenStreak || 0;
-  const step = OPPONENT_MOTIVATION_STREAK_STEPS.find((s) => streak >= s.minStreak);
-  return step ? step.mod : 1;
+  return partida.motivacaoDoAdversario(CAREER.currentUnbeatenStreak || 0);
 }
 
 export function tallyTeamStats(events) {

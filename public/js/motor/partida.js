@@ -65,6 +65,22 @@ export function withFormationPenalty(side) {
   return { ...side, atk: side.atk * 0.92, def: side.def / 0.92 };
 }
 // GE-BALANCE-001 — adversário motivado contra sequência de invencibilidade.
+// Degraus pela sequência de jogos sem perder do clube humano (Brasileirão).
+export const OPPONENT_MOTIVATION_STREAK_STEPS = [
+  { minStreak: 12, mod: 1.12 },
+  { minStreak: 8, mod: 1.08 },
+  { minStreak: 5, mod: 1.04 },
+];
+export function motivacaoDoAdversario(sequencia) {
+  const step = OPPONENT_MOTIVATION_STREAK_STEPS.find((s) => (sequencia || 0) >= s.minStreak);
+  return step ? step.mod : 1;
+}
+// AVISO-MOTIVADO (decisão do Murilo, 14/11): o aviso antes da partida, com o
+// mesmo texto no motor (evento "aviso") e no Pré-jogo da v2. null sem bônus.
+export function avisoAdversarioMotivado(sequencia) {
+  if (!(motivacaoDoAdversario(sequencia) > 1)) return null;
+  return { titulo: "Adversário motivado", detalhe: `Você chega com ${sequencia} jogos de invencibilidade — o rival hoje entra mais ligado para tentar frear a sequência.` };
+}
 export function withMotivation(side, mod) {
   if (!(mod > 1)) return side;
   return { ...side, atk: side.atk * mod, def: side.def / mod };
