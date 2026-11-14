@@ -292,6 +292,23 @@ Decisão do Murilo (14/11) sobre a licença dos escudos de uso restrito
 
 ⸻
 
+HISTORICO-LINK — histórico de atualizações pelo Mais da v2
+
+Status: IMPLEMENTADO, aguardando aprovação do Murilo (PR desta entrega).
+Origem: diferença da v2 achada no lote L4d (docs/carreira-v2/ENTREGA_TESTES_L4.md):
+a página estática `historico.html` só tinha link no menu da tela antiga, e o
+"Voltar" dela levava a `carreira.html`.
+Decisão do Murilo (14/11): "Link no Mais" — linha "Histórico de
+atualizações" no Mais da v2 e o "Voltar" da página para o Início (/).
+Implementação: `carreira-v2/src/screens/Hubs.tsx` (linha com link comum para
+a página, fora da v2) e `public/historico.html` ("Voltar" para "/"). Testes:
+`test_historico` (item 0 pelo Mais; item 5 "Voltar" no Início),
+`test_v2_navegacao` (o Mais com 10 itens) e `test_v2_corte` (o histórico
+entra, com a privacidade, nas páginas estáticas que a v2 abre de propósito).
+Contraprova: "Voltar" para carreira.html → `test_historico` 5 falha.
+
+⸻
+
 AVISO-MOTIVADO — aviso "Adversário motivado" no Pré-jogo da v2
 
 Status: IMPLEMENTADO, aguardando aprovação do Murilo (PR desta entrega).
