@@ -7,6 +7,7 @@
 import type { Career, Team } from "../domain/types.ts";
 import { applyLineupChange, type LineupChange, type Recomposicao } from "../domain/lineup.ts";
 import { conferirArquivoDaCarreira, contaAtualId, definirContaAtual, localRepo } from "./local.ts";
+import { LOCAL_CREST_BY_ID } from "../domain/crests.ts";
 
 export class HttpError extends Error {
   status: number;
@@ -193,23 +194,25 @@ export const CareerGateway = {
 // monograma (sigla) quando não há escudo.
 const LOCAL_CRESTS = new Set(["fla", "pal", "bot", "for", "int", "sao", "cor", "cap", "cam", "flu", "san", "bra", "juv", "cui", "gre", "cru", "bah", "vas", "vit"]);
 
-// Escudos com leitura ruim sobre o fundo escuro da v2 (contorno com
-// contraste abaixo de 2:1 contra #080E18): a v2 usa a versão negativa
-// (tons neutros invertidos, cores do clube mantidas), em public/img/teams/*_neg.*.
-// A versão anterior desenha o escudo sobre uma chapinha clara e segue com o original.
-export const NEGATIVE_CRESTS = new Set(["atc_b", "bot", "cri_b", "fla", "gre", "nvz_b", "ope_b", "san", "sao", "vas", "vit"]);
-export function negativeCrest(src: string): string {
-  const m = /^(\/img\/teams\/)([a-z0-9_]+)\.(svg|png)$/.exec(src);
-  return m && NEGATIVE_CRESTS.has(m[2]) ? `${m[1]}${m[2]}_neg.${m[3]}` : src;
-}
-export function crestSrc(t: Team | undefined, darkBackground = true): string | null {
+// Escudos: cópia local de cada clube (ESCUDOS-001, decisão do Murilo de
+// 13/11/2026: cópia local das Séries A, B e C, como a da D, para não
+// depender do site externo e abrir offline). O mapa (domain/crests.ts,
+// gerado por scripts/escudos_catalogo.js) liga o id do clube — dos dados
+// reais (fornecedor) ou de exemplo (data.js) — ao arquivo em /img/teams.
+// O escudo é sempre o ORIGINAL, sobre uma chapinha clara (decisão de 13/11:
+// a versão negativa tirava a identidade do clube); ver .crest-img no CSS.
+// `darkBackground` fica por compatibilidade (cartões claros, Season.tsx).
+export function crestSrc(t: Team | undefined, _darkBackground = true): string | null {
   if (!t) return null;
   const id = String(t.id);
-  if (darkBackground && (id === "12230" || id === "mga")) return "/img/teams/mga_white.png";
-  const src = t.logo
+  const local = LOCAL_CREST_BY_ID[id];
+  if (local) return local;
+  const logo = t.logo
     ? (t.logo.startsWith("http") || t.logo.startsWith("/") ? t.logo : `/${t.logo}`)
-    : LOCAL_CRESTS.has(id) ? `/img/teams/${id}.svg` : null;
-  return src && darkBackground ? negativeCrest(src) : src;
+    : null;
+  if (logo && !logo.startsWith("http")) return logo;
+  if (LOCAL_CRESTS.has(id)) return `/img/teams/${id}.svg`;
+  return logo; // link externo do fornecedor: último recurso (cai no monograma se falhar)
 }
 
 type DemoGlobals = Record<string, Team[] | undefined>;

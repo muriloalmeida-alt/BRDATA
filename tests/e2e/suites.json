@@ -78,6 +78,17 @@
       "tests": [
         "test_loja_pagamento_real.js"
       ]
+    },
+    "dados-reais": {
+      "_doc": "ESCUDOS-001: o servidor como a produção deve ficar — catálogo real congelado nas 3 divisões (DATA_PROVIDER=frozen, ENABLED_COMPETITIONS=serie_b,serie_c, LIVE_SEASON=2026).",
+      "env": {
+        "DATA_PROVIDER": "frozen",
+        "ENABLED_COMPETITIONS": "serie_b,serie_c",
+        "LIVE_SEASON": "2026"
+      },
+      "tests": [
+        "test_v2_dados_reais.js"
+      ]
     }
   },
   "durationsMs": {

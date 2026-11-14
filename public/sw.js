@@ -139,6 +139,74 @@ const APP_SHELL = [
   "/2048.html",
   "/js/game2048/engine.js",
   "/js/game2048/ui.js",
+  // ESCUDOS-001: escudos das Séries A, B e C (cópias locais, para abrir
+  // offline e sem o site externo). Bloco gerado por scripts/escudos_catalogo.js --gravar.
+  /*__ESCUDOS_ABC__*/
+  "/img/teams/abc-rn.png",
+  "/img/teams/acg_b.png",
+  "/img/teams/amazonas-am.png",
+  "/img/teams/america-mg.svg",
+  "/img/teams/anapolis-go.png",
+  "/img/teams/atc_b.png",
+  "/img/teams/ava_b.png",
+  "/img/teams/bah.svg",
+  "/img/teams/barra-sc.png",
+  "/img/teams/bot.svg",
+  "/img/teams/botafogo-pb.png",
+  "/img/teams/bra.svg",
+  "/img/teams/brusque-sc.svg",
+  "/img/teams/bsp_b.png",
+  "/img/teams/cam.svg",
+  "/img/teams/cap.svg",
+  "/img/teams/caxias-rs.svg",
+  "/img/teams/ceara-ce.svg",
+  "/img/teams/chapecoense-sc.svg",
+  "/img/teams/confianca-se.svg",
+  "/img/teams/cor.svg",
+  "/img/teams/coritiba-pr.svg",
+  "/img/teams/crb_b.png",
+  "/img/teams/cri_b.png",
+  "/img/teams/cru.svg",
+  "/img/teams/csa-al.png",
+  "/img/teams/cui.svg",
+  "/img/teams/ferroviaria-sp.svg",
+  "/img/teams/figueirense-sc.svg",
+  "/img/teams/fla.svg",
+  "/img/teams/floresta-ce.png",
+  "/img/teams/flu.svg",
+  "/img/teams/for.svg",
+  "/img/teams/goi_b.png",
+  "/img/teams/gre.svg",
+  "/img/teams/guarani-sp.svg",
+  "/img/teams/int.svg",
+  "/img/teams/inter-limeira-sp.svg",
+  "/img/teams/itabaiana-se.png",
+  "/img/teams/ituano-sp.svg",
+  "/img/teams/juv.svg",
+  "/img/teams/londrina-pr.png",
+  "/img/teams/maranhao-ma.png",
+  "/img/teams/maringa-pr.png",
+  "/img/teams/mirassol-sp.png",
+  "/img/teams/nautico-pe.png",
+  "/img/teams/nvz_b.png",
+  "/img/teams/ope_b.png",
+  "/img/teams/pal.svg",
+  "/img/teams/paysandu-pa.png",
+  "/img/teams/ponte-preta-sp.png",
+  "/img/teams/remo-pa.svg",
+  "/img/teams/retro-pe.png",
+  "/img/teams/san.svg",
+  "/img/teams/santa-cruz-pe.svg",
+  "/img/teams/sao-bernardo-sp.png",
+  "/img/teams/sao.svg",
+  "/img/teams/sport-pe.svg",
+  "/img/teams/tombense-mg.png",
+  "/img/teams/vas.svg",
+  "/img/teams/vit.svg",
+  "/img/teams/vno_b.png",
+  "/img/teams/volta-redonda-rj.svg",
+  "/img/teams/ypiranga-rs.png",
+  /*__FIM_ESCUDOS_ABC__*/
   // SERIED-001: escudos da Série D (cópias locais, para abrir offline).
   // Bloco gerado por scripts/serie_d_catalogo.js --gravar.
   /*__ESCUDOS_SERIE_D__*/
@@ -188,7 +256,9 @@ const APP_SHELL = [
 self.addEventListener("install", (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME)
-      .then((cache) => cache.addAll(APP_SHELL))
+      // Sem repetidos: cache.addAll recusa a lista inteira se um endereço
+      // aparece duas vezes (ex.: escudo da Série D que também está na C).
+      .then((cache) => cache.addAll([...new Set(APP_SHELL)]))
       .then(() => self.skipWaiting())
   );
 });

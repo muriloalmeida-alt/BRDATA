@@ -1,0 +1,315 @@
+{
+ "descricao": "ESCUDOS-001 — origem dos escudos das Séries A, B e C copiados para o jogo (decisão do Murilo, 13/11/2026: cópia local dos 60, como a da Série D; escudo original sobre chapinha clara). Os demais escudos das 3 divisões já estavam no jogo (react-brasileirao-logos, Série B de exemplo, Série D).",
+ "escudos": [
+  {
+   "id": "amazonas-am",
+   "arquivo": "public/img/teams/amazonas-am.png",
+   "artigo": "https://pt.wikipedia.org/wiki/Amazonas_Futebol_Clube",
+   "titulo_artigo": "Amazonas Futebol Clube",
+   "imagem_original": "https://upload.wikimedia.org/wikipedia/pt/7/74/AmazonasFC.png",
+   "projeto": "Wikipédia em português",
+   "licenca": "uso restrito na Wikipédia (fair use) — verificar antes de distribuir",
+   "copia": "PNG reduzido a 160 px"
+  },
+  {
+   "id": "america-mg",
+   "arquivo": "public/img/teams/america-mg.svg",
+   "artigo": "https://pt.wikipedia.org/wiki/Am%C3%A9rica_Futebol_Clube_(Belo_Horizonte)",
+   "titulo_artigo": "América Futebol Clube (Belo Horizonte)",
+   "imagem_original": "https://upload.wikimedia.org/wikipedia/commons/a/a8/Am%C3%A9rica_Futebol_Clube_%28Belo_Horizonte%2C_Minas_Gerais%29_logo.svg",
+   "projeto": "Wikimedia Commons",
+   "licenca": "ver a página do arquivo no Commons (livre ou marca registrada)",
+   "copia": "arquivo original (SVG)"
+  },
+  {
+   "id": "anapolis-go",
+   "arquivo": "public/img/teams/anapolis-go.png",
+   "artigo": "https://pt.wikipedia.org/wiki/An%C3%A1polis_Futebol_Clube",
+   "titulo_artigo": "Anápolis Futebol Clube",
+   "imagem_original": "https://upload.wikimedia.org/wikipedia/pt/8/85/An%C3%A1polis-GO_%28BRA%29.png",
+   "projeto": "Wikipédia em português",
+   "licenca": "uso restrito na Wikipédia (fair use) — verificar antes de distribuir",
+   "copia": "PNG reduzido a 160 px"
+  },
+  {
+   "id": "barra-sc",
+   "arquivo": "public/img/teams/barra-sc.png",
+   "artigo": "https://pt.wikipedia.org/wiki/Barra_Futebol_Clube_(Santa_Catarina)",
+   "titulo_artigo": "Barra Futebol Clube (Santa Catarina)",
+   "imagem_original": "https://upload.wikimedia.org/wikipedia/commons/4/40/Barra_FC_2021_crest.png",
+   "projeto": "Wikimedia Commons",
+   "licenca": "ver a página do arquivo no Commons (livre ou marca registrada)",
+   "copia": "PNG reduzido a 160 px"
+  },
+  {
+   "id": "botafogo-pb",
+   "arquivo": "public/img/teams/botafogo-pb.png",
+   "artigo": "https://pt.wikipedia.org/wiki/Botafogo_Futebol_Clube_(Jo%C3%A3o_Pessoa)",
+   "titulo_artigo": "Botafogo Futebol Clube (João Pessoa)",
+   "imagem_original": "https://upload.wikimedia.org/wikipedia/commons/b/b8/BotafogoPB_logo.png",
+   "projeto": "Wikimedia Commons",
+   "licenca": "ver a página do arquivo no Commons (livre ou marca registrada)",
+   "copia": "PNG reduzido a 160 px"
+  },
+  {
+   "id": "brusque-sc",
+   "arquivo": "public/img/teams/brusque-sc.svg",
+   "artigo": "https://pt.wikipedia.org/wiki/Brusque_Futebol_Clube",
+   "titulo_artigo": "Brusque Futebol Clube",
+   "imagem_original": "https://upload.wikimedia.org/wikipedia/commons/b/ba/Brusque_Futebol_Clube_logo.svg",
+   "projeto": "Wikimedia Commons",
+   "licenca": "ver a página do arquivo no Commons (livre ou marca registrada)",
+   "copia": "arquivo original (SVG)"
+  },
+  {
+   "id": "caxias-rs",
+   "arquivo": "public/img/teams/caxias-rs.svg",
+   "artigo": "https://pt.wikipedia.org/wiki/Sociedade_Esportiva_e_Recreativa_Caxias_do_Sul",
+   "titulo_artigo": "Sociedade Esportiva e Recreativa Caxias do Sul",
+   "imagem_original": "https://upload.wikimedia.org/wikipedia/commons/9/92/Escudo_Oficial_da_Sociedade_Esportiva_e_Recreativa_Caxias_do_Sul.svg",
+   "projeto": "Wikimedia Commons",
+   "licenca": "ver a página do arquivo no Commons (livre ou marca registrada)",
+   "copia": "arquivo original (SVG)"
+  },
+  {
+   "id": "ceara-ce",
+   "arquivo": "public/img/teams/ceara-ce.svg",
+   "artigo": "https://pt.wikipedia.org/wiki/Cear%C3%A1_Sporting_Club",
+   "titulo_artigo": "Ceará Sporting Club",
+   "imagem_original": "https://upload.wikimedia.org/wikipedia/commons/3/38/Cear%C3%A1_Sporting_Club_logo.svg",
+   "projeto": "Wikimedia Commons",
+   "licenca": "ver a página do arquivo no Commons (livre ou marca registrada)",
+   "copia": "arquivo original (SVG)"
+  },
+  {
+   "id": "chapecoense-sc",
+   "arquivo": "public/img/teams/chapecoense-sc.svg",
+   "artigo": "https://pt.wikipedia.org/wiki/Associa%C3%A7%C3%A3o_Chapecoense_de_Futebol",
+   "titulo_artigo": "Associação Chapecoense de Futebol",
+   "imagem_original": "https://upload.wikimedia.org/wikipedia/commons/4/4e/Logo_Associa%C3%A7%C3%A3o_Chapecoense_de_Futebol.svg",
+   "projeto": "Wikimedia Commons",
+   "licenca": "ver a página do arquivo no Commons (livre ou marca registrada)",
+   "copia": "arquivo original (SVG)"
+  },
+  {
+   "id": "confianca-se",
+   "arquivo": "public/img/teams/confianca-se.svg",
+   "artigo": "https://pt.wikipedia.org/wiki/Associa%C3%A7%C3%A3o_Desportiva_Confian%C3%A7a",
+   "titulo_artigo": "Associação Desportiva Confiança",
+   "imagem_original": "https://upload.wikimedia.org/wikipedia/commons/1/18/Associa%C3%A7%C3%A3o_Desportiva_Confian%C3%A7a_logo.svg",
+   "projeto": "Wikimedia Commons",
+   "licenca": "ver a página do arquivo no Commons (livre ou marca registrada)",
+   "copia": "arquivo original (SVG)"
+  },
+  {
+   "id": "coritiba-pr",
+   "arquivo": "public/img/teams/coritiba-pr.svg",
+   "artigo": "https://pt.wikipedia.org/wiki/Coritiba_Foot_Ball_Club",
+   "titulo_artigo": "Coritiba Foot Ball Club",
+   "imagem_original": "https://upload.wikimedia.org/wikipedia/commons/b/bd/Coritiba_Foot_Ball_Club_logo.svg",
+   "projeto": "Wikimedia Commons",
+   "licenca": "ver a página do arquivo no Commons (livre ou marca registrada)",
+   "copia": "arquivo original (SVG)"
+  },
+  {
+   "id": "ferroviaria-sp",
+   "arquivo": "public/img/teams/ferroviaria-sp.svg",
+   "artigo": "https://pt.wikipedia.org/wiki/Associa%C3%A7%C3%A3o_Ferrovi%C3%A1ria_de_Esportes",
+   "titulo_artigo": "Associação Ferroviária de Esportes",
+   "imagem_original": "https://upload.wikimedia.org/wikipedia/commons/2/20/Associa%C3%A7%C3%A3o_Ferrovi%C3%A1ria_de_Esportes_logo.svg",
+   "projeto": "Wikimedia Commons",
+   "licenca": "ver a página do arquivo no Commons (livre ou marca registrada)",
+   "copia": "arquivo original (SVG)"
+  },
+  {
+   "id": "figueirense-sc",
+   "arquivo": "public/img/teams/figueirense-sc.svg",
+   "artigo": "https://pt.wikipedia.org/wiki/Figueirense_Futebol_Clube",
+   "titulo_artigo": "Figueirense Futebol Clube",
+   "imagem_original": "https://upload.wikimedia.org/wikipedia/commons/0/05/Figueirense_Futebol_Clube.svg",
+   "projeto": "Wikimedia Commons",
+   "licenca": "ver a página do arquivo no Commons (livre ou marca registrada)",
+   "copia": "arquivo original (SVG)"
+  },
+  {
+   "id": "floresta-ce",
+   "arquivo": "public/img/teams/floresta-ce.png",
+   "artigo": "https://pt.wikipedia.org/wiki/Floresta_Esporte_Clube",
+   "titulo_artigo": "Floresta Esporte Clube",
+   "imagem_original": "https://upload.wikimedia.org/wikipedia/pt/8/86/Floresta_Esporte_Clube.png",
+   "projeto": "Wikipédia em português",
+   "licenca": "uso restrito na Wikipédia (fair use) — verificar antes de distribuir",
+   "copia": "PNG reduzido a 160 px"
+  },
+  {
+   "id": "guarani-sp",
+   "arquivo": "public/img/teams/guarani-sp.svg",
+   "artigo": "https://pt.wikipedia.org/wiki/Guarani_Futebol_Clube",
+   "titulo_artigo": "Guarani Futebol Clube",
+   "imagem_original": "https://upload.wikimedia.org/wikipedia/commons/0/04/Guarani_Futebol_Clube_logo.svg",
+   "projeto": "Wikimedia Commons",
+   "licenca": "ver a página do arquivo no Commons (livre ou marca registrada)",
+   "copia": "arquivo original (SVG)"
+  },
+  {
+   "id": "inter-limeira-sp",
+   "arquivo": "public/img/teams/inter-limeira-sp.svg",
+   "artigo": "https://pt.wikipedia.org/wiki/Associa%C3%A7%C3%A3o_Atl%C3%A9tica_Internacional_(Limeira)",
+   "titulo_artigo": "Associação Atlética Internacional (Limeira)",
+   "imagem_original": "https://upload.wikimedia.org/wikipedia/commons/b/b4/Inter_de_Limeira.svg",
+   "projeto": "Wikimedia Commons",
+   "licenca": "ver a página do arquivo no Commons (livre ou marca registrada)",
+   "copia": "arquivo original (SVG)"
+  },
+  {
+   "id": "itabaiana-se",
+   "arquivo": "public/img/teams/itabaiana-se.png",
+   "artigo": "https://pt.wikipedia.org/wiki/Associa%C3%A7%C3%A3o_Ol%C3%ADmpica_de_Itabaiana",
+   "titulo_artigo": "Associação Olímpica de Itabaiana",
+   "imagem_original": "https://upload.wikimedia.org/wikipedia/commons/b/b8/Associa%C3%A7%C3%A3o_Ol%C3%ADmpica_de_Itabaiana_logo.png",
+   "projeto": "Wikimedia Commons",
+   "licenca": "ver a página do arquivo no Commons (livre ou marca registrada)",
+   "copia": "PNG reduzido a 160 px"
+  },
+  {
+   "id": "ituano-sp",
+   "arquivo": "public/img/teams/ituano-sp.svg",
+   "artigo": "https://pt.wikipedia.org/wiki/Ituano_Futebol_Clube",
+   "titulo_artigo": "Ituano Futebol Clube",
+   "imagem_original": "https://upload.wikimedia.org/wikipedia/commons/5/5d/Ituano_Futebol_Clube_logo.svg",
+   "projeto": "Wikimedia Commons",
+   "licenca": "ver a página do arquivo no Commons (livre ou marca registrada)",
+   "copia": "arquivo original (SVG)"
+  },
+  {
+   "id": "londrina-pr",
+   "arquivo": "public/img/teams/londrina-pr.png",
+   "artigo": "https://pt.wikipedia.org/wiki/Londrina_Esporte_Clube",
+   "titulo_artigo": "Londrina Esporte Clube",
+   "imagem_original": "https://upload.wikimedia.org/wikipedia/pt/9/96/Londrina_EC.png",
+   "projeto": "Wikipédia em português",
+   "licenca": "uso restrito na Wikipédia (fair use) — verificar antes de distribuir",
+   "copia": "PNG reduzido a 160 px"
+  },
+  {
+   "id": "maranhao-ma",
+   "arquivo": "public/img/teams/maranhao-ma.png",
+   "artigo": "https://pt.wikipedia.org/wiki/Maranh%C3%A3o_Atl%C3%A9tico_Clube",
+   "titulo_artigo": "Maranhão Atlético Clube",
+   "imagem_original": "https://upload.wikimedia.org/wikipedia/pt/6/6d/Maranh%C3%A3o_Atl%C3%A9tico_Clube.png",
+   "projeto": "Wikipédia em português",
+   "licenca": "uso restrito na Wikipédia (fair use) — verificar antes de distribuir",
+   "copia": "PNG reduzido a 160 px"
+  },
+  {
+   "id": "maringa-pr",
+   "arquivo": "public/img/teams/maringa-pr.png",
+   "artigo": "https://pt.wikipedia.org/wiki/Maring%C3%A1_Futebol_Clube_(2010)",
+   "titulo_artigo": "Maringá Futebol Clube (2010)",
+   "imagem_original": "https://upload.wikimedia.org/wikipedia/commons/b/b0/Escudo_do_Maring%C3%A1_FC_2026.png",
+   "projeto": "Wikimedia Commons",
+   "licenca": "ver a página do arquivo no Commons (livre ou marca registrada)",
+   "copia": "PNG reduzido a 160 px"
+  },
+  {
+   "id": "mirassol-sp",
+   "arquivo": "public/img/teams/mirassol-sp.png",
+   "artigo": "https://pt.wikipedia.org/wiki/Mirassol_Futebol_Clube",
+   "titulo_artigo": "Mirassol Futebol Clube",
+   "imagem_original": "https://upload.wikimedia.org/wikipedia/commons/f/fd/Mirassol_Futebol_Clube_logo_%283_stars%29.png",
+   "projeto": "Wikimedia Commons",
+   "licenca": "ver a página do arquivo no Commons (livre ou marca registrada)",
+   "copia": "PNG reduzido a 160 px"
+  },
+  {
+   "id": "nautico-pe",
+   "arquivo": "public/img/teams/nautico-pe.png",
+   "artigo": "https://pt.wikipedia.org/wiki/Clube_N%C3%A1utico_Capibaribe",
+   "titulo_artigo": "Clube Náutico Capibaribe",
+   "imagem_original": "https://upload.wikimedia.org/wikipedia/pt/d/de/Simbolo-escudo-nautico.png",
+   "projeto": "Wikipédia em português",
+   "licenca": "uso restrito na Wikipédia (fair use) — verificar antes de distribuir",
+   "copia": "PNG reduzido a 160 px"
+  },
+  {
+   "id": "paysandu-pa",
+   "arquivo": "public/img/teams/paysandu-pa.png",
+   "artigo": "https://pt.wikipedia.org/wiki/Paysandu_Sport_Club",
+   "titulo_artigo": "Paysandu Sport Club",
+   "imagem_original": "https://upload.wikimedia.org/wikipedia/pt/2/2f/PaysanduSC.png",
+   "projeto": "Wikipédia em português",
+   "licenca": "uso restrito na Wikipédia (fair use) — verificar antes de distribuir",
+   "copia": "PNG reduzido a 160 px"
+  },
+  {
+   "id": "ponte-preta-sp",
+   "arquivo": "public/img/teams/ponte-preta-sp.png",
+   "artigo": "https://pt.wikipedia.org/wiki/Associa%C3%A7%C3%A3o_Atl%C3%A9tica_Ponte_Preta",
+   "titulo_artigo": "Associação Atlética Ponte Preta",
+   "imagem_original": "https://upload.wikimedia.org/wikipedia/commons/0/07/Logo_AA_Ponte_Preta.svg",
+   "projeto": "Wikimedia Commons",
+   "licenca": "ver a página do arquivo no Commons (livre ou marca registrada)",
+   "copia": "PNG reduzido a 160 px"
+  },
+  {
+   "id": "remo-pa",
+   "arquivo": "public/img/teams/remo-pa.svg",
+   "artigo": "https://pt.wikipedia.org/wiki/Clube_do_Remo",
+   "titulo_artigo": "Clube do Remo",
+   "imagem_original": "https://upload.wikimedia.org/wikipedia/commons/7/70/Clube_do_Remo.svg",
+   "projeto": "Wikimedia Commons",
+   "licenca": "ver a página do arquivo no Commons (livre ou marca registrada)",
+   "copia": "arquivo original (SVG)"
+  },
+  {
+   "id": "santa-cruz-pe",
+   "arquivo": "public/img/teams/santa-cruz-pe.svg",
+   "artigo": "https://pt.wikipedia.org/wiki/Santa_Cruz_Futebol_Clube",
+   "titulo_artigo": "Santa Cruz Futebol Clube",
+   "imagem_original": "https://upload.wikimedia.org/wikipedia/commons/6/69/Santa_Cruz_Futebol_Clube_logo.svg",
+   "projeto": "Wikimedia Commons",
+   "licenca": "ver a página do arquivo no Commons (livre ou marca registrada)",
+   "copia": "arquivo original (SVG)"
+  },
+  {
+   "id": "sao-bernardo-sp",
+   "arquivo": "public/img/teams/sao-bernardo-sp.png",
+   "artigo": "https://pt.wikipedia.org/wiki/S%C3%A3o_Bernardo_Futebol_Clube",
+   "titulo_artigo": "São Bernardo Futebol Clube",
+   "imagem_original": "https://upload.wikimedia.org/wikipedia/commons/8/88/S%C3%A3o_Bernardo_FC_2020_crest.png",
+   "projeto": "Wikimedia Commons",
+   "licenca": "ver a página do arquivo no Commons (livre ou marca registrada)",
+   "copia": "PNG reduzido a 160 px"
+  },
+  {
+   "id": "sport-pe",
+   "arquivo": "public/img/teams/sport-pe.svg",
+   "artigo": "https://pt.wikipedia.org/wiki/Sport_Club_do_Recife",
+   "titulo_artigo": "Sport Club do Recife",
+   "imagem_original": "https://upload.wikimedia.org/wikipedia/pt/1/1a/Sport-clube-recife.svg",
+   "projeto": "Wikipédia em português",
+   "licenca": "uso restrito na Wikipédia (fair use) — verificar antes de distribuir",
+   "copia": "arquivo original (SVG)"
+  },
+  {
+   "id": "volta-redonda-rj",
+   "arquivo": "public/img/teams/volta-redonda-rj.svg",
+   "artigo": "https://pt.wikipedia.org/wiki/Volta_Redonda_Futebol_Clube",
+   "titulo_artigo": "Volta Redonda Futebol Clube",
+   "imagem_original": "https://upload.wikimedia.org/wikipedia/commons/0/08/Volta_Redonda_Futebol_Clube.svg",
+   "projeto": "Wikimedia Commons",
+   "licenca": "ver a página do arquivo no Commons (livre ou marca registrada)",
+   "copia": "arquivo original (SVG)"
+  },
+  {
+   "id": "ypiranga-rs",
+   "arquivo": "public/img/teams/ypiranga-rs.png",
+   "artigo": "https://pt.wikipedia.org/wiki/Ypiranga_Futebol_Clube_(Erechim)",
+   "titulo_artigo": "Ypiranga Futebol Clube (Erechim)",
+   "imagem_original": "https://upload.wikimedia.org/wikipedia/commons/1/14/Ypiranga_Futebol_Clube.png",
+   "projeto": "Wikimedia Commons",
+   "licenca": "ver a página do arquivo no Commons (livre ou marca registrada)",
+   "copia": "PNG reduzido a 160 px"
+  }
+ ]
+}
