@@ -140,12 +140,17 @@ async function newCareer(page, base, email) {
     await advanceSeason();
     return { clubName: CAREER.clubName };
   });
-  // Proposta por jogador (evento sorteado na virada) cobre o menu: recusa,
-  // como nos outros testes do fluxo.
-  await page.waitForTimeout(200);
-  if (await page.evaluate(() => document.getElementById("playerOfferOverlay")?.classList.contains("open"))) {
-    await page.click("#btnPlayerOfferDecline");
-    await page.waitForFunction(() => !document.getElementById("playerOfferOverlay").classList.contains("open"));
+  // Proposta por jogador (evento sorteado na virada) e a tabela em tela cheia
+  // cobrem o menu e abrem sem hora certa: fecha o que abrir (proposta:
+  // recusa, como nos outros testes do fluxo) até a tela ficar livre por
+  // ~0,6 s. Antes: 200 ms fixos e só a proposta (falha no CI do #117, a
+  // tabela abriu depois e interceptou o clique no menu).
+  for (let livre = 0, t0 = Date.now(); livre < 3 && Date.now() - t0 < 15000;) {
+    const aberto = await page.evaluate(() => ["playerOfferOverlay", "tabelaModalOverlay"].find((id) => document.getElementById(id)?.classList.contains("open")) || null);
+    if (aberto === "playerOfferOverlay") { await page.click("#btnPlayerOfferDecline").catch(() => {}); livre = 0; }
+    else if (aberto === "tabelaModalOverlay") { await page.click("#btnTabelaModalCloseFooter").catch(() => {}); livre = 0; }
+    else livre++;
+    await page.waitForTimeout(200);
   }
   await page.click("#btnBottomMenu");
   await page.waitForTimeout(150);

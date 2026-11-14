@@ -181,6 +181,7 @@ Cada regra foi quebrada no motor, o teste rodou, e o motor foi restaurado depois
 - **Para decidir:** mostrar o aviso no Pré-jogo da v2 (por exemplo, como alerta, ao lado de "Semana de 2 jogos"), ou deixar como está.
 - Pelo princípio de explicabilidade (CLAUDE.md §45), a recomendação é mostrar.
 - **Decidido (14/11, Murilo):** mostrar no Pré-jogo (AVISO-MOTIVADO no `docs/HANDOFF_CLAUDE.md`), depois do L4.
+- **Implementado:** PR da AVISO-MOTIVADO; o `test_ge_balance_001` ganhou o item 2b (Pré-jogo da v2).
 
 ### Contraprova
 

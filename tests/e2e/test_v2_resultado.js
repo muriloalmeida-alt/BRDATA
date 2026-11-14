@@ -84,11 +84,21 @@ const { newCareer, noMotor, iniciarPeloPreJogo } = require("./_v2_carreira");
   await v2.click(".pz-foot .cta");
   for (let k = 0; k < 80; k++) {
     if (await v2.locator(".home").count()) break;
-    const st = await v2.evaluate(() => ({ path: location.pathname, h1: (document.querySelector("h1") || {}).textContent || "", answer: !!document.querySelector(".pj-answer"), effect: !!document.querySelector(".pj-effect"), live: !!document.querySelector(".mt-skip"), ready: !!document.querySelector('.pz-foot .cta[data-save="saved"]:not([aria-disabled])') }));
+    const st = await v2.evaluate(() => ({ path: location.pathname, h1: (document.querySelector("h1") || {}).textContent || "", answer: !!document.querySelector(".pj-answer"), answerOn: !!document.querySelector(".pj-answer:not([disabled])"), effect: !!document.querySelector(".pj-effect"), live: !!document.querySelector(".mt-skip"), ready: !!document.querySelector('.pz-foot .cta[data-save="saved"]:not([aria-disabled])') }));
     allHidden = allHidden && await hidden();
     if (st.live) { await v2.click(".mt-skip"); seen.push("copa"); }
     else if (st.ready) await v2.click(".pz-foot .cta");
-    else if (st.answer) { if (!st.effect) { seen.push("coletiva"); await v2.click(".pj-answer"); } else await v2.click(".pj .cal-foot .cta"); }
+    // Coletiva: as respostas ficam desativadas enquanto a escolhida grava;
+    // toca só numa ativa e espera o efeito (antes, sob carga, o laço tocava
+    // de novo numa resposta desativada e o clique estourava o prazo, CI #117).
+    else if (st.answer) {
+      if (st.effect) await v2.click(".pj .cal-foot .cta");
+      else if (st.answerOn) {
+        seen.push("coletiva");
+        await v2.click(".pj-answer:not([disabled])");
+        await v2.waitForSelector(".pj-effect", { timeout: 30000 }).catch(() => {});
+      }
+    }
     else if (st.path === "/pos-jogo" && st.h1) { if (seen[seen.length - 1] !== st.h1) seen.push(st.h1); await v2.click(st.h1 === "Uma oferta chegou." ? ".pj .cal-foot .link-back" : ".pj .cal-foot .cta"); }
     await v2.waitForTimeout(400);
   }
