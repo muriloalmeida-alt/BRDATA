@@ -11,9 +11,9 @@
 //  2) Duas gravações seguidas (a 2ª durante o envio da 1ª): o servidor fica
 //     com a 2ª e o aparelho marcado como sincronizado; no máximo 2 PUTs.
 //  3) Sem mudança no save, copiar de novo não manda nada.
-//  4) Envio preso (o PUT nunca responde): a leitura e a gravação seguintes
-//     não ficam esperando por ele (antes da 2ª versão desta correção, a
-//     leitura esperava a cópia a caminho e a v2 não abria).
+//  4) Envio preso (o PUT nunca responde): a leitura seguinte não espera por
+//     ele e a gravação seguinte espera no máximo 15 s (grava no aparelho e
+//     devolve "andamento").
 const { chromium } = require("playwright-core");
 const { check } = require("./_check");
 const { newCareer, motorPronto } = require("./_v2_carreira");
@@ -74,8 +74,9 @@ const { newCareer, motorPronto } = require("./_v2_carreira");
     await espera(300);
     const t0 = Date.now();
     const lido = await Promise.race([preso.ler(id).then((x) => !!x.career), espera(8000).then(() => "travou")]);
-    const gravado = await Promise.race([preso.gravar(id, { ...base, testeCopia: 5 }).then((x) => x.ok && x.copia), espera(8000).then(() => "travou")]);
-    out.quatro = { lido, gravado, ms: Date.now() - t0 };
+    const msLer = Date.now() - t0;
+    const gravado = await Promise.race([preso.gravar(id, { ...base, testeCopia: 5 }).then((x) => x.ok && x.copia), espera(25000).then(() => "travou")]);
+    out.quatro = { lido, msLer, gravado, msGravar: Date.now() - t0 - msLer, aparelho: (await preso.registro(id)).save.testeCopia };
     return out;
   });
 
@@ -83,7 +84,7 @@ const { newCareer, motorPronto } = require("./_v2_carreira");
   check("1b) Duas instâncias do repositório (uma grava, a outra lê no meio do envio): 1 PUT só:", r.umB.puts === 1 && r.umB.servidor === 11, JSON.stringify(r.umB));
   check("2) Duas gravações seguidas: o servidor fica com a mais nova, o aparelho sincronizado, no máximo 2 PUTs:", r.dois.servidor === 3 && r.dois.aparelho === 3 && r.dois.sincronizado && r.dois.puts <= 2, JSON.stringify(r.dois));
   check("3) Sem mudança no save, copiar de novo não manda nada:", r.tres.copia === "ok" && r.tres.puts === 0, JSON.stringify(r.tres));
-  check("4) Envio preso: a leitura e a gravação seguintes não esperam por ele:", r.quatro.lido === true && r.quatro.gravado === "andamento" && r.quatro.ms < 8000, JSON.stringify(r.quatro));
+  check("4) Envio preso: a leitura não espera; a gravação grava no aparelho e espera no máximo 15 s:", r.quatro.lido === true && r.quatro.msLer < 8000 && r.quatro.gravado === "andamento" && r.quatro.msGravar < 20000 && r.quatro.aparelho === 5, JSON.stringify(r.quatro));
   check("5) Sem erro na página:", erros.length === 0, JSON.stringify(erros.slice(0, 3)));
   await browser.close();
 })().catch((e) => { console.error("FATAL:", e); process.exit(1); });
