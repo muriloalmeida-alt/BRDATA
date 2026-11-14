@@ -1,72 +1,49 @@
-// Verifica que os 11 clubes da Série B com escudo real (DEMO_TEAMS_SERIE_B)
-// mostram a imagem de verdade (crestImg -> t.logo) e os outros 9 continuam
-// no monograma de sigla (fallback).
+// Escudos da Série B (dados de exemplo, servidor sem API) — lote L4d, sem a
+// tela antiga. Antes: na escolha de clube da tela antiga, 11 clubes com escudo
+// real e 9 no monograma. Desde a ESCUDOS-001 (PR #115) os 20 clubes de
+// exemplo da Série B têm escudo local (/img/teams). Com dados reais, os
+// escudos das 3 divisões estão no test_v2_dados_reais.
+//  1) Escolha de clube da v2 (Série B): os 20 clubes, todos com o escudo
+//     local carregado (sem imagem quebrada), sobre a chapinha clara.
+//  2) Carreira no 1º clube da lista: o Início mostra os escudos (o do clube e o do
+//     adversário do próximo jogo) do próprio jogo, carregados.
 const { chromium } = require("playwright-core");
 const { check } = require("./_check");
-const { enterGame } = require("./_startup");
-const { skipPreseason } = require("./_calendar_skip");
+const { contaNova, carreiraV2, ateOInicio, pularPreTemporada, base } = require("./_v2_carreira");
 
-const COM_ESCUDO = ["Goiás", "Avaí", "Criciúma", "Vila Nova", "Cuiabá", "Atlético Goianiense", "CRB", "Novorizontino", "Operário-PR", "Botafogo-SP", "Athletic Club"];
-const SEM_ESCUDO = ["Athletico Paranaense", "Coritiba", "Chapecoense", "Remo", "América Mineiro", "Amazonas", "Paysandu", "Volta Redonda", "Ferroviária"];
+const escudos = (page, sel) => page.evaluate(async (sel) => {
+  const imgs = [...document.querySelectorAll(`${sel} img`)];
+  await Promise.all(imgs.map((i) => (i.complete ? null : new Promise((r) => { i.onload = i.onerror = r; }))));
+  return imgs.map((i) => ({ src: i.getAttribute("src"), ok: i.naturalWidth > 0, chapinha: !!i.closest(".crest-plate") }));
+}, sel);
 
 (async () => {
   const browser = await chromium.launch({ executablePath: process.env.PW_CHROMIUM_PATH || undefined, headless: true, args: ["--host-resolver-rules=MAP fonts.googleapis.com 127.0.0.1,MAP fonts.gstatic.com 127.0.0.1"] });
   const page = await browser.newPage({ viewport: { width: 390, height: 900 } });
   page.on("dialog", (d) => d.dismiss());
-  page.on("pageerror", (err) => console.log("PAGE ERROR:", err.message));
-  const base = "http://localhost:8787";
-  const email = `serieb-escudos${Date.now()}@teste.com`;
+  const erros = [];
+  page.on("pageerror", (err) => erros.push(err.message));
+
+  // 1) Escolha de clube.
+  await contaNova(page, `serieb-escudos${Date.now()}@teste.com`);
+  await page.goto(base + "/nova/clube?comp=serie_b", { waitUntil: "domcontentloaded" });
+  await page.waitForSelector(".ac-club", { timeout: 40000 });
+  const clubes = await page.evaluate(() => [...document.querySelectorAll(".ac-club")].map((c) => c.querySelector("b").textContent));
+  const e1 = await escudos(page, ".ac-club");
+  check("1) Escolha de clube (Série B): 20 clubes, todos com o escudo local carregado, sobre a chapinha:",
+    clubes.length === 20 && e1.length === 20 && e1.every((e) => /^\/img\/teams\//.test(e.src) && e.ok && e.chapinha),
+    JSON.stringify(e1.filter((e) => !/^\/img\/teams\//.test(e.src) || !e.ok || !e.chapinha)));
+
+  // 2) Carreira no 1º clube da lista (o mesmo escudo da escolha).
+  await page.context().clearCookies();
+  await carreiraV2(page, `serieb-escudos2${Date.now()}@teste.com`, { competicao: "serie_b" } /* o 1º da lista, como na escolha */);
+  await pularPreTemporada(page);
   await page.goto(base + "/", { waitUntil: "domcontentloaded" });
-  await page.evaluate(async ({ email }) => {
-    await fetch("/api/auth/signup", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: "Serie B Escudos", email, password: "senha123", phone: "11999999999", plan: "freemium" }) });
-    await fetch("/api/auth/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, password: "senha123" }) });
-  }, { email });
-  await page.goto(base + "/carreira.html", { waitUntil: "domcontentloaded" });
-  await page.click('.mt-competition-card[data-competition="serie_b"]');
-  await page.waitForTimeout(300);
+  await ateOInicio(page);
+  const e2 = await escudos(page, ".home");
+  check("2) Carreira no 1º clube da lista: o Início mostra o escudo do clube (o mesmo da escolha) e o do adversário, do próprio jogo, carregados:",
+    e2.length >= 2 && e2.every((e) => /^\/img\/teams\//.test(e.src) && e.ok) && e2.some((e) => e.src === e1[0].src) && new Set(e2.map((e) => e.src)).size >= 2, JSON.stringify(e2));
 
-  // 1) Escolha do clube: os 11 têm <img> de verdade dentro do escudo,
-  // os outros 9 têm o monograma (span.ct-crest-mono).
-  const result = await page.evaluate(({ comEscudo, semEscudo }) => {
-    function statusFor(name) {
-      const cards = [...document.querySelectorAll(".m3-club-row")];
-      const card = cards.find((c) => c.textContent.includes(name));
-      if (!card) return "não achado";
-      // Redesign Cap. 1 T04: na grade da escolha de clube o escudo oficial
-      // vem direto como <img class="bd-crest"> (sem a chapinha .ct-crest).
-      const hasImg = !!card.querySelector(".ct-crest img, img.bd-crest");
-      const hasMono = !!card.querySelector(".ct-crest .ct-crest-mono");
-      return hasImg ? "imagem" : hasMono ? "monograma" : "nenhum";
-    }
-    const withCrest = comEscudo.map((n) => ({ name: n, status: statusFor(n) }));
-    const without = semEscudo.map((n) => ({ name: n, status: statusFor(n) }));
-    return { withCrest, without };
-  }, { comEscudo: COM_ESCUDO, semEscudo: SEM_ESCUDO });
-
-  const allWithImage = result.withCrest.every((r) => r.status === "imagem");
-  const allWithMono = result.without.every((r) => r.status === "monograma");
-  check("1) Os 11 clubes com escudo real mostram <img>:", allWithImage, JSON.stringify(result.withCrest.filter(r => r.status !== "imagem")));
-  check("2) Os 9 clubes restantes continuam no monograma:", allWithMono, JSON.stringify(result.without.filter(r => r.status !== "monograma")));
-
-  // 2) Abre um clube com escudo real e confere na Central também.
-  await page.evaluate(() => {
-    const cards = [...document.querySelectorAll(".m3-club-row")];
-    const goias = cards.find((c) => c.textContent.includes("Goiás"));
-    goias.click();
-  });
-  await page.waitForTimeout(150);
-  await page.click("#btnConfirmClub");
-  await enterGame(page, { claimDailyLogin: false });
-  // GE-CALENDAR-001: carreira nova começa na pré-temporada (o card mostra
-  // o amistoso) — o escudo verificado é o do próximo jogo oficial.
-  await skipPreseason(page);
-  const centralHasImg = await page.evaluate(() => {
-    const nextMatch = document.querySelector(".m3-hero-match");
-    return nextMatch ? !!nextMatch.querySelector("img") : null;
-  });
-  check("3) Escudo real também aparece no card 'Próximo jogo' da Central:", centralHasImg);
-
-  await page.screenshot({ path: "screens/serieb-01-escolha-clube.png" });
-
+  check("3) Sem erro na página:", erros.length === 0, JSON.stringify(erros.slice(0, 3)));
   await browser.close();
 })().catch((e) => { console.error("FATAL:", e); process.exit(1); });

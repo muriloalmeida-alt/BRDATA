@@ -2,7 +2,7 @@
 
 **Data:** 13/11/2026
 **Plano:** `docs/carreira-v2/PLANO_TESTES_TELA_ANTIGA.md` (lote L4, dividido em partes como o L3)
-**Lista congelada:** 110 → 103 (L4a) → 100 (L4b) → 93 (L4c)
+**Lista congelada:** 110 → 103 (L4a) → 100 (L4b) → 93 (L4c) → 82 (L4d)
 
 ## L4a — diretoria, temporada e divisões (7 arquivos)
 
@@ -180,6 +180,7 @@ Cada regra foi quebrada no motor, o teste rodou, e o motor foi restaurado depois
   - a regra (o bônus do adversário) continua valendo.
 - **Para decidir:** mostrar o aviso no Pré-jogo da v2 (por exemplo, como alerta, ao lado de "Semana de 2 jogos"), ou deixar como está.
 - Pelo princípio de explicabilidade (CLAUDE.md §45), a recomendação é mostrar.
+- **Decidido (14/11, Murilo):** mostrar no Pré-jogo (AVISO-MOTIVADO no `docs/HANDOFF_CLAUDE.md`), depois do L4.
 
 ### Contraprova
 
@@ -201,3 +202,89 @@ Cada regra foi quebrada no motor, o teste rodou, e o motor foi restaurado depois
   - `test_ge_calendar_001_b2` 7/7;
   - `test_ge_calendar_001_b3` 3/3.
 - `verificar-tela-antiga.js`: 93 na lista.
+
+## L4d — histórico, H2H, premiações, reputação, rodada e escudos (11 arquivos)
+
+| Teste | Antes | Agora |
+|---|---|---|
+| `test_h2h.js` | H2H aberto pelo card do próximo jogo da tela antiga | "O histórico do duelo." da v2 (Clube do adversário → Histórico do duelo), 5 verificações |
+| `test_h2h2.js` | H2H com 4 jogos injetados, pela tela antiga | **saiu:** virou o item 4 do `test_h2h` |
+| `test_gerado.js` | sem verificação: só imprimia a etiqueta "gerado" da tela antiga | **saiu:** a seção Base da v2 está no `test_v2_elenco` |
+| `test_historico.js` | entrava em `historico.html` pelo menu da tela antiga | abre a página direto; 6 verificações (o "Voltar" é interceptado, sem carregar a tela antiga) |
+| `test_premiacoes.js` | 7 regras pelas globais da página antiga e o overlay de premiações | as 7 pelo motor na página da v2; a tela é a Premiações da v2 ("Quem fez a diferença."), 9 verificações |
+| `test_reputacao_propostas.js` | 6 verificações (outras só impressas) pelas globais e modais da tela antiga | 9 verificações pelo motor e pelos comandos da ponte (`demitir`, `criarCarreira`, `aceitarPropostaClube`); "Reiniciar" pela tela Saves da v2 |
+| `test_intervalo_noticias_proposta_destino.js` | intervalo, notícias do pós-jogo, proposta em destaque e destino do empréstimo, pela tela antiga | **saiu:** coberto pela v2 (ver abaixo) |
+| `test_s4_b3_005_matchcard_financialsummary.js` | `matchCardHTML` e o card "Financeiro" da tela antiga | **saiu:** componentes só da tela antiga; Finanças da v2 no `test_v2_financas` |
+| `test_s4_b3_006_resumo_rodada.js` | MatchCard no "Resumo da rodada", nos Resultados e na Copa da tela antiga | **saiu:** virou o `test_resumo_rodada` e o `test_v2_posjogo` (ver abaixo) |
+| `test_resumo_rodada.js` | modal "Resumo da rodada" da tela antiga | o registro da rodada (motor) e os "Resultados da rodada" da Tabela da v2, 5 verificações |
+| `test_serie_b_escudos.js` | 11 clubes com escudo e 9 no monograma, na escolha de clube da tela antiga | desde a ESCUDOS-001 os 20 têm escudo local: escolha de clube e Início da v2, 3 verificações |
+
+### Para onde foi cada verificação
+
+**`test_h2h` e `test_h2h2`:**
+- Sem histórico: 0 V, 0 E, 0 D, nenhum jogo.
+- 3 rodadas jogadas: o registro de partidas tem as 3.
+- Adversário seguinte, ainda não enfrentado: sem jogos.
+- 4 jogos injetados (antes: `test_h2h2`): 2 V, 1 E, 1 D e os 4 jogos.
+
+**`test_historico`:**
+- 22 versões (v2.11 primeiro), a modal com os 5 itens, "Fechar", a v1.0 com 11 itens: os mesmos critérios.
+- O link no menu da tela antiga saiu (a v2 não tem esse link; ver "Diferenças da v2").
+- "Voltar" sai para a carreira; o destino é interceptado no teste.
+
+**`test_premiacoes`:**
+- 1 a 7: os mesmos critérios (campeão e vice, artilheiro com desempate por menos jogos, assistências, melhor jogador, Copa, moral, `goalsSeason` zerado).
+- 8: a Premiações da v2 mostra o campeão, o artilheiro (meu clube, 25 gols, ★) e o campeão da Copa.
+
+**`test_reputacao_propostas`:**
+- 1 a 3: a mesma regra, pela função pura `seasonReputation`.
+- 4: a demissão pela ponte (`demitir`): agora também verifica a penalidade (60 → 35), as temporadas, os títulos, a posição média e o nome do clube, que antes eram só impressos.
+- 5: a carreira seguinte pela ponte (`criarCarreira`) herda reputação e currículo.
+- 6: "Reiniciar carreira" pela tela Saves da v2; a carreira nova nasce com 50, sem currículo.
+- 7: as propostas, os mesmos critérios (e "não empilha", antes só impresso).
+- 8 a 10 da tela antiga (card, modal, Recusar/Aceitar, perfil): as telas estão no `test_v2_temporada` (itens 3 a 5); aqui fica a regra do aceite pela ponte (clube ofertante, `accepted_proposal`, reputação mantida).
+
+**`test_intervalo_noticias_proposta_destino`:**
+- Intervalo (pausa no 45', banner, não retoma sozinho, "Prosseguir"): `test_v2_pausa`.
+- Notícias do pós-jogo (até 3 da rodada) e Resultados: `test_v2_posjogo` 2 e 3.
+- Proposta em destaque com o clube, "Decidir depois" mantém pendente, "Aceitar" vende: `test_v2_posjogo` 4 e 5.
+- Destino do empréstimo ("Clube interessado"): `test_v2_mercado` 7.
+
+**`test_s4_b3_006_resumo_rodada` e `test_resumo_rodada`:**
+- "Resumo da rodada" (placar e destaque do meu clube): `test_resumo_rodada` 2 a 4 (registro da rodada e Tabela da v2).
+- Resultados da rodada no pós-jogo, o meu primeiro e marcado: `test_v2_posjogo` 3.
+- Copa com pênaltis e fase: teste de unidade `postmatch.test.ts` da v2.
+- Clicar no clube abre o elenco: `test_v2_tabela`.
+
+**`test_serie_b_escudos`:**
+- Na escolha de clube da v2 (Série B, dados de exemplo), os 20 clubes com o escudo local carregado, sobre a chapinha.
+- Carreira no 1º clube da lista: o Início mostra o escudo do clube e o do adversário, carregados.
+- Com dados reais (as 3 divisões): `test_v2_dados_reais`.
+
+### Diferenças da v2 para decisão
+- **Link para o histórico de atualizações** (`test_historico`):
+  - na tela antiga, o menu ≡ tinha "Histórico de Atualizações" (`historico.html`);
+  - a v2 não tem esse link, e o "Voltar" da página aponta para `carreira.html` (a tela antiga; em produção redireciona para `/carreira`);
+  - **para decidir:** pôr o link no Mais da v2 (e o "Voltar" para `/`), ou deixar a página só por endereço.
+- **Jogos da rodada atual** (`test_resumo_rodada`):
+  - na tela antiga, o "Resumo da rodada" (menu) mostrava os 10 jogos da rodada atual (ainda sem placar) e os da anterior, a qualquer momento;
+  - a v2 mostra os jogos da última rodada disputada (Tabela e pós-jogo); os da rodada atual, só o seu (Pré-jogo, Calendário);
+  - **para decidir:** mostrar os jogos da rodada atual na v2 (por exemplo, na Tabela), ou deixar como está.
+
+### Contraprova
+
+| Regra quebrada | Verificação que falhou |
+|---|---|
+| desempate do artilheiro por mais jogos (é por menos) | `test_premiacoes` 2, 3 e 8 |
+| penalidade de demissão 20 (é 25) | `test_reputacao_propostas` 4 e 5 |
+| placar do meu jogo gravado invertido no registro da rodada | `test_resumo_rodada` 2 |
+
+### Validação L4d
+- Todos rodados com a saída gravada, com as verificações `true`:
+  - `test_h2h` 5/5;
+  - `test_historico` 6/6;
+  - `test_premiacoes` 9/9;
+  - `test_reputacao_propostas` 9/9;
+  - `test_resumo_rodada` 5/5;
+  - `test_serie_b_escudos` 3/3.
+- `verificar-tela-antiga.js`: 82 na lista.

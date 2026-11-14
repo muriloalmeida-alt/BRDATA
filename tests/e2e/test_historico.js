@@ -1,74 +1,61 @@
-// Verifica a página estática de histórico de atualizações: lista de
-// versões, modal de detalhe ao clicar, link no menu hambúrguer.
+// Página estática do histórico de atualizações (public/historico.html) —
+// lote L4d, sem a tela antiga. Antes o teste entrava pelo menu hambúrguer da
+// tela antiga (único link para a página); a v2 não tem esse link (registrado
+// no relatório do L4, docs/carreira-v2/ENTREGA_TESTES_L4.md, para decisão).
+// Aqui a página é aberta direto:
+//  1) Carrega com as 22 versões, a mais recente primeiro (v2.11).
+//  2) Clicar numa versão abre a modal com a versão, o título e os itens.
+//  3) "Fechar" fecha a modal.
+//  4) A v1.0 mostra os 11 itens dela.
+//  5) "Voltar" sai da página para a carreira (o destino não é carregado:
+//     hoje ele aponta para carreira.html, que é a tela antiga).
 const { chromium } = require("playwright-core");
 const { check } = require("./_check");
-const { enterGame } = require("./_startup");
+const { base } = require("./_v2_carreira");
 
 (async () => {
   const browser = await chromium.launch({ executablePath: process.env.PW_CHROMIUM_PATH || undefined, headless: true, args: ["--host-resolver-rules=MAP fonts.googleapis.com 127.0.0.1,MAP fonts.gstatic.com 127.0.0.1"] });
   const page = await browser.newPage({ viewport: { width: 390, height: 900 } });
   page.on("dialog", (d) => d.dismiss());
-  page.on("pageerror", (err) => console.log("PAGE ERROR:", err.message));
-  const base = "http://localhost:8787";
-  const email = `historico${Date.now()}@teste.com`;
-  await page.goto(base + "/", { waitUntil: "domcontentloaded" });
-  await page.evaluate(async ({ email }) => {
-    await fetch("/api/auth/signup", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: "Historico Teste", email, password: "senha123", phone: "11999999999", plan: "freemium" }) });
-    await fetch("/api/auth/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, password: "senha123" }) });
-  }, { email });
-  await page.goto(base + "/carreira.html", { waitUntil: "domcontentloaded" });
-  await page.click('.mt-competition-card[data-competition="brasileirao"]');
-  await page.waitForTimeout(200);
-  await page.click(".m3-club-row");
-  await page.waitForTimeout(150);
-  await page.click("#btnConfirmClub");
-  await enterGame(page);
+  const erros = [];
+  page.on("pageerror", (err) => erros.push(err.message));
+  await page.goto(base + "/historico.html", { waitUntil: "domcontentloaded" });
+  await page.waitForSelector(".version-card", { timeout: 30000 });
 
-  // 1) Link no menu hambúrguer navega pra página nova.
-  await page.click("#btnBottomMenu");
-  await page.waitForTimeout(200);
-  const hasLink = await page.evaluate(() => !!document.querySelector('a[href="historico.html"]'));
-  check("1) Menu hambúrguer tem o link 'Histórico de Atualizações':", hasLink);
-  await page.click('a[href="historico.html"]');
-  await page.waitForFunction(() => location.href.includes('historico.html'), { timeout: 8000 });
-  await page.waitForLoadState('domcontentloaded');
-  await page.waitForTimeout(300);
-
-  // 2) Página carrega com as 22 versões, mais recente primeiro.
+  // 1) Lista de versões.
   const cards = await page.evaluate(() => [...document.querySelectorAll(".version-card .version-tag")].map((el) => el.textContent));
-  check("2) 22 versões listadas, mais recente primeiro (v2.11):", cards.length === 22 && cards[0] === "v2.11", JSON.stringify(cards));
+  check("1) 22 versões listadas, mais recente primeiro (v2.11):", cards.length === 22 && cards[0] === "v2.11", JSON.stringify(cards));
 
-  // 3) Clicar numa versão abre a modal com os itens certos.
+  // 2) Modal da 1ª versão.
   await page.click(".version-card:nth-child(1)");
-  await page.waitForTimeout(150);
-  const modalOpen = await page.evaluate(() => document.getElementById("versionOverlay").classList.contains("open"));
-  const modalInfo = await page.evaluate(() => ({
+  await page.waitForFunction(() => document.getElementById("versionOverlay").classList.contains("open"), null, { timeout: 5000 }).catch(() => {});
+  const modal = await page.evaluate(() => ({
+    aberta: document.getElementById("versionOverlay").classList.contains("open"),
     tag: document.getElementById("modalVersionTag").textContent,
-    title: document.getElementById("modalTitle").textContent,
-    itemCount: document.querySelectorAll("#modalItems li").length,
+    titulo: document.getElementById("modalTitle").textContent,
+    itens: document.querySelectorAll("#modalItems li").length,
   }));
-  check("3) Modal abre com versão/título/itens certos:", modalOpen && modalInfo.tag === "v2.11" && modalInfo.itemCount === 5, JSON.stringify(modalInfo));
+  check("2) A modal abre com a versão, o título e os itens certos:", modal.aberta && modal.tag === "v2.11" && !!modal.titulo && modal.itens === 5, JSON.stringify(modal));
 
-  // 4) Fechar a modal (botão rodapé) funciona.
+  // 3) Fechar.
   await page.click("#modalCloseFooter");
-  await page.waitForTimeout(150);
-  const modalClosed = await page.evaluate(() => !document.getElementById("versionOverlay").classList.contains("open"));
-  check("4) Modal fecha ao clicar em 'Fechar':", modalClosed);
+  await page.waitForFunction(() => !document.getElementById("versionOverlay").classList.contains("open"), null, { timeout: 5000 }).catch(() => {});
+  const fechou = await page.evaluate(() => !document.getElementById("versionOverlay").classList.contains("open"));
+  check("3) A modal fecha ao clicar em 'Fechar':", fechou);
 
-  // 5) Clicar numa versão diferente mostra os itens certos dessa versão.
-  await page.click(".version-card:nth-child(22)"); // v1.0
-  await page.waitForTimeout(150);
-  const v10 = await page.evaluate(() => ({
-    tag: document.getElementById("modalVersionTag").textContent,
-    itemCount: document.querySelectorAll("#modalItems li").length,
-  }));
-  check("5) Versão v1.0 mostra os itens certos (11 itens):", v10.tag === "v1.0" && v10.itemCount === 11, JSON.stringify(v10));
+  // 4) v1.0.
+  await page.click(".version-card:nth-child(22)");
+  await page.waitForFunction(() => document.getElementById("modalVersionTag").textContent === "v1.0", null, { timeout: 5000 }).catch(() => {});
+  const v10 = await page.evaluate(() => ({ tag: document.getElementById("modalVersionTag").textContent, itens: document.querySelectorAll("#modalItems li").length }));
+  check("4) A v1.0 mostra os 11 itens dela:", v10.tag === "v1.0" && v10.itens === 11, JSON.stringify(v10));
 
-  // 6) Botão "Voltar" leva de volta pro Modo Carreira.
+  // 5) Voltar (o destino é interceptado: não carrega a tela antiga).
+  await page.route(/carreira/, (r) => r.fulfill({ status: 200, contentType: "text/html", body: "<!doctype html><title>destino</title>" }));
   await page.click("#modalClose");
   await page.click("#btnBack");
-  await page.waitForFunction(() => location.href.includes('carreira.html'), { timeout: 8000 });
-  check("6) Botão 'Voltar' leva de volta pro Modo Carreira:", true);
+  const saiu = await page.waitForFunction(() => /carreira/.test(location.pathname), null, { timeout: 8000 }).then(() => true).catch(() => false);
+  check("5) 'Voltar' sai do histórico para a carreira:", saiu, page.url().replace(base, ""));
 
+  check("6) Sem erro na página:", erros.length === 0, JSON.stringify(erros.slice(0, 3)));
   await browser.close();
 })().catch((e) => { console.error("FATAL:", e); process.exit(1); });

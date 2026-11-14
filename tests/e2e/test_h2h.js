@@ -1,86 +1,64 @@
+// Retrospecto H2H (confronto direto) — lote L4d, sem a tela antiga. Junta o
+// test_h2h e o test_h2h2 (os dois abriam o H2H da tela antiga pelo card do
+// próximo jogo). Na v2 o H2H é "O histórico do duelo." (Clube do adversário
+// → "Histórico do duelo"), montado do mesmo CAREER.matchLog:
+//  1) Sem histórico: 0 V, 0 E, 0 D e nenhum jogo listado.
+//  2) Depois de 3 rodadas jogadas, o registro de partidas tem as 3.
+//  3) Contra o adversário seguinte (novo), o duelo continua sem jogos.
+//  4) Com 4 jogos no registro contra ele (3×1 em casa, 0×2 fora, 1×1 em casa,
+//     2×0 fora), o duelo mostra 2 V, 1 E, 1 D e os 4 jogos (antes: test_h2h2).
 const { chromium } = require("playwright-core");
 const { check } = require("./_check");
-const { enterGame } = require("./_startup");
-const { playNextMatchRound, closeLeftoverTabela } = require("./_round");
-const { skipPreseason } = require("./_calendar_skip");
+const { newCareer, noMotor, jogarRodadaV2, base } = require("./_v2_carreira");
+
 (async () => {
   const browser = await chromium.launch({ executablePath: process.env.PW_CHROMIUM_PATH || undefined, headless: true, args: ["--host-resolver-rules=MAP fonts.googleapis.com 127.0.0.1,MAP fonts.gstatic.com 127.0.0.1"] });
-  const page = await browser.newPage({ viewport: { width: 390, height: 900 } });
+  const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
   page.on("dialog", (d) => d.dismiss());
-  page.on("pageerror", (err) => console.log("PAGE ERROR:", err.message));
-  const base = "http://localhost:8787";
-  const email = `h2h${Date.now()}@teste.com`;
-  await page.goto(base + "/", { waitUntil: "domcontentloaded" });
-  await page.evaluate(async ({ email }) => {
-    await fetch("/api/auth/signup", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: "H2H Teste", email, password: "senha123", phone: "11999999999", plan: "freemium" }) });
-    await fetch("/api/auth/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, password: "senha123" }) });
-  }, { email });
-  await page.goto(base + "/carreira.html", { waitUntil: "domcontentloaded" });
-  await page.waitForTimeout(400);
-  await page.click('.mt-competition-card[data-competition="brasileirao"]');
-  await page.waitForTimeout(300);
-  await page.click(".m3-club-row");
-  await page.waitForTimeout(150);
-  await page.click("#btnConfirmClub");
-  await enterGame(page);
+  const erros = [];
+  page.on("pageerror", (err) => erros.push(err.message));
+  await newCareer(page, `h2h${Date.now()}@teste.com`);
 
-  // GE-CALENDAR-001: carreira nova começa na pré-temporada (o card do
-  // próximo jogo mostra o amistoso) — o H2H é do próximo jogo oficial.
-  await skipPreseason(page);
-  // 1) Sem matchLog ainda -- abrir H2H mostra "nunca se enfrentaram".
-  const opponentId = await page.evaluate(() => document.getElementById("nextMatchBox").dataset.opponentId);
-  await page.click("#nextMatchBox");
-  await page.waitForSelector("#h2hOverlay.open", { timeout: 3000 });
-  await page.waitForTimeout(150);
-  const before = await page.evaluate(() => ({
-    record: document.getElementById("h2hRecord").textContent,
-    sub: document.getElementById("h2hSub").textContent,
-    oppName: document.getElementById("h2hOppName").textContent,
-  }));
-  check("1) H2H abre sem histórico ainda:", before.record === "—" && /nunca|ainda não se enfrentaram/.test(before.sub), JSON.stringify(before));
-  await page.click("#h2hClose");
-  await page.waitForTimeout(150);
+  const proximo = () => noMotor(page, ({ CAREER }) => {
+    const fx = (CAREER.schedule[CAREER.currentRound] || []).find((f) => String(f.home) === String(CAREER.clubId) || String(f.away) === String(CAREER.clubId));
+    return String(String(fx.home) === String(CAREER.clubId) ? fx.away : fx.home);
+  });
+  const duelo = async (id) => {
+    await page.goto(base + `/clube-elenco?id=${encodeURIComponent(id)}`, { waitUntil: "domcontentloaded" });
+    await page.waitForFunction(() => (document.querySelector("h1") || {}).textContent === "Conheça o adversário.", null, { timeout: 30000 });
+    await page.locator("a.pr-row", { hasText: "Histórico do duelo" }).click();
+    await page.waitForFunction(() => (document.querySelector("h1") || {}).textContent === "O histórico do duelo.", null, { timeout: 30000 });
+    return page.evaluate(() => ({ ved: [...document.querySelectorAll(".wk-item dd")].slice(0, 3).map((d) => d.textContent).join(","), jogos: document.querySelectorAll(".gm-game").length }));
+  };
 
-  // 2) Joga 3 rodadas oficiais pela interface (fluxo atual, ver
-  // _round.js), confere que matchLog registra.
-  for (let i = 0; i < 3; i++) {
-    const r = await playNextMatchRound(page);
-    if (r.stoppedAt === "playerOfferOverlay") { await page.click("#playerOfferClose"); await closeLeftoverTabela(page); }
-    else if (r.stoppedAt) throw new Error(`rodada ${i + 1} parou numa tela inesperada: ${r.stoppedAt}`);
-    await page.waitForTimeout(200);
-  }
-  // A Tabela do pós-jogo pode abrir depois dos 150 ms de closeLeftoverTabela
-  // (CI carregado) e ficar por cima do Início: espera não sobrar nenhum
-  // modal aberto, fechando a Tabela se ela aparecer.
-  for (let k = 0, quiet = 0; k < 40 && quiet < 3; k++) {
-    await closeLeftoverTabela(page);
-    const open = await page.evaluate(() => [...document.querySelectorAll(".ct-modal-overlay.open")].some((e) => e.id !== "actionLoadingOverlay"));
-    quiet = open ? 0 : quiet + 1;
-    await page.waitForTimeout(150);
-  }
-  if (await page.evaluate(() => !document.getElementById("panel-central").classList.contains("active"))) {
-    await page.click(".m3-nav-item[data-panel='central']");
-    await page.waitForTimeout(200);
-  }
-  const matchLogLen = await page.evaluate(() => (CAREER.matchLog || []).length);
-  check("2) matchLog registrou as 3 partidas jogadas:", matchLogLen === 3, matchLogLen);
+  // 1) Sem histórico.
+  const opp1 = await proximo();
+  const d1 = await duelo(opp1);
+  check("1) Sem histórico: o duelo mostra 0 V, 0 E, 0 D e nenhum jogo:", d1.ved === "0,0,0" && d1.jogos === 0, JSON.stringify(d1));
 
-  // A Tabela do pós-jogo pode abrir depois da janela de "silêncio" acima
-  // (CI carregado) e cobrir o clique: fecha e tenta de novo, até abrir o H2H.
-  for (let k = 0; k < 10; k++) {
-    await closeLeftoverTabela(page);
-    const ok = await page.click("#nextMatchBox", { timeout: 2000 }).then(() => true, () => false);
-    if (ok && await page.waitForSelector("#h2hOverlay.open", { timeout: 3000 }).then(() => true, () => false)) break;
-  }
-  await page.waitForSelector("#h2hOverlay.open", { timeout: 3000 });
-  await page.waitForTimeout(150);
-  const after = await page.evaluate(() => ({
-    matchListRows: document.querySelectorAll("#h2hMatchList .m3-match-row").length,
-    formDots: document.querySelectorAll("#h2hFormRow .m3-form-dot").length,
-  }));
-  check("3) H2H mostra a lista de confrontos (mesmo sem repetir adversário, deve ser 0 rows contra o NOVO adversário):", after.matchListRows === 0, JSON.stringify(after));
+  // 2) Três rodadas.
+  for (let i = 0; i < 3; i++) { const r = await jogarRodadaV2(page); if (!r.ok) throw new Error("rodada: " + r.passos.join(" ")); }
+  const log = await noMotor(page, ({ CAREER }) => (CAREER.matchLog || []).map((m) => ({ opp: String(m.opponentId), round: m.round })));
+  check("2) O registro de partidas tem as 3 jogadas:", log.length === 3 && log.every((m) => m.opp), JSON.stringify(log));
 
-  await page.screenshot({ path: "m3_31_h2h.png" });
-  console.log("OK");
+  // 3) Adversário seguinte, novo.
+  const opp2 = await proximo();
+  const d3 = await duelo(opp2);
+  check("3) Contra o adversário seguinte (ainda não enfrentado), o duelo continua sem jogos:", !log.some((m) => m.opp === opp2) && d3.ved === "0,0,0" && d3.jogos === 0, JSON.stringify({ opp2, d3 }));
+
+  // 4) Quatro jogos no registro contra ele.
+  await noMotor(page, ({ CAREER, persistir }, opp) => {
+    CAREER.matchLog = [
+      { seasonYear: 2023, round: 10, opponentId: opp, home: true, gh: 3, ga: 1 },  // vitória
+      { seasonYear: 2022, round: 25, opponentId: opp, home: false, gh: 0, ga: 2 }, // vitória (fora: ga é o meu)
+      { seasonYear: 2022, round: 5, opponentId: opp, home: true, gh: 1, ga: 1 },   // empate
+      { seasonYear: 2021, round: 30, opponentId: opp, home: false, gh: 2, ga: 0 }, // derrota
+    ].concat(CAREER.matchLog || []);
+    return persistir();
+  }, opp2);
+  const d4 = await duelo(opp2);
+  check("4) Com 4 jogos contra ele no registro, o duelo mostra 2 V, 1 E, 1 D e os 4 jogos:", d4.ved === "2,1,1" && d4.jogos === 4, JSON.stringify(d4));
+
+  check("5) Sem erro na página:", erros.length === 0, JSON.stringify(erros.slice(0, 3)));
   await browser.close();
 })().catch((e) => { console.error("FATAL:", e); process.exit(1); });
