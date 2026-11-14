@@ -292,9 +292,26 @@ Decisão do Murilo (14/11) sobre a licença dos escudos de uso restrito
 
 ⸻
 
-AVISO-MOTIVADO — aviso "Adversário motivado" no Pré-jogo da v2
+COPIA-UNICA — a cópia da carreira no servidor sobe uma vez só
 
 Status: IMPLEMENTADO, aguardando aprovação do Murilo (PR desta entrega).
+Origem: defeito da OFFLINE-001 achado no CI do PR #116 (test_v2_escalacao
+item 3 com 2 PUTs). Se a v2 relia a carreira enquanto a cópia ainda ia ao
+servidor, o save aparecia "pendente" e a mesma cópia (~600 KB) subia de novo.
+Decisão do Murilo (14/11): "Corrigir agora".
+Implementação (`public/js/motor/repositorio.js`): uma cópia por conta de cada
+vez, com o controle compartilhado pela janela (a v2 tem duas instâncias do
+repositório: a do motor e a do build). Quem chama com outra a caminho espera
+ela terminar e confere de novo: sem mudança, não sobe nada; com save novo,
+sobe o mais novo. Nenhuma mudança no save nem na API.
+Teste: `tests/e2e/test_v2_copia_unica.js` (envio lento de 1,5 s). Contraprova:
+sem a correção, 2 PUTs (item 1); com o controle por instância, 2 PUTs (1b).
+
+⸻
+
+AVISO-MOTIVADO — aviso "Adversário motivado" no Pré-jogo da v2
+
+Status: APROVADO (Murilo, 14/11; PR #117).
 Origem: diferença da v2 achada no lote L4c (docs/carreira-v2/ENTREGA_TESTES_L4.md):
 o motor aplica o bônus do adversário em sequência invicta e emite o aviso,
 mas nenhuma tela da v2 o mostra.

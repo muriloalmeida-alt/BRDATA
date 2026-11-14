@@ -125,6 +125,11 @@ export function criarRepositorio(opts = {}) {
     return copia;
   }
 
+  // Cópia ao servidor em andamento, por conta (ver copiarParaServidor). Uma
+  // só para a janela: a v2 tem duas instâncias do repositório (a do motor,
+  // /js/motor, e a cópia no build da v2) e as duas mandam a cópia.
+  const copiasEmAndamento = globalThis.__BRDATA_COPIAS_EM_ANDAMENTO__ || (globalThis.__BRDATA_COPIAS_EM_ANDAMENTO__ = new Map());
+
   const repo = {
     // true se o aparelho consegue guardar (IndexedDB abre).
     async disponivel() {
@@ -278,8 +283,21 @@ export function criarRepositorio(opts = {}) {
       return { ok: true, rev: reg.rev, copia };
     },
     // Manda ao servidor a cópia do que está no aparelho (se ainda não foi).
-    async copiarParaServidor(conta) {
+    // COPIA-UNICA (14/11): uma cópia por conta de cada vez. Quem chama com
+    // outra a caminho espera ela terminar e só então confere de novo: se o
+    // save não mudou, já está sincronizado e não sobe outra vez; se mudou,
+    // sobe o mais novo. Antes, uma leitura (repo.ler) no meio do envio via o
+    // save ainda "pendente" e mandava a mesma cópia (~600 KB) de novo.
+    copiarParaServidor(conta) {
       const id = String(conta);
+      const anterior = copiasEmAndamento.get(id);
+      const vez = (anterior ? anterior.catch(() => {}) : Promise.resolve()).then(() => repo.copiarAgora(id));
+      copiasEmAndamento.set(id, vez);
+      const limpar = () => { if (copiasEmAndamento.get(id) === vez) copiasEmAndamento.delete(id); };
+      vez.then(limpar, limpar);
+      return vez;
+    },
+    async copiarAgora(id) {
       const reg = await repo.registro(id);
       if (!reg) return "ok";
       if (reg.hash === reg.sincronizado) return "ok";
