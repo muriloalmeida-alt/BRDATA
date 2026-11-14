@@ -144,6 +144,7 @@ async function globaisDoMotor(page) {
     Object.defineProperty(window, "CAREER", { configurable: true, get: () => E.carreiraAtual(), set: (v) => E.definirCarreira(v) });
     Object.defineProperty(window, "LEAGUE_TEAMS", { configurable: true, get: () => E.ligaAtual(), set: (v) => E.definirLigaAtual(v) });
     Object.defineProperty(window, "ALL_TEAMS_FLAT", { configurable: true, get: () => E.todosTimes(), set: (v) => E.definirTodosTimes(v) });
+    Object.defineProperty(window, "LIVE_MATCH", { configurable: true, get: () => E.partidaAtual() });
     Object.defineProperty(window, "CURRENT_COMPETITION_ID", { configurable: true, get: () => E.competicaoAtual(), set: (v) => E.definirCompeticaoAtual(v) });
     window.persistCareer = () => mods.carga.persistCareer();
     window.teamById = (id) => E.timePorId(id);
@@ -151,6 +152,38 @@ async function globaisDoMotor(page) {
     window.sortedStandings = () => mods.tabela.sortRows(E.carreiraAtual().standings);
     window.motorMercado = () => mods.mercado;
     window.motorTemporada = () => mods.temporada;
+    // Lote L4c: atalhos da página antiga que não são exports (carreira.js).
+    window.applyTraditionReprieve = (zone, sortedRows, seedKey) => mods.temporada.applyTraditionReprieve(zone, sortedRows, mods.semana.ambiente.rngDaChave(seedKey));
+    window.sortedDivisionRows = (compId) => mods.tabela.sortRows(mods.virada.divisionStandingsFor(compId));
+    // O jogo da semana pela ponte (partida pulando para o fim e o pós-jogo
+    // inteiro), no lugar do simulateRound da tela antiga — os mesmos passos
+    // de jogarRodadaV2, sem avançar a semana. Devolve { ok, passos }.
+    const P = (await import("/js/motor/v2.js")).criarPonte();
+    window.jogarPartidaDaRodada = async () => {
+      const ate = async (cond, ms = 60000) => { const t0 = Date.now(); while (Date.now() - t0 < ms) { const v = cond(); if (v) return v; await new Promise((r) => setTimeout(r, 20)); } return null; };
+      const passos = [];
+      let i = P.iniciar();
+      if (i && i.motivo === "escalacao") { await P.completarEscalacao(); i = P.iniciar(); }
+      passos.push(`iniciar:${i && i.ok ? "ok" : i && i.motivo}`);
+      if (!i || !i.ok) return { ok: false, passos };
+      P.pularParaFim();
+      const est = await ate(() => { const e = P.estado(); return e.fase === "encerrada" && e.gravada != null ? e : null; });
+      if (!est || !est.gravada) return { ok: false, passos: passos.concat("fim:" + (est ? est.erroGravacao : "timeout")) };
+      let etapa = P.iniciarPosJogo();
+      for (let n = 0; etapa && etapa.ok !== false && etapa.etapa !== "fim" && n < 12; n++) {
+        if (etapa.etapa === "coletiva") etapa = await P.responderColetiva(etapa.respostas[0].letra);
+        else if (etapa.etapa === "noticias" || etapa.etapa === "resultados") etapa = P.concluirEtapa(etapa.etapa);
+        else if (etapa.etapa === "proposta") etapa = await P.responderProposta("recusar");
+        else if (etapa.etapa === "copa") {
+          let c = P.iniciarPernaCopa();
+          if (c.motivo === "escalacao") { await P.completarEscalacao(); c = P.iniciarPernaCopa(); }
+          if (c.ok && c.aoVivo) { P.pularParaFim(); await ate(() => { const e = P.estado(); return e.fase === "encerrada" && e.gravada != null; }); }
+          etapa = P.posJogo();
+        } else break;
+      }
+      P.encerrarPosJogo();
+      return { ok: !!etapa && etapa.etapa === "fim", passos };
+    };
     // FASE1-MER: as decisões da negociação usam um sorteio com chave da
     // oferta. Para um teste cair numa faixa (ex.: "vence a disputa"), troca
     // o id da oferta até o 1º sorteio da chave satisfazer `ok` (que recebe

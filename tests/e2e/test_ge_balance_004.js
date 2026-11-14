@@ -1,46 +1,28 @@
 // GE-BALANCE-004 (issue #39) — virada de temporada real (advanceSeason)
 // numa carreira multi-divisão: promovidos chegam abaixo da média da
 // divisão nova, rebaixados acima, e a força nova persiste no save.
-const { skipPreseason } = require("./_calendar_skip");
+// Lote L4c (sem a tela antiga): carreira pela v2, a temporada jogada rodada
+// a rodada pela ponte do motor (jogarRodadaV2) e a virada pelo motor na
+// página da v2 (globaisDoMotor).
 const { chromium } = require("playwright-core");
-const { skipOnboarding } = require("./_startup");
+const { newCareer, globaisDoMotor, jogarRodadaV2, noMotor, base } = require("./_v2_carreira");
 
 (async () => {
   const browser = await chromium.launch({ executablePath: process.env.PW_CHROMIUM_PATH || undefined, headless: true, args: ["--host-resolver-rules=MAP fonts.googleapis.com 127.0.0.1,MAP fonts.gstatic.com 127.0.0.1"] });
   const page = await browser.newPage({ viewport: { width: 390, height: 900 } });
   page.on("dialog", (d) => d.dismiss());
   page.on("pageerror", (err) => console.log("PAGE ERROR:", err.message));
-  const base = "http://localhost:8787";
-  const email = `geb004${Date.now()}@teste.com`;
-  await page.goto(base + "/", { waitUntil: "domcontentloaded" });
-  await page.evaluate(async ({ email }) => {
-    await fetch("/api/auth/signup", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: "Balance 004", email, password: "senha123", phone: "11999999999", plan: "freemium" }) });
-    await fetch("/api/auth/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, password: "senha123" }) });
-  }, { email });
-  await page.goto(base + "/carreira.html", { waitUntil: "domcontentloaded" });
-  await page.click('.mt-competition-card[data-competition="brasileirao"]');
-  await page.waitForTimeout(300);
-  await page.click(".m3-club-row");
-  await page.waitForTimeout(150);
-  await page.click("#btnConfirmClub");
-  await skipOnboarding(page);
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  for (let i = 0; i < 6; i++) { await page.click("#btnWizardSkip", { timeout: 2500 }).catch(() => {}); await page.waitForTimeout(300); }
-  await page.click("#btnClaimDailyLogin", { timeout: 1500 }).catch(() => {});
-  await page.waitForTimeout(500);
-  await skipPreseason(page);
+  await newCareer(page, `geb004${Date.now()}@teste.com`);
+  // A temporada inteira, rodada a rodada, pela ponte.
+  for (let guard = 0; guard < 60 && (await noMotor(page, ({ CAREER }) => CAREER.currentRound)) <= 38; guard++) {
+    const r = await jogarRodadaV2(page);
+    if (!r.ok) throw new Error("rodada: " + r.passos.join(" "));
+  }
+  await globaisDoMotor(page);
   let ok = true;
   const check = (label, cond, extra) => { console.log(label, !!cond, extra !== undefined ? JSON.stringify(extra) : ""); ok = ok && !!cond; };
 
   const res = await page.evaluate(async () => {
-    let guard = 0;
-    while (CAREER.currentRound <= 38 && guard++ < 120) {
-      const w = calendarWeek();
-      if (w && !w.r) { const f = friendlySlotThisWeek(); if (f) f.played = true; runCalendarOffWeek(); continue; }
-      const sum = simulateRound();
-      if (sum === "live") { skipLiveMatch(); if (LIVE_MATCH && !LIVE_MATCH.finished) await finishLiveMatch(); }
-    }
     const top4B = sortedDivisionRows("serie_b").slice(0, 4).map((r) => String(r.id));
     const scaleBBefore = divisionStrengthScale(CAREER.divisionTeams.serie_b);
     CAREER.negativeSeasonsStreak = -99;
@@ -79,9 +61,8 @@ const { skipOnboarding } = require("./_startup");
     return saved.every((s) => A.some((t) => String(t.id) === s.id && t.atk === s.atk && t.def === s.def));
   }, res.saved, { timeout: 20000, polling: 500 }).catch(() => {});
   await page.reload({ waitUntil: "domcontentloaded" });
-  // Espera a carreira recarregar do save (estado), até 15 s — antes 3 s
-  // fixos, curto sob carga (CAREER ainda null).
-  await page.waitForFunction(() => typeof CAREER !== "undefined" && CAREER && CAREER.divisionTeams, null, { timeout: 15000 }).catch(() => {});
+  // A carreira recarregada do save, pelo motor da página da v2.
+  await globaisDoMotor(page);
   // Compara por clube (id + atk + def): comparar só o valor de atk dava 5
   // quando outro clube da Série A tinha, por acaso, o mesmo atk (CI, run 19).
   const reloaded = await page.evaluate((saved) => {
