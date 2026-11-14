@@ -79,6 +79,11 @@ const { carreiraV2, signup, ensureDailyClaimed, globaisDoMotor, base } = require
   }, antes);
 
   // 3) 3 temporadas seguidas.
+  // As temporadas correm sem rede (modo offline real desde a OFFLINE-001): o
+  // save grava só no aparelho, sem mandar a cópia de ~600 KB ao servidor a
+  // cada gravação — o teste mede o calendário, não a cópia. Sob carga no CI,
+  // com a cópia, o teste passava do limite da classe longa.
+  await page.context().setOffline(true);
   const seasons = await page.evaluate(async () => {
     const count = window.__cnt;
     const out = [];
@@ -129,6 +134,7 @@ const { carreiraV2, signup, ensureDailyClaimed, globaisDoMotor, base } = require
     await advanceSeason();
     return { winRound1, winRound10, legacyWageEntries, errors, hasCalendar: calendarOn(), phase: calendarOn() && calendarWeek().p };
   });
+  await page.context().setOffline(false);
   check("4) Carreira sem calendário segue no modelo de rodadas (janela 1–3, folha por rodada) e ganha calendário na virada:", legacy.winRound1 && !legacy.winRound10 && legacy.legacyWageEntries > 0 && !legacy.errors.length && legacy.hasCalendar && legacy.phase === "ferias", legacy);
 
   await browser.close();

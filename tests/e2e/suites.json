@@ -43,7 +43,8 @@
       "test_v2_modulo.js",
       "test_v2_inicio.js",
       "test_v2_ajudante_carreira.js",
-      "test_ge_calendar_001.js"
+      "test_ge_calendar_001.js",
+      "test_ge_balance_004.js"
     ]
   },
   "exclusive": {
