@@ -61,7 +61,7 @@ const { newCareer, noMotor, jogarRodadaV2 } = require("./_v2_carreira");
       && (await v2.locator(".tb-more").getAttribute("aria-expanded")) === "true", JSON.stringify(zones));
 
   // 3) Resultados da última rodada e Copa sem texto quebrado.
-  const res = await v2.evaluate(() => ({ n: document.querySelectorAll(".tb-res").length, cup: document.querySelector(".tb-cup-status").textContent }));
+  const res = await v2.evaluate(() => ({ n: document.querySelectorAll(".tb-results:not(.tb-next) .tb-res").length, next: document.querySelectorAll(".tb-next .tb-res").length, cup: document.querySelector(".tb-cup-status").textContent }));
   check("3) Resultados da última rodada (todos os jogos) e status da Copa sem 'undefined':",
     res.n === legacy.results && res.n > 0 && !/undefined|\?\./.test(res.cup) && res.cup.length > 10, JSON.stringify(res));
 
@@ -70,7 +70,7 @@ const { newCareer, noMotor, jogarRodadaV2 } = require("./_v2_carreira");
     await v2.click(`.tb-seg:has-text("${legacy.otherName}")`);
     await v2.waitForFunction((n) => document.querySelector(".tb-comp").textContent.endsWith(n), legacy.otherName, { timeout: 5000 });
     await v2.click(".tb-more");
-    const ob = await v2.evaluate(() => ({ rows: document.querySelectorAll(".tb-row").length, me: document.querySelectorAll(".tb-row.is-me").length, results: document.querySelectorAll(".tb-res").length, sel: document.querySelector('.tb-seg[aria-selected="true"]').textContent, url: location.search }));
+    const ob = await v2.evaluate(() => ({ rows: document.querySelectorAll(".tb-row").length, me: document.querySelectorAll(".tb-row.is-me").length, results: document.querySelectorAll(".tb-results .tb-res").length, sel: document.querySelector('.tb-seg[aria-selected="true"]').textContent, url: location.search }));
     check("4) Seletor de divisão: outra divisão com a classificação dela, sem seu clube e sem resultados da sua rodada:",
       ob.rows === legacy.otherCount && ob.me === 0 && ob.results === 0 && ob.sel === legacy.otherName && ob.url === `?divisao=${legacy.other}`, JSON.stringify(ob));
     await v2.click('.tb-seg:has-text("Série A")');

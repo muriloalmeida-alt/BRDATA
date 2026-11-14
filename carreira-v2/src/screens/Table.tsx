@@ -101,6 +101,22 @@ export function Table({ m, cup, match }: { m: TableModel; cup: CupModel; match?:
         </section>
       )}
 
+      {m.upcoming && (
+        <section className="tb-sec tb-results tb-next" aria-labelledby="tb-next-title">
+          <h2 className="kicker-caps" id="tb-next-title">Próxima rodada</h2>
+          <p className="tb-next-sub">Rodada {m.upcoming.round}{m.upcoming.date ? ` · ${m.upcoming.date}` : ""}</p>
+          <ul>
+            {m.upcoming.games.map((g, i) => (
+              <li key={i} className="tb-res" aria-label={`${g.home.name} contra ${g.away.name}`}>
+                <span className="tb-res-team tb-res-team--home"><span className="tb-name">{g.home.name}</span><Crest team={g.home} size={28} /></span>
+                <span className="tb-score" aria-hidden="true">×</span>
+                <span className="tb-res-team"><Crest team={g.away} size={28} /><span className="tb-name">{g.away.name}</span></span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
       <section className="tb-sec tb-cup" aria-labelledby="tb-cup-title">
         <h2 className="kicker-caps" id="tb-cup-title">Copa do Brasil</h2>
         <p className={`tb-cup-status${cup.outcome === "campeao" ? " is-champ" : ""}`}>{cup.status}</p>

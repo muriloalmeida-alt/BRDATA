@@ -11,6 +11,10 @@
 //  3) A Tabela mostra os 10 jogos da rodada 1 com esses placares, o meu
 //     primeiro.
 //  4) Rodada 2 jogada: a Tabela passa a mostrar os jogos da rodada 2.
+//  5) RODADA-ATUAL (decisão do Murilo, 14/11): "Próxima rodada" na Tabela
+//     com os 10 jogos da rodada atual (os do calendário), o meu primeiro —
+//     antes da 1ª rodada e depois de cada uma (antes: o "Resumo da rodada"
+//     da tela antiga mostrava a rodada atual).
 const { chromium } = require("playwright-core");
 const { check } = require("./_check");
 const { newCareer, noMotor, jogarRodadaV2, base } = require("./_v2_carreira");
@@ -26,7 +30,11 @@ const { newCareer, noMotor, jogarRodadaV2, base } = require("./_v2_carreira");
   const tabela = async () => {
     await page.goto(base + "/tabela", { waitUntil: "domcontentloaded" });
     await page.waitForSelector(".tb-cup", { timeout: 30000 });
-    return page.evaluate(() => ({ titulo: !!document.getElementById("tb-res-title"), jogos: [...document.querySelectorAll(".tb-res")].map((li) => li.getAttribute("aria-label")) }));
+    return page.evaluate(() => ({
+      titulo: !!document.getElementById("tb-res-title"),
+      jogos: [...document.querySelectorAll(".tb-results:not(.tb-next) .tb-res")].map((li) => li.getAttribute("aria-label")),
+      proxima: { sub: (document.querySelector(".tb-next-sub") || {}).textContent || "", jogos: [...document.querySelectorAll(".tb-next .tb-res")].map((li) => li.getAttribute("aria-label")) },
+    }));
   };
   const registro = (rodada) => noMotor(page, ({ CAREER }, rodada) => {
     const nome = (id) => { const t = Object.values(CAREER.divisionTeams || {}).flat().find((x) => String(x.id) === String(id)); return t ? t.name : null; };
@@ -40,7 +48,16 @@ const { newCareer, noMotor, jogarRodadaV2, base } = require("./_v2_carreira");
     };
   }, rodada);
 
+  // Os jogos da rodada (calendário), o meu primeiro, como a Tabela mostra.
+  const agenda = (rodada) => noMotor(page, ({ CAREER }, rodada) => {
+    const nome = (id) => { const t = Object.values(CAREER.divisionTeams || {}).flat().find((x) => String(x.id) === String(id)); return t ? t.name : null; };
+    const me = String(CAREER.clubId);
+    const fx = (CAREER.schedule[rodada] || []).slice().sort((a, b) => Number(String(b.home) === me || String(b.away) === me) - Number(String(a.home) === me || String(a.away) === me));
+    return { rodada: CAREER.currentRound, jogos: fx.map((f) => `${nome(f.home)} contra ${nome(f.away)}`) };
+  }, rodada);
+
   // 1) Antes de jogar.
+  const a1 = await agenda(1);
   const t1 = await tabela();
   check("1) Antes de jogar, a Tabela não tem 'Resultados da rodada':", !t1.titulo && t1.jogos.length === 0, JSON.stringify(t1));
 
@@ -54,6 +71,7 @@ const { newCareer, noMotor, jogarRodadaV2, base } = require("./_v2_carreira");
     JSON.stringify({ meu, log: g1.log, n: g1.jogos.length }));
 
   // 3) Tabela com a rodada 1.
+  const a2 = await agenda(2);
   const t3 = await tabela();
   const mesmos = t3.jogos.length === 10 && g1.rotulos.every((l) => t3.jogos.includes(l));
   check("3) A Tabela mostra os 10 jogos da rodada 1 com esses placares, o meu primeiro:", t3.titulo && mesmos && t3.jogos[0] === g1.rotulos[g1.jogos.indexOf(meu)], JSON.stringify({ tabela: t3.jogos.slice(0, 3), registro: g1.rotulos.slice(0, 3) }));
@@ -64,6 +82,13 @@ const { newCareer, noMotor, jogarRodadaV2, base } = require("./_v2_carreira");
   const t4 = await tabela();
   check("4) Rodada 2 jogada: a Tabela passa a mostrar os jogos da rodada 2:", t4.jogos.length === 10 && g2.rotulos.every((l) => t4.jogos.includes(l)) && g2.rotulos.join() !== g1.rotulos.join(), JSON.stringify(t4.jogos.slice(0, 2)));
 
-  check("5) Sem erro na página:", erros.length === 0, JSON.stringify(erros.slice(0, 3)));
+  // 5) Próxima rodada.
+  const a3 = await agenda(3);
+  const iguais = (t, a) => t.proxima.jogos.length === 10 && t.proxima.jogos.join("|") === a.jogos.join("|");
+  check("5) 'Próxima rodada' na Tabela: os 10 jogos da rodada atual, o meu primeiro (antes da 1ª, depois da 1ª e da 2ª):",
+    iguais(t1, a1) && /^Rodada 1/.test(t1.proxima.sub) && iguais(t3, a2) && /^Rodada 2/.test(t3.proxima.sub) && a3.rodada === 3 && iguais(t4, a3) && /^Rodada 3/.test(t4.proxima.sub),
+    JSON.stringify({ t1: t1.proxima, a1: a1.jogos.slice(0, 2) }));
+
+  check("6) Sem erro na página:", erros.length === 0, JSON.stringify(erros.slice(0, 3)));
   await browser.close();
 })().catch((e) => { console.error("FATAL:", e); process.exit(1); });

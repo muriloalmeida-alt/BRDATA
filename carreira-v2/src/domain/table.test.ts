@@ -65,6 +65,20 @@ test("antes da 1ª rodada: sem resultados", () => {
   assert.deepEqual(buildTable(c, byId).results, []);
 });
 
+test("RODADA-ATUAL: próxima rodada (os jogos da rodada atual, o seu primeiro, com a data); nada em outra divisão nem com a temporada encerrada", () => {
+  const c = career(50);
+  c.schedule = { 11: [{ home: "t1", away: "t2" }, { home: "me", away: "t4" }, { home: "t5", away: "t6" }] };
+  c.calendar = { year: 2026, idx: 0, weeks: [{ d: "05-04", p: "temporada", r: 11 }] };
+  const t = buildTable(c, byId);
+  assert.equal(t.upcoming?.round, 11);
+  assert.equal(t.upcoming?.date, "10 MAI");
+  assert.deepEqual(t.upcoming?.games.map((g) => `${g.home.id}x${g.away.id}${g.mine ? "*" : ""}`), ["mext4*", "t1xt2", "t5xt6"]);
+  c.otherDivisions = { serie_b: { standings: { x1: row("x1", 30) } } };
+  assert.equal(buildTable(c, byId, "serie_b").upcoming, null);
+  c.currentRound = 39;
+  assert.equal(buildTable(c, byId).upcoming, null);
+});
+
 test("Copa: fora, viva (formato expandido), eliminada, campeã — mesmos textos do legado", () => {
   const c = career(0);
   assert.equal(buildCup(c, byId).outcome, "fora");
