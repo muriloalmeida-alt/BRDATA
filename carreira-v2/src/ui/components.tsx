@@ -18,7 +18,7 @@ export function Crest({ team, size }: { team: Team; size: number }) {
   return (
     <span className="crest" style={{ width: size, height: size }}>
       {src && failed !== src
-        ? <img src={src} alt="" width={size} height={size} onError={() => setFailed(src)} />
+        ? <span className="crest-plate"><img src={src} alt="" width={Math.round(size * 0.76)} height={Math.round(size * 0.76)} onError={() => setFailed(src)} /></span>
         : <span className="crest-mono" style={{ background: `linear-gradient(160deg, ${team.c1 || "#5b6676"}, ${team.c2 || "#1d2430"})`, fontSize: Math.round(size * 0.32) }}>{(team.short || team.name || "?").slice(0, 3).toUpperCase()}</span>}
     </span>
   );

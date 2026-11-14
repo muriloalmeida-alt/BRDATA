@@ -43,7 +43,8 @@
       "test_v2_modulo.js",
       "test_v2_inicio.js",
       "test_v2_ajudante_carreira.js",
-      "test_ge_calendar_001.js"
+      "test_ge_calendar_001.js",
+      "test_ge_balance_004.js"
     ]
   },
   "exclusive": {
@@ -78,6 +79,17 @@
       },
       "tests": [
         "test_loja_pagamento_real.js"
+      ]
+    },
+    "dados-reais": {
+      "_doc": "ESCUDOS-001: o servidor como a produção deve ficar — catálogo real congelado nas 3 divisões (DATA_PROVIDER=frozen, ENABLED_COMPETITIONS=serie_b,serie_c, LIVE_SEASON=2026).",
+      "env": {
+        "DATA_PROVIDER": "frozen",
+        "ENABLED_COMPETITIONS": "serie_b,serie_c",
+        "LIVE_SEASON": "2026"
+      },
+      "tests": [
+        "test_v2_dados_reais.js"
       ]
     }
   },

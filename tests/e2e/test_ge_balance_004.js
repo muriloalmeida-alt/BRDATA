@@ -13,7 +13,11 @@ const { newCareer, globaisDoMotor, jogarRodadaV2, noMotor, base } = require("./_
   page.on("dialog", (d) => d.dismiss());
   page.on("pageerror", (err) => console.log("PAGE ERROR:", err.message));
   await newCareer(page, `geb004${Date.now()}@teste.com`);
-  // A temporada inteira, rodada a rodada, pela ponte.
+  // A temporada inteira, rodada a rodada, pela ponte e sem rede (modo
+  // offline real desde a OFFLINE-001: grava só no aparelho, sem a cópia de
+  // ~600 KB ao servidor a cada gravação; o item 4 volta a rede e confere a
+  // cópia no servidor).
+  await page.context().setOffline(true);
   for (let guard = 0; guard < 60 && (await noMotor(page, ({ CAREER }) => CAREER.currentRound)) <= 38; guard++) {
     const r = await jogarRodadaV2(page);
     if (!r.ok) throw new Error("rodada: " + r.passos.join(" "));
@@ -51,6 +55,7 @@ const { newCareer, globaisDoMotor, jogarRodadaV2, noMotor, base } = require("./_
   check("3) Rebaixados chegam, em média, ACIMA da média da Série B (força combinada em desvios > 0):", res.relegatedZ.length === 4 && avgZ(res.relegatedZ) > 0, res.relegatedZ);
 
   // 4) Persistência: recarrega e confere que a força nova veio do save.
+  await page.context().setOffline(false);
   await page.evaluate(() => persistCareer());
   // Espera o save do SERVIDOR conter a força nova (estado), em vez de 2,5 s
   // fixos: sob carga no CI o PUT ainda não tinha chegado e o reload lia o

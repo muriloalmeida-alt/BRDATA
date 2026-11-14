@@ -15,7 +15,10 @@ a { color: inherit; }
 
 /* Crest: escudo oficial ou monograma */
 .crest { display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
-.crest img { width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0 2px 6px rgba(0, 0, 0, .45)); }
+/* ESCUDOS-001 (13/11/2026): escudo original sobre uma chapinha clara (a
+   versão negativa saiu: tirava a identidade do clube). */
+.crest-plate { width: 100%; height: 100%; border-radius: 50%; background: #F4F6FA; box-shadow: 0 2px 6px rgba(0, 0, 0, .35); display: flex; align-items: center; justify-content: center; }
+.crest img { width: 76%; height: 76%; object-fit: contain; }
 .crest-mono { width: 100%; height: 100%; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-family: var(--bd-font-display); font-weight: 700; color: #fff; }
 
 /* Linha de navegação/ação (lista aberta, separada por régua) */

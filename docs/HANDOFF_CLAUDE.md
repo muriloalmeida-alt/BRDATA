@@ -274,10 +274,27 @@ fonte oficial e empacotado localmente.
 
 ⸻
 
+ESCUDOS-001 — elencos reais, escudos locais e escudo original
+
+Status: IMPLEMENTADO (14/11), aguardando aprovação do Murilo para o merge.
+Plano e relatório: `docs/carreira-v2/escudos/PLANO_ESCUDOS.md`.
+Origem: relato do Murilo (13/11): elencos falsos, escudos que não carregam
+e escudos em negativo.
+Decisões do Murilo (13/11):
+1) dados reais nas 3 divisões: o Murilo configura a produção
+   (DATA_PROVIDER=frozen, ENABLED_COMPETITIONS=serie_b,serie_c,
+   LIVE_SEASON=2026); passos na seção 4 do plano;
+2) cópia local dos escudos das Séries A, B e C;
+3) escudo original sobre chapinha clara (sem negativo).
+Pendente com o Murilo: configurar as variáveis na produção; licença dos
+escudos de uso restrito antes de distribuir em loja.
+
+⸻
+
 OFFLINE-001 — Modo Carreira offline
 
-Status: IMPLEMENTADO (13/11), aguardando revisão do PM e homologação no
-iPhone (Murilo). Merge só com a aprovação do Murilo.
+Status: APROVADO (Murilo, 13/11, "Aprovado"; PR #112). Homologação no
+iPhone pendente com o Murilo (seção 6.5 do plano).
 Plano e relatório: `docs/carreira-v2/offline/PLANO_OFFLINE.md` (seções 5 e 6).
 Origem: `docs/carreira-v2/offline/BRDATA_Plano_Offline_Claude.md`, sem
 alteração.

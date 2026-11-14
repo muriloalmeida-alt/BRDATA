@@ -180,8 +180,14 @@ const { newCareer, signup, serverCareer, motorNaPagina, continueToHome, sameSave
   await v2.fill('[role="dialog"] input[type="password"]', "senha123");
   await v2.click('[role="dialog"] button[type="submit"]');
   await v2.waitForFunction(() => !document.querySelector("#lg-t"), null, { timeout: 15000 });
-  await v2.waitForTimeout(500);
-  const s5 = await serverCareer(v2);
+  // A cópia vai depois do login (confere a sessão e grava): espera ela
+  // chegar ao servidor, até 15 s (antes 500 ms fixos, curto sob carga no CI).
+  // (waitForFunction não serve: com função async, a Promise conta como verdadeira.)
+  let s5 = await serverCareer(v2);
+  for (const t0 = Date.now(); (!s5 || s5.currentRound !== before5.currentRound + 1) && Date.now() - t0 < 15000;) {
+    await v2.waitForTimeout(300);
+    s5 = await serverCareer(v2);
+  }
   const mem5 = await frameCareer();
   check("5b) Com a mesma conta: a folha fecha e a cópia chega ao servidor (1 rodada a mais, = save em memória):",
     s5.currentRound === before5.currentRound + 1 && sameSave(s5, mem5),
