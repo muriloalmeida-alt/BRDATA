@@ -128,6 +128,7 @@ export function criarRepositorio(opts = {}) {
   // Cópia ao servidor em andamento, por conta (ver copiarParaServidor). Uma
   // só para a janela: a v2 tem duas instâncias do repositório (a do motor,
   // /js/motor, e a cópia no build da v2) e as duas mandam a cópia.
+  const COPIA_PRESA_MS = 45000;
   const copiasEmAndamento = globalThis.__BRDATA_COPIAS_EM_ANDAMENTO__ || (globalThis.__BRDATA_COPIAS_EM_ANDAMENTO__ = new Map());
 
   const repo = {
@@ -265,7 +266,7 @@ export function criarRepositorio(opts = {}) {
     },
     // Grava a carreira: primeiro no aparelho (confirma), depois a cópia no
     // servidor. `revEsperada` (opcional): recusa se outra gravação veio antes.
-    // Devolve { ok, rev, copia: "ok"|"offline"|"sessao"|"outra-conta"|"grande"|"falha"|"local" } ou
+    // Devolve { ok, rev, copia: "ok"|"andamento"|"offline"|"sessao"|"outra-conta"|"grande"|"falha"|"local" } ou
     // { ok: false, motivo: "armazenamento"|"conflito"|"outra-aba" }.
     async gravar(conta, save, opts = {}) {
       const id = String(conta);
@@ -283,19 +284,26 @@ export function criarRepositorio(opts = {}) {
       return { ok: true, rev: reg.rev, copia };
     },
     // Manda ao servidor a cópia do que está no aparelho (se ainda não foi).
-    // COPIA-UNICA (14/11): uma cópia por conta de cada vez. Quem chama com
-    // outra a caminho espera ela terminar e só então confere de novo: se o
-    // save não mudou, já está sincronizado e não sobe outra vez; se mudou,
-    // sobe o mais novo. Antes, uma leitura (repo.ler) no meio do envio via o
-    // save ainda "pendente" e mandava a mesma cópia (~600 KB) de novo.
+    // COPIA-UNICA (14/11): uma cópia por conta de cada vez. Com outra a
+    // caminho, quem chama NÃO espera (um envio preso não trava a leitura nem
+    // a próxima gravação): marca "conferir de novo" e devolve "andamento".
+    // Quando a cópia a caminho termina, confere de novo: sem mudança no save,
+    // não sobe nada; com save novo, sobe o mais novo. Antes, uma leitura
+    // (repo.ler) no meio do envio via o save ainda "pendente" e mandava a
+    // mesma cópia (~600 KB) de novo.
     copiarParaServidor(conta) {
       const id = String(conta);
-      const anterior = copiasEmAndamento.get(id);
-      const vez = (anterior ? anterior.catch(() => {}) : Promise.resolve()).then(() => repo.copiarAgora(id));
+      const atual = copiasEmAndamento.get(id);
+      // Um envio preso (sem resposta há mais de 45 s) não segura as cópias.
+      if (atual && Date.now() - atual.inicio < COPIA_PRESA_MS) { atual.deNovo = true; return Promise.resolve("andamento"); }
+      const vez = { deNovo: false, inicio: Date.now() };
       copiasEmAndamento.set(id, vez);
-      const limpar = () => { if (copiasEmAndamento.get(id) === vez) copiasEmAndamento.delete(id); };
-      vez.then(limpar, limpar);
-      return vez;
+      const rodar = async () => {
+        let r;
+        do { vez.deNovo = false; vez.inicio = Date.now(); r = await repo.copiarAgora(id).catch(() => "falha"); } while (vez.deNovo);
+        return r;
+      };
+      return rodar().finally(() => { if (copiasEmAndamento.get(id) === vez) copiasEmAndamento.delete(id); });
     },
     async copiarAgora(id) {
       const reg = await repo.registro(id);
@@ -387,7 +395,9 @@ export function criarRepositorio(opts = {}) {
       const reg = await repo.registro(id);
       if (!reg) return { ok: false, motivo: "sem-carreira" };
       try { await escreverLoja(LOJA_SAVES, { ...reg, conflito: null }); } catch (e) { return { ok: false, motivo: "armazenamento" }; }
-      const copia = await repo.copiarParaServidor(id);
+      // Pedido explícito: espera a cópia a caminho (se houver) e manda.
+      let copia = await repo.copiarParaServidor(id);
+      for (let n = 0; copia === "andamento" && n < 60; n++) { await new Promise((ok) => setTimeout(ok, 500)); copia = await repo.copiarParaServidor(id); }
       return copia === "ok" ? { ok: true } : { ok: false, motivo: copia };
     },
     // Situação da cópia: "em-dia" | "pendente" | "conflito" | "sem-carreira".

@@ -301,11 +301,19 @@ servidor, o save aparecia "pendente" e a mesma cópia (~600 KB) subia de novo.
 Decisão do Murilo (14/11): "Corrigir agora".
 Implementação (`public/js/motor/repositorio.js`): uma cópia por conta de cada
 vez, com o controle compartilhado pela janela (a v2 tem duas instâncias do
-repositório: a do motor e a do build). Quem chama com outra a caminho espera
-ela terminar e confere de novo: sem mudança, não sobe nada; com save novo,
-sobe o mais novo. Nenhuma mudança no save nem na API.
-Teste: `tests/e2e/test_v2_copia_unica.js` (envio lento de 1,5 s). Contraprova:
-sem a correção, 2 PUTs (item 1); com o controle por instância, 2 PUTs (1b).
+repositório: a do motor e a do build). Quem chama com outra a caminho NÃO
+espera (um envio preso não trava a leitura nem a gravação): marca "conferir
+de novo" e recebe "andamento". Ao terminar, a cópia a caminho confere de novo:
+sem mudança, não sobe nada; com save novo, sobe o mais novo. Envio sem
+resposta há mais de 45 s não segura as cópias. Nenhuma mudança no save nem
+na API.
+Teste: `tests/e2e/test_v2_copia_unica.js` (envio lento de 1,5 s e envio
+preso). Contraprovas: sem a correção, 2 PUTs (item 1); com o controle por
+instância, 2 PUTs (1b); com quem chama esperando a cópia a caminho, a
+leitura trava atrás de um envio preso (item 4).
+Junto: `test_ge_balance_004` só corta a rede com o motor já aberto (ele
+cortava no meio da carga e, sob carga, o motor não abria; 6 de 8 falhas
+no main com 8 em paralelo, 0 de 8 depois).
 
 ⸻
 

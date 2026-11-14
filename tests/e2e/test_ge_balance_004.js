@@ -5,7 +5,7 @@
 // a rodada pela ponte do motor (jogarRodadaV2) e a virada pelo motor na
 // página da v2 (globaisDoMotor).
 const { chromium } = require("playwright-core");
-const { newCareer, globaisDoMotor, jogarRodadaV2, noMotor, base } = require("./_v2_carreira");
+const { newCareer, globaisDoMotor, jogarRodadaV2, noMotor, motorPronto, base } = require("./_v2_carreira");
 
 (async () => {
   const browser = await chromium.launch({ executablePath: process.env.PW_CHROMIUM_PATH || undefined, headless: true, args: ["--host-resolver-rules=MAP fonts.googleapis.com 127.0.0.1,MAP fonts.gstatic.com 127.0.0.1"] });
@@ -16,7 +16,9 @@ const { newCareer, globaisDoMotor, jogarRodadaV2, noMotor, base } = require("./_
   // A temporada inteira, rodada a rodada, pela ponte e sem rede (modo
   // offline real desde a OFFLINE-001: grava só no aparelho, sem a cópia de
   // ~600 KB ao servidor a cada gravação; o item 4 volta a rede e confere a
-  // cópia no servidor).
+  // cópia no servidor). A rede só cai com o motor já aberto: ele carrega com
+  // rede (antes, sob carga, a rede caía no meio da carga e o motor não abria).
+  await motorPronto(page, { comCarreira: true });
   await page.context().setOffline(true);
   for (let guard = 0; guard < 60 && (await noMotor(page, ({ CAREER }) => CAREER.currentRound)) <= 38; guard++) {
     const r = await jogarRodadaV2(page);
