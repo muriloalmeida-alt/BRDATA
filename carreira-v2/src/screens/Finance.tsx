@@ -80,6 +80,10 @@ export function Finance({ m }: { m: FinanceModel }) {
           <Link key={to} className="row bd-link" to={`${BASE}/${to}`}><span className="row-body"><span className="row-title">{t}</span></span><IconChevron className="row-chevron bd-chev" /></Link>
         ))}
       </nav>
+      <Link className="row bd-link" to={`${BASE}/financas/teto`}>
+        <span className="row-body"><span className="row-title">Ajustar teto com o caixa</span></span>
+        <IconChevron className="row-chevron bd-chev" />
+      </Link>
       <Link className="row fn-legacy" to={`${BASE}/diretoria/orcamento`}>
         <span className="row-body"><span className="row-title">Pedido de orçamento à diretoria</span></span>
         <IconChevron className="row-chevron" />

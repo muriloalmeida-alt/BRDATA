@@ -31,6 +31,33 @@ export function initialFinances(squad) {
   const cash = Math.round(wageCap * 6 / 1000) * 1000;
   return { cash, wageCap };
 }
+// TETO-CAIXA (15/11): o técnico aumenta o teto salarial (mensal) com
+// dinheiro do caixa. Cada R$ 1 a mais no teto custa R$ 12 do caixa (um ano de
+// salário). Devolver só vale para o que ele mesmo aumentou na temporada
+// (`bought`) e sem o teto ficar abaixo da folha; volta os mesmos 12×, sem
+// lucro. O caixa não pode ficar abaixo de 1 mês de folha. Valores em passos
+// de R$ 1 mil.
+export const WAGE_CAP_CASH_MULT = 12;
+export const WAGE_CAP_STEP = 1000;
+const stepDown = (v) => Math.max(0, Math.floor(v / WAGE_CAP_STEP) * WAGE_CAP_STEP);
+// Quanto dá para aumentar e devolver agora.
+export function wageCapTradeLimits({ wageCap, bill, cash, bought }) {
+  return {
+    maxUp: stepDown((cash - bill) / WAGE_CAP_CASH_MULT),
+    maxDown: stepDown(Math.min(bought || 0, wageCap - bill)),
+  };
+}
+// delta > 0 aumenta, delta < 0 devolve. Devolve o estado novo ou o motivo.
+export function wageCapTrade({ wageCap, bill, cash, bought }, delta) {
+  bought = bought || 0;
+  if (!Number.isFinite(delta) || delta === 0 || delta % WAGE_CAP_STEP !== 0) return { ok: false, motivo: "valor" };
+  const lim = wageCapTradeLimits({ wageCap, bill, cash, bought });
+  if (delta > 0 && delta > lim.maxUp) return { ok: false, motivo: "caixa", ...lim };
+  if (delta < 0 && -delta > (bought || 0)) return { ok: false, motivo: "reservado", ...lim };
+  if (delta < 0 && wageCap + delta < bill) return { ok: false, motivo: "folha", ...lim };
+  const movimento = -delta * WAGE_CAP_CASH_MULT;
+  return { ok: true, wageCap: wageCap + delta, cash: cash + movimento, bought: bought + delta, movimento };
+}
 // Comissão técnica: 5% da folha por mês, arredondado ao milhar.
 export const STAFF_WAGE_PCT = 0.05;
 export function staffMonthlyCost(squad) {

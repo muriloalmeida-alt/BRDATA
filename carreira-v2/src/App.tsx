@@ -47,7 +47,7 @@ import { Evolution, TrainingCondition, TrainingWeek } from "./screens/Training.t
 import { PrepGateway } from "./adapters/prep.ts";
 import { ClubRoster, Compare, Contracts, Ficha, PressStandalone, Talk } from "./screens/SquadPlus.tsx";
 import { AwardsScreen, CupScreen, H2HScreen, StatsScreen } from "./screens/Games.tsx";
-import { AchievementsScreen, BudgetScreen, EditProfileScreen, HelpScreen, PurchaseHistoryScreen, RankingScreen, SavesScreen, SettingsScreen, ShopScreen } from "./screens/More.tsx";
+import { AchievementsScreen, BudgetScreen, WageCapScreen, EditProfileScreen, HelpScreen, PurchaseHistoryScreen, RankingScreen, SavesScreen, SettingsScreen, ShopScreen } from "./screens/More.tsx";
 import { BaseScreen, HireScoutScreen, LedgerScreen, MissionScreen, ProspectsScreen, ScoutsScreen, SponsorsScreen, StadiumScreen, StaffScreen, SuggestionsScreen } from "./screens/Club.tsx";
 import { History as MarketHistory, Loan, Market, MyOffers, MySales, Negotiation, PendingOffer, Propose, SaleOffers, Target } from "./screens/Market.tsx";
 
@@ -308,6 +308,7 @@ export function App() {
     if (loc.path === `${BASE}/ajuda`) return <HelpScreen />;
     if (loc.path === `${BASE}/saves`) return <SavesScreen career={c} local={!!data.user.local} />;
     if (loc.path === `${BASE}/diretoria/orcamento`) return <BudgetScreen onChanged={reloadCareer} />;
+    if (loc.path === `${BASE}/financas/teto`) return <WageCapScreen onChanged={reloadCareer} />;
   }
   // Fase 9 — clube.
   {
