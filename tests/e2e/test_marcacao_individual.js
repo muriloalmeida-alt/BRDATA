@@ -1,119 +1,57 @@
-// Nova feature — Marcação individual: escalar um jogador seu pra
-// marcar um jogador específico do rival, com efeito REAL (reduz o peso
-// de sorteio dele na simulação, nunca zera de vez).
+// Marcação individual — lote L5b, sem a tela antiga. As regras pela ponte
+// (marcacao, salvarMarcacao: os mesmos comandos da tela Marcação da v2, que
+// está no test_v2_tatica_treino item 5) e o efeito pelo motor.
+//  1) O próximo adversário, 10 titulares meus de linha (sem goleiro) e os 5
+//     melhores dele, sem marcação ainda.
+//  2) Salvar grava a marcação (adversário, meu jogador, o dele) e ela volta
+//     ao reabrir.
+//  3) Jogador fora das listas é recusado.
+//  4) Efeito real: com a marcação, o jogador marcado é sorteado como autor
+//     de gol ou assistência bem menos vezes (4 000 sorteios).
+//  5) "Sem marcação" limpa.
 const { chromium } = require("playwright-core");
 const { check } = require("./_check");
-const { enterGame } = require("./_startup");
+const { newCareer, globaisDoMotor } = require("./_v2_carreira");
 
 (async () => {
   const browser = await chromium.launch({ executablePath: process.env.PW_CHROMIUM_PATH || undefined, headless: true, args: ["--host-resolver-rules=MAP fonts.googleapis.com 127.0.0.1,MAP fonts.gstatic.com 127.0.0.1"] });
-  const page = await browser.newPage({ viewport: { width: 390, height: 900 } });
+  const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
   page.on("dialog", (d) => d.dismiss());
-  page.on("pageerror", (err) => console.log("PAGE ERROR:", err.message));
-  const base = "http://localhost:8787";
-  const email = `marcacao${Date.now()}@teste.com`;
-  await page.goto(base + "/", { waitUntil: "domcontentloaded" });
-  await page.evaluate(async ({ email }) => {
-    await fetch("/api/auth/signup", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: "Marcacao Individual", email, password: "senha123", phone: "11999999999", plan: "freemium" }) });
-    await fetch("/api/auth/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, password: "senha123" }) });
-  }, { email });
-  await page.goto(base + "/carreira.html", { waitUntil: "domcontentloaded" });
-  await page.click('.mt-competition-card[data-competition="brasileirao"]');
-  await page.waitForTimeout(300);
-  await page.click(".m3-club-row");
-  await page.waitForTimeout(150);
-  await page.click("#btnConfirmClub");
-  await enterGame(page);
+  const erros = [];
+  page.on("pageerror", (err) => erros.push(err.message));
+  await newCareer(page, `marcacao${Date.now()}@teste.com`);
+  await globaisDoMotor(page);
 
-  // 1) Abrir pelo Menu -> mostra o próximo adversário, meus titulares e
-  // os 5 melhores jogadores de linha do rival, sem designação ativa.
-  await page.click("#btnBottomMenu");
-  await page.waitForTimeout(150);
-  await page.click("#topbarMenu .mt-topbar-menu-item.group[data-submenu='tatica']");
-  await page.click("#btnOpenMarking");
-  await page.waitForTimeout(300);
-  const check1 = await page.evaluate(() => ({
-    open: document.getElementById("markingOverlay").classList.contains("open"),
-    oppLabel: document.getElementById("markingOppLabel").textContent,
-    myCount: document.querySelectorAll("#markingMyPlayers [data-id]").length,
-    rivalCount: document.querySelectorAll("#markingRivalPlayers [data-id]").length,
-    activeCardHidden: document.getElementById("markingActiveCard").style.display === "none",
-    applyDisabled: document.getElementById("btnApplyMarking").disabled,
-  }));
-  // myCount = 10 (11 titulares MENOS o goleiro -- goleiro não marca
-  // ninguém, ver filtro em renderManMarkingScreen).
-  check("1) Abre com próximo adversário, 10 titulares de linha meus (sem goleiro) e 5 do rival, sem designação, Aplicar desabilitado:",
-    check1.open && check1.oppLabel.includes("Próximo jogo") && check1.myCount === 10 && check1.rivalCount === 5 && check1.activeCardHidden && check1.applyDisabled,
-    JSON.stringify(check1));
-
-  // 2) Escolher 1 jogador meu + 1 do rival habilita "Aplicar"; aplicar
-  // grava CAREER.manMarking e mostra a designação ativa.
-  const ids = await page.evaluate(() => ({
-    mine: document.querySelector("#markingMyPlayers [data-id]").dataset.id,
-    rival: document.querySelector("#markingRivalPlayers [data-id]").dataset.id,
-  }));
-  await page.click(`#markingMyPlayers [data-id="${ids.mine}"]`);
-  await page.click(`#markingRivalPlayers [data-id="${ids.rival}"]`);
-  await page.waitForTimeout(150);
-  const check2a = await page.evaluate(() => document.getElementById("btnApplyMarking").disabled);
-  check("2) Escolher os 2 habilita 'Aplicar':", !check2a);
-  await page.click("#btnApplyMarking");
-  await page.waitForTimeout(200);
-  const check2b = await page.evaluate((ids) => ({
-    manMarking: JSON.stringify(CAREER.manMarking),
-    matches: CAREER.manMarking && CAREER.manMarking.myPlayerId === ids.mine && CAREER.manMarking.rivalPlayerId === ids.rival,
-    activeCardVisible: document.getElementById("markingActiveCard").style.display !== "none",
-  }), ids);
-  check("2b) Aplicar grava CAREER.manMarking com os ids certos, mostra designação ativa:", check2b.matches && check2b.activeCardVisible, JSON.stringify(check2b));
-
-  await page.screenshot({ path: "screens/marcacao_individual.png" });
-
-  // 3) Fechar e reabrir -- a designação persiste (mesmos 2 jogadores
-  // marcados como "selected").
-  await page.click("#markingClose");
-  await page.waitForTimeout(150);
-  await page.click("#btnBottomMenu");
-  await page.waitForTimeout(150);
-  await page.click("#topbarMenu .mt-topbar-menu-item.group[data-submenu='tatica']");
-  await page.click("#btnOpenMarking");
-  await page.waitForTimeout(200);
-  const check3 = await page.evaluate((ids) => ({
-    mineSelected: document.querySelector(`#markingMyPlayers [data-id="${ids.mine}"]`)?.classList.contains("selected"),
-    rivalSelected: document.querySelector(`#markingRivalPlayers [data-id="${ids.rival}"]`)?.classList.contains("selected"),
-  }), ids);
-  check("3) Reabrir mantém a mesma designação selecionada:", check3.mineSelected && check3.rivalSelected, JSON.stringify(check3));
-
-  // 4) Efeito REAL na simulação: com o jogador rival marcado
-  // (factor 0.4), ele deve ser sorteado MENOS que o normal como
-  // artilheiro/assistente em várias rodadas simuladas via attributeGoals
-  // direto (sem depender de rodar o jogo inteiro pela UI) -- compara
-  // contra o MESMO cenário sem marcação.
-  const effectCheck = await page.evaluate((ids) => {
-    const opponentId = CAREER.manMarking.opponentId;
-    const rivalSquad = leagueSquadFor(opponentId);
-    const marked = rivalSquad.find((p) => p.id === ids.rival);
-    if (!marked) return { error: "jogador marcado não achado no elenco" };
+  const r = await page.evaluate(async () => {
+    const P = (await import("/js/motor/v2.js")).criarPonte();
+    const out = {};
+    const m = P.marcacao();
+    out.um = { adv: !!m.adversario, meus: m.meus.length, rivais: m.rivais.length, atual: m.atual, semGoleiro: m.meus.every((x) => CAREER.squad.find((p) => p.id === x.id).group !== "G") };
+    const meu = m.meus[0].id, rival = m.rivais[0].id;
+    const s = await P.salvarMarcacao(meu, rival);
+    const m2 = P.marcacao();
+    out.dois = { s, mm: CAREER.manMarking, atual: m2.atual, meu, rival };
+    out.tres = await P.salvarMarcacao("nao-existe", rival);
+    const opp = CAREER.manMarking.opponentId;
+    const squad = leagueSquadFor(opp);
+    const marcado = squad.find((p) => p.id === rival);
+    let com = 0, sem = 0;
     const N = 4000;
-    let creditedWith = 0, creditedWithout = 0;
     for (let i = 0; i < N; i++) {
-      const evWith = attributeGoals(rivalSquad, 1, activeManMarkingSuppression(opponentId));
-      if (evWith.some((e) => e.player === marked.name)) creditedWith++;
-      const evWithout = attributeGoals(rivalSquad, 1, null);
-      if (evWithout.some((e) => e.player === marked.name)) creditedWithout++;
+      if (attributeGoals(squad, 1, activeManMarkingSuppression(opp)).some((e) => e.player === marcado.name)) com++;
+      if (attributeGoals(squad, 1, null).some((e) => e.player === marcado.name)) sem++;
     }
-    return { creditedWith, creditedWithout, N, ratio: creditedWith / creditedWithout };
-  }, ids);
-  check("4) Com marcação, o jogador marcado é sorteado como autor de gol/assistência bem menos vezes que sem marcação:",
-    !effectCheck.error && effectCheck.creditedWith < effectCheck.creditedWithout * 0.75, JSON.stringify(effectCheck));
+    out.quatro = { com, sem, N };
+    const s5 = await P.salvarMarcacao(null, null);
+    out.cinco = { s5, mm: CAREER.manMarking, atual: P.marcacao().atual };
+    return out;
+  });
 
-  // 5) Remover marcação limpa CAREER.manMarking e some a designação ativa.
-  await page.click("#btnRemoveMarking");
-  await page.waitForTimeout(150);
-  const check5 = await page.evaluate(() => ({
-    manMarking: CAREER.manMarking,
-    activeCardHidden: document.getElementById("markingActiveCard").style.display === "none",
-  }));
-  check("5) Remover marcação limpa CAREER.manMarking:", check5.manMarking === null && check5.activeCardHidden, JSON.stringify(check5));
-
+  check("1) Próximo adversário, 10 titulares de linha meus (sem goleiro) e 5 dele, sem marcação:", r.um.adv && r.um.meus === 10 && r.um.rivais === 5 && r.um.atual === null && r.um.semGoleiro, JSON.stringify(r.um));
+  check("2) Salvar grava a marcação e ela volta ao reabrir:", r.dois.s.ok !== false && r.dois.mm && r.dois.mm.myPlayerId === r.dois.meu && r.dois.mm.rivalPlayerId === r.dois.rival && r.dois.atual && r.dois.atual.meu === r.dois.meu, JSON.stringify(r.dois));
+  check("3) Jogador fora das listas é recusado:", r.tres.ok === false && r.tres.motivo === "jogador-invalido", JSON.stringify(r.tres));
+  check("4) Com marcação, o marcado é autor de gol/assistência bem menos vezes (menos de 75% do normal):", r.quatro.com < r.quatro.sem * 0.75, JSON.stringify(r.quatro));
+  check("5) 'Sem marcação' limpa:", r.cinco.mm === null && r.cinco.atual === null, JSON.stringify(r.cinco));
+  check("6) Sem erro na página:", erros.length === 0, JSON.stringify(erros.slice(0, 3)));
   await browser.close();
 })().catch((e) => { console.error("FATAL:", e); process.exit(1); });
