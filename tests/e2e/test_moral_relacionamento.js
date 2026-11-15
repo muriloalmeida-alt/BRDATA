@@ -1,114 +1,54 @@
+// Moral e relacionamento (banco, conversa, pedido de transferência) — lote
+// L5a, sem a tela antiga. As regras pelo motor (applyMoraleAfterMatch,
+// canTalkTo) e a conversa pela ponte (ponte.conversar, a mesma da tela
+// Conversa da v2, que está no test_v2_elenco_avancado item 5).
+//  1) 3 jogos fora do time: a sequência no banco vai a 3 e o motivo vira
+//     insatisfação; o titular não acumula sequência.
+//  2) Conversar fica disponível para o insatisfeito, não para o titular.
+//  3) "Ouvir e apoiar": a moral sobe, o motivo muda para a conversa e não dá
+//     para conversar de novo na mesma rodada.
+//  4) Moral muito baixa com banco prolongado: marca o pedido de
+//     transferência.
+//  5) "Cobrar postura" em quem já está muito infeliz piora a moral.
 const { chromium } = require("playwright-core");
 const { check } = require("./_check");
-const { enterGame } = require("./_startup");
-
-async function newCareer(page, base, email) {
-  await page.goto(base + "/", { waitUntil: "domcontentloaded" });
-  await page.evaluate(async ({ email }) => {
-    await fetch("/api/auth/signup", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: "Moral Test", email, password: "senha123", phone: "11999999999", plan: "freemium" }) });
-    await fetch("/api/auth/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, password: "senha123" }) });
-  }, { email });
-  await page.goto(base + "/carreira.html", { waitUntil: "domcontentloaded" });
-  await page.click('.mt-competition-card[data-competition="brasileirao"]');
-  await page.waitForTimeout(200);
-  await page.click(".m3-club-row");
-  await page.waitForTimeout(150);
-  await page.click("#btnConfirmClub");
-  await enterGame(page);
-}
+const { newCareer, globaisDoMotor } = require("./_v2_carreira");
 
 (async () => {
-  const browser = await chromium.launch({
-    executablePath: process.env.PW_CHROMIUM_PATH || undefined,
-    headless: true,
-    args: ["--host-resolver-rules=MAP fonts.googleapis.com 127.0.0.1,MAP fonts.gstatic.com 127.0.0.1"],
-  });
-  const page = await browser.newPage({ viewport: { width: 390, height: 900 } });
+  const browser = await chromium.launch({ executablePath: process.env.PW_CHROMIUM_PATH || undefined, headless: true, args: ["--host-resolver-rules=MAP fonts.googleapis.com 127.0.0.1,MAP fonts.gstatic.com 127.0.0.1"] });
+  const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
   page.on("dialog", (d) => d.dismiss());
-  page.on("pageerror", (err) => console.log("PAGE ERROR:", err.message));
-  page.on("console", (m) => { if (m.type() === "error" && !m.text().includes("fonts.googleapis") && !m.text().includes("fundingchoices")) console.log("CONSOLE ERROR:", m.text()); });
+  const erros = [];
+  page.on("pageerror", (err) => erros.push(err.message));
+  await newCareer(page, `relacao${Date.now()}@teste.com`);
+  await globaisDoMotor(page);
 
-  const base = "http://localhost:8787";
-  await newCareer(page, base, `moral${Date.now()}@teste.com`);
-
-  const result = await page.evaluate(() => {
+  const r = await page.evaluate(async () => {
+    const P = (await import("/js/motor/v2.js")).criarPonte();
     const out = {};
-    const bench = CAREER.squad.find((p) => CAREER.lineup.bench.includes(p.id)) || CAREER.squad.find((p) => !CAREER.lineup.starters.includes(p.id));
-    const starter = CAREER.squad.find((p) => CAREER.lineup.starters.includes(p.id));
-
-    // 1) Simula 3 rodadas de vitória com o mesmo jogador de fora do time
-    // titular -- benchStreak sobe, motivo muda pra "insatisfeito".
+    const reserva = CAREER.squad.find((p) => CAREER.lineup.bench.includes(p.id) && p.origin === "principal");
+    const titular = CAREER.squad.find((p) => CAREER.lineup.starters.includes(p.id));
     for (let i = 0; i < 3; i++) applyMoraleAfterMatch(2, 0);
-    out.benchStreak = bench.benchStreak;
-    out.reasonAfter3 = bench.moraleReason;
-    out.starterReason = starter.moraleReason;
-    out.starterBenchStreakZero = starter.benchStreak === 0;
-
-    // 2) Botão "Conversar" fica disponível pra quem está insatisfeito.
-    out.canTalkBench = canTalkTo(bench);
-    out.canTalkStarter = canTalkTo(starter);
-
-    // 3) Aplica a conversa "Ouvir e apoiar" -- moral sobe, motivo muda,
-    // não pode conversar de novo na MESMA rodada.
-    const moraleBefore = bench.morale;
-    TALK_CTX = { playerId: bench.id };
-    applyTalkOption("apoiar");
-    out.moraleRoseAfterTalk = bench.morale > moraleBefore;
-    out.reasonAfterTalk = bench.moraleReason;
-    out.cannotTalkAgainSameRound = !canTalkTo(bench);
-
-    // 4) "Pede transferência": força benchStreak/moral baixos o
-    // suficiente e confere a flag.
-    bench.benchStreak = 6;
-    bench.morale = 10;
-    bench.lastTalkRound = null;
-    applyMoraleAfterMatch(0, 2); // derrota também, só reforça
-    out.wantsTransfer = bench.wantsTransfer;
-
-    // 5) "Cobrar postura" em quem já está muito infeliz PIORA (efeito
-    // contextual pedido no documento).
-    bench.lastTalkRound = null;
-    const moraleBeforeCobra = bench.morale;
-    TALK_CTX = { playerId: bench.id };
-    applyTalkOption("cobrar");
-    out.cobrarPioraQuandoMuitoInfeliz = bench.morale < moraleBeforeCobra;
-
+    out.um = { streak: reserva.benchStreak, motivo: reserva.moraleReason, titularStreak: titular.benchStreak };
+    out.dois = { reserva: canTalkTo(reserva), titular: canTalkTo(titular) };
+    const antes = reserva.morale;
+    const c = await P.conversar(reserva.id, "apoiar");
+    out.tres = { c, antes, depois: reserva.morale, motivo: reserva.moraleReason, deNovo: canTalkTo(reserva) };
+    reserva.benchStreak = 6; reserva.morale = 10; reserva.lastTalkRound = null;
+    applyMoraleAfterMatch(0, 2);
+    out.quatro = { quer: reserva.wantsTransfer };
+    reserva.lastTalkRound = null;
+    const antes5 = reserva.morale;
+    const c5 = await P.conversar(reserva.id, "cobrar");
+    out.cinco = { c5, antes5, depois: reserva.morale };
     return out;
   });
 
-  check("1) benchStreak sobe pra reserva (3 rodadas fora):", result.benchStreak === 3);
-  console.log("   motivo reflete insatisfação:", result.reasonAfter3.includes("Insatisfeito") || result.reasonAfter3.includes("Contrariado"));
-  console.log("   titular não acumula benchStreak:", result.starterBenchStreakZero);
-  check("2) Conversar disponível pro insatisfeito, não pro titular feliz:", result.canTalkBench === true, result.canTalkStarter === false);
-  check("3) Moral sobe após 'Ouvir e apoiar':", result.moraleRoseAfterTalk, "| motivo atualizado:", result.reasonAfterTalk.includes("Conversou"));
-  console.log("   Não pode conversar de novo na mesma rodada:", result.cannotTalkAgainSameRound);
-  check("4) 'Pede transferência' fica marcado com moral muito baixa + banco prolongado:", result.wantsTransfer === true);
-  check("5) 'Cobrar postura' piora quem já está muito infeliz (efeito contextual):", result.cobrarPioraQuandoMuitoInfeliz);
-
-  // 6) Fluxo real via UI: abre o detalhe do jogador insatisfeito, vê a
-  // seção "Relacionamento" e o botão Conversar, conversa e confere o
-  // toast + fechamento do modal.
-  const uiResult = await page.evaluate(() => {
-    const bench = CAREER.squad.find((p) => !CAREER.lineup.starters.includes(p.id));
-    bench.benchStreak = 4;
-    bench.moraleReason = "Insatisfeito no banco há 4 jogos seguidos";
-    bench.lastTalkRound = null;
-    bench.wantsTransfer = false;
-    openDetail(bench.id);
-    return { id: bench.id, hasTalkBtn: !!document.querySelector('[data-act="talk"]') };
-  });
-  check("6) Botão Conversar aparece no detalhe:", uiResult.hasTalkBtn);
-  await page.click('[data-act="talk"]');
-  await page.waitForSelector("#talkOverlay.open");
-  await page.waitForTimeout(150);
-  const talkText = await page.evaluate(() => document.getElementById("talkContext").textContent);
-  console.log("   Modal mostra o motivo atual:", talkText.includes("Insatisfeito"));
-  await page.click('[data-talk="prometer"]');
-  await page.waitForTimeout(200);
-  const closedAfterTalk = await page.evaluate(() => !document.getElementById("talkOverlay").classList.contains("open"));
-  console.log("   Modal fecha após escolher uma resposta:", closedAfterTalk);
-  const toastVisible = await page.evaluate(() => !!document.querySelector(".ct-toast, #toast, [class*='toast']"));
-  console.log("   Toast de resultado aparece:", toastVisible);
-
+  check("1) 3 jogos fora: sequência no banco 3, motivo de insatisfação; o titular não acumula:", r.um.streak === 3 && /Insatisfeito|Contrariado/.test(r.um.motivo) && r.um.titularStreak === 0, JSON.stringify(r.um));
+  check("2) Conversar disponível para o insatisfeito, não para o titular:", r.dois.reserva === true && r.dois.titular === false, JSON.stringify(r.dois));
+  check("3) 'Ouvir e apoiar': a moral sobe, o motivo muda para a conversa e não dá para conversar de novo na rodada:", r.tres.c.ok && r.tres.depois > r.tres.antes && /Conversou/.test(r.tres.motivo) && r.tres.deNovo === false, JSON.stringify(r.tres));
+  check("4) Moral muito baixa com banco prolongado: pede transferência:", r.quatro.quer === true, JSON.stringify(r.quatro));
+  check("5) 'Cobrar postura' em quem já está muito infeliz piora a moral:", r.cinco.c5.ok && r.cinco.depois < r.cinco.antes5, JSON.stringify(r.cinco));
+  check("6) Sem erro na página:", erros.length === 0, JSON.stringify(erros.slice(0, 3)));
   await browser.close();
 })().catch((e) => { console.error("FATAL:", e); process.exit(1); });

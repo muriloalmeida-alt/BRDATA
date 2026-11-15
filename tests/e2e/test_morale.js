@@ -1,135 +1,90 @@
+// Moral dos jogadores — lote L5a, sem a tela antiga. Junta o test_morale e o
+// test_morale_season (que só imprimia as contas). Regras pelo motor e pela
+// ponte na página da v2; a moral na tela, pelo Perfil do jogador da v2 (o
+// card de moral da tela antiga foi removido antes, a pedido do usuário).
+//  1) O elenco principal nasce com moral 70 (a base sobe treinando com o
+//     principal na pré-temporada: +5 por dia no grupo misto, motor/treino.js).
+//  2) O Perfil do jogador da v2 mostra a moral dele.
+//  3) Depois da rodada 1: a moral dos titulares muda e quem ficou fora da
+//     súmula (nem titular nem banco) cai 2 × o quanto ele reclama
+//     (playerComplaintFactor, idade e overall). O teste antigo imprimia "68"
+//     (70 − 2) sem verificar: era a regra antes do amortecimento.
+//  4) Moral baixa (20): a renovação é recusada mesmo com salário 1,5× e 3
+//     anos (ponte.renovar, a da v2).
+//  5) Moral alta (90): o salário sugerido passa de 1,05× o atual e 1 ano é
+//     recusado (quer mais tempo).
+//  6) Virada de temporada (seasonMorale, motor/temporada.js): moral 100 com salário
+//     justo volta rumo a 70 (91); mal pago (metade do justo) cai para 64; bem
+//     pago (o dobro) sobe para 74.
 const { chromium } = require("playwright-core");
 const { check } = require("./_check");
-const { enterGame, waitForBoot } = require("./_startup");
-const { skipPreseason } = require("./_calendar_skip");
-const { playRound, playNextMatchRound } = require("./_round");
-
-async function newCareer(page, base, email) {
-  await page.goto(base + "/", { waitUntil: "load" });
-  await page.evaluate(async ({ email }) => {
-    await fetch("/api/auth/signup", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: "Morale Test", email, password: "senha123", phone: "11999999999", plan: "freemium" }) });
-    await fetch("/api/auth/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, password: "senha123" }) });
-  }, { email });
-  await page.goto(base + "/carreira.html", { waitUntil: "load" });
-  await page.click('.mt-competition-card[data-competition="brasileirao"]');
-  await page.waitForTimeout(200);
-  await page.click(".m3-club-row");
-  await page.waitForTimeout(150);
-  await page.click("#btnConfirmClub");
-  await enterGame(page);
-}
-async function getCareer(page) {
-  return page.evaluate(async () => (await (await fetch("/api/career")).json()).career);
-}
-async function putCareer(page, career) {
-  await page.evaluate(async (career) => {
-    await fetch("/api/career", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(career) });
-  }, career);
-}
+const { newCareer, noMotor, globaisDoMotor, base } = require("./_v2_carreira");
 
 (async () => {
-  const browser = await chromium.launch({
-    executablePath: process.env.PW_CHROMIUM_PATH || undefined,
-    headless: true,
-  });
-  const page = await browser.newPage({ viewport: { width: 390, height: 900 } });
+  const browser = await chromium.launch({ executablePath: process.env.PW_CHROMIUM_PATH || undefined, headless: true, args: ["--host-resolver-rules=MAP fonts.googleapis.com 127.0.0.1,MAP fonts.gstatic.com 127.0.0.1"] });
+  const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
   page.on("dialog", (d) => d.dismiss());
-  page.on("pageerror", (err) => console.log("PAGE ERROR:", err.message));
+  const erros = [];
+  page.on("pageerror", (err) => erros.push(err.message));
+  await newCareer(page, `moral${Date.now()}@teste.com`);
 
-  const base = "http://localhost:8787";
-  await newCareer(page, base, `morale${Date.now()}@teste.com`);
+  // 1) Nascem em 70.
+  const r1 = await noMotor(page, ({ CAREER }) => ({ todos70: CAREER.squad.filter((p) => p.origin === "principal").every((p) => p.morale === 70), id: CAREER.squad.find((p) => p.origin === "principal").id }));
+  check("1) O elenco principal nasce com moral 70:", r1.todos70);
 
-  // 1) Todo mundo nasce em 70
-  let career = await getCareer(page);
-  const allAt70 = career.squad.every((p) => p.morale === 70);
-  check("1) Todo o elenco nasce em moral 70:", allAt70);
+  // 2) Perfil do jogador.
+  await page.goto(base + "/elenco/jogador?id=" + encodeURIComponent(r1.id), { waitUntil: "domcontentloaded" });
+  await page.waitForFunction(() => /Moral/.test(document.body.innerText), null, { timeout: 30000 }).catch(() => {});
+  const perfil = await page.evaluate(() => { const l = document.body.innerText.split("\n"); const i = l.findIndex((x) => x.trim() === "Moral"); return i >= 0 ? l[i + 1].trim() : null; });
+  check("2) O Perfil do jogador da v2 mostra a moral dele (70):", perfil === "70", perfil);
 
-  // 2) AJUSTE (pedido do usuário: "remover o card de situação do
-  // elenco") — o KPI "Moral do elenco" (média) morava nesse card,
-  // removido da Central; a moral continua existindo e visível de
-  // verdade só no detalhe de CADA jogador (ver checagem 3 abaixo).
-  const squadKpisRemoved = await page.evaluate(() => !document.getElementById("squadKpis"));
-  check("2) Card 'Situação do elenco' (com a média de moral) removido da Central:", squadKpisRemoved);
+  // 3) Rodada 1: a moral medida logo antes da partida (a semana, com o treino,
+  // já passou) e logo depois.
+  await globaisDoMotor(page);
+  const r3 = await page.evaluate(async () => {
+    const aovivo = await import("/js/motor/aovivo.js");
+    const starters = CAREER.lineup.starters.filter(Boolean), bench = CAREER.lineup.bench.filter(Boolean);
+    const na = new Set([...starters, ...bench]);
+    const fora = CAREER.squad.filter((p) => !na.has(p.id) && p.origin === "principal").map((p) => ({ id: p.id, antes: p.morale, esperado: Math.max(0, Math.min(100, p.morale + Math.round(-2 * aovivo.playerComplaintFactor(p)))) }));
+    const titAntes = starters.map((id) => CAREER.squad.find((p) => p.id === id).morale);
+    const j = await jogarPartidaDaRodada();
+    const m = (id) => CAREER.squad.find((p) => p.id === id).morale;
+    return { ok: j.ok, passos: j.passos, titMudou: starters.some((id, i) => m(id) !== titAntes[i]), fora: fora.map((f) => ({ ...f, depois: m(f.id) })) };
+  });
+  check("3) Depois da rodada 1: a moral dos titulares muda e quem ficou fora da súmula cai 2 × o quanto reclama:",
+    r3.ok && r3.titMudou && r3.fora.length > 0 && r3.fora.every((f) => f.depois === f.esperado && f.depois < f.antes), JSON.stringify(r3.fora.slice(0, 4)));
 
-  // 3) KPI no detalhe do jogador
-  const firstId = career.squad[0].id;
-  await page.click(".m3-nav-item[data-panel='elenco']");
-  await page.waitForTimeout(300);
-  await page.click(`[data-id="${firstId}"]`);
-  await page.waitForSelector("#detailOverlay.open");
-  await page.waitForTimeout(200);
-  const detailText = await page.evaluate(() => document.getElementById("detailBody").textContent);
-  // AJUSTE (redesign, Tela 5) — rótulo do attr-grid agora é "MORAL"
-  // (maiúsculas, igual ao mockup), não mais "Moral" — comparação
-  // case-insensitive pra não depender de qual convenção de caixa a
-  // tela usa.
-  check("3) KPI 'Moral' aparece no detalhe:", detailText.toLowerCase().includes("moral"));
-  await page.click("#detailClose");
-  await page.waitForTimeout(200);
+  // 4 e 5) Renovação pela moral.
+  const r4 = await noMotor(page, async ({ CAREER, ponte, clube }) => {
+    const principal = CAREER.squad.filter((p) => p.origin === "principal");
+    const limpa = async () => { const c = ponte.coletivaAtual(); if (c.ok) await ponte.responderColetiva(c.respostas[0].letra); };
+    const baixa = principal[0];
+    baixa.morale = 20; baixa.contractUntil = CAREER.seasonYear;
+    const ren4 = await ponte.renovar(baixa.id, Math.round(baixa.wage * 1.5), 3);
+    await limpa();
+    const alta = principal[1];
+    alta.morale = 90; alta.contractUntil = CAREER.seasonYear;
+    const sugerido = clube.suggestedRenewalWage(alta);
+    const ren5 = await ponte.renovar(alta.id, sugerido, 1);
+    await limpa();
+    return { ren4, ren5, sugerido, wage: alta.wage };
+  });
+  check("4) Moral 20: a renovação é recusada mesmo com salário 1,5× e 3 anos:", r4.ren4.ok && r4.ren4.aceita === false && /infeliz/.test(r4.ren4.motivo), JSON.stringify(r4.ren4));
+  check("5) Moral 90: o salário sugerido passa de 1,05× e 1 ano é recusado (quer mais tempo):", r4.sugerido > 1.05 * r4.wage && r4.ren5.ok && r4.ren5.aceita === false && /mais longo/.test(r4.ren5.motivo), JSON.stringify({ sugerido: r4.sugerido, wage: r4.wage, ren5: r4.ren5 }));
 
-  // 4) Simula rodada 1 e confere reação da moral (titulares sobem, quem
-  // não jogou desce)
-  await page.click(".m3-nav-item[data-panel='central']");
-  await page.waitForTimeout(300);
-  const startersBefore = career.lineup.starters.filter(Boolean);
-  const benchBefore = career.lineup.bench;
-  await skipPreseason(page); // GE-CALENDAR-001: carreira nova começa na pré-temporada
-  await playNextMatchRound(page); // fluxo atual da rodada, ver _round.js
+  // 6) Virada de temporada.
+  await globaisDoMotor(page);
+  const r6 = await page.evaluate(() => {
+    const principal = CAREER.squad.filter((p) => p.origin === "principal");
+    const [a, b, c] = principal.slice(2, 5);
+    a.morale = 100; a.wage = fairWageFor(a);
+    b.morale = 70; b.wage = Math.round(fairWageFor(b) * 0.5);
+    c.morale = 70; c.wage = Math.round(fairWageFor(c) * 2);
+    [a, b, c].forEach((p) => { p.morale = seasonMorale(p); }); // o que a virada aplica a cada jogador (motor/temporada.js)
+    return { teto: a.morale, malPago: b.morale, bemPago: c.morale };
+  });
+  check("6) Virada: moral 100 com salário justo vai a 91; mal pago cai a 64; bem pago sobe a 74:", r6.teto === 91 && r6.malPago === 64 && r6.bemPago === 74, JSON.stringify(r6));
 
-  career = await getCareer(page);
-  const starterMorales = career.squad.filter((p) => startersBefore.includes(p.id)).map((p) => p.morale);
-  const benchMorales = career.squad.filter((p) => benchBefore.includes(p.id)).map((p) => p.morale);
-  const restIds = new Set([...startersBefore, ...benchBefore]);
-  const restMorales = career.squad.filter((p) => !restIds.has(p.id)).map((p) => p.morale);
-  check("4) Moral dos titulares depois da rodada 1 (deve ter mudado de 70):", starterMorales.length > 0 && starterMorales.some((m) => m !== 70), [...new Set(starterMorales)]);
-  console.log("   Moral do banco:", [...new Set(benchMorales)]);
-  console.log("   Moral de quem nem entrou na súmula (deve ser 68 = 70-2):", [...new Set(restMorales)]);
-
-  // 5) Força moral baixa e testa recusa de renovação
-  const p1 = career.squad.find((p) => p.origin === "principal");
-  p1.morale = 20;
-  p1.contractUntil = career.seasonYear;
-  await putCareer(page, career);
-  await page.reload({ waitUntil: "load" });
-  await waitForBoot(page);
-  await page.click(".m3-nav-item[data-panel='elenco']");
-  await page.waitForTimeout(300);
-  await page.click(`[data-id="${p1.id}"]`);
-  await page.waitForSelector("#detailOverlay.open");
-  await page.waitForTimeout(200);
-  await page.click('[data-act="renew"]');
-  await page.waitForSelector("#renewOverlay.open");
-  await page.waitForTimeout(200);
-  await page.fill("#renewWageInput", String(Math.round(p1.wage * 1.5))); // generosa mas dentro do orçamento
-  await page.selectOption("#renewDurationSelect", "3"); // duração longa também, pra isolar só o efeito da moral baixa
-  await page.click("#btnRenewPropose");
-  await page.waitForTimeout(200);
-  const toastLowMorale = await page.evaluate(() => document.getElementById("toast").textContent);
-  check("5) Toast recusa por moral baixa (deve recusar mesmo com salário generoso e contrato longo):", toastLowMorale.includes("recusou"), toastLowMorale.replace(/\s+/g, " ").trim());
-
-  // 6) Força moral alta e testa recusa de proposta de 1 ano
-  career = await getCareer(page);
-  const p2 = career.squad.find((p) => p.origin === "principal" && p.id !== p1.id);
-  p2.morale = 90;
-  p2.contractUntil = career.seasonYear;
-  await putCareer(page, career);
-  await page.reload({ waitUntil: "load" });
-  await waitForBoot(page);
-  await page.click(".m3-nav-item[data-panel='elenco']");
-  await page.waitForTimeout(300);
-  await page.click(`[data-id="${p2.id}"]`);
-  await page.waitForSelector("#detailOverlay.open");
-  await page.waitForTimeout(200);
-  await page.click('[data-act="renew"]');
-  await page.waitForSelector("#renewOverlay.open");
-  await page.waitForTimeout(200);
-  const suggested = await page.evaluate(() => document.getElementById("renewWageInput").value);
-  await page.selectOption("#renewDurationSelect", "1");
-  await page.click("#btnRenewPropose");
-  await page.waitForTimeout(200);
-  const toastHighMorale = await page.evaluate(() => document.getElementById("toast").textContent);
-  check("6) Salário sugerido pra moral 90 (deve ser mais que 1.05x):", Number(suggested) > 1.05 * p2.wage, "| sugerido:", suggested, "| wage original:", p2.wage);
-  console.log("   Toast recusa por duração curta + moral alta:", toastHighMorale.replace(/\s+/g, " ").trim());
-
+  check("7) Sem erro na página:", erros.length === 0, JSON.stringify(erros.slice(0, 3)));
   await browser.close();
 })().catch((e) => { console.error("FATAL:", e); process.exit(1); });

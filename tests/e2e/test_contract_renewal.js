@@ -1,131 +1,90 @@
+// Renovação de contrato — lote L5a, sem a tela antiga. Junta o
+// test_contract_renewal, o test_contract_renewal_edge (só imprimia) e o
+// test_coletiva_renovacao. As regras pela ponte (ponte.renovar, o mesmo
+// comando da tela de renovação da v2); as telas (Contrato e ações, Renovar,
+// "Proposta aceita."/"Proposta recusada." e a coletiva avulsa) estão no
+// test_v2_elenco_avancado, itens 2 a 4.
+//  1) Fora do último ano de contrato, renovar é recusado ("fora-do-prazo").
+//  2) Salário abaixo do mínimo pedido: recusa com o motivo ("pelo menos"),
+//     nada muda e abre a coletiva de renovação recusada (19).
+//  3) Salário sugerido por 2 anos: aceita; o contrato vai até a temporada
+//     + 2 e o salário fica o sugerido, gravado no save.
+//  4) Jogador de até 23 anos não aceita contrato de 1 ano, nem com salário
+//     alto (quer pelo menos 2).
+//  5) Proposta que estoura o teto salarial: recusada pelo orçamento ("teto"),
+//     sem mudar nada e sem coletiva.
+//  6) Moral muito baixa (< 30): recusa na certa, com a coletiva 19 (a
+//     pergunta da renovação recusada).
 const { chromium } = require("playwright-core");
 const { check } = require("./_check");
-const { enterGame, waitForBoot } = require("./_startup");
+const { newCareer, noMotor, saveNoServidor } = require("./_v2_carreira");
 
 (async () => {
-  const browser = await chromium.launch({
-    executablePath: process.env.PW_CHROMIUM_PATH || undefined,
-    headless: true,
-  });
-  const page = await browser.newPage({ viewport: { width: 390, height: 900 } });
+  const browser = await chromium.launch({ executablePath: process.env.PW_CHROMIUM_PATH || undefined, headless: true, args: ["--host-resolver-rules=MAP fonts.googleapis.com 127.0.0.1,MAP fonts.gstatic.com 127.0.0.1"] });
+  const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
   page.on("dialog", (d) => d.dismiss());
-  page.on("pageerror", (err) => console.log("PAGE ERROR:", err.message));
+  const erros = [];
+  page.on("pageerror", (err) => erros.push(err.message));
+  await newCareer(page, `renovacao${Date.now()}@teste.com`);
 
-  const base = "http://localhost:8787";
-  const email = `contractrenew${Date.now()}@teste.com`;
+  const r = await noMotor(page, async (M) => {
+    const { CAREER, ponte, clube } = M;
+    const out = {};
+    const limpaColetiva = async () => { const c = ponte.coletivaAtual(); if (c.ok) await ponte.responderColetiva(c.respostas[0].letra); };
+    const principal = CAREER.squad.filter((p) => p.origin === "principal");
+    const vence = (p) => { p.contractUntil = CAREER.seasonYear; };
 
-  await page.goto(base + "/", { waitUntil: "load" });
-  await page.evaluate(async ({ email }) => {
-    await fetch("/api/auth/signup", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: "Contract Renew", email, password: "senha123", phone: "11999999999", plan: "freemium" }) });
-    await fetch("/api/auth/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, password: "senha123" }) });
-  }, { email });
+    // 1) Fora do prazo.
+    const longe = principal.find((p) => p.contractUntil > CAREER.seasonYear) || principal[0];
+    longe.contractUntil = CAREER.seasonYear + 2;
+    out.um = await ponte.renovar(longe.id, longe.wage * 2, 2);
 
-  await page.goto(base + "/carreira.html", { waitUntil: "load" });
-  await page.click('.mt-competition-card[data-competition="brasileirao"]');
-  await page.waitForTimeout(200);
-  await page.click(".m3-club-row");
-  await page.waitForTimeout(150);
-  await page.click("#btnConfirmClub");
-  await enterGame(page);
+    // 2) Salário abaixo do mínimo.
+    const alvo = principal.find((p) => p.age > 26 && p.overall < 80 && p !== longe);
+    alvo.morale = 70;
+    vence(alvo);
+    const antes = { wage: alvo.wage, ate: alvo.contractUntil };
+    const r2 = await ponte.renovar(alvo.id, 1, 2);
+    out.dois = { r: r2, wage: alvo.wage === antes.wage, ate: alvo.contractUntil === antes.ate, coletiva: ponte.coletivaAtual() };
+    await limpaColetiva();
 
-  // Força o contrato de um jogador do elenco principal, velho/baixo
-  // overall (evita cair na regra de "quer mais tempo"), pra vencer
-  // NESSA temporada.
-  const targetId = await page.evaluate(async () => {
-    const r = await fetch("/api/career");
-    const data = await r.json();
-    const career = data.career;
-    const p = career.squad.find((x) => x.origin === "principal" && x.age > 26 && x.overall < 80);
-    p.contractUntil = career.seasonYear;
-    await fetch("/api/career", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(career) });
-    return p.id;
+    // 3) Salário sugerido, 2 anos.
+    const sugerido = clube.suggestedRenewalWage(alvo);
+    const r3 = await ponte.renovar(alvo.id, sugerido, 2);
+    out.tres = { r: r3, sugerido, ano: CAREER.seasonYear, id: alvo.id };
+
+    // 4) Jovem, 1 ano.
+    const jovem = principal.find((p) => p.age <= 23 && p !== alvo && p !== longe);
+    if (jovem) { jovem.morale = 70; vence(jovem); out.quatro = await ponte.renovar(jovem.id, clube.suggestedRenewalWage(jovem) * 3, 1); await limpaColetiva(); }
+
+    // 5) Teto salarial.
+    const outro = principal.find((p) => p.age > 26 && p !== alvo && p !== longe && p !== jovem);
+    outro.morale = 70;
+    vence(outro);
+    const antes5 = { wage: outro.wage, ate: outro.contractUntil };
+    const r5 = await ponte.renovar(outro.id, CAREER.finances.wageCap * 5, 2);
+    out.cinco = { r: r5, igual: outro.wage === antes5.wage && outro.contractUntil === antes5.ate, coletiva: ponte.coletivaAtual().ok };
+
+    // 6) Moral muito baixa.
+    outro.morale = 10;
+    const r6 = await ponte.renovar(outro.id, clube.suggestedRenewalWage(outro) * 2, 2);
+    out.seis = { r: r6, coletiva: ponte.coletivaAtual() };
+    await limpaColetiva();
+    return out;
   });
-  console.log("Jogador escolhido pro teste:", targetId);
+  const s = await saveNoServidor(page);
+  const gravado = s.squad.find((p) => p.id === r.tres.id);
 
-  await page.reload({ waitUntil: "load" });
-  await waitForBoot(page);
-  await page.click(".m3-nav-item[data-panel='elenco']");
-  await page.waitForTimeout(300);
-
-  // 1) Tag "Fim de contrato" aparece na lista
-  const tagVisible = await page.evaluate((id) => {
-    const row = document.querySelector(`[data-id="${id}"]`);
-    return row ? row.textContent.includes("Fim de contrato") : null;
-  }, targetId);
-  check("1) Tag 'Fim de contrato' na lista do Elenco:", tagVisible);
-
-  // 2) Abre detalhe -- aviso + botão Renovar aparecem
-  await page.click(`[data-id="${targetId}"]`);
-  await page.waitForSelector("#detailOverlay.open");
-  await page.waitForTimeout(200);
-  const detailHasWarning = await page.evaluate(() => document.getElementById("detailBody").textContent.includes("sai de graça"));
-  const renewBtnExists = await page.evaluate(() => !!document.querySelector('[data-act="renew"]'));
-  check("2) Aviso no detalhe:", detailHasWarning, "| botão Renovar existe:", renewBtnExists);
-
-  // 3) Abre sub-modal de renovação -- campos vêm prefilled
-  await page.click('[data-act="renew"]');
-  await page.waitForSelector("#renewOverlay.open");
-  await page.waitForTimeout(200);
-  const prefill = await page.evaluate(() => ({
-    wageValue: document.getElementById("renewWageInput").value,
-    suggestedText: document.getElementById("renewSuggestedWage").textContent,
-    durationValue: document.getElementById("renewDurationSelect").value,
-  }));
-  check("3) Pré-preenchido:", Number(prefill.wageValue) > 0 && !!prefill.durationValue && prefill.suggestedText.trim().length > 0, prefill);
-
-  // 4) Recusa por salário abaixo do mínimo
-  const wageBefore = await page.evaluate(async (id) => (await (await fetch("/api/career")).json()).career.squad.find((p) => p.id === id).wage, targetId);
-  await page.fill("#renewWageInput", "1");
-  await page.click("#btnRenewPropose");
-  await page.waitForTimeout(200);
-  const toastLow = await page.evaluate(() => document.getElementById("toast").textContent);
-  const renewOverlayClosedAfterLow = await page.evaluate(() => !document.getElementById("renewOverlay").classList.contains("open"));
-  const wageAfterLow = await page.evaluate(async (id) => (await (await fetch("/api/career")).json()).career.squad.find((p) => p.id === id).wage, targetId);
-  check("4) Toast (salário baixo):", toastLow.includes("recusou") && renewOverlayClosedAfterLow && wageAfterLow === wageBefore, toastLow.replace(/\s+/g, " ").trim());
-  console.log("   Sub-modal fechou:", renewOverlayClosedAfterLow, "| salário mudou (deve ser false):", wageAfterLow !== wageBefore);
-  // A recusa também dispara a coletiva de imprensa "19" (renovação
-  // recusada, ver proposeRenewal) POR CIMA do detalhe — responde antes
-  // de seguir (adicionada depois deste teste).
-  const pressAfterRefusal = await page.evaluate(() => document.getElementById("pressOverlay").classList.contains("open"));
-  if (pressAfterRefusal) {
-    await page.click("#pressOptions [data-press]");
-    await page.waitForTimeout(200);
-  }
-  console.log("   Coletiva após a recusa:", pressAfterRefusal, "| detalhe continua aberto:", await page.evaluate(() => document.getElementById("detailOverlay").classList.contains("open")));
-  // Responder a coletiva encerra a operação e volta pro Início
-  // (finishOperationAndGoHome) — reabre o detalhe do mesmo jogador.
-  if (!(await page.evaluate(() => document.getElementById("detailOverlay").classList.contains("open")))) {
-    await page.click(".m3-nav-item[data-panel='elenco']");
-    await page.waitForTimeout(300);
-    await page.click(`[data-id="${targetId}"]`);
-    await page.waitForSelector("#detailOverlay.open");
-    await page.waitForTimeout(200);
-  }
-
-  // 5) O detalhe continua aberto por baixo (recusa só fecha o sub-modal
-  // de renovação, ver proposeRenewal) -- propõe de novo com o valor
-  // sugerido + 2 anos, agora deve aceitar.
-  await page.click('[data-act="renew"]');
-  await page.waitForSelector("#renewOverlay.open");
-  await page.waitForTimeout(200);
-  await page.selectOption("#renewDurationSelect", "2");
-  await page.click("#btnRenewPropose");
-  await page.waitForTimeout(200);
-  const toastSuccess = await page.evaluate(() => document.getElementById("toast").textContent);
-  const after = await page.evaluate(async (id) => {
-    const career = (await (await fetch("/api/career")).json()).career;
-    return { contractUntil: career.squad.find((p) => p.id === id).contractUntil, wage: career.squad.find((p) => p.id === id).wage, seasonYear: career.seasonYear };
-  }, targetId);
-  check("5) Toast (sucesso):", toastSuccess.includes("renovou") && after.contractUntil === after.seasonYear + 2, toastSuccess.replace(/\s+/g, " ").trim());
-  console.log("   contractUntil depois:", after.contractUntil, "(deve ser seasonYear+2 =", after.seasonYear + 2, ") | salário:", after.wage);
-
-  // 6) Tag "Fim de contrato" some da lista agora
-  await page.waitForTimeout(200);
-  const tagGone = await page.evaluate((id) => {
-    const row = document.querySelector(`[data-id="${id}"]`);
-    return row ? !row.textContent.includes("Fim de contrato") : null;
-  }, targetId);
-  check("6) Tag sumiu da lista (deve ser true):", tagGone);
-
+  check("1) Fora do último ano de contrato, renovar é recusado:", r.um.ok === false && r.um.motivo === "fora-do-prazo", JSON.stringify(r.um));
+  check("2) Abaixo do mínimo: recusa com o motivo, nada muda e abre a coletiva de renovação recusada:",
+    r.dois.r.ok && r.dois.r.aceita === false && /pelo menos/.test(r.dois.r.motivo) && r.dois.wage && r.dois.ate && r.dois.r.coletiva === true && r.dois.coletiva.ok,
+    JSON.stringify(r.dois));
+  check("3) Sugerido por 2 anos: aceita; contrato até a temporada + 2 e o salário sugerido, gravados:",
+    r.tres.r.ok && r.tres.r.aceita === true && r.tres.r.ate === r.tres.ano + 2 && r.tres.r.salario === r.tres.sugerido && gravado && gravado.contractUntil === r.tres.ano + 2 && gravado.wage === r.tres.sugerido,
+    JSON.stringify({ r: r.tres, gravado: gravado && [gravado.contractUntil, gravado.wage] }));
+  check("4) Até 23 anos não aceita 1 ano, nem com salário alto:", r.quatro && r.quatro.ok && r.quatro.aceita === false && /mais longo/.test(r.quatro.motivo), JSON.stringify(r.quatro));
+  check("5) Acima do teto salarial: recusada pelo orçamento, nada muda e sem coletiva:", r.cinco.r.ok === false && r.cinco.r.motivo === "teto" && r.cinco.igual && !r.cinco.coletiva, JSON.stringify(r.cinco));
+  check("6) Moral muito baixa: recusa na certa, com a coletiva da renovação recusada:", r.seis.r.ok && r.seis.r.aceita === false && /infeliz/.test(r.seis.r.motivo) && r.seis.coletiva.ok && /recus/i.test(r.seis.coletiva.pergunta), JSON.stringify(r.seis));
+  check("7) Sem erro na página:", erros.length === 0, JSON.stringify(erros.slice(0, 3)));
   await browser.close();
 })().catch((e) => { console.error("FATAL:", e); process.exit(1); });
