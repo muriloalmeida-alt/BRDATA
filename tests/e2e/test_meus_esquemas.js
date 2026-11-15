@@ -1,142 +1,58 @@
-// Nova feature — Meus esquemas: biblioteca de esquemas táticos
-// completos (formação+titulares+banco+táticas juntos).
+// Meus esquemas (formação, titulares, banco e táticas juntos) — lote L5b, sem
+// a tela antiga. As regras pela ponte (esquemas, salvarEsquema, aplicarEsquema,
+// excluirEsquema, escalarAutomaticamente: os mesmos comandos das telas da v2;
+// a tela Esquemas está no test_v2_tatica_treino item 4).
+//  1) Começa sem esquemas, com o limite de 8.
+//  2) Salvar "Retranca fora" (5-3-2, pressão 1): fica na lista e ativo.
+//  3) Mexer na escalação depois de salvar desvincula (sem esquema ativo).
+//  4) Aplicar o esquema volta formação e táticas inteiras e o deixa ativo.
+//  5) Nome repetido é recusado.
+//  6) Excluir volta ao vazio.
+//  7) Com 8 esquemas, o 9º é recusado com o aviso do limite.
 const { chromium } = require("playwright-core");
 const { check } = require("./_check");
-const { enterGame } = require("./_startup");
+const { newCareer, noMotor } = require("./_v2_carreira");
 
 (async () => {
   const browser = await chromium.launch({ executablePath: process.env.PW_CHROMIUM_PATH || undefined, headless: true, args: ["--host-resolver-rules=MAP fonts.googleapis.com 127.0.0.1,MAP fonts.gstatic.com 127.0.0.1"] });
-  const page = await browser.newPage({ viewport: { width: 390, height: 900 } });
+  const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
   page.on("dialog", (d) => d.dismiss());
-  page.on("pageerror", (err) => console.log("PAGE ERROR:", err.message));
-  const base = "http://localhost:8787";
-  const email = `meusesquemas${Date.now()}@teste.com`;
-  await page.goto(base + "/", { waitUntil: "domcontentloaded" });
-  await page.evaluate(async ({ email }) => {
-    await fetch("/api/auth/signup", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: "Meus Esquemas", email, password: "senha123", phone: "11999999999", plan: "freemium" }) });
-    await fetch("/api/auth/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, password: "senha123" }) });
-  }, { email });
-  await page.goto(base + "/carreira.html", { waitUntil: "domcontentloaded" });
-  await page.click('.mt-competition-card[data-competition="brasileirao"]');
-  await page.waitForTimeout(300);
-  await page.click(".m3-club-row");
-  await page.waitForTimeout(150);
-  await page.click("#btnConfirmClub");
-  await enterGame(page);
+  const erros = [];
+  page.on("pageerror", (err) => erros.push(err.message));
+  await newCareer(page, `esquemas${Date.now()}@teste.com`);
 
-  // 1) Abrir pelo Menu -> estado vazio (nenhum esquema salvo ainda).
-  await page.click("#btnBottomMenu");
-  await page.waitForTimeout(150);
-  await page.click("#topbarMenu .mt-topbar-menu-item.group[data-submenu='tatica']");
-  await page.click("#btnOpenSchemes");
-  await page.waitForTimeout(300);
-  const check1 = await page.evaluate(() => ({
-    open: document.getElementById("schemesOverlay").classList.contains("open"),
-    count: document.getElementById("schemesCountLabel").textContent,
-    emptyMsg: document.getElementById("schemesList").textContent.includes("Nenhum esquema salvo"),
-  }));
-  check("1) Abre vazio (nenhum esquema salvo ainda):", check1.open && check1.count.includes("0") && check1.emptyMsg, JSON.stringify(check1));
-  await page.click("#schemesClose");
-  await page.waitForTimeout(200);
-
-  // 2) Configura uma tática específica na aba Tática, salva como
-  // "Retranca fora" -> aparece na lista, marcado ATIVO.
-  await page.click(".m3-nav-item[data-panel='escalacao']");
-  await page.waitForTimeout(300);
-  await page.evaluate(() => document.querySelector('#formationChipRow [data-formation="5-3-2"]').click());
-  await page.evaluate(() => document.querySelector('#tacticAxisRows .m3-instr-row[data-axis="pressao"] .m3-seg[data-level="1"]').click());
-  await page.click("#btnSaveLineup"); // comita a tática (pressão=1) em CAREER
-  await page.waitForTimeout(200);
-  await page.click("#btnBottomMenu");
-  await page.waitForTimeout(150);
-  await page.click("#topbarMenu .mt-topbar-menu-item.group[data-submenu='tatica']");
-  await page.click("#btnOpenSchemes");
-  await page.waitForTimeout(200);
-  await page.click("#btnNewScheme");
-  await page.waitForTimeout(150);
-  await page.fill("#newSchemeNameInput", "Retranca fora");
-  await page.click("#btnConfirmNewScheme");
-  await page.waitForTimeout(200);
-  const check2 = await page.evaluate(() => {
-    const row = document.querySelector('#schemesList .m3-scheme-row');
-    return {
-      count: document.getElementById("schemesCountLabel").textContent,
-      name: row?.querySelector(".m3-scheme-name")?.textContent,
-      icon: row?.querySelector(".m3-scheme-icon")?.textContent,
-      isActive: row?.classList.contains("active"),
-      badge: row?.querySelector(".m3-scheme-badge")?.textContent,
-      careerFormation: CAREER.lineup.formation,
-      careerPressao: CAREER.lineup.tactics.pressao,
-    };
+  const r = await noMotor(page, async ({ CAREER, ponte }) => {
+    const out = {};
+    const e0 = ponte.esquemas();
+    out.um = { n: e0.lista.length, max: e0.max, ativo: e0.ativo };
+    CAREER.lineup.formation = "5-3-2";
+    CAREER.lineup.tactics.pressao = 1;
+    const s2 = await ponte.salvarEsquema("Retranca fora");
+    const e2 = ponte.esquemas();
+    out.dois = { s2, n: e2.lista.length, nome: e2.lista[0] && e2.lista[0].nome, formacao: e2.lista[0] && e2.lista[0].formacao, ativo: e2.ativo === (e2.lista[0] && e2.lista[0].id) };
+    const id = e2.lista[0].id;
+    CAREER.lineup.formation = "4-3-3";
+    CAREER.lineup.tactics.pressao = 4;
+    await ponte.escalarAutomaticamente(false);
+    out.tres = { ativo: ponte.esquemas().ativo };
+    const s4 = await ponte.aplicarEsquema(id);
+    out.quatro = { s4, formacao: CAREER.lineup.formation, pressao: CAREER.lineup.tactics.pressao, ativo: ponte.esquemas().ativo === id };
+    out.cinco = await ponte.salvarEsquema("retranca FORA");
+    const s6 = await ponte.excluirEsquema(id);
+    out.seis = { s6, n: ponte.esquemas().lista.length };
+    for (let i = 0; i < 8; i++) await ponte.salvarEsquema(`Esquema ${i}`);
+    const s7 = await ponte.salvarEsquema("Esquema 9");
+    out.sete = { s7, n: ponte.esquemas().lista.length };
+    return out;
   });
-  check("2) Salvar 'Retranca fora' aparece na lista, marcado ATIVO, com o esquema 5-3-2:",
-    check2.count.includes("1") && check2.name === "Retranca fora" && check2.icon === "5-3-2" && check2.isActive && check2.badge === "ATIVO"
-    && check2.careerFormation === "5-3-2" && check2.careerPressao === 1, JSON.stringify(check2));
 
-  // 3) Mexer na formação DEPOIS de salvar desvincula (deixa de estar ATIVO).
-  await page.click("#schemesClose");
-  await page.waitForTimeout(150);
-  await page.evaluate(() => document.querySelector('#formationChipRow [data-formation="4-3-3"]').click());
-  await page.waitForTimeout(150);
-  const activeAfterEdit = await page.evaluate(() => CAREER.activeSchemeId);
-  check("3) Trocar a formação depois de salvar desvincula (activeSchemeId volta a null):", activeAfterEdit === null, activeAfterEdit);
-  await page.click("#btnBottomMenu");
-  await page.waitForTimeout(150);
-  await page.click("#topbarMenu .mt-topbar-menu-item.group[data-submenu='tatica']");
-  await page.click("#btnOpenSchemes");
-  await page.waitForTimeout(200);
-  const check3 = await page.evaluate(() => {
-    const row = document.querySelector('#schemesList .m3-scheme-row');
-    return { isActive: row?.classList.contains("active"), hasDelete: !!row?.querySelector(".m3-scheme-delete") };
-  });
-  console.log("   Esquema salvo não aparece mais marcado ATIVO, ganhou botão de apagar:", !check3.isActive && check3.hasDelete, JSON.stringify(check3));
-
-  // 4) Clicar no esquema salvo (não no botão de apagar) REAPLICA o
-  // esquema inteiro (formação 5-3-2 de volta + pressão=1).
-  await page.click('#schemesList .m3-scheme-row');
-  await page.waitForTimeout(200);
-  const check4 = await page.evaluate(() => ({
-    formation: CAREER.lineup.formation,
-    pressao: CAREER.lineup.tactics.pressao,
-    activeSchemeId: CAREER.activeSchemeId,
-  }));
-  check("4) Clicar no esquema reaplica formação+tática por inteiro:", check4.formation === "5-3-2" && check4.pressao === 1 && !!check4.activeSchemeId, JSON.stringify(check4));
-
-  await page.screenshot({ path: "screens/meus_esquemas.png" });
-
-  // 5) Apagar o esquema (confirmação) some da lista e volta ao estado vazio.
-  await page.click('#schemesList [data-delete]');
-  await page.waitForTimeout(200);
-  await page.click("#confirmOkBtn");
-  await page.waitForTimeout(200);
-  const check5 = await page.evaluate(() => ({
-    count: document.getElementById("schemesCountLabel").textContent,
-    emptyMsg: document.getElementById("schemesList").textContent.includes("Nenhum esquema salvo"),
-    schemesArr: CAREER.tacticalSchemes.length,
-  }));
-  check("5) Apagar o esquema volta ao estado vazio:", check5.count.includes("0") && check5.emptyMsg && check5.schemesArr === 0, JSON.stringify(check5));
-
-  // 6) Limite de esquemas — força 8 esquemas e confere que o 9º é
-  // recusado com um aviso, sem estourar o array.
-  await page.evaluate(() => {
-    for (let i = 0; i < 8; i++) saveTacticalScheme(`Esquema ${i}`);
-  });
-  await page.click("#schemesClose").catch(() => {});
-  await page.click("#btnBottomMenu");
-  await page.waitForTimeout(150);
-  await page.click("#topbarMenu .mt-topbar-menu-item.group[data-submenu='tatica']");
-  await page.click("#btnOpenSchemes");
-  await page.waitForTimeout(200);
-  await page.click("#btnNewScheme");
-  await page.waitForTimeout(150);
-  await page.fill("#newSchemeNameInput", "Esquema demais");
-  await page.click("#btnConfirmNewScheme");
-  await page.waitForTimeout(200);
-  const check6 = await page.evaluate(() => ({
-    total: CAREER.tacticalSchemes.length,
-    toastText: document.getElementById("toast")?.textContent || "",
-  }));
-  check("6) Limite de 8 esquemas bloqueia o 9º com aviso:", check6.total === 8 && check6.toastText.toLowerCase().includes("limite"), JSON.stringify(check6));
-
+  check("1) Começa sem esquemas, com limite de 8:", r.um.n === 0 && r.um.max === 8 && r.um.ativo === null, JSON.stringify(r.um));
+  check("2) Salvar 'Retranca fora' (5-3-2): na lista e ativo:", r.dois.s2.ok !== false && r.dois.n === 1 && r.dois.nome === "Retranca fora" && r.dois.formacao === "5-3-2" && r.dois.ativo, JSON.stringify(r.dois));
+  check("3) Mexer na escalação depois de salvar desvincula:", r.tres.ativo === null, JSON.stringify(r.tres));
+  check("4) Aplicar volta formação e táticas e deixa ativo:", r.quatro.s4.ok !== false && r.quatro.formacao === "5-3-2" && r.quatro.pressao === 1 && r.quatro.ativo, JSON.stringify(r.quatro));
+  check("5) Nome repetido (sem diferenciar maiúsculas) é recusado:", r.cinco.ok === false && r.cinco.motivo === "nome-repetido", JSON.stringify(r.cinco));
+  check("6) Excluir volta ao vazio:", r.seis.s6.ok !== false && r.seis.n === 0, JSON.stringify(r.seis));
+  check("7) Com 8 esquemas, o 9º é recusado com o aviso do limite:", r.sete.n === 8 && r.sete.s7.ok === false && /limite/i.test(r.sete.s7.mensagem || ""), JSON.stringify(r.sete));
+  check("8) Sem erro na página:", erros.length === 0, JSON.stringify(erros.slice(0, 3)));
   await browser.close();
 })().catch((e) => { console.error("FATAL:", e); process.exit(1); });

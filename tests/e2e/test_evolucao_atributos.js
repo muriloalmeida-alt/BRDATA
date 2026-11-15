@@ -2,30 +2,21 @@
 // reais. Com os treinos chega um momento que todos os atletas estão
 // em 99. Precisamos ter uma evolução menos agressiva e os jogadores
 // tbm podem perder atributos naturalmente") — ver derivePotentialForAdult/
-// attributeTrainingGain/backfillPlayerPotential em carreira.js.
+// attributeTrainingGain/backfillPlayerPotential (hoje no motor: treino.js,
+// temporada.js, carga.js). Lote L5b: pelo motor na página da v2 (antes, pelas
+// globais da tela antiga).
 const { chromium } = require("playwright-core");
 const { check } = require("./_check");
-const { enterGame } = require("./_startup");
+const { newCareer, globaisDoMotor } = require("./_v2_carreira");
 
 (async () => {
   const browser = await chromium.launch({ executablePath: process.env.PW_CHROMIUM_PATH || undefined, headless: true, args: ["--host-resolver-rules=MAP fonts.googleapis.com 127.0.0.1,MAP fonts.gstatic.com 127.0.0.1"] });
   const page = await browser.newPage({ viewport: { width: 390, height: 900 } });
   page.on("dialog", (d) => d.dismiss());
   page.on("pageerror", (err) => console.log("PAGE ERROR:", err.message));
-  const base = "http://localhost:8787";
-  const email = `evolucao${Date.now()}@teste.com`;
-  await page.goto(base + "/", { waitUntil: "domcontentloaded" });
-  await page.evaluate(async ({ email }) => {
-    await fetch("/api/auth/signup", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: "Evolucao Teste", email, password: "senha123", phone: "11999999999", plan: "freemium" }) });
-    await fetch("/api/auth/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, password: "senha123" }) });
-  }, { email });
-  await page.goto(base + "/carreira.html", { waitUntil: "domcontentloaded" });
-  await page.click('.mt-competition-card[data-competition="brasileirao"]');
-  await page.waitForTimeout(300);
-  await page.click(".m3-club-row");
-  await page.waitForTimeout(150);
-  await page.click("#btnConfirmClub");
-  await enterGame(page);
+  // Lote L5b (sem a tela antiga): as mesmas regras pelo motor na página da v2.
+  await newCareer(page, `evolucao${Date.now()}@teste.com`);
+  await globaisDoMotor(page);
 
   // 0) Todo jogador do elenco (real, vindo de buildRealPlayer) já
   // nasce com potential definido e >= overall.
@@ -34,7 +25,7 @@ const { enterGame } = require("./_startup");
     allHavePotential: CAREER.squad.every((p) => p.potential != null && p.potential >= p.overall && p.potential <= 99),
     sample: CAREER.squad.slice(0, 3).map((p) => ({ name: p.name, age: p.age, overall: p.overall, potential: p.potential })),
   }));
-  check("0) Todo jogador nasce com potential >= overall (buildRealPlayer):", check0.allHavePotential, JSON.stringify({ total: check0.total, sample: check0.sample }));
+  check("0) Todo jogador nasce com potential >= overall:", check0.allHavePotential, JSON.stringify({ total: check0.total, sample: check0.sample }));
 
   // 1) Jogador JOVEM com teto alto: treino técnico intenso, semana
   // após semana, converge pro potencial e NUNCA passa dele -- mesmo
@@ -103,7 +94,7 @@ const { enterGame } = require("./_startup");
       const ceiling = 75; // 5 pontos de espaço
       // 1 tentativa de ganho isolada (chance = room/15, room encolhe a
       // cada unidade convertida dentro de attributeTrainingGain).
-      cur += attributeTrainingGain(cur, ceiling, 4);
+      cur += attributeTrainingGain(cur, ceiling, 4, Math.random); // o motor recebe o sorteio (a tela antiga passava Math.random)
       gainsSeen.push(cur - before);
     }
     const avg = gainsSeen.reduce((a, b) => a + b, 0) / gainsSeen.length;
