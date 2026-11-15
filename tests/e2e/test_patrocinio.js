@@ -1,120 +1,52 @@
+// Patrocínio — lote L5c, sem a tela antiga. As regras pelo motor e pela
+// ponte (patrocinios, assinarPatrocinio: os mesmos da tela Patrocínios da
+// v2, que está no test_v2_clube item 4).
+//  1) A carreira nasce com os contratos master e de material esportivo, com
+//     valor por temporada.
+//  2) Na virada, o contrato que vence (1 temporada restante) vira 3 propostas;
+//     o outro (com mais tempo) continua.
+//  3) Só o vencido tem propostas; assinar uma grava o contrato novo.
+//  4) No fechamento do mês, o patrocínio entra no caixa, com o lançamento de
+//     patrocínio no extrato.
 const { chromium } = require("playwright-core");
 const { check } = require("./_check");
-const { enterGame, waitForBoot } = require("./_startup");
-const { playNextMatchRound, closeLeftoverTabela } = require("./_round");
-const { skipPreseason } = require("./_calendar_skip");
-
-async function newCareer(page, base, email) {
-  await page.goto(base + "/", { waitUntil: "domcontentloaded" });
-  await page.evaluate(async ({ email }) => {
-    await fetch("/api/auth/signup", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: "Patrocinio Test", email, password: "senha123", phone: "11999999999", plan: "freemium" }) });
-    await fetch("/api/auth/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, password: "senha123" }) });
-  }, { email });
-  await page.goto(base + "/carreira.html", { waitUntil: "domcontentloaded" });
-  await page.click('.mt-competition-card[data-competition="brasileirao"]');
-  await page.waitForTimeout(200);
-  await page.click(".m3-club-row");
-  await page.waitForTimeout(150);
-  await page.click("#btnConfirmClub");
-  await enterGame(page);
-}
-async function getCareer(page) {
-  return page.evaluate(async () => (await (await fetch("/api/career")).json()).career);
-}
-async function putCareer(page, career) {
-  await page.evaluate(async (career) => {
-    await fetch("/api/career", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(career) });
-  }, career);
-}
+const { newCareer, globaisDoMotor } = require("./_v2_carreira");
 
 (async () => {
-  const browser = await chromium.launch({
-    executablePath: process.env.PW_CHROMIUM_PATH || undefined,
-    headless: true,
-    args: ["--host-resolver-rules=MAP fonts.googleapis.com 127.0.0.1,MAP fonts.gstatic.com 127.0.0.1"],
-  });
-  const page = await browser.newPage({ viewport: { width: 390, height: 900 } });
+  const browser = await chromium.launch({ executablePath: process.env.PW_CHROMIUM_PATH || undefined, headless: true, args: ["--host-resolver-rules=MAP fonts.googleapis.com 127.0.0.1,MAP fonts.gstatic.com 127.0.0.1"] });
+  const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
   page.on("dialog", (d) => d.dismiss());
-  page.on("pageerror", (err) => console.log("PAGE ERROR:", err.message));
-  page.on("console", (m) => { if (m.type() === "error" && !m.text().includes("fonts.googleapis") && !m.text().includes("fundingchoices")) console.log("CONSOLE ERROR:", m.text()); });
+  const erros = [];
+  page.on("pageerror", (err) => erros.push(err.message));
+  await newCareer(page, `patrocinio${Date.now()}@teste.com`);
+  await globaisDoMotor(page);
 
-  const base = "http://localhost:8787";
-  await newCareer(page, base, `patro${Date.now()}@teste.com`);
+  const r = await page.evaluate(async () => {
+    const P = (await import("/js/motor/v2.js")).criarPonte();
+    const s = CAREER.sponsorship;
+    const out = { um: { master: s.master && s.master.valorTemporada, material: s.material && s.material.valorTemporada } };
+    s.master.temporadasRestantes = 1;
+    s.material.temporadasRestantes = 3;
+    CAREER.currentRound = 39;
+    CAREER.negativeSeasonsStreak = -99; // o teste mede o patrocínio, não a diretoria
+    await advanceSeason();
+    out.dois = { master: CAREER.sponsorship.master, propostas: (CAREER.sponsorProposals.master || []).length, material: !!CAREER.sponsorship.material };
+    const p = await P.patrocinios();
+    const t = (k) => p.tipos.find((x) => x.tipo === k);
+    const a = await P.assinarPatrocinio("master", 0);
+    out.tres = { masterPropostas: (t("master").propostas || []).length, materialPropostas: t("material").propostas, assinou: a.ok !== false, contrato: !!CAREER.sponsorship.master };
+    const caixa0 = CAREER.finances.cash;
+    const patro = () => (CAREER.financeLedger || []).filter((l) => /Patroc/i.test(l.label) && l.amount > 0).length;
+    const n0 = patro();
+    applyCalendarMonthlyFinances(3);
+    out.quatro = { antes: n0, depois: patro(), caixaMudou: CAREER.finances.cash !== caixa0 };
+    return out;
+  });
 
-  // 1) Carreira nova já nasce com os 2 contratos de patrocínio.
-  let career = await getCareer(page);
-  check("1) Nasce com contrato master:", !!career.sponsorship.master, "| material:", !!career.sponsorship.material);
-  console.log("   Valores plausíveis:", career.sponsorship.master.valorTemporada > 0, career.sponsorship.material.valorTemporada > 0);
-
-  // 2) Card "Patrocínios" aparece na Central com os 2 contratos.
-  await page.click(".m3-nav-item[data-panel='central']");
-  await page.waitForTimeout(300);
-  const boxText = await page.evaluate(() => document.getElementById("sponsorshipBox").textContent);
-  check("2) Card mostra Patrocinador Master e Material Esportivo:", boxText.includes("Patrocinador Master") && boxText.includes("Material Esportivo"));
-
-  // 3) Contrato vence (temporadasRestantes chega a 0) -- vira propostas
-  // pendentes e o botão "Ver propostas" aparece.
-  career = await getCareer(page);
-  career.sponsorship.master.temporadasRestantes = 1;
-  career.currentRound = 39; // temporada terminada, pronta pra avançar
-  await putCareer(page, career);
-  await page.reload({ waitUntil: "domcontentloaded" });
-  await waitForBoot(page);
-  await page.click(".m3-nav-item[data-panel='central']");
-  await page.waitForTimeout(300);
-  await page.click("#btnAdvanceSeason");
-  await page.waitForTimeout(200);
-  await page.click("#confirmOkBtn");
-  await page.waitForTimeout(500);
-  career = await getCareer(page);
-  check("3) Contrato master venceu (null) e virou propostas pendentes:", career.sponsorship.master === null, "| 3 propostas:", (career.sponsorProposals.master || []).length === 3);
-  console.log("   Material (tinha mais tempo) continua igual:", !!career.sponsorship.material);
-
-  // Fecha o modal de nova temporada pra poder navegar.
-  await page.click("#btnSeasonContinue").catch(() => {});
-  await page.waitForTimeout(300);
-  // O card de Patrocínios mora na aba Clube desde o reskin M3 (Bloco 1,
-  // Início/Clube) — não mais na Central (pré-existente, sem relação
-  // com o checklist de UX desta etapa; o teste nunca foi atualizado).
-  await page.click(".m3-nav-item[data-panel='clube']");
-  await page.waitForTimeout(300);
-
-  // 4) Botão "Ver propostas" aparece só pro master (vencido).
-  const hasBtnMaster = await page.evaluate(() => !!document.querySelector('[data-sponsor-choose="master"]'));
-  const hasBtnMaterial = await page.evaluate(() => !!document.querySelector('[data-sponsor-choose="material"]'));
-  check("4) Botão 'Ver propostas' só aparece pro master:", hasBtnMaster && !hasBtnMaterial);
-
-  // 5) Abre o modal, assina uma proposta, confere que o contrato é
-  // atualizado e o caixa cresce nas rodadas seguintes.
-  const cashBefore = career.finances.cash;
-  await page.click('[data-sponsor-choose="master"]');
-  await page.waitForSelector("#sponsorProposalsOverlay.open");
-  await page.waitForTimeout(200);
-  const proposalRows = await page.evaluate(() => document.querySelectorAll("#sponsorProposalsList .mt-sponsor-proposal-row").length);
-  await page.click('[data-sponsor-sign="0"]');
-  await page.waitForTimeout(300);
-  career = await getCareer(page);
-  check("5) Modal mostrou 3 propostas:", proposalRows === 3, "| contrato master assinado (não é mais null):", !!career.sponsorship.master);
-
-  // "Ir para o jogo" mora na aba Início -- volta pra lá antes de continuar.
-  await page.click(".m3-nav-item[data-panel='central']");
-  await page.waitForTimeout(200);
-
-  // 6) Receita de patrocínio entra no caixa e aparece na linha financeira
-  // da rodada, em Notícias (#newsFinanceRow). GE-CALENDAR-001: patrocínio
-  // e salários são lançados 1x por mês (virada do mês), e a linha só
-  // aparece na rodada em que houve lançamento — joga rodadas (fluxo atual,
-  // ver _round.js) até a 1ª com lançamento do mês.
-  await skipPreseason(page); // GE-CALENDAR-001: carreira nova começa na pré-temporada
-  let financeText = "", rounds = 0;
-  for (; rounds < 8 && !financeText; rounds++) {
-    const r = await playNextMatchRound(page, {
-      onNews: async (p) => { financeText = await p.evaluate(() => document.getElementById("newsFinanceRow").textContent); },
-    });
-    if (r.stoppedAt === "playerOfferOverlay") { await page.click("#btnPlayerOfferDecline"); await closeLeftoverTabela(page); }
-    else if (r.stoppedAt) throw new Error(`rodada parou numa tela inesperada: ${r.stoppedAt}`);
-  }
-  check("6) Linha financeira da rodada menciona patrocínio:", financeText.includes("Patrocínio"), { rodadasJogadas: rounds, linha: financeText.replace(/\s+/g, " ").trim() });
-
+  check("1) Nasce com os contratos master e de material esportivo, com valor por temporada:", r.um.master > 0 && r.um.material > 0, JSON.stringify(r.um));
+  check("2) Na virada, o que vence vira 3 propostas; o outro continua:", r.dois.master === null && r.dois.propostas === 3 && r.dois.material, JSON.stringify(r.dois));
+  check("3) Só o vencido tem propostas; assinar grava o contrato novo:", r.tres.masterPropostas === 3 && r.tres.materialPropostas === null && r.tres.assinou && r.tres.contrato, JSON.stringify(r.tres));
+  check("4) No fechamento do mês o patrocínio entra no caixa, com o lançamento no extrato:", r.quatro.depois > r.quatro.antes && r.quatro.caixaMudou, JSON.stringify(r.quatro));
+  check("5) Sem erro na página:", erros.length === 0, JSON.stringify(erros.slice(0, 3)));
   await browser.close();
 })().catch((e) => { console.error("FATAL:", e); process.exit(1); });

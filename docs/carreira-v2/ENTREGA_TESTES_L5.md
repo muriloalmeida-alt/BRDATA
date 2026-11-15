@@ -2,7 +2,7 @@
 
 **Data:** 15/11/2026
 **Plano:** `docs/carreira-v2/PLANO_TESTES_TELA_ANTIGA.md` (lote L5, dividido em partes como o L4)
-**Lista congelada:** 82 → 75 (L5a) → 68 (L5b)
+**Lista congelada:** 82 → 75 (L5a) → 68 (L5b) → 63 (L5c)
 
 ## L5a — contratos, moral e lesões (7 arquivos)
 
@@ -132,3 +132,54 @@ Os dois usam o ajudante novo `esperarAssincrono` (`_v2_carreira.js`), que repete
   - `test_meus_esquemas` 8/8;
   - `test_escalacao_avancada` 5/5.
 - `verificar-tela-antiga.js`: 68 na lista.
+
+## L5c — comissão, patrocínio, coletiva e notícias (5 arquivos)
+
+| Teste | Antes | Agora |
+|---|---|---|
+| `test_comissao_tecnica.js` | 8 verificações pela tela de comissão antiga; o custo medido rodando a rodada duas vezes pela tela antiga | 6 verificações pelo motor e pela ponte (`contratarComissao`, `demitirComissao`) |
+| `test_comissao_resumo_inicio.js` | o card da comissão no Início da tela antiga | **saiu:** na v2 é o painel de sugestões rápidas (`test_v2_comissao`) |
+| `test_patrocinio.js` | 6 verificações pelos cards e modais da tela antiga | 5 verificações pelo motor e pela ponte (`patrocinios`, `assinarPatrocinio`) |
+| `test_coletiva_imprensa.js` | 8 verificações (2 pelo modal da tela antiga) | 7 verificações pelo motor e pela ponte (`responderColetiva`) |
+| `test_noticias_rodada.js` | 8 verificações (1 pelo modal de resultados da tela antiga) | 8 verificações pelo motor |
+
+### Para onde foi cada verificação
+
+**`test_comissao_tecnica`:**
+- Contratar e demitir: pela ponte (antes: estados da tela antiga).
+- Sugestão de treino da rodada 1 (Pré-Temporada Física) e aplicar; tática contra o próximo adversário; escalação calculada: pelo motor.
+- O custo: no fechamento do mês, a diferença de caixa com e sem comissão é exatamente o custo mensal (antes: a mesma rodada jogada duas vezes pela tela antiga, com o sorteio gravado).
+- As telas: Clube → Comissão no `test_v2_clube` item 2 e o painel de sugestões no `test_v2_comissao`.
+
+**`test_comissao_resumo_inicio`:**
+- O card no Início da tela antiga (ícones, diálogo, "Agora não", toast) não existe na v2. O equivalente da v2, o painel de sugestões rápidas (aplicar, desfazer, sugestão desatualizada), está no `test_v2_comissao`.
+
+**`test_patrocinio`:**
+- Nasce com os dois contratos; na virada o vencido vira 3 propostas e o outro continua; assinar; o patrocínio entra no caixa no fechamento do mês: pelo motor e pela ponte. Os valores por temporada e "o outro continua" eram só impressos.
+- A tela Patrocínios da v2: `test_v2_clube` item 4.
+
+**`test_coletiva_imprensa`:**
+- A biblioteca (21 situações) e os gatilhos (goleada 12, zebra 10, lanterna 09/08, meta em risco 20/08): os mesmos critérios, pelo motor.
+- A resposta A sobe reputação e moral e fica no histórico: pela ponte (`responderColetiva`). O histórico era só impresso.
+- O modal e o X da tela antiga: a coletiva da v2 (pergunta, efeito depois de responder, "Pular" sem efeito) está no `test_v2_posjogo` itens 1 e 5.
+
+**`test_noticias_rodada`:**
+- Líder, zebra (agora também a goleada, antes só impressa), empate defendido, jejum quebrado, lanterna reage, a do meu clube primeiro e a genérica: pelo motor (`generateRoundNews`).
+- A tela Notícias da rodada da v2: `test_v2_posjogo` item 2. O bloco "Rádio Data FM" dos Resultados da tela antiga já tinha saído.
+
+### Contraprova
+
+| Regra quebrada | Verificação que falhou |
+|---|---|
+| sugestão de treino da rodada 1 não é a pré-temporada | `test_comissao_tecnica` 2 |
+| comissão não cobrada no mês | `test_comissao_tecnica` 5 |
+| goleada só com 5 gols de diferença (é 3) | `test_coletiva_imprensa` 2 |
+| sem manchete do lanterna | `test_noticias_rodada` 5 |
+
+### Validação L5c
+- Todos rodados com a saída gravada, com as verificações `true`:
+  - `test_comissao_tecnica` 6/6;
+  - `test_patrocinio` 5/5;
+  - `test_coletiva_imprensa` 7/7;
+  - `test_noticias_rodada` 8/8.
+- `verificar-tela-antiga.js`: 63 na lista.

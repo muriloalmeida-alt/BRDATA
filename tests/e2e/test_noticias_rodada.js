@@ -1,36 +1,28 @@
+// Notícias da rodada (manchetes geradas dos resultados) — lote L5c, sem a
+// tela antiga. As regras pelo motor (generateRoundNews) na página da v2. A
+// tela Notícias da rodada do pós-jogo da v2 está no test_v2_posjogo item 2;
+// o bloco "Rádio Data FM" dos Resultados da tela antiga já tinha saído.
+//  1) Mudança de líder vira manchete com o nome do novo líder.
+//  2) Zebra (o mais fraco goleia o mais forte) vira manchete de zebra e de
+//     goleada.
+//  3) Empate do mais fraco contra o mais forte vira "empate defendido".
+//  4) Vitória depois de 7 jogos sem vencer vira "jejum quebrado" (com o 7).
+//  5) O lanterna vencendo vira "lanterna reage".
+//  6) A manchete do meu clube vem primeiro, mesmo de um tipo menos
+//     prioritário.
+//  7) Sem nada para noticiar, sai a manchete genérica.
 const { chromium } = require("playwright-core");
 const { check } = require("./_check");
-const { enterGame } = require("./_startup");
-const { skipPreseason } = require("./_calendar_skip");
-
-async function newCareer(page, base, email) {
-  await page.goto(base + "/", { waitUntil: "domcontentloaded" });
-  await page.evaluate(async ({ email }) => {
-    await fetch("/api/auth/signup", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: "Noticias Test", email, password: "senha123", phone: "11999999999", plan: "freemium" }) });
-    await fetch("/api/auth/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, password: "senha123" }) });
-  }, { email });
-  await page.goto(base + "/carreira.html", { waitUntil: "domcontentloaded" });
-  await page.click('.mt-competition-card[data-competition="brasileirao"]');
-  await page.waitForTimeout(200);
-  await page.click(".m3-club-row");
-  await page.waitForTimeout(150);
-  await page.click("#btnConfirmClub");
-  await enterGame(page);
-}
+const { newCareer, globaisDoMotor } = require("./_v2_carreira");
 
 (async () => {
-  const browser = await chromium.launch({
-    executablePath: process.env.PW_CHROMIUM_PATH || undefined,
-    headless: true,
-    args: ["--host-resolver-rules=MAP fonts.googleapis.com 127.0.0.1,MAP fonts.gstatic.com 127.0.0.1"],
-  });
-  const page = await browser.newPage({ viewport: { width: 390, height: 900 } });
+  const browser = await chromium.launch({ executablePath: process.env.PW_CHROMIUM_PATH || undefined, headless: true, args: ["--host-resolver-rules=MAP fonts.googleapis.com 127.0.0.1,MAP fonts.gstatic.com 127.0.0.1"] });
+  const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
   page.on("dialog", (d) => d.dismiss());
-  page.on("pageerror", (err) => console.log("PAGE ERROR:", err.message));
-  page.on("console", (m) => { if (m.type() === "error" && !m.text().includes("fonts.googleapis") && !m.text().includes("fundingchoices")) console.log("CONSOLE ERROR:", m.text()); });
-
-  const base = "http://localhost:8787";
-  await newCareer(page, base, `noticias${Date.now()}@teste.com`);
+  const erros = [];
+  page.on("pageerror", (err) => erros.push(err.message));
+  await newCareer(page, `noticias${Date.now()}@teste.com`);
+  await globaisDoMotor(page);
 
   const results = await page.evaluate(() => {
     const teamIds = LEAGUE_TEAMS.map((t) => t.id).filter((id) => String(id) !== String(CAREER.clubId));
@@ -122,49 +114,13 @@ async function newCareer(page, base, email) {
     return out;
   });
 
-  check("1) Líder detectado:", results.lider);
-  check("2) Zebra detectada:", results.zebra, "| Goleada detectada:", results.goleada);
-  check("3) Empate defendido detectado:", results.empateDefendido);
-  check("4) Jejum quebrado (7 jogos) detectado:", results.jejum);
-  check("5) Lanterna reage detectado:", results.lanterna);
-  check("6) Manchete do meu clube vem primeiro mesmo sendo tipo menos prioritário:", results.prioridadeMinhaPrimeiro);
-  check("7) Fallback genérico quando nada dispara:", results.generico);
-
-  // 8) Fluxo real via UI -- modal de resultados mostra o bloco de
-  // notícias (pelo menos o fallback genérico, nunca vazio).
-  await page.click(".m3-nav-item[data-panel='central']");
-  await page.waitForTimeout(300);
-  await skipPreseason(page); // GE-CALENDAR-001: carreira nova começa na pré-temporada
-  await page.click("#btnSimulate");
-  await page.waitForSelector("#preMatchOverlay.open", { timeout: 5000 });
-  await page.click("#btnPreMatchGo");
-  // AJUSTE (item 4, pedido do usuário: "o jogo deve pausar no
-  // intervalo (45) e aguardar que o técnico clique em prosseguir") —
-  // clica em "Prosseguir" se o jogo parar no intervalo antes de seguir
-  // esperando o resto do fluxo.
-  await page.waitForSelector("#liveMatchOverlay.open", { timeout: 5000 }).catch(() => {});
-  await page.waitForFunction(() => typeof LIVE_MATCH !== 'undefined' && LIVE_MATCH && (LIVE_MATCH.halftime || LIVE_MATCH.finished), { timeout: 15000 }).catch(() => {});
-  if (await page.evaluate(() => typeof LIVE_MATCH !== 'undefined' && LIVE_MATCH && LIVE_MATCH.halftime)) {
-    await page.click("#btnLiveContinueSecondHalf");
-  }
-  await page.waitForSelector("#liveMatchOverlay.open", { timeout: 5000 });
-  await page.evaluate(() => skipLiveMatch());
-  await page.waitForSelector("#matchDetailOverlay.open", { timeout: 20000 });
-  await page.click("#btnMatchDetailContinue");
-  await page.waitForTimeout(200);
-  if (await page.evaluate(() => document.getElementById("pressOverlay").classList.contains("open"))) {
-    await page.click("#pressOptions [data-press]");
-  }
-  await page.waitForSelector("#newsOverlay.open", { timeout: 5000 });
-  await page.click("#btnNewsContinue");
-  await page.waitForSelector("#roundResultsOverlay.open");
-  await page.waitForTimeout(200);
-  // AJUSTE (pedido do usuário, revisão das modais de pós-jogo) — a
-  // seção "Rádio Data FM" foi removida de Resultados da rodada (a
-  // cobertura completa já mora na tela de Notícias, que abre antes
-  // dela no mesmo fluxo); o teste agora confirma a AUSÊNCIA da seção.
-  const hasNewsSection = await page.evaluate(() => !!document.getElementById("roundResultsNews"));
-  check("8) Modal de resultados NÃO mostra mais o bloco de notícias (Rádio Data FM, removido):", !hasNewsSection);
-
+  check("1) Mudança de líder vira manchete com o nome do novo líder:", results.lider === true);
+  check("2) Zebra goleando vira manchete de zebra e de goleada:", results.zebra === true && results.goleada === true, JSON.stringify({ zebra: results.zebra, goleada: results.goleada }));
+  check("3) Empate do mais fraco contra o mais forte vira 'empate defendido':", results.empateDefendido === true, JSON.stringify(results.empateDefendido));
+  check("4) Vitória depois de 7 jogos sem vencer vira 'jejum quebrado' (com o 7):", results.jejum === true);
+  check("5) O lanterna vencendo vira 'lanterna reage':", results.lanterna === true);
+  check("6) A manchete do meu clube vem primeiro, mesmo de tipo menos prioritário:", results.prioridadeMinhaPrimeiro === true);
+  check("7) Sem nada para noticiar, sai a manchete genérica:", results.generico === true);
+  check("8) Sem erro na página:", erros.length === 0, JSON.stringify(erros.slice(0, 3)));
   await browser.close();
 })().catch((e) => { console.error("FATAL:", e); process.exit(1); });
