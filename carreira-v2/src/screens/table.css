@@ -35,6 +35,7 @@
 .tb-legend-mark { width: 3px; height: 12px; border-radius: 2px; }
 
 .tb-results { padding-top: 14px; border-top: 1px solid #3a4452; }
+.tb-next-sub { margin: 2px 0 0; font-family: var(--bd-font-text); font-size: 14px; color: var(--bd-muted); }
 .tb-results ul, .tb-cup ul { margin: 6px 0 0; padding: 0; list-style: none; }
 .tb-res { display: grid; grid-template-columns: 1fr 64px 1fr; align-items: center; min-height: 52px; border-bottom: 1px solid var(--bd-line); font-family: var(--bd-font-display); font-weight: 500; font-size: 17px; }
 .tb-res-team { display: flex; align-items: center; gap: 10px; min-width: 0; }

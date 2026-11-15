@@ -3,7 +3,7 @@
 // divisionStandingsFor, wireTabelaDivisionSwitch, renderCopa). Só leitura.
 import type { Career, StandingRow, Team } from "./types.ts";
 import { sortRows as motorSortRows } from "../../../public/js/motor/tabela.js";
-import { COMPETITION_NAME } from "./home.ts";
+import { COMPETITION_NAME, matchDay } from "./home.ts";
 import { RELEGATION_N } from "../../../public/js/motor/temporada.js";
 
 // Tamanho das zonas de acesso e rebaixamento: o mesmo do motor
@@ -18,6 +18,9 @@ export const DIVISIONS = [
 export type Zone = "top" | "mid" | "reb" | null;
 export interface TableRow { pos: number; team: Team; pts: number; j: number; zone: Zone; mine: boolean }
 export interface ResultRow { home: Team; away: Team; gh: number; ga: number; mine: boolean }
+// RODADA-ATUAL (decisão do Murilo, 14/11): os jogos da rodada que ainda vai
+// acontecer (antes: "Resumo da rodada" da tela antiga).
+export interface UpcomingModel { round: number; date: string | null; games: { home: Team; away: Team; mine: boolean }[] }
 export interface TableModel {
   division: string;
   divisionName: string;
@@ -29,6 +32,7 @@ export interface TableModel {
   excerpt: TableRow[]; // 6 linhas ao redor do seu clube (prancha)
   legend: { zone: Exclude<Zone, null>; label: string }[];
   results: ResultRow[];
+  upcoming: UpcomingModel | null; // null = outra divisão ou temporada encerrada
 }
 
 // Critério da tabela: o do motor (public/js/motor/tabela.js).
@@ -72,6 +76,15 @@ export function buildTable(career: Career, teamById: (id: string | number) => Te
       mine: String(r.home) === me || String(r.away) === me,
     })).sort((a, b) => Number(b.mine) - Number(a.mine))
     : [];
+  const round = career.currentRound;
+  const fixtures = compId === own && round >= 1 && round <= 38 ? career.schedule?.[round] || [] : [];
+  const upcoming = fixtures.length
+    ? {
+      round, date: matchDay(career, round),
+      games: fixtures.map((f) => ({ home: teamById(f.home), away: teamById(f.away), mine: String(f.home) === me || String(f.away) === me }))
+        .sort((a, b) => Number(b.mine) - Number(a.mine)),
+    }
+    : null;
   return {
     division: compId,
     divisionName: COMPETITION_NAME[compId] || "Competição",
@@ -85,6 +98,7 @@ export function buildTable(career: Career, teamById: (id: string | number) => Te
       ? [{ zone: "top", label: "Libertadores" }, { zone: "mid", label: "Pré-Libertadores" }, { zone: "reb", label: "Rebaixamento" }]
       : [{ zone: "top", label: "Acesso" }, { zone: "reb", label: "Rebaixamento" }],
     results,
+    upcoming,
   };
 }
 

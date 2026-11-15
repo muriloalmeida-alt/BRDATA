@@ -292,6 +292,24 @@ Decisão do Murilo (14/11) sobre a licença dos escudos de uso restrito
 
 ⸻
 
+RODADA-ATUAL — jogos da rodada atual na Tabela da v2
+
+Status: APROVADO (Murilo, 15/11, "Aprovado"; PR #120).
+Origem: diferença da v2 achada no lote L4d (docs/carreira-v2/ENTREGA_TESTES_L4.md):
+o "Resumo da rodada" da tela antiga mostrava a qualquer momento os 10 jogos
+da rodada atual; a v2 só os resultados da última rodada e o seu jogo.
+Decisão do Murilo (14/11): "Mostrar na Tabela".
+Implementação: `carreira-v2/src/domain/table.ts` (`upcoming`: os jogos do
+calendário da rodada atual, o seu primeiro, com a data; só na sua divisão e
+com a temporada em andamento) e `screens/Table.tsx` (seção "Próxima
+rodada", depois de "Resultados da rodada", no mesmo formato, com "×").
+Só leitura; nada no save. Testes: `table.test.ts` (unitário) e
+`test_resumo_rodada` item 5 (antes da 1ª rodada e depois da 1ª e da 2ª);
+`test_v2_tabela` passa a contar só os resultados. Contraprova: sem o "seu
+primeiro" → o unitário falha.
+
+⸻
+
 HISTORICO-LINK — histórico de atualizações pelo Mais da v2
 
 Status: APROVADO (Murilo, 15/11, "Aprovado"; PR #119).
