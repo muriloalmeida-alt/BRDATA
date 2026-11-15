@@ -1,137 +1,97 @@
-// Pedido do usuário: "onboarding pro primeiro acesso... tutorial
-// curtinho (3-4 telas) na primeira carreira". Valida: aparece na 1ª
-// carreira, navega pelos slides, "Pular" funciona, nunca mais
-// reaparece (nem em conta nova retomando, nem depois de "Reiniciar"),
-// e libera o modal de login diário só depois de fechado.
+// Tutorial de boas-vindas da carreira oficial (v2): só na 1ª carreira da
+// conta; "Pular" vale o mesmo que "Começar"; nunca reaparece (nem ao
+// recarregar, nem depois de "Reiniciar carreira"); o assistente de início e
+// a recompensa diária vêm depois dele, nunca por cima.
+// L6a (sem a tela antiga): os 4 slides, "Avançar"/"Começar" e a marca na
+// conta estão em test_v2_onboarding (item 1). Aqui ficam os casos que só o
+// teste anterior tinha:
+//  1) "Pular" no 1º slide fecha o tutorial, marca a conta (onboardingSeen)
+//     e abre o assistente (sem a recompensa por cima).
+//  2) Terminado o assistente, a recompensa diária abre em seguida; o Início
+//     renderiza normal.
+//  3) Recarregar não reabre o tutorial.
+//  4) Depois de "Reiniciar carreira", a 2ª carreira não mostra o tutorial:
+//     "Ir para o clube" vai direto ao assistente.
 const { chromium } = require("playwright-core");
-const { passCareerSetup, waitForBoot } = require("./_startup");
 const { check } = require("./_check");
+const { base, signup, serverCareer } = require("./_v2_carreira");
+
+async function criarPelaTela(v2) {
+  await v2.goto(base + "/", { waitUntil: "domcontentloaded" });
+  await v2.waitForSelector('.ac-opt[role="radio"]', { timeout: 40000 });
+  await v2.locator(".ac-opt").first().click();
+  await v2.click(".ac-foot .cta");
+  await v2.waitForSelector(".ac-club", { timeout: 40000 });
+  await v2.locator(".ac-club").first().click();
+  await v2.click(".ac-foot .cta");
+  await v2.waitForSelector(".ac-clubline", { timeout: 20000 });
+  await v2.click(".ac-form .cta");
+  await v2.waitForURL(/\/nova\/pronto$/, { timeout: 90000 });
+  await v2.click(".ac-foot .cta"); // "Ir para o clube"
+}
+const conta = (v2) => v2.evaluate(async () => (await (await fetch("/api/auth/me", { cache: "no-store" })).json()).user);
+async function pularAssistente(v2) {
+  for (let n = 1; n <= 4; n++) {
+    await v2.waitForFunction((n) => (document.querySelector(".wz-k")?.textContent || "").includes(`Passo ${n} de 4`), n, { timeout: 30000 });
+    await v2.click(".wz-skip");
+  }
+}
 
 (async () => {
-  const browser = await chromium.launch({
-    executablePath: process.env.PW_CHROMIUM_PATH || undefined,
-    headless: true,
-    args: ["--host-resolver-rules=MAP fonts.googleapis.com 127.0.0.1,MAP fonts.gstatic.com 127.0.0.1"],
-  });
-  const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
-  page.on("pageerror", (err) => console.log("PAGE ERROR:", err.message));
-  const base = "http://localhost:8787";
-  const email = `onboard${Date.now()}@teste.com`;
+  const browser = await chromium.launch({ executablePath: process.env.PW_CHROMIUM_PATH || undefined, headless: true, args: ["--host-resolver-rules=MAP fonts.googleapis.com 127.0.0.1,MAP fonts.gstatic.com 127.0.0.1"] });
+  const v2 = await browser.newPage({ viewport: { width: 390, height: 844 } });
+  v2.on("dialog", (d) => d.dismiss());
+  v2.on("pageerror", (err) => console.log("PAGE ERROR:", err.message));
+  await signup(v2, `onboard${Date.now()}@teste.com`);
+  await criarPelaTela(v2);
 
-  await page.goto(base + "/", { waitUntil: "domcontentloaded" });
-  await page.evaluate(async ({ email }) => {
-    await fetch("/api/auth/signup", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: "Onboard Teste", email, password: "senha123", phone: "11999999999", plan: "freemium" }) });
-    await fetch("/api/auth/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, password: "senha123" }) });
-  }, { email });
-  await page.goto(base + "/carreira.html", { waitUntil: "domcontentloaded" });
-  await page.waitForTimeout(500);
-  await page.click('.mt-competition-card[data-competition="brasileirao"]');
-  await page.waitForTimeout(300);
-  await page.click(".m3-club-row");
-  await page.waitForTimeout(150);
-  await page.click("#btnConfirmClub");
-  await passCareerSetup(page); // Cap. 1 T05/T06 (redesign)
-  // Espera a tela do jogo (estado) — o tutorial abre no mesmo instante;
-  // antes 700 ms fixos, curto no CI (criar a carreira demora mais).
-  await page.waitForFunction(() => { const g = document.getElementById("screenGame"); return !!g && !g.classList.contains("hidden"); }, null, { timeout: 20000 }).catch(() => {});
+  // 1) Pular no 1º slide.
+  await v2.waitForURL(/\/boas-vindas$/, { timeout: 20000 });
+  await v2.waitForSelector(".ob-title", { timeout: 10000 });
+  const antes = (await conta(v2)).onboardingSeen;
+  const slide = await v2.evaluate(() => document.querySelector(".ob-dots").getAttribute("aria-label"));
+  await v2.click(".ob-skip");
+  await v2.waitForURL(/assistente=1/, { timeout: 20000 });
+  await v2.waitForSelector(".wz", { timeout: 20000 });
+  const depois = (await conta(v2)).onboardingSeen;
+  const t1 = await v2.evaluate(() => ({ path: location.pathname, tutorial: !!document.querySelector(".ob"), recompensa: location.pathname === "/recompensa" }));
+  check("1) 'Pular' no 1º slide fecha o tutorial, marca a conta e abre o assistente (sem a recompensa por cima):",
+    slide === "Tela 1 de 4" && antes === false && depois === true && t1.path === "/escalacao" && !t1.tutorial, JSON.stringify({ slide, antes, depois, ...t1 }));
 
-  // 1) Tutorial abre sozinho na 1ª carreira, ANTES do login diário.
-  const initial = await page.evaluate(() => ({
-    onboardOpen: document.getElementById("onboardingOverlay").classList.contains("open"),
-    dailyLoginOpen: document.getElementById("dailyLoginOverlay").classList.contains("open"),
-    title: document.querySelector(".mt-onboard-title")?.textContent,
-    dots: document.querySelectorAll(".mt-onboard-dot").length,
-    nextLabel: document.getElementById("btnOnboardNext").textContent,
-  }));
-  check("1) Tutorial abre sozinho (login diário ainda NÃO), 4 slides, começa no 1º:",
-    initial.onboardOpen && !initial.dailyLoginOpen && initial.dots === 4 && initial.nextLabel === "Avançar", JSON.stringify(initial));
+  // 2) Assistente terminado: recompensa diária em seguida; Início normal.
+  await pularAssistente(v2);
+  await v2.waitForURL(/\/recompensa$/, { timeout: 30000 });
+  const receber = v2.locator("button.cta", { hasText: "Receber" });
+  await receber.waitFor({ timeout: 20000 });
+  await receber.click();
+  await v2.waitForFunction(() => ![...document.querySelectorAll("button.cta")].some((b) => /Receb/.test(b.textContent)), null, { timeout: 20000 });
+  await v2.goto(base + "/", { waitUntil: "domcontentloaded" });
+  await v2.waitForSelector(".home", { timeout: 30000 });
+  const s2 = await serverCareer(v2);
+  check("2) Depois do assistente vem a recompensa diária; o Início renderiza normal:", s2.startupWizardSeen === true && !!(await v2.$(".home h1, .home")), JSON.stringify({ seen: s2.startupWizardSeen }));
 
-  // 2) "Avançar" 3x passa pelos slides 2, 3, 4 (último vira "Começar").
-  await page.click("#btnOnboardNext");
-  await page.waitForTimeout(100);
-  const slide2 = await page.evaluate(() => document.querySelector(".mt-onboard-title").textContent);
-  await page.click("#btnOnboardNext");
-  await page.waitForTimeout(100);
-  const slide3 = await page.evaluate(() => document.querySelector(".mt-onboard-title").textContent);
-  await page.click("#btnOnboardNext");
-  await page.waitForTimeout(100);
-  const slide4 = await page.evaluate(() => ({ title: document.querySelector(".mt-onboard-title").textContent, nextLabel: document.getElementById("btnOnboardNext").textContent }));
-  check("2) Avança pelos 4 slides (títulos diferentes), último botão vira 'Começar':",
-    slide2 !== initial.title && slide3 !== slide2 && slide4.title !== slide3 && slide4.nextLabel === "Começar",
-    JSON.stringify({ s1: initial.title, s2: slide2, s3: slide3, s4: slide4.title }));
+  // 3) Recarregar não reabre o tutorial.
+  await v2.reload({ waitUntil: "domcontentloaded" });
+  await v2.waitForSelector(".home", { timeout: 30000 });
+  await v2.waitForTimeout(800);
+  const t3 = await v2.evaluate(() => ({ path: location.pathname, tutorial: !!document.querySelector(".ob") }));
+  check("3) Recarregar não reabre o tutorial:", t3.path === "/" && !t3.tutorial, JSON.stringify(t3));
 
-  // 3) "Começar" no último slide fecha o tutorial E segue a fila de telas
-  // de entrada: tutorial -> assistente de início (carreira nova, ver
-  // maybeOpenStartupWizard em carreira.js) -> login diário. Nunca duas
-  // sobrepostas.
-  await page.click("#btnOnboardNext");
-  // Esperas explícitas pelo estado (não wait fixo) -- fechar o tutorial
-  // dispara um POST real (/api/account/onboarding-seen) antes da próxima
-  // tela da fila abrir, tempo de rede variável.
-  await page.waitForSelector("#startupWizardOverlay.open", { timeout: 5000 }).catch(() => {});
-  const afterFinish = await page.evaluate(() => ({
-    onboardOpen: document.getElementById("onboardingOverlay").classList.contains("open"),
-    wizardOpen: document.getElementById("startupWizardOverlay").classList.contains("open"),
-    dailyLoginOpen: document.getElementById("dailyLoginOverlay").classList.contains("open"),
-  }));
-  check("3) Tutorial fecha e o assistente de início abre em seguida (sem o login diário por cima):", !afterFinish.onboardOpen && afterFinish.wizardOpen && !afterFinish.dailyLoginOpen, JSON.stringify(afterFinish));
-  for (let i = 0; i < 8 && await page.locator("#startupWizardOverlay.open").count(); i++) {
-    await page.click("#btnWizardSkip");
-    await page.waitForTimeout(150);
-  }
-  await page.waitForSelector("#dailyLoginOverlay.open", { timeout: 5000 }).catch(() => {});
-  const afterWizard = await page.evaluate(() => ({
-    wizardOpen: document.getElementById("startupWizardOverlay").classList.contains("open"),
-    dailyLoginOpen: document.getElementById("dailyLoginOverlay").classList.contains("open"),
-  }));
-  check("3b) Fechado o assistente, o login diário abre em seguida:", !afterWizard.wizardOpen && afterWizard.dailyLoginOpen, JSON.stringify(afterWizard));
-
-  const meAfter = await page.evaluate(async () => (await (await fetch("/api/auth/me")).json()).user.onboardingSeen);
-  check("4) Servidor confirma onboardingSeen:true:", meAfter === true);
-
-  // 5) Coleta a recompensa (fecha o daily login) e confere que o app
-  // segue funcional normalmente.
-  await page.click("#btnClaimDailyLogin", { timeout: 3000 }).catch(() => {});
-  await page.waitForTimeout(300);
-  const centralOk = await page.evaluate(() => document.getElementById("panel-central").classList.contains("active"));
-  check("5) Depois de tudo, a Central renderiza normal:", centralOk);
-
-  // 6) Reload da página (mesma sessão) NÃO reabre o tutorial de novo.
-  await page.reload({ waitUntil: "domcontentloaded" });
-  await waitForBoot(page);
-  const afterReload = await page.evaluate(() => document.getElementById("onboardingOverlay").classList.contains("open"));
-  check("6) Depois de recarregar a página, o tutorial NÃO reaparece:", !afterReload);
-
-  // 7) "Pular" também marca como visto (testado com uma 2ª conta nova,
-  // clicando Pular na 1ª tela em vez de percorrer tudo).
-  const email2 = `onboardskip${Date.now()}@teste.com`;
-  await page.evaluate(async ({ email }) => {
-    await fetch("/api/auth/signup", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: "Skip Teste", email, password: "senha123", phone: "11999999999", plan: "freemium" }) });
-    await fetch("/api/auth/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, password: "senha123" }) });
-  }, { email: email2 });
-  await page.goto(base + "/carreira.html", { waitUntil: "domcontentloaded" });
-  await page.waitForTimeout(500);
-  await page.click('.mt-competition-card[data-competition="brasileirao"]');
-  await page.waitForTimeout(300);
-  await page.click(".m3-club-row");
-  await page.waitForTimeout(150);
-  await page.click("#btnConfirmClub");
-  await passCareerSetup(page); // Cap. 1 T05/T06 (redesign)
-  // Espera o tutorial abrir (criar a carreira passou de 700 ms no CI).
-  const openedForSkip = await page.waitForSelector("#onboardingOverlay.open", { timeout: 20000 }).then(() => true, () => false);
-  await page.click("#btnOnboardSkip");
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.click("#btnWizardSkip", { timeout: 4000 }).catch(() => {});
-  await page.waitForTimeout(400);
-  const afterSkip = await page.evaluate(() => ({
-    onboardOpen: document.getElementById("onboardingOverlay").classList.contains("open"),
-    dailyLoginOpen: document.getElementById("dailyLoginOverlay").classList.contains("open"),
-  }));
-  const meAfterSkip = await page.evaluate(async () => (await (await fetch("/api/auth/me")).json()).user.onboardingSeen);
-  check("7) 'Pular' fecha na hora, libera login diário, e marca visto no servidor:",
-    openedForSkip && !afterSkip.onboardOpen && afterSkip.dailyLoginOpen && meAfterSkip === true, JSON.stringify({ openedForSkip, ...afterSkip, meAfterSkip }));
+  // 4) Reiniciar carreira → 2ª carreira sem tutorial, direto ao assistente.
+  await v2.goto(base + "/saves", { waitUntil: "domcontentloaded" });
+  await v2.locator("button.pr-row", { hasText: "Reiniciar carreira" }).click();
+  await v2.waitForSelector("#sv-t");
+  await v2.fill('[role="alertdialog"] input', "reiniciar");
+  await v2.click('[role="alertdialog"] .text-btn');
+  await v2.waitForFunction(() => location.pathname !== "/saves" && !document.querySelector(".home") && document.querySelector("h1"), null, { timeout: 30000 });
+  const visitas = [];
+  v2.on("framenavigated", (f) => { if (f === v2.mainFrame()) visitas.push(new URL(f.url()).pathname); });
+  await criarPelaTela(v2);
+  await v2.waitForURL(/assistente=1/, { timeout: 30000 });
+  await v2.waitForSelector(".wz", { timeout: 20000 });
+  const t4 = await v2.evaluate(() => ({ path: location.pathname, tutorial: !!document.querySelector(".ob") }));
+  check("4) Depois de 'Reiniciar carreira', a 2ª carreira não mostra o tutorial: 'Ir para o clube' vai direto ao assistente:",
+    t4.path === "/escalacao" && !t4.tutorial && !visitas.includes("/boas-vindas"), JSON.stringify({ ...t4, visitas }));
 
   await browser.close();
   console.log("OK");

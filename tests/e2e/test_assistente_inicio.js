@@ -1,217 +1,99 @@
-// Pedido do usuário: "Ao iniciar o jogo, antes de carregar a página de
-// início e após escolher a divisão e o clube quero que você crie
-// perguntas (formato onboarding) para que o treinador monte sua
-// formação favorita, contrate comissão e olheiros e faça tudo o que
-// for necessário para iniciar o jogo." Decisões confirmadas via
-// AskUserQuestion: 4 passos (Formação+titulares, Comissão Técnica,
-// Olheiros, Táticas básicas), todos puláveis, aparece em TODA carreira
-// nova (não só a 1ª da conta), tutorial de navegação existente continua
-// rodando ANTES dele na 1ª carreira.
+// Assistente de início da carreira oficial (v2): 4 passos (Formação,
+// Comissão, Olheiros, Táticas), cada um na tela da v2 que já existe,
+// todos puláveis; aparece em TODA carreira nova (não só na 1ª da conta),
+// depois do tutorial e antes da recompensa diária.
+// L6a (sem a tela antiga): a sequência dos passos, "Continuar"/"Pular esta
+// etapa" e a gravação das instruções do passo 4 estão em test_v2_onboarding
+// (itens 2 e 3); contratar comissão e olheiro nas próprias telas, em
+// test_v2_comissao e test_v2_clube. Aqui ficam os casos que só o teste
+// anterior tinha:
+//  1) Trocar a formação no passo 1 grava de verdade (lineup.formation) e o
+//     assistente continua no passo 1.
+//  2) Pulando os passos 2 a 4, nada é contratado (comissão e olheiros) e o
+//     save fica marcado (startupWizardSeen); a recompensa vem em seguida.
+//  3) A Escalação fora do assistente mostra a formação escolhida, sem a
+//     barra do assistente.
+//  4) 2ª carreira (Reiniciar): o assistente aparece de novo, no passo 1.
 const { chromium } = require("playwright-core");
 const { check } = require("./_check");
-const { passCareerSetup } = require("./_startup");
+const { base, signup, serverCareer } = require("./_v2_carreira");
 
-async function newAccount(page, base, email) {
-  await page.goto(base + "/", { waitUntil: "load" });
-  await page.evaluate(async ({ email }) => {
-    await fetch("/api/auth/signup", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: "Wizard Teste", email, password: "senha123", phone: "11999999999", plan: "freemium" }) });
-    await fetch("/api/auth/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, password: "senha123" }) });
-  }, { email });
+async function criarPelaTela(v2) {
+  await v2.goto(base + "/", { waitUntil: "domcontentloaded" });
+  await v2.waitForSelector('.ac-opt[role="radio"]', { timeout: 40000 });
+  await v2.locator(".ac-opt").first().click();
+  await v2.click(".ac-foot .cta");
+  await v2.waitForSelector(".ac-club", { timeout: 40000 });
+  await v2.locator(".ac-club").first().click();
+  await v2.click(".ac-foot .cta");
+  await v2.waitForSelector(".ac-clubline", { timeout: 20000 });
+  await v2.click(".ac-form .cta");
+  await v2.waitForURL(/\/nova\/pronto$/, { timeout: 90000 });
+  await v2.click(".ac-foot .cta"); // "Ir para o clube"
 }
-async function pickClub(page, base) {
-  await page.goto(base + "/carreira.html", { waitUntil: "load" });
-  await page.click('.mt-competition-card[data-competition="brasileirao"]');
-  await page.waitForTimeout(300);
-  await page.click(".m3-club-row");
-  await page.waitForTimeout(150);
-  await page.click("#btnConfirmClub");
-  await passCareerSetup(page); // Cap. 1 T05/T06 (redesign)
-}
+const passo = (v2, n) => v2.waitForFunction((n) => (document.querySelector(".wz-k")?.textContent || "").includes(`Passo ${n} de 4`), n, { timeout: 30000 });
 
 (async () => {
-  const browser = await chromium.launch({
-    executablePath: process.env.PW_CHROMIUM_PATH || undefined,
-    headless: true,
-    args: ["--host-resolver-rules=MAP fonts.googleapis.com 127.0.0.1,MAP fonts.gstatic.com 127.0.0.1"],
-  });
-  const page = await browser.newPage({ viewport: { width: 390, height: 900 } });
-  page.on("dialog", (d) => d.dismiss());
-  page.on("pageerror", (err) => console.log("PAGE ERROR:", err.message));
-  const base = "http://localhost:8787";
+  const browser = await chromium.launch({ executablePath: process.env.PW_CHROMIUM_PATH || undefined, headless: true, args: ["--host-resolver-rules=MAP fonts.googleapis.com 127.0.0.1,MAP fonts.gstatic.com 127.0.0.1"] });
+  const v2 = await browser.newPage({ viewport: { width: 390, height: 844 } });
+  v2.on("dialog", (d) => d.dismiss());
+  v2.on("pageerror", (err) => console.log("PAGE ERROR:", err.message));
+  await signup(v2, `assist${Date.now()}@teste.com`);
+  await criarPelaTela(v2);
+  await v2.waitForURL(/\/boas-vindas$/, { timeout: 20000 });
+  await v2.click(".ob-skip");
+  await v2.waitForURL(/assistente=1/, { timeout: 20000 });
+  await passo(v2, 1);
 
-  // 1) 1ª carreira da conta: tutorial de navegação abre PRIMEIRO, e só
-  // depois dele fechar (Pular) o assistente de início aparece.
-  await newAccount(page, base, `wizard${Date.now()}@teste.com`);
-  await pickClub(page, base);
-  // Espera a tela do jogo (estado) — o tutorial abre no mesmo instante;
-  // antes 600 ms fixos, curto no CI (criar a carreira demora mais).
-  await page.waitForFunction(() => { const g = document.getElementById("screenGame"); return !!g && !g.classList.contains("hidden"); }, null, { timeout: 20000 }).catch(() => {});
-  const onboardOpen = await page.evaluate(() => document.getElementById("onboardingOverlay").classList.contains("open"));
-  const wizardOpenBefore = await page.evaluate(() => document.getElementById("startupWizardOverlay").classList.contains("open"));
-  check("1) Tutorial de navegação abre primeiro (assistente ainda não, sobrepostos nunca):", onboardOpen && !wizardOpenBefore);
-  await page.click("#btnOnboardSkip");
-  // Espera o assistente de fato (era um sleep fixo de 400 ms — curto no CI).
-  await page.waitForFunction(() => document.getElementById("startupWizardOverlay").classList.contains("open") && !!document.getElementById("wizardStepTitle").textContent, null, { timeout: 8000 }).catch(() => {});
-  const wizardOpenAfter = await page.evaluate(() => document.getElementById("startupWizardOverlay").classList.contains("open"));
-  const step1 = await page.evaluate(() => ({
-    title: document.getElementById("wizardStepTitle").textContent,
-    sub: document.getElementById("wizardStepSub").textContent,
-    hasFormationChips: document.querySelectorAll("#wizardStepFormacao #formationChipRow .m3-filter-chip").length > 0,
-    hasPitch: !!document.querySelector("#wizardStepFormacao .mt-pitch"),
-  }));
-  check("2) Assistente abre depois do tutorial fechar, no Passo 1 (Formação, com chips+campinho reais):", wizardOpenAfter && step1.title === "Monte sua formação favorita" && step1.sub === "Passo 1 de 4" && step1.hasFormationChips && step1.hasPitch, JSON.stringify(step1));
+  // 1) Passo 1: troca a formação pelo seletor.
+  await v2.waitForSelector(".lu-form-btn", { timeout: 20000 });
+  const antes = (await serverCareer(v2)).lineup.formation;
+  const nova = antes === "4-4-2" ? "4-3-3" : "4-4-2";
+  await v2.click(".lu-form-btn");
+  await v2.waitForSelector(".sheet", { timeout: 5000 });
+  await v2.click(`.sheet-opt:has-text("${nova}")`);
+  await v2.waitForSelector(".sheet", { state: "detached", timeout: 10000 });
+  await v2.waitForFunction((f) => (document.querySelector("#lu-form-val") || {}).textContent === f, nova, { timeout: 10000 });
+  let gravada = null;
+  for (let i = 0; i < 30 && gravada !== nova; i++) { gravada = (await serverCareer(v2)).lineup.formation; if (gravada !== nova) await v2.waitForTimeout(300); }
+  const k1 = await v2.evaluate(() => ({ path: location.pathname + location.search, k: document.querySelector(".wz-k")?.textContent }));
+  check("1) Trocar a formação no passo 1 grava de verdade e o assistente continua no passo 1:",
+    gravada === nova && k1.path === "/escalacao?assistente=1" && /Passo 1 de 4/.test(k1.k), JSON.stringify({ antes, nova, gravada, ...k1 }));
 
-  // 3) Trocar a formação no Passo 1 aplica de verdade em CAREER.
-  const formBefore = await page.evaluate(() => CAREER.lineup.formation);
-  const otherFormation = await page.evaluate((cur) => Object.keys(FORMATIONS).find((f) => f !== cur), formBefore);
-  await page.click(`#wizardStepFormacao [data-formation="${otherFormation}"]`);
-  await page.waitForTimeout(150);
-  const formAfter = await page.evaluate(() => CAREER.lineup.formation);
-  check("3) Trocar formação no assistente aplica de verdade em CAREER.lineup:", formAfter === otherFormation && formAfter !== formBefore, `${formBefore} -> ${formAfter}`);
-  await page.click("#btnWizardContinue");
-  await page.waitForTimeout(200);
+  // 2) Continua no 1 e pula os passos 2 a 4.
+  await v2.click(".wz-next");
+  for (let n = 2; n <= 4; n++) { await passo(v2, n); await v2.click(".wz-skip"); }
+  await v2.waitForURL(/\/recompensa$/, { timeout: 30000 });
+  const s2 = await serverCareer(v2);
+  check("2) Pulando os passos 2 a 4 nada é contratado, o save fica marcado e a recompensa vem em seguida:",
+    s2.startupWizardSeen === true && !(s2.technicalStaff && s2.technicalStaff.hired) && (s2.scouts || []).length === 0 && s2.lineup.formation === nova,
+    JSON.stringify({ seen: s2.startupWizardSeen, staff: s2.technicalStaff, scouts: (s2.scouts || []).length, formation: s2.lineup.formation }));
 
-  // 4) Passo 2 — Comissão Técnica: mostra custo real, contratar aplica
-  // de verdade (CAREER.technicalStaff.hired) e persiste.
-  const step2Before = await page.evaluate(() => ({
-    title: document.getElementById("wizardStepTitle").textContent,
-    sub: document.getElementById("wizardStepSub").textContent,
-    cost: document.getElementById("wizardCommissionCost").textContent,
-    hiredBefore: CAREER.technicalStaff.hired,
-  }));
-  check("4) Passo 2 é Comissão Técnica com custo real mostrado:", step2Before.title === "Comissão Técnica" && step2Before.sub === "Passo 2 de 4" && /R\$/.test(step2Before.cost) && step2Before.hiredBefore === false, JSON.stringify(step2Before));
-  await page.click("#btnWizardHireCommission");
-  await page.waitForTimeout(150);
-  const step2After = await page.evaluate(() => ({
-    hired: CAREER.technicalStaff.hired,
-    noteHidden: document.getElementById("wizardCommissionHiredNote").hidden,
-    btnDisabled: document.getElementById("btnWizardHireCommission").disabled,
-  }));
-  check("5) Contratar comissão no assistente aplica de verdade (CAREER.technicalStaff.hired) e atualiza a tela:", step2After.hired === true && step2After.noteHidden === false && step2After.btnDisabled === true, JSON.stringify(step2After));
-  await page.click("#btnWizardContinue");
-  await page.waitForTimeout(200);
+  // 3) Escalação fora do assistente (recebida a recompensa, que abre sozinha).
+  const receber = v2.locator("button.cta", { hasText: "Receber" });
+  await receber.waitFor({ timeout: 20000 });
+  await receber.click();
+  await v2.waitForFunction(() => ![...document.querySelectorAll("button.cta")].some((b) => /Receb/.test(b.textContent)), null, { timeout: 20000 });
+  await v2.goto(base + "/escalacao", { waitUntil: "domcontentloaded" });
+  await v2.waitForSelector("#lu-form-val", { timeout: 30000 });
+  await v2.waitForTimeout(500);
+  const t3 = await v2.evaluate(() => ({ path: location.pathname, f: document.querySelector("#lu-form-val").textContent, wz: !!document.querySelector(".wz") }));
+  check("3) A Escalação fora do assistente mostra a formação escolhida, sem a barra do assistente:", t3.path === "/escalacao" && t3.f === nova && !t3.wz, JSON.stringify(t3));
 
-  // 6) Passo 3 — Olheiros: lista real do SCOUT_MARKET, contratar
-  // aplica de verdade (CAREER.scouts).
-  const step3Before = await page.evaluate(() => ({
-    title: document.getElementById("wizardStepTitle").textContent,
-    sub: document.getElementById("wizardStepSub").textContent,
-    scoutRows: document.querySelectorAll("#wizardScoutList .m3-list-item").length,
-    marketSize: SCOUT_MARKET.length, // GE-SCOUT-001: catálogo nacional com 8 olheiros
-    scoutsBefore: (CAREER.scouts || []).length,
-  }));
-  check("6) Passo 3 é Olheiros com a lista real do SCOUT_MARKET:", step3Before.title === "Contrate olheiros" && step3Before.sub === "Passo 3 de 4" && step3Before.scoutRows === step3Before.marketSize && step3Before.scoutsBefore === 0, JSON.stringify(step3Before));
-  await page.click("#wizardScoutList [data-hire]");
-  await page.waitForTimeout(150);
-  const step3After = await page.evaluate(() => (CAREER.scouts || []).length);
-  check("7) Contratar olheiro no assistente aplica de verdade (CAREER.scouts):", step3After === 1, step3After);
-  await page.click("#btnWizardContinue");
-  await page.waitForTimeout(200);
-
-  // 8) Passo 4 — Táticas básicas: reaproveita os mesmos 4 eixos reais
-  // (TACTIC_AXES), mudar um segmento e continuar aplica em
-  // CAREER.lineup.tactics.
-  const step4Before = await page.evaluate(() => ({
-    title: document.getElementById("wizardStepTitle").textContent,
-    sub: document.getElementById("wizardStepSub").textContent,
-    hasAxisRows: document.querySelectorAll("#wizardStepTaticas #tacticAxisRows .m3-instr-row").length,
-    btnLabel: document.getElementById("btnWizardContinue").textContent,
-  }));
-  check("8) Passo 4 é Táticas com os 4 eixos reais, botão final vira 'Começar a temporada':", step4Before.title === "Táticas básicas" && step4Before.sub === "Passo 4 de 4" && step4Before.hasAxisRows === 4 && step4Before.btnLabel === "Começar a temporada", JSON.stringify(step4Before));
-  // Sobe o eixo "Pressão" pro nível 5 (clicando no 5º segmento).
-  await page.click('#wizardStepTaticas .m3-instr-row[data-axis="pressao"] .m3-seg[data-level="5"]');
-  await page.waitForTimeout(100);
-  await page.click("#btnWizardContinue");
-  await page.waitForTimeout(400);
-
-  // 9) Assistente fecha, tela de início (Central) aparece, e os 2
-  // blocos (formação/campinho/banco + táticas) voltaram pro
-  // #panel-escalacao original, intactos e funcionando.
-  const afterFinish = await page.evaluate(() => ({
-    wizardOpen: document.getElementById("startupWizardOverlay").classList.contains("open"),
-    gameVisible: document.getElementById("screenGame").classList.contains("hidden") === false,
-    tacticsPressao: CAREER.lineup.tactics.pressao,
-    formationApplied: CAREER.lineup.formation,
-    startupWizardSeen: CAREER.startupWizardSeen,
-    technicalStaffHired: CAREER.technicalStaff.hired,
-    scoutsCount: (CAREER.scouts || []).length,
-    formationBlockBackHome: document.getElementById("panel-escalacao").contains(document.getElementById("escalacaoFormationBlock")),
-    tacticsBlockBackHome: document.getElementById("panel-escalacao").contains(document.getElementById("escalacaoTacticsBlock")),
-  }));
-  check("9) Assistente termina, tudo aplicado e persistido, e os blocos voltam pro painel de Escalação real:",
-    !afterFinish.wizardOpen && afterFinish.gameVisible && afterFinish.tacticsPressao === 5 && afterFinish.formationApplied === otherFormation
-    && afterFinish.startupWizardSeen === true && afterFinish.technicalStaffHired === true && afterFinish.scoutsCount === 1
-    && afterFinish.formationBlockBackHome && afterFinish.tacticsBlockBackHome,
-    JSON.stringify(afterFinish));
-
-  // 10) Login diário abre em seguida (fila continua depois do
-  // assistente, mesmo comportamento de sempre) — precisa fechar ANTES
-  // de mexer em qualquer outra tela (modal cheia por cima de tudo).
-  const dailyLoginOpen = await page.evaluate(() => document.getElementById("dailyLoginOverlay").classList.contains("open"));
-  check("10) Login diário abre em seguida ao assistente terminar (fila continua):", dailyLoginOpen);
-  await page.waitForSelector("#dailyLoginOverlay.open", { timeout: 6000 }).catch(() => {});
-  await page.click("#btnClaimDailyLogin", { timeout: 6000 }).catch(() => {});
-  await page.waitForSelector("#dailyLoginOverlay:not(.open)", { timeout: 6000 }).catch(() => {});
-  await page.waitForTimeout(300);
-
-  // 11) Aba Tática (Escalação) real continua funcionando depois, com o
-  // esquema/tática aplicados pelo assistente refletidos lá.
-  await page.click(".m3-nav-item[data-panel='escalacao']");
-  await page.waitForTimeout(300);
-  const realTab = await page.evaluate(() => ({
-    panelActive: document.getElementById("panel-escalacao").classList.contains("active"),
-    formationShown: document.querySelector("#formationChipRow .m3-filter-chip.on")?.dataset.formation,
-    pitchVisible: !!document.querySelector("#pitchLines .mt-pitch"),
-    pressaoShown: document.querySelector('#tacticAxisRows .m3-instr-row[data-axis="pressao"]')?.dataset.level,
-  }));
-  check("11) Aba Tática real (Escalação) mostra o que o assistente aplicou, e continua funcionando:",
-    realTab.panelActive && realTab.formationShown === otherFormation && realTab.pitchVisible && Number(realTab.pressaoShown) === 5,
-    JSON.stringify(realTab));
-
-  // 12) 2ª carreira da MESMA conta (via "Reiniciar"): tutorial de
-  // navegação NÃO reaparece (onboardingSeen já true), mas o assistente
-  // de início aparece de novo (decisão confirmada: toda carreira nova).
-  await page.click("#btnBottomMenu");
-  await page.waitForTimeout(150);
-  await page.click("#btnRestart");
-  await page.waitForTimeout(300);
-  await page.click("#confirmOkBtn", { timeout: 3000 }).catch(() => {});
-  await page.waitForTimeout(800);
-  const pickerVisible = await page.evaluate(() => document.getElementById("screenCompetitionPicker")?.classList.contains("hidden") === false);
-  console.log("(info) Voltou pro seletor de competição após reiniciar:", pickerVisible);
-  if (pickerVisible) {
-    await page.click('.mt-competition-card[data-competition="brasileirao"]');
-    await page.waitForTimeout(300);
-    await page.click(".m3-club-row");
-    await page.waitForTimeout(150);
-    await page.click("#btnConfirmClub");
-    await passCareerSetup(page); // Cap. 1 T05/T06 (redesign)
-    await page.waitForTimeout(600);
-    const secondCareer = await page.evaluate(() => ({
-      onboardOpen: document.getElementById("onboardingOverlay").classList.contains("open"),
-      wizardOpen: document.getElementById("startupWizardOverlay").classList.contains("open"),
-      wizardStepSub: document.getElementById("wizardStepSub").textContent,
-    }));
-    check("12) 2ª carreira (Reiniciar): tutorial de navegação NÃO reaparece, assistente de início aparece de novo:",
-      !secondCareer.onboardOpen && secondCareer.wizardOpen && secondCareer.wizardStepSub === "Passo 1 de 4", JSON.stringify(secondCareer));
-    // Pula todos os passos desta vez, pra confirmar que "Pular" também funciona ponta a ponta.
-    await page.click("#btnWizardSkip"); await page.waitForTimeout(150);
-    await page.click("#btnWizardSkip"); await page.waitForTimeout(150);
-    await page.click("#btnWizardSkip"); await page.waitForTimeout(150);
-    await page.click("#btnWizardSkip"); await page.waitForTimeout(400);
-    const afterSkipAll = await page.evaluate(() => ({
-      wizardOpen: document.getElementById("startupWizardOverlay").classList.contains("open"),
-      gameVisible: document.getElementById("screenGame").classList.contains("hidden") === false,
-      startupWizardSeen: CAREER.startupWizardSeen,
-      technicalStaffHired: CAREER.technicalStaff.hired,
-      scoutsCount: (CAREER.scouts || []).length,
-    }));
-    check("13) 'Pular esta etapa' nos 4 passos fecha o assistente sem contratar nada, e a carreira segue normal:",
-      !afterSkipAll.wizardOpen && afterSkipAll.gameVisible && afterSkipAll.startupWizardSeen === true && afterSkipAll.technicalStaffHired === false && afterSkipAll.scoutsCount === 0,
-      JSON.stringify(afterSkipAll));
-  } else {
-    check("13) (pulado — não achou o fluxo de reiniciar por essa rota de UI)");
-  }
+  // 4) 2ª carreira: o assistente volta.
+  await v2.goto(base + "/saves", { waitUntil: "domcontentloaded" });
+  await v2.locator("button.pr-row", { hasText: "Reiniciar carreira" }).click();
+  await v2.waitForSelector("#sv-t");
+  await v2.fill('[role="alertdialog"] input', "reiniciar");
+  await v2.click('[role="alertdialog"] .text-btn');
+  await v2.waitForFunction(() => location.pathname !== "/saves" && !document.querySelector(".home") && document.querySelector("h1"), null, { timeout: 30000 });
+  await criarPelaTela(v2);
+  await v2.waitForURL(/assistente=1/, { timeout: 30000 });
+  await passo(v2, 1);
+  const s4 = await serverCareer(v2);
+  const k4 = await v2.evaluate(() => ({ path: location.pathname, t: document.querySelector(".wz-t")?.textContent }));
+  check("4) 2ª carreira (Reiniciar): o assistente aparece de novo, no passo 1, com o save novo não marcado:",
+    k4.path === "/escalacao" && k4.t === "Monte sua formação favorita" && s4.startupWizardSeen === false, JSON.stringify({ ...k4, seen: s4.startupWizardSeen }));
 
   await browser.close();
   console.log("OK");

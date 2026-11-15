@@ -1,30 +1,24 @@
-// Pedido do usuário: sugeri "Push de verdade" como melhoria de
-// retenção e ele confirmou implementar (só o gatilho de streak, opt-in
-// via toggle em Configurações). Valida o fluxo real: toggle liga/
-// desliga, servidor grava/apaga a assinatura, botão de teste, e o
-// service worker tem os handlers push/notificationclick.
+// Notificações push de verdade (lembrete de sequência de login, opt-in nas
+// Configurações), na carreira oficial (v2, /configuracoes). Valida o fluxo
+// real: o interruptor liga/desliga, o servidor grava/apaga a assinatura, o
+// botão de teste e os handlers push/notificationclick do service worker.
 //
-// NOTA AMBIENTAL: pushManager.subscribe() de verdade precisa alcançar
-// o serviço de push do navegador (FCM, no caso do Chromium) — este
-// sandbox bloqueia esse host pelo proxy de rede (mesma categoria de
-// restrição já documentada pra Sportmonks/API-Sports nesta suíte:
-// funciona em produção, sem acesso de fora daqui). Usa
-// launchPersistentContext (não incognito — o Push API é bloqueado de
-// propósito em contexto incognito, crbug.com/401439, sem relação
-// nenhuma com este app) e aceita os DOIS desfechos possíveis pro
-// clique de ativar: sucesso de verdade (valida a assinatura completa)
-// OU falha de rede tratada com elegância (toast, sem travar a tela,
-// toggle continua desligado) — o que importa é que nenhum dos dois
-// quebra o app.
+// NOTA AMBIENTAL: pushManager.subscribe() de verdade precisa alcançar o
+// serviço de push do navegador (FCM, no Chromium), bloqueado pelo proxy
+// deste sandbox. Usa launchPersistentContext (o Push API é bloqueado em
+// contexto anônimo, crbug.com/401439) e aceita os DOIS desfechos do
+// "ativar": assinatura completa OU falha tratada (aviso na tela,
+// interruptor desligado, nada trava).
+// L6a (sem a tela antiga): mesmas checagens do teste anterior, pela v2.
 const { chromium } = require("playwright-core");
 const { check } = require("./_check");
-const { enterGame } = require("./_startup");
+const { carreiraV2, base } = require("./_v2_carreira");
 const path = require("path");
 const fs = require("fs");
 
 (async () => {
   const userDataDir = path.join(__dirname, ".chrome-profile-push-test");
-  fs.rmSync(userDataDir, { recursive: true, force: true }); // perfil descartável — nunca reaproveita estado de uma rodada anterior
+  fs.rmSync(userDataDir, { recursive: true, force: true }); // perfil descartável
   const context = await chromium.launchPersistentContext(userDataDir, {
     executablePath: process.env.PW_CHROMIUM_PATH || undefined,
     headless: true,
@@ -34,91 +28,58 @@ const fs = require("fs");
   });
   const page = context.pages()[0] || await context.newPage();
   page.on("pageerror", (err) => console.log("PAGE ERROR:", err.message));
-  const base = "http://localhost:8787";
-  const email = `pushui${Date.now()}@teste.com`;
+  await carreiraV2(page, `pushui${Date.now()}@teste.com`);
+  const pushNaConta = () => page.evaluate(async () => !!((await (await fetch("/api/auth/me", { cache: "no-store" })).json()).user || {}).pushEnabled);
+  const toggle = () => page.locator('button[role="switch"]', { hasText: "Ativar notificações push" });
 
-  await page.goto(base + "/", { waitUntil: "domcontentloaded" });
-  await page.evaluate(async ({ email }) => {
-    await fetch("/api/auth/signup", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: "Push UI", email, password: "senha123", phone: "11999999999", plan: "freemium" }) });
-    await fetch("/api/auth/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, password: "senha123" }) });
-  }, { email });
-  await page.goto(base + "/carreira.html", { waitUntil: "domcontentloaded" });
-  await page.waitForTimeout(500);
-  await page.click('.mt-competition-card[data-competition="brasileirao"]');
-  await page.waitForTimeout(300);
-  await page.click(".m3-club-row");
-  await page.waitForTimeout(150);
-  await page.click("#btnConfirmClub");
-  await enterGame(page);
-  await page.waitForFunction(() => navigator.serviceWorker.getRegistration().then((r) => !!r), { timeout: 10000 }).catch(() => {});
-  await page.waitForTimeout(500);
+  await page.goto(base + "/configuracoes", { waitUntil: "domcontentloaded" });
+  await page.waitForSelector(".mo-toggle", { timeout: 30000 });
+  await toggle().waitFor({ timeout: 15000 });
 
-  await page.click("#btnBottomMenu");
-  await page.waitForTimeout(200);
-  await page.click("#btnOpenSettings");
-  await page.waitForSelector("#settingsOverlay.open", { timeout: 5000 });
-  await page.waitForTimeout(200);
+  // 1) Interruptor presente, habilitado e desligado.
+  const t1 = { on: await toggle().getAttribute("aria-checked"), off: await toggle().isDisabled() };
+  check("1) Interruptor de push presente, habilitado (navegador suporta) e começa desligado:", t1.on === "false" && !t1.off, JSON.stringify(t1));
 
-  // 1) Seção de notificações push presente, suportada (Chromium
-  // suporta Push API fora de incognito), toggle começa desligado.
-  const initial = await page.evaluate(() => {
-    const btn = document.getElementById("settingsPushToggleBtn");
-    return { exists: !!btn, on: btn?.classList.contains("on"), disabled: btn?.disabled };
-  });
-  check("1) Toggle de push presente, habilitado (navegador suporta) e começa desligado:", initial.exists && !initial.disabled && !initial.on, JSON.stringify(initial));
-
-  // 2) Ativar o toggle -- pede permissão (auto-concedida via
-  // context permissions) e tenta assinar de verdade.
-  await page.click("#settingsPushToggleBtn");
-  await page.waitForTimeout(1500);
-  const afterEnable = await page.evaluate(() => ({
-    toggleOn: document.getElementById("settingsPushToggleBtn")?.classList.contains("on"),
-    testRowVisible: !document.getElementById("settingsRowPushTest")?.classList.contains("hidden"),
-  }));
-  const meAfterEnable = await page.evaluate(async () => (await (await fetch("/api/auth/me")).json()).user.pushEnabled);
-  const toastVisible = await page.evaluate(() => getComputedStyle(document.getElementById("toast")).display !== "none");
-
-  if (afterEnable.toggleOn) {
-    // Ambiente com acesso de verdade ao serviço de push (fora deste
-    // sandbox) -- valida a assinatura completa.
-    check("2) Assinatura de push bem-sucedida (rede alcançou o serviço de push):", meAfterEnable === true && afterEnable.testRowVisible);
-    const subReal = await page.evaluate(async () => {
+  // 2/3) Ativar: assinatura completa ou falha tratada.
+  await toggle().click();
+  await page.waitForFunction(() => {
+    const b = [...document.querySelectorAll('button[role="switch"]')].find((x) => /Ativar notificações push/.test(x.textContent));
+    return b && !b.disabled && (b.getAttribute("aria-checked") === "true" || !!document.querySelector(".inline-error"));
+  }, null, { timeout: 20000 }).catch(() => {});
+  const ligado = (await toggle().getAttribute("aria-checked")) === "true";
+  const contaLigada = await pushNaConta();
+  if (ligado) {
+    const linhaTeste = await page.locator("button.pr-row", { hasText: "Enviar notificação de teste" }).count();
+    check("2) Assinatura de push bem-sucedida (a rede alcançou o serviço de push):", contaLigada === true && linhaTeste === 1, JSON.stringify({ contaLigada, linhaTeste }));
+    const sub = await page.evaluate(async () => {
       const reg = await navigator.serviceWorker.ready;
-      const sub = await reg.pushManager.getSubscription();
-      return sub ? { hasEndpoint: !!sub.endpoint, hasKeys: !!sub.toJSON().keys?.p256dh } : null;
+      const s = await reg.pushManager.getSubscription();
+      return s ? { endpoint: !!s.endpoint, chaves: !!(s.toJSON().keys || {}).p256dh } : null;
     });
-    check("3) Assinatura real do navegador tem endpoint + chaves:", subReal?.hasEndpoint && subReal?.hasKeys, JSON.stringify(subReal));
+    check("3) A assinatura real do navegador tem endpoint e chaves:", !!sub && sub.endpoint && sub.chaves, JSON.stringify(sub));
   } else {
-    // Este sandbox: pushManager.subscribe() não alcança o serviço de
-    // push (proxy de rede) -- o esperado é falhar com ELEGÂNCIA (toast
-    // de aviso, toggle continua desligado, nada trava).
-    check("2) [sandbox sem acesso ao serviço de push] Falha tratada com elegância -- toggle continua desligado, sem crash:", !afterEnable.toggleOn && meAfterEnable === false);
-    check("3) Toast de aviso apareceu em vez de travar a tela:", toastVisible);
+    const aviso = await page.evaluate(() => ((document.querySelector(".inline-error") || {}).textContent || "").trim());
+    check("2) [sandbox sem acesso ao serviço de push] Falha tratada: interruptor continua desligado, conta sem push, sem travar:", contaLigada === false, JSON.stringify({ contaLigada }));
+    check("3) Aviso na tela em vez de travar:", aviso.length > 0, aviso);
   }
 
-  // 4) Desativar sempre é seguro de chamar, mesmo sem assinatura real
-  // (idempotente -- servidor só limpa um campo que já podia estar null).
-  await page.click("#settingsPushToggleBtn").catch(() => {});
-  await page.waitForTimeout(600);
-  const meFinal = await page.evaluate(async () => (await (await fetch("/api/auth/me")).json()).user.pushEnabled);
-  check("4) Desativar continua seguro/idempotente (pushEnabled false no fim):", meFinal === false);
+  // 4) Desativar é seguro e idempotente.
+  if (ligado) { await toggle().click(); await page.waitForTimeout(800); }
+  const desliga = await page.evaluate(async () => (await fetch("/api/push/unsubscribe", { method: "POST" })).status);
+  const contaFim = await pushNaConta();
+  check("4) Desativar continua seguro e idempotente (pushEnabled false no fim):", desliga < 400 && contaFim === false, JSON.stringify({ desliga, contaFim }));
 
-  // 5) Service worker tem os handlers de push/notificationclick (ver
-  // sw.js) -- confirma que o código está no ar, mesmo sem poder
-  // disparar um evento "push" de verdade neste ambiente.
-  const swSource = await page.evaluate(async () => (await (await fetch("/sw.js")).text()));
-  check("5) sw.js servido de verdade tem handler de 'push' e 'notificationclick':",
-    swSource.includes('addEventListener("push"') && swSource.includes('addEventListener("notificationclick"'));
+  // 5) Handlers do service worker.
+  const sw = await page.evaluate(async () => (await (await fetch("/sw.js")).text()));
+  check("5) O sw.js servido tem os handlers de 'push' e 'notificationclick':", sw.includes('addEventListener("push"') && sw.includes('addEventListener("notificationclick"'));
 
-  // 6) O resto do app continua 100% funcional depois de mexer no
-  // toggle (não quebrou nada fora do escopo de Configurações).
-  await page.click("#settingsClose");
-  await page.waitForTimeout(200);
-  await page.click(".m3-nav-item[data-panel='elenco']");
-  await page.waitForTimeout(300);
-  const elencoOk = await page.evaluate(() => document.querySelectorAll("#panel-elenco .m3-list-item").length > 0);
-  check("6) Resto do app continua funcional (Elenco renderiza normal):", elencoOk);
+  // 6) O resto do app segue funcionando.
+  await page.goto(base + "/elenco", { waitUntil: "domcontentloaded" });
+  await page.waitForFunction(() => (document.querySelector("h1") || {}).textContent === "Elenco" && document.querySelectorAll(".sq-row").length > 0, null, { timeout: 30000 }).catch(() => {});
+  const elenco = await page.evaluate(() => ({ h1: (document.querySelector("h1") || {}).textContent, linhas: document.querySelectorAll(".sq-row").length }));
+  check("6) O resto do app continua funcional (Elenco renderiza normal):", elenco.h1 === "Elenco" && elenco.linhas > 0, JSON.stringify(elenco));
 
   await context.close();
+  fs.rmSync(userDataDir, { recursive: true, force: true });
   console.log("OK");
 })().catch((e) => { console.error("FATAL:", e); process.exit(1); });

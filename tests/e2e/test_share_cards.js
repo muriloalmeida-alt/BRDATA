@@ -1,104 +1,54 @@
-// Pedido do usuário (item 4 da lista de melhorias, "Vamos implementar
-// todos na ordem abaixo"): "Compartilhar resultado como imagem —
-// nenhum 'share card' existe (resultado da rodada, título conquistado,
-// marco de carreira). É o gancho clássico de manager game pra
-// reels/stories." Valida os 3 gatilhos (canvas gerado + Web Share API
-// com fallback pra download direto do PNG, já que o Chromium headless
-// deste ambiente não implementa navigator.share/canShare).
+// Compartilhar como imagem (item 4 da lista de melhorias), na carreira
+// oficial (v2): o cartão é desenhado num canvas e vai pelo Web Share API,
+// ou é baixado como PNG quando o navegador não compartilha arquivo (caso do
+// Chromium headless).
+// L6a (sem a tela antiga):
+//  2) Conquista desbloqueada: o detalhe tem "Compartilhar" e gera um PNG.
+//     Conquista bloqueada não tem o botão.
+// O "Compartilhar título" (item 3 antigo) está em test_v2_onboarding (item
+// 5). O "Compartilhar" do resultado da rodada (item 1 antigo) não existe na
+// v2: ver ENTREGA_TESTES_L6.md (lacuna em aberto).
 const { chromium } = require("playwright-core");
 const { check } = require("./_check");
-const { enterGame } = require("./_startup");
-const { skipPreseason } = require("./_calendar_skip");
-
-async function newCareer(page, base, email) {
-  await page.goto(base + "/", { waitUntil: "load" });
-  await page.evaluate(async ({ email }) => {
-    await fetch("/api/auth/signup", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: "Share Teste", email, password: "senha123", phone: "11999999999", plan: "freemium" }) });
-    await fetch("/api/auth/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, password: "senha123" }) });
-  }, { email });
-  await page.goto(base + "/carreira.html", { waitUntil: "load" });
-  await page.click('.mt-competition-card[data-competition="brasileirao"]');
-  await page.waitForTimeout(200);
-  await page.click(".m3-club-row");
-  await page.waitForTimeout(150);
-  await page.click("#btnConfirmClub");
-  await enterGame(page);
-}
+const { carreiraV2, noMotor, base } = require("./_v2_carreira");
 
 (async () => {
-  const browser = await chromium.launch({
-    executablePath: process.env.PW_CHROMIUM_PATH || undefined,
-    headless: true,
-    args: ["--host-resolver-rules=MAP fonts.googleapis.com 127.0.0.1,MAP fonts.gstatic.com 127.0.0.1"],
-  });
-  const page = await browser.newPage({ viewport: { width: 390, height: 900 }, acceptDownloads: true });
+  const browser = await chromium.launch({ executablePath: process.env.PW_CHROMIUM_PATH || undefined, headless: true, args: ["--host-resolver-rules=MAP fonts.googleapis.com 127.0.0.1,MAP fonts.gstatic.com 127.0.0.1"] });
+  const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, acceptDownloads: true });
+  const page = await ctx.newPage();
   page.on("dialog", (d) => d.dismiss());
   page.on("pageerror", (err) => console.log("PAGE ERROR:", err.message));
-  page.on("console", (m) => { if (m.type() === "error" && !m.text().includes("fonts.googleapis") && !m.text().includes("fundingchoices")) console.log("CONSOLE ERROR:", m.text()); });
+  await carreiraV2(page, `share${Date.now()}@teste.com`);
 
-  const base = "http://localhost:8787";
-  await newCareer(page, base, `share${Date.now()}@teste.com`);
+  // Bloqueada: sem botão.
+  await page.goto(base + "/conquistas", { waitUntil: "domcontentloaded" });
+  await page.waitForSelector(".mo-badge", { timeout: 30000 });
+  await page.locator(".mo-badge", { hasText: "Joia da Base" }).click();
+  await page.waitForSelector("#ac-t");
+  const bloqueada = await page.evaluate(() => !!document.querySelector('[role="dialog"] .sp-sheet-cta'));
+  await page.click('[role="dialog"] .text-btn');
 
-  // 1) "Compartilhar" existe no modal "Seu jogo" (Resultado da rodada)
-  // e gera uma imagem PNG de verdade (fallback de download, já que
-  // este Chromium headless não implementa a Web Share API).
-  await page.click(".m3-nav-item[data-panel='central']");
-  await page.waitForTimeout(300);
-  await skipPreseason(page); // GE-CALENDAR-001: carreira nova começa na pré-temporada
-  await page.click("#btnSimulate");
-  await page.waitForSelector("#preMatchOverlay.open", { timeout: 5000 });
-  await page.click("#btnPreMatchGo");
-  await page.waitForSelector("#liveMatchOverlay.open", { timeout: 5000 });
-  await page.click("#btnLiveSkip");
-  await page.waitForSelector("#matchDetailOverlay.open", { timeout: 20000 });
-  const shareBtnExists = await page.$("#btnMatchDetailShare");
-  const [download1] = await Promise.all([
-    page.waitForEvent("download", { timeout: 8000 }),
-    page.click("#btnMatchDetailShare"),
-  ]);
-  check("1) Botão 'Compartilhar' existe em 'Seu jogo' e gera um PNG de verdade:", !!shareBtnExists && download1.suggestedFilename().endsWith(".png"), download1.suggestedFilename());
-
-  // Fecha o fluxo pós-jogo pra não interferir com o resto do teste.
-  await page.click("#btnMatchDetailCloseFooter", { timeout: 3000 }).catch(() => {});
-  await page.waitForTimeout(200);
-
-  // 2) Conquista desbloqueada: botão "Compartilhar" gera imagem (era só
-  // texto antes desta mudança).
-  await page.evaluate(() => { setAchievementProgress("ach_fairplay", 1); });
-  await page.click("#btnBottomMenu");
-  await page.waitForTimeout(150);
-  await page.click('[data-submenu="progresso"]');
-  await page.waitForTimeout(150);
-  await page.click("#btnOpenConquistas");
-  await page.waitForTimeout(200);
-  await page.click('[data-achievement="ach_fairplay"]');
-  await page.waitForTimeout(150);
-  const shareVisible = await page.evaluate(() => !document.getElementById("btnShareAchievement").hidden);
-  const [download2] = await Promise.all([
-    page.waitForEvent("download", { timeout: 8000 }),
-    page.click("#btnShareAchievement"),
-  ]);
-  check("2) Conquista desbloqueada mostra 'Compartilhar' e gera um PNG (não é mais só texto):", shareVisible && download2.suggestedFilename().endsWith(".png"), download2.suggestedFilename());
-  await page.click("#achievementDetailClose", { timeout: 3000 }).catch(() => {});
-  await page.waitForTimeout(150);
-
-  // 3) Título conquistado: sem ser campeão, o botão fica escondido;
-  // sendo campeão (Brasileirão OU Copa), aparece e gera imagem.
-  const hiddenWhenNotChampion = await page.evaluate(() => {
-    showSeasonModal({ finishedYear: 2026, finishedPos: 8, finishedGoal: { label: "teste" }, goalWasMet: true, newYear: 2027, humanRenewal: { leavingNames: [], newBaseCount: 0, newPrincipalCount: 0 }, newGoal: { label: "teste" }, promotionRelegation: null, wasCupChampion: false });
-    return document.getElementById("btnShareTitle").hidden;
+  // Desbloqueia pela regra do motor (5 revelados da base).
+  await noMotor(page, async (M) => {
+    M.CAREER.finances.wageCap = Math.max(M.CAREER.finances.wageCap, 1e9);
+    for (const p of M.CAREER.squad.filter((x) => x.origin === "base").slice(0, 5)) await M.ponte.acaoJogador(p.id, "promote");
+    return M.persistir();
   });
-  await page.click("#seasonModalClose", { timeout: 3000 }).catch(() => {});
-  await page.waitForTimeout(100);
-  const championState = await page.evaluate(() => {
-    showSeasonModal({ finishedYear: 2026, finishedPos: 1, finishedGoal: { label: "teste" }, goalWasMet: true, newYear: 2027, humanRenewal: { leavingNames: [], newBaseCount: 0, newPrincipalCount: 0 }, newGoal: { label: "teste" }, promotionRelegation: null, wasCupChampion: false });
-    return document.getElementById("btnShareTitle").hidden;
-  });
-  const [download3] = await Promise.all([
-    page.waitForEvent("download", { timeout: 8000 }),
-    page.click("#btnShareTitle"),
-  ]);
-  check("3) 'Compartilhar título' some sem título e aparece + gera PNG sendo campeão:", hiddenWhenNotChampion === true && championState === false && download3.suggestedFilename().endsWith(".png"), download3.suggestedFilename());
+  await page.goto(base + "/conquistas", { waitUntil: "domcontentloaded" });
+  await page.waitForSelector(".mo-badge", { timeout: 30000 });
+  await page.evaluate(() => { try { Object.defineProperty(navigator, "canShare", { value: undefined, configurable: true }); } catch (_) { /* já ausente */ } });
+  await page.locator(".mo-badge", { hasText: "Joia da Base" }).click();
+  await page.waitForSelector("#ac-t");
+  const dl = page.waitForEvent("download", { timeout: 15000 });
+  await page.click('[role="dialog"] .sp-sheet-cta');
+  const d = await dl;
+  const arq = await d.path();
+  const head = arq ? require("fs").readFileSync(arq).subarray(0, 8).toString("hex") : null;
+  await page.waitForSelector(".pr-ok", { timeout: 10000 }).catch(() => {});
+  const aviso = await page.evaluate(() => ((document.querySelector(".pr-ok") || {}).textContent || ""));
+  check("2) Conquista desbloqueada mostra 'Compartilhar' e gera um PNG de verdade (bloqueada não mostra o botão):",
+    !bloqueada && d.suggestedFilename() === "conquista-ach_joia_base.png" && head === "89504e470d0a1a0a" && /Imagem baixada/.test(aviso),
+    JSON.stringify({ bloqueada, arquivo: d.suggestedFilename(), head, aviso }));
 
   await browser.close();
   console.log("OK");
