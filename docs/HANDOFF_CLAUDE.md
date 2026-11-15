@@ -294,7 +294,7 @@ Decisão do Murilo (14/11) sobre a licença dos escudos de uso restrito
 
 HISTORICO-LINK — histórico de atualizações pelo Mais da v2
 
-Status: IMPLEMENTADO, aguardando aprovação do Murilo (PR desta entrega).
+Status: APROVADO (Murilo, 15/11, "Aprovado"; PR #119).
 Origem: diferença da v2 achada no lote L4d (docs/carreira-v2/ENTREGA_TESTES_L4.md):
 a página estática `historico.html` só tinha link no menu da tela antiga, e o
 "Voltar" dela levava a `carreira.html`.
@@ -309,9 +309,36 @@ Contraprova: "Voltar" para carreira.html → `test_historico` 5 falha.
 
 ⸻
 
+COPIA-UNICA — a cópia da carreira no servidor sobe uma vez só
+
+Status: APROVADO (Murilo, 15/11, "Aprovado"; PR #118).
+Origem: defeito da OFFLINE-001 achado no CI do PR #116 (test_v2_escalacao
+item 3 com 2 PUTs). Se a v2 relia a carreira enquanto a cópia ainda ia ao
+servidor, o save aparecia "pendente" e a mesma cópia (~600 KB) subia de novo.
+Decisão do Murilo (14/11): "Corrigir agora".
+Implementação (`public/js/motor/repositorio.js`): uma cópia por conta de cada
+vez, com o controle compartilhado pela janela (a v2 tem duas instâncias do
+repositório: a do motor e a do build). Quem chama com outra a caminho marca
+"conferir de novo": ao terminar, a cópia a caminho confere de novo e, se o
+save mudou, sobe o mais novo (sem mudança, não sobe nada). A gravação espera
+essa cópia por no máximo 15 s (depois, "andamento"; o save já está no
+aparelho); a leitura não espera. Envio sem resposta há mais de 45 s não
+segura as cópias. Antes, a leitura também esperava o próprio envio, e um
+envio preso travava a abertura da v2. Nenhuma mudança no save nem na API.
+Teste: `tests/e2e/test_v2_copia_unica.js` (envio lento de 1,5 s e envio
+preso). Contraprovas: sem a correção, 2 PUTs (item 1); com o controle por
+instância, 2 PUTs (1b); com quem chama esperando a cópia a caminho sem
+prazo (1ª versão) ou com o código do main, a leitura trava atrás de um
+envio preso (item 4).
+Junto: `test_ge_balance_004` só corta a rede com o motor já aberto (ele
+cortava no meio da carga e, sob carga, o motor não abria; 6 de 8 falhas
+no main com 8 em paralelo, 0 de 8 depois).
+
+⸻
+
 AVISO-MOTIVADO — aviso "Adversário motivado" no Pré-jogo da v2
 
-Status: IMPLEMENTADO, aguardando aprovação do Murilo (PR desta entrega).
+Status: APROVADO (Murilo, 14/11; PR #117).
 Origem: diferença da v2 achada no lote L4c (docs/carreira-v2/ENTREGA_TESTES_L4.md):
 o motor aplica o bônus do adversário em sequência invicta e emite o aviso,
 mas nenhuma tela da v2 o mostra.
