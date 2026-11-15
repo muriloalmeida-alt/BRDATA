@@ -5,10 +5,12 @@
 //  1) O elenco principal nasce com moral 70 (a base sobe treinando com o
 //     principal na pré-temporada: +5 por dia no grupo misto, motor/treino.js).
 //  2) O Perfil do jogador da v2 mostra a moral dele.
-//  3) Depois da rodada 1: a moral dos titulares muda e quem ficou fora da
-//     súmula (nem titular nem banco) cai 2 × o quanto ele reclama
-//     (playerComplaintFactor, idade e overall). O teste antigo imprimia "68"
-//     (70 − 2) sem verificar: era a regra antes do amortecimento.
+//  3) Uma rodada de verdade muda a moral dos titulares; e, na partida
+//     (vitória), o titular ganha 5 e quem ficou fora da súmula (nem titular
+//     nem banco) cai 2 × o quanto ele reclama (playerComplaintFactor, idade e
+//     overall). O teste antigo imprimia "68" (70 − 2) sem verificar: era a
+//     regra antes do amortecimento. A conta exata é só da partida: o
+//     pós-jogo (resposta da coletiva) também mexe na moral do elenco.
 //  4) Moral baixa (20): a renovação é recusada mesmo com salário 1,5× e 3
 //     anos (ponte.renovar, a da v2).
 //  5) Moral alta (90): o salário sugerido passa de 1,05× o atual e 1 ano é
@@ -38,21 +40,29 @@ const { newCareer, noMotor, globaisDoMotor, base } = require("./_v2_carreira");
   const perfil = await page.evaluate(() => { const l = document.body.innerText.split("\n"); const i = l.findIndex((x) => x.trim() === "Moral"); return i >= 0 ? l[i + 1].trim() : null; });
   check("2) O Perfil do jogador da v2 mostra a moral dele (70):", perfil === "70", perfil);
 
-  // 3) Rodada 1: a moral medida logo antes da partida (a semana, com o treino,
-  // já passou) e logo depois.
+  // 3) Uma rodada de verdade (a moral dos titulares muda) e a regra da
+  // partida isolada: o pós-jogo também mexe na moral (a resposta da coletiva
+  // vale para o elenco), então a conta exata é feita só com a partida
+  // (applyMoraleAfterMatch, uma vitória), na escalação de agora.
   await globaisDoMotor(page);
   const r3 = await page.evaluate(async () => {
     const aovivo = await import("/js/motor/aovivo.js");
+    const titulares0 = CAREER.lineup.starters.filter(Boolean);
+    const antes0 = titulares0.map((id) => CAREER.squad.find((p) => p.id === id).morale);
+    const j = await jogarPartidaDaRodada();
+    const titMudou = titulares0.some((id, i) => CAREER.squad.find((p) => p.id === id).morale !== antes0[i]);
     const starters = CAREER.lineup.starters.filter(Boolean), bench = CAREER.lineup.bench.filter(Boolean);
     const na = new Set([...starters, ...bench]);
-    const fora = CAREER.squad.filter((p) => !na.has(p.id) && p.origin === "principal").map((p) => ({ id: p.id, antes: p.morale, esperado: Math.max(0, Math.min(100, p.morale + Math.round(-2 * aovivo.playerComplaintFactor(p)))) }));
-    const titAntes = starters.map((id) => CAREER.squad.find((p) => p.id === id).morale);
-    const j = await jogarPartidaDaRodada();
+    const clamp = (v) => Math.max(0, Math.min(100, v));
+    const fora = CAREER.squad.filter((p) => !na.has(p.id) && p.origin === "principal").map((p) => ({ id: p.id, antes: p.morale, esperado: clamp(p.morale + Math.round(-2 * aovivo.playerComplaintFactor(p))) }));
+    const tit = starters.map((id) => { const p = CAREER.squad.find((x) => x.id === id); return { id, esperado: clamp(p.morale + 5) }; });
+    applyMoraleAfterMatch(1, 0);
     const m = (id) => CAREER.squad.find((p) => p.id === id).morale;
-    return { ok: j.ok, passos: j.passos, titMudou: starters.some((id, i) => m(id) !== titAntes[i]), fora: fora.map((f) => ({ ...f, depois: m(f.id) })) };
+    return { ok: j.ok, titMudou, fora: fora.map((f) => ({ ...f, depois: m(f.id) })), tit: tit.map((t) => ({ ...t, depois: m(t.id) })) };
   });
-  check("3) Depois da rodada 1: a moral dos titulares muda e quem ficou fora da súmula cai 2 × o quanto reclama:",
-    r3.ok && r3.titMudou && r3.fora.length > 0 && r3.fora.every((f) => f.depois === f.esperado && f.depois < f.antes), JSON.stringify(r3.fora.slice(0, 4)));
+  check("3) Rodada de verdade: a moral dos titulares muda; na partida (vitória), titular +5 e quem fica fora da súmula cai 2 × o quanto reclama:",
+    r3.ok && r3.titMudou && r3.fora.length > 0 && r3.fora.every((f) => f.depois === f.esperado && f.depois < f.antes) && r3.tit.every((t) => t.depois === t.esperado),
+    JSON.stringify({ fora: r3.fora.slice(0, 3), tit: r3.tit.slice(0, 2) }));
 
   // 4 e 5) Renovação pela moral.
   const r4 = await noMotor(page, async ({ CAREER, ponte, clube }) => {
