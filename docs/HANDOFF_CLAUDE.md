@@ -292,9 +292,26 @@ Decisão do Murilo (14/11) sobre a licença dos escudos de uso restrito
 
 ⸻
 
+HISTORICO-LINK — histórico de atualizações pelo Mais da v2
+
+Status: APROVADO (Murilo, 15/11, "Aprovado"; PR #119).
+Origem: diferença da v2 achada no lote L4d (docs/carreira-v2/ENTREGA_TESTES_L4.md):
+a página estática `historico.html` só tinha link no menu da tela antiga, e o
+"Voltar" dela levava a `carreira.html`.
+Decisão do Murilo (14/11): "Link no Mais" — linha "Histórico de
+atualizações" no Mais da v2 e o "Voltar" da página para o Início (/).
+Implementação: `carreira-v2/src/screens/Hubs.tsx` (linha com link comum para
+a página, fora da v2) e `public/historico.html` ("Voltar" para "/"). Testes:
+`test_historico` (item 0 pelo Mais; item 5 "Voltar" no Início),
+`test_v2_navegacao` (o Mais com 10 itens) e `test_v2_corte` (o histórico
+entra, com a privacidade, nas páginas estáticas que a v2 abre de propósito).
+Contraprova: "Voltar" para carreira.html → `test_historico` 5 falha.
+
+⸻
+
 COPIA-UNICA — a cópia da carreira no servidor sobe uma vez só
 
-Status: IMPLEMENTADO, aguardando aprovação do Murilo (PR desta entrega).
+Status: APROVADO (Murilo, 15/11, "Aprovado"; PR #118).
 Origem: defeito da OFFLINE-001 achado no CI do PR #116 (test_v2_escalacao
 item 3 com 2 PUTs). Se a v2 relia a carreira enquanto a cópia ainda ia ao
 servidor, o save aparecia "pendente" e a mesma cópia (~600 KB) subia de novo.

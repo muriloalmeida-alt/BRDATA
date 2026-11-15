@@ -267,10 +267,12 @@ Cada regra foi quebrada no motor, o teste rodou, e o motor foi restaurado depois
   - na tela antiga, o menu ≡ tinha "Histórico de Atualizações" (`historico.html`);
   - a v2 não tem esse link, e o "Voltar" da página aponta para `carreira.html` (a tela antiga; em produção redireciona para `/carreira`);
   - **para decidir:** pôr o link no Mais da v2 (e o "Voltar" para `/`), ou deixar a página só por endereço.
+  - **Decidido (14/11, Murilo):** link no Mais e "Voltar" para `/` (HISTORICO-LINK).
 - **Jogos da rodada atual** (`test_resumo_rodada`):
   - na tela antiga, o "Resumo da rodada" (menu) mostrava os 10 jogos da rodada atual (ainda sem placar) e os da anterior, a qualquer momento;
   - a v2 mostra os jogos da última rodada disputada (Tabela e pós-jogo); os da rodada atual, só o seu (Pré-jogo, Calendário);
   - **para decidir:** mostrar os jogos da rodada atual na v2 (por exemplo, na Tabela), ou deixar como está.
+  - **Decidido (14/11, Murilo):** mostrar na Tabela (RODADA-ATUAL).
 
 ### Contraprova
 

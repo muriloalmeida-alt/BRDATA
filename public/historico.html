@@ -475,7 +475,9 @@
   document.getElementById("modalClose").addEventListener("click", closeModal);
   document.getElementById("modalCloseFooter").addEventListener("click", closeModal);
   document.getElementById("versionOverlay").addEventListener("click", (e) => { if (e.target.id === "versionOverlay") closeModal(); });
-  document.getElementById("btnBack").addEventListener("click", () => { window.location.href = "carreira.html"; });
+  // HISTORICO-LINK (14/11): volta para a carreira oficial (a v2, na raiz), não
+  // para a tela antiga.
+  document.getElementById("btnBack").addEventListener("click", () => { window.location.href = "/"; });
 
   renderList();
 </script>
