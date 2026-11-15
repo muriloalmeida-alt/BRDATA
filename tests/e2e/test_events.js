@@ -1,65 +1,40 @@
+// Placar e lances do seu jogo, rodada a rodada — lote L5d, sem a tela antiga.
+// Antes: jogava 10 rodadas pela tela antiga e lia o modal "Seu jogo". Agora as
+// rodadas vão pela ponte (o caminho da v2) e o teste lê o que o motor grava; a
+// tela Resultado da v2 (título pelo placar e gols) está no test_v2_resultado.
+//  1) Em 6 rodadas seguidas, o seu jogo fica gravado no registro da rodada
+//     com o placar, igual ao do registro de partidas.
+//  2) Todo jogo seu com gol guarda os lances (gols e cartões), com um gol
+//     para cada gol do placar.
 const { chromium } = require("playwright-core");
-const { enterGame } = require("./_startup");
 const { check } = require("./_check");
-const { playNextMatchRound, closeLeftoverTabela } = require("./_round");
+const { newCareer, noMotor, jogarRodadaV2 } = require("./_v2_carreira");
 
 (async () => {
-  const browser = await chromium.launch({
-    executablePath: process.env.PW_CHROMIUM_PATH || undefined,
-    headless: true,
-  });
+  const browser = await chromium.launch({ executablePath: process.env.PW_CHROMIUM_PATH || undefined, headless: true, args: ["--host-resolver-rules=MAP fonts.googleapis.com 127.0.0.1,MAP fonts.gstatic.com 127.0.0.1"] });
   const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
-  page.on("pageerror", (err) => console.log("PAGE ERROR:", err.message));
+  page.on("dialog", (d) => d.dismiss());
+  const erros = [];
+  page.on("pageerror", (err) => erros.push(err.message));
+  await newCareer(page, `eventos${Date.now()}@teste.com`);
 
-  const base = "http://localhost:8787";
-  const email = `eventstest${Date.now()}@teste.com`;
-
-  await page.goto(base + "/", { waitUntil: "load" });
-  await page.evaluate(async ({ email }) => {
-    await fetch("/api/auth/signup", {
-      method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: "Teste Eventos", email, password: "senha123", phone: "11999999999", plan: "freemium" }),
-    });
-    await fetch("/api/auth/login", {
-      method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password: "senha123" }),
-    });
-  }, { email });
-
-  await page.goto(base + "/carreira.html", { waitUntil: "load" });
-  await page.click('.mt-competition-card[data-competition="brasileirao"]');
-  await page.waitForTimeout(200);
-  await page.click(".m3-club-row");
-  await page.waitForTimeout(150);
-  await page.click("#btnConfirmClub");
-  await enterGame(page);
-  await page.click(".m3-nav-item[data-panel='central']");
-  await page.waitForTimeout(300);
-
-  // 10 jogos oficiais pela interface (fluxo atual completo, ver
-  // _round.js); em cada um, o detalhe "Seu jogo" é lido antes de seguir.
-  const matches = [];
-  for (let i = 0; i < 10; i++) {
-    const r = await playNextMatchRound(page, {
-      onMatchDetail: async (p) => {
-        const info = await p.evaluate(() => ({
-          score: document.getElementById("matchDetailScore").textContent.replace(/\s+/g, " ").trim(),
-          events: document.getElementById("matchDetailEvents").textContent.replace(/\s+/g, " ").trim(),
-        }));
-        matches.push(info);
-        console.log(`round ${i + 1}:`, info.score, "|", info.events);
-        if (i === 0 || info.events.includes("Gol do")) await p.screenshot({ path: `events-round${i + 1}.png` });
-      },
-    });
-    if (r.stoppedAt === "playerOfferOverlay") { await page.click("#btnPlayerOfferDecline"); await closeLeftoverTabela(page); }
-    else if (r.stoppedAt) throw new Error(`jogo ${i + 1} parou numa tela inesperada: ${r.stoppedAt}`);
-    await page.click(".m3-nav-item[data-panel='central']").catch(() => {});
+  const jogos = [];
+  for (let n = 0; n < 6; n++) {
+    const rodada = await noMotor(page, ({ CAREER }) => CAREER.currentRound);
+    const j = await jogarRodadaV2(page);
+    if (!j.ok) throw new Error("rodada: " + j.passos.join(" "));
+    jogos.push(await noMotor(page, ({ CAREER }, rodada) => {
+      const me = String(CAREER.clubId);
+      const r = ((CAREER.resultsByRound || {})[rodada] || []).find((x) => String(x.home) === me || String(x.away) === me);
+      const log = (CAREER.matchLog || []).find((m) => m.round === rodada && m.seasonYear === CAREER.seasonYear);
+      return r ? { rodada, gh: r.gh, ga: r.ga, log: log ? [log.gh, log.ga] : null, gols: (r.events || []).filter((e) => e.type === "gol").length, lances: (r.events || []).length } : { rodada, falta: true };
+    }, rodada));
   }
-  check("1) Os 10 jogos mostraram o detalhe 'Seu jogo' com placar:", matches.length === 10 && matches.every((m) => /\d+\D+\d+/.test(m.score)), matches.map((m) => m.score));
-  // Jogo com gol tem que listar eventos (o detalhe lista gol/cartão).
-  const goalsOf = (score) => (score.match(/\d+/g) || []).slice(0, 2).reduce((a, n) => a + Number(n), 0);
-  const withGoals = matches.filter((m) => goalsOf(m.score) > 0);
-  check("2) Todo jogo com gol lista eventos no detalhe:", withGoals.every((m) => m.events.length > 0), { jogosComGol: withGoals.length, semEventos: withGoals.filter((m) => !m.events.length).map((m) => m.score) });
 
+  check("1) Em 6 rodadas, o seu jogo fica gravado com o placar, igual ao do registro de partidas:",
+    jogos.length === 6 && jogos.every((g) => !g.falta && g.log && g.log[0] === g.gh && g.log[1] === g.ga), JSON.stringify(jogos));
+  const comGol = jogos.filter((g) => g.gh + g.ga > 0);
+  check("2) Todo jogo com gol guarda os lances, com um gol para cada gol do placar:", comGol.every((g) => g.lances > 0 && g.gols === g.gh + g.ga), JSON.stringify({ comGol: comGol.length, jogos }));
+  check("3) Sem erro na página:", erros.length === 0, JSON.stringify(erros.slice(0, 3)));
   await browser.close();
 })().catch((e) => { console.error("FATAL:", e); process.exit(1); });

@@ -1,156 +1,70 @@
+// Partida ao vivo (substituição, troca de esquema, expulsão, fim) — lote L5d,
+// sem a tela antiga. A partida pela ponte (iniciar, pausar, substituir,
+// aplicarTatica, pularParaFim: os mesmos comandos da Partida da v2) e os
+// tempos resolvidos pelo motor (resolveLiveChunk). As telas: a Partida
+// (placar, minuto, lances, pausar, intervalo, velocidade, pular para o fim)
+// no test_v2_partida e no test_v2_pausa; Substituição e Ajustar tática no
+// test_v2_ajustes; Resultados da rodada no test_v2_posjogo item 3.
+//  1) A partida começa ao vivo.
+//  2) Substituição: quem saiu deixa de ser titular; 1 substituição usada.
+//  3) Trocar o esquema no jogo: a formação muda, com 2 tempos de penalidade
+//     de familiaridade.
+//  4) A penalidade some depois de 2 tempos.
+//  5) Uma expulsão libera uma substituição a mais e deixa alguém suspenso.
+//  6) Pular para o fim termina a partida e grava a rodada (avança 1).
+//  7) A rodada grava os 10 jogos (os da CPU também).
 const { chromium } = require("playwright-core");
 const { check } = require("./_check");
-const { enterGame } = require("./_startup");
-const { skipPreseason } = require("./_calendar_skip");
-
-async function newCareer(page, base, email) {
-  await page.goto(base + "/", { waitUntil: "load" });
-  await page.evaluate(async ({ email }) => {
-    await fetch("/api/auth/signup", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: "AoVivo Test", email, password: "senha123", phone: "11999999999", plan: "freemium" }) });
-    await fetch("/api/auth/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, password: "senha123" }) });
-  }, { email });
-  await page.goto(base + "/carreira.html", { waitUntil: "load" });
-  await page.click('.mt-competition-card[data-competition="brasileirao"]');
-  await page.waitForTimeout(200);
-  await page.click(".m3-club-row");
-  await page.waitForTimeout(150);
-  await page.click("#btnConfirmClub");
-  await enterGame(page);
-}
-async function getCareer(page) {
-  return page.evaluate(async () => (await (await fetch("/api/career")).json()).career);
-}
+const { newCareer, globaisDoMotor } = require("./_v2_carreira");
 
 (async () => {
-  const browser = await chromium.launch({
-    executablePath: process.env.PW_CHROMIUM_PATH || undefined,
-    headless: true,
-  });
-  const page = await browser.newPage({ viewport: { width: 390, height: 900 } });
+  const browser = await chromium.launch({ executablePath: process.env.PW_CHROMIUM_PATH || undefined, headless: true, args: ["--host-resolver-rules=MAP fonts.googleapis.com 127.0.0.1,MAP fonts.gstatic.com 127.0.0.1"] });
+  const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
   page.on("dialog", (d) => d.dismiss());
-  page.on("pageerror", (err) => console.log("PAGE ERROR:", err.message));
-  page.on("console", (m) => { if (m.type() === "error" && !m.text().includes("fonts.googleapis") && !m.text().includes("fundingchoices")) console.log("CONSOLE ERROR:", m.text()); });
+  const erros = [];
+  page.on("pageerror", (err) => erros.push(err.message));
+  await newCareer(page, `aovivo${Date.now()}@teste.com`);
+  await globaisDoMotor(page);
 
-  const base = "http://localhost:8787";
-  await newCareer(page, base, `aovivo${Date.now()}@teste.com`);
-  await page.evaluate(() => { window.__origRandom = Math.random; });
-
-  // 1) Clicar em "Simular rodada" abre a tela Ao Vivo (não o modal de
-  // detalhe instantâneo de antes).
-  await page.click(".m3-nav-item[data-panel='central']");
-  await page.waitForTimeout(300);
-  await skipPreseason(page); // GE-CALENDAR-001: carreira nova começa na pré-temporada
-  await page.click("#btnSimulate");
-  await page.waitForSelector("#preMatchOverlay.open", { timeout: 5000 });
-  await page.click("#btnPreMatchGo");
-  await page.waitForSelector("#liveMatchOverlay.open", { timeout: 5000 });
-  check("1) Tela Ao Vivo abriu ao simular:", true);
-
-  // Pausa a progressão automática IMEDIATAMENTE (evita timers reais
-  // concorrendo com as chamadas manuais abaixo, ver comentário em
-  // resolveLiveChunk/scheduleNextChunk). Esse teste dirige a partida
-  // inteira manualmente via resolveLiveChunk() — inclusive o intervalo
-  // automático do item 4, que também acontece numa chamada manual
-  // (resolveLiveChunk não distingue quem chamou), então não precisa de
-  // nenhum tratamento especial aqui além de continuar pausado.
-  await page.evaluate(() => pauseLiveMatch());
-
-  // 2) Substituição: troca um titular por alguém do banco, confere que
-  // vale a partir do PRÓXIMO tempo (computeHumanStrength lê ao vivo).
-  const before = await page.evaluate(() => ({
-    outId: CAREER.lineup.starters.find((id) => id),
-    benchId: CAREER.lineup.bench.find((id) => CAREER.squad.find((p) => p.id === id && p.status === "ok")),
-  }));
-  await page.evaluate(() => resolveLiveChunk()); // 1º tempo (0-15')
-  await page.evaluate(({ outId, benchId }) => {
-    document.getElementById("liveSubOutSelect").innerHTML = `<option value="${outId}">x</option>`;
-    document.getElementById("liveSubInSelect").innerHTML = `<option value="${benchId}">y</option>`;
-    confirmLiveSub();
-  }, before);
-  const afterSub = await page.evaluate((outId) => ({
-    outStillStarter: CAREER.lineup.starters.includes(outId),
-    subsUsed: LIVE_MATCH.subsUsed,
-    paused: LIVE_MATCH.paused,
-  }), before.outId);
-  check("2) Substituição -- jogador que saiu não é mais titular:", !afterSub.outStillStarter, "| subsUsed=1:", afterSub.subsUsed === 1, "| partida retomada (paused=false):", afterSub.paused === false);
-  // AJUSTE (item 4) — confirmLiveSub() retoma a progressão automática
-  // sozinho (resumeLiveMatch) — repausa de novo aqui pra manter o
-  // controle 100% manual dos "tempos" abaixo, sem um timer real
-  // correndo por baixo e (com o intervalo automático agora existindo)
-  // eventualmente disparando finishLiveMatch em paralelo com as
-  // chamadas manuais mais adiante.
-  await page.evaluate(() => pauseLiveMatch());
-
-  // 3) Ajuste tático: troca de esquema aplica penalidade de familiaridade
-  // por 2 tempos.
-  await page.evaluate(() => { openLiveTacticsModal(); });
-  const otherFormation = await page.evaluate(() => {
-    const cur = CAREER.lineup.formation;
-    return Object.keys(FORMATIONS).find((f) => f !== cur);
+  const r = await page.evaluate(async () => {
+    const P = (await import("/js/motor/v2.js")).criarPonte();
+    const ate = async (cond, ms = 60000) => { const t0 = Date.now(); while (Date.now() - t0 < ms) { const v = cond(); if (v) return v; await new Promise((ok) => setTimeout(ok, 50)); } return null; };
+    const out = {};
+    let i = P.iniciar();
+    if (i && i.motivo === "escalacao") { await P.completarEscalacao(); i = P.iniciar(); }
+    const rodada = CAREER.currentRound;
+    out.um = { i, aoVivo: !!LIVE_MATCH };
+    P.pausar();
+    resolveLiveChunk();
+    const sai = CAREER.lineup.starters.find(Boolean);
+    const entra = CAREER.lineup.bench.find((id) => CAREER.squad.find((p) => p.id === id && p.status === "ok"));
+    const s = P.substituir(sai, entra);
+    out.dois = { s, saiTitular: CAREER.lineup.starters.includes(sai), usadas: LIVE_MATCH.subsUsed };
+    const outra = Object.keys(FORMATIONS).find((f) => f !== CAREER.lineup.formation);
+    P.aplicarTatica({ formacao: outra });
+    out.tres = { formacao: CAREER.lineup.formation === outra, penalidade: LIVE_MATCH.formationPenaltyChunksLeft };
+    P.pausar();
+    resolveLiveChunk(); resolveLiveChunk();
+    out.quatro = { penalidade: LIVE_MATCH.formationPenaltyChunksLeft };
+    const real = Math.random;
+    Math.random = () => 0.001; // vermelho garantido para quem estiver em campo
+    resolveLiveChunk();
+    Math.random = real;
+    out.cinco = { bonus: LIVE_MATCH.subsBonus, suspenso: CAREER.squad.some((p) => p.status === "suspenso") };
+    P.pularParaFim();
+    const fim = await ate(() => { const e = P.estado(); return e.fase === "encerrada" && e.gravada != null ? e : null; });
+    out.seis = { gravada: fim && fim.gravada, rodada, depois: CAREER.currentRound };
+    out.sete = ((CAREER.resultsByRound || {})[rodada] || []).length;
+    return out;
   });
-  await page.evaluate((f) => {
-    document.getElementById("liveTacticsFormation").value = f;
-    confirmLiveTactics();
-  }, otherFormation);
-  const tacticsState = await page.evaluate((f) => ({
-    formationChanged: CAREER.lineup.formation === f,
-    penaltyChunks: LIVE_MATCH.formationPenaltyChunksLeft,
-  }), otherFormation);
-  check("3) Esquema trocado:", tacticsState.formationChanged, "| penalidade de familiaridade ativa (2 tempos):", tacticsState.penaltyChunks === 2);
-  // AJUSTE (item 4) — confirmLiveTactics() também retoma sozinho.
-  await page.evaluate(() => pauseLiveMatch());
 
-  await page.evaluate(() => resolveLiveChunk()); // 2º tempo -- consome 1 de familiaridade
-  await page.evaluate(() => resolveLiveChunk()); // 3º tempo -- consome o outro
-  const penaltyAfter2 = await page.evaluate(() => LIVE_MATCH.formationPenaltyChunksLeft);
-  check("4) Penalidade de familiaridade zerou depois de 2 tempos:", penaltyAfter2 === 0);
-
-  // 5) Cota de substituição: máximo 5, e cartão vermelho libera bônus
-  // extra sem contar na cota (força vermelho fixando Math.random baixo
-  // pro time humano num tempo isolado).
-  const maxSubsBefore = await page.evaluate(() => MAX_SUBS_PER_MATCH + LIVE_MATCH.subsBonus);
-  await page.evaluate(() => { Math.random = () => 0.001; }); // garante vermelho em quem estiver em campo
-  await page.evaluate(() => resolveLiveChunk()); // 4º tempo
-  const afterRed = await page.evaluate(() => ({
-    subsBonus: LIVE_MATCH.subsBonus,
-    someoneSuspended: CAREER.squad.some((p) => p.status === "suspenso"),
-  }));
-  check("5) Expulsão liberou substituição extra (subsBonus > 0):", afterRed.subsBonus > 0, "| algum jogador ficou suspenso:", afterRed.someoneSuspended);
-
-  // Restaura aleatoriedade normal e termina a partida com "Pular pro
-  // fim" (sem esperar os timers reais).
-  await page.evaluate(() => { Math.random = window.__origRandom; });
-  const beforeSkip = await page.evaluate(() => CAREER.currentRound);
-  await page.evaluate(() => skipLiveMatch());
-  await page.waitForSelector("#matchDetailOverlay.open", { timeout: 20000 });
-  const career1 = await getCareer(page);
-  check("6) Partida terminou e rodada avançou (skipLiveMatch):", career1.currentRound === beforeSkip + 1);
-  console.log("   Modal 'Seu jogo' mostra o placar final ao vivo:", true, "-- texto:", await page.evaluate(() => document.getElementById("matchDetailScore").textContent.trim()));
-
-  await page.click("#btnMatchDetailContinue");
-  await page.waitForTimeout(200);
-  // FASE 4 (item 2) — coletiva de imprensa pode aparecer aqui (ver
-  // determineMatchPressTrigger em carreira.js) — responde a 1ª opção
-  // pra não travar o resto do fluxo.
-  if (await page.evaluate(() => document.getElementById("pressOverlay").classList.contains("open"))) {
-    await page.click("#pressOptions [data-press]");
-  }
-  // AJUSTE — tela de Notícias em tela cheia sempre aparece antes dos
-  // Resultados da rodada agora (ver openNewsScreen em carreira.js).
-  await page.waitForSelector("#newsOverlay.open", { timeout: 5000 });
-  await page.click("#btnNewsContinue");
-  await page.waitForSelector("#roundResultsOverlay.open", { timeout: 5000 });
-  const resultsCount = await page.evaluate(() => document.querySelectorAll("#roundResultsList .m3-match-card").length);
-  check("7) Resultados da rodada inteira (10 jogos, CPU x CPU incluídos):", resultsCount === 10);
-  await page.click("#btnRoundResultsContinue");
-  await page.waitForTimeout(300);
-  // AJUSTE (item 6, pedido do usuário) — proposta por jogador pode
-  // aparecer aqui antes da Tabela (sorteio de sempre) — fecha no X pra
-  // não deixar sobrando por cima do resto do fluxo.
-  if (await page.waitForSelector("#playerOfferOverlay.open", { timeout: 1200 }).then(() => true).catch(() => false)) {
-    await page.click("#playerOfferClose");
-    await page.waitForTimeout(200);
-  }
-
+  check("1) A partida começa ao vivo:", r.um.i && r.um.i.ok && r.um.aoVivo, JSON.stringify(r.um));
+  check("2) Substituição: quem saiu não é mais titular; 1 substituição usada:", r.dois.s.ok && !r.dois.saiTitular && r.dois.usadas === 1, JSON.stringify(r.dois));
+  check("3) Trocar o esquema no jogo: formação nova, com 2 tempos de penalidade de familiaridade:", r.tres.formacao && r.tres.penalidade === 2, JSON.stringify(r.tres));
+  check("4) A penalidade some depois de 2 tempos:", r.quatro.penalidade === 0, JSON.stringify(r.quatro));
+  check("5) Uma expulsão libera uma substituição a mais e deixa alguém suspenso:", r.cinco.bonus > 0 && r.cinco.suspenso, JSON.stringify(r.cinco));
+  check("6) Pular para o fim termina e grava a rodada (avança 1):", r.seis.gravada === true && r.seis.depois === r.seis.rodada + 1, JSON.stringify(r.seis));
+  check("7) A rodada grava os 10 jogos (CPU também):", r.sete === 10, r.sete);
+  check("8) Sem erro na página:", erros.length === 0, JSON.stringify(erros.slice(0, 3)));
   await browser.close();
 })().catch((e) => { console.error("FATAL:", e); process.exit(1); });

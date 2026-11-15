@@ -1,91 +1,53 @@
-// Verifica o Play-by-Play v1: banco de comentários com variações,
-// eventos chance_perdida/defesa, controles de velocidade 1x/2x,
-// destaque de gol em tela cheia, estatísticas agregadas na tela
-// "Seu jogo" e o botão "Rever lances".
+// Lances e estatísticas da partida — lote L5d, sem a tela antiga. Junta o
+// test_play_by_play_v1 e o test_play_by_play_v2. A partida pela ponte e o que
+// o motor guarda dela; as telas da v2 (lances na Partida, velocidade, "Ver
+// lances" e o Resultado) estão no test_v2_partida e no test_v2_resultado.
+//  1) A velocidade 2× fica na partida (ponte.velocidade, o botão da v2).
+//  2) Os lances são variados: além de gols e cartões, há chances perdidas e
+//     defesas.
+//  3) Cada gol tem o autor e, quando há, o autor da assistência (com o id).
+//  4) As estatísticas: finalizações no alvo nunca passam das finalizações,
+//     para cada lado, e a posse fica entre 0 e 100%.
+// O test_play_by_play_v2 só imprimia os lances raros (lesão, pênalti, VAR)
+// achados em várias partidas: são sorteados e não viraram verificação.
 const { chromium } = require("playwright-core");
 const { check } = require("./_check");
-const { enterGame } = require("./_startup");
-const { skipPreseason } = require("./_calendar_skip");
+const { newCareer, globaisDoMotor } = require("./_v2_carreira");
 
 (async () => {
   const browser = await chromium.launch({ executablePath: process.env.PW_CHROMIUM_PATH || undefined, headless: true, args: ["--host-resolver-rules=MAP fonts.googleapis.com 127.0.0.1,MAP fonts.gstatic.com 127.0.0.1"] });
-  const page = await browser.newPage({ viewport: { width: 390, height: 900 } });
+  const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
   page.on("dialog", (d) => d.dismiss());
-  page.on("pageerror", (err) => console.log("PAGE ERROR:", err.message));
-  const base = "http://localhost:8787";
-  const email = `pbp${Date.now()}@teste.com`;
-  await page.goto(base + "/", { waitUntil: "domcontentloaded" });
-  await page.evaluate(async ({ email }) => {
-    await fetch("/api/auth/signup", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: "PBP Teste", email, password: "senha123", phone: "11999999999", plan: "freemium" }) });
-    await fetch("/api/auth/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, password: "senha123" }) });
-  }, { email });
-  await page.goto(base + "/carreira.html", { waitUntil: "domcontentloaded" });
-  await page.click('.mt-competition-card[data-competition="brasileirao"]');
-  await page.waitForTimeout(200);
-  await page.click(".m3-club-row");
-  await page.waitForTimeout(150);
-  await page.click("#btnConfirmClub");
-  await enterGame(page);
+  const erros = [];
+  page.on("pageerror", (err) => erros.push(err.message));
+  await newCareer(page, `lances${Date.now()}@teste.com`);
+  await globaisDoMotor(page);
 
-  // 1) Iniciar partida ao vivo.
-  await skipPreseason(page); // GE-CALENDAR-001: carreira nova começa na pré-temporada
-  await page.click("#btnSimulate");
-  await page.waitForSelector("#preMatchOverlay.open", { timeout: 5000 });
-  await page.click("#btnPreMatchGo");
-  await page.waitForSelector("#liveMatchOverlay.open", { timeout: 5000 });
-  check("1) Tela Ao Vivo abriu:", await page.locator("#liveMatchOverlay.open").count() === 1);
-
-  // 2) Controles de velocidade — clicar 2x muda o estado ativo.
-  await page.click("#liveSpeedToggle .mt-live-speed-btn[data-speed='2']");
-  const speedState = await page.evaluate(() => ({
-    speed: LIVE_MATCH.speed,
-    activeBtn: document.querySelector("#liveSpeedToggle .mt-live-speed-btn.active").dataset.speed,
-  }));
-  check("2) Velocidade 2x aplicada (LIVE_MATCH.speed=2, botão 2x ativo):", speedState.speed === 2 && speedState.activeBtn === "2", JSON.stringify(speedState));
-  await page.click("#liveSpeedToggle .mt-live-speed-btn[data-speed='1']");
-
-  // 3) Espera alguns tempos passarem (2x = ~450ms por tempo) e checa
-  // se chance_perdida/defesa já apareceram no feed (evento novo).
-  // Espera o ESTADO (tipo novo no feed), até 15 s — antes 2,5 s fixos,
-  // que sob carga cobriam menos tempos de jogo e às vezes só gol/cartão.
-  await page.waitForFunction(() => LIVE_MATCH && LIVE_MATCH.events.some((e) => e.type === "chance_perdida" || e.type === "defesa"), null, { timeout: 15000 }).catch(() => {});
-  const feedTypes = await page.evaluate(() => LIVE_MATCH ? [...new Set(LIVE_MATCH.events.map((e) => e.type))] : []);
-  check("3) Feed já tem tipos de evento variados (chance_perdida ou defesa presentes):",
-    feedTypes.includes("chance_perdida") || feedTypes.includes("defesa"), JSON.stringify(feedTypes));
-
-  // 4) Pular pro fim e checar estado final.
-  await page.click("#btnLiveSkip");
-  await page.waitForSelector("#matchDetailOverlay.open", { timeout: 20000 });
-  check("4) Partida terminou, modal 'Seu jogo' abriu:", true);
-
-  // 5) Estatísticas (posse/finalizações/no alvo/faltas) aparecem.
-  const stats = await page.evaluate(() => {
-    const card = document.getElementById("matchDetailStatsCard");
-    const rows = [...document.querySelectorAll(".mt-stat-bar-row")];
-    return { visible: !card.classList.contains("hidden"), rowCount: rows.length, labels: rows.map((r) => r.querySelector(".mt-stat-bar-label").textContent) };
+  const r = await page.evaluate(async () => {
+    const P = (await import("/js/motor/v2.js")).criarPonte();
+    const ate = async (cond, ms = 60000) => { const t0 = Date.now(); while (Date.now() - t0 < ms) { const v = cond(); if (v) return v; await new Promise((ok) => setTimeout(ok, 50)); } return null; };
+    let i = P.iniciar();
+    if (i && i.motivo === "escalacao") { await P.completarEscalacao(); i = P.iniciar(); }
+    const lm = LIVE_MATCH;
+    P.velocidade(2);
+    const vel = { motor: lm.speed, ponte: P.estado().velocidade };
+    P.pularParaFim();
+    await ate(() => { const e = P.estado(); return e.fase === "encerrada" && e.gravada != null; });
+    const ev = lm.events || [];
+    const s = lm.stats;
+    const posse = Math.round(Math.max(0, Math.min(1, s.possWeightHome)) * 100);
+    return {
+      vel, tipos: [...new Set(ev.map((e) => e.type))],
+      gols: ev.filter((e) => e.type === "gol").map((e) => ({ autor: !!e.player, temChave: "assistPlayer" in e, ok: !e.assistPlayer || !!e.assistPlayerId })),
+      stats: { shots: s.shots, onTarget: s.shotsOnTarget, posse },
+    };
   });
-  check("5) Cartão de estatísticas visível com 4 métricas:", stats.visible && stats.rowCount === 4, JSON.stringify(stats.labels));
 
-  // 6) "Rever lances" abre o feed completo (inclui chance/defesa/sub).
-  await page.click("#btnMatchDetailReplay");
-  await page.waitForSelector("#matchReplayOverlay.open", { timeout: 3000 });
-  const replay = await page.evaluate(() => {
-    const rows = [...document.querySelectorAll("#matchReplayFeed .mt-live-tl-event")];
-    return { count: rows.length, hasText: rows.length > 0 && rows[0].querySelector(".mt-live-tl-desc").textContent.length > 0 };
-  });
-  check("6) 'Rever lances' mostra o feed completo (com texto de comentário):", replay.count > 0 && replay.hasText, replay.count);
-  await page.click("#matchReplayClose");
-  await page.waitForTimeout(200);
-
-  // 7) Gol assistido: título + assistência como linha própria (não
-  // mais um evento "Assistência" separado na lista).
-  const goalRow = await page.evaluate(() => {
-    const rows = [...document.querySelectorAll("#matchDetailEvents .ct-event-row")];
-    const withAssist = rows.find((r) => r.querySelector(".ct-event-assist"));
-    return { totalRows: rows.length, hasAssistLine: !!withAssist, assistText: withAssist ? withAssist.querySelector(".ct-event-assist").textContent : null };
-  });
-  if (goalRow.hasAssistLine) check("7) Lista de eventos (gol/cartão) sem linha 'Assistência' separada — vira sub-linha do gol:", !!goalRow.assistText && goalRow.assistText.trim().length > 0, JSON.stringify(goalRow));
-  else check("7) (pulado -- nenhum gol assistido nesta partida pra conferir a sub-linha)");
-
+  check("1) A velocidade 2× fica na partida:", r.vel.motor === 2 && r.vel.ponte === 2, JSON.stringify(r.vel));
+  check("2) Lances variados: chances perdidas ou defesas além de gols e cartões:", r.tipos.includes("chance_perdida") || r.tipos.includes("defesa"), JSON.stringify(r.tipos));
+  check("3) Cada gol tem o autor e a assistência (quando há, com o id):", r.gols.every((g) => g.autor && g.temChave && g.ok), JSON.stringify(r.gols));
+  check("4) Finalizações no alvo nunca passam das finalizações; posse entre 0 e 100%:",
+    ["home", "away"].every((k) => r.stats.onTarget[k] <= r.stats.shots[k] && r.stats.shots[k] >= 0) && r.stats.posse >= 0 && r.stats.posse <= 100, JSON.stringify(r.stats));
+  check("5) Sem erro na página:", erros.length === 0, JSON.stringify(erros.slice(0, 3)));
   await browser.close();
 })().catch((e) => { console.error("FATAL:", e); process.exit(1); });

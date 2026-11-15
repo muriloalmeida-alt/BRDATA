@@ -2,7 +2,7 @@
 
 **Data:** 15/11/2026
 **Plano:** `docs/carreira-v2/PLANO_TESTES_TELA_ANTIGA.md` (lote L5, dividido em partes como o L4)
-**Lista congelada:** 82 → 75 (L5a) → 68 (L5b) → 63 (L5c)
+**Lista congelada:** 82 → 75 (L5a) → 68 (L5b) → 63 (L5c) → 55 (L5d)
 
 ## L5a — contratos, moral e lesões (7 arquivos)
 
@@ -183,3 +183,57 @@ Os dois usam o ajudante novo `esperarAssincrono` (`_v2_carreira.js`), que repete
   - `test_coletiva_imprensa` 7/7;
   - `test_noticias_rodada` 8/8.
 - `verificar-tela-antiga.js`: 63 na lista.
+
+## L5d — partida ao vivo, lances e estatísticas (8 arquivos)
+
+| Teste | Antes | Agora |
+|---|---|---|
+| `test_ao_vivo.js` | 7 verificações pelos modais e selects da tela antiga | 8 verificações pela ponte (`iniciar`, `substituir`, `aplicarTatica`, `pularParaFim`) e pelo motor |
+| `test_play_by_play_v1.js` | 7 verificações pela tela ao vivo e o "Seu jogo" antigos | 5 verificações pela ponte e pelo que o motor guarda da partida |
+| `test_play_by_play_v2.js` | 2 verificações da barra de posse; os lances raros só impressos | **saiu:** a posse virou o item 4 do `test_play_by_play_v1` |
+| `test_events.js` | 2 verificações pelo modal "Seu jogo" em 10 rodadas | 3 verificações em 6 rodadas pela ponte |
+| `test_historico_jogador.js` | 4 verificações; a temporada inteira pela tela antiga | 4 verificações pelo motor (3 rodadas e a virada) |
+| `test_estatisticas_completas.js` | 9 verificações pela tela de estatísticas antiga | 4 verificações pelo motor |
+| `test_comparar_jogadores.js` | 4 verificações pelo modal de comparação antigo | **saiu:** a comparação da v2 está no `test_v2_elenco_avancado` itens 7 e 8 |
+| `test_timing.js` | sem verificação: só imprimia tempos | **saiu** |
+
+### Para onde foi cada verificação
+
+**`test_ao_vivo`:**
+- A partida ao vivo, a substituição (quem sai deixa de ser titular, 1 usada), a troca de esquema com 2 tempos de penalidade e a penalidade zerando, a expulsão liberando substituição extra, pular para o fim gravando a rodada e os 10 jogos da rodada: pela ponte e pelo motor.
+- As telas: Partida no `test_v2_partida` e no `test_v2_pausa`; Substituição e Ajustar tática no `test_v2_ajustes`; Resultados da rodada no `test_v2_posjogo` item 3.
+
+**`test_play_by_play_v1` (junta o `_v2`):**
+- Velocidade 2×, lances variados (chance perdida, defesa), gol com assistência (autor e id) e as estatísticas (finalizações no alvo ≤ finalizações; posse entre 0 e 100%): pela ponte e pelo motor.
+- As telas (feed, "Ver lances", Resultado): `test_v2_partida` e `test_v2_resultado`.
+- Os lances raros (lesão, pênalti, VAR) eram só impressos (são sorteados) e não viraram verificação.
+
+**`test_events`:**
+- Em 6 rodadas, o seu jogo gravado com o placar igual ao do registro de partidas, e todo jogo com gol guarda os lances (um gol por gol do placar).
+
+**`test_historico_jogador`:**
+- Sem histórico na 1ª temporada; os jogos da temporada acumulam; a virada grava a linha (jogos, gols, assistências) e zera os contadores. A linha do detalhe antigo saiu; a Ficha da v2 lê o mesmo histórico.
+
+**`test_estatisticas_completas`:**
+- Zeradas na carreira nova; depois de 1 jogo, o resultado do lado certo na temporada e na carreira, jogo sem sofrer gol e sequências; na virada, 1 temporada de campeões e 1 temporada jogada: pelo motor.
+- A tela Estatísticas da v2 (Meu time/Campeonato, Temporada/Histórico): `test_v2_jogos_mais` item 3.
+
+**`test_comparar_jogadores`:**
+- Comparar com outro do elenco (mesma posição) e com um do adversário: `test_v2_elenco_avancado` itens 7 e 8.
+
+### Contraprova
+
+| Regra quebrada | Verificação que falhou |
+|---|---|
+| expulsão sem substituição extra | `test_ao_vivo` 5 |
+| histórico da temporada sem os jogos | `test_historico_jogador` 3 |
+| jogo sem sofrer gol não conta na temporada | `test_estatisticas_completas` 2 (falha quando a partida termina sem gol sofrido; no caso, 2x0) |
+
+### Validação L5d
+- Todos rodados com a saída gravada, com as verificações `true`:
+  - `test_ao_vivo` 8/8;
+  - `test_play_by_play_v1` 5/5;
+  - `test_events` 3/3;
+  - `test_historico_jogador` 4/4;
+  - `test_estatisticas_completas` 4/4.
+- `verificar-tela-antiga.js`: 55 na lista.
