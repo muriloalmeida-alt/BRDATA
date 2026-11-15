@@ -208,6 +208,7 @@ export function avaliarPedidoDeEmprestimo(clubId, p, duracao, pct) {
     papelNaOrigem: mercado.papelNoElenco(p, leagueSquadFor(clubId)),
     rosterOrigem: leagueSquadFor(clubId),
     papelNoDestino: mercado.papelNoElenco(p, [...principal, p]),
+    disponivel: mercado.precisaDeMinutos(p, leagueSquadFor(clubId)), // EMPRESTIMO-DISPONIVEL
   });
 }
 

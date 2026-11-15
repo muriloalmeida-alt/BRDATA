@@ -107,6 +107,13 @@ function FiltersSheet({ f, info, onApply, onClose }: { f: MarketFilters; info: M
             {clubs.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
           </select>
         </div>
+        <div className="pr-field">
+          <span className="pr-label" id="mf-loan">Disponibilidade</span>
+          <div className="pr-seg" role="radiogroup" aria-labelledby="mf-loan">
+            {([[false, "Todos"], [true, "Disponível para empréstimo"]] as const).map(([v, l]) =>
+              <button key={String(v)} type="button" role="radio" aria-checked={d.loan === v} className={`pr-seg-btn${d.loan === v ? " is-on" : ""}`} onClick={() => setD({ ...d, loan: v })}>{l}</button>)}
+          </div>
+        </div>
         {range("ovr", "Faixa de overall")}
         {range("age", "Idade")}
         {range("val", "Valor", true)}
@@ -144,6 +151,7 @@ export function Market({ career }: { career: Career }) {
   }, [loaded]);
   const offers = (career.pendingOffersOut || []).length;
   const sales = (career.pendingListings || []).length;
+  const loanOffers = (career.loanOffersIn || []).length;
   return (
     <div className="wk pr">
       <Head ctx="Mercado" back={`${BASE}/clube`} />
@@ -163,6 +171,7 @@ export function Market({ career }: { career: Career }) {
           <nav className="wk-sec" aria-label="Suas negociações">
             <NavRow to={`${M}/propostas`} title="Minhas propostas" value={offers ? String(offers) : null} />
             <NavRow to={`${M}/vendas`} title="Minhas vendas" value={sales ? String(sales) : null} />
+            <NavRow to={`${M}/emprestimos`} title="Meus jogadores para empréstimo" value={loanOffers ? `${loanOffers} proposta${loanOffers === 1 ? "" : "s"}` : null} />
             <NavRow to={`${M}/historico`} title="Histórico de negociações" />
           </nav>
           <div className="sq-tools mk-tools">
@@ -179,7 +188,7 @@ export function Market({ career }: { career: Career }) {
                   <Link className="row sp-player" to={ALVO(r.clubId, r.player.id)} onClick={() => { KEPT_SCROLL = window.scrollY; }}>
                     <Jersey value="" size={44} />
                     <span className="row-body"><span className="row-title">{shortName(r.player.name)}</span>
-                      <span className="row-sub">{POSITION[r.player.group]} · overall {r.player.overall}{r.player.age != null ? ` · ${r.player.age} anos` : ""}{r.pendingOfferId ? (r.pendingRefused ? " · proposta recusada" : " · proposta enviada") : ""}</span></span>
+                      <span className="row-sub">{POSITION[r.player.group]} · overall {r.player.overall}{r.player.age != null ? ` · ${r.player.age} anos` : ""}{r.loanAvailable ? " · disponível para empréstimo" : ""}{r.pendingOfferId ? (r.pendingRefused ? " · proposta recusada" : " · proposta enviada") : ""}</span></span>
                     <IconChevron className="row-chevron" />
                   </Link>
                   <dl className="wk-list"><div className="wk-item"><dt>{r.clubName}{r.division && i.multi ? ` · ${r.division}` : ""} · valor de mercado</dt><dd>{r.player.value != null ? moneyShort(r.player.value) : "—"}</dd></div></dl>
@@ -752,6 +761,8 @@ export function Loan({ career, clubId, id, onChanged }: { career: Career; clubId
   const [done, setDone] = useState<string | null>(null);
   const [askPct, setAskPct] = useState<number | null>(null);
   const [loanOp] = useState(newOpId);
+  const [info] = useInfo();
+  const available = incoming && !!info && info !== "erro" && (info.disponiveisEmprestimo || []).includes(String(id));
   const back = incoming ? ALVO(clubId!, id) : `${BASE}/elenco/ficha?id=${encodeURIComponent(id)}&tela=numeros`;
   useEffect(() => { if (!p && !done) navigate(incoming ? M : `${BASE}/elenco`, { replace: true }); }, [p, done, incoming]);
   // Saída: o clube interessado é sorteado ao abrir, como no jogo.
@@ -809,6 +820,7 @@ export function Loan({ career, clubId, id, onChanged }: { career: Career; clubId
           {incoming && <>
             <Seg id="ln-p" label="Percentual do salário que você paga" value={pct} opts={[[50, "50%"], [75, "75%"], [100, "100%"]]} onChange={setPct} />
             <p className="mk-hint">Você paga {moneyShort(loanWage(p.wage || 0, pct))} por mês.</p>
+            {available && <p className="mk-hint">Disponível para empréstimo: o clube libera a partir de 50% do salário, se ele for titular ou rotação no seu time.</p>}
           </>}
           <Seg id="ln-c" label="Cláusula de compra ao fim do empréstimo" value={clause} opts={[["nenhuma", "Nenhuma"], ["opcional", "Opcional"], ["obrigatoria", "Obrigatória"]]} onChange={setClause} />
           {clause !== "nenhuma" && <MoneyInput id="ln-v" label="Valor da cláusula (R$)" value={cv} onChange={setCv} />}
@@ -905,6 +917,55 @@ export function PendingOffer({ career, onChanged }: { career: Career; onChanged:
         <Status err={err} />
         <button type="button" className="cta" aria-disabled={busy || undefined} onClick={() => { if (!busy) answer("aceitar"); }}>Aceitar</button>
         <button type="button" className="link-back" disabled={busy} onClick={() => answer("recusar")}>Recusar</button>
+      </div>
+    </div>
+  );
+}
+
+// ---------- Meus jogadores para empréstimo (EMPRESTIMO-DISPONIVEL, 15/11) ----------
+// Seus jogadores marcados como disponíveis e as propostas que eles recebem na
+// janela (clubes em que seriam titulares ou rotação). Aceitar empresta para a
+// temporada inteira e cobra a taxa; recusar descarta a proposta.
+export function LoanListings({ career, onChanged }: { career: Career; onChanged: () => Promise<void> | void }) {
+  const listed = (career.squad || []).filter((p) => p.loanListed);
+  const offers = career.loanOffersIn || [];
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<string | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+  const [op] = useState(newOpId);
+  const run = async (fn: () => Promise<{ ok: boolean; motivo?: string; mensagem?: string }>, ok: string) => {
+    if (busy) return;
+    setBusy(true); setErr(null); setMsg(null);
+    const r = await fn();
+    setBusy(false);
+    if (!r.ok) { setErr(msgOf(r)); return; }
+    setMsg(ok); await onChanged();
+  };
+  return (
+    <div className="wk pr">
+      <Head ctx="Mercado" back={M} />
+      <h1 className="screen-title">Jogadores para empréstimo.</h1>
+      <span className="tb-bar" aria-hidden="true" />
+      <p className="screen-sub">Quem precisa de minutos e as propostas recebidas.</p>
+      {listed.length ? listed.map((p) => {
+        const mine = offers.filter((o) => String(o.playerId) === String(p.id));
+        return (
+          <section key={p.id} className="wk-sec" aria-label={shortName(p.name)}>
+            <PlayerRow name={shortName(p.name)} position={POSITION[p.group]} to={`${BASE}/elenco/ficha?id=${encodeURIComponent(p.id)}`} />
+            {mine.length ? mine.map((o) => (
+              <div key={o.id} className="mk-loan-offer">
+                <Rows rows={[{ label: "Clube", value: o.clubName }, { label: "Papel lá", value: o.papel === "titular" ? "Titular" : "Rotação" }, { label: "Duração", value: "Temporada inteira" }, { label: "Taxa que você recebe", value: moneyShort(o.fee), tone: "pos" }]} />
+                <button type="button" className="row pr-row" disabled={busy} onClick={() => run(() => MarketGateway.acceptLoanOffer(o.id, `${op}_${o.id}`), `${shortName(p.name)} vai emprestado para o ${o.clubName}. Você recebe ${moneyShort(o.fee)}.`)}><span className="row-body"><span className="row-title">Aceitar proposta</span></span><IconChevron className="row-chevron" /></button>
+                <button type="button" className="row pr-row" disabled={busy} onClick={() => run(() => MarketGateway.rejectLoanOffer(o.id), `Proposta do ${o.clubName} recusada.`)}><span className="row-body"><span className="row-title">Recusar</span></span><IconChevron className="row-chevron" /></button>
+              </div>
+            )) : <p className="wk-note">Nenhuma proposta ainda. Elas chegam durante a janela de transferências.</p>}
+            <button type="button" className="row pr-row" disabled={busy} onClick={() => run(() => MarketGateway.loanAvailable(p.id, false), `${shortName(p.name)} não está mais disponível para empréstimo.`)}><span className="row-body"><span className="row-title">Tirar da lista de empréstimo</span></span><IconChevron className="row-chevron" /></button>
+          </section>
+        );
+      }) : <p className="wk-note pr-pad">Nenhum jogador seu está disponível para empréstimo. Para marcar, abra a ficha do jogador, toque em "A temporada em números" e ligue "Disponível para empréstimo".</p>}
+      <div className="cal-foot">
+        <Status msg={msg} err={err} />
+        <button type="button" className="link-back" onClick={() => goBackTo(M)}>Voltar ao mercado</button>
       </div>
     </div>
   );

@@ -118,3 +118,17 @@ test("Proposta recusada não bloqueia uma nova e aparece na lista como recusada"
   const row = marketList(c, info(), NO_MARKET_FILTERS).find((r) => r.player.id === "p2")!;
   assert.equal(row.pendingRefused, true);
 });
+
+// EMPRESTIMO-DISPONIVEL (15/11)
+test("Filtro 'Disponível para empréstimo': só os da lista do motor, jovens até 23 primeiro; a marca vai na linha; conta como filtro ativo", () => {
+  const c = career();
+  const i = info({ disponiveisEmprestimo: ["p1", "p2", "c1", "p3"] });
+  const rows = marketList(c, i, { ...NO_MARKET_FILTERS, loan: true });
+  // p3 está emprestado (não entra); c1 (19) e p2 (22) antes de p1 (30), mesmo com p1 valendo mais.
+  assert.deepEqual(rows.map((r) => r.player.id), ["p2", "c1", "p1"]);
+  assert.ok(rows.every((r) => r.loanAvailable));
+  const all = marketList(c, i, NO_MARKET_FILTERS);
+  assert.equal(all.find((r) => r.player.id === "p1")!.loanAvailable, true);
+  assert.equal(marketList(c, info(), NO_MARKET_FILTERS).some((r) => r.loanAvailable), false);
+  assert.equal(marketFiltersActive({ ...NO_MARKET_FILTERS, loan: true }), 1);
+});

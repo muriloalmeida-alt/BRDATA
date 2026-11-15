@@ -49,8 +49,12 @@ const { carreiraV2, signup, ensureDailyClaimed, noMotor, saveNoServidor, base } 
   check("2) Jogador emprestado NÃO aparece no Mercado:", !noMercado, noMercado);
 
   // 3) Empréstimo IN, pagando 50% do salário (o que o modal antigo fazia).
-  const inn = await noMotor(page, async ({ ponte, semana, clube }) => {
-    const e = semana.allMarketPlayers().find((x) => !x.mine && !clube.isLoanOutRefused(x.p));
+  const inn = await noMotor(page, async ({ ponte, semana, clube, mercado, CAREER }) => {
+    // EMPRESTIMO-DISPONIVEL: um jogador que o clube pôs para empréstimo e
+    // que seria titular ou rotação no seu time (o clube libera).
+    const meus = CAREER.squad.filter((p) => p.origin !== "base");
+    const libera = (x) => mercado.precisaDeMinutos(x.p, semana.leagueSquadFor(x.club.id)) && mercado.papelNoElenco(x.p, [...meus, x.p]) !== "reserva";
+    const e = semana.allMarketPlayers().find((x) => !x.mine && !clube.isLoanOutRefused(x.p) && libera(x));
     const info = { id: e.p.id, name: e.p.name, clubId: String(e.club.id), wage: e.p.wage };
     const r = await ponte.pegarEmprestado(info.clubId, info.id, "temporada", 50, "nenhuma", 0);
     return { ...info, r };

@@ -59,6 +59,22 @@ const base = "http://localhost:8787";
     const pick = (i) => { const sq = c.leagueSquads[clubs[i]]; const p = sq.slice().sort((a, b) => a.overall - b.overall)[0]; return { club: clubs[i], id: p.id, name: p.name, value: p.value, wage: p.wage }; };
     return { a: pick(0), b: pick(1), d: pick(2), e: pick(3), mine: c.squad.filter((p) => p.origin === "principal").map((p) => p.id), gk: c.squad.length };
   `);
+  // Empréstimo de entrada (item 7): EMPRESTIMO-DISPONIVEL — um jogador que o
+  // clube pôs para empréstimo e que seria titular ou rotação no seu time
+  // (o clube libera; um disponível que ficaria reserva aqui é recusado).
+  prep.d = await v2.evaluate(async (pegos) => {
+    const M = await import("/js/motor/mercado.js");
+    const c = (await (await fetch("/api/career", { cache: "no-store" })).json()).career;
+    const meus = c.squad.filter((p) => p.origin !== "base");
+    for (const [cid, sq] of Object.entries(c.leagueSquads)) {
+      if (cid === String(c.clubId)) continue;
+      for (const p of sq) {
+        if (p.onLoanFromClubId != null || pegos.includes(p.id)) continue;
+        if (M.precisaDeMinutos(p, sq) && M.papelNoElenco(p, [...meus, p]) !== "reserva") return { club: cid, id: p.id, name: p.name, value: p.value, wage: p.wage };
+      }
+    }
+    return null;
+  }, [prep.a.id, prep.b.id, prep.e.id]);
 
   // 1) Lista e filtro.
   await go("/mercado", "Busque seu reforço.");

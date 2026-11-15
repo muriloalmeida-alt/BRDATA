@@ -10,6 +10,7 @@
 import { useEffect, useState } from "react";
 import { SquadGateway, type PlayerAction, type RenewResult } from "../adapters/squadplus.ts";
 import { ListSheet } from "./Market.tsx";
+import { MarketGateway } from "../adapters/market.ts";
 import { pressEffect } from "../domain/postmatch.ts";
 import { buildClubRoster, buildCompare, buildContracts, buildFicha, comparePool, suggestedWage, POSITION, type CmpPlayer } from "../domain/squadplus.ts";
 import { moneyShort } from "../domain/home.ts";
@@ -26,6 +27,7 @@ import "./match.css";
 import "./week.css";
 import "./prep.css";
 import "./squadplus.css";
+import "./games.css";
 
 type Row = { label: string; value: string; tone?: "pos" | "neg" };
 function Rows({ rows }: { rows: Row[] }) {
@@ -104,6 +106,17 @@ export function Ficha({ career, id, tela, onChanged }: { career: Career; id: str
     if (a === "release") { await onChanged(); navigate(`${BASE}/elenco`, { replace: true }); return; }
     setMsg(`${label}: feito.`); await onChanged();
   };
+  // EMPRESTIMO-DISPONIVEL (15/11): na janela, clubes em que ele seria
+  // titular ou rotação mandam proposta (Mercado → Meus jogadores para empréstimo).
+  const toggleLoan = async () => {
+    const on = !m.player.loanListed;
+    setBusy(true); setErr(null); setMsg(null);
+    const r = await MarketGateway.loanAvailable(m.player.id, on);
+    setBusy(false);
+    if (!r.ok) { setErr(errText(r)); return; }
+    setMsg(on ? "Disponível para empréstimo: as propostas chegam na janela, em Mercado → Meus jogadores para empréstimo." : "Não está mais disponível para empréstimo.");
+    await onChanged();
+  };
   if (tela === "atributos") return (
     <div className="wk pr">
       <Head ctx="Elenco" back={FICHA(id)} />
@@ -128,11 +141,13 @@ export function Ficha({ career, id, tela, onChanged }: { career: Career; id: str
           ? <Link className="row pr-row" to={`${BASE}/mercado/vendas`}><span className="row-body"><span className="row-title">Ver anúncio de venda</span></span><IconChevron className="row-chevron" /></Link>
           : <button type="button" className="row pr-row" onClick={() => setSell(true)}><span className="row-body"><span className="row-title">Colocar à venda</span></span><IconChevron className="row-chevron" /></button>)}
         {m.sale.loan && <Link className="row pr-row" to={`${BASE}/mercado/emprestimo?id=${encodeURIComponent(m.player.id)}`}><span className="row-body"><span className="row-title">Emprestar</span></span><IconChevron className="row-chevron" /></Link>}
+        {m.sale.loan && <button type="button" role="switch" aria-checked={!!m.player.loanListed} className="mo-toggle sp-loan-toggle" disabled={busy} onClick={toggleLoan}><span>Disponível para empréstimo</span><span className="mo-switch" aria-hidden="true" /></button>}
         <Link className="row pr-row" to={`${BASE}/elenco/comparar?a=${encodeURIComponent(id)}`}><span className="row-body"><span className="row-title">Comparar</span></span><IconChevron className="row-chevron" /></Link>
       </nav>
       <div className="cal-foot">
         <p className="sr-only" role="status" aria-live="polite">{msg || ""}</p>
         {msg && <p className="pr-ok" aria-hidden="true">{msg}</p>}
+        {err && <p className="inline-error" role="alert">{err}</p>}
         <button type="button" className="link-back" onClick={() => goBackTo(FICHA(id))}>Voltar ao jogador</button>
       </div>
       {sell && <ListSheet player={m.player} onClose={() => setSell(false)} onDone={(t) => { setSell(false); setMsg(t); onChanged(); }} />}

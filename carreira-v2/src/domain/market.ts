@@ -24,6 +24,8 @@ export interface MarketInfo {
   parcelas: number[];
   esperaRodadas: number;
   recusaEmprestimo: string[];
+  // EMPRESTIMO-DISPONIVEL: jogadores da CPU disponíveis para empréstimo.
+  disponiveisEmprestimo?: string[];
 }
 export const DIVISION: Record<string, string> = { brasileirao: "Série A", serie_b: "Série B", serie_c: "Série C" };
 const norm = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
@@ -31,19 +33,20 @@ const norm = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCa
 // ---------- Lista e filtros (CAP05-T01) ----------
 export type MarketSort = "valor" | "overall" | "idade";
 export interface Range { min: number | null; max: number | null }
-export interface MarketFilters { q: string; pos: "todas" | PlayerGroup; div: string; club: string; ovr: Range; age: Range; val: Range; sort: MarketSort }
-export const NO_MARKET_FILTERS: MarketFilters = { q: "", pos: "todas", div: "", club: "", ovr: { min: null, max: null }, age: { min: null, max: null }, val: { min: null, max: null }, sort: "valor" };
+export interface MarketFilters { q: string; pos: "todas" | PlayerGroup; div: string; club: string; ovr: Range; age: Range; val: Range; sort: MarketSort; loan: boolean }
+export const NO_MARKET_FILTERS: MarketFilters = { q: "", pos: "todas", div: "", club: "", ovr: { min: null, max: null }, age: { min: null, max: null }, val: { min: null, max: null }, sort: "valor", loan: false };
 const rangeOn = (r: Range) => r.min != null || r.max != null;
 const inRange = (v: number | undefined, r: Range) => (r.min == null || (v ?? -Infinity) >= r.min) && (r.max == null || (v ?? Infinity) <= r.max);
 export function marketFiltersActive(f: MarketFilters): number {
-  return [f.pos !== "todas", !!f.div, !!f.club, rangeOn(f.ovr), rangeOn(f.age), rangeOn(f.val), f.sort !== "valor"].filter(Boolean).length;
+  return [f.pos !== "todas", !!f.div, !!f.club, rangeOn(f.ovr), rangeOn(f.age), rangeOn(f.val), f.sort !== "valor", !!f.loan].filter(Boolean).length;
 }
-export interface MarketRow { player: Player; clubId: string; clubName: string; clubShort: string | null; division: string | null; pendingOfferId: string | null; pendingRefused: boolean }
+export interface MarketRow { player: Player; clubId: string; clubName: string; clubShort: string | null; division: string | null; pendingOfferId: string | null; pendingRefused: boolean; loanAvailable: boolean }
 // Mesmo universo de allMarketPlayers (sem os seus e sem quem você emprestou)
 // e a mesma ordem de renderMercado (valor; overall; idade).
 export function marketList(career: Career, info: MarketInfo, f: MarketFilters): MarketRow[] {
   const pending = new Map((career.pendingOffersOut || []).map((o) => [String(o.playerId), o]));
   const q = norm(f.q.trim());
+  const loanSet = new Set(info.disponiveisEmprestimo || []);
   const rows: MarketRow[] = [];
   for (const c of info.clubes) {
     if (c.id === String(career.clubId)) continue;
@@ -52,18 +55,23 @@ export function marketList(career: Career, info: MarketInfo, f: MarketFilters): 
     const clubHit = q && (norm(c.nome).includes(q) || (c.sigla ? norm(c.sigla).includes(q) : false));
     for (const p of (career.leagueSquads || {})[c.id] || []) {
       if (p.onLoanFromClubId != null) continue;
+      const loanAvailable = loanSet.has(String(p.id));
+      if (f.loan && !loanAvailable) continue;
       if (f.pos !== "todas" && p.group !== f.pos) continue;
       if (!inRange(p.overall, f.ovr) || !inRange(p.age, f.age) || !inRange(p.value, f.val)) continue;
       if (q && !clubHit && !norm(p.name).includes(q)) continue;
       rows.push({ player: p, clubId: c.id, clubName: c.nome, clubShort: c.sigla, division: DIVISION[c.divisao] || null,
-        pendingOfferId: pending.get(String(p.id))?.id || null, pendingRefused: pending.get(String(p.id))?.status === "recusada" });
+        pendingOfferId: pending.get(String(p.id))?.id || null, pendingRefused: pending.get(String(p.id))?.status === "recusada", loanAvailable });
     }
   }
   const by = { valor: (a: MarketRow, b: MarketRow) => (b.player.value || 0) - (a.player.value || 0),
     overall: (a: MarketRow, b: MarketRow) => (b.player.overall - a.player.overall) || ((b.player.value || 0) - (a.player.value || 0)),
     idade: (a: MarketRow, b: MarketRow) => ((a.player.age || 0) - (b.player.age || 0)) || (b.player.overall - a.player.overall) }[f.sort];
-  return rows.sort(by);
+  // EMPRESTIMO-DISPONIVEL: com o filtro, jovens até 23 anos primeiro.
+  const young = (r: MarketRow) => ((r.player.age ?? 99) <= YOUNG_LOAN_AGE ? 0 : 1);
+  return rows.sort(f.loan ? (a, b) => (young(a) - young(b)) || by(a, b) : by);
 }
+export const YOUNG_LOAN_AGE = 23;
 export function findTarget(career: Career, clubId: string, playerId: string): Player | null {
   return ((career.leagueSquads || {})[clubId] || []).find((p) => String(p.id) === String(playerId)) || null;
 }

@@ -21,7 +21,7 @@
 import { carreiraAtual, ligaAtual, todosTimes, timePorId, forcaMediaDoElenco, ganchosMundo } from "./estado.js";
 import { pushNotification, generateRoundNews } from "./registro.js";
 import { fmtBRL, abbreviateName } from "./texto.js";
-import { advanceCalendarWeek, ambiente, applyFinanceEntries, avisar, calendarOn, finalizeIncomingPurchase, leagueSquadFor, maybeGenerateOffer, processPendingInstallments, processPendingReceivables, pushLedger, pushTransferLog, refreshAvailability, resolvePendingListingsRound, resolvePendingOffersOutRound, simulateAiTransfers, tickScoutMissions, tickStadiumUpgrade, transferWindowStatus } from "./semana.js";
+import { advanceCalendarWeek, ambiente, applyFinanceEntries, avisar, calendarOn, finalizeIncomingPurchase, leagueSquadFor, maybeGenerateOffer, processPendingInstallments, processPendingReceivables, pushLedger, pushTransferLog, refreshAvailability, resolveLoanListingsRound, resolvePendingListingsRound, resolvePendingOffersOutRound, simulateAiTransfers, tickScoutMissions, tickStadiumUpgrade, transferWindowStatus } from "./semana.js";
 import * as financas from "./financas.js";
 import * as partida from "./partida.js";
 import * as rodada from "./rodada.js";
@@ -960,6 +960,7 @@ export function finishRoundTail(round, allResults, humanMatch, standingsBefore) 
   // de rodar fora da janela também (vender sempre foi liberado o ano
   // inteiro, ver transferWindowStatus).
   resolvePendingListingsRound();
+  resolveLoanListingsRound(); // EMPRESTIMO-DISPONIVEL
   // Nova feature (pedido do usuário: "reinicie o tema do
   // rebaixamento") — a tabela das 2 divisões que o técnico não joga
   // avança 1 rodada em segundo plano, junto com a sua (ver

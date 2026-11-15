@@ -27,8 +27,11 @@ const { carreiraV2, signup, ensureDailyClaimed, noMotor, saveNoServidor, jogarRo
   const fechado = () => page.waitForSelector("text=Empréstimo fechado.", { timeout: 20000 });
 
   // ===== Empréstimo IN com 100% do salário e sem cláusula =====
-  const outro = await noMotor(page, ({ semana, clube }) => {
-    const e = semana.allMarketPlayers().find((x) => !x.mine && !clube.isLoanOutRefused(x.p));
+  const outro = await noMotor(page, ({ semana, clube, mercado, CAREER }) => {
+    // EMPRESTIMO-DISPONIVEL: um disponível que seria titular ou rotação aqui (o clube libera).
+    const meus = CAREER.squad.filter((p) => p.origin !== "base");
+    const libera = (x) => mercado.precisaDeMinutos(x.p, semana.leagueSquadFor(x.club.id)) && mercado.papelNoElenco(x.p, [...meus, x.p]) !== "reserva";
+    const e = semana.allMarketPlayers().find((x) => !x.mine && !clube.isLoanOutRefused(x.p) && libera(x));
     return { id: e.p.id, clubId: String(e.club.id), wage: e.p.wage };
   });
   await page.goto(base + `/mercado/emprestimo?clube=${encodeURIComponent(outro.clubId)}&id=${encodeURIComponent(outro.id)}`, { waitUntil: "domcontentloaded" });
