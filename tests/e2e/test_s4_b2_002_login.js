@@ -1,127 +1,81 @@
-// Testa a tela Login/Entrada (S4-B2-002, issue #13). Diferente das
-// demandas anteriores, a inspeção não encontrou trabalho de migração
-// pendente: #screenLoginRequired (Modo Técnico) já estava 100% nos
-// tokens --m3-* (refatoração anterior, ver comentário "REFATORAÇÃO
-// COMPLETA" em carreira.html) e é uma estrutura própria (.mt-*),
-// completamente separada de .auth-gate (usado só por index.html) —
-// achado da demanda, registrado no relatório. Este teste existe pra
-// travar essa evidência (tokens computados + os 4 estados) contra
-// regressão futura, já que não havia teste dedicado a isso antes —
-// só test_carreira_login_form.js (2 checks funcionais básicos,
-// continua existindo, sem sobreposição).
+// Tela de login (S4-B2-002, issue #13), na carreira oficial (v2, em / sem
+// sessão). O teste anterior travava os tokens e os 4 estados da tela de
+// login da versão antiga; a v2 tem a própria tela ("Volte para o jogo.").
+// L6a (sem a tela antiga): os mesmos 4 estados, pela v2.
+//  1) Padrão: e-mail, senha, "Entrar" e "Criar conta"; cores pelos tokens
+//     do design system (--bd-*).
+//  2) Erro com campos vazios: mensagem com o token de erro, sem ir ao servidor.
+//  3) Erro com senha errada: mensagem do servidor e botão liberado de novo.
+//  4) Carregando: botão desabilitado com "Entrando…" durante o login.
+//  5) Sucesso: o login some e a conta sem carreira vai para a criação (/nova).
 const { chromium } = require("playwright-core");
-const { waitForBoot } = require("./_startup");
 const { check } = require("./_check");
+const { base, signup } = require("./_v2_carreira");
 
 (async () => {
   const browser = await chromium.launch({ executablePath: process.env.PW_CHROMIUM_PATH || undefined, headless: true, args: ["--host-resolver-rules=MAP fonts.googleapis.com 127.0.0.1,MAP fonts.gstatic.com 127.0.0.1"] });
-  const page = await browser.newPage({ viewport: { width: 390, height: 900 } });
-  page.on("dialog", (d) => d.dismiss());
+  const email = `login${Date.now()}@teste.com`;
+  const pre = await browser.newPage();
+  await signup(pre, email);
+  await pre.close();
+
+  const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
+  const page = await ctx.newPage();
   page.on("pageerror", (err) => console.log("PAGE ERROR:", err.message));
-  page.on("console", (msg) => { if (msg.type() === "error") console.log("CONSOLE ERROR:", msg.text()); });
-  const base = "http://localhost:8787";
-  const email = `s4b2002${Date.now()}@teste.com`;
-
   await page.goto(base + "/", { waitUntil: "domcontentloaded" });
-  await page.evaluate(async ({ email }) => {
-    await fetch("/api/auth/signup", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: "S4B2002 Teste", email, password: "senha123", phone: "11999999999", plan: "freemium" }) });
-    await fetch("/api/auth/logout", { method: "POST" }).catch(() => {});
-  }, { email });
-  await page.goto(base + "/carreira.html", { waitUntil: "load" });
-  await waitForBoot(page); // fim do boot (estado) em vez de 500 ms fixos
+  await page.waitForSelector(".ac-form", { timeout: 30000 });
+  const token = (name) => page.evaluate((n) => {
+    const el = document.createElement("span"); el.style.color = `var(${n})`; document.body.appendChild(el);
+    const c = getComputedStyle(el).color; el.remove(); return c;
+  }, name);
 
-  // 1) Estado "default": tela visível, com os tokens --m3-* corretos
-  // (painel/campo/botão) — não .auth-gate (confirma que são telas
-  // realmente separadas, não a mesma reestilizada).
-  const defaultState = await page.evaluate(() => {
-    const scr = document.getElementById("screenLoginRequired");
-    const panel = scr.querySelector(".mt-panel");
-    const input = scr.querySelector("#ctLoginEmail");
-    const btn = scr.querySelector(".mt-btn-enter");
-    return {
-      visible: !scr.classList.contains("hidden"),
-      usesAuthGate: !!scr.querySelector(".auth-gate, .auth-gate-card"),
-      panelBg: getComputedStyle(panel).backgroundColor,
-      inputBg: getComputedStyle(input).backgroundColor,
-      btnBg: getComputedStyle(btn).backgroundColor,
-      btnColor: getComputedStyle(btn).color,
-    };
-  });
-  // Paleta do redesign (carreira.html): --m3-surface-container é #0E1B2D
-  // = rgb(14,27,45); --m3-surface-container-high é #132338 = rgb(19,35,56);
-  // --m3-primary é #B4E64B = rgb(180,230,75); --m3-on-primary é #13200A =
-  // rgb(19,32,10).
-  check("1) Default: tela própria do Modo Técnico (não .auth-gate), tokens --m3-* aplicados:",
-    defaultState.visible && !defaultState.usesAuthGate &&
-    defaultState.panelBg === "rgba(0, 0, 0, 0)" /* redesign bloco 1: campos direto no fundo, sem cartão */ && /* redesign Cap. 1 T02: campo translúcido sobre a cena */ defaultState.inputBg === "rgba(19, 35, 56, 0.72)" &&
-    defaultState.btnBg === "rgb(180, 230, 75)" && defaultState.btnColor === "rgb(19, 32, 10)",
-    JSON.stringify(defaultState));
+  // 1) Padrão.
+  const t1 = await page.evaluate(() => ({
+    h1: document.querySelector("h1").textContent,
+    campos: [...document.querySelectorAll(".lg-field span")].map((s) => s.textContent),
+    cta: document.querySelector(".ac-form .cta").textContent, ctaOff: document.querySelector(".ac-form .cta").disabled,
+    criar: document.querySelector(".ac-signup a")?.getAttribute("href"),
+    tokens: getComputedStyle(document.documentElement).getPropertyValue("--bd-danger").trim().length > 0,
+  }));
+  check("1) Padrão: login da v2 com e-mail, senha, 'Entrar' e 'Criar conta'; tokens do design system definidos:",
+    t1.h1 === "Volte para o jogo." && t1.campos.join() === "E-mail,Senha" && t1.cta === "Entrar" && !t1.ctaOff && t1.criar === "/brasileirao?signup=1" && t1.tokens, JSON.stringify(t1));
 
-  // 2) Estado "erro": campos vazios mostram mensagem inline com o
-  // token --m3-error correto.
-  await page.click("#screenLoginRequired button[type=submit]");
-  await page.waitForTimeout(150);
-  const emptyErrorState = await page.evaluate(() => {
-    const err = document.getElementById("ctLoginError");
-    return { visible: err.style.display !== "none", text: err.textContent, color: getComputedStyle(err).color };
-  });
-  check("2) Erro (campos vazios) com token --m3-error correto:",
-    emptyErrorState.visible && emptyErrorState.color === "rgb(255, 84, 73)", JSON.stringify(emptyErrorState));
+  // 2) Campos vazios: erro local, sem chamar o servidor.
+  let chamadas = 0;
+  page.on("request", (r) => { if (r.url().includes("/api/auth/login")) chamadas++; });
+  await page.click(".ac-form .cta");
+  await page.waitForSelector(".inline-error", { timeout: 5000 });
+  const erroCor = await token("--bd-danger");
+  const t2 = await page.evaluate(() => ({ texto: document.querySelector(".inline-error").textContent, role: document.querySelector(".inline-error").getAttribute("role"), cor: getComputedStyle(document.querySelector(".inline-error")).color }));
+  check("2) Campos vazios: mensagem de erro com o token --bd-danger, sem ir ao servidor:",
+    t2.texto === "Informe e-mail e senha." && t2.role === "alert" && t2.cor === erroCor && chamadas === 0, JSON.stringify({ ...t2, erroCor, chamadas }));
 
-  // 3) Estado "erro" (credenciais erradas) — mesma mensagem inline,
-  // sem travar o formulário.
-  await page.fill("#ctLoginEmail", email);
-  await page.fill("#ctLoginPassword", "senhaerrada");
-  await page.click("#screenLoginRequired button[type=submit]");
-  // Espera a resposta do login recusado (estado: botão volta a "Entrar"),
-  // até 10 s — antes 600 ms fixos, curto sob carga.
-  await page.waitForFunction(() => { const b = document.querySelector("#screenLoginRequired button[type=submit]"); return !b.disabled && b.textContent === "Entrar"; }, null, { timeout: 10000 }).catch(() => {});
-  const wrongPassState = await page.evaluate(() => {
-    const err = document.getElementById("ctLoginError");
-    const btn = document.querySelector("#screenLoginRequired button[type=submit]");
-    return { errorVisible: err.style.display !== "none", errorText: err.textContent, btnReenabled: !btn.disabled, btnLabel: btn.textContent };
-  });
-  check("3) Erro (senha errada): mensagem aparece, botão reabilitado pra tentar de novo:",
-    wrongPassState.errorVisible && wrongPassState.btnReenabled && wrongPassState.btnLabel === "Entrar",
-    JSON.stringify(wrongPassState));
+  // 3) Senha errada.
+  await page.fill('input[type="email"]', email);
+  await page.fill('input[type="password"]', "senhaErrada");
+  await page.click(".ac-form .cta");
+  await page.waitForFunction(() => { const e = document.querySelector(".inline-error"); return e && e.textContent !== "Informe e-mail e senha."; }, null, { timeout: 15000 });
+  await page.waitForFunction(() => !document.querySelector(".ac-form .cta").disabled, null, { timeout: 15000 });
+  const t3 = await page.evaluate(() => ({ texto: document.querySelector(".inline-error").textContent, cta: document.querySelector(".ac-form .cta").textContent, path: location.pathname }));
+  check("3) Senha errada: mensagem do servidor e o botão liberado para tentar de novo:", t3.texto.length > 0 && t3.cta === "Entrar" && chamadas === 1 && !!(await page.$(".ac-form")), JSON.stringify({ ...t3, chamadas }));
 
-  await page.screenshot({ path: "s4_b2_002_error_state.png" }).catch(() => {});
+  // 4) Carregando: segura a resposta do login para ver o estado.
+  let soltar;
+  const segura = new Promise((r) => { soltar = r; });
+  await page.route("**/api/auth/login", async (route) => { await segura; await route.continue(); });
+  await page.fill('input[type="password"]', "senha123");
+  await page.click(".ac-form .cta");
+  await page.waitForFunction(() => document.querySelector(".ac-form .cta").disabled, null, { timeout: 5000 });
+  const t4 = await page.evaluate(() => ({ cta: document.querySelector(".ac-form .cta").textContent, off: document.querySelector(".ac-form .cta").disabled, erro: !!document.querySelector(".inline-error") }));
+  check("4) Carregando: botão desabilitado com 'Entrando…' e sem a mensagem de erro anterior:", t4.cta === "Entrando…" && t4.off && !t4.erro, JSON.stringify(t4));
 
-  // 4) Estado "carregamento": botão desabilitado + texto "Entrando..."
-  // durante o fetch (checado via interceptação de rede pra dar tempo
-  // de capturar o estado intermediário, que normalmente passa rápido
-  // demais pro teste pegar).
-  // A requisição fica PRESA até o estado intermediário ser lido (antes:
-  // atraso fixo de 400 ms e leitura 150 ms depois de iniciar o clique —
-  // sob carga o clique ainda não tinha sido disparado e a leitura pegava
-  // o botão de antes).
-  let releaseLogin;
-  const loginGate = new Promise((r) => { releaseLogin = r; });
-  await page.route("**/api/auth/login", async (route) => {
-    await loginGate;
-    await route.continue();
-  });
-  await page.fill("#ctLoginPassword", "senha123");
-  const submitPromise = page.click("#screenLoginRequired button[type=submit]");
-  await page.waitForFunction(() => document.querySelector("#screenLoginRequired button[type=submit]").disabled, null, { timeout: 5000 }).catch(() => {});
-  const loadingState = await page.evaluate(() => {
-    const btn = document.querySelector("#screenLoginRequired button[type=submit]");
-    return { disabled: btn.disabled, label: btn.textContent };
-  });
-  check("4) Carregamento: botão desabilitado com texto 'Entrando...' durante o login:",
-    loadingState.disabled && loadingState.label === "Entrando...", JSON.stringify(loadingState));
-  releaseLogin();
-  await submitPromise;
-
-  // 5) Estado "sucesso"/conclusão: login válido faz a tela de login
-  // sumir e o boot seguir pro resto do app (mesmo padrão de transição
-  // de S4-B2-001 — sem estado de sucesso próprio nesta tela, só
-  // desaparece).
-  // Espera o ESTADO (tela de login escondida), até 10 s, em vez de 600 ms
-  // fixos — sob carga o boot pós-login passava disso.
-  await page.waitForFunction(() => document.getElementById("screenLoginRequired").classList.contains("hidden"), null, { timeout: 10000 }).catch(() => {});
-  const loggedIn = await page.evaluate(() => document.getElementById("screenLoginRequired").classList.contains("hidden"));
-  check("5) Sucesso: login válido faz a tela de login sumir (fluxo funcional intacto):", loggedIn);
+  // 5) Sucesso.
+  soltar();
+  await page.waitForFunction(() => !document.querySelector(".lg-field"), null, { timeout: 30000 });
+  await page.waitForFunction(() => location.pathname.startsWith("/nova"), null, { timeout: 30000 }).catch(() => {});
+  const t5 = await page.evaluate(() => ({ path: location.pathname, login: !!document.querySelector(".lg-field") }));
+  check("5) Sucesso: o login some e a conta sem carreira vai para a criação:", !t5.login && t5.path.startsWith("/nova"), JSON.stringify(t5));
 
   await browser.close();
-})();
+  console.log("OK");
+})().catch((e) => { console.error("FATAL:", e); process.exit(1); });

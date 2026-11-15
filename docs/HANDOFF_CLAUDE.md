@@ -292,6 +292,45 @@ Decisão do Murilo (14/11) sobre a licença dos escudos de uso restrito
 
 ⸻
 
+SONS-V2 — efeitos sonoros na partida da v2
+
+Status: REGISTRADA (Murilo, 15/11, "Registrar demanda"); aguarda priorização.
+Origem: lacuna achada no lote L6a (docs/carreira-v2/ENTREGA_TESTES_L6.md).
+A tela antiga tocava apito de início e fim, som de gol e torcida ambiente
+(Web Audio, sem arquivo de áudio, em `public/js/carreira.js`). A v2 tem o
+interruptor "Efeitos sonoros" em Configurações, com o texto "Apito, som de
+gol e torcida durante a partida ao vivo", mas nenhum som toca: o interruptor
+só grava a preferência (`mt_sfx_enabled`, `motor/v2.js`).
+Pendente: decidir quando levar os sons para a partida da v2. O teste antigo
+(`test_efeitos_sonoros`) saiu da suíte; o interruptor segue coberto por
+`test_v2_jogos_mais` item 7.
+
+⸻
+
+OBJETIVOS-V2 — objetivos diários, semanais e da temporada na v2
+
+Status: REGISTRADA (Murilo, 15/11, "Registrar demanda"); aguarda priorização.
+Origem: lacuna achada no lote L6a (docs/carreira-v2/ENTREGA_TESTES_L6.md).
+A tela antiga tinha a aba Objetivos (3 diários, 2 semanais, 2 da temporada,
+com prêmio ao coletar). O motor ainda conta o progresso (`CAREER.objectives`,
+`motor/registro.js` e `motor/aovivo.js`), mas a v2 não tem tela nem comando
+da ponte para ver ou coletar.
+Pendente: decidir se a v2 ganha a tela ou se os objetivos saem do jogo. Os
+itens 3 a 5 do `test_engajamento` antigo não têm equivalente até lá.
+
+⸻
+
+SHARE-RESULTADO-V2 — compartilhar o resultado da rodada como imagem
+
+Status: REGISTRADA (Murilo, 15/11, "Registrar demanda"); aguarda priorização.
+Origem: lacuna achada no lote L6a (docs/carreira-v2/ENTREGA_TESTES_L6.md).
+A tela antiga tinha "Compartilhar" em "Seu jogo" (cartão PNG do resultado).
+A v2 compartilha conquista (`test_share_cards`) e título
+(`test_v2_onboarding` item 5), mas não o resultado da rodada.
+Pendente: decidir quando o Resultado da v2 ganha o cartão.
+
+⸻
+
 RODADA-ATUAL — jogos da rodada atual na Tabela da v2
 
 Status: APROVADO (Murilo, 15/11, "Aprovado"; PR #120).

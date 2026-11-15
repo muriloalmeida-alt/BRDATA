@@ -1,141 +1,101 @@
-// Testa a Loja (BR_Data_Treinador_Monetizacao.xlsx + BR_Data_Treinador_
-// Loja_Mockup.html + BR_Data_Treinador_Confirmacao_Compra_Mockup.html):
-// catálogo (5 pacotes de Créditos BR + 6 boosts/patrocínios), carteiras,
-// tela/modal de confirmação de compra. O pagamento de VERDADE (Mercado
-// Pago pros pacotes, débito real de Créditos BR pros boosts -- item 7
-// da lista de melhorias) tem cobertura própria em
-// test_loja_pagamento_real.js; este arquivo cobre só o catálogo/UI.
+// Loja da carreira oficial (/loja, v2): catálogo (5 pacotes de Créditos BR
+// + 6 itens em 3 grupos), saldo da conta, confirmação de compra de pacote e
+// de item. O pagamento de verdade (Mercado Pago nos pacotes, débito real de
+// créditos nos itens) tem cobertura própria em test_loja_pagamento_real.js;
+// este arquivo cobre o catálogo e a confirmação.
+// L6a (sem a tela antiga): mesmas checagens do teste anterior, pela v2.
+//  1) Conta nova começa com 0 créditos (lido do servidor).
+//  2) 5 pacotes; Ouro é o "melhor valor"; preços com centavos.
+//  3) 6 itens em 3 grupos, incluindo Uniforme Alternativo.
+//  4) Confirmação do Pacote Ouro: 4.480 créditos, R$ 34,90, Mercado Pago.
+//  5) "Pagar" chama /api/loja/checkout (sem token aqui: erro) e não muda o saldo.
+//  6) Confirmação de item mostra preço e saldo em créditos; sem saldo, bloqueia.
+//  7) Cancelar fecha a confirmação.
+//  8) Conta freemium abre a Loja sem trava de plano.
 const { chromium } = require("playwright-core");
 const { check } = require("./_check");
-const { enterGame } = require("./_startup");
+const { carreiraV2, base } = require("./_v2_carreira");
 
 (async () => {
   const browser = await chromium.launch({ executablePath: process.env.PW_CHROMIUM_PATH || undefined, headless: true, args: ["--host-resolver-rules=MAP fonts.googleapis.com 127.0.0.1,MAP fonts.gstatic.com 127.0.0.1"] });
   const page = await browser.newPage({ viewport: { width: 390, height: 900 } });
   page.on("dialog", (d) => d.dismiss());
   page.on("pageerror", (err) => console.log("PAGE ERROR:", err.message));
-  const base = "http://localhost:8787";
-  const email = `loja${Date.now()}@teste.com`;
-  await page.goto(base + "/", { waitUntil: "domcontentloaded" });
-  await page.evaluate(async ({ email }) => {
-    await fetch("/api/auth/signup", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: "Murilo Melo", email, password: "senha123", phone: "11999999999", plan: "freemium" }) });
-    await fetch("/api/auth/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, password: "senha123" }) });
-  }, { email });
-  await page.goto(base + "/carreira.html", { waitUntil: "domcontentloaded" });
-  await page.waitForTimeout(400);
-  await page.click('.mt-competition-card[data-competition="brasileirao"]');
-  await page.waitForTimeout(300);
-  await page.click(".m3-club-row");
-  await page.waitForTimeout(150);
-  await page.click("#btnConfirmClub");
-  await enterGame(page);
+  await carreiraV2(page, `loja${Date.now()}@teste.com`);
+  const norm = (s) => String(s || "").replace(/ /g, " ").trim();
+  const conta = () => page.evaluate(async () => (await (await fetch("/api/auth/me", { cache: "no-store" })).json()).user || null);
 
-  // 1) creditsBR:0 lido do servidor, chegou na conta (ME).
-  const meCredits = await page.evaluate(() => ME.creditsBR);
-  check("1) ME.creditsBR começa em 0 (ledger no servidor):", meCredits === 0, meCredits);
+  // 1) Saldo da conta no servidor.
+  const me = await conta();
+  check("1) Conta nova começa com 0 créditos (ledger no servidor):", !!me && (me.creditsBR || 0) === 0, JSON.stringify(me && { creditsBR: me.creditsBR }));
 
-  // 2) Abrir Loja pelo Menu — aba Créditos com os 5 pacotes certos.
-  await page.click("#btnBottomMenu");
-  await page.waitForTimeout(150);
-  await page.click("#btnOpenLoja");
-  await page.waitForTimeout(200);
-  const state1 = await page.evaluate(() => ({
-    panelActive: document.getElementById("panel-loja").classList.contains("active"),
-    cash: document.getElementById("walletCash").textContent,
-    credits: document.getElementById("walletCredits").textContent,
-    activeTab: document.querySelector("#lojaTabs .mt-obj-tab.active")?.dataset.tab,
-    pkgCards: document.querySelectorAll("#lojaItemsList .mt-pkg-card").length,
-    pkgNames: [...document.querySelectorAll("#lojaItemsList .mt-pkg-name")].map((el) => el.textContent.trim()),
-    featured: document.querySelector("#lojaItemsList .mt-pkg-card.featured .mt-pkg-name")?.textContent.trim(),
-    buyLabels: [...document.querySelectorAll("#lojaItemsList .mt-pkg-buy")].map((el) => el.textContent.trim()),
+  // 2) Loja: pacotes.
+  await page.goto(base + "/loja", { waitUntil: "domcontentloaded" });
+  await page.waitForSelector(".mo-item", { timeout: 30000 });
+  const cat = await page.evaluate(() => {
+    const secs = [...document.querySelectorAll("section.wk-sec")];
+    const rows = (s) => [...s.querySelectorAll(".mo-item")].map((r) => ({ t: r.querySelector(".row-title").textContent, b: r.querySelector("button").textContent }));
+    const pac = secs.find((s) => /Pacotes de créditos/.test((s.querySelector("h2") || {}).textContent || ""));
+    const itens = secs.filter((s) => /^Itens com créditos/.test((s.querySelector("h2") || {}).textContent || ""));
+    return { saldo: document.querySelector(".mk-big").textContent, pacotes: pac ? rows(pac) : [], grupos: itens.map((s) => ({ h: s.querySelector("h2").textContent, itens: rows(s) })) };
+  });
+  const precos = cat.pacotes.map((p) => norm(p.b));
+  const destaque = cat.pacotes.filter((p) => /melhor valor/.test(p.t)).map((p) => p.t);
+  check("2) Loja mostra o saldo e os 5 pacotes de créditos:", /^0 créditos/.test(cat.saldo) && cat.pacotes.length === 5, JSON.stringify(cat.pacotes));
+  check("2b) Pacote Ouro é o destacado (melhor valor):", destaque.length === 1 && /Ouro/.test(destaque[0]), JSON.stringify(destaque));
+  check("2c) Preços em reais com centavos (não arredonda R$ 4,90 para R$ 5):", precos.includes("R$ 4,90") && precos.includes("R$ 149,90"), JSON.stringify(precos));
+
+  // 3) Itens com créditos.
+  const nomes = cat.grupos.flatMap((g) => g.itens.map((i) => i.t));
+  check("3) 6 itens com créditos em 3 grupos:", cat.grupos.length === 3 && nomes.length === 6 && cat.grupos.every((g) => g.itens.every((i) => /^\d+ créditos$/.test(norm(i.b)))), JSON.stringify(cat.grupos));
+  check("3b) Inclui Uniforme Alternativo:", nomes.some((n) => n.includes("Uniforme Alternativo")), JSON.stringify(nomes));
+
+  // 4) Confirmação do Pacote Ouro.
+  await page.locator(".mo-item", { hasText: "Ouro" }).locator("button").click();
+  await page.waitForSelector("#lj-t");
+  const pkg = await page.evaluate(() => {
+    const d = document.querySelector('[role="dialog"]');
+    return { titulo: d.querySelector("#lj-t").textContent, texto: d.innerText, cta: d.querySelector(".sp-sheet-cta").textContent };
+  });
+  check("4) Confirmação do Pacote Ouro com 4.480 créditos, R$ 34,90 e Mercado Pago:",
+    /Ouro/.test(pkg.titulo) && /4\.480/.test(pkg.texto) && norm(pkg.cta) === "Pagar R$ 34,90" && /Mercado Pago/.test(pkg.texto), JSON.stringify(pkg));
+
+  // 5) Pagar chama o checkout de verdade; sem token do Mercado Pago aqui o
+  // servidor responde erro, a tela avisa, fica na Loja e o saldo não muda.
+  const resp = page.waitForResponse((r) => r.url().includes("/api/loja/checkout"));
+  await page.click('[role="dialog"] .sp-sheet-cta');
+  const r5 = await resp;
+  await page.waitForSelector(".inline-error", { timeout: 15000 }).catch(() => {});
+  const tela5 = await page.evaluate(() => ({
+    path: location.pathname, sheet: !!document.querySelector("#lj-t"),
+    erro: ((document.querySelector(".inline-error") || {}).textContent || "").trim(),
+    saldo: document.querySelector(".mk-big").textContent,
   }));
-  check("2) Loja abre na aba Créditos com os 5 pacotes do documento:", state1.panelActive && state1.activeTab === "creditos" && state1.pkgCards === 5, JSON.stringify(state1));
-  check("2b) Pacote Ouro é o destacado (MELHOR VALOR):", state1.featured && state1.featured.includes("Ouro"), state1.featured);
-  const norm = (s) => s.replace(/ /g, " ");
-  check("2c) Preços em reais com centavos (não arredonda R$4,90 -> R$5):", state1.buyLabels.map(norm).includes("R$ 4,90") && state1.buyLabels.map(norm).includes("R$ 149,90"), JSON.stringify(state1.buyLabels));
+  const me5 = await conta();
+  check("5) Pagar chama /api/loja/checkout (erro sem token), avisa, fica na Loja e não muda o saldo:",
+    r5.status() >= 400 && tela5.path === "/loja" && !tela5.sheet && tela5.erro.length > 0 && /^0 créditos/.test(tela5.saldo) && (me5.creditsBR || 0) === 0,
+    JSON.stringify({ status: r5.status(), ...tela5, creditsBR: me5.creditsBR }));
 
-  // 3) Trocar pra aba Boosts & Patrocínios — 6 itens, 3 grupos.
-  await page.click('#lojaTabs .mt-obj-tab[data-tab="boosts"]');
-  await page.waitForTimeout(150);
-  const state2 = await page.evaluate(() => ({
-    activeTab: document.querySelector("#lojaTabs .mt-obj-tab.active")?.dataset.tab,
-    boostCards: document.querySelectorAll("#lojaItemsList .mt-boost-card").length,
-    dividers: [...document.querySelectorAll("#lojaItemsList .mt-divider-label")].map((el) => el.textContent),
-    boostNames: [...document.querySelectorAll("#lojaItemsList .mt-boost-name")].map((el) => el.textContent),
-  }));
-  check("3) Aba Boosts mostra os 6 itens da planilha em 3 grupos:", state2.activeTab === "boosts" && state2.boostCards === 6 && state2.dividers.length === 3, JSON.stringify(state2));
-  check("3b) Inclui Uniforme Alternativo (só na planilha, não no mockup):", state2.boostNames.includes("Uniforme Alternativo"));
+  // 6) Confirmação de item: preço e saldo em créditos; sem saldo, bloqueia.
+  await page.locator(".mo-item", { hasText: "Reset de Moral" }).locator("button").click();
+  await page.waitForSelector("#lj-t");
+  const boost = await page.evaluate(() => {
+    const d = document.querySelector('[role="dialog"]');
+    return { titulo: d.querySelector("#lj-t").textContent, texto: d.innerText, cta: d.querySelector(".sp-sheet-cta").textContent, bloqueado: d.querySelector(".sp-sheet-cta").getAttribute("aria-disabled") };
+  });
+  check("6) Confirmação do item mostra preço e saldo em créditos:",
+    /Reset de Moral/.test(boost.titulo) && /Preço\s*\d+ créditos/.test(boost.texto) && /Seu saldo\s*0 créditos/.test(boost.texto) && /^Comprar por \d+ créditos$/.test(norm(boost.cta)), JSON.stringify(boost));
+  check("6b) Aviso fala do saldo de créditos (sem texto de outra loja, ex.: Google Play) e bloqueia sem saldo:",
+    /Saldo insuficiente/.test(boost.texto) && !/Google Play/i.test(boost.texto) && boost.bloqueado === "true", JSON.stringify(boost));
 
-  // 4) Comprar um pacote (Créditos) -- abre confirmação com dados certos.
-  await page.click('#lojaTabs .mt-obj-tab[data-tab="creditos"]');
-  await page.waitForTimeout(150);
-  await page.click('#lojaItemsList [data-buy-package="ouro"]');
-  await page.waitForTimeout(150);
-  const confirmPkg = await page.evaluate(() => ({
-    open: document.getElementById("purchaseConfirmOverlay").classList.contains("open"),
-    title: document.getElementById("purchaseConfirmTitle").textContent,
-    name: document.getElementById("purchaseConfirmName").textContent,
-    detail: document.getElementById("purchaseConfirmDetail").textContent,
-    price: document.getElementById("purchaseConfirmPrice").textContent,
-    btnLabel: document.getElementById("btnConfirmPurchase").textContent,
-  }));
-  check("4) Confirmação de compra do Pacote Ouro com dados certos:", confirmPkg.open && confirmPkg.title.includes("Ouro") && confirmPkg.name.includes("4.480") && norm(confirmPkg.price) === "R$ 34,90" && norm(confirmPkg.btnLabel).includes("R$ 34,90"), JSON.stringify(confirmPkg));
+  // 7) Cancelar fecha.
+  await page.click('[role="dialog"] .text-btn');
+  await page.waitForSelector("#lj-t", { state: "detached", timeout: 5000 }).catch(() => {});
+  check("7) Cancelar fecha a confirmação:", !(await page.$("#lj-t")));
 
-  // 5) Confirmar chama o Checkout Pro de verdade (item 7) -- nesta
-  // sandbox sem MERCADOPAGO_ACCESS_TOKEN configurado, a chamada
-  // devolve erro e a Loja mostra um toast, mas NÃO altera nenhum saldo
-  // local (o crédito só chega de verdade via webhook aprovado, nunca
-  // pelo clique em si -- ver test_loja_pagamento_real.js pro caminho
-  // completo, incluindo a debitação real de boost).
-  const cashBefore = await page.evaluate(() => CAREER.finances.cash);
-  const checkoutReqPromise = page.waitForResponse((r) => r.url().includes("/api/loja/checkout"));
-  await page.click("#btnConfirmPurchase");
-  const checkoutRes = await checkoutReqPromise;
-  await page.waitForTimeout(250);
-  const afterConfirm = await page.evaluate(() => ({
-    stillOnCarreira: location.pathname.includes("carreira.html"),
-    cashAfter: CAREER.finances.cash,
-    creditsAfter: ME.creditsBR,
-    toastVisible: getComputedStyle(document.getElementById("toast")).display !== "none",
-  }));
-  check("5) Confirmar chama /api/loja/checkout de verdade e NÃO altera saldo local (crédito só chega via webhook):", checkoutRes.status() >= 400 && afterConfirm.stillOnCarreira && afterConfirm.cashAfter === cashBefore && afterConfirm.creditsAfter === 0 && afterConfirm.toastVisible, checkoutRes.status(), JSON.stringify(afterConfirm));
-
-  // 6) Comprar um boost -- confirmação mostra preço em Créditos BR (não R$).
-  await page.click('#lojaTabs .mt-obj-tab[data-tab="boosts"]');
-  await page.waitForTimeout(150);
-  await page.click('#lojaItemsList [data-buy-boost="reset_moral"]');
-  await page.waitForTimeout(150);
-  const confirmBoost = await page.evaluate(() => ({
-    open: document.getElementById("purchaseConfirmOverlay").classList.contains("open"),
-    title: document.getElementById("purchaseConfirmTitle").textContent,
-    price: document.getElementById("purchaseConfirmPrice").textContent,
-    btnLabel: document.getElementById("btnConfirmPurchase").textContent,
-    disclosure: document.querySelector(".mt-purchase-disclosure-text").textContent,
-  }));
-  check("6) Confirmação de boost mostra preço em Créditos BR:", confirmBoost.open && confirmBoost.title.includes("Reset de Moral") && confirmBoost.price.includes("Créditos BR") && confirmBoost.btnLabel.includes("120 Créditos BR"), JSON.stringify(confirmBoost));
-  check("6b) Aviso mostra o débito real de Créditos BR (não copia o texto de cobrança do mockup, ex.: Google Play):", /créditos br/i.test(confirmBoost.disclosure) && !/Google Play/i.test(confirmBoost.disclosure), confirmBoost.disclosure);
-
-  // 7) Cancelar fecha sem tocar em nada.
-  await page.click("#btnCancelPurchase");
-  await page.waitForTimeout(150);
-  const afterCancel = await page.evaluate(() => document.getElementById("purchaseConfirmOverlay").classList.contains("open"));
-  check("7) Cancelar fecha a confirmação:", afterCancel === false);
-
-  // 8) Elegibilidade "todo mundo, qualquer plano" -- conta freemium (a
-  // criada aqui) acessa a Loja sem nenhum bloqueio de plano.
-  const planCheck = await page.evaluate(() => ME.plan);
-  check("8) Conta freemium acessou a Loja sem trava de plano:", planCheck === "freemium" && state1.panelActive, planCheck);
-
-  await page.click('#lojaTabs .mt-obj-tab[data-tab="creditos"]');
-  await page.waitForTimeout(150);
-  await page.screenshot({ path: "loja_01_creditos.png" });
-  await page.click('#lojaTabs .mt-obj-tab[data-tab="boosts"]');
-  await page.waitForTimeout(150);
-  await page.screenshot({ path: "loja_02_boosts.png" });
-  await page.waitForTimeout(3800); // deixa o toast anterior sumir sozinho antes do print
-  await page.click('#lojaItemsList [data-buy-boost="injecao_moral"]');
-  await page.waitForTimeout(150);
-  await page.screenshot({ path: "loja_03_confirmacao.png" });
+  // 8) Plano freemium sem trava.
+  check("8) Conta freemium abriu a Loja sem trava de plano:", !!me && me.plan === "freemium" && cat.pacotes.length === 5, me && me.plan);
 
   await browser.close();
-})();
+  console.log("OK");
+})().catch((e) => { console.error("FATAL:", e); process.exit(1); });
