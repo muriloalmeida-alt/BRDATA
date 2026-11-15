@@ -1,227 +1,106 @@
-// Testa os 4 sistemas de Retenção/Engajamento (BRDataRetencaoEspecificacao):
-// login diário com streak, objetivos em camadas, conquistas permanentes,
-// ranking assíncrono (amigos + global).
+// Retenção/engajamento (BRDataRetencaoEspecificacao), na carreira oficial
+// (v2): recompensa diária com sequência, conquistas permanentes e ranking.
+// L6a (sem a tela antiga): mesmas checagens do teste anterior, pela v2.
+// Os objetivos diários/semanais/da temporada (itens 3 a 5 do teste
+// anterior) não têm tela na v2: ver ENTREGA_TESTES_L6.md (lacuna em aberto).
+//  1) Recompensa diária abre sozinha na carreira nova: 7 dias, hoje é o dia 1.
+//  2) "Receber" aplica o prêmio do dia 1 (R$ 500 no caixa); receber de novo
+//     no mesmo dia é recusado ("ja-recebida") e a tela mostra "Já recebida".
+//  6) Conquistas: as 7 do catálogo, 0 desbloqueadas; o filtro "Títulos"
+//     mostra só as 2 de título.
+//  7) Detalhe de conquista bloqueada: progresso e sem "Compartilhar".
+//  8) Promover 5 da base (ação do Elenco da v2) desbloqueia "Joia da Base";
+//     o detalhe mostra a data e o botão de compartilhar.
+//  9) Ranking: seu código de amigo e a sua linha (você) na lista geral.
 const { chromium } = require("playwright-core");
 const { check } = require("./_check");
-const { enterGame } = require("./_startup");
+const { base, contaNova, noMotor, saveNoServidor } = require("./_v2_carreira");
 
 (async () => {
   const browser = await chromium.launch({ executablePath: process.env.PW_CHROMIUM_PATH || undefined, headless: true, args: ["--host-resolver-rules=MAP fonts.googleapis.com 127.0.0.1,MAP fonts.gstatic.com 127.0.0.1"] });
-  const page = await browser.newPage({ viewport: { width: 390, height: 900 } });
+  const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
   page.on("dialog", (d) => d.dismiss());
   page.on("pageerror", (err) => console.log("PAGE ERROR:", err.message));
-  const base = "http://localhost:8787";
-  const email = `engaj${Date.now()}@teste.com`;
+  await contaNova(page, `engaj${Date.now()}@teste.com`);
   await page.goto(base + "/", { waitUntil: "domcontentloaded" });
-  await page.evaluate(async ({ email }) => {
-    await fetch("/api/auth/signup", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: "Murilo Melo", email, password: "senha123", phone: "11999999999", plan: "freemium" }) });
-    await fetch("/api/auth/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, password: "senha123" }) });
-  }, { email });
-  await page.goto(base + "/carreira.html", { waitUntil: "domcontentloaded" });
-  await page.waitForTimeout(400);
-  await page.click('.mt-competition-card[data-competition="brasileirao"]');
-  await page.waitForTimeout(300);
-  await page.click(".m3-club-row");
-  await page.waitForTimeout(150);
-  await page.click("#btnConfirmClub");
-  await enterGame(page, { claimDailyLogin: false });
+  // Carreira nova sem receber a recompensa (tutorial e assistente vistos).
+  const criada = await noMotor(page, async (M) => {
+    const c = await M.ponte.escolherCompeticao("brasileirao");
+    if (!c.ok) return c;
+    const r = await M.ponte.criarCarreira(c.clubes[0].id);
+    if (!r.ok) return r;
+    await fetch("/api/account/onboarding-seen", { method: "POST" });
+    return M.ponte.assistenteVisto();
+  }, null, { comCarreira: false });
+  if (!criada || criada.ok === false) throw new Error("criar carreira: " + JSON.stringify(criada));
 
-  // 1) Login diário: modal abre sozinha (carreira nova, ainda não coletou hoje).
-  const loginModalOpen = await page.evaluate(() => document.getElementById("dailyLoginOverlay").classList.contains("open"));
-  const loginInfo = await page.evaluate(() => ({
-    subtitle: document.getElementById("dailyLoginSubtitle").textContent,
-    rewardLabel: document.getElementById("dailyLoginRewardLabel").textContent,
-    cells: document.querySelectorAll("#dailyLoginTrack .mt-day-cell-login").length,
-  }));
-  check("1) Modal de login diário abre sozinha (dia 1, 7 células):", loginModalOpen && loginInfo.cells === 7 && loginInfo.subtitle.includes("DIA 1 DE 7"), JSON.stringify(loginInfo));
+  // 1) Recompensa diária abre sozinha.
+  await page.goto(base + "/", { waitUntil: "domcontentloaded" });
+  await page.waitForURL(/\/recompensa$/, { timeout: 30000 });
+  await page.waitForSelector(".rw-days", { timeout: 20000 });
+  const t1 = await page.evaluate(() => ({ dias: document.querySelectorAll(".rw-day").length, hoje: [...document.querySelectorAll(".rw-day")].findIndex((d) => d.classList.contains("is-today")) + 1, rotulo: document.querySelector(".rw-days").getAttribute("aria-label") }));
+  check("1) A recompensa diária abre sozinha na carreira nova: 7 dias, hoje é o dia 1:", t1.dias === 7 && t1.hoje === 1 && t1.rotulo === "Sequência: dia 1 de 7", JSON.stringify(t1));
 
-  const cashBefore = await page.evaluate(() => CAREER.finances.cash);
-  await page.click("#btnClaimDailyLogin");
-  // A coleta vai ao servidor antes de aplicar — espera o estado (modal
-  // fechada e sequência 1), até 10 s; antes 300 ms fixos, curto no CI.
-  await page.waitForFunction(() => !document.getElementById("dailyLoginOverlay").classList.contains("open") && ME.dailyLogin && ME.dailyLogin.currentStreakDay === 1, null, { timeout: 10000 }).catch(() => {});
-  const afterClaim = await page.evaluate(() => ({
-    modalClosed: !document.getElementById("dailyLoginOverlay").classList.contains("open"),
-    cashAfter: CAREER.finances.cash,
-    meStreak: ME.dailyLogin.currentStreakDay,
-  }));
-  check("2) Coletar dia 1 aplica +500 moedas e fecha a modal:", afterClaim.modalClosed && afterClaim.cashAfter === cashBefore + 500 && afterClaim.meStreak === 1, JSON.stringify(afterClaim));
+  // 2) Receber aplica R$ 500; de novo no mesmo dia é recusado.
+  const caixaAntes = (await saveNoServidor(page)).finances.cash;
+  await page.locator("button.cta", { hasText: "Receber" }).click();
+  await page.waitForFunction(() => ![...document.querySelectorAll("button.cta")].some((b) => /Receb/.test(b.textContent)), null, { timeout: 20000 });
+  let caixaDepois = caixaAntes;
+  for (let i = 0; i < 20 && caixaDepois === caixaAntes; i++) { caixaDepois = (await saveNoServidor(page)).finances.cash; if (caixaDepois === caixaAntes) await page.waitForTimeout(300); }
+  const deNovo = await noMotor(page, (M) => M.ponte.receberRecompensa());
+  await page.goto(base + "/recompensa", { waitUntil: "domcontentloaded" });
+  await page.waitForSelector(".rw-state", { timeout: 20000 });
+  await page.waitForFunction(() => /Já recebida/.test(document.querySelector(".rw-state").textContent), null, { timeout: 15000 }).catch(() => {});
+  const estado = await page.evaluate(() => ({ texto: document.querySelector(".rw-state").textContent, botao: [...document.querySelectorAll("button.cta")].some((b) => /Receber/.test(b.textContent)) }));
+  check("2) 'Receber' aplica o prêmio do dia 1 (R$ 500 no caixa); de novo no mesmo dia é recusado:",
+    caixaDepois - caixaAntes === 500 && deNovo && deNovo.motivo === "ja-recebida" && /Já recebida hoje/.test(estado.texto) && !estado.botao,
+    JSON.stringify({ caixaAntes, caixaDepois, deNovo, ...estado }));
 
-  // Coletar de novo no mesmo dia (chamando a função direto -- a modal já
-  // fechou) deve falhar com erro claro (409 do servidor).
-  const secondClaimError = await page.evaluate(async () => {
-    try {
-      await fetchJSON("/api/daily-login/claim", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ localDate: localDateStr() }) });
-      return null;
-    } catch (err) { return err.message; }
+  // 6) Conquistas.
+  const abrirConquistas = async () => {
+    await page.goto(base + "/conquistas", { waitUntil: "domcontentloaded" });
+    await page.waitForSelector(".mo-badge", { timeout: 30000 });
+  };
+  await abrirConquistas();
+  const t6 = await page.evaluate(() => ({ total: document.querySelectorAll(".mo-badge").length, abertas: document.querySelectorAll(".mo-badge:not(.is-locked)").length, sub: document.querySelector(".screen-sub").textContent }));
+  await page.locator('.cl-filters [role="radio"]', { hasText: "Títulos" }).click();
+  const titulos = await page.evaluate(() => [...document.querySelectorAll(".mo-badge b")].map((b) => b.textContent));
+  check("6) Conquistas: as 7 do catálogo, 0 desbloqueadas no início:", t6.total === 7 && t6.abertas === 0 && t6.sub === "0 de 7 conquistas desbloqueadas.", JSON.stringify(t6));
+  check("6b) O filtro 'Títulos' mostra só as 2 de título (Campeão Brasileiro e Copa):", titulos.length === 2, JSON.stringify(titulos));
+
+  // 7) Detalhe bloqueado.
+  await page.locator('.cl-filters [role="radio"]', { hasText: "Todas" }).click();
+  await page.locator(".mo-badge", { hasText: "Ídolo" }).click();
+  await page.waitForSelector("#ac-t");
+  const t7 = await page.evaluate(() => { const d = document.querySelector('[role="dialog"]'); return { titulo: d.querySelector("#ac-t").textContent, texto: d.innerText, compartilhar: !!d.querySelector(".sp-sheet-cta") }; });
+  check("7) Detalhe da conquista bloqueada: progresso e sem botão de compartilhar:", /Ídolo/.test(t7.titulo) && /Progresso/.test(t7.texto) && !t7.compartilhar, JSON.stringify(t7));
+  await page.click('[role="dialog"] .text-btn');
+
+  // 8) Promover 5 da base pela ação do Elenco da v2 (comando acaoJogador).
+  const promo = await noMotor(page, async (M) => {
+    const base5 = M.CAREER.squad.filter((p) => p.origin === "base").slice(0, 5).map((p) => p.id);
+    M.CAREER.finances.wageCap = Math.max(M.CAREER.finances.wageCap, 1e9); // só para o teto não barrar a promoção
+    for (const id of base5) await M.ponte.acaoJogador(id, "promote");
+    const e = (M.CAREER.achievements || []).find((a) => a.achievementId === "ach_joia_base");
+    return { n: base5.length, e, salvo: await M.persistir() };
   });
-  check("2b) Coletar de novo no mesmo dia é rejeitado:", secondClaimError && secondClaimError.includes("já foi coletada"), secondClaimError);
+  await abrirConquistas();
+  const t8 = await page.evaluate(() => ({ abertas: [...document.querySelectorAll(".mo-badge:not(.is-locked) b")].map((b) => b.textContent) }));
+  await page.locator(".mo-badge", { hasText: "Joia da Base" }).click();
+  await page.waitForSelector("#ac-t");
+  const t8b = await page.evaluate(() => { const d = document.querySelector('[role="dialog"]'); return { texto: d.innerText, compartilhar: (d.querySelector(".sp-sheet-cta") || {}).textContent || null }; });
+  check("8) Promover 5 da base desbloqueia 'Joia da Base':", promo.n === 5 && promo.e && promo.e.currentProgress === 5 && !!promo.e.unlockedAt && t8.abertas.includes("Joia da Base"), JSON.stringify({ promo, t8 }));
+  check("8b) O detalhe mostra a data de desbloqueio e o botão de compartilhar:", /Desbloqueada em/.test(t8b.texto) && /Compartilhar/.test(t8b.compartilhar || ""), JSON.stringify(t8b));
+  await page.click('[role="dialog"] .text-btn');
 
-  // 2) Objetivos: aba abre com os 3 objetivos diários certos.
-  await page.click("#btnBottomMenu");
-  await page.waitForTimeout(150);
-  await page.click("#topbarMenu .mt-topbar-menu-item.group[data-submenu='progresso']");
-  await page.click("#btnOpenObjetivos");
-  await page.waitForTimeout(200);
-  const objState = await page.evaluate(() => ({
-    panelActive: document.getElementById("panel-objetivos").classList.contains("active"),
-    cards: document.querySelectorAll("#objectivesList .mt-obj-card").length,
-    titles: [...document.querySelectorAll("#objectivesList .mt-obj-title")].map((el) => el.textContent),
-  }));
-  check("3) Aba Objetivos abre com os 3 objetivos diários do documento:", objState.panelActive && objState.cards === 3, JSON.stringify(objState));
-
-  // Trocar pra aba Semanal/Temporada mostra os objetivos certos.
-  await page.click('#objectivesTabs .mt-obj-tab[data-tab="weekly"]');
-  await page.waitForTimeout(150);
-  const weeklyTitles = await page.evaluate(() => [...document.querySelectorAll("#objectivesList .mt-obj-title")].map((el) => el.textContent));
-  check("3b) Aba Semanal mostra os 2 objetivos certos:", weeklyTitles.length === 2 && weeklyTitles.some((t) => t.includes("3 jogos seguidos")), JSON.stringify(weeklyTitles));
-  await page.click('#objectivesTabs .mt-obj-tab[data-tab="season"]');
-  await page.waitForTimeout(150);
-  const seasonTitles = await page.evaluate(() => [...document.querySelectorAll("#objectivesList .mt-obj-title")].map((el) => el.textContent));
-  check("3c) Aba Temporada mostra os 2 objetivos certos:", seasonTitles.length === 2 && seasonTitles.some((t) => t.includes("4 primeiros")), JSON.stringify(seasonTitles));
-  await page.click('#objectivesTabs .mt-obj-tab[data-tab="daily"]');
-  await page.waitForTimeout(150);
-
-  // 3) Objetivo "Faça 1 movimentação no mercado" -- janela de
-  // transferências fechada na rodada 1 (mesmo comportamento de sempre,
-  // ver transferWindowStatus -- nada a ver com Retenção/Engajamento).
-  // buyPlayer()/confirmModal() não existem mais pra compra instantânea
-  // (Bloco 3, pré-existente, sem relação com o checklist de UX desta
-  // etapa -- "Comprar" hoje abre uma negociação real, ver
-  // openOfferModal/confirmOfferFromModal). finalizeIncomingPurchase()
-  // é a função que uma proposta aceita chama de verdade pra fechar a
-  // compra (inclusive bumpObjective do mercado) -- chama direto,
-  // contornando o mesmo gate de janela sem precisar simular rodadas
-  // até abrir de verdade.
-  await page.evaluate(() => {
-    const clubId = Object.keys(CAREER.leagueSquads)[0];
-    const target = CAREER.leagueSquads[clubId][0];
-    window.__buyTarget = target.id;
-    finalizeIncomingPurchase({ clubId, playerId: target.id, playerName: target.name, clubName: teamById(clubId).name, offerValue: target.value, installments: 1 });
-  });
-  await page.waitForTimeout(300);
-  // Contratação de craque (overall >= 82) pode abrir uma coletiva por
-  // cima -- responde pra não travar o resto (mesmo clique defensivo já
-  // usado em outros testes desta sessão).
-  if (await page.evaluate(() => document.getElementById("pressOverlay").classList.contains("open"))) {
-    await page.click("#pressOptions [data-press]");
-    await page.waitForTimeout(300);
-  }
-  await page.click("#btnBottomMenu");
-  await page.waitForTimeout(150);
-  await page.click("#topbarMenu .mt-topbar-menu-item.group[data-submenu='progresso']");
-  await page.click("#btnOpenObjetivos");
-  await page.waitForTimeout(200);
-  const marketObjState = await page.evaluate(() => {
-    const list = CAREER.objectives.daily;
-    const o = list.find((x) => x.objectiveId === "obj_market_1_move");
-    return { status: o.status, currentProgress: o.currentProgress };
-  });
-  check("4) Comprar jogador completa 'Faça 1 movimentação no mercado':", marketObjState.status === "completed" && marketObjState.currentProgress === 1, JSON.stringify(marketObjState));
-
-  // Coletar o objetivo completado.
-  const cashBeforeClaimObj = await page.evaluate(() => CAREER.finances.cash);
-  await page.click('[data-claim-objective="obj_market_1_move"]');
-  await page.waitForTimeout(300);
-  const afterClaimObj = await page.evaluate(() => ({
-    status: CAREER.objectives.daily.find((o) => o.objectiveId === "obj_market_1_move").status,
-    cash: CAREER.finances.cash,
-  }));
-  check("5) Coletar o objetivo aplica +150 e vira 'claimed':", afterClaimObj.status === "claimed" && afterClaimObj.cash === cashBeforeClaimObj + 150, JSON.stringify(afterClaimObj));
-
-  // 4) Conquistas: aba abre, filtro funciona, detalhe abre.
-  await page.click("#btnBottomMenu");
-  await page.waitForTimeout(150);
-  await page.click("#topbarMenu .mt-topbar-menu-item.group[data-submenu='progresso']");
-  await page.click("#btnOpenConquistas");
-  await page.waitForTimeout(200);
-  const achState = await page.evaluate(() => ({
-    subtitle: document.getElementById("achievementsSubtitle").textContent,
-    badges: document.querySelectorAll("#achievementsGrid .mt-badge").length,
-    nextText: document.getElementById("achievementsNext").textContent,
-  }));
-  check("6) Aba Conquistas mostra as 7 do catálogo, 0 desbloqueadas no início:", achState.badges === 7 && achState.subtitle.includes("0 DE 7"), JSON.stringify(achState));
-
-  await page.click('#achievementsFilters .mt-chip[data-filter="titulos"]');
-  await page.waitForTimeout(150);
-  const filteredBadges = await page.evaluate(() => document.querySelectorAll("#achievementsGrid .mt-badge").length);
-  check("6b) Filtro 'Títulos' mostra só 2 (Campeão Brasileiro + Copa):", filteredBadges === 2);
-  await page.click('#achievementsFilters .mt-chip[data-filter="todas"]');
-  await page.waitForTimeout(150);
-
-  await page.click('[data-achievement="ach_idolo"]');
-  await page.waitForTimeout(150);
-  const detailInfo = await page.evaluate(() => ({
-    open: document.getElementById("achievementDetailOverlay").classList.contains("open"),
-    title: document.getElementById("achievementDetailTitle").textContent,
-    progress: document.getElementById("achievementDetailProgress").textContent,
-    shareHidden: document.getElementById("btnShareAchievement").hidden,
-  }));
-  check("7) Detalhe da conquista abre (bloqueada, sem botão compartilhar):", detailInfo.open && detailInfo.title === "Ídolo" && detailInfo.shareHidden, JSON.stringify(detailInfo));
-  await page.click("#achievementDetailClose");
-  await page.waitForTimeout(150);
-
-  // Forçar desbloqueio de uma conquista direto (promover 5 jogadores da
-  // base) pra testar o fluxo de "unlocked" + botão compartilhar.
-  await page.evaluate(() => {
-    const basePlayers = CAREER.squad.filter((p) => p.origin === "base").slice(0, 5);
-    basePlayers.forEach((p) => handlePlayerAction(p.id, "promote"));
-  });
-  await page.waitForTimeout(200);
-  const joiaEntry = await page.evaluate(() => CAREER.achievements.find((a) => a.achievementId === "ach_joia_base"));
-  check("8) Promover 5 da base desbloqueia 'Joia da Base':", joiaEntry.unlockedAt != null && joiaEntry.currentProgress === 5, JSON.stringify(joiaEntry));
-  await page.click("#btnOpenConquistas").catch(() => {});
-  await page.click("#btnBottomMenu");
-  await page.waitForTimeout(150);
-  await page.click("#topbarMenu .mt-topbar-menu-item.group[data-submenu='progresso']");
-  await page.click("#btnOpenConquistas");
-  await page.waitForTimeout(200);
-  await page.click('[data-achievement="ach_joia_base"]');
-  await page.waitForTimeout(150);
-  const joiaDetail = await page.evaluate(() => ({
-    progress: document.getElementById("achievementDetailProgress").textContent,
-    shareHidden: document.getElementById("btnShareAchievement").hidden,
-  }));
-  check("8b) Detalhe mostra desbloqueada + botão compartilhar visível:", joiaDetail.progress.includes("Desbloqueada") && !joiaDetail.shareHidden, JSON.stringify(joiaDetail));
-  await page.click("#achievementDetailClose");
-  await page.waitForTimeout(150);
-
-  // 5) Ranking: abre, publica score, mostra card própria posição.
-  await page.click("#btnBottomMenu");
-  await page.waitForTimeout(150);
-  await page.click("#topbarMenu .mt-topbar-menu-item.group[data-submenu='progresso']");
-  await page.click("#btnOpenRanking");
-  // Espera o ranking chegar do servidor (código de amigo + card próprio),
-  // até 10 s — antes 500 ms fixos, curto sob carga.
-  await page.waitForFunction(() => document.getElementById("rankingFriendCode").textContent.length === 6 && !document.getElementById("rankingMyCard").hidden, null, { timeout: 10000 }).catch(() => {});
-  const rankState = await page.evaluate(() => ({
-    panelActive: document.getElementById("panel-ranking").classList.contains("active"),
-    friendCode: document.getElementById("rankingFriendCode").textContent,
-    myCardHidden: document.getElementById("rankingMyCard").hidden,
-    myCardHTML: document.getElementById("rankingMyCard").innerHTML,
-    listHTML: document.getElementById("rankingList").innerHTML.slice(0, 200),
-  }));
-  check("9) Ranking abre, mostra código de amigo + própria posição:", rankState.panelActive && rankState.friendCode.length === 6 && !rankState.myCardHidden && rankState.myCardHTML.includes("Murilo Melo"), JSON.stringify({ friendCode: rankState.friendCode, myCardHidden: rankState.myCardHidden }));
-
-  // Trocar pra Global.
-  await page.click('#rankingScopeToggle .mt-scope-btn[data-scope="global"]');
-  await page.waitForFunction(() => document.getElementById("rankingList").innerHTML.includes("Murilo Melo"), null, { timeout: 10000 }).catch(() => {});
-  const globalState = await page.evaluate(() => document.getElementById("rankingList").innerHTML.includes("Murilo Melo"));
-  check("10) Escopo Global também mostra a própria entrada:", globalState);
-
-  await page.screenshot({ path: "engaj_01_ranking.png" });
-  await page.click("#btnBottomMenu");
-  await page.waitForTimeout(150);
-  await page.click("#topbarMenu .mt-topbar-menu-item.group[data-submenu='progresso']");
-  await page.click("#btnOpenObjetivos");
-  await page.waitForTimeout(200);
-  await page.screenshot({ path: "engaj_02_objetivos.png" });
-  await page.click("#btnBottomMenu");
-  await page.waitForTimeout(150);
-  await page.click("#topbarMenu .mt-topbar-menu-item.group[data-submenu='progresso']");
-  await page.click("#btnOpenConquistas");
-  await page.waitForTimeout(200);
-  await page.screenshot({ path: "engaj_03_conquistas.png" });
+  // 9) Ranking.
+  const code = await page.evaluate(async () => (await (await fetch("/api/friends")).json()).friendCode);
+  await page.goto(base + "/ranking", { waitUntil: "domcontentloaded" });
+  await page.waitForSelector(".mo-rank, .wk-note", { timeout: 30000 });
+  await page.waitForSelector(".mo-rank.is-me", { timeout: 15000 }).catch(() => {});
+  const t9 = await page.evaluate((code) => ({ eu: document.querySelectorAll(".mo-rank.is-me").length, nome: ((document.querySelector(".mo-rank.is-me b") || {}).textContent || ""), codigo: document.body.innerText.includes(code) }), code);
+  check("9) Ranking: seu código de amigo e a sua linha (você) na lista geral:", !!code && t9.codigo && t9.eu === 1 && /\(você\)/.test(t9.nome), JSON.stringify({ code, ...t9 }));
 
   await browser.close();
+  console.log("OK");
 })().catch((e) => { console.error("FATAL:", e); process.exit(1); });

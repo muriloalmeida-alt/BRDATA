@@ -75,8 +75,11 @@ const { carreiraV2, base, saveNoServidor, saveNoAparelho, jogarRodadaV2, iniciar
   // 3) Rodada inteira sem rede.
   const r3 = await jogarRodadaV2(page);
   const ap3 = await saveNoAparelho(page);
+  // O servidor é lido AINDA sem rede na página (a API do contexto não passa
+  // pela emulação de offline): com a rede de volta, a v2 manda a cópia em
+  // espera logo, e sob carga isso chegava antes desta leitura.
+  const sv3 = (await (await ctx.request.get(base + "/api/career", { headers: { "Cache-Control": "no-store" } })).json()).career;
   await ctx.setOffline(false);
-  const sv3 = await saveNoServidor(page);
   check("3) Sem rede, uma rodada inteira grava no aparelho (rodada + 1) e o servidor não muda:",
     r3.ok && ap3.save.currentRound === antes.currentRound + 1 && sv3.currentRound === antes.currentRound && ap3.hash !== ap3.sincronizado,
     JSON.stringify({ passos: r3.passos, aparelho: ap3.save.currentRound, servidor: sv3.currentRound }));
