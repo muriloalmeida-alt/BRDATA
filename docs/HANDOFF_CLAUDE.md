@@ -357,6 +357,9 @@ Relatório (15/11):
   não derruba nada.
 - Não muda: o pedido à diretoria, a CPU e o mercado (as compras continuam
   saindo do caixa, agora menor).
+
+⸻
+
 SONS-V2 — efeitos sonoros na partida da v2
 
 Status: REGISTRADA (Murilo, 15/11, "Registrar demanda"); aguarda priorização.
