@@ -294,7 +294,7 @@ Decisão do Murilo (14/11) sobre a licença dos escudos de uso restrito
 
 EMPRESTIMO-DISPONIVEL — "Disponível para empréstimo" e filtro no Mercado
 
-Status: REVISÃO DO PM NECESSÁRIA (implementado em 15/11; aguarda a aprovação do Murilo).
+Status: APROVADO (Murilo, 15/11, "Aprovado").
 Pedido do Murilo (15/11): "Criar a opção 'Disponível para empréstimos' onde
 os clubes podem colocar os jogadores que precisam de minutagem. Criar filtro
 em mercado com a opção 'Disponível para empréstimo'."
@@ -373,7 +373,7 @@ Relatório (15/11):
 
 TETO-CAIXA — o técnico aumenta o teto salarial com dinheiro do caixa
 
-Status: REVISÃO DO PM NECESSÁRIA (implementado em 15/11; aguarda a aprovação do Murilo).
+Status: APROVADO (Murilo, 15/11, "Aprovado pode mergear"; PR #126).
 Pedido do Murilo (15/11): "Quando tiver dinheiro em caixa o técnico deve ter
 autonomia para aumentar o valor em salários e com isso diminuir o valor para
 transferências. Esse cálculo deve considerar que cada real ampliado em
