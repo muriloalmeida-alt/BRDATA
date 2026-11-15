@@ -76,6 +76,17 @@ async function ateOInicio(page) {
 
 // Espera a v2 abrir o motor (ambiente montado, conta e, com `comCarreira`,
 // a carreira carregada). Se a página não está na v2, abre o Início.
+// Espera uma condição assíncrona da página (fetch etc.) ficar verdadeira,
+// repetindo pelo lado do Node. page.waitForFunction não serve para função
+// async: a Promise conta como verdadeira na hora e ele não espera nada.
+// Devolve true quando a condição vale; false se o prazo acabar.
+async function esperarAssincrono(page, fn, arg, { timeout = 15000, intervalo = 300 } = {}) {
+  for (const t0 = Date.now(); Date.now() - t0 < timeout; await page.waitForTimeout(intervalo)) {
+    if (await page.evaluate(fn, arg).catch(() => false)) return true;
+  }
+  return false;
+}
+
 async function motorPronto(page, { comCarreira = true, timeout = 40000 } = {}) {
   if (!page.url().startsWith(base)) await page.goto(base + "/", { waitUntil: "domcontentloaded" });
   // (waitForFunction não serve: com função async, a Promise conta como verdadeira.)
@@ -459,5 +470,5 @@ async function saveNoAparelho(page) {
   });
 }
 
-module.exports = { falharArmazenamento, saveNoAparelho, globaisDoMotor, iniciarPeloPreJogo, base, contaNova, saveNoServidor, novaCarreiraV2, ateOInicio, motorPronto, noMotor, carreiraV2, pularPreTemporada, jogarRodadaV2,
+module.exports = { esperarAssincrono, falharArmazenamento, saveNoAparelho, globaisDoMotor, iniciarPeloPreJogo, base, contaNova, saveNoServidor, novaCarreiraV2, ateOInicio, motorPronto, noMotor, carreiraV2, pularPreTemporada, jogarRodadaV2,
   signup, newCareer, serverCareer, playV2MatchToEnd, motorNaPagina, continueToHome, sameSave, ensureDailyClaimed, skipAutoOpen };

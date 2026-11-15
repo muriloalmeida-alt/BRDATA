@@ -23,7 +23,7 @@ const fs = require("fs");
 const path = require("path");
 const { chromium } = require("playwright-core");
 const { check } = require("./_check");
-const { base, signup, newCareer } = require("./_v2_carreira");
+const { base, signup, newCareer, esperarAssincrono } = require("./_v2_carreira");
 
 const PROD = { "x-brdata-producao": "1" };
 
@@ -148,10 +148,10 @@ const PROD = { "x-brdata-producao": "1" };
   await signup(pb, `v2corteb${Date.now()}@teste.com`);
   await pb.goto(`${base}/carreira.html?convite=${codeA}`, { waitUntil: "domcontentloaded" });
   await pb.waitForSelector("h1", { timeout: 15000 }).catch(() => {});
-  await pb.waitForFunction(async (code) => {
+  await esperarAssincrono(pb, async (code) => {
     const f = await (await fetch("/api/friends")).json();
     return (f.friends || []).some((x) => x.friendCode === code || x.code === code) || (f.friends || []).length > 0;
-  }, codeA, { timeout: 10000, polling: 500 }).catch(() => {});
+  }, codeA, { timeout: 10000, intervalo: 500 });
   const inv = await pb.evaluate(async () => ({ url: location.pathname + location.search, friends: ((await (await fetch("/api/friends")).json()).friends || []).length }));
   await pb.reload({ waitUntil: "domcontentloaded" });
   await pb.waitForTimeout(1500);

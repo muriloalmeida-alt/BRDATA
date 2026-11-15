@@ -18,7 +18,7 @@
 //     notícias); nenhuma navegação passou por /carreira-old.
 const { chromium } = require("playwright-core");
 const { check } = require("./_check");
-const { signup, serverCareer, ensureDailyClaimed, carreiraV2, noMotor } = require("./_v2_carreira");
+const { signup, serverCareer, ensureDailyClaimed, carreiraV2, noMotor, esperarAssincrono } = require("./_v2_carreira");
 
 const base = "http://localhost:8787";
 
@@ -175,12 +175,12 @@ const base = "http://localhost:8787";
   await v2.click(".home-bell");
   await v2.waitForSelector("#nt-t", { timeout: 5000 });
   const items = await v2.evaluate(() => [...document.querySelectorAll(".nt-item .nt-text")].map((t) => t.textContent));
-  await v2.waitForFunction(async () => { const c = (await (await fetch("/api/career", { cache: "no-store" })).json()).career; return c.notifications.every((n) => n.read); }, null, { timeout: 15000 });
+  const lidos = await esperarAssincrono(v2, async () => { const c = (await (await fetch("/api/career", { cache: "no-store" })).json()).career; return c.notifications.every((n) => n.read); }, null, { timeout: 15000 });
   await v2.click(".sheet .text-btn");
   await v2.waitForFunction(() => !document.querySelector(".home-bell-badge"), null, { timeout: 15000 });
   check("7) Sino: '2 novos', folha 'Avisos' com os avisos (mais novo primeiro), lidos no save e sem número depois:",
-    badge.n === "2" && badge.label === "Avisos, 2 novos" && items.length === 2 && /Proposta recebida/.test(items[0]),
-    JSON.stringify({ badge, items }));
+    badge.n === "2" && badge.label === "Avisos, 2 novos" && items.length === 2 && /Proposta recebida/.test(items[0]) && lidos,
+    JSON.stringify({ badge, items, lidos }));
 
   // 8) 360 px e sem /carreira-old.
   check("8) 360 px sem rolagem horizontal e alvos ≥ 44 px; nenhuma navegação da v2 passou por /carreira-old:",
