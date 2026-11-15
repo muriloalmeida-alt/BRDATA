@@ -292,6 +292,74 @@ Decisão do Murilo (14/11) sobre a licença dos escudos de uso restrito
 
 ⸻
 
+TETO-CAIXA — o técnico aumenta o teto salarial com dinheiro do caixa
+
+Status: REVISÃO DO PM NECESSÁRIA (implementado em 15/11; aguarda a aprovação do Murilo).
+Pedido do Murilo (15/11): "Quando tiver dinheiro em caixa o técnico deve ter
+autonomia para aumentar o valor em salários e com isso diminuir o valor para
+transferências. Esse cálculo deve considerar que cada real ampliado em
+salários equivale a 12x que deve ser retirado do orçamento para
+transferências."
+Hoje: o teto salarial (`finances.wageCap`, mensal) barra contratar, renovar,
+promover e pegar emprestado; as compras saem do caixa (`finances.cash`); não
+existe verba de transferências separada. Só a diretoria ("Pedir mais
+orçamento", com espera de 4 rodadas) aumenta o teto no meio da temporada. Na
+virada, o teto é recalculado (folha × 1,35, `motor/virada.js`).
+Decisões do Murilo (15/11):
+1) os 12× saem do caixa (não se cria verba nova);
+2) dá para desfazer só a folga não usada, devolvendo 12× o que baixar;
+3) o aumento vale até a virada: o teto da temporada nova é recalculado como
+   hoje e o dinheiro reservado não volta;
+4) caixa mínimo: depois da troca, o caixa não pode ficar abaixo de 1 mês de
+   folha.
+Regras (spec):
+- Aumentar o teto em X (R$ por mês, X > 0, múltiplo de R$ 1 mil): sai 12·X do
+  caixa na hora; só se caixa − 12·X ≥ folha mensal atual. Lançamento no
+  extrato: "Reserva para salários (teto +R$ X/mês)", −12·X.
+- Devolver Y (Y > 0, múltiplo de R$ 1 mil): só até o que o técnico aumentou
+  nesta temporada e sem o teto ficar abaixo da folha atual; volta 12·Y ao
+  caixa, com lançamento no extrato. Aumentar e devolver não dá lucro.
+- O aumento da diretoria não entra na conta do que pode ser devolvido.
+- Virada: o reservado da temporada zera, sem devolver dinheiro.
+- Save: campo novo `finances.wageCapBought` (default 0, preenchido ao
+  carregar saves antigos); sem mudança de schema além disso.
+- CPU: não usa (o orçamento dos clubes da CPU é calculado à parte).
+- Tela (v2): "Ajustar teto salarial", aberta pelas Finanças e pela tela de
+  orçamento da Diretoria; mostra teto, folha, caixa e o caixa mínimo; escolhe
+  o valor em passos de R$ 1 mil, com a prévia de quanto sai (ou volta) do
+  caixa e o novo teto; motivo claro quando não pode.
+- Etapa do loop: gestão (Market / Management), qualquer momento da temporada.
+Critérios de aceite:
+1) Aumentar X tira exatamente 12·X do caixa, soma X ao teto e lança no
+   extrato; o teto novo libera contratar/renovar até ele.
+2) Sem caixa (caixa − 12·X < folha), recusa com o motivo, e nada muda.
+3) Devolver Y ≤ reservado e sem ficar abaixo da folha: volta 12·Y; acima
+   disso, recusa com o motivo.
+4) Na virada, o teto é recalculado como hoje e o reservado zera.
+5) Save antigo abre com reservado 0.
+6) A tela da v2 mostra a prévia antes de confirmar, e o resultado depois.
+Anti-exploit: devolver só o que foi reservado na temporada, 12× nos dois
+sentidos (sem ganho), nada volta na virada, caixa mínimo de 1 mês de folha.
+Relatório (15/11):
+- Motor: `financas.js` (`wageCapTrade`, `wageCapTradeLimits`,
+  `WAGE_CAP_CASH_MULT = 12`, passo de R$ 1 mil; função pura); `ponte.js`
+  (comandos `tetoSalarial` e `ajustarTeto`, lançamento "Reserva para
+  salários" no extrato, tipo `salario`); `virada.js` (zera o reservado);
+  `carga.js` (save antigo: reservado 0).
+- v2: tela "Ajuste o teto." em `/financas/teto` (`More.tsx`,
+  `WageCapScreen`), com a prévia em `domain/wagecap.ts`; link nas
+  Finanças e na tela de orçamento da Diretoria.
+- Testes: `tests/unit/test_motor_teto.js` (8), `wagecap.test.ts` (5) e
+  `test_v2_teto_caixa` (8 itens, critérios 1 a 6, save antigo e 360 px).
+  Contraprovas: multiplicador 11, sem caixa mínimo, devolver além do
+  reservado e virada sem zerar falham os testes. O preenchimento do campo
+  no save antigo é redundante: a ponte já lê o ausente como 0, então tirá-lo
+  não derruba nada.
+- Não muda: o pedido à diretoria, a CPU e o mercado (as compras continuam
+  saindo do caixa, agora menor).
+
+⸻
+
 RODADA-ATUAL — jogos da rodada atual na Tabela da v2
 
 Status: APROVADO (Murilo, 15/11, "Aprovado"; PR #120).

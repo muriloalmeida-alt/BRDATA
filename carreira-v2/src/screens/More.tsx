@@ -10,6 +10,7 @@ import { MoreGateway, PushGateway, pushSupported, type Account, type Achievement
 import type { Res } from "../adapters/prep.ts";
 import { moneyShort } from "../domain/home.ts";
 import type { Career } from "../domain/types.ts";
+import { wageCapPreview, type WageCapInfo, type WageCapMode } from "../domain/wagecap.ts";
 import { Sheet } from "../ui/dialog.tsx";
 import { IconChevron } from "../ui/icons.tsx";
 import { BASE, goBackTo, navigate } from "../ui/router.tsx";
@@ -558,10 +559,71 @@ export function BudgetScreen({ onChanged }: { onChanged: () => Promise<void> | v
             {!res && d.decisao && <p className="wk-note">Última resposta: {d.decisao.replace(/^[✅❌]\s*/, "")}</p>}
             <p className="wk-note">Na briga pelo título (G4) ou perto do rebaixamento, a diretoria costuma liberar mais. No meio da tabela, quase sempre nega. Depois de cada resposta, é preciso esperar {d.intervalo} rodadas para pedir de novo.</p>
           </section>
+          <nav className="wk-sec" aria-label="Teto salarial"><NavRow to={`${BASE}/financas/teto`} title="Ajustar teto com o caixa" sub="Sem esperar a diretoria: cada R$ 1 a mais por mês sai 12× do caixa" /></nav>
           <div className="cal-foot"><Status err={err} />
             {d.espera > 0 && <p className="sp-why">Você pode pedir de novo em {d.espera} {d.espera === 1 ? "rodada" : "rodadas"}.</p>}
             <button type="button" className="cta" aria-disabled={busy || d.espera > 0 || undefined} onClick={() => { if (d.espera <= 0) ask(); }}>{busy ? "Aguardando…" : "Pedir mais orçamento"}</button>
             <button type="button" className="link-back" onClick={() => goBackTo(back)}>Voltar à diretoria</button>
+          </div>
+        </>);
+      }}</Loading>
+    </div>
+  );
+}
+
+// ---------- Ajustar teto salarial com o caixa (TETO-CAIXA, 15/11) ----------
+export function WageCapScreen({ onChanged }: { onChanged: () => Promise<void> | void }) {
+  const load = useCallback(() => MoreGateway.wageCap(), []);
+  const [data, reload] = useRead<WageCapInfo>(load);
+  const [mode, setMode] = useState<WageCapMode>("up");
+  const [mil, setMil] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<string | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+  const back = `${BASE}/financas`;
+  return (
+    <div className="wk pr">
+      <Head ctx="Finanças" back={back} />
+      <h1 className="screen-title">Ajuste o teto.</h1>
+      <span className="tb-bar" aria-hidden="true" />
+      <p className="screen-sub">Use o caixa para pagar salários maiores.</p>
+      <Loading data={data}>{() => {
+        const d = data as WageCapInfo;
+        const p = mil.trim() ? wageCapPreview(d, mode, Number(mil.replace(",", "."))) : null;
+        const confirm = async () => {
+          if (!p || !p.ok || busy) return;
+          setBusy(true); setErr(null); setMsg(null);
+          const r = await MoreGateway.adjustWageCap(p.delta);
+          setBusy(false);
+          if (!r.ok) { setErr(msgOf(r)); reload(); return; }
+          setMsg(`Teto salarial agora em ${moneyShort(r.teto)} por mês. ${r.movimento < 0 ? `Saíram ${moneyShort(-r.movimento)} do caixa.` : `Voltaram ${moneyShort(r.movimento)} ao caixa.`}`);
+          setMil(""); reload(); await onChanged();
+        };
+        return (<>
+          <section className="wk-sec" aria-labelledby="tc-h"><h2 className="kicker-caps" id="tc-h">Hoje</h2>
+            <Rows rows={[{ label: "Teto salarial", value: `${moneyShort(d.teto)}/mês` }, { label: "Folha salarial", value: `${moneyShort(d.folha)}/mês` },
+              { label: "Caixa", value: moneyShort(d.caixa) }, { label: "Reservado nesta temporada", value: `${moneyShort(d.reservado)}/mês` }]} />
+            <p className="wk-note">Cada R$ 1 a mais no teto por mês sai {d.multiplicador}× do caixa (um ano de salário), e esse dinheiro deixa de ir para contratações. O caixa guarda pelo menos 1 mês de folha ({moneyShort(d.caixaMinimo)}). O que você reservar vale até o fim da temporada e não volta na virada; antes disso, dá para devolver a folga que não usou.</p>
+          </section>
+          <section className="wk-sec pr-pad" aria-labelledby="tc-a"><h2 className="kicker-caps" id="tc-a">Ajuste</h2>
+            <div className="pr-seg" role="radiogroup" aria-label="Ajuste">
+              {([["up", "Aumentar"], ["down", "Devolver"]] as const).map(([k, l]) => <button key={k} type="button" role="radio" aria-checked={mode === k} className={`pr-seg-btn${mode === k ? " is-on" : ""}`} onClick={() => { setMode(k); setErr(null); }}>{l}</button>)}
+            </div>
+            <label className="pr-label" htmlFor="tc-v">Valor por mês (em mil reais)</label>
+            <input id="tc-v" className="pr-input" type="number" inputMode="numeric" min={1} step={1} value={mil} onChange={(e) => setMil(e.target.value)} placeholder={mode === "up" ? `até ${Math.floor(d.maxUp / 1000)}` : `até ${Math.floor(d.maxDown / 1000)}`} />
+            <p className="wk-note">{mode === "up" ? `Dá para aumentar até ${moneyShort(d.maxUp)} por mês.` : `Dá para devolver até ${moneyShort(d.maxDown)} por mês.`}</p>
+          </section>
+          {p && p.ok && (
+            <section className="wk-sec" aria-labelledby="tc-p"><h2 className="kicker-caps" id="tc-p">Depois do ajuste</h2>
+              <Rows rows={[{ label: "Novo teto", value: `${moneyShort(p.novoTeto)}/mês` },
+                { label: p.movimento < 0 ? "Sai do caixa" : "Volta ao caixa", value: moneyShort(Math.abs(p.movimento)), tone: p.movimento < 0 ? undefined : "pos" },
+                { label: "Caixa depois", value: moneyShort(p.caixaDepois) }]} />
+            </section>
+          )}
+          <div className="cal-foot"><Status msg={msg} err={err} />
+            {p && !p.ok && <p className="sp-why">{p.why}</p>}
+            <button type="button" className="cta" aria-disabled={busy || !p || !p.ok || undefined} onClick={confirm}>{busy ? "Aguardando…" : mode === "up" ? "Aumentar teto" : "Devolver ao caixa"}</button>
+            <button type="button" className="link-back" onClick={() => goBackTo(back)}>Voltar às finanças</button>
           </div>
         </>);
       }}</Loading>

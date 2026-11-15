@@ -910,6 +910,7 @@ export function migrateCareerDefaults() {
   ensureObjectivesFresh();
   if (!CAREER.achievements) CAREER.achievements = freshAchievementsState();
   if (CAREER.baseRevealedCount == null) CAREER.baseRevealedCount = 0;
+  if (CAREER.finances && CAREER.finances.wageCapBought == null) CAREER.finances.wageCapBought = 0; // TETO-CAIXA
   if (CAREER.titlesWonNacional == null) CAREER.titlesWonNacional = 0;
   if (CAREER.titlesWonCopa == null) CAREER.titlesWonCopa = 0;
   if (CAREER.seasonTeamGoals == null) CAREER.seasonTeamGoals = 0;

@@ -479,6 +479,9 @@ export async function advanceSeason() {
   // elenco renovado; caixa NÃO reseta, transfere pro ano que vem
   // (também pedido do usuário: "com transferência para o próximo ano").
   CAREER.finances.wageCap = Math.round(wageBillOf(CAREER.squad) * 1.35 / 1000) * 1000;
+  // TETO-CAIXA: o que o técnico reservou na temporada não passa para a
+  // próxima, nem volta ao caixa (decisão do Murilo, 15/11).
+  CAREER.finances.wageCapBought = 0;
 
   // Módulo de Estatísticas completo (pedido do usuário) — histórico de
   // campeões do campeonato: sabemos a tabela final de TODOS os clubes

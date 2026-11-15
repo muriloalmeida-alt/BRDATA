@@ -7,8 +7,9 @@
 import { engine } from "./engine.ts";
 import { CareerGateway } from "./gateways.ts";
 import type { Res } from "./prep.ts";
+import type { WageCapInfo } from "../domain/wagecap.ts";
 
-const SAFE = new Set(["espera", "item-invalido", "compra-recusada", "opcao-invalida", "nome-vazio", "nome-recusado"]);
+const SAFE = new Set(["espera", "item-invalido", "compra-recusada", "opcao-invalida", "nome-vazio", "nome-recusado", "caixa", "reservado", "folha", "valor"]);
 async function run<T = object>(name: string, ...args: unknown[]): Promise<Res<T>> {
   try {
     const s = await engine.get();
@@ -45,6 +46,9 @@ export const MoreGateway = {
   },
   // Diretoria: pedido de orçamento (boardRequest).
   budget: () => run<{ espera: number; decisao: string | null; teto: number; caixa: number; intervalo: number }>("orcamento"),
+  // TETO-CAIXA (15/11): teto salarial com o caixa (12×).
+  wageCap: () => run<WageCapInfo>("tetoSalarial"),
+  adjustWageCap: (delta: number) => run<{ teto: number; caixa: number; reservado: number; movimento: number }>("ajustarTeto", delta),
   askBudget: () => run<{ aprovado: boolean; aumentoTeto: number; aporte: number; motivoTexto: string; posicao: number }>("pedirOrcamento"),
   achievements: () => run<{ categorias: Record<string, string>; lista: Achievement[] }>("conquistas"),
   // Ranking: publica a pontuação (computeLeaderboardScore) e lê a lista, como renderRanking.

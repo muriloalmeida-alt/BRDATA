@@ -24,7 +24,7 @@ import { stadiumUpgradeBonusFor } from "./aovivo.js";
 import { BOARD_REQUEST_COOLDOWN, OFFER_WAIT_ROUNDS, SCOUT_GROUP_LABEL, SCOUT_MARKET, STADIUM_UPGRADES, acceptCounterOffer, acceptListingOffer, acceptOffer, applyTalkEffect, boardRequest, canTalkTo, cancelListing, computeLeaderboardScore, createListing, declineOffer, finalizeLoanIn, finalizeLoanOut, findInterestedBuyer, fireTechnicalStaff, hireScout, hireTechnicalStaff, increaseOffer, isContractExpiring, isLoanOutRefused, listingFor, markLineupDirty, recruitProspectToBase, rejectListingOffer, releaseScout, renewalVerdict, scoutAllowedRegions, scoutingAvailableRegions, signSponsorProposal, startScoutMission, startStadiumUpgrade, submitOfferOut, withdrawOffer } from "./clube.js";
 import { FORMATIONS, SECTOR_IDS, SECTOR_INSTRUCTIONS, TACTIC_AXES, computeHumanStrength } from "./fechamento.js";
 import { firePressConference } from "./posjogo.js";
-import { MAX_PRINCIPAL, REGION_LABEL, SCOUT_MISSION_DURATIONS, SCOUT_MISSION_TYPES, SUBPOS_LABEL, ambiente, applyWeeklyTraining, avisar, calendarTurnKey, leagueSquadFor, marketTeamsPool, pendingOfferOutFor, subPositionOf, transferWindowStatus } from "./semana.js";
+import { MAX_PRINCIPAL, REGION_LABEL, SCOUT_MISSION_DURATIONS, SCOUT_MISSION_TYPES, SUBPOS_LABEL, ambiente, applyWeeklyTraining, avisar, calendarTurnKey, leagueSquadFor, marketTeamsPool, pendingOfferOutFor, pushLedger, subPositionOf, transferWindowStatus } from "./semana.js";
 import { abbreviateName, fmtBRL } from "./texto.js";
 import { autoLineup, defaultSectorTactics, evaluateAlwaysCheckableAchievements, generateSponsorProposals, initialStadium } from "./virada.js";
 import * as financas from "./financas.js";
@@ -755,6 +755,34 @@ export const comandosGestao = {
       const last = CAREER.lastBoardRequestRound;
       const wait = last != null && CAREER.currentRound - last < BOARD_REQUEST_COOLDOWN ? BOARD_REQUEST_COOLDOWN - (CAREER.currentRound - last) : 0;
       return { ok: true, espera: wait, decisao: CAREER.boardDecision || null, teto: CAREER.finances.wageCap, caixa: CAREER.finances.cash, intervalo: BOARD_REQUEST_COOLDOWN };
+    },
+    // TETO-CAIXA (15/11): aumentar o teto com o caixa (12×) ou devolver o
+    // que foi reservado na temporada (financas.wageCapTrade).
+    tetoSalarial() {
+      const CAREER = carreiraAtual();
+      if (!CAREER) return { ok: false, motivo: "sem-carreira" };
+      const f = CAREER.finances;
+      const atual = { wageCap: f.wageCap, bill: wageBillOf(CAREER.squad), cash: f.cash, bought: f.wageCapBought || 0 };
+      return { ok: true, teto: atual.wageCap, folha: atual.bill, caixa: atual.cash, reservado: atual.bought, caixaMinimo: atual.bill,
+        multiplicador: financas.WAGE_CAP_CASH_MULT, passo: financas.WAGE_CAP_STEP, ...financas.wageCapTradeLimits(atual) };
+    },
+    async ajustarTeto(delta) {
+      const CAREER = carreiraAtual();
+      if (!CAREER) return { ok: false, motivo: "sem-carreira" };
+      const f = CAREER.finances;
+      const r = financas.wageCapTrade({ wageCap: f.wageCap, bill: wageBillOf(CAREER.squad), cash: f.cash, bought: f.wageCapBought || 0 }, Number(delta));
+      if (!r.ok) {
+        const mensagem = r.motivo === "caixa" ? `O caixa não cobre: depois da troca ele precisa guardar 1 mês de folha. Dá para aumentar até ${fmtBRL(r.maxUp)} por mês.`
+          : r.motivo === "reservado" ? `Só dá para devolver o que você reservou nesta temporada: até ${fmtBRL(r.maxDown)} por mês.`
+          : r.motivo === "folha" ? `O teto não pode ficar abaixo da folha atual. Dá para devolver até ${fmtBRL(r.maxDown)} por mês.`
+          : "Escolha um valor em passos de R$ 1 mil.";
+        return { ok: false, motivo: r.motivo, mensagem, maxUp: r.maxUp, maxDown: r.maxDown };
+      }
+      f.wageCap = r.wageCap; f.cash = r.cash; f.wageCapBought = r.bought;
+      const d = Number(delta);
+      pushLedger("salario", d > 0 ? `Reserva para salários (teto +${fmtBRL(d)}/mês)` : `Reserva para salários devolvida (teto −${fmtBRL(-d)}/mês)`, r.movimento, CAREER.currentRound);
+      const g = await ambiente.gravar();
+      return g.ok ? { ok: true, teto: r.wageCap, caixa: r.cash, reservado: r.bought, movimento: r.movimento } : g;
     },
     async conquistas() {
       const CAREER = carreiraAtual();
