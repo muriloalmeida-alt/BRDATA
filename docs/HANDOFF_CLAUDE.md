@@ -321,8 +321,9 @@ Regras (spec):
   caixa, com lançamento no extrato. Aumentar e devolver não dá lucro.
 - O aumento da diretoria não entra na conta do que pode ser devolvido.
 - Virada: o reservado da temporada zera, sem devolver dinheiro.
-- Save: campo novo `finances.wageCapBought` (default 0, preenchido ao
-  carregar saves antigos); sem mudança de schema além disso.
+- Save: campo novo `finances.wageCapBought`, gravado só quando o técnico
+  usa o ajuste (e zerado na virada); ausente vale 0, então save antigo
+  abre sem migração.
 - CPU: não usa (o orçamento dos clubes da CPU é calculado à parte).
 - Tela (v2): "Ajustar teto salarial", aberta pelas Finanças e pela tela de
   orçamento da Diretoria; mostra teto, folha, caixa e o caixa mínimo; escolhe
@@ -345,16 +346,15 @@ Relatório (15/11):
   `WAGE_CAP_CASH_MULT = 12`, passo de R$ 1 mil; função pura); `ponte.js`
   (comandos `tetoSalarial` e `ajustarTeto`, lançamento "Reserva para
   salários" no extrato, tipo `salario`); `virada.js` (zera o reservado);
-  `carga.js` (save antigo: reservado 0).
+  save antigo: o campo ausente vale 0 (sem preenchimento ao carregar, para
+  o save em memória continuar igual ao do servidor; ver `test_save_limit_001`).
 - v2: tela "Ajuste o teto." em `/financas/teto` (`More.tsx`,
   `WageCapScreen`), com a prévia em `domain/wagecap.ts`; link nas
   Finanças e na tela de orçamento da Diretoria.
 - Testes: `tests/unit/test_motor_teto.js` (8), `wagecap.test.ts` (5) e
   `test_v2_teto_caixa` (8 itens, critérios 1 a 6, save antigo e 360 px).
   Contraprovas: multiplicador 11, sem caixa mínimo, devolver além do
-  reservado e virada sem zerar falham os testes. O preenchimento do campo
-  no save antigo é redundante: a ponte já lê o ausente como 0, então tirá-lo
-  não derruba nada.
+  reservado e virada sem zerar falham os testes.
 - Não muda: o pedido à diretoria, a CPU e o mercado (as compras continuam
   saindo do caixa, agora menor).
 
