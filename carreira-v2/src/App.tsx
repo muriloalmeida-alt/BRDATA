@@ -49,7 +49,7 @@ import { ClubRoster, Compare, Contracts, Ficha, PressStandalone, Talk } from "./
 import { AwardsScreen, CupScreen, H2HScreen, StatsScreen } from "./screens/Games.tsx";
 import { AchievementsScreen, BudgetScreen, WageCapScreen, EditProfileScreen, HelpScreen, PurchaseHistoryScreen, RankingScreen, SavesScreen, SettingsScreen, ShopScreen } from "./screens/More.tsx";
 import { BaseScreen, HireScoutScreen, LedgerScreen, MissionScreen, ProspectsScreen, ScoutsScreen, SponsorsScreen, StadiumScreen, StaffScreen, SuggestionsScreen } from "./screens/Club.tsx";
-import { History as MarketHistory, Loan, Market, MyOffers, MySales, Negotiation, PendingOffer, Propose, SaleOffers, Target } from "./screens/Market.tsx";
+import { LoanListings, History as MarketHistory, Loan, Market, MyOffers, MySales, Negotiation, PendingOffer, Propose, SaleOffers, Target } from "./screens/Market.tsx";
 
 // Tutorial, assistente e recompensa diária: a abertura automática roda no
 // máximo uma vez por carregamento da v2 (sair pelo "Voltar" não reabre).
@@ -336,6 +336,7 @@ export function App() {
     if (sub === "/negociacao") return <Negotiation key={id} career={data.career} id={id} onChanged={reloadCareer} />;
     if (sub === "/vendas") return <MySales career={data.career} onChanged={reloadCareer} />;
     if (sub === "/vendas/propostas") return <SaleOffers key={id} career={data.career} id={id} onChanged={reloadCareer} />;
+    if (sub === "/emprestimos") return <LoanListings career={data.career} onChanged={reloadCareer} />;
     if (sub === "/emprestimo") return <Loan key={cl + id} career={data.career} clubId={cl || null} id={id} onChanged={reloadCareer} />;
     if (sub === "/historico") return <MarketHistory career={data.career} />;
     if (sub === "/oferta") return <PendingOffer career={data.career} onChanged={reloadCareer} />;

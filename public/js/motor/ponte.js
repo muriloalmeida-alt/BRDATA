@@ -21,7 +21,7 @@
 =================================================================== */
 import { carreiraAtual, ligaAtual, todosTimes, competicaoAtual, partidaAtual, coletivaPendente } from "./estado.js";
 import { stadiumUpgradeBonusFor } from "./aovivo.js";
-import { BOARD_REQUEST_COOLDOWN, OFFER_WAIT_ROUNDS, SCOUT_GROUP_LABEL, SCOUT_MARKET, STADIUM_UPGRADES, acceptCounterOffer, acceptListingOffer, acceptOffer, applyTalkEffect, boardRequest, canTalkTo, cancelListing, computeLeaderboardScore, createListing, declineOffer, finalizeLoanIn, finalizeLoanOut, findInterestedBuyer, fireTechnicalStaff, hireScout, hireTechnicalStaff, increaseOffer, isContractExpiring, isLoanOutRefused, listingFor, markLineupDirty, recruitProspectToBase, rejectListingOffer, releaseScout, renewalVerdict, scoutAllowedRegions, scoutingAvailableRegions, signSponsorProposal, startScoutMission, startStadiumUpgrade, submitOfferOut, withdrawOffer } from "./clube.js";
+import { BOARD_REQUEST_COOLDOWN, OFFER_WAIT_ROUNDS, SCOUT_GROUP_LABEL, SCOUT_MARKET, STADIUM_UPGRADES, acceptCounterOffer, acceptListingOffer, acceptLoanOfferIn, acceptOffer, applyTalkEffect, boardRequest, canTalkTo, cancelListing, computeLeaderboardScore, createListing, declineOffer, finalizeLoanIn, finalizeLoanOut, findInterestedBuyer, fireTechnicalStaff, hireScout, hireTechnicalStaff, increaseOffer, isContractExpiring, isLoanOutRefused, listingFor, markLineupDirty, recruitProspectToBase, rejectListingOffer, rejectLoanOfferIn, releaseScout, renewalVerdict, scoutAllowedRegions, scoutingAvailableRegions, setLoanListed, signSponsorProposal, startScoutMission, startStadiumUpgrade, submitOfferOut, withdrawOffer } from "./clube.js";
 import { FORMATIONS, SECTOR_IDS, SECTOR_INSTRUCTIONS, TACTIC_AXES, computeHumanStrength } from "./fechamento.js";
 import { firePressConference } from "./posjogo.js";
 import { MAX_PRINCIPAL, REGION_LABEL, SCOUT_MISSION_DURATIONS, SCOUT_MISSION_TYPES, SUBPOS_LABEL, ambiente, applyWeeklyTraining, avisar, calendarTurnKey, leagueSquadFor, marketTeamsPool, pendingOfferOutFor, pushLedger, subPositionOf, transferWindowStatus } from "./semana.js";
@@ -426,11 +426,14 @@ export const comandosGestao = {
         if (r.decisao === "recusa") recusaEmprestimo.push(String(p.id));
       }));
       CAREER.squad.forEach((p) => { if (isLoanOutRefused(p)) recusaEmprestimo.push(String(p.id)); });
+      // EMPRESTIMO-DISPONIVEL: quem cada clube da CPU põe para empréstimo.
+      const disponiveisEmprestimo = [];
+      Object.values(CAREER.leagueSquads || {}).forEach((sq) => sq.forEach((p) => { if (mercado.precisaDeMinutos(p, sq)) disponiveisEmprestimo.push(String(p.id)); }));
       return {
         ok: true, janela: { aberta: !!w.open, texto }, multi: CAREER.marketScope === "multi",
         clubes: marketTeamsPool().map((t) => ({ id: String(t.id), nome: t.name, sigla: t.short || null, divisao: t.competitionId || competicaoAtual() })),
         desconto: CAREER.nextSigningDiscountPct || 0, parcelas: [1, 2, 3, 4], esperaRodadas: OFFER_WAIT_ROUNDS,
-        recusaEmprestimo,
+        recusaEmprestimo, disponiveisEmprestimo,
       };
     },
     // FASE1-MER: a proposta leva salário, papel prometido e duração
@@ -620,6 +623,29 @@ export const comandosGestao = {
       const CAREER = carreiraAtual();
       if (!CAREER) return { ok: false, motivo: "sem-carreira" };
       return negociacao.comOperacao(opId, () => pegarEmprestadoAgora(clubId, playerId, duracao, percentual, clausula, valorClausula));
+    },
+    // EMPRESTIMO-DISPONIVEL (15/11): seu jogador disponível para empréstimo
+    // e as propostas que ele recebe na janela.
+    async disponivelEmprestimo(playerId, ligado) {
+      const CAREER = carreiraAtual();
+      if (!CAREER) return { ok: false, motivo: "sem-carreira" };
+      const r = setLoanListed(playerId, !!ligado);
+      if (!r.ok) return r;
+      const g = await ambiente.gravar();
+      return g.ok ? r : g;
+    },
+    async aceitarPropostaEmprestimo(offerId, opId) {
+      const CAREER = carreiraAtual();
+      if (!CAREER) return { ok: false, motivo: "sem-carreira" };
+      return negociacao.comOperacao(opId, () => acceptLoanOfferIn(offerId));
+    },
+    async recusarPropostaEmprestimo(offerId) {
+      const CAREER = carreiraAtual();
+      if (!CAREER) return { ok: false, motivo: "sem-carreira" };
+      const r = rejectLoanOfferIn(offerId);
+      if (!r.ok) return r;
+      const g = await ambiente.gravar();
+      return g.ok ? r : g;
     },
     async propostaPendente(decisao) {
       const CAREER = carreiraAtual();

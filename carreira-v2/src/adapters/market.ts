@@ -50,4 +50,8 @@ export const MarketGateway = {
   loanOut: (playerId: string, duration: string, clause: string, clauseValue: number, opId?: string) => write("emprestar", playerId, duration, clause, clauseValue, opId),
   loanIn: (clubId: string, playerId: string, duration: string, pct: number, clause: string, clauseValue: number, opId?: string) => write<{ salario: number }>("pegarEmprestado", clubId, playerId, duration, pct, clause, clauseValue, opId),
   answerPending: (d: "aceitar" | "recusar") => write("propostaPendente", d),
+  // EMPRESTIMO-DISPONIVEL (15/11): seu jogador disponível e as propostas dele.
+  loanAvailable: (playerId: string, on: boolean) => write<{ disponivel: boolean }>("disponivelEmprestimo", playerId, on),
+  acceptLoanOffer: (offerId: string, opId?: string) => write<{ taxa: number; clube: string }>("aceitarPropostaEmprestimo", offerId, opId),
+  rejectLoanOffer: (offerId: string) => write("recusarPropostaEmprestimo", offerId),
 };

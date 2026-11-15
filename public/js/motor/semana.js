@@ -210,6 +210,7 @@ export function runCalendarOffWeek() {
   }
   resolvePendingOffersOutRound(round);
   resolvePendingListingsRound();
+  resolveLoanListingsRound(); // EMPRESTIMO-DISPONIVEL
   const installmentsPaid = processPendingInstallments();
   if (installmentsPaid) pushLedger("parcela", "Parcela de contratação", -installmentsPaid, round);
   const installmentsReceived = processPendingReceivables();
@@ -635,6 +636,53 @@ export function maybeSpawnListingOffer(listing) {
 export function resolvePendingListingsRound() {
   const CAREER = carreiraAtual();
   (CAREER.pendingListings || []).forEach(maybeSpawnListingOffer);
+}
+
+// EMPRESTIMO-DISPONIVEL (15/11): jogador seu marcado como "Disponível para
+// empréstimo" recebe, na janela, propostas de clubes da CPU em que ele seria
+// titular ou rotação (até LOAN_OFFERS_MAX por jogador, sorteio com chave da
+// semana). Fora da janela as propostas abertas caem. Propostas de jogador
+// que saiu do elenco principal, ou sem a marca, são descartadas.
+export const LOAN_OFFERS_MAX = 2;
+export const LOAN_OFFER_CHANCE = 0.35;
+export const loanFee = (p, meia = false) => Math.round(((p.value || 0) * 0.10 * (meia ? 0.5 : 1)) / 1000) * 1000;
+export function pruneLoanOffersIn() {
+  const CAREER = carreiraAtual();
+  (CAREER.squad || []).forEach((p) => { if (p.loanListed && p.origin !== "principal") delete p.loanListed; });
+  if (!CAREER.loanOffersIn) return;
+  const ok = new Set((CAREER.squad || []).filter((p) => p.loanListed).map((p) => String(p.id)));
+  CAREER.loanOffersIn = CAREER.loanOffersIn.filter((o) => ok.has(String(o.playerId)));
+}
+export function resolveLoanListingsRound() {
+  const CAREER = carreiraAtual();
+  pruneLoanOffersIn();
+  if (!transferWindowStatus(CAREER.currentRound).open) {
+    if (CAREER.loanOffersIn && CAREER.loanOffersIn.length) CAREER.loanOffersIn = [];
+    return;
+  }
+  (CAREER.squad || []).filter((p) => p.loanListed && p.origin === "principal").forEach((p) => {
+    const abertas = (CAREER.loanOffersIn || []).filter((o) => String(o.playerId) === String(p.id));
+    if (abertas.length >= LOAN_OFFERS_MAX) return;
+    const rng = ambiente.rngDaChave(`emprestimo-oferta:${p.id}:${calendarTurnKey()}`);
+    if (rng() >= LOAN_OFFER_CHANCE) return;
+    const ja = new Set(abertas.map((o) => String(o.clubId)));
+    const aqui = mercado.papelNoElenco(p, CAREER.squad.filter((x) => x.origin !== "base"));
+    const elig = marketTeamsPool()
+      .filter((t) => String(t.id) !== String(CAREER.clubId) && !ja.has(String(t.id)) && leagueSquadFor(t.id).length < maxSquadSizeFor(t.id))
+      .map((t) => ({ t, papel: mercado.papelNoElenco(p, [...leagueSquadFor(t.id), p]) }))
+      .filter((x) => (x.papel === "titular" || x.papel === "rotacao") && !(aqui === "titular" && x.papel !== "titular"))
+      .sort((a, b) => String(a.t.id).localeCompare(String(b.t.id)));
+    if (!elig.length) return;
+    const titulares = elig.filter((x) => x.papel === "titular");
+    const pool = titulares.length ? titulares : elig;
+    const pick = pool[Math.floor(rng() * pool.length)];
+    CAREER.loanOffersIn = CAREER.loanOffersIn || [];
+    CAREER.loanOffersIn.push({
+      id: `loanoffer_${p.id}_${pick.t.id}_${CAREER.currentRound}`, playerId: p.id, playerName: p.name,
+      clubId: String(pick.t.id), clubName: pick.t.name, papel: pick.papel, fee: loanFee(p), round: CAREER.currentRound,
+    });
+    avisar({ title: "Proposta de empréstimo", detail: `${pick.t.name} quer ${abbreviateName(p.name)} emprestado — veja no Mercado.` }, { type: "info" });
+  });
 }
 
 export function processPendingReceivables() {

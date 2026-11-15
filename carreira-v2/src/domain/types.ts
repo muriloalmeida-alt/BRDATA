@@ -49,6 +49,8 @@ export interface Player {
   // Fase 8 (mercado): empréstimos.
   onLoanFromClubId?: string | number; loanFromClubId?: string | number; loanReturnRound?: number | null;
   loanBuyOption?: { mandatory: boolean; value: number } | null; loanOriginalWage?: number;
+  // EMPRESTIMO-DISPONIVEL (15/11): seu jogador disponível para empréstimo.
+  loanListed?: boolean;
 }
 export interface Lineup {
   formation?: string;
@@ -88,6 +90,8 @@ export interface Career {
   reputation?: number;
   leagueSquads?: Record<string, Player[]>;
   pendingListings?: Listing[];
+  // EMPRESTIMO-DISPONIVEL: propostas de empréstimo dos seus disponíveis (na janela).
+  loanOffersIn?: LoanOfferIn[];
   // Fase 8 (mercado)
   pendingOffersOut?: OfferOut[];
   pendingOffer?: { playerId: string; playerName: string; clubId: string; clubName: string; fee: number; round?: number } | null;
@@ -139,3 +143,7 @@ export interface SeasonAward {
   brasileirao?: { campeao?: string | number | null; vice?: string | number | null; artilheiro?: AwardEntry | null; assistencias?: AwardEntry | null; melhorJogador?: AwardEntry | null };
   copaDoBrasil?: { disputou?: boolean; campeao?: string | number | null; vice?: string | number | null };
 }
+
+// EMPRESTIMO-DISPONIVEL (15/11): proposta de um clube da CPU por um jogador
+// seu disponível para empréstimo (motor/semana.js, resolveLoanListingsRound).
+export interface LoanOfferIn { id: string; playerId: string; playerName: string; clubId: string; clubName: string; papel: "titular" | "rotacao"; fee: number; round: number }

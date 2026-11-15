@@ -340,6 +340,18 @@ export function papelNoElenco(player, roster, P = MER_PARAMETROS) {
   return acima < t ? "titular" : acima < t + r ? "rotacao" : "reserva";
 }
 
+// EMPRESTIMO-DISPONIVEL (15/11): o clube põe para empréstimo quem precisa de
+// minutos: reserva no próprio elenco, com a posição coberta sem ele, e que
+// não está emprestado. Calculado na hora (o jogo não guarda minutos).
+export function precisaDeMinutos(player, roster, P = MER_PARAMETROS) {
+  if (!player || player.onLoanFromClubId != null) return false;
+  if (papelNoElenco(player, roster, P) !== "reserva") return false;
+  const grupo = (roster || []).filter((p) => p.group === player.group && String(p.id) !== String(player.id));
+  return grupo.length >= (P.coberturaMinima[player.group] || 1);
+}
+// Salário mínimo (%) que o clube aceita para quem está disponível.
+export const EMPRESTIMO_DISPONIVEL_PCT_MIN = 50;
+
 // Jeito do atleta, fixo por id, em [-1, 1].
 export function jeitoDoAtleta(id) {
   let h = 2166136261;
@@ -426,6 +438,13 @@ export function salarioSugerido(player, papel, ctx = {}, P = MER_PARAMETROS) {
 export function avaliacaoEmprestimo(player, ped, ctx = {}, P = MER_PARAMETROS) {
   const E = P.emprestimo;
   const papel = ctx.papelNaOrigem || "reserva";
+  // EMPRESTIMO-DISPONIVEL: quem o clube pôs para empréstimo sai se for jogar
+  // no destino (titular ou rotação) e com pelo menos 50% do salário.
+  if (ctx.disponivel) {
+    const vaiJogarLa = ctx.papelNoDestino === "titular" || ctx.papelNoDestino === "rotacao";
+    if (!vaiJogarLa) return { decisao: "recusa", motivo: "Ele precisa de minutos: o clube só empresta se ele for jogar no seu time.", utilidade: -1, lado: "clube", disponivel: true };
+    if ((ped.pct || 50) >= EMPRESTIMO_DISPONIVEL_PCT_MIN) return { decisao: "aceita", motivo: null, utilidade: 0, lado: "clube", disponivel: true };
+  }
   // Jogador: titular na origem que viraria reserva no destino recusa.
   if (ctx.papelNoDestino && RANK_PAPEL[ctx.papelNoDestino] < RANK_PAPEL[papel] && papel === "titular") {
     return { decisao: "recusa", motivo: "Ele é titular e não aceita ir para ser reserva.", utilidade: -1, lado: "jogador" };

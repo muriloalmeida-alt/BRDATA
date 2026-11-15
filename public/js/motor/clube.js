@@ -23,7 +23,7 @@ import { carreiraAtual, ligaAtual, todosTimes, timePorId, forcaMediaDoElenco, co
 import { emitir } from "./eventos.js";
 import { pushNotification, ensureObjectivesFresh, bumpObjective } from "./registro.js";
 import { fmtBRL, abbreviateName } from "./texto.js";
-import { MAX_PRINCIPAL, REGION_LABEL, SCOUT_MISSION_DURATIONS, SCOUT_MISSION_TYPES, UF_TO_REGION, ambiente, avisar, finalizeIncomingPurchase, financeiroScore, leagueSquadFor, marketTeamsPool, maxSquadSizeFor, pickWeightedByScore, pruneRecentDeclines, pushLedger, pushTransferLog, transferScore } from "./semana.js";
+import { MAX_PRINCIPAL, REGION_LABEL, SCOUT_MISSION_DURATIONS, SCOUT_MISSION_TYPES, UF_TO_REGION, ambiente, avisar, finalizeIncomingPurchase, financeiroScore, leagueSquadFor, marketTeamsPool, maxSquadSizeFor, pickWeightedByScore, pruneRecentDeclines, pushLedger, pushTransferLog, transferScore, transferWindowStatus } from "./semana.js";
 import { TALK_BENCH_STREAK_THRESHOLD, WANTS_TRANSFER_BENCH_STREAK, WANTS_TRANSFER_MORALE_MAX, playerComplaintFactor } from "./aovivo.js";
 import { firePressConference } from "./posjogo.js";
 import * as financas from "./financas.js";
@@ -451,6 +451,44 @@ export function acceptCounterOffer(offerId) {
   tela("renderMyOffersScreen");
   tela("renderMercado"); tela("renderElenco"); tela("renderCentral");
   return r;
+}
+
+// EMPRESTIMO-DISPONIVEL (15/11): marcar um jogador seu como disponível para
+// empréstimo, e aceitar ou recusar as propostas que ele recebe na janela
+// (geradas em semana.resolveLoanListingsRound).
+export function setLoanListed(playerId, on) {
+  const CAREER = carreiraAtual();
+  const p = CAREER.squad.find((x) => String(x.id) === String(playerId));
+  if (!p) return { ok: false, motivo: "jogador-invalido" };
+  if (on && p.origin !== "principal") return { ok: false, motivo: "nao-principal", mensagem: "Só dá para disponibilizar jogador do elenco principal." };
+  // Quem não aceita ser emprestado (a mesma regra do "Emprestar") não entra.
+  if (on && isLoanOutRefused(p)) return { ok: false, motivo: "recusa", mensagem: `${abbreviateName(p.name)} não aceita ser emprestado — quer continuar brigando por espaço no elenco principal.` };
+  if (on) p.loanListed = true;
+  else { delete p.loanListed; CAREER.loanOffersIn = (CAREER.loanOffersIn || []).filter((o) => String(o.playerId) !== String(p.id)); }
+  return { ok: true, disponivel: !!p.loanListed };
+}
+export function rejectLoanOfferIn(offerId) {
+  const CAREER = carreiraAtual();
+  const o = (CAREER.loanOffersIn || []).find((x) => x.id === offerId);
+  if (!o) return { ok: false, motivo: "proposta-invalida", mensagem: "Essa proposta não está mais aberta." };
+  CAREER.loanOffersIn = CAREER.loanOffersIn.filter((x) => x.id !== offerId);
+  return { ok: true };
+}
+export async function acceptLoanOfferIn(offerId) {
+  const CAREER = carreiraAtual();
+  const o = (CAREER.loanOffersIn || []).find((x) => x.id === offerId);
+  if (!o) return { ok: false, motivo: "proposta-invalida", mensagem: "Essa proposta não está mais aberta." };
+  if (!transferWindowStatus(CAREER.currentRound).open) return { ok: false, motivo: "janela-fechada", mensagem: "Janela de contratações encerrada — não dá pra negociar empréstimo agora." };
+  const p = CAREER.squad.find((x) => String(x.id) === String(o.playerId));
+  if (!p || p.origin !== "principal") { CAREER.loanOffersIn = CAREER.loanOffersIn.filter((x) => x.id !== offerId); return { ok: false, motivo: "jogador-invalido", mensagem: "O jogador não está mais no elenco principal." }; }
+  if (CAREER.squad.filter((x) => x.origin === "principal").length <= 14) return { ok: false, motivo: "minimo", mensagem: "O elenco principal não pode ficar com menos de 14 jogadores." };
+  const buyer = timePorId(o.clubId) || { id: o.clubId, name: o.clubName };
+  if (isLoanOutRefused(p)) return { ok: false, motivo: "recusa", mensagem: `${abbreviateName(p.name)} não aceita mais ser emprestado — quer continuar brigando por espaço no elenco principal.` };
+  const ok = await finalizeLoanOut(p.id, { buyer });
+  if (!ok) return { ok: false, motivo: "recusa", mensagem: "O empréstimo não foi feito." };
+  delete p.loanListed;
+  CAREER.loanOffersIn = (CAREER.loanOffersIn || []).filter((x) => String(x.playerId) !== String(p.id));
+  return { ok: true, taxa: o.fee, clube: o.clubName };
 }
 
 export function listingFor(playerId) {

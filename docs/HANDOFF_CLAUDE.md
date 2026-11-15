@@ -292,6 +292,85 @@ Decisão do Murilo (14/11) sobre a licença dos escudos de uso restrito
 
 ⸻
 
+EMPRESTIMO-DISPONIVEL — "Disponível para empréstimo" e filtro no Mercado
+
+Status: REVISÃO DO PM NECESSÁRIA (implementado em 15/11; aguarda a aprovação do Murilo).
+Pedido do Murilo (15/11): "Criar a opção 'Disponível para empréstimos' onde
+os clubes podem colocar os jogadores que precisam de minutagem. Criar filtro
+em mercado com a opção 'Disponível para empréstimo'."
+Hoje: dá para pedir empréstimo de jogador da CPU (`avaliarPedidoDeEmprestimo`,
+pelo papel na origem, cobertura e % do salário) e emprestar um seu
+("Emprestar" acha um interessado). Não há marca de disponibilidade nem filtro.
+O jogo não registra minutos jogados dos jogadores da CPU.
+Decisões do Murilo (15/11):
+1) a CPU marca sozinha e o técnico marca os dele;
+2) critério da CPU: reserva no próprio elenco (a regra de papel do mercado),
+   com a posição coberta sem ele; na lista, jovens até 23 anos primeiro;
+3) a marca facilita e barateia: o clube da CPU aceita emprestar se o
+   jogador for titular ou rotação no seu time, já a partir de 50% do
+   salário; recusa se ele ficar reserva com você;
+4) jogador seu marcado recebe propostas de empréstimo da CPU na janela, e
+   você aceita ou recusa.
+Regras (spec):
+- CPU: calculado na hora, sem guardar no save (`mercado.precisaDeMinutos`):
+  papel "reserva" no clube, posição com a cobertura mínima sem ele, sem estar
+  emprestado.
+- Pedido de empréstimo de jogador disponível: titular ou rotação no seu time
+  e ≥ 50% do salário → aceita; reserva no seu time → recusa ("ele precisa de
+  minutos"). A cláusula, a duração, o teto e a janela seguem a regra de hoje.
+- Seu jogador: `loanListed` no jogador (só elenco principal). Na janela, a
+  cada rodada (sorteio com chave), um clube da CPU em que ele seria titular
+  ou rotação pode mandar proposta (até 2 abertas por jogador): temporada
+  inteira, taxa igual à do "Emprestar" (10% do valor). Aceitar empresta
+  (mesmo fechamento do "Emprestar"); recusar descarta. Fechada a janela, as
+  propostas abertas caem. Sair do elenco, ir para a base ou tirar a marca
+  descarta as propostas. O mínimo de 14 no elenco principal vale.
+- v2: filtro "Disponível para empréstimo" no Mercado (e a marca na linha);
+  no Perfil do jogador, o interruptor "Disponível para empréstimo"; no
+  Mercado, "Meus jogadores para empréstimo" com as propostas (Aceitar ou
+  Recusar).
+- Etapa do loop: Market / Management.
+Critérios de aceite:
+1) O filtro mostra só jogadores da CPU disponíveis (reservas com a posição
+   coberta), jovens até 23 anos primeiro.
+2) Pedir um disponível que seria titular ou rotação no seu time, a 50%:
+   aceito. Que seria reserva: recusado com o motivo.
+3) Seu jogador marcado recebe proposta na janela; aceitar empresta e cobra
+   a taxa; recusar descarta; fora da janela, nenhuma.
+4) Tirar a marca, vender, emprestar por outro caminho ou mandar para a base
+   descarta as propostas; save antigo abre sem marca nem propostas.
+Anti-exploit: só durante a janela; até 2 propostas por jogador; sorteio
+com chave (recarregar não muda o resultado); taxa igual à do Emprestar.
+Relatório (15/11):
+- Motor: `mercado.js` (`precisaDeMinutos`; `avaliacaoEmprestimo` com
+  `ctx.disponivel`), `negociacao.js` (passa a marca ao avaliar o pedido),
+  `semana.js` (`resolveLoanListingsRound`, propostas na janela, chamada na
+  semana sem jogo e em `fechamento.js` na rodada), `clube.js`
+  (`setLoanListed`, `acceptLoanOfferIn`, `rejectLoanOfferIn`), `ponte.js`
+  (`disponivelEmprestimo`, `aceitarPropostaEmprestimo`,
+  `recusarPropostaEmprestimo`; `mercado()` devolve `disponiveisEmprestimo`).
+  Save: `loanListed` no jogador e `loanOffersIn` na carreira, só quando
+  usados; save antigo abre sem nada.
+- Ajuste achado nos testes: quem já recusa empréstimo pela regra de sempre
+  (`isLoanOutRefused`, jogador importante demais) não pode ser marcado
+  (mensagem); se passar a recusar depois de marcado, o "Aceitar" explica.
+- v2: filtro "Disponibilidade" (Todos / Disponível para empréstimo) e a
+  marca na linha do Mercado; "Meus jogadores para empréstimo" no Mercado
+  (`/mercado/emprestimos`, Aceitar/Recusar/Tirar da lista); interruptor na
+  ficha ("A temporada em números"); aviso na tela de pedir empréstimo. A
+  tela "A temporada em números" passou a mostrar o erro das ações.
+- Mudança de comportamento (decisão 3): pedir um reserva disponível que
+  ficaria reserva no seu time agora é recusado. `test_loans`,
+  `test_loan_advanced` e `test_v2_mercado` pediam justamente esse caso e
+  passaram a pedir um disponível que seria titular ou rotação aqui.
+- Testes: `tests/unit/test_motor_emprestimo_disponivel.js` (7),
+  `market.test.ts` (filtro e ordem) e `test_v2_emprestimo_disponivel` (9
+  itens, critérios 1 a 4 e 360 px). Contraprovas (precisaDeMinutos sempre
+  falso, marca sem efeito na avaliação, até 3 propostas, propostas fora da
+  janela, marcar quem recusa, sem a ordem dos jovens) falham os testes.
+
+⸻
+
 TETO-CAIXA — o técnico aumenta o teto salarial com dinheiro do caixa
 
 Status: REVISÃO DO PM NECESSÁRIA (implementado em 15/11; aguarda a aprovação do Murilo).
