@@ -133,9 +133,12 @@ const PROD = { "x-brdata-producao": "1" };
     await v2.goto(base + "/mais", { waitUntil: "domcontentloaded" });
     await v2.waitForSelector(".hb-row", { timeout: 10000 });
   }
-  const badLinks = [...links].filter((h) => { const p = new URL(h, base).pathname; return leaves(p) && h !== "/privacidade.html"; });
-  const badNav = visited.filter((p) => leaves(p));
-  check("4) Por toda a v2 (" + seen.size + " telas, " + links.size + " links), nenhum link nem navegação sai da v2 (só a Política de Privacidade):",
+  // Páginas estáticas que a v2 abre de propósito: a Política de Privacidade e
+  // o Histórico de atualizações (Mais, decisão do Murilo de 14/11).
+  const estaticas = ["/privacidade.html", "/historico.html"];
+  const badLinks = [...links].filter((h) => { const p = new URL(h, base).pathname; return leaves(p) && !estaticas.includes(h); });
+  const badNav = visited.filter((p) => leaves(p) && !estaticas.includes(p));
+  check("4) Por toda a v2 (" + seen.size + " telas, " + links.size + " links), nenhum link nem navegação sai da v2 (só a Política de Privacidade e o Histórico de atualizações):",
     seen.size >= 30 && badLinks.length === 0 && badNav.length === 0, JSON.stringify({ badLinks, badNav, telas: seen.size }));
 
   // 5) Convite pelo link antigo (/carreira.html?convite=…), em produção.

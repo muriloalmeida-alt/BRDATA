@@ -6,7 +6,8 @@
 //  3) Clube: aberta pela linha "Clube" e pelo escudo do Início; seções
 //     Gestão / Elenco e mercado / Estrutura; "Voltar ao clube" da Diretoria
 //     volta para a tela Clube.
-//  4) Mais: os 9 itens da prancha (CAP07-T01), na ordem; "Sair" encerra a
+//  4) Mais: os 9 itens da prancha (CAP07-T01) e o "Histórico de atualizações"
+//     (HISTORICO-LINK, decisão do Murilo de 14/11), na ordem; "Sair" encerra a
 //     sessão e mostra o login da v2.
 //  5) (Saiu no lote L1 do plano "testes sem a tela antiga": conferia que a
 //     tela antiga não abria telas por links vindos da v2; a tela antiga não
@@ -78,8 +79,8 @@ const { newCareer } = require("./_v2_carreira");
   await v2.locator(".hb-row", { hasText: "Sair" }).click();
   await v2.waitForSelector(".ac-form", { timeout: 15000 });
   const me = await v2.evaluate(async () => (await (await fetch("/api/auth/me")).json()).authenticated);
-  check("4) Mais: os 9 itens da prancha, na ordem; 'Sair' encerra a sessão e mostra o login da v2:",
-    mais.join("|") === "Perfil do treinador|Conquistas|Premiações|Ranking|Loja|Configurações|Central de ajuda|Saves|Sair" && me === false && !new URL(v2.url()).pathname.startsWith("/carreira") && !new URL(v2.url()).pathname.startsWith("/brasileirao"),
+  check("4) Mais: os 9 itens da prancha e o Histórico de atualizações, na ordem; 'Sair' encerra a sessão e mostra o login da v2:",
+    mais.join("|") === "Perfil do treinador|Conquistas|Premiações|Ranking|Loja|Configurações|Central de ajuda|Histórico de atualizações|Saves|Sair" && me === false && !new URL(v2.url()).pathname.startsWith("/carreira") && !new URL(v2.url()).pathname.startsWith("/brasileirao"),
     JSON.stringify({ mais, me, url: v2.url() }));
 
   // 6) 360 px.

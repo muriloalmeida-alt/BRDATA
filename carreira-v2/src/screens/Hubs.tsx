@@ -2,7 +2,8 @@
 // - Jogos (aba "Jogos"): Calendário, Tabela, Copa do Brasil, Estatísticas.
 // - Clube (aberta pelo Início): diretoria, dinheiro, elenco e mercado,
 //   estrutura. "Voltar ao clube" das telas do clube volta para cá.
-// - Mais (aba "Mais", prancha 43 col. 2, CAP07-T01): os 9 itens.
+// - Mais (aba "Mais", prancha 43 col. 2, CAP07-T01): os 9 itens e o
+//   Histórico de atualizações (página estática, historico.html).
 // Áreas que ainda não têm tela na v2 abrem a tela equivalente da versão
 // anterior (só em homologação — D3), marcadas com ↗ no fim da linha; elas
 // passam a ser telas da v2 nas fases seguintes.
@@ -16,7 +17,7 @@ import { IconBack, IconChevron } from "../ui/icons.tsx";
 import { BASE, Link, goBack } from "../ui/router.tsx";
 import "./hubs.css";
 
-type Entry = { title: string; sub?: string | null } & ({ to: string } | { action: () => void });
+type Entry = { title: string; sub?: string | null } & ({ to: string } | { href: string } | { action: () => void });
 
 function Row({ e }: { e: Entry }) {
   const body = (<>
@@ -24,6 +25,8 @@ function Row({ e }: { e: Entry }) {
     <IconChevron className="row-chevron" />
   </>);
   if ("to" in e) return <Link className="row hb-row" to={e.to}>{body}</Link>;
+  // Página fora da v2 (navegação completa, não rota interna).
+  if ("href" in e) return <a className="row hb-row" href={e.href}>{body}</a>;
   return <button type="button" className="row hb-row" onClick={e.action}>{body}</button>;
 }
 
@@ -113,6 +116,9 @@ export function MoreMenu({ onLogout }: { onLogout: () => Promise<void> }) {
         { title: "Loja", to: `${BASE}/loja` },
         { title: "Configurações", to: `${BASE}/configuracoes` },
         { title: "Central de ajuda", to: `${BASE}/ajuda` },
+        // HISTORICO-LINK (decisão do Murilo, 14/11): a página estática de
+        // versões, antes só no menu da tela antiga.
+        { title: "Histórico de atualizações", sub: "O que mudou em cada versão", href: "/historico.html" },
         { title: "Saves", sub: "Carreira atual · reiniciar", to: `${BASE}/saves` },
         { title: leaving ? "Saindo…" : "Sair", action: () => { if (!leaving) { setLeaving(true); onLogout(); } } },
       ]} />

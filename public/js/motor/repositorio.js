@@ -125,6 +125,13 @@ export function criarRepositorio(opts = {}) {
     return copia;
   }
 
+  // Cópia ao servidor em andamento, por conta (ver copiarParaServidor). Uma
+  // só para a janela: a v2 tem duas instâncias do repositório (a do motor,
+  // /js/motor, e a cópia no build da v2) e as duas mandam a cópia.
+  const COPIA_PRESA_MS = 45000;
+  const COPIA_ESPERA_MS = 15000;
+  const copiasEmAndamento = globalThis.__BRDATA_COPIAS_EM_ANDAMENTO__ || (globalThis.__BRDATA_COPIAS_EM_ANDAMENTO__ = new Map());
+
   const repo = {
     // true se o aparelho consegue guardar (IndexedDB abre).
     async disponivel() {
@@ -236,7 +243,7 @@ export function criarRepositorio(opts = {}) {
       if (aparelhoMudou) {
         // O aparelho avançou (offline, ou backup que falhou): vale o aparelho,
         // e a cópia vai ao servidor (decisão do Murilo, 13/11).
-        await repo.copiarParaServidor(id).catch(() => {});
+        await repo.copiarParaServidor(id, { esperarMs: 0 }).catch(() => {});
         const atual = await repo.registro(id);
         return { career: reg.save, origem: "aparelho", rev: reg.rev, pendente: !!(atual && atual.hash !== atual.sincronizado) };
       }
@@ -260,7 +267,7 @@ export function criarRepositorio(opts = {}) {
     },
     // Grava a carreira: primeiro no aparelho (confirma), depois a cópia no
     // servidor. `revEsperada` (opcional): recusa se outra gravação veio antes.
-    // Devolve { ok, rev, copia: "ok"|"offline"|"sessao"|"outra-conta"|"grande"|"falha"|"local" } ou
+    // Devolve { ok, rev, copia: "ok"|"andamento"|"offline"|"sessao"|"outra-conta"|"grande"|"falha"|"local" } ou
     // { ok: false, motivo: "armazenamento"|"conflito"|"outra-aba" }.
     async gravar(conta, save, opts = {}) {
       const id = String(conta);
@@ -278,8 +285,33 @@ export function criarRepositorio(opts = {}) {
       return { ok: true, rev: reg.rev, copia };
     },
     // Manda ao servidor a cópia do que está no aparelho (se ainda não foi).
-    async copiarParaServidor(conta) {
+    // COPIA-UNICA (14/11): uma cópia por conta de cada vez. Antes, uma
+    // leitura (repo.ler) no meio do envio via o save ainda "pendente" e
+    // mandava a mesma cópia (~600 KB) de novo. Com outra a caminho, quem
+    // chama marca "conferir de novo": ao terminar, a cópia a caminho confere
+    // de novo e, se o save mudou, sobe o mais novo. Quem chama espera essa
+    // cópia por no máximo `esperarMs` (a gravação: 15 s; a leitura: nada) e
+    // depois recebe "andamento" — um envio preso não trava o jogo. Envio sem
+    // resposta há mais de 45 s não segura as cópias.
+    copiarParaServidor(conta, { esperarMs = COPIA_ESPERA_MS } = {}) {
       const id = String(conta);
+      const atual = copiasEmAndamento.get(id);
+      if (atual && Date.now() - atual.inicio < COPIA_PRESA_MS) {
+        atual.deNovo = true;
+        if (!(esperarMs > 0)) return Promise.resolve("andamento");
+        return Promise.race([atual.promessa, new Promise((ok) => setTimeout(() => ok("andamento"), esperarMs))]);
+      }
+      const vez = { deNovo: false, inicio: Date.now(), promessa: null };
+      copiasEmAndamento.set(id, vez);
+      const rodar = async () => {
+        let r;
+        do { vez.deNovo = false; vez.inicio = Date.now(); r = await repo.copiarAgora(id).catch(() => "falha"); } while (vez.deNovo);
+        return r;
+      };
+      vez.promessa = rodar().finally(() => { if (copiasEmAndamento.get(id) === vez) copiasEmAndamento.delete(id); });
+      return vez.promessa;
+    },
+    async copiarAgora(id) {
       const reg = await repo.registro(id);
       if (!reg) return "ok";
       if (reg.hash === reg.sincronizado) return "ok";
@@ -369,7 +401,9 @@ export function criarRepositorio(opts = {}) {
       const reg = await repo.registro(id);
       if (!reg) return { ok: false, motivo: "sem-carreira" };
       try { await escreverLoja(LOJA_SAVES, { ...reg, conflito: null }); } catch (e) { return { ok: false, motivo: "armazenamento" }; }
-      const copia = await repo.copiarParaServidor(id);
+      // Pedido explícito: espera a cópia a caminho (se houver) e manda.
+      let copia = await repo.copiarParaServidor(id);
+      for (let n = 0; copia === "andamento" && n < 60; n++) { await new Promise((ok) => setTimeout(ok, 500)); copia = await repo.copiarParaServidor(id); }
       return copia === "ok" ? { ok: true } : { ok: false, motivo: copia };
     },
     // Situação da cópia: "em-dia" | "pendente" | "conflito" | "sem-carreira".
