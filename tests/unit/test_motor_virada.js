@@ -129,6 +129,14 @@ const ROTEIRO = (seed) => `(async () => {
       assert.deepStrictEqual(b.out, a.out, `retornos, mundo ${k}`);
       a.fotos.forEach((f, i) => {
         assert.deepStrictEqual(b.fotos[i].mundo, f.mundo, `mundo, mundo ${k}, foto ${i}`);
+        // TETO-CAIXA (15/11): mudança intencional depois da cópia congelada:
+        // a virada zera o teto reservado com o caixa (finances.wageCapBought).
+        // Confere o zero e tira o campo da comparação.
+        const fin = b.fotos[i].career.finances || {};
+        // (0 depois da virada; ausente quando a foto é de clube novo, com
+        // finanças novas: o save antigo é lido como 0.)
+        assert.ok(fin.wageCapBought === 0 || fin.wageCapBought === undefined, `teto reservado zerado, mundo ${k}, foto ${i}: ${fin.wageCapBought}`);
+        delete fin.wageCapBought;
         assert.deepStrictEqual(b.fotos[i].career, f.career, `save, mundo ${k}, foto ${i}`);
       });
       assert.strictEqual(b.fotos.length, a.fotos.length, `fotos, mundo ${k}`);
