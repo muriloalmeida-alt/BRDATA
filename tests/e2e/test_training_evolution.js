@@ -2,9 +2,10 @@
 // pelo motor na página da v2 (applyWeeklyTraining, applyNaturalAgingEvolution).
 // As setas de tendência do detalhe da tela antiga saíram; a Evolução do
 // jogador na v2 está no test_v2_tatica_treino item 8.
-//  1) Titular de idade "prime" com um dia de treino técnico moderado (e
-//     espaço até o potencial): overall +2 e condição −6; ataque e defesa não
-//     mudam (o técnico vai para o overall).
+//  1) Titular de idade "prime" (overall abaixo de 80, com espaço até o
+//     potencial) com um dia de treino técnico moderado: overall +2 e
+//     condição −6; ataque e defesa não mudam (o técnico vai para o overall).
+//     Acima de 80 cada ponto tem só 50% de chance (highBandGainFactor).
 //  2) Jogador de clube da CPU não evolui com o treino do técnico.
 //  3) Veterano (32+) que não jogou, com o sorteio sempre no ramo de declínio:
 //     perde 1 em ataque, defesa, físico e overall na rodada.
@@ -25,7 +26,10 @@ const { newCareer, globaisDoMotor } = require("./_v2_carreira");
     const T = (s) => JSON.parse(JSON.stringify(s));
     let p = CAREER.squad.find((x) => x.age >= 22 && x.age <= 29 && x.status === "ok" && CAREER.lineup.starters.includes(x.id));
     if (!p) { p = CAREER.squad.find((x) => x.age >= 22 && x.age <= 29 && x.status === "ok" && x.origin === "principal"); CAREER.lineup.starters[1] = p.id; }
-    p.potential = Math.min(99, p.overall + 20);
+    // Abaixo de 80 e com 15+ de espaço até o potencial o ganho é certo; acima
+    // de 80 cada ponto tem só 50% (highBandGainFactor, motor/treino.js).
+    p.overall = Math.min(p.overall, 75);
+    p.potential = p.overall + 20;
     p.condition = 100;
     p.seasonGain = {};
     const antes = T(p);
