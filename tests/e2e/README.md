@@ -140,7 +140,7 @@ motor em `public/js/motor/` (ver `CLAUDE.md`, seção 0).
   - **Teste unitário do módulo:** em `tests/unit/`.
 - **Nunca** abra `/carreira.html` ou `/carreira-old` num teste novo, nem use os ajudantes que passam por elas (`_startup`, `_round`, `_calendar_skip`, `_v2_match`). (A página escondida `/carreira/motor` saiu na etapa G2d.)
   - **Exceção:** conferir, com o cabeçalho de produção, que os links antigos levam à v2. Esses testes ficam na lista `soRedirecionamento` de `tela_antiga_legado.json`.
-- Os testes que já faziam isso estão em `tela_antiga_legado.json` e continuam rodando como rede de segurança. A lista **só diminui**: ao reescrever um deles pela v2 ou sem tela, tire-o dela.
+- A lista `testes` de `tela_antiga_legado.json` está vazia desde o lote L6b (16/11/2026): nenhum teste usa mais a tela antiga, e ela não pode voltar a crescer.
 - **Checagem:** `node .github/scripts/verificar-tela-antiga.js`, que o CI roda na rota rápida.
 
 ## Helpers compartilhados (arquivos `_*.js`, não são testes)

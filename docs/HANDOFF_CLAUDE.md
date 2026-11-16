@@ -573,6 +573,24 @@ Pendente: decidir quando o Resultado da v2 ganha o cartão.
 
 ⸻
 
+ZOOM-V2 — bloquear o zoom no celular na v2
+
+Status: REVISÃO DO PM NECESSÁRIA (implementado no lote L6b, aguarda aprovação do Murilo).
+Origem: lote L6b (docs/carreira-v2/ENTREGA_TESTES_L6.md). O teste antigo
+`test_ux_zoom_scroll` conferia que a tela antiga bloqueava o zoom; a v2
+deixava dar zoom. Decisão do Murilo (16/11): "Bloquear zoom".
+Implementado:
+- `carreira-v2/index.html`: viewport com `maximum-scale=1.0,
+  minimum-scale=1.0, user-scalable=no` (mantém `viewport-fit=cover`);
+- `carreira-v2/src/styles/base.css`: `body { touch-action: manipulation }`
+  (sem zoom de toque duplo);
+- `tests/e2e/test_ux_zoom_scroll.js` reescrito pela v2 (1, 1b, 1c).
+Não muda: motor, API, save.
+Ponto de atenção: contraria a WCAG 1.4.4; o iOS ignora `user-scalable=no`
+por padrão (zoom de pinça continua possível lá), o Android respeita.
+
+⸻
+
 RODADA-ATUAL — jogos da rodada atual na Tabela da v2
 
 Status: APROVADO (Murilo, 15/11, "Aprovado"; PR #120).
