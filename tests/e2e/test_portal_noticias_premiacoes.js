@@ -59,13 +59,14 @@ async function newCareer(page, base, email) {
     // Rodada 1: notícia "minha" (goleada, só depende do placar).
     const news1 = generateRoundNews(10, [{ home: myId, away: A, gh: 4, ga: 0 }], cloneStandings(CAREER.standings));
     CAREER.newsFeed = news1.map((n) => ({ ...n, round: 10, seasonYear: CAREER.seasonYear })).concat(CAREER.newsFeed || []);
-    // Rodada 2 (mais nova): notícia genérica (sem meu clube envolvido).
+    // Rodada 2 (mais nova): só o resumo da rodada (sem meu clube envolvido;
+    // NOTICIAS-RODADA, 16/11, no lugar da antiga notícia genérica).
     const news2 = generateRoundNews(11, [], null);
     CAREER.newsFeed = news2.map((n) => ({ ...n, round: 11, seasonYear: CAREER.seasonYear })).concat(CAREER.newsFeed || []);
     persistCareer();
     return { feedLen: CAREER.newsFeed.length, topType: CAREER.newsFeed[0].type };
   });
-  check("2) Feed acumulou as 2 rodadas (mais nova primeiro):", seeded.feedLen >= 2 && seeded.topType === "generico");
+  check("2) Feed acumulou as 2 rodadas (mais nova primeiro):", seeded.feedLen >= 2 && seeded.topType === "resumo");
 
   await page.click("#btnBottomMenu");
   await page.waitForTimeout(150);

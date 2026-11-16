@@ -10,7 +10,9 @@
 //  5) O lanterna vencendo vira "lanterna reage".
 //  6) A manchete do meu clube vem primeiro, mesmo de um tipo menos
 //     prioritário.
-//  7) Sem nada para noticiar, sai a manchete genérica.
+//  7) Sem nada para noticiar, sai o resumo da rodada (NOTICIAS-RODADA, 16/11:
+//     no lugar da antiga manchete genérica; o seu jogo tem teste próprio em
+//     tests/unit/test_motor_noticias_rodada.js).
 const { chromium } = require("playwright-core");
 const { check } = require("./_check");
 const { newCareer, globaisDoMotor } = require("./_v2_carreira");
@@ -109,7 +111,7 @@ const { newCareer, globaisDoMotor } = require("./_v2_carreira");
 
     // 7) Fallback genérico quando nada dispara.
     const newsVazia = generateRoundNews(11, [], null);
-    out.generico = newsVazia.length === 1 && newsVazia[0].type === "generico";
+    out.generico = newsVazia.length === 1 && newsVazia[0].type === "resumo" && !newsVazia.some((n) => n.type === "generico");
 
     return out;
   });
@@ -120,7 +122,7 @@ const { newCareer, globaisDoMotor } = require("./_v2_carreira");
   check("4) Vitória depois de 7 jogos sem vencer vira 'jejum quebrado' (com o 7):", results.jejum === true);
   check("5) O lanterna vencendo vira 'lanterna reage':", results.lanterna === true);
   check("6) A manchete do meu clube vem primeiro, mesmo de tipo menos prioritário:", results.prioridadeMinhaPrimeiro === true);
-  check("7) Sem nada para noticiar, sai a manchete genérica:", results.generico === true);
+  check("7) Sem nada para noticiar, sai o resumo da rodada (sem a antiga manchete genérica):", results.generico === true);
   check("8) Sem erro na página:", erros.length === 0, JSON.stringify(erros.slice(0, 3)));
   await browser.close();
 })().catch((e) => { console.error("FATAL:", e); process.exit(1); });

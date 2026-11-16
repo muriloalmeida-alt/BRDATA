@@ -292,6 +292,31 @@ Decisão do Murilo (14/11) sobre a licença dos escudos de uso restrito
 
 ⸻
 
+NOTICIAS-RODADA — toda rodada gera notícias
+
+Status: REVISÃO DO PM NECESSÁRIA (implementado em 16/11; aguarda a aprovação do Murilo).
+Pedido do Murilo (15/11): "As notícias precisam atualizar após todos os
+jogos." Decisão (16/11): "Notícia de toda rodada" — mesmo sem fato marcante,
+a rodada gera notícias (o resultado do seu jogo e um resumo). Copa, outras
+divisões e a tela não foram pedidos.
+Hoje: `generateRoundNews` (fechamento da rodada) só tinha manchete de fato
+marcante (líder, goleada, zebra, empate defendido, lanterna, jejum); sem
+nenhum, saía "Rodada N não teve grandes surpresas".
+Regras: a cada rodada, (1) a notícia do seu jogo, primeiro ("X vence Y por
+2 x 1 em casa", "perde para", "empata com", do seu ponto de vista); (2) as
+manchetes de sempre (até 6); (3) o resumo, por último ("Rodada N: G gols em
+J jogos; maior vitória: …; Z lidera com P pontos"). O "sem surpresas" saiu.
+Etiquetas na v2: "Seu jogo" e "Resumo da rodada".
+Relatório (16/11): `motor/registro.js` (`noticiaDoSeuJogo`,
+`resumoDaRodada`); `carreira-v2/src/domain/week.ts` (etiquetas). Testes:
+`tests/unit/test_motor_noticias_rodada.js` (4); `test_noticias_rodada` item 7
+e `test_portal_noticias_premiacoes` item 2 passam a esperar o resumo;
+`test_motor_registro` desconta as notícias novas na comparação com a cópia
+congelada. Contraprovas (sem o seu jogo, sem o resumo, placar do ponto de
+vista errado) falham o teste.
+
+⸻
+
 EMPRESTIMO-DISPONIVEL — "Disponível para empréstimo" e filtro no Mercado
 
 Status: APROVADO (Murilo, 15/11, "Aprovado").

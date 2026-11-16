@@ -153,7 +153,7 @@ export function skipInfo(career: Career): SkipInfo | null {
 }
 
 // ---------- Notícias ----------
-const NEWS_TAG: Record<string, string> = { lider: "Liderança", zebra: "Zebra", goleada: "Goleada", jejum_quebrado: "Fim de jejum", lanterna_reage: "Reação", empate_defendido: "Defesa do resultado", generico: "Rodada" };
+const NEWS_TAG: Record<string, string> = { lider: "Liderança", zebra: "Zebra", goleada: "Goleada", jejum_quebrado: "Fim de jejum", lanterna_reage: "Reação", empate_defendido: "Defesa do resultado", generico: "Rodada", seu_jogo: "Seu jogo", resumo: "Resumo da rodada" };
 export interface NewsModel {
   sub: string;
   squad: { id: string; text: string }[];
