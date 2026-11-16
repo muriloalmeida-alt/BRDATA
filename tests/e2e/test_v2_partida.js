@@ -8,11 +8,12 @@
 // G2d; a "versão atual sem a ponte" era a tela antiga, que saiu); 360 px.
 const { chromium } = require("playwright-core");
 const { check } = require("./_check");
-const { newCareer, noMotor, motorNaPagina } = require("./_v2_carreira");
+const { retomarParadasAutomaticas, newCareer, noMotor, motorNaPagina } = require("./_v2_carreira");
 
 (async () => {
   const browser = await chromium.launch({ executablePath: process.env.PW_CHROMIUM_PATH || undefined, headless: true, args: ["--host-resolver-rules=MAP fonts.googleapis.com 127.0.0.1,MAP fonts.gstatic.com 127.0.0.1"] });
   const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
+  await retomarParadasAutomaticas(ctx); // PAUSA-EVENTO: lesão/expulsão sua para o jogo
   const page = await ctx.newPage();
   page.on("dialog", (d) => d.dismiss());
   page.on("pageerror", (err) => console.log("PAGE ERROR:", err.message));

@@ -28,6 +28,9 @@ export interface MatchSnapshot {
   eventos?: MatchEvent[];
   escalacao?: { formacao: string; titulares: (LivePlayer | null)[]; banco: LivePlayer[] };
   tatica?: { formacao: string; eixos: TacticAxis[]; formacoes: string[]; penalidadeBlocos: number };
+  // PAUSA-EVENTO (15/11): o jogo parou sozinho por lesão ou expulsão de um
+  // jogador seu (enquanto estiver parado).
+  paradaPor?: { tipo: "lesao" | "vermelho"; jogador: string | null; minuto: number }[] | null;
 }
 // Fase 4 (P5/P6): perna de Copa — placar da ida do seu ponto de vista (só na
 // volta) e, decidida a volta, pênaltis e quem passou.

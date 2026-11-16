@@ -150,6 +150,7 @@ export function resumeLiveMatch() {
   // em nada.
   if (partidaAtual().halftime) return;
   partidaAtual().paused = false;
+  delete partidaAtual().pausaMotivo;
   scheduleNextChunk();
 }
 
@@ -157,6 +158,7 @@ export function continueFromHalftime() {
   if (!partidaAtual()) return;
   partidaAtual().halftime = false;
   partidaAtual().paused = false;
+  delete partidaAtual().pausaMotivo;
   scheduleNextChunk();
   desenharPartida();
 }
@@ -167,6 +169,12 @@ export function resolveLiveChunk() {
   // Força, gols, chances, cartões, lesões, desgaste e estatísticas do bloco:
   // motor/aovivo.js (resolverBloco), com o texto e os comentários de antes.
   const { minute, chunkEvents } = aovivo.resolverBloco();
+  // PAUSA-EVENTO (15/11): lesão ou expulsão de um jogador SEU para o jogo
+  // como a pausa manual (com o motivo), para o técnico mexer no time.
+  // `lm.pararEmEvento === false` desliga (só o teste de equivalência com a
+  // cópia congelada, que não tem a regra: tests/unit/test_motor_jogo.js).
+  const paradas = chunkEvents.filter((e) => e.mine && (e.type === "lesao" || e.type === "vermelho"))
+    .map((e) => ({ tipo: e.type, jogador: e.player || null, minuto: minute }));
   desenharPartida();
   const advanceAfterChunk = () => {
     if (lm.chunkIndex >= LIVE_MATCH_CHUNK_MINUTES.length) {
@@ -185,6 +193,12 @@ export function resolveLiveChunk() {
       // continueFromHalftime/renderLiveMatch).
       lm.paused = true;
       lm.halftime = true;
+      if (paradas.length && lm.pararEmEvento !== false) lm.pausaMotivo = paradas;
+      desenharPartida();
+    } else if (!lm.skipping && paradas.length && lm.pararEmEvento !== false) {
+      // Como a pausa manual (pauseLiveMatch): aqui não há bloco agendado.
+      lm.paused = true;
+      lm.pausaMotivo = paradas;
       desenharPartida();
     } else if (!lm.skipping) {
       scheduleNextChunk();
@@ -592,7 +606,7 @@ export const comandosJogo = {
       goToMatch();
       return { ok: true, aoVivo: !!partidaAtual() };
     },
-    pausar() { if (partidaAtual() && !partidaAtual().finished) { pauseLiveMatch(); ponteAvisar(); } },
+    pausar() { if (partidaAtual() && !partidaAtual().finished) { pauseLiveMatch(); delete partidaAtual().pausaMotivo; ponteAvisar(); } }, // pausa manual: sem motivo
     retomar() { if (partidaAtual() && !partidaAtual().finished && !partidaAtual().halftime) { resumeLiveMatch(); ponteAvisar(); } },
     continuarIntervalo() { if (partidaAtual() && partidaAtual().halftime) continueFromHalftime(); },
     velocidade(v) { if (partidaAtual()) { partidaAtual().speed = v === 2 ? 2 : 1; ponteAvisar(); } },

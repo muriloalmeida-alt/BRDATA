@@ -201,6 +201,9 @@ const ROTEIRO = (seed) => `(async () => {
     out.push(ret === "live" ? "live" : ret);
     const lm = LIVE_MATCH;
     if (!lm) continue;
+    // PAUSA-EVENTO (15/11): a cópia congelada não para em lesão/expulsão sua;
+    // aqui a regra fica desligada (teste próprio: test_v2_pausa_evento).
+    lm.pararEmEvento = false;
     out.push(foto(lm));
     const passos = 1 + Math.floor(r() * 4);
     for (let b = 0; b < passos && !lm.finished; b++) {
