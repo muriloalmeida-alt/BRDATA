@@ -149,6 +149,7 @@ A v2 deixava dar zoom. Por decisão do Murilo, a v2 agora também bloqueia:
 - `carreira-v2/index.html`: viewport com `maximum-scale=1.0, minimum-scale=1.0, user-scalable=no`;
 - `carreira-v2/src/styles/base.css`: `body { touch-action: manipulation }` (sem zoom de toque duplo);
 - `test_ux_zoom_scroll.js` reescrito pela v2: itens 1 (viewport), 1b (`touch-action`) e 1c (a página rola sem largura extra).
+- `test_v2_inicio` item 6 conferia o contrário ("zoom liberado"); agora confere o zoom bloqueado.
 
 Observação de acessibilidade: o bloqueio de zoom contraria a WCAG 1.4.4
 (o iOS ignora `user-scalable=no` por padrão desde o iOS 10; o Android respeita).
@@ -164,6 +165,18 @@ Fica registrado como escolha de produto.
 | Renomear aceita repetido (`motor/ponte.js`) | `test_motor_regras_tela_antiga` | falhou no 4 |
 
 Depois das contraprovas, `git status` no motor limpo.
+
+### Ajuste de dois testes da PAUSA-EVENTO
+
+A suíte completa achou dois testes que liam a tela no meio de uma parada
+automática (lesão ou expulsão do seu time, PAUSA-EVENTO), sem relação com o
+L6b:
+- `test_v2_pausa` item 4 lia a primeira Pausa que aparecia e pegava
+  "Jogo parado" antes de o gancho retomar; agora espera o título "Intervalo".
+- `test_v2_resultado` usava o voltar do sistema com o jogo parado; agora só
+  volta com a partida rodando.
+
+Depois do ajuste, 3 rodadas seguidas dos dois testes passaram.
 
 ### Fica para o L7
 

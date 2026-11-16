@@ -585,6 +585,8 @@ Implementado:
 - `carreira-v2/src/styles/base.css`: `body { touch-action: manipulation }`
   (sem zoom de toque duplo);
 - `tests/e2e/test_ux_zoom_scroll.js` reescrito pela v2 (1, 1b, 1c).
+- `tests/e2e/test_v2_inicio.js` item 6 passa a conferir o zoom bloqueado
+  (antes conferia "zoom liberado").
 Não muda: motor, API, save.
 Ponto de atenção: contraria a WCAG 1.4.4; o iOS ignora `user-scalable=no`
 por padrão (zoom de pinça continua possível lá), o Android respeita.
