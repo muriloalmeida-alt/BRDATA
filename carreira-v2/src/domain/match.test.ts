@@ -118,3 +118,15 @@ test("lances: o jogador do lance vira link (seu → ficha; do adversário → pe
   assert.equal(by(25).player, undefined);
   assert.equal(by(30).player, undefined);
 });
+
+// PAUSA-EVENTO (15/11)
+test("Parada automática: uma linha por lance (lesão, expulsão), chave por parada; sem parada, nada", async () => {
+  const { stoppageOf } = await import("./match.ts");
+  assert.equal(stoppageOf({ fase: "pausada" }), null);
+  const s = stoppageOf({ fase: "pausada", paradaPor: [{ tipo: "lesao", jogador: "Gabriel Barbosa", minuto: 30 }, { tipo: "vermelho", jogador: "Bruno Henrique", minuto: 30 }] })!;
+  assert.equal(s.lines.length, 2);
+  assert.match(s.lines[0], /se lesionou \(30’\)/);
+  assert.match(s.lines[1], /foi expulso \(30’\)/);
+  const outra = stoppageOf({ fase: "pausada", paradaPor: [{ tipo: "lesao", jogador: "Gabriel Barbosa", minuto: 60 }] })!;
+  assert.notEqual(outra.key, s.key);
+});

@@ -50,6 +50,7 @@ export function Match({ start, sub, outId, competitionId, competitionName, teamB
   // Só a 1ª montagem decide se começa: trocar de vista (?tela=) não reinicia.
   const startOnce = useRef(start);
   const halftimeShown = useRef(false);
+  const stoppageShown = useRef<string | null>(null);
   const guardPushed = useRef(false);
   const liveRef = useRef(false);
   // Guarda do voltar: ativa no jogo e no Resultado (até "Continuar").
@@ -102,6 +103,9 @@ export function Match({ start, sub, outId, competitionId, competitionName, teamB
           setView({ kind: "live", m, snap });
           // Intervalo: abre a Pausa sozinho, uma vez por intervalo.
           if (m.phase === "intervalo" && !halftimeShown.current) { halftimeShown.current = true; if (!new URLSearchParams(location.search).get("tela")) navigate(`${PARTIDA}?tela=pausa`); }
+          // PAUSA-EVENTO (15/11): lesão ou expulsão de um jogador seu parou o
+          // jogo; abre a Pausa sozinha, uma vez por parada.
+          else if (m.phase === "pausada" && m.stoppage && stoppageShown.current !== m.stoppage.key) { stoppageShown.current = m.stoppage.key; if (!new URLSearchParams(location.search).get("tela")) navigate(`${PARTIDA}?tela=pausa`); }
           if (m.phase === "encerrada" && m.saved && !finishedOnce.current) { finishedOnce.current = true; onFinished(); }
         }
       };
@@ -432,8 +436,9 @@ function PauseView({ m, teamById, onResume }: { m: MatchModel; teamById: (id: st
         <span className="pz-center" aria-hidden="true"><span className="pz-min">{half ? "Intervalo" : m.minute}</span><span className="pz-goals">{m.gh} - {m.ga}</span></span>
         <span className="mt-team"><Crest team={teamById(m.away.id)} size={56} /><b>{m.away.name}</b></span>
       </section>
-      <h1 className="screen-title pz-title">{half ? "Intervalo" : "Partida pausada"}</h1>
+      <h1 className="screen-title pz-title">{half ? "Intervalo" : m.stoppage ? "Jogo parado" : "Partida pausada"}</h1>
       <p className="screen-sub">{half ? "Ajuste seu time antes do 2º tempo." : "Ajuste seu time e retorne quando estiver pronto."}</p>
+      {m.stoppage && <p className="pz-stop" role="status">{m.stoppage.lines.join(" · ")}</p>}
       <nav className="pz-list" aria-label="Ajustes">
         <a className="row pz-row" href={`${PARTIDA}?tela=time`} onClick={(e) => { e.preventDefault(); navigate(`${PARTIDA}?tela=time`); }}>
           <IconUsers className="row-icon pz-ico" />

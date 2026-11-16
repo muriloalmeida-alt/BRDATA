@@ -32,6 +32,8 @@ export interface MatchModel {
   subs: { used: number; total: number };
   // Fase 4 (P6/P5): linha do agregado na volta da Copa e, decidida, quem passou.
   cup: null | { aggregate: string | null; outcome: string | null };
+  // PAUSA-EVENTO (15/11): faixa da Pausa aberta sozinha ("Jogo parado: …").
+  stoppage: null | { key: string; lines: string[] };
 }
 
 // Lances que contam como "último evento", por importância: no mesmo
@@ -96,6 +98,7 @@ export function buildMatch(s: MatchSnapshot, competitionId?: string): MatchModel
     last, timeline,
     speed: s.velocidade === 2 ? 2 : 1,
     subs: { used: s.substituicoes?.usadas || 0, total: s.substituicoes?.total || 5 },
+    stoppage: stoppageOf(s),
     cup: s.contexto === "copa" && s.copa ? cupLine(s.copa, mine.nome, opp.nome, s.souMandante ? s.gh || 0 : s.ga || 0, s.souMandante ? s.ga || 0 : s.gh || 0) : null,
   };
 }
@@ -161,4 +164,13 @@ export function buildResult(s: MatchSnapshot, competitionName: string): ResultMo
     .map((e) => ({ minute: e.minuto, scorer: e.jogador ? shortName(e.jogador) : "", team: e.meu ? mine.nome : opp.nome, mine: e.meu, penalty: e.penalti }))
     .sort((a, b) => a.minute - b.minute);
   return { title, line, goals };
+}
+
+// PAUSA-EVENTO (15/11): o motivo da parada automática, uma linha por lance.
+// `key` muda a cada parada (para a tela abrir a Pausa uma vez por parada).
+export function stoppageOf(s: MatchSnapshot): MatchModel["stoppage"] {
+  const p = s.paradaPor;
+  if (!p || !p.length) return null;
+  const lines = p.map((x) => `${x.jogador ? nm(x.jogador) : "Um jogador seu"} ${x.tipo === "lesao" ? "se lesionou" : "foi expulso"} (${x.minuto}’)`);
+  return { key: p.map((x) => `${x.tipo}:${x.jogador}:${x.minuto}`).join("|"), lines };
 }

@@ -107,6 +107,10 @@ const ROTEIRO = (seed) => `(async () => {
   const jogar = async () => {
     for (let passo = 0; passo < 500; passo++) {
       const lm = LIVE_MATCH;
+      // PAUSA-EVENTO (15/11): a partida para sozinha em lesão/expulsão sua; a
+      // cópia congelada não tem a regra, então ela fica desligada aqui (teste
+      // próprio: tests/e2e/test_v2_pausa_evento.js).
+      if (lm && lm.pararEmEvento === undefined) lm.pararEmEvento = false;
       if (lm && !lm.finished && r() < 0.35) {
         const a = r();
         if (a < 0.1) reg("pausar", P.pausar());

@@ -986,6 +986,9 @@ export function ponteEstado() {
     // Fase 3: amistoso encerrado → resumo da semana pronto (resumoSemana()).
     semanaPronta: encerrada && !!ponte.semana,
     minuto, segundoTempo: minuto > 45,
+    // PAUSA-EVENTO (15/11): por que o jogo parou sozinho (lesão ou expulsão
+    // de um jogador seu), enquanto estiver parado.
+    paradaPor: !encerrada && (lm.paused || lm.halftime) && lm.pausaMotivo ? lm.pausaMotivo : null,
     contexto: lm.cupContext ? "copa" : lm.friendlyContext ? "amistoso" : "liga",
     rodada: lm.round,
     copa: lm.cupContext ? ponteCopa(lm) : null,
