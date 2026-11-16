@@ -470,5 +470,23 @@ async function saveNoAparelho(page) {
   });
 }
 
-module.exports = { esperarAssincrono, falharArmazenamento, saveNoAparelho, globaisDoMotor, iniciarPeloPreJogo, base, contaNova, saveNoServidor, novaCarreiraV2, ateOInicio, motorPronto, noMotor, carreiraV2, pularPreTemporada, jogarRodadaV2,
+// PAUSA-EVENTO (15/11): lesão ou expulsão de um jogador seu para a partida
+// e abre a Pausa ("Jogo parado"). Testes que acompanham a partida andando
+// sozinha (minuto, intervalo, fim) retomam essas paradas como o técnico
+// faria; o teste da própria parada (test_v2_pausa_evento) não usa isto.
+// `alvo`: o contexto ou a página, antes de abrir a partida.
+async function retomarParadasAutomaticas(alvo) {
+  await alvo.addInitScript(() => {
+    setInterval(() => {
+      try {
+        if (!/tela=pausa/.test(location.search) || !document.querySelector(".pz-stop")) return;
+        if ((document.querySelector(".pz-title") || {}).textContent !== "Jogo parado") return;
+        const b = document.querySelector(".pz-foot .mt-primary");
+        if (b) b.click();
+      } catch (_) { /* página trocando */ }
+    }, 250);
+  });
+}
+
+module.exports = { retomarParadasAutomaticas, esperarAssincrono, falharArmazenamento, saveNoAparelho, globaisDoMotor, iniciarPeloPreJogo, base, contaNova, saveNoServidor, novaCarreiraV2, ateOInicio, motorPronto, noMotor, carreiraV2, pularPreTemporada, jogarRodadaV2,
   signup, newCareer, serverCareer, playV2MatchToEnd, motorNaPagina, continueToHome, sameSave, ensureDailyClaimed, skipAutoOpen };

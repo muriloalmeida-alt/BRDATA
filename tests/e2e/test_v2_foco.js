@@ -12,11 +12,12 @@
 //     "Tentar novamente" abre uma sessão limpa.
 const { chromium } = require("playwright-core");
 const { check } = require("./_check");
-const { newCareer, serverCareer, iniciarPeloPreJogo } = require("./_v2_carreira");
+const { retomarParadasAutomaticas, newCareer, serverCareer, iniciarPeloPreJogo } = require("./_v2_carreira");
 
 (async () => {
   const browser = await chromium.launch({ executablePath: process.env.PW_CHROMIUM_PATH || undefined, headless: true, args: ["--host-resolver-rules=MAP fonts.googleapis.com 127.0.0.1,MAP fonts.gstatic.com 127.0.0.1"] });
   const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
+  await retomarParadasAutomaticas(ctx); // PAUSA-EVENTO: lesão/expulsão sua para o jogo
   const page = await ctx.newPage();
   page.on("dialog", (d) => d.dismiss());
   await newCareer(page, `v2foco${Date.now()}@teste.com`);
@@ -128,6 +129,7 @@ const { newCareer, serverCareer, iniciarPeloPreJogo } = require("./_v2_carreira"
   // Contexto sem service worker (ele buscaria por fora da interceptação),
   // com a mesma sessão.
   const ctx3 = await browser.newContext({ viewport: { width: 390, height: 844 }, serviceWorkers: "block", storageState: await ctx.storageState() });
+  await retomarParadasAutomaticas(ctx3);
   const v3 = await ctx3.newPage();
   let hang = true, motorPedido = false;
   v3.on("request", (r) => { if (new URL(r.url()).pathname === "/js/motor/v2.js") motorPedido = true; });

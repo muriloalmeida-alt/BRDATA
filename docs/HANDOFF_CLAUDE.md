@@ -292,6 +292,40 @@ Decisão do Murilo (14/11) sobre a licença dos escudos de uso restrito
 
 ⸻
 
+PAUSA-EVENTO — lesão ou expulsão sua para a partida e abre a Pausa
+
+Status: REVISÃO DO PM NECESSÁRIA (implementado em 16/11; aguarda a aprovação do Murilo).
+Pedido do Murilo (15/11): "Quando um jogador se lesiona ou é expulso o jogo
+deve pausar e abrir as mesmas opções de quando o jogo é pausado manualmente."
+Decisões do Murilo (15/11): só jogador do seu time; a Pausa mostra o motivo.
+Regras: no fim do bloco de 15', se um jogador seu se lesionou ou foi expulso,
+a partida para como na pausa manual e a v2 abre a Pausa sozinha (uma vez por
+parada), com o título "Jogo parado" e uma linha por lance ("Fulano foi
+expulso (30’)"); as opções são as mesmas (Revisar time, Substituir, Ajustar
+tática, Lances, Retomar). No intervalo, a Pausa do intervalo mostra o motivo.
+Não para no último bloco (o jogo acaba) nem em "Pular para o fim". Retomar
+ou pausar à mão tira o motivo. Lesão/expulsão do adversário só aparece nos
+lances.
+Relatório (16/11):
+- Motor: `jogo.js` (`resolveLiveChunk` marca a parada e guarda
+  `lm.pausaMotivo`; retomar/continuar o intervalo/pausar à mão apagam);
+  `carga.js` (`ponteEstado` devolve `paradaPor`). `lm.pararEmEvento ===
+  false` desliga a regra: só os testes de equivalência com as cópias
+  congeladas (`test_motor_jogo`, `test_motor_aovivo`) usam.
+- v2: `domain/match.ts` (`stoppageOf`), `screens/Match.tsx` (abre a Pausa
+  sozinha e mostra a faixa), `match.css` (`.pz-stop`).
+- Testes: `test_v2_pausa_evento` (5 itens: pausa manual sem faixa, parada
+  com a Pausa aberta sozinha e só os seus, retomar limpa, Pular para o fim
+  não para, 360 px) e `match.test.ts`. Contraprovas (não parar, contar o
+  adversário, parar no Pular para o fim, retomar sem limpar) falham o teste.
+- Efeito nos testes antigos: a partida agora para sozinha às vezes. Os testes
+  que acompanham a partida andando (`test_v2_resultado`, `test_v2_pausa`,
+  `test_v2_partida`, `test_v2_ajustes`, `test_v2_foco`, `test_v2_offline`)
+  retomam essas paradas pelo ajudante `retomarParadasAutomaticas`
+  (`_v2_carreira.js`): 4 rodadas seguidas, 24/24.
+
+⸻
+
 EMPRESTIMO-DISPONIVEL — "Disponível para empréstimo" e filtro no Mercado
 
 Status: APROVADO (Murilo, 15/11, "Aprovado").

@@ -58,6 +58,7 @@
 .pz-min { font-family: var(--bd-font-display); font-weight: 700; font-size: 16px; color: var(--bd-gold); }
 .pz-goals { margin-top: 2px; font-family: var(--bd-font-display); font-weight: 800; font-size: 52px; line-height: 1; white-space: nowrap; font-variant-numeric: tabular-nums; }
 .pz-title { margin-top: 28px; }
+.pz-stop { margin: 12px var(--bd-gutter) 0; padding: 12px 14px; border-left: 4px solid var(--bd-danger); border-radius: var(--bd-radius-sm); background: var(--bd-bg-deep); color: var(--bd-text); font-size: 15px; line-height: 1.4; }
 .pz-list { margin: 22px var(--bd-gutter) 0; }
 .pz-row { min-height: 76px; gap: 20px; }
 .pz-row:last-child { border-bottom: 0; }
