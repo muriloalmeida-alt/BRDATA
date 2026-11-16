@@ -41,7 +41,8 @@
       "test_v2_ajudante_carreira.js",
       "test_ge_calendar_001.js",
       "test_ge_balance_004.js",
-      "test_v2_offline.js"
+      "test_v2_offline.js",
+      "unit/test_motor_hospedeiro.js"
     ]
   },
   "exclusive": {
