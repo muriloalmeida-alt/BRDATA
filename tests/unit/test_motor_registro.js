@@ -119,6 +119,14 @@ const ROTEIRO = (seed) => `(() => {
 })()`;
 // Fora da comparação: carimbos de hora (ts, unlockedAt) e a hora/sorteio no id das notificações.
 const limpa = (x) => JSON.parse(JSON.stringify(x, (k, v) => (k === "ts" || k === "unlockedAt") && typeof v === "number" ? 1 : (typeof v === "string" ? v.replace(/^ntf_\d+_\w+$/, "ntf_X") : v)));
+// NOTICIAS-RODADA (16/11): mudança intencional depois da cópia congelada —
+// toda rodada ganha a manchete do seu jogo e o resumo, e o antigo "não teve
+// grandes surpresas" (generico) saiu. A comparação desconta os três; a regra
+// nova tem teste próprio (tests/unit/test_motor_noticias_rodada.js).
+const NOVAS = new Set(["seu_jogo", "resumo", "generico"]);
+const semNovas = (x) => Array.isArray(x)
+  ? x.filter((e) => !(e && typeof e === "object" && NOVAS.has(e.type) && typeof e.texto === "string")).map(semNovas)
+  : x && typeof x === "object" ? Object.fromEntries(Object.entries(x).map(([k, v]) => [k, semNovas(v)])) : x;
 
 (async () => {
   const imp = (m) => import(pathToFileURL(path.join(ROOT, `public/js/motor/${m}.js`)).href);
@@ -148,7 +156,7 @@ const limpa = (x) => JSON.parse(JSON.stringify(x, (k, v) => (k === "ts" || k ===
     vm.runInContext("AVISOS = []; ME = null; CAREER = __m.career; LEAGUE_TEAMS = __m.liga; ALL_TEAMS_FLAT = __m.todos; CURRENT_COMPETITION_ID = __m.comp;", sb);
     sb.Math.random = seeded(seed);
     const out = vm.runInContext(ROTEIRO(seed), sb);
-    return limpa({ out, career: vm.runInContext("CAREER", sb), avisos: vm.runInContext("AVISOS", sb) });
+    return semNovas(limpa({ out, career: vm.runInContext("CAREER", sb), avisos: vm.runInContext("AVISOS", sb) }));
   };
 
   await check("Mesmo roteiro, mesmos resultados (objetivos, recompensas, notificações com filtro e limite, conquistas, notícias de 6 rodadas, buscas de time e força) em 150 mundos", () => {

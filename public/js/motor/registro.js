@@ -176,7 +176,7 @@ export function evaluateSeasonEndAchievements(finishedTeamGoals, finishedTeamFou
 }
 
 // ---------- Notícias da rodada ----------
-export const NEWS_PRIORITY = { lider: 1, zebra: 2, lanterna_reage: 3, goleada: 4, empate_defendido: 5, jejum_quebrado: 6, generico: 9 };
+export const NEWS_PRIORITY = { seu_jogo: 0, lider: 1, zebra: 2, lanterna_reage: 3, goleada: 4, empate_defendido: 5, jejum_quebrado: 6, resumo: 8, generico: 9 };
 export const WINLESS_STREAK_THRESHOLD = 5; // rodadas sem vencer pra "jejum" valer manchete
 export const NEWS_FEED_MAX = 60; // manchetes guardadas no feed navegável
 export const ZEBRA_OVR_GAP = 6; // diferença mínima de overall médio pra contar como zebra/empate defendido
@@ -246,9 +246,37 @@ export function generateRoundNews(round, allResults, standingsBefore) {
     });
   }
   updateWinlessStreaks(allResults);
-  if (!headlines.length) {
-    headlines.push({ type: "generico", mine: false, texto: `Rodada ${round} não teve grandes surpresas na tabela.` });
-  }
   headlines.sort((a, b) => ((b.mine ? 1 : 0) - (a.mine ? 1 : 0)) || (NEWS_PRIORITY[a.type] - NEWS_PRIORITY[b.type]));
-  return headlines.slice(0, 6);
+  // NOTICIAS-RODADA (16/11): toda rodada tem notícia — o seu jogo primeiro,
+  // as manchetes de sempre (até 6) e o resumo da rodada por último (no lugar
+  // do antigo "não teve grandes surpresas").
+  const seu = noticiaDoSeuJogo(allResults, isMine);
+  return [...(seu ? [seu] : []), ...headlines.slice(0, 6), resumoDaRodada(round, allResults, c.standings)];
+}
+// O resultado do seu jogo na rodada (null se você não jogou).
+export function noticiaDoSeuJogo(allResults, isMine) {
+  const r = allResults.find((x) => isMine(x.home, x.away));
+  if (!r) return null;
+  const casa = isMine(r.home);
+  const meu = timePorId(casa ? r.home : r.away), adv = timePorId(casa ? r.away : r.home);
+  const pro = casa ? r.gh : r.ga, contra = casa ? r.ga : r.gh;
+  const placar = `${pro} x ${contra}`;
+  const texto = pro > contra ? `${meu.name} vence ${adv.name} por ${placar}${casa ? " em casa" : " fora"}`
+    : pro < contra ? `${meu.name} perde para ${adv.name} por ${placar}${casa ? " em casa" : " fora"}`
+    : `${meu.name} empata com ${adv.name} em ${placar}${casa ? " em casa" : " fora"}`;
+  return { type: "seu_jogo", mine: true, texto };
+}
+// Resumo da rodada: gols, jogos, a maior vitória e o líder.
+export function resumoDaRodada(round, allResults, standings) {
+  const gols = allResults.reduce((s, r) => s + r.gh + r.ga, 0);
+  const maior = allResults.filter((r) => r.gh !== r.ga).sort((a, b) => (Math.abs(b.gh - b.ga) - Math.abs(a.gh - a.ga)) || ((b.gh + b.ga) - (a.gh + a.ga)))[0];
+  const pos = rankByPoints(standings);
+  const liderId = Object.keys(pos).find((id) => pos[id] === 1);
+  const partes = [`Rodada ${round}: ${gols} gol${gols === 1 ? "" : "s"} em ${allResults.length} jogo${allResults.length === 1 ? "" : "s"}`];
+  if (maior) {
+    const v = maior.gh > maior.ga ? maior.home : maior.away, d = maior.gh > maior.ga ? maior.away : maior.home;
+    partes.push(`maior vitória: ${timePorId(v).name} ${Math.max(maior.gh, maior.ga)} x ${Math.min(maior.gh, maior.ga)} ${timePorId(d).name}`);
+  }
+  if (liderId) partes.push(`${timePorId(liderId).name} lidera com ${(standings[liderId] || {}).pts || 0} pontos`);
+  return { type: "resumo", mine: false, texto: `${partes.join("; ")}.` };
 }

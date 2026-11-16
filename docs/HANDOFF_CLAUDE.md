@@ -292,9 +292,34 @@ Decisão do Murilo (14/11) sobre a licença dos escudos de uso restrito
 
 ⸻
 
+NOTICIAS-RODADA — toda rodada gera notícias
+
+Status: APROVADO (Murilo, 16/11, "Pode fazer o merge"; PR #129).
+Pedido do Murilo (15/11): "As notícias precisam atualizar após todos os
+jogos." Decisão (16/11): "Notícia de toda rodada" — mesmo sem fato marcante,
+a rodada gera notícias (o resultado do seu jogo e um resumo). Copa, outras
+divisões e a tela não foram pedidos.
+Hoje: `generateRoundNews` (fechamento da rodada) só tinha manchete de fato
+marcante (líder, goleada, zebra, empate defendido, lanterna, jejum); sem
+nenhum, saía "Rodada N não teve grandes surpresas".
+Regras: a cada rodada, (1) a notícia do seu jogo, primeiro ("X vence Y por
+2 x 1 em casa", "perde para", "empata com", do seu ponto de vista); (2) as
+manchetes de sempre (até 6); (3) o resumo, por último ("Rodada N: G gols em
+J jogos; maior vitória: …; Z lidera com P pontos"). O "sem surpresas" saiu.
+Etiquetas na v2: "Seu jogo" e "Resumo da rodada".
+Relatório (16/11): `motor/registro.js` (`noticiaDoSeuJogo`,
+`resumoDaRodada`); `carreira-v2/src/domain/week.ts` (etiquetas). Testes:
+`tests/unit/test_motor_noticias_rodada.js` (4); `test_noticias_rodada` item 7
+e `test_portal_noticias_premiacoes` item 2 passam a esperar o resumo;
+`test_motor_registro` desconta as notícias novas na comparação com a cópia
+congelada. Contraprovas (sem o seu jogo, sem o resumo, placar do ponto de
+vista errado) falham o teste.
+
+⸻
+
 CONSELHO-INTERVALO — a comissão opina no intervalo
 
-Status: REVISÃO DO PM NECESSÁRIA (implementado em 16/11; aguarda a aprovação do Murilo).
+Status: APROVADO (Murilo, 16/11, "Pode fazer o merge"; PR #130).
 Pedido do Murilo (16/11): "O assistente deve opinar no intervalo. Sugerir
 mudanças táticas, alterações e dicas sobre o time."
 Decisões do Murilo (16/11): quem opina é a comissão técnica, se contratada
@@ -330,7 +355,7 @@ Depende da PAUSA-EVENTO (mesma tela da Pausa): branch montada sobre ela.
 
 PAUSA-EVENTO — lesão ou expulsão sua para a partida e abre a Pausa
 
-Status: REVISÃO DO PM NECESSÁRIA (implementado em 16/11; aguarda a aprovação do Murilo).
+Status: APROVADO (Murilo, 16/11, "Pode fazer o merge"; PR #128).
 Pedido do Murilo (15/11): "Quando um jogador se lesiona ou é expulso o jogo
 deve pausar e abrir as mesmas opções de quando o jogo é pausado manualmente."
 Decisões do Murilo (15/11): só jogador do seu time; a Pausa mostra o motivo.
