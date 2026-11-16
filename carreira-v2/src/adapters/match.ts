@@ -63,3 +63,12 @@ export interface MatchSession {
 }
 
 export interface OpenOptions { timeoutMs?: number; signal?: AbortSignal }
+
+// CONSELHO-INTERVALO (16/11): conselhos da comissão no intervalo
+// (motor/conselho.js, comandos conselhoIntervalo / aplicarConselho).
+export interface HalftimeAdvice {
+  categoria: "placar" | "cansaco" | "desempenho" | "formacao";
+  estado: "mudanca" | "manter" | "info";
+  resumo: string; motivo: string; nota?: string; chave: string;
+}
+export interface HalftimeAdviceResult { ok: boolean; motivo?: string; contratada?: boolean; itens?: HalftimeAdvice[]; aplicado?: { categoria: string; resumo: string } }
