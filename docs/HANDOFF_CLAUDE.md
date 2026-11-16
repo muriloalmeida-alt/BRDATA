@@ -317,6 +317,42 @@ vista errado) falham o teste.
 
 ⸻
 
+CONSELHO-INTERVALO — a comissão opina no intervalo
+
+Status: APROVADO (Murilo, 16/11, "Pode fazer o merge"; PR #130).
+Pedido do Murilo (16/11): "O assistente deve opinar no intervalo. Sugerir
+mudanças táticas, alterações e dicas sobre o time."
+Decisões do Murilo (16/11): quem opina é a comissão técnica, se contratada
+(sem ela, a Pausa do intervalo convida a contratar); cobre tática pelo
+placar, cansaço e cartões, desempenho do 1º tempo e formação; conselho com
+mudança se aplica com um toque.
+Regras (motor/conselho.js):
+- Tática pelo placar: perdendo → "Partir para cima" (ritmo 4, pressão 4,
+  linha 4); ganhando → "Segurar o resultado" (ritmo 2, pressão 3, linha 2);
+  empate → "Seguir o plano" (sem mudança).
+- Cansaço e cartões: o titular em mais risco (amarelo no jogo, condição
+  abaixo de 60%) sai para o melhor reserva da mesma posição no banco; gasta
+  1 substituição; sem substituição ou sem reserva da posição, explica.
+- Desempenho: leitura das estatísticas do 1º tempo (finalizações, no gol,
+  posse) — só texto.
+- Formação: com os mesmos 11 em campo, cada um na sua posição, a formação
+  que rende pelo menos 5% mais (gols a favor/contra) contra o adversário;
+  aplicar troca o esquema (com a perda de efetividade de sempre).
+- Aplicar confere que o conselho ainda vale (chave); se o time mudou, mostra
+  o conselho atualizado. Só no intervalo.
+Etapa do loop: Match (intervalo).
+Relatório (16/11): `motor/conselho.js` (novo), comandos `conselhoIntervalo`
+e `aplicarConselho` (`motor/jogo.js`); v2: seção "A comissão no intervalo"
+na Pausa do intervalo (`screens/Match.tsx`, `match.css`); teste
+`test_v2_conselho_intervalo` (6 itens: sem comissão convida a contratar;
+com comissão, perdendo e com um cansado, os 4 conselhos; aplicar a tática;
+aplicar o cansaço; o amarelo passa à frente do cansaço; 2º tempo e 360 px).
+Contraprovas (opinar sem comissão, aplicar a tática sem mudar os eixos,
+amarelo pesando menos, aplicar o cansaço sem substituir) falham o teste.
+Depende da PAUSA-EVENTO (mesma tela da Pausa): branch montada sobre ela.
+
+⸻
+
 PAUSA-EVENTO — lesão ou expulsão sua para a partida e abre a Pausa
 
 Status: APROVADO (Murilo, 16/11, "Pode fazer o merge"; PR #128).
