@@ -46,6 +46,7 @@ import * as clube from "./clube.js";
 import * as virada from "./virada.js";
 import * as texto from "./texto.js";
 import * as escalacao from "./escalacao.js";
+import * as conselho from "./conselho.js";
 
 // Desenho, sons, telas e modais da página antiga: o evento "tela", na mesma ordem.
 function tela(nome, ...args) { emitir("tela", { nome, args }); }
@@ -647,6 +648,20 @@ export const comandosJogo = {
       if (!wasHalftime) pauseLiveMatch();
       ponteAvisar();
       return { ok: true };
+    },
+    // CONSELHO-INTERVALO (16/11): a comissão opina no intervalo; aplicar
+    // usa as mesmas operações da partida ao vivo e segue no intervalo.
+    conselhoIntervalo() {
+      const lm = partidaAtual();
+      if (!lm || lm.finished) return { ok: false, motivo: "sem-partida" };
+      return conselho.conselhosDoIntervalo(lm);
+    },
+    aplicarConselho(categoria, chave) {
+      const lm = partidaAtual();
+      if (!lm || lm.finished) return { ok: false, motivo: "sem-partida" };
+      const r = conselho.aplicarConselho(lm, categoria, chave);
+      if (r.ok) { desenharPartida(); ponteAvisar(); }
+      return r;
     },
     descartar() {
       if (partidaAtual()) return { ok: false, motivo: "em-andamento" };

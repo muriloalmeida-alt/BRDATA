@@ -9,7 +9,7 @@
 // A4. Até a A4, o Pré-jogo
 // segue abrindo a partida na versão atual.
 import { useEffect, useRef, useState } from "react";
-import { type MatchSession, type SaveError } from "../adapters/match.ts";
+import { type HalftimeAdvice, type HalftimeAdviceResult, type MatchSession, type SaveError } from "../adapters/match.ts";
 import { engine } from "../adapters/engine.ts";
 import { WeekGateway, weekStore } from "../adapters/week.ts";
 import { PrepGateway } from "../adapters/prep.ts";
@@ -265,7 +265,7 @@ export function Match({ start, sub, outId, competitionId, competitionName, teamB
   }
 
   function screen() {
-  if (!ended && sub === "pausa") return <PauseView m={m} teamById={teamById} onResume={resumeAndBack} />;
+  if (!ended && sub === "pausa") return <PauseView m={m} teamById={teamById} onResume={resumeAndBack} session={s} />;
   if (sub === "time") return <TeamView lineup={buildLiveLineup(snap)} />;
   if (!ended && sub === "sai" && subs) return <SubOutView m={m} subs={subs} teamById={teamById} onBack={() => backToPause(1)} onPick={(id) => navigate(`${PARTIDA}?tela=entra&sai=${encodeURIComponent(id)}`)} />;
   if (!ended && sub === "entra" && subs && outId) return (
@@ -422,7 +422,7 @@ function LeaveSheet({ leave, saved, friendly, onStay, onLeave }: { leave: Leave;
 
 // CAP04-T03 — Pausa / Ajustes (pranchas/01_partida.png, coluna 1). No
 // intervalo é a mesma tela, com "Intervalo" e "Começar 2º tempo".
-function PauseView({ m, teamById, onResume }: { m: MatchModel; teamById: (id: string | number) => Team; onResume: () => void }) {
+function PauseView({ m, teamById, onResume, session }: { m: MatchModel; teamById: (id: string | number) => Team; onResume: () => void; session: MatchSession }) {
   const half = m.phase === "intervalo";
   return (
     <div className="mt pz">
@@ -439,6 +439,7 @@ function PauseView({ m, teamById, onResume }: { m: MatchModel; teamById: (id: st
       <h1 className="screen-title pz-title">{half ? "Intervalo" : m.stoppage ? "Jogo parado" : "Partida pausada"}</h1>
       <p className="screen-sub">{half ? "Ajuste seu time antes do 2º tempo." : "Ajuste seu time e retorne quando estiver pronto."}</p>
       {m.stoppage && <p className="pz-stop" role="status">{m.stoppage.lines.join(" · ")}</p>}
+      {half && <HalftimeAdviceSection session={session} />}
       <nav className="pz-list" aria-label="Ajustes">
         <a className="row pz-row" href={`${PARTIDA}?tela=time`} onClick={(e) => { e.preventDefault(); navigate(`${PARTIDA}?tela=time`); }}>
           <IconUsers className="row-icon pz-ico" />
@@ -580,5 +581,43 @@ function ResultView({ m, res, teamById, status, ready, friendly, cupLeg, onConti
           onClick={() => { if (!action.disabled) action.act(); }}>{action.label}<IconChevron className="cta-arrow" /></button>
       </div>
     </div>
+  );
+}
+
+// CONSELHO-INTERVALO (16/11): a comissão técnica (se contratada) opina no
+// intervalo: tática pelo placar, cansaço e cartões, desempenho do 1º tempo
+// e formação. Conselho com mudança se aplica com um toque.
+const ADVICE_LABEL: Record<HalftimeAdvice["categoria"], string> = { placar: "Tática pelo placar", cansaco: "Cansaço e cartões", desempenho: "Desempenho", formacao: "Formação" };
+function HalftimeAdviceSection({ session }: { session: MatchSession }) {
+  const [r, setR] = useState<HalftimeAdviceResult | null>(() => session.run<HalftimeAdviceResult>("conselhoIntervalo"));
+  const [msg, setMsg] = useState<string | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+  if (!r || !r.ok) return null;
+  if (!r.contratada) return <p className="wk-note pz-advice-none">Contrate a comissão técnica para receber conselhos no intervalo.</p>;
+  const apply = (a: HalftimeAdvice) => {
+    setErr(null); setMsg(null);
+    const x = session.run<HalftimeAdviceResult>("aplicarConselho", a.categoria, a.chave);
+    if (x.ok) { setMsg(`Feito: ${x.aplicado?.resumo || a.resumo}.`); setR(x); return; }
+    setErr(x.motivo === "desatualizada" ? "O time mudou: veja o conselho atualizado." : "Não deu para aplicar agora.");
+    setR(session.run<HalftimeAdviceResult>("conselhoIntervalo"));
+  };
+  return (
+    <section className="pz-advice" aria-labelledby="pz-adv-t">
+      <h2 className="kicker-caps" id="pz-adv-t">A comissão no intervalo</h2>
+      <ul className="pz-advice-list">
+        {(r.itens || []).map((a) => (
+          <li key={a.categoria} className={`pz-advice-item is-${a.estado}`}>
+            <span className="pz-advice-k">{ADVICE_LABEL[a.categoria]}</span>
+            <b className="pz-advice-t">{a.resumo}</b>
+            <span className="pz-advice-m">{a.motivo}</span>
+            {a.nota && <span className="pz-advice-n">{a.nota}</span>}
+            {a.estado === "mudanca" && <button type="button" className="state-btn pz-advice-btn" onClick={() => apply(a)}>Aplicar</button>}
+          </li>
+        ))}
+      </ul>
+      <p className="sr-only" role="status" aria-live="polite">{msg || ""}</p>
+      {msg && <p className="pr-ok" aria-hidden="true">{msg}</p>}
+      {err && <p className="inline-error" role="alert">{err}</p>}
+    </section>
   );
 }

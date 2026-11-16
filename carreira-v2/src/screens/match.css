@@ -150,3 +150,14 @@
    com alvo de toque de 44 px sem mudar a altura da linha. */
 .ev-player { font: inherit; color: var(--bd-gold); background: none; border: 0; padding: 12px 0; margin: -12px 0; min-height: 44px; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
 .ev-player:focus-visible { outline: 2px solid var(--bd-gold); outline-offset: 2px; }
+/* CONSELHO-INTERVALO (16/11): conselhos da comissão no intervalo */
+.pz-advice { margin: 22px var(--bd-gutter) 0; }
+.pz-advice-none { margin: 16px var(--bd-gutter) 0; }
+.pz-advice-list { list-style: none; margin: 10px 0 0; padding: 0; }
+.pz-advice-item { display: flex; flex-direction: column; gap: 4px; padding: 12px 0; border-bottom: 1px solid var(--bd-line); }
+.pz-advice-k { font-size: 13px; letter-spacing: .04em; text-transform: uppercase; color: var(--bd-muted); }
+.pz-advice-t { font-family: var(--bd-font-display); font-size: 18px; color: var(--bd-text); }
+.pz-advice-item.is-mudanca .pz-advice-t { color: var(--bd-accent); }
+.pz-advice-m { font-size: 15px; line-height: 1.4; color: var(--bd-text); }
+.pz-advice-n { font-size: 13px; color: var(--bd-muted); }
+.pz-advice-btn { align-self: flex-start; margin-top: 6px; min-height: var(--bd-touch); }
