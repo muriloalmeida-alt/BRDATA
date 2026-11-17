@@ -179,8 +179,33 @@ function copyPlayer(p) {
   return c;
 }
 
+// PARIDADE-CPU · A14 (17/11, decisão do Murilo "corrigir já"): a CPU
+// renovava ninguém e os elencos encolhiam a cada virada. Regra simples até
+// o E3 (contratos completos): na virada, o contrato vencido é renovado se o
+// jogador tem até RENOVACAO_CPU.idadeMax anos e overall pelo menos igual à
+// média do elenco, ou se sem ele a posição fica abaixo da cobertura mínima
+// (renova os melhores da posição até cobrir). Os outros saem.
+// `ativa: false` só nos testes de equivalência com as cópias congeladas.
+export const RENOVACAO_CPU = { ativa: true, idadeMax: 32, cobertura: { G: 2, D: 6, M: 6, F: 4 } };
+
+// Quem do elenco da CPU tem o contrato renovado na virada (A14).
+export function renovacoesDaCpu(players, seasonYear) {
+  const vencidos = players.filter((p) => !(p.contractUntil >= seasonYear));
+  if (!RENOVACAO_CPU.ativa || !vencidos.length) return new Set();
+  const media = average(players);
+  const renova = new Set(vencidos.filter((p) => p.age <= RENOVACAO_CPU.idadeMax && p.overall >= media).map((p) => p.id));
+  Object.entries(RENOVACAO_CPU.cobertura).forEach(([g, min]) => {
+    let ficam = players.filter((p) => p.group === g && (p.contractUntil >= seasonYear || renova.has(p.id))).length;
+    vencidos.filter((p) => p.group === g && !renova.has(p.id)).sort((a, b) => b.overall - a.overall).forEach((p) => {
+      if (ficam < min) { renova.add(p.id); ficam++; }
+    });
+  });
+  return renova;
+}
+
 // Elenco CPU: evolução anual, idade, queda do potencial, saída por fim
-// de contrato e reposição até o mínimo com profissionais gerados.
+// de contrato (com a renovação do A14) e reposição até o mínimo com
+// profissionais gerados.
 // o: { club, squad, seasonYear, minSize, evoRng, rng, env }
 export function renewLeagueSquad({ club, squad, seasonYear, minSize, evoRng, rng, env }) {
   const players = squad.map(copyPlayer);
@@ -189,9 +214,26 @@ export function renewLeagueSquad({ club, squad, seasonYear, minSize, evoRng, rng
     turnOver(p);
     if (p.potential != null) p.potential = clamp(p.potential - potentialDeclineFor(p.age, p.group), 20, 99);
   });
+  const renova = renovacoesDaCpu(players, seasonYear);
+  players.forEach((p) => {
+    if (!renova.has(p.id)) return;
+    // Contrato novo de 1 a 4 temporadas e o salário de mercado de agora.
+    const c = computeContractFields(p.overall, p.age, p.potential || null, rng, seasonYear - 1);
+    p.contractUntil = c.contractUntil; p.wage = c.wage;
+  });
   const kept = players.filter((p) => p.contractUntil >= seasonYear);
-  const missing = Math.max(0, minSize - kept.length);
-  const fresh = Array.from({ length: missing }, (_, i) => buildGeneratedProPlayer(club, i, rng, env));
+  // A14: com a renovação ligada, repõe até o tamanho que o elenco tinha
+  // (quem saiu é reposto); sem ela, só até o mínimo, como antes.
+  const alvo = RENOVACAO_CPU.ativa ? Math.max(minSize, squad.length) : minSize;
+  const missing = Math.max(0, alvo - kept.length);
+  const ids = new Set(kept.map((p) => p.id));
+  const fresh = Array.from({ length: missing }, (_, i) => {
+    const p = buildGeneratedProPlayer(club, i, rng, env);
+    // Id único no elenco (um gerado de outra virada pode ter ficado).
+    if (RENOVACAO_CPU.ativa && ids.has(p.id)) p.id = `gen_${club.id}_${seasonYear}_${i}`;
+    ids.add(p.id);
+    return p;
+  });
   return [...kept, ...fresh];
 }
 
