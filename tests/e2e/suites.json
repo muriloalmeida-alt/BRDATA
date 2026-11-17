@@ -66,7 +66,8 @@
       },
       "tests": [
         "test_frozen_provider.js",
-        "test_v2_offline_catalogo.js"
+        "test_v2_offline_catalogo.js",
+        "test_gols_reais_catalogo.js"
       ]
     },
     "loja-creditos": {

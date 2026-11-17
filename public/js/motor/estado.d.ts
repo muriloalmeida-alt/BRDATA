@@ -7,6 +7,10 @@ export const SCHEMA_VERSION: number;
 export const MIGRACOES: Record<number, (save: Save) => void>;
 export function versaoDoSave(save: Save | null | undefined): number;
 export function migrarSave(save: Save | null | undefined): number[];
+export const NIVEL_GOLS_CATALOGO: Record<string, number>;
+export function niveisDeGolsDaCarga(): Record<string, number>;
+export function completarNivelGols<S extends Save | null | undefined>(save: S, modos?: Record<string, boolean>): S;
+export function forcaDeJogo(team: { atk: number; def: number; competitionId?: string } | null | undefined): { atk: number; def: number };
 export function carregarSave(pedir: Pedir): Promise<Save | null>;
 export function gravarSave(save: Save | null | undefined, pedir: Pedir, agora?: () => number): Promise<
   | { ok: true }

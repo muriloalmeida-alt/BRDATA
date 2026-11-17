@@ -18,7 +18,7 @@
    Lê e grava a carreira de motor/estado.js. Não chama a tela: avisos
    viram o evento "aviso" (motor/eventos.js).
 =================================================================== */
-import { carreiraAtual, ligaAtual, todosTimes, timePorId, forcaMediaDoElenco, ganchosMundo, partidaAtual } from "./estado.js";
+import { carreiraAtual, ligaAtual, todosTimes, timePorId, forcaMediaDoElenco, ganchosMundo, forcaDeJogo, partidaAtual } from "./estado.js";
 import { pushNotification, generateRoundNews } from "./registro.js";
 import { fmtBRL, abbreviateName } from "./texto.js";
 import { advanceCalendarWeek, ambiente, applyFinanceEntries, avisar, calendarOn, finalizeIncomingPurchase, leagueSquadFor, maybeGenerateOffer, processPendingInstallments, processPendingReceivables, pushLedger, pushTransferLog, refreshAvailability, resolveLoanListingsRound, resolvePendingListingsRound, resolvePendingOffersOutRound, simulateAiTransfers, tickScoutMissions, tickStadiumUpgrade, transferWindowStatus } from "./semana.js";
@@ -209,8 +209,8 @@ export function simulateCupLeg(hostId, guestId, round) {
   const CAREER = carreiraAtual();
   const host = teamById(hostId), guest = teamById(guestId);
   const isHost = String(hostId) === String(CAREER.clubId), isGuest = String(guestId) === String(CAREER.clubId);
-  const hs = isHost ? computeHumanStrength(host) : { atk: host.atk, def: host.def, starters: pickCpuXI(leagueSquadFor(hostId)) };
-  const as = isGuest ? computeHumanStrength(guest) : { atk: guest.atk, def: guest.def, starters: pickCpuXI(leagueSquadFor(guestId)) };
+  const hs = isHost ? computeHumanStrength(host) : { ...forcaDeJogo(host), starters: pickCpuXI(leagueSquadFor(hostId)) };
+  const as = isGuest ? computeHumanStrength(guest) : { ...forcaDeJogo(guest), starters: pickCpuXI(leagueSquadFor(guestId)) };
   // GE-BALANCE-003 (issue #30) — club.def é "menor = defesa melhor"
   // (coeficiente de propensão a sofrer gol, não uma força — ver
   // buildRealPlayer/buildGeneratedProPlayer, que já fazem
@@ -547,7 +547,8 @@ export function resolveOtherDivisionsRound(round) {
   const CAREER = carreiraAtual();
   if (!CAREER.otherDivisions) return; // carreira sem o sistema ativado (ver migrateCareerDefaults) — nada a fazer
   Object.entries(CAREER.otherDivisions).forEach(([compId, division]) => {
-    const teamsById = new Map((CAREER.divisionTeams[compId] || []).map((t) => [String(t.id), t]));
+    // GOLS-REAIS: a força de jogo (nível de gols da divisão).
+    const teamsById = new Map((CAREER.divisionTeams[compId] || []).map((t) => [String(t.id), forcaDeJogo({ ...t, competitionId: t.competitionId || compId })]));
     // Fase 12, etapa 2: rodada só de placar (motor/rodada.js).
     rodada.playSimpleRound(division.schedule[round] || [], teamsById, division.standings, Math.random);
   });
@@ -675,6 +676,8 @@ export function computeHumanStrength(club) {
   const usable = starters.length ? starters : principal.filter((p) => p.status === "ok").slice(0, 11);
   const startAtk = avg(usable.map((p) => p.atk)) || baselineAtk;
   const startDef = avg(usable.map((p) => p.def)) || baselineDef;
+  // GOLS-REAIS: a força de jogo do clube (nível de gols do campeonato).
+  const base = forcaDeJogo(club);
   // EXPULSAO (17/11): o expulso da partida ao vivo continua contando aqui
   // (a vaga não é reposta); o peso de jogar com menos vem de
   // partida.comExpulsoes, aplicado no bloco (aovivo.resolverBloco).
@@ -692,8 +695,8 @@ export function computeHumanStrength(club) {
   atkMult *= 0.85 + 0.15 * (avgCond / 100);
   defMult *= 0.90 + 0.10 * (avgCond / 100);
   return {
-    atk: clamp(club.atk * atkMult, 0.35, 2.6),
-    def: clamp(club.def / clamp(defMult, 0.55, 1.6), 0.3, 2.6),
+    atk: clamp(base.atk * atkMult, 0.35, 2.6),
+    def: clamp(base.def / clamp(defMult, 0.55, 1.6), 0.3, 2.6),
     starters: usable,
   };
 }
@@ -868,8 +871,8 @@ export function myLeaguePosition() {
 export function resolveCpuFixture(fx, round) {
   const CAREER = carreiraAtual();
   const home = teamById(fx.home), away = teamById(fx.away);
-  const hs = { atk: home.atk, def: home.def, starters: pickCpuXI(leagueSquadFor(fx.home)) };
-  const as = { atk: away.atk, def: away.def, starters: pickCpuXI(leagueSquadFor(fx.away)) };
+  const hs = { ...forcaDeJogo(home), starters: pickCpuXI(leagueSquadFor(fx.home)) };
+  const as = { ...forcaDeJogo(away), starters: pickCpuXI(leagueSquadFor(fx.away)) };
   // GE-BALANCE-003 (issue #30) — ver comentário em simulateCupLeg.
   const placar = partida.scoreGoals(hs, as, 1, Math.random);
   let { gh, ga } = placar;

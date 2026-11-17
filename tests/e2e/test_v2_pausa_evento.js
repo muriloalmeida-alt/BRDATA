@@ -26,6 +26,9 @@ const { newCareer, base } = require("./_v2_carreira");
   v2.on("pageerror", (err) => console.log("PAGE ERROR:", err.message));
   await v2.goto(base + "/partida?iniciar=1", { waitUntil: "domcontentloaded" });
   await v2.waitForSelector(".mt-score", { timeout: 40000 });
+  // Sem paradas de verdade até o bloco forçado (item 2): uma lesão ou
+  // expulsão sorteada antes abriria a Pausa e o relógio sumiria da tela.
+  await v2.evaluate(async () => { const lm = (await import("/js/motor/estado.js")).partidaAtual(); if (lm) lm.pararEmEvento = false; });
   await v2.waitForFunction(() => /^(15|30)/.test(document.querySelector(".mt-min")?.textContent || ""), null, { timeout: 20000 });
   const pausa = () => v2.evaluate(() => ({ search: location.search, title: (document.querySelector(".pz-title") || {}).textContent || null, stop: (document.querySelector(".pz-stop") || {}).textContent || null,
     rows: [...document.querySelectorAll(".pz-row .row-title")].map((r) => r.textContent), cta: (document.querySelector(".pz-foot .mt-primary") || {}).textContent || null }));
@@ -43,6 +46,7 @@ const { newCareer, base } = require("./_v2_carreira");
     const J = await import("/js/motor/jogo.js");
     const E = await import("/js/motor/estado.js");
     const lm = E.partidaAtual();
+    lm.pararEmEvento = true; // a regra volta a valer para o bloco forçado
     const antes = lm.events.length;
     const orig = Math.random;
     Math.random = () => 0.0005;
