@@ -699,22 +699,25 @@ Feito (motor):
   contrato contado do ano da carreira. Os clubes que sobem da Série D
   mantêm o elenco de sempre, com o contrato deslocado para o ano da
   carreira.
-**A confirmar com o Murilo (fora da regra aprovada):** com só a regra, os
-elencos ainda encolhiam até o mínimo (16 ou 12 jogadores): 1.134 →
-cerca de 890 em 5 temporadas. Por isso, a reposição passou a completar até
-o tamanho que o elenco tinha (e não só até o mínimo). Se não aprovar, eu
-volto a reposição para o mínimo.
+Reposição até o tamanho que o elenco tinha (não só até o mínimo): aprovada
+pelo Murilo em 17/11 ("Manter"). Só com a regra, os elencos encolhiam até
+o mínimo, cerca de 1.134 → 890 jogadores.
+Calibração do gerado, decisão do Murilo (17/11, "Calibrar o gerado já"):
+quem repõe um jogador que saiu nasce na posição dele e perto do overall
+dele (−3 a +2), com atributos, potencial, salário, valor e contrato
+recalculados.
 Resultado (baseline, 5 seeds × 5 temporadas, comparado ao E0):
 - jogadores da CPU: 1.134 → 1.103 (antes, 784);
-- reais na 5ª temporada: 750 (antes, 250);
-- overall médio: 71 → 65,4 (antes, 57,1);
-- gols, 0×0 e zebra: dentro de 0,03 gol, 0,6 p.p. e 1 p.p. da baseline;
-- pico do save: 833 KB (igual); rodada p95: 174 ms (igual).
-Ponto aberto: o overall ainda cai (71 → 65), porque o reposto gerado é
-mais fraco que o real que sai. Fica para o E3/E4 (mercado e base da CPU)
-ou para uma calibração do gerado, se o Murilo preferir.
+- reais na 5ª temporada: 712 (antes, 250);
+- overall médio: 71 → 67,7 (antes, 57,1; sem a calibração, 65,4);
+- gols, 0×0 e zebra: dentro de 0,05 gol, 0,8 p.p. e 1,5 p.p. da baseline;
+- pico do save: 837 KB (antes, 833 KB); rodada p95: 183 ms (antes,
+  174 ms; a virada não roda na rodada, a diferença é variação da medida).
+O que ainda cai (cerca de 0,9 de overall por temporada) é a evolução anual
+da CPU: os veteranos caem e os jovens não crescem. Isso entra no E4
+(treino e evolução da CPU, CPU-09).
 Testes:
-- unit/test_motor_a14 (novo, 6/6);
+- unit/test_motor_a14 (novo, 7/7);
 - test_motor_temporada e test_motor_virada com a regra desligada
   (equivalência);
 - tests/sim/paridade_achados.js: A14 agora "não confirmado" (12/13, como

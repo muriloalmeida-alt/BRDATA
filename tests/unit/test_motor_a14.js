@@ -2,7 +2,8 @@
 // virada (motor/temporada.js, renewLeagueSquad), a CPU renova o contrato
 // vencido de quem tem até 32 anos e overall pelo menos igual à média do
 // elenco, ou de quem falta para cobrir a posição; repõe até o tamanho que o
-// elenco tinha, e o gerado nasce com contrato contado do ano da carreira.
+// elenco tinha, e o gerado nasce com contrato contado do ano da carreira, na
+// posição e perto do overall de quem saiu (calibração).
 // Uso: node tests/unit/test_motor_a14.js   (sai com 1 se algo falhar)
 const assert = require("assert");
 const path = require("path");
@@ -68,6 +69,20 @@ const club = { id: "x", atk: 1.1, def: 0.9 };
     assert.strictEqual(gerados.length, 2);
     gerados.forEach((p) => assert.ok(p.contractUntil >= ANO + 1 && p.contractUntil <= ANO + 4, `contrato ${p.contractUntil}`));
     assert.strictEqual(new Set(novo.map((p) => p.id)).size, novo.length, "ids únicos");
+  });
+
+  await check("Calibração: quem repõe nasce na posição de quem saiu e perto do overall dele (−3 a +2), com contrato do ano da carreira", () => {
+    const sairam = [jog("s1", "G", 81, 35, ANO - 1), jog("s2", "F", 64, 30, ANO - 1)];
+    const sq = elenco(sairam);
+    const novo = renovar(sq);
+    const gerados = novo.filter((p) => !sq.some((q) => q.id === p.id));
+    assert.strictEqual(gerados.length, 2);
+    gerados.forEach((p, i) => {
+      assert.strictEqual(p.group, sairam[i].group);
+      assert.ok(p.overall >= sairam[i].overall - 3 && p.overall <= sairam[i].overall + 2, `${p.overall} perto de ${sairam[i].overall}`);
+      assert.strictEqual(p.wage, T.computeContractFields(p.overall, p.age, p.potential, () => 0.5, 0).wage, "salário de mercado do novo nível");
+      assert.ok(p.contractUntil >= ANO + 1 && p.contractUntil <= ANO + 4);
+    });
   });
 
   await check("Elenco pequeno continua repondo até o mínimo", () => {

@@ -203,6 +203,18 @@ export function renovacoesDaCpu(players, seasonYear) {
   return renova;
 }
 
+// A14: o gerado assume a posição e o nível (overall −3 a +2) de quem saiu;
+// atributos, potencial, salário, valor e contrato recalculados como no gerador.
+function reporNoNivel(p, ref, rng, env) {
+  const overall = clamp(Math.round(ref.overall + (rng() * 5 - 3)), 40, 90);
+  const g = ref.group;
+  p.group = g; p.overall = overall;
+  p.atk = clamp(overall + (g === "F" ? 6 : g === "M" ? 2 : -10) + Math.round(rng() * 6 - 3), 28, 92);
+  p.def = clamp(overall + (g === "D" || g === "G" ? 6 : -10) + Math.round(rng() * 6 - 3), 28, 92);
+  p.potential = derivePotentialForAdult(overall, p.age, rng);
+  Object.assign(p, computeContractFields(overall, p.age, p.potential, rng, env.liveSeason));
+}
+
 // Elenco CPU: evolução anual, idade, queda do potencial, saída por fim
 // de contrato (com a renovação do A14) e reposição até o mínimo com
 // profissionais gerados.
@@ -227,8 +239,14 @@ export function renewLeagueSquad({ club, squad, seasonYear, minSize, evoRng, rng
   const alvo = RENOVACAO_CPU.ativa ? Math.max(minSize, squad.length) : minSize;
   const missing = Math.max(0, alvo - kept.length);
   const ids = new Set(kept.map((p) => p.id));
+  // A14 (calibração, decisão do Murilo 17/11 "Calibrar o gerado já"): quem
+  // repõe um jogador que saiu nasce na posição dele e perto do overall dele
+  // (−3 a +2), em vez do gerado genérico do clube, que era bem mais fraco.
+  const sairam = RENOVACAO_CPU.ativa ? players.filter((p) => !(p.contractUntil >= seasonYear)) : [];
   const fresh = Array.from({ length: missing }, (_, i) => {
     const p = buildGeneratedProPlayer(club, i, rng, env);
+    const ref = sairam[i];
+    if (ref) reporNoNivel(p, ref, rng, env);
     // Id único no elenco (um gerado de outra virada pode ter ficado).
     if (RENOVACAO_CPU.ativa && ids.has(p.id)) p.id = `gen_${club.id}_${seasonYear}_${i}`;
     ids.add(p.id);
