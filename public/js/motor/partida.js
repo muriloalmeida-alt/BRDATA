@@ -52,6 +52,27 @@ export function goalLambdas(home, away, share = 1) {
   };
 }
 
+// GOLS-REAIS (17/11) — força DE JOGO de um clube com dados reais. A
+// calibração (carga.js, calibrateStrengths) deixa atk/def relativos à média
+// da liga (~1), o que apaga quantos gols o campeonato faz: toda divisão real
+// virava ~2,1 gols por jogo e ~13% de 0x0. Aqui, só para os gols:
+// - suavização: aproxima atk/def da média (1) em GOLS_SUAVIZACAO;
+// - nível: multiplica pelo `nivel` do campeonato (nivelDeGols), para a liga
+//   simulada fazer os gols da liga real.
+// A força gravada (atk/def) não muda: ela também gera jogadores e base.
+// Sem nível (Modo Exemplo, Série D): a força de sempre.
+export const GOLS_SUAVIZACAO = 0.3;
+export function nivelDeGols(mediaGolsPorTime) {
+  const m = Number(mediaGolsPorTime);
+  if (!(m > 0)) return null;
+  return Math.round(Math.sqrt((2 * m) / (1 + HOME_ADVANTAGE)) * 1000) / 1000;
+}
+export function forcaComNivel(team, nivel) {
+  if (!team || !(nivel > 0)) return { atk: team ? team.atk : undefined, def: team ? team.def : undefined };
+  const s = GOLS_SUAVIZACAO;
+  return { atk: ((1 - s) * team.atk + s) * nivel, def: ((1 - s) * team.def + s) * nivel };
+}
+
 // Placar de um jogo (ou de um trecho): sorteia o mandante, depois o visitante.
 export function scoreGoals(home, away, share, rng) {
   const l = goalLambdas(home, away, share);

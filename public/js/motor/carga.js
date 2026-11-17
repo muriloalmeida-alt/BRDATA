@@ -166,6 +166,14 @@ export function calibrateStrengths(standings) {
   return out;
 }
 
+// GOLS-REAIS (17/11): média de gols por time e por jogo da tabela real (a
+// mesma média de calibrateStrengths), para o nível de gols do campeonato.
+export function mediaGolsDaLiga(standings) {
+  const withGames = (standings || []).filter((r) => r.j > 0);
+  if (!withGames.length) return null;
+  return withGames.reduce((s, r) => s + r.gp / r.j, 0) / withGames.length || null;
+}
+
 export function normalizeNameForColor(s) {
   return String(s || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]+/g, " ").trim();
 }
@@ -258,6 +266,10 @@ export async function fetchCompetitionTeams(competitionId, health, opts = {}) {
     }
     if (!teamsData.teams || !teamsData.teams.length) throw new Error("resposta vazia");
     const strengths = calibrateStrengths(standingsData.standings || []);
+    // GOLS-REAIS: o nível de gols desta liga real (gravado no save só na
+    // criação ou na migração; ver estado.completarNivelGols).
+    const nivel = partida.nivelDeGols(mediaGolsDaLiga(standingsData.standings || []));
+    if (nivel) estado.niveisDeGolsDaCarga()[competitionId] = nivel;
     const teams = teamsData.teams.map((t) => {
       const realColor = realTeamColor(t.name);
       return {
@@ -409,6 +421,8 @@ export async function startCareer(clubId) {
     // divisões, a meta, a Copa e o patrocínio) mora em motor/virada.js
     // (montarCarreira); aqui ficam a carga dos dados e a tela.
     virada.montarCarreira(club, squad, leagueSquads, liveModeByCompetition);
+    // GOLS-REAIS: nível de gols dos campeonatos com dados reais.
+    estado.completarNivelGols(carreiraAtual(), liveModeByCompetition);
     estado.definirHerancaDoTecnico(null);
     await persistCareer();
     tela("openFirstEntry");
@@ -630,8 +644,10 @@ export function suggestTactics() {
   const myClub = teamById(CAREER.clubId);
   const opp = teamById(opponentId);
   // GE-BALANCE-003 (issue #30) — ver comentário em simulateCupLeg.
-  const lambdaMine = myClub.atk * opp.def;
-  const lambdaOpp = opp.atk * myClub.def;
+  // GOLS-REAIS: a força de jogo (a mesma dos gols).
+  const fMine = estado.forcaDeJogo(myClub), fOpp = estado.forcaDeJogo(opp);
+  const lambdaMine = fMine.atk * fOpp.def;
+  const lambdaOpp = fOpp.atk * fMine.def;
   const ratio = lambdaMine / lambdaOpp;
   let targetLevel, label;
   if (ratio > 1.15) { targetLevel = 4; label = `postura mais OFENSIVA — seu time é favorito contra o ${opp.name}`; }
@@ -1083,6 +1099,9 @@ export async function enterAfterAuth() {
     // Etapa B: depois da normalização de sempre, as migrações numeradas
     // do save (schemaVersion, motor/estado.js).
     estado.migrarSave(CAREER);
+    // GOLS-REAIS: campeonato que voltou a ter dado real ganha o nível
+    // (o que já está gravado não muda).
+    estado.completarNivelGols(CAREER);
     // Nova feature (pedido do usuário: "reinicie o tema do
     // rebaixamento") — CAREER.divisionTeams (quando existe) é a fonte
     // de verdade de "quem está em qual divisão agora" (ver comentário

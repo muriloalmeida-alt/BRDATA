@@ -19,7 +19,7 @@
    Avisos viram o evento "aviso". A perna da Copa e o amistoso ao vivo
    terminam pela página até a etapa D2.
 =================================================================== */
-import { carreiraAtual, ligaAtual, todosTimes, timePorId, forcaMediaDoElenco, partidaAtual, definirPartida } from "./estado.js";
+import { carreiraAtual, ligaAtual, todosTimes, timePorId, forcaMediaDoElenco, partidaAtual, definirPartida, forcaDeJogo } from "./estado.js";
 import { ensureObjectivesFresh, bumpObjective, trailingWinStreak, rankByPoints } from "./registro.js";
 import { fmtBRL, abbreviateName } from "./texto.js";
 import { ambiente, avisar, leagueSquadFor } from "./semana.js";
@@ -536,8 +536,9 @@ export function resolverBloco() {
   // computeHumanStrength lê CAREER.lineup/tactics NA HORA — é por isso
   // que uma substituição/troca de tática feita na pausa já entra em
   // vigor no próximo tempo sem precisar de nenhum código extra aqui.
-  const hs = lm.isHome ? computeHumanStrength(lm.home) : { atk: lm.home.atk, def: lm.home.def, starters: lm.cpuXI };
-  const as = lm.isHome ? { atk: lm.away.atk, def: lm.away.def, starters: lm.cpuXI } : computeHumanStrength(lm.away);
+  // GOLS-REAIS: força de jogo (nível de gols do campeonato do clube).
+  const hs = lm.isHome ? computeHumanStrength(lm.home) : { ...forcaDeJogo(lm.home), starters: lm.cpuXI };
+  const as = lm.isHome ? { ...forcaDeJogo(lm.away), starters: lm.cpuXI } : computeHumanStrength(lm.away);
   const humanSide = lm.isHome ? hs : as;
   if (lm.formationPenaltyChunksLeft > 0) {
     // GE-BALANCE-003 (issue #30) — penalidade simétrica em atk+def:

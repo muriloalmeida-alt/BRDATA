@@ -573,9 +573,119 @@ Pendente: decidir quando o Resultado da v2 ganha o cartão.
 
 ⸻
 
+GOLS-REAIS — nível de gols real e menos 0x0 com dados reais
+
+Status: REVISÃO DO PM NECESSÁRIA (implementado em 17/11; merge só com a aprovação do Murilo).
+Pedido (Murilo, 17/11): "Com certa frequência o jogo repete o placar de 0x0
+por 5/6 partidas seguidas. Isso precisa ser evitado pois tira a realidade do
+jogo."
+Diagnóstico (antes de especificar):
+- Gols esperados = ataque × defesa do adversário (× 1,12 do mandante). Com
+  dados reais (catálogo congelado ou API), `calibrateStrengths` divide os
+  gols de cada clube pela média da liga: a força vira só relativa e o motor
+  perde quantos gols o campeonato faz. Toda divisão real vira ~2,1 gols por
+  jogo (real: A 2,64; B 2,28; C 2,27) e ~13% de 0x0 (real: ~7–11%).
+- Clubes de ataque e defesa baixos ficam com 20–23% de 0x0; com 5-4-1 e
+  táticas no mínimo, ~31%.
+- Medido no motor de verdade (80 temporadas, 8 clubes, catálogo congelado,
+  tática padrão): 17,4% de 0x0 no seu time, liga com 2,1 gols por jogo;
+  3+ 0x0 seguidos em 6 temporadas e 5 seguidos em 1.
+- O Modo Exemplo não tem o problema (~2,95 gols, ~5% de 0x0).
+Decisões do Murilo (17/11):
+- "Calibrar + suavizar": gols no nível real de cada campeonato e extremos
+  de ataque/defesa amortecidos em 30% em direção à média; sem regra
+  artificial contra sequência.
+- "Vale para todas": carreiras em andamento também.
+Especificação:
+- Força DE JOGO (só para os gols): `atk' = ((1 − 0,3) × atk + 0,3) × k`,
+  `def' = ((1 − 0,3) × def + 0,3) × k`, com `k = √(2 × média de gols por
+  time na liga real ÷ (1 + 1,12))` do campeonato do clube.
+- A força gravada (`atk`/`def`) NÃO muda: ela também gera jogadores e base
+  (overall de atacante usa `atk`, de defensor `2 − def`); escalar ali
+  distorceria os elencos.
+- `k` por campeonato fica no save (`CAREER.nivelGols`), só para campeonatos
+  com dados reais. Sem entrada (Modo Exemplo, Série D): força de sempre.
+- Carreira nova: `nivelGols` gravado na criação, pela tabela real carregada.
+- Carreira em andamento: migração 2 do save (`schemaVersion` 1 → 2) preenche
+  `nivelGols` dos campeonatos em modo real nesta abertura, com o `k` da
+  tabela carregada; sem ela, o valor fixo do catálogo de 2026
+  (A 1,115; B 1,036; C 1,034). Vale a partir da próxima partida; nada já
+  jogado muda.
+- Entra em todo lugar que calcula gols com a força do clube: partida ao vivo
+  e direta, jogos da CPU, outras divisões, Copa, conselho do intervalo,
+  prévia do confronto e sugestão de tática.
+Critérios de aceite:
+1. Com o catálogo congelado, a liga simulada fica perto da real (A ~2,6;
+   B e C ~2,3 gols por jogo) e o 0x0 médio cai para ~7–11%.
+2. 5 0x0 seguidos do seu time viram raridade (≤ 0,5% por temporada no
+   pior clube, tática padrão).
+3. Modo Exemplo e Série D inalterados.
+4. Save antigo migra uma vez (versão 2), sem mudar resultados já jogados;
+   save novo nasce na versão 2.
+5. Geração de jogadores e base igual à de antes.
+Fora de escopo: regra artificial contra sequência de 0x0; mudar o efeito
+de táticas/formação; recalibrar a força ao longo da temporada.
+Relatório (17/11):
+- Motor:
+  - `partida.js`: `GOLS_SUAVIZACAO` (0,3), `nivelDeGols(média)` e
+    `forcaComNivel(clube, nível)`, puros.
+  - `estado.js`: `SCHEMA_VERSION` 2; migração 2; `completarNivelGols`;
+    `forcaDeJogo(clube)` (nível do campeonato do clube, pelo
+    `competitionId`); `NIVEL_GOLS_CATALOGO`.
+  - `carga.js`: `mediaGolsDaLiga`; o nível de cada liga real carregada; o
+    nível gravado na criação; o mesmo completar depois da migração (só
+    preenche campeonato real sem nível).
+  - A força de jogo entra em `computeHumanStrength`, nos jogos da CPU
+    (`resolveCpuFixture`), nas outras divisões, na Copa
+    (`simulateCupLeg`), na partida ao vivo (`aovivo.js`), no conselho do
+    intervalo, na prévia do confronto (`ponte.js`) e na sugestão de tática.
+  - `calibrateStrengths`, a geração de jogadores e a base não mudam.
+- Resultado no motor de verdade (catálogo congelado, 80 temporadas, os
+  mesmos 8 clubes, quase todos os mais retrancados de cada divisão; tática
+  padrão):
+
+  | | Antes | Depois | Real |
+  |---|---|---|---|
+  | Gols por jogo, A | 2,13 | 2,65 | 2,64 |
+  | Gols por jogo, B | 2,13 | 2,30 | 2,28 |
+  | Gols por jogo, C | 2,10 | 2,30 | 2,27 |
+  | 0x0 do seu time | 17,4% | 12,1% | — |
+  | Temporadas com 3+ 0x0 seguidos | 5 | 4 | — |
+  | Temporadas com 5+ 0x0 seguidos | 1 | 0 | — |
+
+  Por clube, depois: Botafogo 3,4%, América-MG 7,5%, Corinthians 10,7%,
+  os retrancados da B e da C 14–18% (eles também fazem poucos gols de
+  verdade).
+- Testes:
+  - `tests/unit/test_motor_gols_reais.js` (11/11): fórmula, nível do
+    catálogo, liga simulada perto da real, 5 seguidos ≤ 0,5% no pior clube
+    (critério 2), migração, Modo Exemplo e Série D iguais, nível fixo,
+    força humana.
+  - `tests/e2e/test_gols_reais_catalogo.js`, perfil `frozen` (3/3):
+    carreira nova na versão 2 com o nível; save antigo (versão 1) migra ao
+    abrir sem mudar a força gravada; a rodada seguinte grava.
+  - Unitários do motor (equivalência com as cópias congeladas) seguem
+    iguais: sem nível (Modo Exemplo), a força é a de sempre.
+  - Contraprovas: suavização 0 (falham 2, 5 e 9); força de jogo sem
+    nível (9); migração vazia (6 e 7); força humana com a força crua (10).
+    Depois, o motor voltou ao estado esperado.
+  - v2: tipos e 137 unitários ok.
+- Riscos e observações:
+  - Mais gols também na Copa e nas outras divisões (é o objetivo);
+    clubes reais ficam mais fortes que os da Série D na Copa (k > 1 só
+    para eles), o que é coerente.
+  - O conselho do intervalo e a prévia do confronto passam a usar a força
+    de jogo; a comparação entre formações não muda de sentido.
+  - Com dado ao vivo (API), o nível vem da tabela real do dia da criação
+    e fica fixo na carreira (fora de escopo recalibrar).
+  - Carreira em andamento: vale a partir da próxima partida; partida em
+    andamento (checkpoint) termina com o nível novo nos blocos restantes.
+
+⸻
+
 ZOOM-V2 — bloquear o zoom no celular na v2
 
-Status: REVISÃO DO PM NECESSÁRIA (implementado no lote L6b, aguarda aprovação do Murilo).
+Status: APROVADO (Murilo, 17/11, "Faz o merge"; PR #131).
 Origem: lote L6b (docs/carreira-v2/ENTREGA_TESTES_L6.md). O teste antigo
 `test_ux_zoom_scroll` conferia que a tela antiga bloqueava o zoom; a v2
 deixava dar zoom. Decisão do Murilo (16/11): "Bloquear zoom".

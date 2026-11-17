@@ -23,6 +23,8 @@
    jogo: devolve o JSON ou lança um erro com `status`).
 =================================================================== */
 
+import { forcaComNivel } from "./partida.js";
+
 // ---------- A carreira atual ----------
 let carreira = null;
 export function carreiraAtual() { return carreira; }
@@ -30,13 +32,17 @@ export function definirCarreira(c) { carreira = c == null ? null : c; return car
 
 // ---------- Versão do save e migrações numeradas ----------
 // Versão atual do save que este jogo escreve.
-export const SCHEMA_VERSION = 1;
+export const SCHEMA_VERSION = 2;
 // MIGRACOES[n] leva o save da versão n-1 para a n (altera no lugar).
 export const MIGRACOES = {
   // 1 (08/11): marco inicial. A estrutura da versão 1 é a de hoje, que a
   // normalização de carga (migrateCareerDefaults) já garante; esta
   // migração só registra a versão.
   1: () => {},
+  // 2 (17/11, GOLS-REAIS): nível de gols de cada campeonato com dados reais
+  // (CAREER.nivelGols), para a força de jogo. Vale da próxima partida em
+  // diante; nada já jogado muda.
+  2: (save) => { completarNivelGols(save); },
 };
 export function versaoDoSave(save) {
   const v = Number(save && save.schemaVersion);
@@ -56,6 +62,39 @@ export function migrarSave(save) {
   }
   if (aplicadas.length) save.schemaVersion = v;
   return aplicadas;
+}
+
+// ---------- Nível de gols (GOLS-REAIS, 17/11) ----------
+// `k` de cada campeonato com dados reais (partida.nivelDeGols da tabela
+// real), gravado no save em CAREER.nivelGols na criação e fixo depois.
+// niveisDaCarga: o k calculado nas tabelas carregadas nesta abertura (nunca
+// gravado). Sem tabela (sem rede e sem catálogo), o valor fixo do catálogo
+// congelado de 2026.
+export const NIVEL_GOLS_CATALOGO = { brasileirao: 1.115, serie_b: 1.036, serie_c: 1.034 };
+const niveisDaCarga = {};
+export function niveisDeGolsDaCarga() { return niveisDaCarga; }
+// Completa CAREER.nivelGols com os campeonatos em modo real nesta abertura
+// que ainda não têm nível (idempotente: o que já está gravado não muda).
+// `modos`: { competição: true/false } (padrão: os modos desta abertura).
+export function completarNivelGols(save, modos) {
+  if (!save || typeof save !== "object") return save;
+  const m = modos || pagina.modoRealPorCompeticao || {};
+  const atual = save.nivelGols && typeof save.nivelGols === "object" ? save.nivelGols : {};
+  Object.keys(m).forEach((c) => {
+    if (m[c] !== true || atual[c] > 0) return;
+    const k = niveisDaCarga[c] > 0 ? niveisDaCarga[c] : NIVEL_GOLS_CATALOGO[c];
+    if (k > 0) atual[c] = k;
+  });
+  save.nivelGols = atual;
+  return save;
+}
+// Força de jogo de um clube (só para os gols): a gravada, suavizada e no
+// nível do campeonato dele; sem nível, a de sempre.
+export function forcaDeJogo(team) {
+  if (!team) return { atk: undefined, def: undefined };
+  const comp = team.competitionId || mundo.competicaoAtual;
+  const k = carreira && carreira.nivelGols ? carreira.nivelGols[comp] : null;
+  return forcaComNivel(team, k);
 }
 
 // ---------- Carga e gravação ----------

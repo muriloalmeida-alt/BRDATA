@@ -281,8 +281,9 @@ export function comissaoFormacao(jogo) {
   const CAREER = carreiraAtual();
   const myClub = teamById(CAREER.clubId), opp = teamById(jogo.adversarioId);
   if (!myClub || !opp || !opp.atk || !opp.def) return { estado: "sem-dados" };
+  const fOpp = estado.forcaDeJogo(opp); // GOLS-REAIS: força de jogo, como a sua
   const razao = (s) => {
-    const l = partida.goalLambdas(jogo.casa ? s : { atk: opp.atk, def: opp.def }, jogo.casa ? { atk: opp.atk, def: opp.def } : s);
+    const l = partida.goalLambdas(jogo.casa ? s : fOpp, jogo.casa ? fOpp : s);
     return jogo.casa ? l.home / l.away : l.away / l.home;
   };
   const atual = CAREER.lineup.formation;
