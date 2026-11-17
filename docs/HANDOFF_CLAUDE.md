@@ -716,10 +716,13 @@ contado do ano do catálogo. Em 4 temporadas, 1.134 → 784 jogadores e
 overall médio 71 → 57.
 Limite do save: o que pesa é o 1 MB de JSON cru no envio do save. O pico
 medido é de 833 KB (79,5%); comprimido fica em cerca de 10% dos 768 KB.
-Decisões pedidas: D1 a D13. As que bloqueiam o próximo passo são D4, D9,
-D10 (corrigir o A14 já?) e D13 (faixa de zebra).
-Próximo passo: decisões do Murilo; depois o PR do A14 (se aprovado) e o
-E1a.
+Decisões do Murilo (17/11):
+- D4: itens da loja só para você;
+- D9: a CPU joga amistosos (entra no E4);
+- D10: corrigir o A14 já, num PR antes do E1a;
+- D13: manter o nível atual de zebra (até 4 p.p. da baseline por faixa).
+As outras decisões (D1–D3, D5–D8, D11, D12) ficam para as etapas.
+Próximo passo: PR do A14; depois o E1a.
 
 ⸻
 

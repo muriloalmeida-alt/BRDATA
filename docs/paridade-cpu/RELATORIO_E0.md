@@ -178,16 +178,16 @@ A meta de até +5% dá cerca de **+23 s** no mesmo perfil para toda a paridade. 
 | D1 | Perfil do técnico da CPU | Derivado do clube (porte e força) com uma variação sorteada uma vez por clube e guardada: cerca de 60 bytes por clube | Antes do E1b |
 | D2 | Finanças da CPU: caixa e folha guardados ou derivados. Estádio e patrocínio da CPU entram? | Guardar caixa e folha por clube (cerca de 3 KB). Estádio e patrocínio da CPU como receita derivada do porte, sem obras | Antes do E3 |
 | D3 | O que o jogador vê das decisões da CPU | Lances na partida (substituição e mudança de tática do adversário) mais uma linha no resumo da rodada | E1b |
-| D4 | Itens da loja com efeito esportivo | Ficam como experiência do jogador, sem equivalente na CPU, porque são compra do usuário | Agora |
+| D4 | Itens da loja com efeito esportivo | **Decidido (Murilo, 17/11): só para você.** A CPU não tem equivalente | Agora |
 | D5 | Teste no iPhone (V09): quem testa e onde | Murilo, em homologação, a cada etapa com mudança na partida | A partir do E1b |
 | D6 | Limite do save: **o que pesa é o 1 MB do envio**, com cerca de 210 KB de margem | Comprimir o envio (gzip no cliente, com o servidor aceitando os dois) ou subir o limite do corpo para 2 MB. É mudança de servidor: só com sua aprovação | Antes do E3 ou da correção do A14 |
 | **D7** (nova) | Elenco curto: Série D com 12 jogadores gerados, e a CPU pode ficar sem 22 aptos | Gerar até 22 na Série D (mesma semente, mesmo elenco) e, na falta de aptos, a mesma reposição pela base dos dois lados | Antes do E1a |
 | **D8** (nova) | Marcação individual pela CPU | Fica para depois do E1b, porque precisa de um alvo "observável" | E1b |
-| **D9** (nova) | Amistosos da CPU | Não: a CPU não joga amistosos. É experiência do jogador | Agora |
-| **D10** (nova) | **A14:** elencos da CPU encolhem a cada virada | Corrigir já, num PR pequeno antes do E1a: contrato do gerado contado do ano da carreira, e a CPU renovando quem ainda serve (regra simples até o E3). Hoje o mundo se esvazia em 3 ou 4 temporadas | Agora |
+| **D9** (nova) | Amistosos da CPU | **Decidido (Murilo, 17/11): sim, a CPU joga amistosos** nas semanas livres, com efeito em condição, moral e minutos. A recomendação era "não". Entra no E4 (CPU-09), junto com treino e moral | E4 |
+| **D10** (nova) | **A14:** elencos da CPU encolhem a cada virada | **Decidido (Murilo, 17/11): corrigir já**, num PR pequeno antes do E1a: contrato do gerado contado do ano da carreira, e a CPU renovando quem ainda serve (regra simples até o E3) | Agora |
 | **D11** (nova) | Olheiros: a CPU vê o mercado inteiro | Aceitar a informação completa da CPU. O jogador tem olheiros como ferramenta | E3 |
 | **D12** (nova) | Comissão técnica da CPU | Embutida no perfil do técnico (D1), sem contratação | E1b |
-| **D13** (nova) | **Faixa aceitável de zebra** | Opção A: manter a de hoje (±4 p.p. por faixa) e só garantir que a paridade não a quebre. Opção B: deixar o favorito mais favorito (por exemplo, zebra abaixo de 40% acima de 30% de diferença), o que é calibração e vira uma demanda própria | Antes do E1a |
+| **D13** (nova) | **Faixa aceitável de zebra** | **Decidido (Murilo, 17/11): manter o nível atual** (até 4 p.p. da baseline por faixa). Opções na época: A: manter a de hoje (±4 p.p. por faixa) e só garantir que a paridade não a quebre. Opção B: deixar o favorito mais favorito (por exemplo, zebra abaixo de 40% acima de 30% de diferença), o que é calibração e vira uma demanda própria | Antes do E1a |
 
 **Observação O1 (fora do escopo, para registro):** o mando de campo está fraco (mandante vence 41%). Se quiser mais realismo aqui, é uma calibração à parte, ligada à D13.
 
@@ -215,6 +215,6 @@ O E0 não mudou o desenho das etapas. Ele trouxe três itens que entram no plano
 
 ## 8. Próximos passos
 
-1. O Murilo revisa este relatório e decide D4, D9, D10 e D13 (as que bloqueiam o próximo passo). As outras podem vir ao longo das etapas.
+1. Decididos em 17/11: D4 (só para você), D9 (a CPU joga amistosos, no E4), D10 (corrigir o A14 já) e D13 (manter o nível de zebra). As outras decisões vêm ao longo das etapas.
 2. Se a D10 for "corrigir já": PR do A14, com teste no motor e as cinco temporadas da baseline mostrando os elencos estáveis.
 3. Depois, o E1a: convocação comum (11+11), força pelo XI, recuperação de condição e retorno de lesão para todos os elencos.
