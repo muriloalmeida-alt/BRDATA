@@ -26,6 +26,11 @@ const { retomarParadasAutomaticas, newCareer, noMotor } = require("./_v2_carreir
   const v2 = await ctx.newPage();
   await v2.goto(base + "/partida?iniciar=1", { waitUntil: "domcontentloaded" });
   await v2.waitForSelector(".mt-score", { timeout: 40000 });
+  // Este teste é da pausa MANUAL: sem paradas automáticas (lesão/expulsão sua,
+  // PAUSA-EVENTO, coberta por test_v2_pausa_evento). Uma parada que chegasse
+  // depois do Pausar (bloco com gol termina após o destaque) trocaria o título
+  // para "Jogo parado" e o gancho de retomar desfaria a pausa do teste.
+  await v2.evaluate(async () => { const lm = (await import("/js/motor/estado.js")).partidaAtual(); if (lm) lm.pararEmEvento = false; });
   await v2.waitForFunction(() => /^(15|30)/.test(document.querySelector(".mt-min")?.textContent || ""), null, { timeout: 20000 });
 
   // 1) Pausar → Pausa; minuto parado; linhas da prancha.
