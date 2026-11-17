@@ -57,7 +57,9 @@ export function unavailableReason(p: Player, round: number): "Lesionado" | "Susp
   return p.status === "suspenso" ? "Suspenso" : "Lesionado";
 }
 
-export interface PitchSlot { index: number; group: PlayerGroup; label: string; player: Player | null; out: "Lesionado" | "Suspenso" | null }
+// EXPULSAO (17/11): `expelled` = nome de quem foi expulso daquela vaga (a
+// vaga fica vazia na partida ao vivo, com o cartão vermelho).
+export interface PitchSlot { index: number; group: PlayerGroup; label: string; player: Player | null; out: "Lesionado" | "Suspenso" | null; expelled?: string | null }
 export interface LineupModel {
   clubName: string;
   formation: string;

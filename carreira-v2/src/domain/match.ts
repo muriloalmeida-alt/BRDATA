@@ -121,13 +121,18 @@ export function buildLiveLineup(s: MatchSnapshot): LineupModel | null {
   const career: Career = {
     clubId: "", clubName: "", seasonYear: 0, currentRound: s.rodada, schedule: {}, standings: {},
     squad: players.map((p) => ({ id: p.id, name: p.nome, group: p.grupo, overall: p.overall, status: p.status, outUntilRound: p.voltaRodada, condition: p.condicao })),
-    lineup: { formation: esc.formacao, starters: esc.titulares.map((p) => (p ? p.id : null)), bench: esc.banco.map((p) => p.id) },
+    lineup: { formation: esc.formacao, starters: esc.titulares.map((p) => (p && !p.expulso ? p.id : null)), bench: esc.banco.map((p) => p.id) },
   };
-  return buildLineup(career);
+  const l = buildLineup(career);
+  // EXPULSAO (17/11): a vaga do expulso fica vazia, marcada com o nome dele.
+  const expulsos = new Map(esc.titulares.map((p, i) => [i, p && p.expulso ? shortName(p.nome) : null] as const).filter(([, n]) => n));
+  if (!expulsos.size) return l;
+  return { ...l, rows: l.rows.map((row) => row.map((s) => (expulsos.has(s.index) ? { ...s, expelled: expulsos.get(s.index) } : s))) };
 }
 
 // Substituição ao vivo — mesmos universos da tela atual (openLiveSubModal):
-// sai = qualquer titular em campo; entra = reserva com status "ok".
+// sai = qualquer titular em campo (menos o expulso: a vaga dele fica vazia,
+// EXPULSAO 17/11); entra = reserva com status "ok".
 export interface SubPlayer { id: string; name: string; short: string; group: "G" | "D" | "M" | "F"; overall: number; condition: number | null; status: string }
 export interface SubModel { used: number; total: number; left: number; starters: SubPlayer[]; bench: SubPlayer[] }
 export function buildSubs(s: MatchSnapshot): SubModel | null {
@@ -137,7 +142,7 @@ export function buildSubs(s: MatchSnapshot): SubModel | null {
   const used = s.substituicoes?.usadas || 0, total = s.substituicoes?.total || 5;
   return {
     used, total, left: Math.max(0, total - used),
-    starters: esc.titulares.filter((p): p is NonNullable<typeof p> => !!p).map(map),
+    starters: esc.titulares.filter((p): p is NonNullable<typeof p> => !!p && !p.expulso).map(map),
     bench: esc.banco.filter((p) => p.status === "ok").map(map),
   };
 }
@@ -172,5 +177,8 @@ export function stoppageOf(s: MatchSnapshot): MatchModel["stoppage"] {
   const p = s.paradaPor;
   if (!p || !p.length) return null;
   const lines = p.map((x) => `${x.jogador ? nm(x.jogador) : "Um jogador seu"} ${x.tipo === "lesao" ? "se lesionou" : "foi expulso"} (${x.minuto}’)`);
+  // EXPULSAO (17/11): expulso não é reposto — o time segue com menos.
+  const meus = s.expulsos?.meus || 0;
+  if (p.some((x) => x.tipo === "vermelho") && meus > 0) lines.push(`Seu time joga com ${11 - meus}, sem reposição`);
   return { key: p.map((x) => `${x.tipo}:${x.jogador}:${x.minuto}`).join("|"), lines };
 }

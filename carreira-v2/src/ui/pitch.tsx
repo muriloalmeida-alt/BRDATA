@@ -13,14 +13,16 @@ const ROW_Y = [21, 45, 67, 89]; // ataque → goleiro (% da altura do campo)
 function Slot({ s, x, y, href }: { s: PitchSlot; x: number; y: number; href?: string }) {
   const label = s.player
     ? `${s.label}: ${s.player.name}, overall ${s.player.overall}${s.out ? `, ${s.out.toLowerCase()}` : ""}${href ? ". Trocar" : ""}`
+    : s.expelled ? `${s.label}: vaga vazia, ${s.expelled} expulso`
     : `${s.label}: vaga vazia${href ? ". Escolher jogador" : ""}`;
   const style: CSSProperties = { left: `${x}%`, top: `${y}%` };
   const body = (<>
       <span className="lu-jersey">
-        <Jersey value={s.player?.overall} gk={s.group === "G"} empty={!s.player} />
+        <Jersey value={s.expelled ? "" : s.player?.overall} gk={s.group === "G"} empty={!s.player} />
         {s.out && <span className="lu-out" aria-hidden="true">!</span>}
+        {s.expelled && <span className="lu-red" aria-hidden="true" />}
       </span>
-      <span className="lu-name">{s.player ? shortName(s.player.name) : s.label}</span>
+      <span className="lu-name">{s.player ? shortName(s.player.name) : s.expelled ? "Expulso" : s.label}</span>
   </>);
   return href
     ? <Link to={href} className="lu-slot" style={style} aria-label={label}>{body}</Link>

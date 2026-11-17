@@ -16,6 +16,10 @@ const vm = require("vm");
 const { motorCode } = require("../e2e/_motor_vm");
 
 const ROOT = path.resolve(__dirname, "../..");
+// EXPULSAO (17/11): as cópias congeladas não têm a regra nova (expulso sem
+// reposição, efeito de jogar com menos, 3º amarelo só suspende); aqui ela
+// fica desligada nos dois lados, para comparar o resto sorteio a sorteio.
+const EXPULSAO_DESLIGADA = "window.BRDATA_MOTOR.partida.EXPULSAO.ativa = false;\n";
 let failed = 0, n = 0;
 async function check(name, fn) {
   n++;
@@ -228,7 +232,7 @@ const limpa = (x) => JSON.parse(JSON.stringify(x, (k, v) => (k === "ts" && typeo
   const lado = (codigo, consts) => {
     const sb = { Math: Object.create(Math), console };
     vm.createContext(sb);
-    vm.runInContext("var window = globalThis; window.BRDATA_MOTOR = {};\n" + motorCode() + dataSrc + STUBS + ACESSOS + "\n" + consts + comuns + codigo + "\nouvirAvisosDoMotor();", sb);
+    vm.runInContext("var window = globalThis; window.BRDATA_MOTOR = {};\n" + motorCode() + EXPULSAO_DESLIGADA + dataSrc + STUBS + ACESSOS + "\n" + consts + comuns + codigo + "\nouvirAvisosDoMotor();", sb);
     return sb;
   };
   // ANTES: as funções congeladas. DEPOIS: os atalhos de hoje, que chamam o motor.
