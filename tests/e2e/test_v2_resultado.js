@@ -43,6 +43,8 @@ const { retomarParadasAutomaticas, newCareer, noMotor, iniciarPeloPreJogo } = re
     ask.path === "/partida" && ask.title === "Sair da partida?" && !(await v2.locator('[role="alertdialog"]').count()), JSON.stringify({ ask, m1 }));
 
   // 2) Voltar de novo → 'Sair e simular o resto' → Resultado gravado.
+  // De novo só com o jogo rodando (uma parada automática pode ter aberto a Pausa).
+  await v2.waitForFunction(() => !/tela=pausa/.test(location.search) && /Pausar/.test(document.querySelector(".mt-actions .mt-primary")?.textContent || ""), null, { timeout: 30000 });
   await v2.goBack();
   await v2.waitForSelector('[role="alertdialog"]', { timeout: 5000 });
   await v2.click('[role="alertdialog"] .cta');
