@@ -16,6 +16,9 @@ const vm = require("vm");
 const { motorCode } = require("../e2e/_motor_vm");
 
 const ROOT = path.resolve(__dirname, "../..");
+// VENDA-DISPONIVEL (17/11): as cópias congeladas não têm a regra nova (à venda
+// pela CPU, trava de revenda); aqui ela fica desligada nos dois lados.
+const VENDA_DESLIGADA = "window.BRDATA_MOTOR.mercado.A_VENDA.ativa = false;\n";
 let failed = 0, n = 0;
 async function check(name, fn) {
   n++;
@@ -232,7 +235,7 @@ const limpa = (x) => JSON.parse(JSON.stringify(x, (k, v) => (k === "ts" && typeo
   const lado = (codigo) => {
     const sb = { Math: Object.create(Math), console };
     vm.createContext(sb);
-    vm.runInContext("var window = globalThis; window.BRDATA_MOTOR = {};\n" + motorCode() + dataSrc + STUBS + ACESSOS + "\n" + comuns + codigo + "\nouvirAvisosDoMotor();", sb);
+    vm.runInContext("var window = globalThis; window.BRDATA_MOTOR = {};\n" + motorCode() + VENDA_DESLIGADA + dataSrc + STUBS + ACESSOS + "\n" + comuns + codigo + "\nouvirAvisosDoMotor();", sb);
     return sb;
   };
   // ANTES: as funções congeladas. DEPOIS: os atalhos de hoje, que chamam o motor.

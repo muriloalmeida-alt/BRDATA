@@ -232,6 +232,15 @@ export function transferWindowStatus(round) {
   return mercado.windowByRound(round);
 }
 
+// VENDA-DISPONIVEL: o jogador já pode ser anunciado (ver mercado.revendaLiberada).
+export function revendaLiberadaDe(p) {
+  const CAREER = carreiraAtual();
+  if (!mercado.A_VENDA.ativa || !p || !p.compradoEm) return true;
+  return mercado.revendaLiberada(p.compradoEm, calendarOn()
+    ? { temporada: CAREER.seasonYear, idx: CAREER.calendar.idx, weeks: CAREER.calendar.weeks, fases: CALENDAR_WINDOW_PHASES }
+    : { temporada: CAREER.seasonYear, rodada: CAREER.currentRound });
+}
+
 export function marketTeamsPool() {
   const CAREER = carreiraAtual();
   const pool = CAREER.marketScope === "multi" ? todosTimes() : ligaAtual();
@@ -507,6 +516,8 @@ export function finalizeIncomingPurchase(o) {
     CAREER.pendingInstallments.push({ roundsLeft: o.installments - 1, perRoundAmount: perInstallment, label: `Parcela de ${p.name}` });
   }
   p.origin = "principal";
+  // VENDA-DISPONIVEL: quando ele chegou (a revenda só a partir da próxima janela).
+  if (mercado.A_VENDA.ativa) p.compradoEm = { temporada: CAREER.seasonYear, ...(calendarOn() ? { idx: CAREER.calendar.idx } : { rodada: CAREER.currentRound }) };
   // FASE1-MER: contrato e promessa da proposta (propostas de antes: como eram).
   if (o.salario) p.wage = salario;
   if (o.anos) p.contractUntil = CAREER.seasonYear + Math.max(1, Number(o.anos)) - 1;
