@@ -51,6 +51,11 @@ const { retomarParadasAutomaticas, newCareer, noMotor, motorNaPagina } = require
   // 2) ?iniciar=1 começa a partida pela ponte; endereço limpo; placar e lances.
   await v2.goto(base + "/partida?iniciar=1", { waitUntil: "domcontentloaded" });
   await v2.waitForSelector(".mt-score", { timeout: 40000 });
+  // Sem paradas automáticas (PAUSA-EVENTO, que tem teste próprio): uma lesão
+  // ou expulsão sua no bloco da pausa manual trocava a Pausa por "Jogo
+  // parado", o gancho de retomar desfazia a pausa e o botão não era
+  // "Retomar" (CI do #139).
+  await v2.evaluate(async () => { const lm = (await import("/js/motor/estado.js")).partidaAtual(); if (lm) lm.pararEmEvento = false; });
   const url2 = new URL(v2.url());
   await v2.waitForFunction(() => /^(15|30)/.test(document.querySelector(".mt-min")?.textContent || ""), null, { timeout: 20000 });
   const r2 = await v2.evaluate(() => ({ kicker: document.querySelector(".mt-kicker").textContent, items: document.querySelectorAll(".mt-tl-item").length, start: [...document.querySelectorAll(".mt-tl-item")].pop().textContent }));

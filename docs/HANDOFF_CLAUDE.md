@@ -683,6 +683,48 @@ Relatório (17/11):
 
 ⸻
 
+PARIDADE-A14 — Elencos da CPU estáveis na virada (PARIDADE-CPU, antes do E1a)
+
+Status: REVISÃO DO PM NECESSÁRIA.
+Decisões do Murilo (17/11):
+- D10 "Corrigir já";
+- regra "Serve": na virada, a CPU renova o contrato vencido de quem tem até
+  32 anos e overall ≥ média do elenco, ou de quem falta para cobrir a
+  posição (G 2, D 6, M 6, F 4); os outros saem; o gerado ganha contrato
+  contado do ano da carreira.
+Feito (motor):
+- temporada.RENOVACAO_CPU e renovacoesDaCpu; renewLeagueSquad renova
+  (contrato de 1 a 4 temporadas e salário de mercado);
+- virada: base e profissionais gerados na virada (seus e da CPU) com
+  contrato contado do ano da carreira. Os clubes que sobem da Série D
+  mantêm o elenco de sempre, com o contrato deslocado para o ano da
+  carreira.
+Reposição até o tamanho que o elenco tinha (não só até o mínimo): aprovada
+pelo Murilo em 17/11 ("Manter"). Só com a regra, os elencos encolhiam até
+o mínimo, cerca de 1.134 → 890 jogadores.
+Calibração do gerado, decisão do Murilo (17/11, "Calibrar o gerado já"):
+quem repõe um jogador que saiu nasce na posição dele e perto do overall
+dele (−3 a +2), com atributos, potencial, salário, valor e contrato
+recalculados.
+Resultado (baseline, 5 seeds × 5 temporadas, comparado ao E0):
+- jogadores da CPU: 1.134 → 1.103 (antes, 784);
+- reais na 5ª temporada: 712 (antes, 250);
+- overall médio: 71 → 67,7 (antes, 57,1; sem a calibração, 65,4);
+- gols, 0×0 e zebra: dentro de 0,05 gol, 0,8 p.p. e 1,5 p.p. da baseline;
+- pico do save: 837 KB (antes, 833 KB); rodada p95: 183 ms (antes,
+  174 ms; a virada não roda na rodada, a diferença é variação da medida).
+O que ainda cai (cerca de 0,9 de overall por temporada) é a evolução anual
+da CPU: os veteranos caem e os jovens não crescem. Isso entra no E4
+(treino e evolução da CPU, CPU-09).
+Testes:
+- unit/test_motor_a14 (novo, 7/7);
+- test_motor_temporada e test_motor_virada com a regra desligada
+  (equivalência);
+- tests/sim/paridade_achados.js: A14 agora "não confirmado" (12/13, como
+  esperado).
+
+⸻
+
 PARIDADE-CPU — Paridade esportiva dos clubes geridos pela CPU (nova fase)
 
 Status: PLANO APROVADO (Murilo, 17/11: "Autorizado"). E0 entregue para

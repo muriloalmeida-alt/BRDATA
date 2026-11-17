@@ -347,7 +347,10 @@ export function renewLeagueSquad(club, squad) {
     club, squad, seasonYear: CAREER.seasonYear, minSize: minSquadSizeFor(club.id),
     evoRng: ambiente.rngDaChave(`cpu-evo:${club.id}:${CAREER.seasonYear}`),
     rng: ambiente.rngDaChave(`renew-league:${club.id}:${CAREER.seasonYear}`),
-    env: envJogador(),
+    // A14 (17/11): o gerado na virada (reposição da CPU, base e profissionais
+    // do seu elenco) ganha contrato contado do ano da CARREIRA, não do ano do
+    // catálogo (antes, da 2ª temporada em diante, nascia com contrato vencido).
+    env: { ...envJogador(), liveSeason: temporada.RENOVACAO_CPU.ativa ? CAREER.seasonYear : ambiente.temporadaReal() },
   });
 }
 
@@ -357,7 +360,10 @@ export function renewHumanSquad() {
     club: teamById(CAREER.clubId), clubName: CAREER.clubName, squad: CAREER.squad, lineup: CAREER.lineup,
     seasonYear: CAREER.seasonYear,
     rng: ambiente.rngDaChave(`renew-human:${CAREER.clubId}:${CAREER.seasonYear}`),
-    env: envJogador(),
+    // A14 (17/11): o gerado na virada (reposição da CPU, base e profissionais
+    // do seu elenco) ganha contrato contado do ano da CARREIRA, não do ano do
+    // catálogo (antes, da 2ª temporada em diante, nascia com contrato vencido).
+    env: { ...envJogador(), liveSeason: temporada.RENOVACAO_CPU.ativa ? CAREER.seasonYear : ambiente.temporadaReal() },
   });
   CAREER.squad = r.squad;
   CAREER.lineup.starters = r.starters;
@@ -677,6 +683,12 @@ export async function applyPromotionRelegation() {
   // ativos - o seu), do mesmo jeito que já era antes desta mudança.
   teamsFor(relegatedC).forEach((t) => { delete CAREER.leagueSquads[String(t.id)]; });
   await Promise.all(promotedD.map(async (t) => { CAREER.leagueSquads[String(t.id)] = await buildLeagueSquad(t); }));
+  // A14 (17/11): o elenco de quem sobe é o mesmo gerado de sempre (mesma
+  // semente), mas o contrato passa a contar do ano da carreira.
+  if (temporada.RENOVACAO_CPU.ativa) {
+    const desloca = CAREER.seasonYear - ambiente.temporadaReal();
+    promotedD.forEach((t) => (CAREER.leagueSquads[String(t.id)] || []).forEach((p) => { if (desloca > 0) p.contractUntil += desloca; }));
+  }
 
   CAREER.divisionTeams = {
     brasileirao: newA.map((t) => ({ ...t, competitionId: "brasileirao" })),

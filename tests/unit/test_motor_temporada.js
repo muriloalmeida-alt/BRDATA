@@ -158,6 +158,9 @@ const STATE = "({ CAREER, LEAGUE_TEAMS, ALL_TEAMS_FLAT, CURRENT_COMPETITION_ID, 
   const imp = (m) => import(pathToFileURL(path.join(ROOT, `public/js/motor/${m}.js`)).href);
   const motor = {};
   for (const m of ["partida", "tabela", "calendario", "rodada", "financas", "treino", "mercado", "temporada"]) motor[m] = await imp(m);
+  // A14 (17/11): a cópia congelada não tem a renovação da CPU (nem a reposição
+  // até o tamanho do elenco); a regra nova tem teste próprio (test_motor_a14).
+  motor.temporada.RENOVACAO_CPU.ativa = false;
   const dataJs = fs.readFileSync(path.join(ROOT, "public/js/data.js"), "utf8");
   const SEEDED = dataJs.match(/function mulberry32\(seed\) \{[\s\S]*?\n\}\n/)[0] + dataJs.match(/function seededRngFromKey\(key\) \{[\s\S]*?\n\}\n/)[0];
   // A página como antes da etapa F (a virada, a Copa, a criação e a ponte de volta a ela):

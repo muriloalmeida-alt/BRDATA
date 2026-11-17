@@ -113,6 +113,9 @@ const ROTEIRO = (seed) => `(async () => {
     rodar(SEMEAR(seed), "semente");
     rodar(REDE, "rede");
     rodar("window.BRDATA_MOTOR = {};\n" + motor, "motor");
+    // A14 (17/11): a cópia congelada não tem a renovação da CPU nem o contrato
+    // do gerado contado do ano da carreira (teste próprio: test_motor_a14).
+    rodar("window.BRDATA_MOTOR.temporada.RENOVACAO_CPU.ativa = false;", "a14");
     rodar(dataSrc, "data.js");
     rodar(pagina, "carreira.js");
     if (antes) rodar(ref, "ref_virada_antes.js");
