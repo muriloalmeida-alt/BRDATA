@@ -5,7 +5,8 @@
 // baixo: vermelho direto no 1º jogador de linha seu) e entra na partida
 // como no bloco (aovivo.registrarExpulsoes e a parada do PAUSA-EVENTO).
 //  1) A partida para sozinha ("Jogo parado") com a expulsão e o aviso
-//     "Seu time joga com 10, sem reposição".
+//     "Seu time joga com N, sem reposição" (N = 11 − expulsos; uma expulsão
+//     de verdade, sorteada antes, também conta).
 //  2) Revisar time: 10 em campo; a vaga do expulso vazia, com o cartão
 //     vermelho e o nome dele.
 //  3) Substituir: o expulso não aparece para sair; o total de substituições
@@ -44,7 +45,8 @@ const { newCareer, base } = require("./_v2_carreira");
     const P = await import("/js/motor/partida.js");
     const lm = E.partidaAtual();
     const C = E.carreiraAtual();
-    const alvo = C.squad.find((p) => p.id === C.lineup.starters[1]);
+    // 1º jogador de linha ainda em campo (uma expulsão de verdade pode ter vindo antes).
+    const alvo = C.lineup.starters.slice(1).map((id) => C.squad.find((p) => p.id === id)).find((p) => p && p.status === "ok" && !(lm.expulsos || []).includes(p.id));
     // O cartão sai pela regra do motor (sorteio baixo = vermelho direto) e
     // entra na partida como no bloco (registrarExpulsoes + parada do PAUSA-EVENTO).
     const orig = Math.random;
@@ -63,8 +65,8 @@ const { newCareer, base } = require("./_v2_carreira");
   if (!abriu) { await v2.click(".mt-actions .mt-secondary"); await v2.waitForSelector(".pz-stop", { timeout: 10000 }); }
   const p1 = await v2.evaluate(() => ({ title: document.querySelector(".pz-title").textContent, stop: document.querySelector(".pz-stop").textContent }));
   check("1) Expulsão sua: a partida para ('Jogo parado') e avisa que o time joga com 10, sem reposição:",
-    forcado.ativa && JSON.stringify(forcado.vermelhos) === JSON.stringify([forcado.id]) && forcado.status === "suspenso" && JSON.stringify(forcado.expulsos) === JSON.stringify([forcado.id])
-      && /foi expulso/.test(p1.stop) && /Seu time joga com 10, sem reposição/.test(p1.stop),
+    forcado.ativa && JSON.stringify(forcado.vermelhos) === JSON.stringify([forcado.id]) && forcado.status === "suspenso" && forcado.expulsos.includes(forcado.id)
+      && /foi expulso/.test(p1.stop) && p1.stop.includes(`Seu time joga com ${11 - forcado.expulsos.length}, sem reposição`),
     JSON.stringify({ forcado, p1 }));
 
   // 2) Revisar time: 10 em campo, vaga vazia com o cartão vermelho.
@@ -77,7 +79,7 @@ const { newCareer, base } = require("./_v2_carreira");
       vermelho: vermelho.map((s) => ({ label: s.getAttribute("aria-label"), nome: s.querySelector(".lu-name").textContent })) };
   });
   check("2) Revisar time: 10 em campo; a vaga do expulso vazia, com o cartão vermelho e o nome dele:",
-    t2.slots === 11 && t2.comJogador === 10 && t2.vermelho.length === 1 && /vaga vazia, .* expulso/.test(t2.vermelho[0].label) && t2.vermelho[0].nome === "Expulso",
+    t2.slots === 11 && t2.comJogador === 11 - forcado.expulsos.length && t2.vermelho.length === forcado.expulsos.length && t2.vermelho.every((v) => /vaga vazia, .* expulso/.test(v.label) && v.nome === "Expulso"),
     JSON.stringify(t2));
   await v2.setViewportSize({ width: 360, height: 780 });
   await v2.waitForTimeout(200);
@@ -99,7 +101,7 @@ const { newCareer, base } = require("./_v2_carreira");
     return { opcoes: nomes.length, count: document.querySelector(".sb-count").textContent, cmd, naVaga: C.lineup.starters.includes(id) };
   }, { id: forcado.id });
   check("3) Substituir: o expulso não aparece para sair; continua 5 substituições (sem extra); o comando direto é recusado ('expulso'):",
-    t3.opcoes === 10 && /de 5$/.test(t3.count) && t3.naVaga && (!t3.cmd || (t3.cmd.ok === false && t3.cmd.motivo === "expulso")),
+    t3.opcoes === 11 - forcado.expulsos.length && /de 5$/.test(t3.count) && t3.naVaga && (!t3.cmd || (t3.cmd.ok === false && t3.cmd.motivo === "expulso")),
     JSON.stringify(t3));
 
   // 4) Outro jogador sai normalmente.
