@@ -36,26 +36,37 @@ const { retomarParadasAutomaticas, newCareer, noMotor, motorNaPagina } = require
   // (CI, PR #73), então o total vem do motor em vez de fixo em 5.
   await motorNaPagina(v2);
   const subsTotal = await v2.evaluate(() => __motor.aovivo.MAX_SUBS_PER_MATCH + __motor.estado.partidaAtual().subsBonus);
+  // Quem sai: o 10º titular, ou o mais próximo dele ainda em campo. Um
+  // vermelho sorteado antes da pausa deixa a vaga vazia (EXPULSAO): o
+  // expulso não aparece na lista de quem sai (CI do PR #137).
+  const emCampo = await v2.evaluate(() => {
+    const C = __motor.estado.carreiraAtual(), lm = __motor.estado.partidaAtual();
+    const expulsos = lm.expulsos || [];
+    const lista = C.lineup.starters.filter((id) => !expulsos.includes(id));
+    const outId = C.lineup.starters.slice(0, 10).reverse().find((id) => lista.includes(id));
+    return { n: lista.length, idx: lista.indexOf(outId), outId, outName: C.squad.find((p) => p.id === outId).name };
+  });
+  Object.assign(before, { outId: emCampo.outId, outName: emCampo.outName });
 
   // 1) Quem sai: titulares em campo; cancelar não troca.
   await v2.click(".pz-row[href$='tela=sai']");
   await v2.waitForSelector(".sb-list", { timeout: 10000 });
   const outList = await v2.evaluate(() => ({ n: document.querySelectorAll(".sb-list .sb-opt").length, count: document.querySelector(".sb-count").textContent }));
-  await v2.locator(".sb-list .sb-opt").nth(9).click();
+  await v2.locator(".sb-list .sb-opt").nth(emCampo.idx).click();
   await v2.waitForSelector(".sb-pair", { timeout: 10000 });
   const pair0 = await v2.evaluate(() => ({ search: location.search, sai: document.querySelectorAll(".sb-side .sb-name")[0].textContent, entra: document.querySelectorAll(".sb-side .sb-name")[1].textContent, disabled: document.querySelector(".sb-foot .cta").disabled }));
   await v2.click(".sb-foot .btn-secondary"); // Cancelar
   await v2.waitForSelector(".pz-title", { timeout: 10000 });
   const afterCancel = await v2.locator(".pz-row[href$='tela=sai'] .row-sub").textContent();
   const parts = before.outName.trim().split(/\s+/); const outShort = parts.length > 1 ? `${parts[0][0].toUpperCase()}. ${parts[parts.length - 1]}` : before.outName;
-  check("1) Quem sai: 11 titulares e 'Substituições: 0 de 5'; Sai ⇄ Entra com quem sai fixo e Confirmar desativado até escolher; Cancelar volta à Pausa sem trocar:",
-    outList.n === 11 && outList.count.includes(`0 de ${subsTotal}`) && subsTotal >= 5 && pair0.search.includes(`sai=${encodeURIComponent(before.outId)}`) && pair0.sai === outShort && pair0.entra === "Escolha abaixo" && pair0.disabled && afterCancel.includes(`0 de ${subsTotal}`),
-    JSON.stringify({ outList, pair0, afterCancel, subsTotal }));
+  check("1) Quem sai: os titulares em campo (11, menos algum expulso) e 'Substituições: 0 de 5'; Sai ⇄ Entra com quem sai fixo e Confirmar desativado até escolher; Cancelar volta à Pausa sem trocar:",
+    outList.n === emCampo.n && outList.count.includes(`0 de ${subsTotal}`) && subsTotal >= 5 && pair0.search.includes(`sai=${encodeURIComponent(before.outId)}`) && pair0.sai === outShort && pair0.entra === "Escolha abaixo" && pair0.disabled && afterCancel.includes(`0 de ${subsTotal}`),
+    JSON.stringify({ outList, emCampo, pair0, afterCancel, subsTotal }));
 
   // 2) Confirmar substituição: volta à Pausa, 1 de 5, jogo ainda parado.
   await v2.click(".pz-row[href$='tela=sai']");
   await v2.waitForSelector(".sb-list", { timeout: 10000 });
-  await v2.locator(".sb-list .sb-opt").nth(9).click();
+  await v2.locator(".sb-list .sb-opt").nth(emCampo.idx).click();
   await v2.waitForSelector(".sb-pair", { timeout: 10000 });
   await v2.locator(".sb-bench .sb-opt").first().click();
   const inShort = await v2.evaluate(() => document.querySelectorAll(".sb-side .sb-name")[1].textContent);
