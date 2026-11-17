@@ -683,6 +683,109 @@ Relatório (17/11):
 
 ⸻
 
+EXPULSAO — expulso sem reposição e jogo com 1 a menos
+
+Status: APROVADO (Murilo, 17/11, "Aprovado"; PR #134).
+Pedido (Murilo, 17/11): "Jogador expulso não pode ser substituído. Após a
+pausa o campo deve ser mostrado com 1 a menos e isso deve influenciar no
+jogo."
+Como era:
+- Expulsão do seu time dava 1 substituição a mais (`subsBonus`): o técnico
+  repunha o expulso e voltava a 11.
+- O peso de jogar com menos era só a "completude" da força (10/11, ~9%).
+- O adversário expulso não mudava nada na força dele.
+- O 3º amarelo acumulado (que deveria só suspender para o próximo jogo)
+  tirava o jogador de campo na hora, sem cartão vermelho no lance.
+Decisões do Murilo (17/11):
+- Efeito "Realista": com 1 a menos, ~25% menos gols feitos e ~35% mais
+  sofridos; 2 a menos, composto. Do minuto da expulsão até o fim.
+- Vale para os dois lados, também nos jogos só entre CPUs.
+- Campo da Pausa: "Posição vazia", marcada com o cartão vermelho; o resto
+  do time fica onde estava (formação e substituições normais seguem).
+- 3º amarelo: "Corrigir" — só suspende para o próximo jogo; segue em campo.
+Especificação:
+- Motor (`partida.EXPULSAO`): `comExpulsoes(lado, n)` multiplica ataque por
+  0,75ⁿ e "defesa" (gols sofridos) por 1,35ⁿ.
+- Partida ao vivo: o seu expulso fica na vaga, marcado (`lm.expulsos`); o
+  do adversário sai do time dele (`lm.expulsosCpu`). O efeito vale do bloco
+  seguinte em diante, para os dois lados. Sem substituição extra.
+  `substituir` recusa o expulso (motivo "expulso"). A força humana conta o
+  expulso na vaga (sem o desconto de time incompleto em dobro).
+- Jogos diretos (CPU x CPU, perna de Copa simulada): cartões antes dos
+  autores dos gols; para cada expulso, minuto sorteado e o placar ajustado
+  dali em diante (`golsComExpulsoes`, mesmo efeito médio).
+- 3º amarelo: seu jogador termina o jogo; a suspensão vale no fechamento
+  da rodada (`suspensaoPendente` → `refreshAvailability`); na CPU, suspenso
+  para os próximos jogos, sem sair de campo.
+- v2: Revisar time com a vaga vazia, cartão vermelho e "Expulso"; a lista
+  de quem sai não mostra o expulso; a Pausa avisa "Seu time joga com N,
+  sem reposição".
+- `EXPULSAO.ativa = false` só nos testes de equivalência com as cópias
+  congeladas do motor (que não têm a regra).
+Critérios de aceite:
+1. Expulso não pode ser substituído (tela e comando) e não há substituição
+   extra.
+2. Revisar time mostra 10 em campo e a vaga do expulso vazia, com o cartão.
+3. Com 1 a menos: gols esperados a favor ×0,75 e contra ×1,35 (os dois
+   lados; jogos diretos com o mesmo efeito médio).
+4. 3º amarelo não tira de campo; suspende só o próximo jogo.
+5. Save: nada novo obrigatório (campo opcional `suspensaoPendente`).
+Fora de escopo: formações para 10 jogadores; limite mínimo de jogadores em
+campo; mostrar ao vivo o placar "10 contra 11" fora da Pausa.
+Relatório (17/11):
+- Motor:
+  - `partida.js`: `EXPULSAO`, `comExpulsoes` e `golsComExpulsoes`.
+  - `aovivo.js`: `aplicarExpulsoes` e `registrarExpulsoes`, chamadas no
+    bloco; `applyLiveSub` recusa o expulso.
+  - `fechamento.js`: força humana conta o expulso na vaga; 3º amarelo;
+    jogos diretos (`resolveCpuFixture`, `simulateCupLeg`) com os cartões
+    antes dos autores e o placar ajustado.
+  - `semana.js`: a suspensão pendente vale no fechamento da rodada.
+  - `jogo.js`: o comando `substituir` recusa o expulso.
+  - `carga.js`: a ponte marca o titular expulso e conta os expulsos de
+    cada lado.
+- v2:
+  - `domain/match.ts`: vaga vazia com o nome do expulso; o expulso fora da
+    lista de quem sai; o aviso "Seu time joga com N, sem reposição" na
+    Pausa.
+  - `ui/pitch.tsx` e `lineup.css`: o cartão vermelho sobre a camisa vazia
+    (sem o "+"), "Expulso" no lugar do nome.
+- Testes:
+  - `tests/unit/test_motor_expulsao.js` (9/9): efeito ×0,75/×1,35 (e
+    composto), os dois lados, expulso marcado e o da CPU fora do time,
+    substituição recusada e sem extra, força humana sem desconto em dobro,
+    jogo direto (sem expulso nada muda; com expulso a média segue a regra),
+    3º amarelo seu e da CPU, regra desligada.
+  - `tests/e2e/test_v2_expulsao.js` (5/5): a Pausa com o aviso, Revisar
+    time com 10 e a vaga vazia com o cartão, Substituir sem o expulso,
+    "0 de 5" e comando recusado, outro sai normal, 360 px.
+  - `domain/match.test.ts`: novo teste (138/138 na v2).
+  - Testes de equivalência (`test_motor_aovivo`, `test_motor_fechamento`)
+    rodam com a regra desligada (`EXPULSAO.ativa = false`).
+  - Contraprovas: efeito menor (falham 1, 2 e 6); substituição do expulso
+    liberada (4); desconto de time incompleto de volta (5); 3º amarelo
+    tirando de campo (7); suspensão pendente não aplicada (7); jogo direto
+    sem os gols extras do adversário (6); CPU expulso seguindo no time (3).
+    Depois, o motor voltou ao estado esperado.
+- Suíte completa: 165/168 na primeira rodada.
+  - `test_ao_vivo` item 5 conferia a substituição extra da expulsão e
+    passa a conferir a regra nova (sem extra, expulso na vaga, troca
+    recusada).
+  - `test_v2_pausa_evento` item 2 passa a contar o aviso "Seu time joga
+    com N".
+  - `test_v2_prejogo` parou ao abrir o Pré-jogo (espera de 10 s sob
+    carga; a expulsão não toca nele) e passou 3/3 isolado.
+  - Depois do ajuste, esses e `test_v2_expulsao`/`test_v2_pausa`: 4/4.
+- Riscos e observações:
+  - Expulsões em série (raras) compõem o efeito: com 3 a menos, o time faz
+    ~42% dos gols e sofre ~2,5×.
+  - Sem limite mínimo de jogadores (fora de escopo).
+  - Jogos diretos mudam a ordem dos sorteios (cartões antes dos autores
+    dos gols); o resultado médio é o mesmo de antes quando não há
+    expulsão.
+
+⸻
+
 ZOOM-V2 — bloquear o zoom no celular na v2
 
 Status: APROVADO (Murilo, 17/11, "Faz o merge"; PR #131).

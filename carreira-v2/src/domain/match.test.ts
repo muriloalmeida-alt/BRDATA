@@ -89,6 +89,24 @@ test("substituição: sai = titulares em campo; entra = só reservas com status 
   assert.equal(m.starters[0].short, "N. a");
 });
 
+test("EXPULSAO: a vaga do expulso fica vazia com o nome dele; ele não aparece para sair; a Pausa avisa que o time joga com menos", () => {
+  const s = snap();
+  const P = (id: string, grupo: "G" | "D" | "M" | "F", extra = {}) => ({ id, nome: `Nome ${id}`, grupo, overall: 70, status: "ok", voltaRodada: null, condicao: 80, ...extra });
+  s.escalacao = {
+    formacao: "4-3-3",
+    titulares: [P("g", "G"), P("d1", "D"), P("d2", "D"), P("d3", "D"), P("d4", "D"), P("m1", "M", { status: "suspenso", voltaRodada: 13, expulso: true }), P("m2", "M"), P("m3", "M"), P("f1", "F"), P("f2", "F"), P("f3", "F")],
+    banco: [P("b1", "M")],
+  };
+  const vaga = buildLiveLineup(s)!.rows.flat().find((x) => x.index === 5)!;
+  assert.equal(vaga.player, null);
+  assert.equal(vaga.expelled, "N. m1");
+  assert.equal(buildLiveLineup(s)!.rows.flat().filter((x) => x.player).length, 10);
+  assert.ok(!buildSubs(s)!.starters.some((x) => x.id === "m1"));
+  s.paradaPor = [{ tipo: "vermelho", jogador: "Nome m1", minuto: 30 }];
+  s.expulsos = { meus: 1, adversario: 0 };
+  assert.deepEqual(buildMatch(s)!.stoppage!.lines, ["N. m1 foi expulso (30’)", "Seu time joga com 10, sem reposição"]);
+});
+
 test("resultado: título e frase pelo placar (pontos só na liga) e gols em ordem de minuto", () => {
   const s = snap(); s.fase = "encerrada"; s.gh = 2; s.ga = 1;
   s.eventos = [ev(60, "gol", false, { jogador: "Endrick Felipe" }), ev(30, "gol", true, { jogador: "Bruno Henrique" }), ev(75, "gol", true, { jogador: "Gerson Santos", penalti: true })];

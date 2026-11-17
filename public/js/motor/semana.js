@@ -411,6 +411,12 @@ export function refreshAvailability(uptoRound) {
   const CAREER = carreiraAtual();
   const r = uptoRound != null ? uptoRound : CAREER.currentRound;
   CAREER.squad.forEach((p) => {
+    // EXPULSAO (17/11): 3º amarelo acumulado na partida — a suspensão vale
+    // agora, depois do jogo (ele terminou a partida em campo).
+    if (p.suspensaoPendente != null) {
+      p.status = "suspenso"; p.outUntilRound = p.suspensaoPendente;
+      delete p.suspensaoPendente;
+    }
     if (p.status !== "ok" && p.outUntilRound != null && r > p.outUntilRound) {
       // Pedido do usuário: retorno de lesão baixa a condição (o
       // jogador não está com ritmo de jogo, mesmo tendo passado a

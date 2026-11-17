@@ -73,6 +73,41 @@ export function forcaComNivel(team, nivel) {
   return { atk: ((1 - s) * team.atk + s) * nivel, def: ((1 - s) * team.def + s) * nivel };
 }
 
+// EXPULSAO (17/11) — jogar com menos jogadores. Expulso não é reposto; cada
+// expulso tira ~25% dos gols do time e dá ~35% mais gols ao adversário
+// (ordem de grandeza dos estudos de futebol), do minuto da expulsão até o
+// fim. `EXPULSAO.ativa = false` volta à regra antiga (substituição extra, o
+// 3º amarelo tirando de campo): só os testes de equivalência com as cópias
+// congeladas do motor, que não têm a regra.
+export const EXPULSAO = { ativa: true, atk: 0.75, def: 1.35 };
+export function comExpulsoes(side, n) {
+  if (!side || !(n > 0)) return side;
+  return { ...side, atk: side.atk * EXPULSAO.atk ** n, def: side.def * EXPULSAO.def ** n };
+}
+// Jogo direto (sem blocos: CPU x CPU, perna de Copa simulada): os gols já
+// saíram com o time completo. Para cada expulso de um lado, sorteia o minuto
+// (fração `f` do jogo); dali em diante, cada gol do time punido fica com
+// chance EXPULSAO.atk e o adversário ganha gols extras de Poisson com
+// λ × (1 − f) × (EXPULSAO.def − 1) — o mesmo que jogar o resto com a força
+// reduzida, sem refazer o jogo. Sem expulso, nada é sorteado.
+export function golsComExpulsoes(gh, ga, lambdas, expulsosCasa, expulsosFora, rng) {
+  let home = gh, away = ga;
+  const punir = (n, meus, lambdaDeles) => {
+    let g = meus, extra = 0;
+    for (let i = 0; i < n; i++) {
+      const f = rng();
+      let fica = 0;
+      for (let k = 0; k < g; k++) if (!(rng() < (1 - f) * (1 - EXPULSAO.atk))) fica++;
+      g = fica;
+      extra += poissonSample(lambdaDeles * (1 - f) * (EXPULSAO.def - 1), rng);
+    }
+    return { g, extra };
+  };
+  if (expulsosCasa > 0) { const r = punir(expulsosCasa, home, lambdas.away); home = r.g; away += r.extra; }
+  if (expulsosFora > 0) { const r = punir(expulsosFora, away, lambdas.home); away = r.g; home += r.extra; }
+  return { gh: home, ga: away };
+}
+
 // Placar de um jogo (ou de um trecho): sorteia o mandante, depois o visitante.
 export function scoreGoals(home, away, share, rng) {
   const l = goalLambdas(home, away, share);

@@ -17,6 +17,9 @@ export function goalLambdas(home: Side, away: Side, share?: number): { home: num
 export const GOLS_SUAVIZACAO: number;
 export function nivelDeGols(mediaGolsPorTime: number): number | null;
 export function forcaComNivel(team: Side | null | undefined, nivel: number | null | undefined): Side;
+export const EXPULSAO: { ativa: boolean; atk: number; def: number };
+export function comExpulsoes<S extends Side>(side: S, n: number): S;
+export function golsComExpulsoes(gh: number, ga: number, lambdas: { home: number; away: number }, expulsosCasa: number, expulsosFora: number, rng: Rng): { gh: number; ga: number };
 export function scoreGoals(home: Side, away: Side, share: number, rng: Rng): { gh: number; ga: number };
 export function withFormationPenalty<S extends Side>(side: S): S;
 export function withMotivation<S extends Side>(side: S, mod: number): S;

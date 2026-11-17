@@ -447,6 +447,7 @@ export function applyLiveSub(lm, outId, inId) {
   const CAREER = carreiraAtual();
   const outIdx = CAREER.lineup.starters.indexOf(outId);
   if (outIdx < 0) return "fora-de-campo";
+  if (partida.EXPULSAO.ativa && (lm.expulsos || []).includes(outId)) return "expulso"; // EXPULSAO: a vaga fica vazia
   const outPlayer = CAREER.squad.find((p) => p.id === outId);
   const inPlayer = CAREER.squad.find((p) => p.id === inId);
   if (!outPlayer || !inPlayer) return "sem-jogador";
@@ -503,6 +504,8 @@ export function iniciarPartida(round, fixtures, humanFx, standingsBefore) {
     round, humanFx, isHome, home, away, cpuXI, otherResults, standingsBefore,
     chunkIndex: 0, gh: 0, ga: 0, events: [], appeared: new Set(),
     subsUsed: 0, subsBonus: 0, formationPenaltyChunksLeft: 0,
+    // EXPULSAO (17/11): seus expulsos (ids, a vaga fica vazia) e quantos o adversário perdeu.
+    ...(partida.EXPULSAO.ativa ? { expulsos: [], expulsosCpu: 0 } : {}),
     lastHsStarters: [], lastAsStarters: [],
     timerId: null, paused: false, finished: false,
     // AJUSTE (Play-by-Play v1) — velocidade de reprodução (1x/2x, ver
@@ -525,6 +528,25 @@ export function iniciarPartida(round, fixtures, humanFx, standingsBefore) {
 // Um bloco de 15 minutos da partida em andamento. Devolve o minuto e os
 // lances do bloco; quem chamou decide o que vem depois (intervalo, próximo
 // bloco, fim) e mostra.
+// EXPULSAO (17/11) — jogar com menos na partida ao vivo.
+// Cada expulso (seu ou do adversário) pesa do bloco seguinte à expulsão até
+// o fim (partida.comExpulsoes), nos lados já montados do bloco.
+export function aplicarExpulsoes(lm, humanSide, cpuSide) {
+  if (!partida.EXPULSAO.ativa || !lm) return;
+  Object.assign(humanSide, partida.comExpulsoes(humanSide, (lm.expulsos || []).length));
+  Object.assign(cpuSide, partida.comExpulsoes(cpuSide, lm.expulsosCpu || 0));
+}
+// Expulso não é reposto (sem substituição extra): o seu fica na vaga,
+// marcado em lm.expulsos; o do adversário sai do time dele (não marca nem
+// leva cartão de novo) e conta em lm.expulsosCpu.
+export function registrarExpulsoes(lm, meusIds, cpuIds) {
+  if (meusIds && meusIds.length) lm.expulsos = [...(lm.expulsos || []), ...meusIds];
+  if (cpuIds && cpuIds.length) {
+    lm.cpuXI = (lm.cpuXI || []).filter((p) => !cpuIds.includes(p.id));
+    lm.expulsosCpu = (lm.expulsosCpu || 0) + cpuIds.length;
+  }
+}
+
 export function resolverBloco() {
   const CAREER = carreiraAtual();
   const lm = partidaAtual();
@@ -559,12 +581,16 @@ export function resolverBloco() {
   // "adversário mais ligado" precisa de um def MENOR (defesa melhor),
   // por isso def usa /= em vez de *= (atk continua *=, maior=melhor).
   Object.assign(cpuSide, partida.withMotivation(cpuSide, motivationMod));
+  // EXPULSAO (17/11): cada expulso (seu ou do adversário) pesa do bloco
+  // seguinte à expulsão até o fim (partida.comExpulsoes).
+  aplicarExpulsoes(lm, humanSide, cpuSide);
   // GE-BALANCE-003 (issue #30) — ver comentário em simulateCupLeg.
   const { gh: ghChunk, ga: gaChunk } = partida.scoreGoals(hs, as, chunkShare, Math.random);
   const wearHome = applyMatchWearChunk(hs.starters, round, chunkShare, lm.appeared);
   const wearAway = applyMatchWearChunk(as.starters, round, chunkShare, lm.appeared);
   const myRedIds = lm.isHome ? wearHome.redCardIds : wearAway.redCardIds;
-  if (myRedIds.length) lm.subsBonus += myRedIds.length;
+  if (partida.EXPULSAO.ativa) registrarExpulsoes(lm, myRedIds, lm.isHome ? wearAway.redCardIds : wearHome.redCardIds);
+  else if (myRedIds.length) lm.subsBonus += myRedIds.length;
   lm.gh += ghChunk; lm.ga += gaChunk;
   // AJUSTE (Play-by-Play v1) — chance perdida/defesa (camada
   // decorativa, ver attributeChances) + estatísticas agregadas

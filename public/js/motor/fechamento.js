@@ -18,7 +18,7 @@
    Lê e grava a carreira de motor/estado.js. Não chama a tela: avisos
    viram o evento "aviso" (motor/eventos.js).
 =================================================================== */
-import { carreiraAtual, ligaAtual, todosTimes, timePorId, forcaMediaDoElenco, ganchosMundo, forcaDeJogo } from "./estado.js";
+import { carreiraAtual, ligaAtual, todosTimes, timePorId, forcaMediaDoElenco, ganchosMundo, forcaDeJogo, partidaAtual } from "./estado.js";
 import { pushNotification, generateRoundNews } from "./registro.js";
 import { fmtBRL, abbreviateName } from "./texto.js";
 import { advanceCalendarWeek, ambiente, applyFinanceEntries, avisar, calendarOn, finalizeIncomingPurchase, leagueSquadFor, maybeGenerateOffer, processPendingInstallments, processPendingReceivables, pushLedger, pushTransferLog, refreshAvailability, resolveLoanListingsRound, resolvePendingListingsRound, resolvePendingOffersOutRound, simulateAiTransfers, tickScoutMissions, tickStadiumUpgrade, transferWindowStatus } from "./semana.js";
@@ -218,9 +218,19 @@ export function simulateCupLeg(hostId, guestId, round) {
   // melhor"). A fórmula de gol multiplica pelo def do DEFENSOR (não
   // divide) pra respeitar esse sentido: defesa melhor (def menor) ->
   // lambda menor (menos gols esperados contra ela).
-  const { gh, ga } = partida.scoreGoals(hs, as, 1, Math.random);
+  let { gh, ga } = partida.scoreGoals(hs, as, 1, Math.random);
   if (isHost) applyConditionRecovery(hs.starters.map((p) => p.id));
   if (isGuest) applyConditionRecovery(as.starters.map((p) => p.id));
+  if (partida.EXPULSAO.ativa) {
+    // EXPULSAO (17/11): cartões do seu lado antes dos autores; o expulso
+    // pesa do minuto dele até o fim.
+    const wh = isHost ? applyMatchWearChunk(hs.starters, round, 1, new Set()) : null;
+    const wa = isGuest ? applyMatchWearChunk(as.starters, round, 1, new Set()) : null;
+    ({ gh, ga } = partida.golsComExpulsoes(gh, ga, partida.goalLambdas(hs, as), wh ? wh.redCardIds.length : 0, wa ? wa.redCardIds.length : 0, Math.random));
+    if (isHost) attributeGoals(hs.starters, gh);
+    if (isGuest) attributeGoals(as.starters, ga);
+    return { gh, ga };
+  }
   if (isHost) simulatePlayerEvents(hs.starters, gh, round);
   if (isGuest) simulatePlayerEvents(as.starters, ga, round);
   return { gh, ga };
@@ -668,7 +678,13 @@ export function computeHumanStrength(club) {
   const startDef = avg(usable.map((p) => p.def)) || baselineDef;
   // GOLS-REAIS: a força de jogo do clube (nível de gols do campeonato).
   const base = forcaDeJogo(club);
-  const completeness = clamp(usable.length / 11, 0.6, 1);
+  // EXPULSAO (17/11): o expulso da partida ao vivo continua contando aqui
+  // (a vaga não é reposta); o peso de jogar com menos vem de
+  // partida.comExpulsoes, aplicado no bloco (aovivo.resolverBloco).
+  const lm = partidaAtual();
+  const expulsosEmCampo = partida.EXPULSAO.ativa && lm && !lm.finished && Array.isArray(lm.expulsos)
+    ? lm.expulsos.filter((id) => CAREER.lineup.starters.includes(id)).length : 0;
+  const completeness = clamp((usable.length + expulsosEmCampo) / 11, 0.6, 1);
   let atkMult = clamp(startAtk / baselineAtk, 0.7, 1.3) * completeness;
   let defMult = clamp(startDef / baselineDef, 0.7, 1.3) * completeness;
   const fMod = FORMATION_MOD[CAREER.lineup.formation] || { atk: 1, def: 1 };
@@ -767,8 +783,18 @@ export function applyMatchWearChunk(starters, round, chunkShare, appearedSet) {
       p.yellowCards = (p.yellowCards || 0) + 1;
       events.push({ type: "amarelo", player: p.name, playerId: p.id });
       if (p.yellowCards >= 3) {
-        p.status = "suspenso"; p.outUntilRound = round + 1; p.yellowCards = 0;
-        redCardIds.push(p.id);
+        if (partida.EXPULSAO.ativa) {
+          // EXPULSAO (17/11): o 3º amarelo acumulado só suspende para o
+          // próximo jogo — o jogador segue em campo (não é expulsão). No seu
+          // elenco a suspensão fica pendente até o fim da rodada
+          // (semana.refreshAvailability); na CPU, como sempre.
+          p.yellowCards = 0;
+          if (CAREER.squad && CAREER.squad.includes(p)) p.suspensaoPendente = round + 1;
+          else { p.status = "suspenso"; p.outUntilRound = round + 1; }
+        } else {
+          p.status = "suspenso"; p.outUntilRound = round + 1; p.yellowCards = 0;
+          redCardIds.push(p.id);
+        }
       }
     }
     if (p.status === "ok" && Math.random() < injuryChanceFor(p) * chunkShare) {
@@ -848,7 +874,18 @@ export function resolveCpuFixture(fx, round) {
   const hs = { ...forcaDeJogo(home), starters: pickCpuXI(leagueSquadFor(fx.home)) };
   const as = { ...forcaDeJogo(away), starters: pickCpuXI(leagueSquadFor(fx.away)) };
   // GE-BALANCE-003 (issue #30) — ver comentário em simulateCupLeg.
-  const { gh, ga } = partida.scoreGoals(hs, as, 1, Math.random);
+  const placar = partida.scoreGoals(hs, as, 1, Math.random);
+  let { gh, ga } = placar;
+  let homeEvents, awayEvents;
+  if (partida.EXPULSAO.ativa) {
+    // EXPULSAO (17/11): cartões antes dos autores dos gols; o expulso pesa
+    // do minuto dele até o fim (partida.golsComExpulsoes).
+    const wh = applyMatchWearChunk(hs.starters, round, 1, new Set());
+    const wa = applyMatchWearChunk(as.starters, round, 1, new Set());
+    ({ gh, ga } = partida.golsComExpulsoes(gh, ga, partida.goalLambdas(hs, as), wh.redCardIds.length, wa.redCardIds.length, Math.random));
+    homeEvents = [...attributeGoals(hs.starters, gh), ...wh.events];
+    awayEvents = [...attributeGoals(as.starters, ga), ...wa.events];
+  }
   // FASE 2 (a) — pedido do usuário: "estatísticas reais de todos os
   // times". Antes só o SEU time tinha elenco individual — o
   // adversário virava "Gol do <Time>" sem autor (ver histórico desse
@@ -857,8 +894,10 @@ export function resolveCpuFixture(fx, round) {
   // não só a sua — credita gol/assistência/cartão a um jogador de
   // verdade, alimentando o ranking de artilheiros da competição
   // inteira (ver renderEstatisticas) mesmo em jogos CPU x CPU.
-  const homeEvents = simulatePlayerEvents(hs.starters, gh, round);
-  const awayEvents = simulatePlayerEvents(as.starters, ga, round);
+  if (!partida.EXPULSAO.ativa) {
+    homeEvents = simulatePlayerEvents(hs.starters, gh, round);
+    awayEvents = simulatePlayerEvents(as.starters, ga, round);
+  }
   applyConditionRecovery(hs.starters.map((p) => p.id));
   applyConditionRecovery(as.starters.map((p) => p.id));
   const events = [...homeEvents, ...awayEvents];

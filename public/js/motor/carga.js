@@ -1011,11 +1011,15 @@ export function ponteEstado() {
     mandante: { id: String(lm.home.id), nome: lm.home.name }, visitante: { id: String(lm.away.id), nome: lm.away.name },
     souMandante: !!lm.isHome, gh: lm.gh, ga: lm.ga, velocidade: lm.speed === 2 ? 2 : 1,
     substituicoes: { usadas: lm.subsUsed, total: MAX_SUBS_PER_MATCH + lm.subsBonus },
+    // EXPULSAO (17/11): quantos cada lado perdeu por expulsão.
+    expulsos: { meus: (lm.expulsos || []).length, adversario: lm.expulsosCpu || 0 },
     // Escalação AO VIVO (pode diferir do save: substituições e troca de
     // esquema feitas durante o jogo só são gravadas no fim).
     escalacao: {
       formacao: CAREER.lineup.formation,
-      titulares: CAREER.lineup.starters.map(ponteJogador),
+      // EXPULSAO (17/11): o expulso continua na vaga dele, marcado (a v2
+      // desenha a vaga vazia, com o cartão vermelho).
+      titulares: CAREER.lineup.starters.map((id) => { const j = ponteJogador(id); return j && (lm.expulsos || []).includes(id) ? { ...j, expulso: true } : j; }),
       banco: CAREER.lineup.bench.map(ponteJogador).filter(Boolean),
     },
     tatica: {
