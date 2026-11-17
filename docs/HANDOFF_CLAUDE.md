@@ -575,7 +575,7 @@ Pendente: decidir quando o Resultado da v2 ganha o cartão.
 
 GOLS-REAIS — nível de gols real e menos 0x0 com dados reais
 
-Status: REVISÃO DO PM NECESSÁRIA (implementado em 17/11; merge só com a aprovação do Murilo).
+Status: APROVADO (Murilo, 17/11, "Aprovado"; PR #133).
 Pedido (Murilo, 17/11): "Com certa frequência o jogo repete o placar de 0x0
 por 5/6 partidas seguidas. Isso precisa ser evitado pois tira a realidade do
 jogo."
