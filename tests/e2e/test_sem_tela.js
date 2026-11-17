@@ -109,8 +109,9 @@ const CARREIRA_COM_TELA = CARREIRA_JS
   {
     const mesmoObjeto = pg.rodar("CAREER === window.BRDATA_MOTOR.estado.carreiraAtual() && !!CAREER", "estado");
     const salvo = (await api("/api/career")).career;
-    check("8) O save mora no módulo de estado (CAREER é o mesmo objeto) e a carreira grava com schemaVersion 1:",
-      mesmoObjeto && salvo.schemaVersion === 1, JSON.stringify({ mesmoObjeto, schemaVersion: salvo.schemaVersion }));
+    const V = pg.rodar("window.BRDATA_MOTOR.estado.SCHEMA_VERSION", "estado"); // 2 desde GOLS-REAIS (17/11)
+    check("8) O save mora no módulo de estado (CAREER é o mesmo objeto) e a carreira grava com a versão atual do save:",
+      mesmoObjeto && V >= 2 && salvo.schemaVersion === V, JSON.stringify({ mesmoObjeto, schemaVersion: salvo.schemaVersion }));
     // Save antigo: o mesmo save, sem o campo, gravado direto na API.
     const antigo = { ...salvo }; delete antigo.schemaVersion;
     const put = await fetch(base + "/api/career", { method: "PUT", headers: { "Content-Type": "application/json", cookie: [...pg.sessao.cookies].map(([k, v]) => `${k}=${v}`).join("; ") }, body: JSON.stringify(antigo) });
@@ -119,8 +120,8 @@ const CARREIRA_COM_TELA = CARREIRA_JS
     const naMemoria = pg2.rodar("CAREER && CAREER.schemaVersion", "estado");
     const r = await jogarRodada(pg2.P);
     const depois = (await api("/api/career")).career;
-    check("9) Save antigo (sem schemaVersion) abre migrado para a versão 1 e é gravado assim na próxima jogada, sem perder nada:",
-      put.ok && semCampo && naMemoria === 1 && r.ok && depois.schemaVersion === 1 && depois.version === 1 && depois.currentRound === salvo.currentRound + 1,
+    check("9) Save antigo (sem schemaVersion) abre migrado para a versão atual e é gravado assim na próxima jogada, sem perder nada:",
+      put.ok && semCampo && naMemoria === V && r.ok && depois.schemaVersion === V && depois.version === 1 && depois.currentRound === salvo.currentRound + 1,
       JSON.stringify({ put: put.status, semCampo, naMemoria, rodada: r.ok, passos: r.passos, gravado: depois.schemaVersion }));
   }
 

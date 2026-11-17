@@ -85,7 +85,8 @@ export function completarNivelGols(save, modos) {
     const k = niveisDaCarga[c] > 0 ? niveisDaCarga[c] : NIVEL_GOLS_CATALOGO[c];
     if (k > 0) atual[c] = k;
   });
-  save.nivelGols = atual;
+  // Sem campeonato real (Modo Exemplo), o save não ganha o campo.
+  if (Object.keys(atual).length || save.nivelGols) save.nivelGols = atual;
   return save;
 }
 // Força de jogo de um clube (só para os gols): a gravada, suavizada e no

@@ -103,11 +103,12 @@ function chanceDeSequencia(p, seq, jogos) {
     assert.deepStrictEqual(E.migrarSave(save), []);
     delete E.niveisDeGolsDaCarga().brasileirao;
   });
-  await check("Modo Exemplo: a migração deixa o nível vazio e a força de jogo é a de sempre", () => {
+  await check("Modo Exemplo: a migração não cria o nível e a força de jogo é a de sempre", () => {
     E.definirModoRealPorCompeticao({ brasileirao: false });
     const save = { schemaVersion: 1 };
     E.migrarSave(save);
-    assert.deepStrictEqual(save.nivelGols, {});
+    assert.strictEqual(save.nivelGols, undefined); // sem campo: o save de Modo Exemplo fica como era
+    assert.strictEqual(save.schemaVersion, 2);
     E.definirCarreira(save);
     assert.deepStrictEqual(E.forcaDeJogo({ atk: 1.4, def: 0.8, competitionId: "brasileirao" }), { atk: 1.4, def: 0.8 });
   });

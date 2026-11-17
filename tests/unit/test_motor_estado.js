@@ -37,17 +37,17 @@ function api({ status = 200, corpo = {}, rede = false } = {}) {
     assert.strictEqual(E.carreiraAtual(), null);
   });
 
-  await check("Versão do save: sem o campo (ou inválido) é 0; a atual é 1", () => {
-    assert.strictEqual(E.SCHEMA_VERSION, 1);
+  await check("Versão do save: sem o campo (ou inválido) é 0; a atual é 2 (GOLS-REAIS, 17/11)", () => {
+    assert.strictEqual(E.SCHEMA_VERSION, 2);
     assert.deepStrictEqual([{}, { schemaVersion: "x" }, { schemaVersion: -1 }, { schemaVersion: 1.5 }, null].map(E.versaoDoSave), [0, 0, 0, 0, 0]);
     assert.strictEqual(E.versaoDoSave({ schemaVersion: 1 }), 1);
   });
 
-  await check("Migrações numeradas: save antigo (v0) sobe para a 1 uma vez; save na versão atual não muda; save de versão futura não é tocado", () => {
+  await check("Migrações numeradas: save antigo (v0) sobe até a atual uma vez (1 e 2; sem campeonato real a 2 não cria campo); save na versão atual não muda; save de versão futura não é tocado", () => {
     const antigo = { clubId: "fla", squad: [{ id: "a" }] };
     const copia = JSON.parse(JSON.stringify(antigo));
-    assert.deepStrictEqual(E.migrarSave(antigo), [1]);
-    assert.deepStrictEqual(antigo, { ...copia, schemaVersion: 1 });
+    assert.deepStrictEqual(E.migrarSave(antigo), [1, 2]);
+    assert.deepStrictEqual(antigo, { ...copia, schemaVersion: 2 });
     assert.deepStrictEqual(E.migrarSave(antigo), []); // de novo: nada a fazer
     const futuro = { clubId: "fla", schemaVersion: 7 };
     assert.deepStrictEqual(E.migrarSave(futuro), []);
@@ -55,17 +55,18 @@ function api({ status = 200, corpo = {}, rede = false } = {}) {
     assert.deepStrictEqual(E.migrarSave(null), []);
   });
 
-  await check("Migrações rodam em ordem, cada uma uma vez (com uma migração 2 de teste)", () => {
+  await check("Migrações rodam em ordem, cada uma uma vez (com as migrações 1 e 2 de teste e uma 3 que não roda)", () => {
     const ordem = [];
-    const m1 = E.MIGRACOES[1];
+    const m1 = E.MIGRACOES[1], m2 = E.MIGRACOES[2];
     E.MIGRACOES[1] = (s) => { ordem.push(1); s.a = 1; };
     E.MIGRACOES[2] = (s) => { ordem.push(2); s.b = s.a + 1; };
-    // SCHEMA_VERSION é 1: a 2 não roda.
+    E.MIGRACOES[3] = (s) => { ordem.push(3); s.c = 1; };
+    // SCHEMA_VERSION é 2: a 3 (de teste) não roda.
     const s = {};
     E.migrarSave(s);
-    assert.deepStrictEqual(ordem, [1]);
-    assert.deepStrictEqual(s, { a: 1, schemaVersion: 1 });
-    E.MIGRACOES[1] = m1; delete E.MIGRACOES[2];
+    assert.deepStrictEqual(ordem, [1, 2]);
+    assert.deepStrictEqual(s, { a: 1, b: 2, schemaVersion: 2 });
+    E.MIGRACOES[1] = m1; E.MIGRACOES[2] = m2; delete E.MIGRACOES[3];
   });
 
   await check("Carga: devolve o save da conta; sem save ou com erro, null (cai na escolha de competição, como sempre)", async () => {
