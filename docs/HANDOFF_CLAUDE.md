@@ -699,7 +699,11 @@ Plano: docs/paridade-cpu/PLANO_DESENVOLVIMENTO.md. Em resumo:
   outras divisões só com placar, troca de clube recomeçando o mundo e
   limite de 768 KB do save;
 - etapas E0 a E4 em 10–12 PRs, 27–43 dias úteis (a revisar depois do E0);
-- decisões de produto pedidas: D1 a D6.
+- decisões de produto pedidas: D1 a D6;
+- critério de zebra (pedido do Murilo, 17/11): o favorito continua
+  favorito pela força do XI, mas a zebra continua possível, pela sorte e
+  pela postura (o mais fraco pode jogar fechado). A taxa de zebra é
+  medida por faixa de diferença de força no E0 e conferida em cada etapa.
 Próximo passo: aprovação do plano e início do E0 (diagnóstico, inventário
 e baseline).
 

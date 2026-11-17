@@ -68,10 +68,11 @@ Cada PR traz os IDs dos requisitos, o baseline e as evidências, os cenários ma
 - O inventário (`05_Inventario_de_acoes.md`) completo, com a rota ou tela, o comando de domínio, a validação, o estado afetado e o teste de cada ação da v2. Os achados A1–A13 são confirmados com teste ou corrigidos.
 - **Simulação de baseline sem navegador** (`tests/e2e/sim_paridade_baseline.js`, perfil dedicado sob demanda): reaproveita `_sem_tela` e o servidor `frozen`, com seeds fixas. Mede, para dados reais e para o Modo Exemplo:
   - gols, 0x0 e dispersão por divisão, competição e porte;
+  - **taxa de zebra:** vitórias e empates do time mais fraco, por faixa de diferença de força entre os lados (por exemplo < 5%, 5–15%, 15–30%, > 30%), em CPU × CPU e em CPU × você;
   - p50 e p95 do avanço de rodada, no Node;
   - o tamanho do save da temporada 1 à 5;
   - o tempo da suíte padrão (`_last_parallel_run.json`).
-- Ficam definidos as metas absolutas, a meta de bytes e o tamanho da amostra (2.000 jogos por divisão e 5 seeds × 5 temporadas, ajustáveis pelo custo medido).
+- Ficam definidos as metas absolutas, a **faixa aceitável de zebras por diferença de força** (o favorito precisa vencer mais conforme a diferença cresce, sem chegar a 100%; referência: o baseline e a proporção de zebras em campeonatos reais, a validar com o Murilo), a meta de bytes e o tamanho da amostra (2.000 jogos por divisão e 5 seeds × 5 temporadas, ajustáveis pelo custo medido).
 - **Fora do E0:** corrigir bugs (A4, A5). Eles ficam registrados e entram no E1a.
 
 ### E1a · Escalação e força (4–6 dias) — 2 PRs
@@ -82,6 +83,7 @@ Cada PR traz os IDs dos requisitos, o baseline e as evidências, os cenários ma
   - recuperação de condição e retorno de lesão e suspensão para todos os elencos ativos (A4, A5).
 - **PR2, força comum (CPU-02, V01):** `computeStrength(lado)` para os dois controladores, ao vivo, no direto e em CPU × CPU da divisão atual, preservando a calibração da GOLS-REAIS. Revisão na Liga com 3 confrontos no mesmo cenário: elenco completo, sem o goleiro titular e sem o atacante titular.
 - **Baseline:** desvio acima de 0,15 gol ou de 2 p.p. de 0x0 vai a investigação antes de recalibrar.
+- **Critério de zebra:** com a força vinda dos 11 em campo, a taxa de zebra de cada faixa continua dentro da faixa definida no E0. Desfalques do favorito podem aumentá-la naquele jogo, mas não a média.
 
 ### E1b · Gestão em campo (5–8 dias) — 2 PRs
 
@@ -93,6 +95,10 @@ Cada PR traz os IDs dos requisitos, o baseline e as evidências, os cenários ma
   - os lances do adversário aparecem na v2 (entradas, saídas e mudanças táticas que o fluxo atual já sabe mostrar);
   - o mesmo jogo resolvido ao vivo e direto, com as mesmas decisões, aplica força, eventos, minutos, disciplina e desgaste do mesmo jeito.
 - **Demonstração no celular:** uma troca tática por placar e uma reação a lesão ou expulsão.
+- **Critério de zebra e de retranca:**
+  - o time mais fraco que se fecha contra o favorito ganha chance de empatar ou vencer, pagando com menos gols a favor;
+  - a taxa de zebra continua dentro da faixa do E0;
+  - nenhuma postura fixa (sempre fechado ou sempre aberto) rende mais pontos em todas as situações, nem para a CPU nem para você (anti-exploit): fechar compensa quando a diferença é grande e o jogo está empatado ou ganho, e cobra o preço quando é preciso buscar o resultado.
 
 ### E2 · Divisões e Copa (4–7 dias) — 1–2 PRs
 
@@ -118,6 +124,7 @@ Cada PR traz os IDs dos requisitos, o baseline e as evidências, os cenários ma
 
 - **Suíte padrão:** até 5% a mais de tempo. Os casos novos são curtos, no motor (`tests/unit/`): elegibilidade, força pareada, decisão por contexto, transação única e retomada. Testes de navegador só para jornadas da v2 (lances da CPU na partida, mercado).
 - **Perfil dedicado sob demanda** (novo perfil no `run_parallel`/`suites.json`): simulação estatística e 5 temporadas, sem navegador, com os mesmos cenários reaproveitados. Roda antes de cada etapa que mexe em balanceamento, economia ou save.
+- **Zebras:** o perfil dedicado mede a taxa de zebra por faixa de diferença de força a cada etapa que mexe em força ou em decisão da CPU (E1a, E1b, E2, E4), com o mesmo cenário e as mesmas seeds do E0.
 - **Desempenho:** p95 do avanço de rodada com até 5% de regressão sobre o baseline e dentro da meta absoluta do E0. Sem travamento novo no Safari do iPhone (V09); esse teste precisa de aparelho ou de homologação (ver D5).
 - **Equivalência com as cópias congeladas do motor:** cada regra nova tem a chave de desligar, como `EXPULSAO.ativa` e `A_VENDA.ativa`, para os testes de equivalência continuarem comparando o resto.
 
