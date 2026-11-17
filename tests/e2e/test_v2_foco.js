@@ -97,6 +97,9 @@ const { retomarParadasAutomaticas, newCareer, serverCareer, iniciarPeloPreJogo }
   await v2.click(".home-main .cta");
   await iniciarPeloPreJogo(v2);
   await v2.waitForSelector(".mt-score", { timeout: 40000 });
+  // Este item é do foco na partida: sem paradas automáticas (PAUSA-EVENTO),
+  // que abririam a Pausa ("Jogo parado") e levariam o foco no meio.
+  await v2.evaluate(async () => { const lm = (await import("/js/motor/estado.js")).partidaAtual(); if (lm) lm.pararEmEvento = false; });
   await v2.waitForTimeout(300);
   const fm = await focused();
   await v2.focus(".mt-speed-btn:not(.is-on)");

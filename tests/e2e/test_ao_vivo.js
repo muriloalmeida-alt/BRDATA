@@ -37,7 +37,8 @@ const { newCareer, globaisDoMotor } = require("./_v2_carreira");
     out.um = { i, aoVivo: !!LIVE_MATCH };
     P.pausar();
     resolveLiveChunk();
-    const sai = CAREER.lineup.starters.find(Boolean);
+    // Um titular em campo (EXPULSAO: um expulso de verdade no 1º bloco não pode sair).
+    const sai = CAREER.lineup.starters.find((id) => id && !(LIVE_MATCH.expulsos || []).includes(id));
     const entra = CAREER.lineup.bench.find((id) => CAREER.squad.find((p) => p.id === id && p.status === "ok"));
     const s = P.substituir(sai, entra);
     out.dois = { s, saiTitular: CAREER.lineup.starters.includes(sai), usadas: LIVE_MATCH.subsUsed };
