@@ -29,6 +29,10 @@ const { newCareer, base } = require("./_v2_carreira");
   v2.on("pageerror", (err) => console.log("PAGE ERROR:", err.message));
   await v2.goto(base + "/partida?iniciar=1", { waitUntil: "domcontentloaded" });
   await v2.waitForSelector(".mt-score", { timeout: 40000 });
+  // Sem paradas automáticas (PAUSA-EVENTO): uma lesão ou expulsão sorteada
+  // antes do minuto 15 abriria a Pausa e o relógio sumiria da tela. A parada
+  // deste teste é feita à mão (item 1); expulsões de verdade ainda contam.
+  await v2.evaluate(async () => { const lm = (await import("/js/motor/estado.js")).partidaAtual(); if (lm) lm.pararEmEvento = false; });
   // Para a partida (pausa manual) e volta ao placar, ainda parada.
   await v2.waitForFunction(() => /^(15|30)/.test(document.querySelector(".mt-min")?.textContent || ""), null, { timeout: 20000 });
   await v2.click(".mt-actions .mt-primary");
