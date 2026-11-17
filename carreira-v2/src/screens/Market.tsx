@@ -13,7 +13,7 @@
 // - /carreira/mercado/oferta: proposta pendente por um jogador seu (CAP05-T05, 18).
 import { useCallback, useEffect, useState } from "react";
 import { MarketGateway, newOpId, type LoanPrep, type OfferPreview, type Preview } from "../adapters/market.ts";
-import { DIVISION, NO_MARKET_FILTERS, ROLE, ROLES, YEARS, buildHistory, buildNegotiation, buildSales, buildTarget, findTarget, initialOffer, installmentsLabel, loanWage, marketFiltersActive, marketList, wageHint, yearsLabel,
+import { DIVISION, NO_MARKET_FILTERS, ROLE, ROLES, YEARS, buildHistory, buildNegotiation, buildSales, buildTarget, findTarget, initialOffer, installmentsLabel, loanWage, marketFiltersActive, marketList, saleOf, wageHint, yearsLabel,
   type HistoryTab, type LoanClause, type LoanDuration, type MarketFilters, type MarketInfo, type Range } from "../domain/market.ts";
 import { POSITION } from "../domain/squadplus.ts";
 import { moneyShort } from "../domain/home.ts";
@@ -110,8 +110,10 @@ function FiltersSheet({ f, info, onApply, onClose }: { f: MarketFilters; info: M
         <div className="pr-field">
           <span className="pr-label" id="mf-loan">Disponibilidade</span>
           <div className="pr-seg" role="radiogroup" aria-labelledby="mf-loan">
-            {([[false, "Todos"], [true, "Disponível para empréstimo"]] as const).map(([v, l]) =>
-              <button key={String(v)} type="button" role="radio" aria-checked={d.loan === v} className={`pr-seg-btn${d.loan === v ? " is-on" : ""}`} onClick={() => setD({ ...d, loan: v })}>{l}</button>)}
+            {([["todos", "Todos"], ["emprestimo", "Disponível para empréstimo"], ["venda", "Disponível para venda"]] as const).map(([v, l]) => {
+              const on = v === "emprestimo" ? !!d.loan : v === "venda" ? !!d.sale : !d.loan && !d.sale;
+              return <button key={v} type="button" role="radio" aria-checked={on} className={`pr-seg-btn${on ? " is-on" : ""}`} onClick={() => setD({ ...d, loan: v === "emprestimo", sale: v === "venda" })}>{l}</button>;
+            })}
           </div>
         </div>
         {range("ovr", "Faixa de overall")}
@@ -188,7 +190,7 @@ export function Market({ career }: { career: Career }) {
                   <Link className="row sp-player" to={ALVO(r.clubId, r.player.id)} onClick={() => { KEPT_SCROLL = window.scrollY; }}>
                     <Jersey value="" size={44} />
                     <span className="row-body"><span className="row-title">{shortName(r.player.name)}</span>
-                      <span className="row-sub">{POSITION[r.player.group]} · overall {r.player.overall}{r.player.age != null ? ` · ${r.player.age} anos` : ""}{r.loanAvailable ? " · disponível para empréstimo" : ""}{r.pendingOfferId ? (r.pendingRefused ? " · proposta recusada" : " · proposta enviada") : ""}</span></span>
+                      <span className="row-sub">{POSITION[r.player.group]} · overall {r.player.overall}{r.player.age != null ? ` · ${r.player.age} anos` : ""}{r.sale ? ` · à venda (${r.sale.motivo.toLowerCase()})` : ""}{r.loanAvailable ? " · disponível para empréstimo" : ""}{r.pendingOfferId ? (r.pendingRefused ? " · proposta recusada" : " · proposta enviada") : ""}</span></span>
                     <IconChevron className="row-chevron" />
                   </Link>
                   <dl className="wk-list"><div className="wk-item"><dt>{r.clubName}{r.division && i.multi ? ` · ${r.division}` : ""} · valor de mercado</dt><dd>{r.player.value != null ? moneyShort(r.player.value) : "—"}</dd></div></dl>
@@ -281,7 +283,8 @@ export function Propose({ career, clubId, id, onChanged }: { career: Career; clu
   const [pv, setPv] = useState<OfferPreview | null>(null);
   const [opId] = useState(newOpId);
   useEffect(() => { if (!p && !sent) navigate(M, { replace: true }); }, [p, sent]);
-  useEffect(() => { if (p && value == null && info && info !== "erro") setValue(String(initialOffer(p, info.desconto))); }, [p, info, value]);
+  const sale = saleOf(info, clubId, id); // VENDA-DISPONIVEL
+  useEffect(() => { if (p && value == null && info && info !== "erro") setValue(String(initialOffer(p, info.desconto, saleOf(info, clubId, id)))); }, [p, info, value]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { if (p && wage == null) setWage(String(p.wage || 0)); }, [p, wage]);
   useEffect(() => {
     if (!p || sent || !value || !wage) return;
@@ -330,6 +333,7 @@ export function Propose({ career, clubId, id, onChanged }: { career: Career; clu
         <section className="wk-sec pr-pad">
           <MoneyInput id="pp-v" label="Sua proposta (R$)" value={value || ""} onChange={setValue} />
           {(info as MarketInfo).desconto > 0 && <p className="mk-hint">Desconto de contratação de {(info as MarketInfo).desconto}% aplicado ao valor sugerido.</p>}
+          {sale && <p className="mk-hint">À venda ({sale.motivo.toLowerCase()}): o clube aceita a partir de {moneyShort(sale.valorMinimo)}; prometendo titular ou rotação, ele aceita o salário atual.</p>}
           <Installments value={n} options={(info as MarketInfo).parcelas} onChange={setN} />
           <p className="wk-note">Propor menos que o valor de mercado é possível, mas o clube pode recusar, pedir mais ou demorar para responder.</p>
         </section>

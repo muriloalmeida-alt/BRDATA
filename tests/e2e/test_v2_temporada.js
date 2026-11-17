@@ -43,7 +43,9 @@ const base = "http://localhost:8787";
   };
   const waitH1 = (t) => v2.waitForFunction((t) => (document.querySelector("h1") || {}).textContent === t, t, { timeout: 40000 });
   // Uma carreira nova (ao aceitar outro clube) abre o assistente de início: pula.
-  const home = async () => { await v2.goto(base + "/", { waitUntil: "domcontentloaded" }); await skipAutoOpen(v2); await v2.waitForSelector(".home", { timeout: 20000 }); };
+  // 40 s: logo depois de aceitar outro clube, a 1ª abertura monta a carreira
+  // nova (no CI, sob carga, passou de 20 s).
+  const home = async () => { await v2.goto(base + "/", { waitUntil: "domcontentloaded" }); await skipAutoOpen(v2); await v2.waitForSelector(".home", { timeout: 40000 }); };
   await v2.goto(base + "/", { waitUntil: "domcontentloaded" });
   await v2.waitForSelector(".home", { timeout: 20000 });
   // Edita o save pelo servidor (a v2 relê ao navegar com recarga).

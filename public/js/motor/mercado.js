@@ -35,6 +35,26 @@ export function windowByRound(round) {
   const next = TRANSFER_WINDOWS.find(([open]) => open > round);
   return { open: false, opensAtRound: next ? next[0] : null };
 }
+// VENDA-DISPONIVEL (17/11, decisão do Murilo contra o giro "compra barato e
+// revende"): quem chega ao seu clube só pode ser anunciado a partir da
+// próxima janela de transferências. compra: { temporada, idx (semana do
+// calendário) ou rodada }. agora: { temporada, idx ou rodada, weeks,
+// fases }. Liberado se já houve um trecho fora de janela depois da compra
+// e, depois dele, uma janela; temporada nova sempre libera.
+export function revendaLiberada(compra, agora) {
+  if (!compra || compra.temporada == null) return true;
+  if ((agora.temporada || 0) > compra.temporada) return true;
+  const calendario = compra.idx != null && agora.idx != null && Array.isArray(agora.weeks);
+  const ini = calendario ? compra.idx : compra.rodada, fim = calendario ? agora.idx : agora.rodada;
+  if (ini == null || fim == null) return true;
+  let saiu = false;
+  for (let k = ini + 1; k <= fim; k++) {
+    const aberta = calendario ? windowByCalendar(agora.weeks, k, agora.fases).open : windowByRound(k).open;
+    if (!aberta) saiu = true;
+    else if (saiu) return true;
+  }
+  return false;
+}
 // Com calendário: a janela é a fase do ano (férias, pré-temporada, pausa).
 // Devolve a última semana da janela aberta, ou a 1ª semana da próxima.
 export function windowByCalendar(weeks, idx, windowPhases) {
@@ -352,6 +372,41 @@ export function precisaDeMinutos(player, roster, P = MER_PARAMETROS) {
 // Salário mínimo (%) que o clube aceita para quem está disponível.
 export const EMPRESTIMO_DISPONIVEL_PCT_MIN = 50;
 
+// VENDA-DISPONIVEL (17/11): a CPU põe à venda, pelos sinais do jogador
+// (decisão do Murilo: "a CPU deve definir os critérios"), quem não é
+// titular, tem a posição coberta sem ele, não está emprestado e tem pelo
+// menos um motivo. Calculado na hora (nada no save). ctx: { rodadas (jogos
+// da liga já disputados), contaJogos (a divisão do clube conta os jogos de
+// cada jogador), temporada, salarioJusto }. Devolve os códigos dos motivos
+// (vazio = não está à venda).
+// `ativa = false` desliga a regra inteira (motivos, efeito e trava): só os
+// testes de equivalência com as cópias congeladas do motor.
+export const A_VENDA = { ativa: true, rodadasMin: 5, poucosJogos: 0.30, margemInsatisfeito: 3, idadeExcedente: 24, salarioAlto: 1.4, pctMinimo: 0.90 };
+export const MOTIVO_A_VENDA = {
+  insatisfeito: "Insatisfeito", "poucos-jogos": "Poucos jogos", "fim-de-contrato": "Fim de contrato",
+  excedente: "Excedente", "salario-alto": "Salário alto",
+};
+export function motivosAVenda(player, roster, ctx = {}, P = MER_PARAMETROS) {
+  if (!A_VENDA.ativa || !player || player.onLoanFromClubId != null) return [];
+  const papel = papelNoElenco(player, roster, P);
+  if (papel === "titular") return [];
+  const grupo = (roster || []).filter((p) => p.group === player.group && String(p.id) !== String(player.id));
+  if (grupo.length < (P.coberturaMinima[player.group] || 1)) return [];
+  const m = [];
+  const r = ctx.rodadas || 0;
+  const poucos = !!ctx.contaJogos && r >= A_VENDA.rodadasMin && (player.appsSeason || 0) / r < A_VENDA.poucosJogos;
+  if (poucos) {
+    const titulares = grupo.slice().sort((a, b) => (b.overall || 0) - (a.overall || 0)).slice(0, P.vagasTitular[player.group] || 1);
+    const pior = Math.min(...titulares.map((p) => p.overall || 0));
+    if ((player.overall || 0) >= pior - A_VENDA.margemInsatisfeito) m.push("insatisfeito");
+    m.push("poucos-jogos");
+  }
+  if (ctx.temporada != null && player.contractUntil != null && player.contractUntil <= ctx.temporada) m.push("fim-de-contrato");
+  if (papel === "reserva" && (player.age || 0) >= A_VENDA.idadeExcedente) m.push("excedente");
+  if (ctx.salarioJusto > 0 && (player.wage || 0) > ctx.salarioJusto * A_VENDA.salarioAlto) m.push("salario-alto");
+  return m;
+}
+
 // Jeito do atleta, fixo por id, em [-1, 1].
 export function jeitoDoAtleta(id) {
   let h = 2166136261;
@@ -366,6 +421,9 @@ export function reservaParaProposta(player, seller, ctx = {}, P = MER_PARAMETROS
   const base = ctx.baseValue != null ? ctx.baseValue : player.value;
   const roster = seller.roster || seller.squad || [];
   const papel = papelNoElenco(player, roster, P);
+  // VENDA-DISPONIVEL: à venda, o clube aceita a partir de 90% do valor, sem
+  // prêmio de importância nem de janela.
+  if (ctx.aVenda) return { reserva: Math.round(base * A_VENDA.pctMinimo / 1000) * 1000, papel, faltam: 0, semReposicao: false, aVenda: true };
   const grupo = roster.filter((p) => p.group === player.group && String(p.id) !== String(player.id));
   const faltam = Math.max(0, (P.coberturaMinima[player.group] || 1) - grupo.length);
   const semReposicao = papel !== "reserva" && !grupo.some((p) => (p.overall || 0) >= (player.overall || 0) - P.reposicaoMargem);
@@ -392,6 +450,11 @@ export function avaliacaoAtleta(player, oferta, ctx = {}, P = MER_PARAMETROS) {
   const A = P.atleta;
   const atual = Math.max(1, player.wage || 1);
   const salario = Math.max(1, oferta.salario || atual);
+  // VENDA-DISPONIVEL: à venda, ele aceita o salário atual se for titular ou
+  // rotação no seu time.
+  if (ctx.aVenda && (oferta.papel === "titular" || oferta.papel === "rotacao") && salario >= atual) {
+    return { decisao: "aceita", motivo: null, utilidade: 0, termos: {}, aVenda: true };
+  }
   const termos = {
     salario: A.salario * Math.log(salario / atual),
     papel: A.papel * ((RANK_PAPEL[oferta.papel] ?? 1) - (RANK_PAPEL[ctx.papelAtual] ?? 1)),

@@ -24,7 +24,7 @@ import { stadiumUpgradeBonusFor } from "./aovivo.js";
 import { BOARD_REQUEST_COOLDOWN, OFFER_WAIT_ROUNDS, SCOUT_GROUP_LABEL, SCOUT_MARKET, STADIUM_UPGRADES, acceptCounterOffer, acceptListingOffer, acceptLoanOfferIn, acceptOffer, applyTalkEffect, boardRequest, canTalkTo, cancelListing, computeLeaderboardScore, createListing, declineOffer, finalizeLoanIn, finalizeLoanOut, findInterestedBuyer, fireTechnicalStaff, hireScout, hireTechnicalStaff, increaseOffer, isContractExpiring, isLoanOutRefused, listingFor, markLineupDirty, recruitProspectToBase, rejectListingOffer, rejectLoanOfferIn, releaseScout, renewalVerdict, scoutAllowedRegions, scoutingAvailableRegions, setLoanListed, signSponsorProposal, startScoutMission, startStadiumUpgrade, submitOfferOut, withdrawOffer } from "./clube.js";
 import { FORMATIONS, SECTOR_IDS, SECTOR_INSTRUCTIONS, TACTIC_AXES, computeHumanStrength } from "./fechamento.js";
 import { firePressConference } from "./posjogo.js";
-import { MAX_PRINCIPAL, REGION_LABEL, SCOUT_MISSION_DURATIONS, SCOUT_MISSION_TYPES, SUBPOS_LABEL, ambiente, applyWeeklyTraining, avisar, calendarTurnKey, leagueSquadFor, marketTeamsPool, pendingOfferOutFor, pushLedger, subPositionOf, transferWindowStatus } from "./semana.js";
+import { MAX_PRINCIPAL, revendaLiberadaDe, REGION_LABEL, SCOUT_MISSION_DURATIONS, SCOUT_MISSION_TYPES, SUBPOS_LABEL, ambiente, applyWeeklyTraining, avisar, calendarTurnKey, leagueSquadFor, marketTeamsPool, pendingOfferOutFor, pushLedger, subPositionOf, transferWindowStatus } from "./semana.js";
 import { abbreviateName, fmtBRL } from "./texto.js";
 import { autoLineup, defaultSectorTactics, evaluateAlwaysCheckableAchievements, generateSponsorProposals, initialStadium } from "./virada.js";
 import * as financas from "./financas.js";
@@ -430,8 +430,26 @@ export const comandosGestao = {
       // EMPRESTIMO-DISPONIVEL: quem cada clube da CPU põe para empréstimo.
       const disponiveisEmprestimo = [];
       Object.values(CAREER.leagueSquads || {}).forEach((sq) => sq.forEach((p) => { if (mercado.precisaDeMinutos(p, sq)) disponiveisEmprestimo.push(String(p.id)); }));
+      // VENDA-DISPONIVEL: quem cada clube da CPU põe à venda, com os motivos
+      // e a chance de vir (papel que ele teria no seu time; divisão do seu
+      // clube igual ou acima da dele). A v2 ordena por chance e overall.
+      const RANK = { titular: 2, rotacao: 1, reserva: 0 };
+      const meuElenco = CAREER.squad.filter((p) => p.origin === "principal" || p.origin === "loan");
+      const minhaDivisao = negociacao.divisaoDoClube(CAREER.clubId);
+      const aVenda = [];
+      Object.entries(CAREER.leagueSquads || {}).forEach(([cid, sq]) => {
+        if (String(cid) === String(CAREER.clubId)) return;
+        sq.forEach((p) => {
+          const motivos = negociacao.motivosAVendaNoClube(p, cid);
+          if (!motivos.length) return;
+          const papel = mercado.papelNoElenco(p, meuElenco);
+          aVenda.push({ id: String(p.id), clubeId: String(cid), motivos, motivo: motivos.map((m) => mercado.MOTIVO_A_VENDA[m]).join(" · "),
+            papelNoSeuTime: papel, chance: RANK[papel] * 2 + (minhaDivisao <= negociacao.divisaoDoClube(cid) ? 1 : 0),
+            valorMinimo: Math.round((p.value || 0) * mercado.A_VENDA.pctMinimo / 1000) * 1000 });
+        });
+      });
       return {
-        ok: true, janela: { aberta: !!w.open, texto }, multi: CAREER.marketScope === "multi",
+        ok: true, janela: { aberta: !!w.open, texto }, multi: CAREER.marketScope === "multi", aVenda,
         clubes: marketTeamsPool().map((t) => ({ id: String(t.id), nome: t.name, sigla: t.short || null, divisao: t.competitionId || competicaoAtual() })),
         desconto: CAREER.nextSigningDiscountPct || 0, parcelas: [1, 2, 3, 4], esperaRodadas: OFFER_WAIT_ROUNDS,
         recusaEmprestimo, disponiveisEmprestimo,
@@ -544,6 +562,8 @@ export const comandosGestao = {
       if (listingFor(playerId)) return { ok: false, motivo: "ja-anunciado", mensagem: "Esse jogador já está à venda." };
       if (p.origin !== "principal") return { ok: false, motivo: "nao-principal", mensagem: "Só jogadores do elenco principal podem ser anunciados." };
       if (CAREER.squad.filter((x) => x.origin === "principal").length <= 14) return { ok: false, motivo: "minimo", mensagem: "O elenco principal não pode ficar com menos de 14 jogadores." };
+      // VENDA-DISPONIVEL: contratado nesta janela só é anunciado a partir da próxima.
+      if (!revendaLiberadaDe(p)) return { ok: false, motivo: "recem-contratado", mensagem: "Ele chegou nesta janela: só pode ser anunciado a partir da próxima janela de transferências." };
       const l = createListing(p, valor);
       const g = await ambiente.gravar();
       return g.ok ? { ok: true, id: l.id, valor: l.askingValue } : g;

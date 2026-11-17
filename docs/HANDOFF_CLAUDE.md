@@ -683,6 +683,106 @@ Relatório (17/11):
 
 ⸻
 
+VENDA-DISPONIVEL — "Disponível para venda" e filtro no Mercado
+
+Status: APROVADO (Murilo, 17/11, "Sim, faça o push, PR e merge").
+Pedido (Murilo, 17/11): "Assim como fizemos com os 'disponíveis para
+empréstimo' acho interessante criar um filtro com os 'disponíveis para
+venda' onde traria todos os jogadores dos outros clubes que foram colocados
+à venda e que terão maior probabilidade de aceitar uma transferência."
+Hoje: nenhum clube da CPU põe jogador à venda; o vendedor sempre pede o
+valor com o prêmio de importância (MER-04) e o atleta avalia salário,
+papel, divisão, força e reputação.
+Decisões do Murilo (17/11):
+- Critério: "a CPU deve definir os critérios. Ex.: poucos jogos,
+  insatisfação etc." (a CPU decide sozinha, pelos sinais do jogador).
+- Efeito: "Facilita e barateia".
+- Ordem: "Mais chance primeiro".
+Especificação:
+- A CPU põe à venda (calculado na hora, sem guardar no save,
+  `mercado.motivosAVenda`) quem não é titular, tem a posição coberta sem
+  ele, não está emprestado e tem pelo menos um motivo:
+  - Poucos jogos: depois de 5 rodadas, jogou menos de 30% delas (só na sua
+    divisão, a única em que o jogo conta os jogos de cada jogador);
+  - Insatisfeito: joga pouco sendo bom o bastante para jogar (overall até
+    3 abaixo do pior titular da posição);
+  - Fim de contrato: último ano de contrato;
+  - Excedente: reserva, 24 anos ou mais (mais novos ficam no empréstimo);
+  - Salário alto: ganha mais de 1,4× o salário justo para o overall e a
+    idade.
+- Facilita e barateia: o clube aceita a partir de 90% do valor de mercado,
+  sem prêmio de importância nem de janela; o atleta aceita o salário atual
+  se o papel prometido no seu time for titular ou rotação (sem o "pede
+  mais").
+- Mercado da v2: "Disponibilidade" ganha "Disponível para venda"; a lista
+  vem com mais chance primeiro (papel que ele teria no seu time: titular,
+  depois rotação; divisão do seu clube igual ou acima da dele; depois o
+  maior overall); a linha mostra "à venda" e o motivo; a proposta já abre
+  com 90% do valor e o aviso.
+- Trava de revenda (decisão do Murilo, 17/11, "Trava até a próxima
+  janela", contra o giro "compra a 90% e revende pelo valor"): toda
+  contratação marca quando o jogador chegou (`compradoEm`); ele só pode ser
+  anunciado a partir da próxima janela de transferências (temporada nova
+  sempre libera; jogador sem a marca, como os de saves antigos, livre).
+- Etapa do loop: Market / Management.
+Critérios de aceite:
+1. O filtro mostra só jogadores da CPU à venda, cada um com o motivo;
+   titular e quem deixaria a posição descoberta nunca aparecem.
+2. Proposta de 90% do valor por um jogador à venda: o clube aceita (sem
+   contraproposta); por um que não está à venda, a regra de sempre.
+3. Prometendo titular ou rotação com o salário atual, o jogador à venda
+   aceita; prometendo reserva, a regra de sempre.
+4. Ordem: quem seria titular no seu time vem antes de quem seria rotação,
+   e este antes de reserva.
+5. Save: nada novo.
+Fora de escopo: a CPU vender entre si por esse critério; moral própria
+para os jogadores da CPU; marcar os seus jogadores "à venda" (já existe o
+"Colocar à venda").
+Relatório (17/11):
+- Motor:
+  - `mercado.js`: `A_VENDA`, `MOTIVO_A_VENDA`, `motivosAVenda` e
+    `revendaLiberada`; `reservaParaProposta` (90%, sem prêmio) e
+    `avaliacaoAtleta` (aceita o salário atual com titular ou rotação)
+    com `ctx.aVenda`.
+  - `negociacao.js`: `motivosAVendaNoClube`; `contextoDoAtleta` leva
+    `aVenda`; o vendedor aceita direto a partir da reserva.
+  - `semana.js`: `compradoEm` na compra e `revendaLiberadaDe`.
+  - `ponte.js`: `mercado()` devolve `aVenda` (motivos, papel no seu
+    time, chance e valor aceito); `anunciar` recusa o recém-contratado
+    (motivo `recem-contratado`).
+- v2 (`domain/market.ts`, `Market.tsx`):
+  - "Disponibilidade" com "Disponível para venda";
+  - ordem por chance e depois por overall;
+  - "à venda (motivo)" na linha;
+  - a proposta abre com 90% do valor (ou menos, com o desconto de
+    contratação) e o aviso.
+- Testes:
+  - `tests/unit/test_motor_venda_disponivel.js` (8/8): exclusões
+    (titular, posição descoberta, emprestado); excedente e idade; poucos
+    jogos e insatisfeito (limites de rodada, contagem e 30%); fim de
+    contrato; salário alto; vendedor a 90%; atleta; trava de revenda
+    (rodadas, calendário, temporada nova); regra desligada.
+  - `tests/e2e/test_v2_venda_disponivel.js` (6/6): filtro e motivo, ordem,
+    proposta com 90% e aviso, envio e compra sem contraproposta, 360 px,
+    trava do anúncio.
+  - `domain/market.test.ts`: novo teste (139/139 na v2).
+  - Contraprovas: posição descoberta liberada (falha 1); sem os 90% (5);
+    atleta aceitando como reserva (6); trava liberando na mesma janela
+    (7); excedente sem limite de idade (2, 3, 4). Depois, o motor voltou
+    ao estado esperado.
+  - `test_motor_semana` (equivalência) roda com a regra desligada.
+- Observações:
+  - Na pré-temporada só aparece "excedente" (sem rodadas, sem contagem de
+    jogos); com a temporada andando entram poucos jogos, insatisfeito e
+    os outros motivos. Num teste, 88 jogadores à venda na pré-temporada.
+  - Os jogadores das outras divisões não têm jogos contados: para eles
+    valem excedente, fim de contrato e salário alto.
+  - Um excedente também aparece como "disponível para empréstimo" (a
+    linha mostra as duas marcas).
+
+
+⸻
+
 EXPULSAO — expulso sem reposição e jogo com 1 a menos
 
 Status: APROVADO (Murilo, 17/11, "Aprovado"; PR #134).

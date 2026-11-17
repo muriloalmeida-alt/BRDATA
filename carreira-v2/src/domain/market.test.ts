@@ -1,7 +1,7 @@
 // Testes do mercado (fase 8): node --test --experimental-strip-types
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { NO_MARKET_FILTERS, buildHistory, buildNegotiation, buildSales, buildTarget, classifyLog, initialOffer, loanWage, marketFiltersActive, marketList, offerStatus, type MarketInfo } from "./market.ts";
+import { NO_MARKET_FILTERS, buildHistory, buildNegotiation, buildSales, buildTarget, classifyLog, initialOffer, loanWage, marketFiltersActive, marketList, offerStatus, saleOf, type MarketInfo } from "./market.ts";
 import type { Career, OfferOut, Player } from "./types.ts";
 
 const P = (id: string, name: string, group: Player["group"], overall: number, over: Partial<Player> = {}): Player => ({ id, name, group, overall, origin: "principal", age: 25, value: 5_000_000, wage: 100_000, ...over });
@@ -131,4 +131,23 @@ test("Filtro 'Disponível para empréstimo': só os da lista do motor, jovens at
   assert.equal(all.find((r) => r.player.id === "p1")!.loanAvailable, true);
   assert.equal(marketList(c, info(), NO_MARKET_FILTERS).some((r) => r.loanAvailable), false);
   assert.equal(marketFiltersActive({ ...NO_MARKET_FILTERS, loan: true }), 1);
+});
+
+// VENDA-DISPONIVEL (17/11)
+test("Filtro 'Disponível para venda': só os da lista do motor, mais chance primeiro; motivo na linha; proposta abre com o valor aceito", () => {
+  const c = career();
+  const s = (id: string, clubeId: string, chance: number, valorMinimo: number) => ({ id, clubeId, motivos: ["excedente"], motivo: "Excedente", papelNoSeuTime: "rotacao" as const, chance, valorMinimo });
+  const i = info({ aVenda: [s("p1", "pal", 3, 18_000_000), s("c1", "cri", 5, 900_000), s("p2", "pal", 3, 5_400_000)] });
+  const rows = marketList(c, i, { ...NO_MARKET_FILTERS, sale: true });
+  // c1 tem mais chance; entre p1 e p2 (mesma chance), o maior overall.
+  assert.deepEqual(rows.map((r) => r.player.id), ["c1", "p1", "p2"]);
+  assert.ok(rows.every((r) => r.sale && r.sale.motivo === "Excedente"));
+  assert.equal(marketList(c, i, NO_MARKET_FILTERS).find((r) => r.player.id === "p1")!.sale!.chance, 3);
+  assert.equal(marketList(c, info(), NO_MARKET_FILTERS).some((r) => r.sale), false);
+  assert.equal(marketFiltersActive({ ...NO_MARKET_FILTERS, sale: true }), 1);
+  const p1 = c.leagueSquads!.pal[0];
+  assert.equal(initialOffer(p1, 0, saleOf(i, "pal", "p1")), 18_000_000);
+  assert.equal(initialOffer(p1, 15, saleOf(i, "pal", "p1")), 17_000_000, "o desconto de contratação vale se for menor");
+  assert.equal(initialOffer(p1, 0, saleOf(info(), "pal", "p1")), 20_000_000, "sem a marca: o valor cheio");
+  assert.equal(saleOf("erro", "pal", "p1"), null);
 });

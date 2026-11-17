@@ -20,6 +20,7 @@
 
 import { carreiraAtual, competicaoAtual, timePorId, forcaMediaDoElenco } from "./estado.js";
 import * as mercado from "./mercado.js";
+import { fairWageFor } from "./temporada.js";
 import { fmtBRL, abbreviateName } from "./texto.js";
 import { pushNotification } from "./registro.js";
 import { ambiente, avisar, leagueSquadFor, marketClub, pushTransferLog, finalizeIncomingPurchase, maybeSpawnRivalOffer, calendarOn, CALENDAR_WINDOW_PHASES, ganchos } from "./semana.js";
@@ -35,6 +36,19 @@ export function divisaoDoClube(clubId) {
   return Math.max(0, ORDEM_DIVISOES.indexOf(comp));
 }
 
+// VENDA-DISPONIVEL (17/11): os motivos do clube para vender o jogador
+// (vazio = não está à venda). Os jogos de cada jogador só são contados na
+// divisão do seu clube.
+export function motivosAVendaNoClube(p, clubId) {
+  const CAREER = carreiraAtual();
+  return mercado.motivosAVenda(p, leagueSquadFor(clubId), {
+    rodadas: Math.max(0, (CAREER.currentRound || 1) - 1),
+    contaJogos: divisaoDoClube(clubId) === divisaoDoClube(CAREER.clubId),
+    temporada: CAREER.seasonYear,
+    salarioJusto: fairWageFor(p),
+  });
+}
+
 // O que o atleta pesa sobre a proposta: papel e divisão de hoje, força dos
 // dois clubes e a reputação do técnico.
 export function contextoDoAtleta(p, clubId) {
@@ -46,6 +60,7 @@ export function contextoDoAtleta(p, clubId) {
     forcaAtual: forcaMediaDoElenco(clubId),
     forcaComprador: forcaMediaDoElenco(CAREER.clubId),
     reputacao: CAREER.reputation == null ? 50 : CAREER.reputation,
+    aVenda: motivosAVendaNoClube(p, clubId).length > 0, // VENDA-DISPONIVEL
   };
 }
 
@@ -101,9 +116,11 @@ export function resolverProposta(o, round) {
       pushTransferLog(`${o.rivalOffer.clubName} venceu a disputa por ${o.playerName} (sua proposta era de ${fmtBRL(o.offerValue)}).`, round);
       return false;
     }
-    const r = mercado.reservaParaProposta(p, marketClub(o.clubId), { baseValue: o.marketValue, fimDeJanela: fimDeJanela() });
+    const aVenda = motivosAVendaNoClube(p, o.clubId).length > 0;
+    const r = mercado.reservaParaProposta(p, marketClub(o.clubId), { baseValue: o.marketValue, fimDeJanela: fimDeJanela(), aVenda });
     const usadas = o.counterRounds || 0;
-    let d = mercado.sellerNegotiationDecision(o.offerValue, r.reserva, rng);
+    // VENDA-DISPONIVEL: à venda, a partir da reserva (90%) o clube aceita.
+    let d = aVenda && o.offerValue >= r.reserva ? { action: "accept", value: o.offerValue } : mercado.sellerNegotiationDecision(o.offerValue, r.reserva, rng);
     if (d.action === "counter" && usadas >= mercado.MAX_NEGOTIATION_ROUNDS) {
       d = o.offerValue / r.reserva >= 0.85 ? { action: "accept", value: o.offerValue } : { action: "reject", value: null };
     }
