@@ -86,24 +86,28 @@ const { retomarParadasAutomaticas, newCareer, noMotor, iniciarPeloPreJogo } = re
   const hidden = () => v2.evaluate(() => [...document.querySelectorAll("iframe")].every((f) => f.getBoundingClientRect().width <= 1 && f.getAttribute("aria-hidden") === "true"));
   let allHidden = true;
   await v2.click(".pz-foot .cta");
+  // Clique com prazo curto: a tela pode trocar entre a leitura e o clique
+  // (o botão sai do DOM) e o prazo padrão de 30 s estourava o teste (CI do
+  // #139); o laço lê a tela de novo e segue.
+  const toque = (sel) => v2.click(sel, { timeout: 5000 }).catch(() => {});
   for (let k = 0; k < 80; k++) {
     if (await v2.locator(".home").count()) break;
     const st = await v2.evaluate(() => ({ path: location.pathname, h1: (document.querySelector("h1") || {}).textContent || "", answer: !!document.querySelector(".pj-answer"), answerOn: !!document.querySelector(".pj-answer:not([disabled])"), effect: !!document.querySelector(".pj-effect"), live: !!document.querySelector(".mt-skip"), ready: !!document.querySelector('.pz-foot .cta[data-save="saved"]:not([aria-disabled])') }));
     allHidden = allHidden && await hidden();
-    if (st.live) { await v2.click(".mt-skip"); seen.push("copa"); }
-    else if (st.ready) await v2.click(".pz-foot .cta");
+    if (st.live) { await toque(".mt-skip"); seen.push("copa"); }
+    else if (st.ready) await toque(".pz-foot .cta");
     // Coletiva: as respostas ficam desativadas enquanto a escolhida grava;
     // toca só numa ativa e espera o efeito (antes, sob carga, o laço tocava
     // de novo numa resposta desativada e o clique estourava o prazo, CI #117).
     else if (st.answer) {
-      if (st.effect) await v2.click(".pj .cal-foot .cta");
+      if (st.effect) await toque(".pj .cal-foot .cta");
       else if (st.answerOn) {
         seen.push("coletiva");
-        await v2.click(".pj-answer:not([disabled])");
+        await toque(".pj-answer:not([disabled])");
         await v2.waitForSelector(".pj-effect", { timeout: 30000 }).catch(() => {});
       }
     }
-    else if (st.path === "/pos-jogo" && st.h1) { if (seen[seen.length - 1] !== st.h1) seen.push(st.h1); await v2.click(st.h1 === "Uma oferta chegou." ? ".pj .cal-foot .link-back" : ".pj .cal-foot .cta"); }
+    else if (st.path === "/pos-jogo" && st.h1) { if (seen[seen.length - 1] !== st.h1) seen.push(st.h1); await toque(st.h1 === "Uma oferta chegou." ? ".pj .cal-foot .link-back" : ".pj .cal-foot .cta"); }
     await v2.waitForTimeout(400);
   }
   await v2.waitForSelector(".home", { timeout: 20000 });
