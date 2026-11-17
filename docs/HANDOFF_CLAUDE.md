@@ -657,6 +657,15 @@ Relatório (17/11):
     tirando de campo (7); suspensão pendente não aplicada (7); jogo direto
     sem os gols extras do adversário (6); CPU expulso seguindo no time (3).
     Depois, o motor voltou ao estado esperado.
+- Suíte completa: 165/168 na primeira rodada.
+  - `test_ao_vivo` item 5 conferia a substituição extra da expulsão e
+    passa a conferir a regra nova (sem extra, expulso na vaga, troca
+    recusada).
+  - `test_v2_pausa_evento` item 2 passa a contar o aviso "Seu time joga
+    com N".
+  - `test_v2_prejogo` parou ao abrir o Pré-jogo (espera de 10 s sob
+    carga; a expulsão não toca nele) e passou 3/3 isolado.
+  - Depois do ajuste, esses e `test_v2_expulsao`/`test_v2_pausa`: 4/4.
 - Riscos e observações:
   - Expulsões em série (raras) compõem o efeito: com 3 a menos, o time faz
     ~42% dos gols e sofre ~2,5×.
