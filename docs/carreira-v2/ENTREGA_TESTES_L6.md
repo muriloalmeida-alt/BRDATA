@@ -183,3 +183,23 @@ Depois do ajuste, 3 rodadas seguidas dos dois testes passaram.
 Os ajudantes da tela antiga (`_startup.js`, `_round.js`, `_calendar_skip.js`,
 `_v2_match.js`) não são mais usados por nenhum teste. Saem no L7, com o
 `verificar-tela-antiga.js` e o README.
+
+---
+
+## L7 — os ajudantes da tela antiga saem (17/11/2026)
+
+- Saem `tests/e2e/_startup.js`, `_round.js`, `_calendar_skip.js` e
+  `_v2_match.js`: nenhum teste os usava desde o L6b.
+- O `newCareer` (`_v2_carreira.js`) fica, por decisão do Murilo (17/11,
+  "Manter"). O plano previa tirá-lo, mas desde o L1 ele cria a carreira
+  pelo motor da v2, sem a tela antiga, e 79 testes o usam.
+- `verificar-tela-antiga.js`: a regra contra esses ajudantes fica, para
+  barrar quem tentar recriá-los; o comentário registra a saída.
+- `tests/e2e/README.md`: sai a descrição dos ajudantes antigos (e o aviso
+  do fluxo de confirmação da tela antiga); entra a dos ajudantes de hoje
+  (`_v2_carreira.js`, `_sem_tela.js`).
+- Ficam como estão: as cópias congeladas do motor (`tests/unit/ref_*_antes.js`,
+  que citam `_round` em comentário) e os documentos de entregas anteriores
+  (histórico).
+- Com isso o plano "testes sem a tela antiga" termina: lista congelada em 0
+  e nenhum ajudante que passa pela tela antiga.
