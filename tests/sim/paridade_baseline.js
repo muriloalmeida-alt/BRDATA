@@ -32,6 +32,7 @@ const fs = require("fs");
 const os = require("os");
 const path = require("path");
 const zlib = require("zlib");
+const { subirServidor, derrubarServidor, REPO } = require("./_servidor");
 
 const arg = (k, d) => { const a = process.argv.find((x) => x.startsWith(`--${k}=`)); return a ? a.slice(k.length + 3) : d; };
 const MODOS = arg("modos", "real,exemplo").split(",").filter(Boolean);
@@ -39,8 +40,6 @@ const SEEDS = arg("seeds", "1,2,3,4,5").split(",").map(Number);
 const TEMPORADAS = Number(arg("temporadas", "5"));
 const CLUBE = arg("clube", "0");
 const SAIDA = arg("saida", path.join(REPO, "tests", "sim", "_saida", `paridade_baseline_${Date.now()}.json`));
-
-const { subirServidor, derrubarServidor, REPO } = require("./_servidor");
 
 // ---------- leitura na memória do motor ----------
 // Tabelas e calendário de cada divisão, força de jogo de cada clube.

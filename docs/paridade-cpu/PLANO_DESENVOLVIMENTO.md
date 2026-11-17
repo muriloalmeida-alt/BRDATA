@@ -3,7 +3,7 @@
 **Data:** 17/11/2026
 **Base:** pacote "BRDATA · Clubes geridos pela CPU" (revisão de 17/11/2026), guardado nesta pasta:
 [LEIA-ME](00_LEIA_ME.md) · [briefing](BRIEFING_CLAUDE.md) · [execução](01_Plano_de_execucao.md) · [requisitos CPU-01..10](02_Requisitos_de_produto.md) · [guia técnico](03_Guia_tecnico.md) · [validação V01..V10](04_Plano_de_validacao.md) · [inventário](05_Inventario_de_acoes.md)
-**Status:** APROVADO pelo Murilo em 17/11/2026. Próxima entrega: E0.
+**Status:** APROVADO pelo Murilo em 17/11/2026. O E0 está entregue para revisão ([relatório](RELATORIO_E0.md)). Ele confirmou A1–A12, corrigiu o A13 (o limite que pesa é 1 MB de JSON cru no envio) e achou o A14 (elencos da CPU encolhem a cada virada).
 
 ## 1. Ponto de partida
 
