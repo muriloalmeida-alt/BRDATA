@@ -685,7 +685,8 @@ Relatório (17/11):
 
 PARIDADE-CPU — Paridade esportiva dos clubes geridos pela CPU (nova fase)
 
-Status: PLANO APROVADO (Murilo, 17/11: "Autorizado"). E0 a iniciar.
+Status: PLANO APROVADO (Murilo, 17/11: "Autorizado"). E0 entregue para
+revisão: REVISÃO DO PM NECESSÁRIA (docs/paridade-cpu/RELATORIO_E0.md).
 Pedido (Murilo, 17/11): "Temos uma nova fase do projeto pela frente que visa
 melhorar a jogabilidade dando mais realismo para os times geridos pelo CPU.
 Siga os docs anexos e monte um plano de desenvolvimento."
@@ -704,7 +705,24 @@ Plano: docs/paridade-cpu/PLANO_DESENVOLVIMENTO.md. Em resumo:
   favorito pela força do XI, mas a zebra continua possível, pela sorte e
   pela postura (o mais fraco pode jogar fechado). A taxa de zebra é
   medida por faixa de diferença de força no E0 e conferida em cada etapa.
-Próximo passo: E0 (diagnóstico, inventário e baseline), em PR próprio.
+E0 (17/11, "Pode começar o E0"):
+- o inventário de ações fechado (05_Inventario_de_acoes.md);
+- a baseline sob demanda (tests/sim/paridade_baseline.js): 57 mil jogos
+  em 5 seeds × 5 temporadas, nos dois modos;
+- os achados confirmados no motor (tests/sim/paridade_achados.js): 13/13.
+Achado novo, A14: os elencos da CPU encolhem e enfraquecem a cada
+virada. Saem os contratos vencidos e os repostos nascem com contrato
+contado do ano do catálogo. Em 4 temporadas, 1.134 → 784 jogadores e
+overall médio 71 → 57.
+Limite do save: o que pesa é o 1 MB de JSON cru no envio do save. O pico
+medido é de 833 KB (79,5%); comprimido fica em cerca de 10% dos 768 KB.
+Decisões do Murilo (17/11):
+- D4: itens da loja só para você;
+- D9: a CPU joga amistosos (entra no E4);
+- D10: corrigir o A14 já, num PR antes do E1a;
+- D13: manter o nível atual de zebra (até 4 p.p. da baseline por faixa).
+As outras decisões (D1–D3, D5–D8, D11, D12) ficam para as etapas.
+Próximo passo: PR do A14; depois o E1a.
 
 ⸻
 
