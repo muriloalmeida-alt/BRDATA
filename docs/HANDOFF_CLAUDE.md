@@ -683,6 +683,28 @@ Relatório (17/11):
 
 ⸻
 
+PARIDADE-CPU — Paridade esportiva dos clubes geridos pela CPU (nova fase)
+
+Status: PLANO PARA APROVAÇÃO (Murilo). Nada implementado.
+Pedido (Murilo, 17/11): "Temos uma nova fase do projeto pela frente que visa
+melhorar a jogabilidade dando mais realismo para os times geridos pelo CPU.
+Siga os docs anexos e monte um plano de desenvolvimento."
+Especificação: pacote "BRDATA · Clubes geridos pela CPU" (17/11), guardado
+em docs/paridade-cpu/: requisitos CPU-01..CPU-10, validação V01..V10,
+etapas E0, E1a, E1b, E2, E3, E4.
+Plano: docs/paridade-cpu/PLANO_DESENVOLVIMENTO.md. Em resumo:
+- arquitetura "um executor, dois controladores";
+- 13 achados no código atual (A1–A13), entre eles força da CPU só do
+  clube, XI fixo, condição e lesão da CPU sem recuperação até a virada,
+  outras divisões só com placar, troca de clube recomeçando o mundo e
+  limite de 768 KB do save;
+- etapas E0 a E4 em 10–12 PRs, 27–43 dias úteis (a revisar depois do E0);
+- decisões de produto pedidas: D1 a D6.
+Próximo passo: aprovação do plano e início do E0 (diagnóstico, inventário
+e baseline).
+
+⸻
+
 VENDA-DISPONIVEL — "Disponível para venda" e filtro no Mercado
 
 Status: APROVADO (Murilo, 17/11, "Sim, faça o push, PR e merge").
