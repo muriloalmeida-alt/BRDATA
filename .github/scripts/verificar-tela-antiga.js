@@ -12,8 +12,9 @@
 
    Conta como "usa a tela antiga" (tests/e2e/test_*.js e tests/unit):
    - abrir /carreira.html ou /carreira-old;
-   - usar os ajudantes que passam por ela (_startup, _round,
-     _calendar_skip, _v2_match).
+   - usar os ajudantes que passavam por ela (_startup, _round,
+     _calendar_skip, _v2_match). Eles saíram no lote L7 (17/11/2026); a
+     regra fica para barrar quem tentar recriá-los.
    (A página escondida /carreira/motor saiu na etapa G2d: o endereço leva à
    v2, então pedir por ele não abre mais a tela antiga.)
 

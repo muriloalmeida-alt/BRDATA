@@ -138,7 +138,7 @@ motor em `public/js/motor/` (ver `CLAUDE.md`, seção 0).
 - **Teste novo de regra do jogo:**
   - **Sem navegador, pela ponte:** com `_sem_tela.js`. O `abrirPagina()` dá uma conta nova com a ponte pronta, `criar(P)` cria a carreira e `jogarRodada(P)` joga semana, partida e pós-jogo. Exemplo: `test_sem_tela.js`.
   - **Teste unitário do módulo:** em `tests/unit/`.
-- **Nunca** abra `/carreira.html` ou `/carreira-old` num teste novo, nem use os ajudantes que passam por elas (`_startup`, `_round`, `_calendar_skip`, `_v2_match`). (A página escondida `/carreira/motor` saiu na etapa G2d.)
+- **Nunca** abra `/carreira.html` ou `/carreira-old` num teste novo. Os ajudantes que passavam por elas (`_startup`, `_round`, `_calendar_skip`, `_v2_match`) saíram no lote L7 (17/11/2026); a checagem barra quem tentar recriá-los. (A página escondida `/carreira/motor` saiu na etapa G2d.)
   - **Exceção:** conferir, com o cabeçalho de produção, que os links antigos levam à v2. Esses testes ficam na lista `soRedirecionamento` de `tela_antiga_legado.json`.
 - A lista `testes` de `tela_antiga_legado.json` está vazia desde o lote L6b (16/11/2026): nenhum teste usa mais a tela antiga, e ela não pode voltar a crescer.
 - **Checagem:** `node .github/scripts/verificar-tela-antiga.js`, que o CI roda na rota rápida.
@@ -150,22 +150,11 @@ motor em `public/js/motor/` (ver `CLAUDE.md`, seção 0).
   faz o script sair com código 1 e lista as verificações que falharam.
   `check("N) ... pulado")` só com o rótulo é aviso, não conta. **Toda
   verificação nova deve usar `check()`, nunca `console.log`.**
-- `_startup.js` — `enterGame(page)`: entrada numa carreira nova pelo
-  estado da tela (tutorial → assistente de início → login diário,
-  `{ claimDailyLogin: false }` pra não coletar). Também
-  `skipOnboarding(page)` e `skipStartupWizard(page)` avulsos.
-- `_round.js` — `playRound(page, ganchos)` / `playNextMatchRound(page,
-  ganchos)`: uma rodada inteira pela interface, guiada pelo estado
-  (pré-jogo → ao vivo → "Seu jogo" → coletiva → Notícias → Resultados →
-  Tabela; amistosos e semanas sem jogo no caminho). Ganchos
-  `onMatchDetail`/`onPress`/`onNews`/`onRoundResults`/`onPlayerOffer`/
-  `onTabela` leem cada tela; devolver `"stop"` para ali. Tela desconhecida
-  faz parar (`stoppedAt`), nunca é fechada às cegas.
-- `_startup.js` → `waitForBoot(page)`: depois de `page.reload()`/abrir a
-  carreira, espera o fim do boot (e o `CAREER` carregado na tela do jogo)
-  — use no lugar de `waitForTimeout` fixo.
-- `_calendar_skip.js` — `skipPreseason(page)`: pula as semanas sem jogo
-  da pré-temporada (carreira nova começa nela, GE-CALENDAR-001).
+- `_v2_carreira.js` — conta, carreira, rodada e partida pelas telas e
+  pelo motor da v2 (ver "Teste novo de tela" acima): `carreiraV2`,
+  `newCareer`, `noMotor`, `jogarRodadaV2`, `pularPreTemporada`,
+  `iniciarPeloPreJogo`, `retomarParadasAutomaticas`.
+- `_sem_tela.js` — a carreira pela ponte do motor, sem navegador.
 - `_grant_test_credits.js` — preparação do perfil de servidor
   `loja-creditos` (ver `suites.json` → `serverProfiles`).
 
@@ -195,10 +184,6 @@ teste sobre ela deve forçar chance `1` e um resultado que gere gatilho.
 
 Alguns scripts têm falhas pré-existentes catalogadas ao longo do
 desenvolvimento (não indicam bug no app):
-- Fluxo de confirmação pré-jogo: `#btnSimulate`/`#btnAdvanceSeason` abrem
-  uma confirmação (`#preMatchOverlay`/`confirmModal()`) antes de simular —
-  scripts que simulam rodada devem usar `_round.js` (os que clicavam
-  direto foram migrados na Fase B).
 - `test_frozen_provider.js` precisa de `DATA_PROVIDER=frozen` no servidor
   e `test_loja_pagamento_real.js` de uma conta com créditos criada antes
   do boot — com `--isolated-server` o runner faz os dois sozinho

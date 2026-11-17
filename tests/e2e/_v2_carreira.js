@@ -247,7 +247,7 @@ async function carreiraV2(page, email, { competicao = "brasileirao", clube = nul
 }
 
 // Pré-temporada: roda as semanas sem jogo até a semana da 1ª rodada e grava
-// (o mesmo laço de _calendar_skip.skipPreseason, no motor).
+// (o laço do antigo _calendar_skip.skipPreseason, que saiu no L7, no motor).
 async function pularPreTemporada(page) {
   const ok = await noMotor(page, async (M) => {
     const { semana } = M;
@@ -300,7 +300,7 @@ async function jogarRodadaV2(page) {
 
 // ---------------------------------------------------------------------------
 // Ganchos dos testes da v2 (antes em _v2_match.js, que montava a carreira
-// pela tela antiga). Plano "testes sem a tela antiga", lote L1.
+// pela tela antiga e saiu no L7). Plano "testes sem a tela antiga", lote L1.
 
 // Conta nova (nome "Murilo Almeida", como os testes antigos) já logada.
 async function signup(page, email) {

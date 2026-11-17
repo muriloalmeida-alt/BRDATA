@@ -54,7 +54,7 @@ Cada lote é um PR com:
 | L4 | Grupo D (temporada e mundo) | 25 |
 | L5 | Grupo E (elenco e semana) | 24 |
 | L6 | O resto do grupo B (tela antiga em si, mais loja, pagamento real, push e convite), conforme a D1 | ~66 |
-| L7 | Lista zerada; os ajudantes antigos (`_startup`, `_round`, `_calendar_skip`, `newCareer`) saem | — |
+| L7 | Lista zerada; os ajudantes antigos (`_startup`, `_round`, `_calendar_skip`, `_v2_match`) saem. **Feito em 17/11** (`docs/carreira-v2/ENTREGA_TESTES_L6.md`, seção L7). O `newCareer` fica (decisão do Murilo, 17/11: "Manter"): desde o L1 ele cria a carreira pelo motor da v2, sem a tela antiga | — |
 
 **Ordem depois do L2 (decisão do Murilo, 12/11):** as frentes novas entram na frente (Fase 1 → Série D → Offline, ver `docs/HANDOFF_CLAUDE.md`). O L3 (mercado) vem antes da FASE1-MER, para as regras novas do mercado já nascerem com teste. L4 a L7 seguem nos intervalos.
 
