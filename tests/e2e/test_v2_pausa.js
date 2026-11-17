@@ -59,7 +59,8 @@ const { retomarParadasAutomaticas, newCareer, noMotor } = require("./_v2_carreir
     back.search === "" && /Retomar/.test(back.btn) && back.min === p1.min && resumed.search === "" && /Pausar/.test(resumed.btn), JSON.stringify({ back, resumed }));
 
   // 4) Intervalo: a Pausa abre sozinha; Começar 2º tempo.
-  await v2.waitForSelector(".pz-title", { timeout: 40000 });
+  // Espera o título do intervalo (uma parada automática antes dele é retomada pelo gancho).
+  await v2.waitForFunction(() => document.querySelector(".pz-title")?.textContent === "Intervalo", null, { timeout: 60000 });
   const ht = await v2.evaluate(() => ({ title: document.querySelector(".pz-title").textContent, min: document.querySelector(".pz-min").textContent, cta: document.querySelector(".pz-foot .mt-primary").textContent }));
   await v2.click(".pz-foot .mt-primary");
   await v2.waitForFunction(() => document.querySelector(".mt-period")?.textContent === "2º tempo", null, { timeout: 20000 });

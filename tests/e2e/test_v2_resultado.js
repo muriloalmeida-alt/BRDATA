@@ -31,7 +31,8 @@ const { retomarParadasAutomaticas, newCareer, noMotor, iniciarPeloPreJogo } = re
   await v2.click(".home-main .cta"); // Preparar partida
   await iniciarPeloPreJogo(v2);
   await v2.waitForSelector(".mt-score", { timeout: 40000 });
-  await v2.waitForFunction(() => /^(15|30)/.test(document.querySelector(".mt-min")?.textContent || ""), null, { timeout: 20000 });
+  // Só volta com o jogo rodando (fora de uma parada automática, PAUSA-EVENTO).
+  await v2.waitForFunction(() => /^(15|30)/.test(document.querySelector(".mt-min")?.textContent || "") && !/tela=pausa/.test(location.search) && /Pausar/.test(document.querySelector(".mt-actions .mt-primary")?.textContent || ""), null, { timeout: 30000 });
   await v2.goBack();
   await v2.waitForSelector('[role="alertdialog"]', { timeout: 5000 });
   const ask = await v2.evaluate(() => ({ path: location.pathname, title: document.querySelector("#lv-t").textContent }));

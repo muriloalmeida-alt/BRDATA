@@ -79,7 +79,7 @@ const { ensureDailyClaimed, noMotor, ateOInicio, pularPreTemporada } = require("
     match.cta === "Preparar partida" && match.href === "/pre-jogo" && /^\d{2} [A-Z]{3} · RODADA 1$/.test(match.line) && !match.phase, JSON.stringify(match));
   check("5) A v2 não gravou nada no save (só leitura):", writes.length === 0, JSON.stringify(writes));
 
-  // 6) Acessibilidade e 360 px: zoom liberado, sem rolagem horizontal, alvos ≥ 44 px.
+  // 6) Acessibilidade e 360 px: zoom bloqueado (ZOOM-V2, decisão do Murilo), sem rolagem horizontal, alvos ≥ 44 px.
   await v2.setViewportSize({ width: 360, height: 780 });
   await v2.waitForTimeout(200);
   const a11y = await v2.evaluate(() => ({
@@ -88,8 +88,8 @@ const { ensureDailyClaimed, noMotor, ateOInicio, pularPreTemporada } = require("
     small: [...document.querySelectorAll("a, button")].filter((el) => { const r = el.getBoundingClientRect(); return r.height && r.height < 44; }).map((el) => el.className),
     lang: document.documentElement.lang,
   }));
-  check("6) Zoom liberado, sem rolagem horizontal em 360 px, alvos ≥ 44 px, lang pt-BR:",
-    !/user-scalable\s*=\s*no|maximum-scale\s*=\s*1/.test(a11y.viewport) && a11y.overflow <= 0 && a11y.small.length === 0 && a11y.lang === "pt-BR", JSON.stringify(a11y));
+  check("6) Zoom bloqueado (ZOOM-V2), sem rolagem horizontal em 360 px, alvos ≥ 44 px, lang pt-BR:",
+    /user-scalable\s*=\s*no/.test(a11y.viewport) && /maximum-scale\s*=\s*1/.test(a11y.viewport) && a11y.overflow <= 0 && a11y.small.length === 0 && a11y.lang === "pt-BR", JSON.stringify(a11y));
 
   // 8) Erro de rede ao carregar a carreira: estado de erro com retry
   // funcional. Contexto sem service worker (o SW da raiz, registrado pela

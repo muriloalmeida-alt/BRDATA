@@ -2,7 +2,7 @@
 
 **Data:** 15/11/2026
 **Plano:** `docs/carreira-v2/PLANO_TESTES_TELA_ANTIGA.md` (lote L6, conferido um a um: decisão D1 do Murilo, "Conferir um a um")
-**Lista congelada:** 55 → 45 (L6a)
+**Lista congelada:** 55 → 45 (L6a) → 0 (L6b, 16/11/2026)
 
 ## L6a — site e conta (10 arquivos)
 
@@ -89,3 +89,97 @@ restaura o arquivo:
 | `/api/auth/login` fora do ar (`server.js`) | `test_s4_b2_002_login` | falhou (login não conclui) |
 
 Depois das contraprovas, `git diff` no motor, no servidor e no `sw.js` vazio.
+
+---
+
+## L6b — o resto da tela antiga (45 arquivos, 16/11/2026)
+
+Os 45 testes que sobraram conferiam a **tela antiga** em si: modais, rodapés,
+toasts, chips, escudos, bottom sheets, overlays, transições, foco das modais
+dela. Conferidos um a um (D1), as 263 verificações caíram em três grupos:
+
+1. **Só a tela antiga (a grande maioria):** classes, IDs, modais e textos de
+   `carreira.js`/`carreira.html` que não existem na v2. Saem sem porte; o
+   equivalente na v2 já tem teste (tabela abaixo).
+2. **Regra do jogo escondida no teste de tela:** 4 regras sem teste no motor.
+   Foram portadas para `tests/unit/test_motor_regras_tela_antiga.js`.
+3. **Comportamento de produto ainda valendo na v2:** zoom e rolagem no
+   celular (`test_ux_zoom_scroll.js`). Reescrito pela v2, com a decisão do
+   Murilo de bloquear o zoom (abaixo).
+
+Resultado: **44 arquivos removidos**, 1 reescrito, 1 teste unitário novo;
+`tela_antiga_legado.json` → `testes: []`; `suites.json` sem as 45 referências.
+
+### Regras portadas para o motor (`test_motor_regras_tela_antiga.js`)
+
+| # | Regra | Vinha de | Onde está |
+|---|---|---|---|
+| 1 | Volta de lesão limita a condição pelo teto (`INJURY_RETURN_CONDITION`: leve 75, média 60, grave 45) | `test_condicao_ajuda` item 4 | `semana.refreshAvailability` |
+| 2 | `autoLineup` com `includeBase` true preenche com a base; false não usa a base | `test_escalacao_ui2` itens 3–5 | `virada.autoLineup` |
+| 3 | Lesão na partida grava a fadiga do momento (`injuryHistory.fadigaAtInjury`) | `test_bloco5_treino` item 7 | `fechamento.applyMatchWearChunk` |
+| 4 | Renomear esquema recusa nome repetido (sem diferenciar maiúsculas), vazio e com mais de 30 caracteres | `test_s4_b4_002_meus_esquemas` | `ponte.renameTacticalScheme` |
+
+As outras regras desses arquivos (evolução do treino, `autoLineup` padrão,
+eixos táticos, compra e proposta, notícias da rodada, finanças da rodada,
+filtro do Elenco) já tinham teste no motor (`test_motor_treino`,
+`test_motor_escalacao`, `test_motor_mercado`, `test_motor_registro`,
+`test_motor_noticias_rodada`, `test_motor_financas`) ou na v2.
+
+### De-para dos 44 removidos
+
+| Removido (tela antiga) | O que conferia | Equivalente na v2 / motor |
+|---|---|---|
+| `test_a11y_modais`, `test_m3_dialog_sheet_skeleton`, `test_confirm_modals`, `test_modals`, `test_modais_pos_jogo` | role/aria-modal, foco preso e devolvido, cores das confirmações, modais do pós-jogo da tela antiga | foco dos diálogos e da navegação: `test_v2_escalacao`, `test_v2_foco` (AUD-04/05); confirmações e sheets: `test_v2_clube`, `test_v2_mercado`, `test_v2_elenco_avancado`; pós-jogo: `test_v2_posjogo`, `test_v2_resultado` |
+| `test_ajustar_escalacao_modal`, `test_bloco2_tatica`, `test_escalacao_ui2`, `test_s4_b2_003_tatica`, `test_s4_b4_002_meus_esquemas`, `test_s4_b4_003_marcacao_individual` | chips de formação, campinho, eixos 1–5, salvar tática, esquemas salvos, marcação individual, "Ajustar escalação" no pré-jogo | `test_v2_escalacao`, `test_v2_esc`, `test_v2_tatica_treino`, `test_v2_prejogo`, `test_v2_ajustes`; regras 2 e 4 acima |
+| `test_bloco5_treino`, `test_s4_b2_004_treino`, `test_condicao_ajuda` | resumo semanal, foco tático, duração, aviso de risco, histórico de fadiga, nota de condição, textos de ajuda | `test_v2_tatica_treino`, `test_v2_semana`, `test_motor_treino`; regras 1 e 3 acima |
+| `test_bloco1_reorg`, `test_s4_b4_004_comparar_jogadores`, `test_ux_nomes_clicaveis` | escolha de clube em 2 passos, filtros do Elenco, perfil do jogador, comparar, nomes clicáveis | `test_v2_acesso`, `test_v2_elenco`, `test_v2_elenco_avancado`, `test_v2_tatica_treino` |
+| `test_bloco789_hooks`, `test_bloco789_perfil_config`, `test_s4_b2_005_perfil` | Configurações, perfil, ajuda, histórico de compras, central de notificações, splash | `test_v2_jogos_mais`, `test_v2_navegacao`, `test_loja_pagamento_real` (histórico) |
+| `test_m3_bloco1_inicio`, `test_menu`, `test_redesign_caps_1_7`, `test_remove_situacao_contraste_logo`, `test_escudo_monograma`, `test_ux_fechar_voltar_inicio` | barra inferior, topo com o clube, Início, menu, escudos, "Fechar/Voltar" ao Início | `test_v2_inicio`, `test_v2_navegacao`, `test_v2_sistema`, `test_v2_dados_reais` (escudos), `test_v2_clube` |
+| `test_botao_ir_pro_jogo_e_financas_noticias`, `test_botoes_rodape`, `test_fase2b`, `test_tabela_modal`, `test_noticias_fullscreen_fluxo`, `test_portal_noticias_premiacoes`, `test_s4_b4_005_noticias_newscard` | "Ir para o jogo", rodapés fixos, rodada até os Resultados, Tabela em modal, Notícias em tela cheia, portal de notícias | `test_v2_prejogo`, `test_v2_posjogo`, `test_v2_resultado`, `test_v2_tabela`, `test_v2_tabela_partida`, `test_v2_semana`; notícias: `test_motor_noticias_rodada`, `test_motor_registro`, `test_noticias_rodada` |
+| `test_s4_b4_006_estatisticas`, `test_ux_estatisticas_check` | tela de estatísticas | `test_v2_jogos_mais`, `test_v2_navegacao` |
+| `test_toast_novo_componente`, `test_toast_placar_led`, `test_toast_reposiciona`, `test_toast_rodape` | toast da tela antiga (posição, placar LED, rodapé) | avisos da v2: `test_v2_gravacao`, `test_v2_financas`, `test_v2_ajustes`; placar da partida: `test_v2_partida` |
+| `test_loading_overlay`, `test_s4_b2_001_loading`, `test_transicoes_suaves` | overlay de carregamento com atraso, splash, transições CSS | carregamento e erro da v2: `test_v2_modulo`, `test_v2_motor`, `test_v2_offline` |
+| `test_redesign_a11y_responsivo` | contraste e largura no celular da tela antiga | `test_v2_sistema` (margens, largura 390 px), `test_ux_zoom_scroll` (reescrito) |
+| `test_s4_b4_001_onboarding` | tutorial da tela antiga | `test_v2_onboarding`, `test_onboarding` (L6a) |
+
+### Zoom no celular (decisão do Murilo, 16/11: "Bloquear zoom")
+
+O `test_ux_zoom_scroll` antigo conferia que a tela antiga bloqueava o zoom.
+A v2 deixava dar zoom. Por decisão do Murilo, a v2 agora também bloqueia:
+- `carreira-v2/index.html`: viewport com `maximum-scale=1.0, minimum-scale=1.0, user-scalable=no`;
+- `carreira-v2/src/styles/base.css`: `body { touch-action: manipulation }` (sem zoom de toque duplo);
+- `test_ux_zoom_scroll.js` reescrito pela v2: itens 1 (viewport), 1b (`touch-action`) e 1c (a página rola sem largura extra).
+- `test_v2_inicio` item 6 conferia o contrário ("zoom liberado"); agora confere o zoom bloqueado.
+
+Observação de acessibilidade: o bloqueio de zoom contraria a WCAG 1.4.4
+(o iOS ignora `user-scalable=no` por padrão desde o iOS 10; o Android respeita).
+Fica registrado como escolha de produto.
+
+### Contraprovas (L6b)
+
+| Quebra | Teste | Resultado |
+|---|---|---|
+| Teto da lesão grave 45 → 60 (`motor/semana.js`) | `test_motor_regras_tela_antiga` | falhou no 1 |
+| `autoLineup` ignora `includeBase` (`motor/virada.js`) | `test_motor_regras_tela_antiga` | falhou no 2 |
+| Sem `fadigaAtInjury` no histórico (`motor/fechamento.js`) | `test_motor_regras_tela_antiga` | falhou no 3 |
+| Renomear aceita repetido (`motor/ponte.js`) | `test_motor_regras_tela_antiga` | falhou no 4 |
+
+Depois das contraprovas, `git status` no motor limpo.
+
+### Ajuste de dois testes da PAUSA-EVENTO
+
+A suíte completa achou dois testes que liam a tela no meio de uma parada
+automática (lesão ou expulsão do seu time, PAUSA-EVENTO), sem relação com o
+L6b:
+- `test_v2_pausa` item 4 lia a primeira Pausa que aparecia e pegava
+  "Jogo parado" antes de o gancho retomar; agora espera o título "Intervalo".
+- `test_v2_resultado` usava o voltar do sistema com o jogo parado; agora só
+  volta com a partida rodando.
+
+Depois do ajuste, 3 rodadas seguidas dos dois testes passaram.
+
+### Fica para o L7
+
+Os ajudantes da tela antiga (`_startup.js`, `_round.js`, `_calendar_skip.js`,
+`_v2_match.js`) não são mais usados por nenhum teste. Saem no L7, com o
+`verificar-tela-antiga.js` e o README.
