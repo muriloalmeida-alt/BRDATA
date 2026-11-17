@@ -52,7 +52,7 @@ export function Jersey({ value, gk, selected, empty, size = 46 }: { value?: numb
     <svg className={cls} width={size} height={Math.round(size * 0.9)} viewBox="0 0 64 58" aria-hidden="true">
       <path className="jersey-body" d="M22 3 12 7 2.5 16.5l7.5 9.5 5.5-4V55h33V22l5.5 4 7.5-9.5L52 7 42 3c-2 4-5.8 6-10 6s-8-2-10-6Z" />
       <path className="jersey-collar" d="M22 3c2 4 5.8 6 10 6s8-2 10-6" />
-      <text x="32" y="39" textAnchor="middle">{empty ? "+" : value}</text>
+      <text x="32" y="39" textAnchor="middle">{empty ? (value ?? "+") : value}</text>
     </svg>
   );
 }

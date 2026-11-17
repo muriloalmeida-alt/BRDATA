@@ -16,6 +16,8 @@
 .lu-slot, .lu-res { display: flex; flex-direction: column; align-items: center; gap: 1px; min-width: 64px; min-height: 60px; padding: 2px; color: var(--bd-text); text-decoration: none; -webkit-tap-highlight-color: transparent; }
 .lu-slot { position: absolute; transform: translate(-50%, -32%); }
 .lu-jersey { position: relative; display: block; filter: drop-shadow(0 3px 6px rgba(0, 0, 0, .55)); }
+/* EXPULSAO (17/11): vaga do expulso — cartão vermelho sobre a camisa vazia. */
+.lu-red { position: absolute; top: -4px; right: -3px; width: 12px; height: 16px; border-radius: 2px; background: var(--bd-danger); box-shadow: 0 0 0 2px var(--bd-bg); }
 .lu-out { position: absolute; top: -3px; right: -5px; width: 18px; height: 18px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: var(--bd-danger); color: #fff; font: 700 12px/1 var(--bd-font-text); }
 .lu-name { max-width: 82px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: var(--bd-font-display); font-weight: 600; font-size: 13px; line-height: 1.15; text-shadow: 0 1px 4px rgba(0, 0, 0, .8); }
 .lu-slot:focus-visible, .lu-res:focus-visible { outline-offset: 0; border-radius: 6px; }

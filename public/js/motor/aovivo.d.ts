@@ -20,6 +20,8 @@ export const WANTS_TRANSFER_BENCH_STREAK: number;
 export const WANTS_TRANSFER_MORALE_MAX: number;
 export function activeManMarkingSuppression(...args: any[]): any;
 export function applyLiveSub(...args: any[]): any;
+export function aplicarExpulsoes(...args: any[]): void;
+export function registrarExpulsoes(...args: any[]): void;
 export function applyLiveTactics(...args: any[]): any;
 export function applyMoraleAfterMatch(...args: any[]): any;
 export function applyNaturalAgingEvolution(...args: any[]): any;

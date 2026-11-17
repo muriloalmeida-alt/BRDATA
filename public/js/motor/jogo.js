@@ -618,6 +618,8 @@ export const comandosJogo = {
       if (!lm || lm.finished) return { ok: false, motivo: "sem-partida" };
       if (lm.subsUsed >= MAX_SUBS_PER_MATCH + lm.subsBonus) return { ok: false, motivo: "sem-substituicoes" };
       if (!CAREER.lineup.starters.includes(saiId)) return { ok: false, motivo: "nao-esta-em-campo" };
+      // EXPULSAO (17/11): expulso não pode ser substituído — a vaga fica vazia.
+      if (partida.EXPULSAO.ativa && (lm.expulsos || []).includes(saiId)) return { ok: false, motivo: "expulso" };
       const entra = CAREER.squad.find((p) => p.id === entraId);
       if (!entra || !CAREER.lineup.bench.includes(entraId) || entra.status !== "ok") return { ok: false, motivo: "reserva-indisponivel" };
       const wasHalftime = !!lm.halftime;

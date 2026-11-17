@@ -10,7 +10,8 @@
 //  3) Trocar o esquema no jogo: a formação muda, com 2 tempos de penalidade
 //     de familiaridade.
 //  4) A penalidade some depois de 2 tempos.
-//  5) Uma expulsão libera uma substituição a mais e deixa alguém suspenso.
+//  5) Uma expulsão deixa o expulso suspenso, na vaga e sem reposição: não há
+//     substituição a mais e o comando recusa trocá-lo (EXPULSAO, 17/11).
 //  6) Pular para o fim termina a partida e grava a rodada (avança 1).
 //  7) A rodada grava os 10 jogos (os da CPU também).
 const { chromium } = require("playwright-core");
@@ -50,7 +51,9 @@ const { newCareer, globaisDoMotor } = require("./_v2_carreira");
     Math.random = () => 0.001; // vermelho garantido para quem estiver em campo
     resolveLiveChunk();
     Math.random = real;
-    out.cinco = { bonus: LIVE_MATCH.subsBonus, suspenso: CAREER.squad.some((p) => p.status === "suspenso") };
+    const expulso = (LIVE_MATCH.expulsos || [])[0];
+    const reserva = CAREER.lineup.bench.find((id) => CAREER.squad.find((p) => p.id === id && p.status === "ok"));
+    out.cinco = { bonus: LIVE_MATCH.subsBonus, suspenso: CAREER.squad.some((p) => p.status === "suspenso"), expulso: !!expulso, naVaga: !!expulso && CAREER.lineup.starters.includes(expulso), troca: expulso ? P.substituir(expulso, reserva) : null };
     P.pularParaFim();
     const fim = await ate(() => { const e = P.estado(); return e.fase === "encerrada" && e.gravada != null ? e : null; });
     out.seis = { gravada: fim && fim.gravada, rodada, depois: CAREER.currentRound };
@@ -62,7 +65,8 @@ const { newCareer, globaisDoMotor } = require("./_v2_carreira");
   check("2) Substituição: quem saiu não é mais titular; 1 substituição usada:", r.dois.s.ok && !r.dois.saiTitular && r.dois.usadas === 1, JSON.stringify(r.dois));
   check("3) Trocar o esquema no jogo: formação nova, com 2 tempos de penalidade de familiaridade:", r.tres.formacao && r.tres.penalidade === 2, JSON.stringify(r.tres));
   check("4) A penalidade some depois de 2 tempos:", r.quatro.penalidade === 0, JSON.stringify(r.quatro));
-  check("5) Uma expulsão libera uma substituição a mais e deixa alguém suspenso:", r.cinco.bonus > 0 && r.cinco.suspenso, JSON.stringify(r.cinco));
+  check("5) Uma expulsão deixa o expulso suspenso, na vaga e sem reposição (sem substituição a mais; trocá-lo é recusado):",
+    r.cinco.bonus === 0 && r.cinco.suspenso && r.cinco.expulso && r.cinco.naVaga && r.cinco.troca && r.cinco.troca.ok === false && r.cinco.troca.motivo === "expulso", JSON.stringify(r.cinco));
   check("6) Pular para o fim termina e grava a rodada (avança 1):", r.seis.gravada === true && r.seis.depois === r.seis.rodada + 1, JSON.stringify(r.seis));
   check("7) A rodada grava os 10 jogos (CPU também):", r.sete === 10, r.sete);
   check("8) Sem erro na página:", erros.length === 0, JSON.stringify(erros.slice(0, 3)));

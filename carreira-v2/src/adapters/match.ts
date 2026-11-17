@@ -25,6 +25,8 @@ export interface MatchSnapshot {
   mandante?: { id: string; nome: string }; visitante?: { id: string; nome: string };
   souMandante?: boolean; gh?: number; ga?: number; velocidade?: 1 | 2;
   substituicoes?: { usadas: number; total: number };
+  // EXPULSAO (17/11): quantos cada lado perdeu por expulsão (sem reposição).
+  expulsos?: { meus: number; adversario: number };
   eventos?: MatchEvent[];
   escalacao?: { formacao: string; titulares: (LivePlayer | null)[]; banco: LivePlayer[] };
   tatica?: { formacao: string; eixos: TacticAxis[]; formacoes: string[]; penalidadeBlocos: number };
@@ -40,7 +42,7 @@ export interface CupLegInfo { fase: string; perna: number; ida?: { meus: number;
 export type SaveError = "sessao" | "outra-conta" | "falha";
 export interface TacticAxis { id: string; nome: string; baixo: string; alto: string; nivel: number }
 export type CommandResult = { ok: boolean; motivo?: string };
-export interface LivePlayer { id: string; nome: string; grupo: "G" | "D" | "M" | "F"; overall: number; status: string; voltaRodada: number | null; condicao: number | null }
+export interface LivePlayer { id: string; nome: string; grupo: "G" | "D" | "M" | "F"; overall: number; status: string; voltaRodada: number | null; condicao: number | null; expulso?: boolean }
 export interface MatchSession {
   snapshot(): MatchSnapshot;
   subscribe(cb: (s: MatchSnapshot) => void): () => void;
