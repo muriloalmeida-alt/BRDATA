@@ -79,7 +79,7 @@ Cada PR traz os IDs dos requisitos, o baseline e as evidências, os cenários ma
 
 - **PR1, convocação comum (CPU-01, V02):**
   - a CPU convoca 11 + 11 com o mesmo `autoLineup` e a mesma validação de `escalacao.js`: goleiro no banco, sem suspenso ou lesionado, sem emprestado indevido;
-  - na falta de atletas, a mesma reposição pela base dos dois lados; o que for inexequível vai para decisão de produto;
+  - na falta de atletas, a mesma reposição pela base dos dois lados. Para a CPU (D7, decidido em 17/11), o banco é completado com jogadores da base gerados na hora, sempre os mesmos e sem ir para o save. A Série D já tem 22 (PR da D7);
   - recuperação de condição e retorno de lesão e suspensão para todos os elencos ativos (A4, A5).
 - **PR2, força comum (CPU-02, V01):** `computeStrength(lado)` para os dois controladores, ao vivo, no direto e em CPU × CPU da divisão atual, preservando a calibração da GOLS-REAIS. Revisão na Liga com 3 confrontos no mesmo cenário: elenco completo, sem o goleiro titular e sem o atacante titular.
 - **Baseline:** desvio acima de 0,15 gol ou de 2 p.p. de 0x0 vai a investigação antes de recalibrar.

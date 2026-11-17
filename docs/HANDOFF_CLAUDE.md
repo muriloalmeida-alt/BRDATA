@@ -683,9 +683,27 @@ Relatório (17/11):
 
 ⸻
 
-PARIDADE-A14 — Elencos da CPU estáveis na virada (PARIDADE-CPU, antes do E1a)
+PARIDADE-D7 — Elenco curto: Série D com 22 e base sob demanda (PARIDADE-CPU, antes do E1a)
 
 Status: REVISÃO DO PM NECESSÁRIA.
+Decisão do Murilo (17/11, D7): "Série D 22 + base sob demanda".
+- Série D com elenco gerado de 22 (ELENCO_SERIE_D, virada.elencoSerieD):
+  os 12 de sempre (mesma semente e ordem) e mais 10. Fica fora do save,
+  salvo o adversário do seu time na Copa. Quem sobe para a C leva os
+  mesmos jogadores (os primeiros).
+- Elencos curtos dos outros clubes da CPU (16–26 na sua divisão, 12–16 nas
+  outras): no E1a, o banco da CPU é completado com jogadores da base
+  gerados na hora, sempre os mesmos e sem ir para o save (zero byte a
+  mais), como o seu "Completar com a base". Guardar 22 para todos
+  estouraria o limite de 1 MB do envio (D6).
+Testes: unit/test_motor_serie_d com o item D7 (22 jogadores com ids
+únicos; quem sobe leva os mesmos jogadores).
+
+⸻
+
+PARIDADE-A14 — Elencos da CPU estáveis na virada (PARIDADE-CPU, antes do E1a)
+
+Status: APROVADO (Murilo, 17/11, "Aprovado para o merge"; PR #139).
 Decisões do Murilo (17/11):
 - D10 "Corrigir já";
 - regra "Serve": na virada, a CPU renova o contrato vencido de quem tem até
@@ -727,8 +745,9 @@ Testes:
 
 PARIDADE-CPU — Paridade esportiva dos clubes geridos pela CPU (nova fase)
 
-Status: PLANO APROVADO (Murilo, 17/11: "Autorizado"). E0 entregue para
-revisão: REVISÃO DO PM NECESSÁRIA (docs/paridade-cpu/RELATORIO_E0.md).
+Status: PLANO APROVADO (Murilo, 17/11: "Autorizado"). E0 APROVADO
+(Murilo, 17/11, "Aprovado para o merge"; PR #138,
+docs/paridade-cpu/RELATORIO_E0.md).
 Pedido (Murilo, 17/11): "Temos uma nova fase do projeto pela frente que visa
 melhorar a jogabilidade dando mais realismo para os times geridos pelo CPU.
 Siga os docs anexos e monte um plano de desenvolvimento."

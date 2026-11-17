@@ -88,6 +88,9 @@ const ROTEIRO = (seed, temporadas) => String.raw`(async () => {
   out.copa = { participantes: cup.participantes, fase: cup.phase, seeds: cup.seeds, direct: cup.prelim && cup.prelim.direct, prelim: cup.ties.prelim.map((t) => [String(t.home), String(t.away)]) };
   out.semana1 = C().calendar.weeks.find((w) => w.r === 1);
   out.timePorIdD = M.estado.timePorId(out.d[0]);
+  // D7 (17/11): elenco gerado da Série D com 22 (11 titulares e 11 reservas),
+  // sempre igual.
+  out.d7 = C().serieDPool.map((t) => { const a = M.estado.ganchosMundo.elencoGerado(t).map((p) => p.id + ":" + p.overall); return { n: a.length, unicos: new Set(a).size }; });
   const temporadasOut = [];
   for (let k = 0; k < ${temporadas}; k++) {
     const t0 = __relogio();
@@ -112,6 +115,12 @@ const ROTEIRO = (seed, temporadas) => String.raw`(async () => {
       tamD: depoisD.length, tamC: depoisC.length, nomesIguais: Object.keys(nomesDepois).every((id) => !nomes[id] || nomes[id] === nomesDepois[id]),
       elencoDeQuemSobe: depoisC.filter((id) => antesD.includes(id)).map((id) => (C().leagueSquads[id] || []).length),
       elencosDaCopa: Object.keys(C().elencosSerieD || {}),
+      // D7: quem sobe tem os mesmos jogadores do elenco da Copa (os primeiros).
+      identidadeDeQuemSobe: depoisC.filter((id) => antesD.includes(id)).map((id) => {
+        const t = (C().divisionTeams.serie_c || []).find((x) => String(x.id) === id);
+        const sq = (C().leagueSquads[id] || []).map((p) => p.id), g = M.estado.ganchosMundo.elencoGerado(t).map((p) => p.id);
+        return sq.length > 0 && sq.every((pid, i) => pid === g[i]);
+      }),
       adversarioNaNovaCopa: (() => { const t = (C().cup.ties[C().cup.phase] || []).find((x) => String(x.home) === String(C().clubId) || String(x.away) === String(C().clubId)); return t ? String(String(t.home) === String(C().clubId) ? t.away : t.home) : null; })(),
       novaCopa: { participantes: C().cup.participantes, fase: C().cup.phase, prelim: (C().cup.ties.prelim || []).length },
       semana1: (C().calendar.weeks.find((w) => w.r === 1) || {}).c || 0,
@@ -205,6 +214,10 @@ const ANTIGA = String.raw`(async () => {
     cruzou.forEach((x) => assert.ok(x.elenco >= 11 && x.noSave, JSON.stringify(x)));
     // Depois da virada só pode haver o elenco do adversário da D na Copa nova.
     mundos.forEach((m) => m.temporadas.forEach((t) => assert.ok(t.elencosDaCopa.every((id) => id === t.adversarioNaNovaCopa), JSON.stringify([t.elencosDaCopa, t.adversarioNaNovaCopa]))));
+  });
+  await check("D7: todo clube da Série D tem elenco gerado de 22 (ids únicos); quem sobe para a C leva os mesmos jogadores (os primeiros do elenco da Copa)", () => {
+    mundos.forEach((m) => m.d7.forEach((x) => assert.deepStrictEqual(x, { n: 22, unicos: 22 })));
+    mundos.forEach((m) => m.temporadas.forEach((t) => assert.ok(t.identidadeDeQuemSobe.every(Boolean), JSON.stringify(t.identidadeDeQuemSobe))));
   });
   await check("Virada: 4 sobem da D e 4 caem da C, com a mesma identidade; quem sobe ganha elenco; a nova Copa tem de novo a preliminar", () => {
     mundos.forEach((m, k) => m.temporadas.forEach((t, j) => {
