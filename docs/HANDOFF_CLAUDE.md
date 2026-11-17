@@ -685,7 +685,7 @@ Relatório (17/11):
 
 VENDA-DISPONIVEL — "Disponível para venda" e filtro no Mercado
 
-Status: REVISÃO DO PM NECESSÁRIA (implementado em 17/11; merge só com a aprovação do Murilo).
+Status: APROVADO (Murilo, 17/11, "Sim, faça o push, PR e merge").
 Pedido (Murilo, 17/11): "Assim como fizemos com os 'disponíveis para
 empréstimo' acho interessante criar um filtro com os 'disponíveis para
 venda' onde traria todos os jogadores dos outros clubes que foram colocados
