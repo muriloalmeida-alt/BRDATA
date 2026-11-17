@@ -685,7 +685,7 @@ Relatório (17/11):
 
 PARIDADE-CPU — Paridade esportiva dos clubes geridos pela CPU (nova fase)
 
-Status: PLANO PARA APROVAÇÃO (Murilo). Nada implementado.
+Status: PLANO APROVADO (Murilo, 17/11: "Autorizado"). E0 a iniciar.
 Pedido (Murilo, 17/11): "Temos uma nova fase do projeto pela frente que visa
 melhorar a jogabilidade dando mais realismo para os times geridos pelo CPU.
 Siga os docs anexos e monte um plano de desenvolvimento."
@@ -704,8 +704,7 @@ Plano: docs/paridade-cpu/PLANO_DESENVOLVIMENTO.md. Em resumo:
   favorito pela força do XI, mas a zebra continua possível, pela sorte e
   pela postura (o mais fraco pode jogar fechado). A taxa de zebra é
   medida por faixa de diferença de força no E0 e conferida em cada etapa.
-Próximo passo: aprovação do plano e início do E0 (diagnóstico, inventário
-e baseline).
+Próximo passo: E0 (diagnóstico, inventário e baseline), em PR próprio.
 
 ⸻
 

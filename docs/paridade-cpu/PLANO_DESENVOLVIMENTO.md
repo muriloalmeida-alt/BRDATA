@@ -3,7 +3,7 @@
 **Data:** 17/11/2026
 **Base:** pacote "BRDATA · Clubes geridos pela CPU" (revisão de 17/11/2026), guardado nesta pasta:
 [LEIA-ME](00_LEIA_ME.md) · [briefing](BRIEFING_CLAUDE.md) · [execução](01_Plano_de_execucao.md) · [requisitos CPU-01..10](02_Requisitos_de_produto.md) · [guia técnico](03_Guia_tecnico.md) · [validação V01..V10](04_Plano_de_validacao.md) · [inventário](05_Inventario_de_acoes.md)
-**Status:** PLANO PARA APROVAÇÃO (Murilo). Nada implementado ainda.
+**Status:** APROVADO pelo Murilo em 17/11/2026. Próxima entrega: E0.
 
 ## 1. Ponto de partida
 
