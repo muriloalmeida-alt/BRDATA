@@ -434,11 +434,20 @@ async function ensureDailyClaimed(page) {
 async function skipAutoOpen(page, timeout = 30000) {
   const end = Date.now() + timeout;
   while (Date.now() < end) {
-    if (await page.locator(".home").count()) return true;
+    // O Início pode aparecer um instante antes de a v2 abrir o assistente
+    // (logo depois de trocar de clube, sob carga: CI do #136 e do #137).
+    // Só vale se continuar na tela um pouco depois.
+    if (await page.locator(".home").count()) {
+      await page.waitForTimeout(800);
+      if (await page.locator(".home").count() && !/assistente=\d|\/boas-vindas$|\/recompensa$/.test(page.url())) return true;
+      continue;
+    }
+    // Clique com prazo curto: o botão some quando a etapa avança, e o prazo
+    // padrão (30 s) gastava a espera toda num botão que já tinha saído.
     const u = page.url();
-    if (/\/boas-vindas$/.test(u) && await page.locator(".ob-skip").count()) await page.click(".ob-skip").catch(() => {});
-    else if (/assistente=\d/.test(u) && await page.locator(".wz-skip").count()) await page.click(".wz-skip").catch(() => {});
-    else if (/\/recompensa$/.test(u) && await page.locator(".rw-foot .link-back").count()) await page.click(".rw-foot .link-back").catch(() => {});
+    if (/\/boas-vindas$/.test(u) && await page.locator(".ob-skip").count()) await page.click(".ob-skip", { timeout: 3000 }).catch(() => {});
+    else if (/assistente=\d/.test(u) && await page.locator(".wz-skip").count()) await page.click(".wz-skip", { timeout: 3000 }).catch(() => {});
+    else if (/\/recompensa$/.test(u) && await page.locator(".rw-foot .link-back").count()) await page.click(".rw-foot .link-back", { timeout: 3000 }).catch(() => {});
     await page.waitForTimeout(300);
   }
   return false;
