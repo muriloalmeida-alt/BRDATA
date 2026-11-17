@@ -575,7 +575,7 @@ Pendente: decidir quando o Resultado da v2 ganha o cartão.
 
 EXPULSAO — expulso sem reposição e jogo com 1 a menos
 
-Status: REVISÃO DO PM NECESSÁRIA (implementado em 17/11; merge só com a aprovação do Murilo).
+Status: APROVADO (Murilo, 17/11, "Aprovado"; PR #134).
 Pedido (Murilo, 17/11): "Jogador expulso não pode ser substituído. Após a
 pausa o campo deve ser mostrado com 1 a menos e isso deve influenciar no
 jogo."
