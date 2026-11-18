@@ -324,12 +324,17 @@ export function setupCupComPreliminar(allTeams, dTeams) {
 // Elenco de um clube da Série D (gerado, como o de quem sobe sem dado real):
 // para a força na Copa e para enfrentar o técnico. Mesma semente de
 // buildLeagueSquad: se o clube subir, os jogadores são os mesmos.
+// PARIDADE-CPU · D7 (17/11, decisão do Murilo): 22 jogadores (11 titulares e
+// 11 reservas). Os 12 primeiros são os de sempre (mesma semente, mesma
+// ordem); os outros 10 vêm em seguida. Não vai para o save, salvo o
+// adversário do seu time na Copa (materializarAdversarioDaCopa).
+export const ELENCO_SERIE_D = 22;
 const elencosGerados = new Map();
 export function elencoSerieD(club) {
   const chave = `${club.id}:${ambiente.temporadaReal()}`;
   if (!elencosGerados.has(chave)) {
     const rng = ambiente.rngDaChave(`league-squad:${club.id}:${ambiente.temporadaReal()}`);
-    elencosGerados.set(chave, Array.from({ length: MIN_LEAGUE_SQUAD_OTHER_DIVISION }, (_, i) => buildGeneratedProPlayer(club, i, rng)));
+    elencosGerados.set(chave, Array.from({ length: ELENCO_SERIE_D }, (_, i) => buildGeneratedProPlayer(club, i, rng)));
   }
   return elencosGerados.get(chave);
 }
