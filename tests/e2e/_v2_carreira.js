@@ -57,6 +57,9 @@ async function ateOInicio(page) {
     else if (await page.locator(".wz-skip").count()) await clicar(".wz-skip");
     else if (await page.locator(".wz-next").count()) await clicar(".wz-next");
     else if (await page.locator(".rw-foot .cta").count()) await clicar(".rw-foot .cta");
+    // Recompensa sem "Receber" (já recebida, sem rede ou falhou, como na
+    // virada da meia-noite do CI do #140): sai por "Voltar ao clube".
+    else if (await page.locator(".rw-foot .link-back").count()) await clicar(".rw-foot .link-back");
     else if (await page.locator(".ac-foot .cta").count()) await clicar(".ac-foot .cta");
     await page.waitForTimeout(250);
   }
