@@ -23,7 +23,7 @@ import { carreiraAtual, ligaAtual, todosTimes, timePorId, forcaMediaDoElenco, pa
 import { ensureObjectivesFresh, bumpObjective, trailingWinStreak, rankByPoints } from "./registro.js";
 import { fmtBRL, abbreviateName } from "./texto.js";
 import { ambiente, avisar, leagueSquadFor } from "./semana.js";
-import { applyConditionRecovery, applyMatchWearChunk, attributeGoals, computeHumanStrength, finishRoundTail, freshCareerTotals, freshMatchBucket, pickCpuXI, resolveCpuFixture, resolveRoundInstant } from "./fechamento.js";
+import { applyConditionRecovery, applyMatchWearChunk, attributeGoals, computeHumanStrength, finishRoundTail, freshCareerTotals, freshMatchBucket, pickCpuXI, recuperarCpu, resolveCpuFixture, resolveRoundInstant, xiDaCpu } from "./fechamento.js";
 import * as financas from "./financas.js";
 import * as partida from "./partida.js";
 import * as tabela from "./tabela.js";
@@ -498,7 +498,8 @@ export function iniciarPartida(round, fixtures, humanFx, standingsBefore) {
   // inteira (pickCpuXI é determinístico pro squad atual — recalcular a
   // cada tempo só re-selecionaria o mesmo time mesmo, mas fixar deixa
   // a intenção clara: só o SEU lado pode mudar de gente em campo).
-  const cpuXI = pickCpuXI(leagueSquadFor(cpuTeamId));
+  // PARIDADE-CPU · E1a: a escalação da CPU (11 titulares e 11 reservas).
+  const cpuXI = xiDaCpu(cpuTeamId, round);
   const otherResults = fixtures.filter((fx) => fx !== humanFx).map((fx) => resolveCpuFixture(fx, round));
   return definirPartida({
     round, humanFx, isHome, home, away, cpuXI, otherResults, standingsBefore,
@@ -662,6 +663,8 @@ export function encerrarPartida() {
   // applyConditionRecovery) — só uma chamada (não uma por tempo) pra
   // não multiplicar a recuperação por 6.
   applyConditionRecovery(Array.from(lm.appeared));
+  // PARIDADE-CPU · E1a: o adversário também recupera quem não jogou.
+  recuperarCpu(lm.isHome ? lm.humanFx.away : lm.humanFx.home, Array.from(lm.appeared));
   let ticketRevenue = null;
   if (lm.isHome) {
     ticketRevenue = computeTicketRevenue(lm.home);

@@ -18,7 +18,7 @@
    Lê e grava a carreira de motor/estado.js. Não chama a tela: avisos
    viram o evento "aviso" (motor/eventos.js).
 =================================================================== */
-import { carreiraAtual, ligaAtual, todosTimes, timePorId, forcaMediaDoElenco, ganchosMundo, forcaDeJogo, partidaAtual } from "./estado.js";
+import { carreiraAtual, ligaAtual, todosTimes, timePorId, forcaMediaDoElenco, ganchosMundo, PARIDADE_CPU, forcaDeJogo, partidaAtual } from "./estado.js";
 import { pushNotification, generateRoundNews } from "./registro.js";
 import { fmtBRL, abbreviateName } from "./texto.js";
 import { advanceCalendarWeek, ambiente, applyFinanceEntries, avisar, calendarOn, finalizeIncomingPurchase, leagueSquadFor, maybeGenerateOffer, processPendingInstallments, processPendingReceivables, pushLedger, pushTransferLog, refreshAvailability, resolveLoanListingsRound, resolvePendingListingsRound, resolvePendingOffersOutRound, simulateAiTransfers, tickScoutMissions, tickStadiumUpgrade, transferWindowStatus } from "./semana.js";
@@ -209,8 +209,8 @@ export function simulateCupLeg(hostId, guestId, round) {
   const CAREER = carreiraAtual();
   const host = teamById(hostId), guest = teamById(guestId);
   const isHost = String(hostId) === String(CAREER.clubId), isGuest = String(guestId) === String(CAREER.clubId);
-  const hs = isHost ? computeHumanStrength(host) : { ...forcaDeJogo(host), starters: pickCpuXI(leagueSquadFor(hostId)) };
-  const as = isGuest ? computeHumanStrength(guest) : { ...forcaDeJogo(guest), starters: pickCpuXI(leagueSquadFor(guestId)) };
+  const hs = isHost ? computeHumanStrength(host) : { ...forcaDeJogo(host), starters: xiDaCpu(hostId, round) };
+  const as = isGuest ? computeHumanStrength(guest) : { ...forcaDeJogo(guest), starters: xiDaCpu(guestId, round) };
   // GE-BALANCE-003 (issue #30) — club.def é "menor = defesa melhor"
   // (coeficiente de propensão a sofrer gol, não uma força — ver
   // buildRealPlayer/buildGeneratedProPlayer, que já fazem
@@ -523,6 +523,24 @@ export function registrarEdicaoDaCopa(finalTie) {
   }].slice(-MAX_COPA_HISTORICO);
 }
 
+
+// PARIDADE-CPU · E1a: a escalação da CPU (11 titulares e 11 reservas, pela
+// mesma escalação automática do seu time, virada.convocacaoDaCpu). Com a
+// regra desligada (testes de equivalência), o XI de sempre (pickCpuXI).
+export function escalacaoDaCpu(clubId, round) {
+  if (PARIDADE_CPU.convocacao && ganchosMundo.convocacaoCpu) return ganchosMundo.convocacaoCpu(clubId, round);
+  return { formation: null, starters: pickCpuXI(leagueSquadFor(clubId)), bench: [] };
+}
+export function xiDaCpu(clubId, round) { return escalacaoDaCpu(clubId, round).starters; }
+// Recuperação de condição da CPU depois do jogo: quem não jogou recupera,
+// pela mesma regra do seu elenco (applyConditionRecovery).
+export function recuperarCpu(clubId, jogaramIds) {
+  if (!PARIDADE_CPU.convocacao) return;
+  const set = new Set(jogaramIds);
+  leagueSquadFor(clubId).forEach((p) => {
+    if (!set.has(p.id)) p.condition = clamp((p.condition == null ? 100 : p.condition) + (10 + Math.random() * 12), 0, 100);
+  });
+}
 
 export const CPU_XI_MIX = { G: 1, D: 4, M: 4, F: 2 };
 
@@ -871,8 +889,8 @@ export function myLeaguePosition() {
 export function resolveCpuFixture(fx, round) {
   const CAREER = carreiraAtual();
   const home = teamById(fx.home), away = teamById(fx.away);
-  const hs = { ...forcaDeJogo(home), starters: pickCpuXI(leagueSquadFor(fx.home)) };
-  const as = { ...forcaDeJogo(away), starters: pickCpuXI(leagueSquadFor(fx.away)) };
+  const hs = { ...forcaDeJogo(home), starters: xiDaCpu(fx.home, round) };
+  const as = { ...forcaDeJogo(away), starters: xiDaCpu(fx.away, round) };
   // GE-BALANCE-003 (issue #30) — ver comentário em simulateCupLeg.
   const placar = partida.scoreGoals(hs, as, 1, Math.random);
   let { gh, ga } = placar;
@@ -900,6 +918,8 @@ export function resolveCpuFixture(fx, round) {
   }
   applyConditionRecovery(hs.starters.map((p) => p.id));
   applyConditionRecovery(as.starters.map((p) => p.id));
+  recuperarCpu(fx.home, hs.starters.map((p) => p.id));
+  recuperarCpu(fx.away, as.starters.map((p) => p.id));
   const events = [...homeEvents, ...awayEvents];
   const result = { home: fx.home, away: fx.away, gh, ga };
   if (events.length) result.events = events;

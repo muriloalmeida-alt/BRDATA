@@ -10,6 +10,9 @@
 // avisos de tela e coletivas, em ordem.
 // Uso: node tests/unit/test_motor_aovivo.js   (sai com 1 se algo falhar)
 const assert = require("assert");
+// PARIDADE-CPU · E1a (18/11): as cópias congeladas não têm a convocação da
+// CPU (11+11), a recuperação dela nem o retorno de lesão/suspensão dela.
+const CONVOCACAO_DESLIGADA = "window.BRDATA_MOTOR.estado.PARIDADE_CPU.convocacao = false;\n";
 const fs = require("fs");
 const path = require("path");
 const vm = require("vm");
@@ -242,7 +245,7 @@ const limpa = (x) => JSON.parse(JSON.stringify(x, (k, v) => (k === "ts" && typeo
   const lado = (codigo, consts) => {
     const sb = { Math: Object.create(Math), console, setImmediate };
     vm.createContext(sb);
-    vm.runInContext("var window = globalThis; window.BRDATA_MOTOR = {};\n" + motorCode() + EXPULSAO_DESLIGADA + dataSrc + STUBS + ACESSOS + "\n" + consts + comuns + codigo + "\nouvirAvisosDoMotor();", sb);
+    vm.runInContext("var window = globalThis; window.BRDATA_MOTOR = {};\n" + motorCode() + CONVOCACAO_DESLIGADA + EXPULSAO_DESLIGADA + dataSrc + STUBS + ACESSOS + "\n" + consts + comuns + codigo + "\nouvirAvisosDoMotor();", sb);
     return sb;
   };
   // ANTES: as funções congeladas. DEPOIS: os atalhos de hoje, que chamam o motor.

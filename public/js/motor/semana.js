@@ -19,7 +19,7 @@
    sempre. Nomes de jogador, sorteio por chave e o ano da temporada real
    vêm do ambiente (dados do mundo real, definirAmbiente).
 =================================================================== */
-import { carreiraAtual, ligaAtual, todosTimes, timePorId, forcaMediaDoElenco } from "./estado.js";
+import { carreiraAtual, ligaAtual, todosTimes, timePorId, forcaMediaDoElenco, PARIDADE_CPU } from "./estado.js";
 import { emitir } from "./eventos.js";
 import { pushNotification, ensureObjectivesFresh, bumpObjective } from "./registro.js";
 import { fmtBRL, abbreviateName } from "./texto.js";
@@ -439,6 +439,19 @@ export function refreshAvailability(uptoRound) {
       p.status = "ok"; p.outUntilRound = null; p.injurySeverity = null;
     }
   });
+  // PARIDADE-CPU · E1a (18/11): os jogadores da CPU voltam de lesão e
+  // suspensão pela mesma regra (antes, só na virada da temporada).
+  if (PARIDADE_CPU.convocacao) {
+    [...Object.values(CAREER.leagueSquads || {}), ...Object.values(CAREER.elencosSerieD || {})].forEach((sq) => (sq || []).forEach((p) => {
+      if (p.status !== "ok" && p.outUntilRound != null && r > p.outUntilRound) {
+        if (p.status === "contundido") {
+          const cap = INJURY_RETURN_CONDITION[p.injurySeverity] ?? 60;
+          p.condition = Math.min(p.condition == null ? 100 : p.condition, cap);
+        }
+        p.status = "ok"; p.outUntilRound = null; p.injurySeverity = null;
+      }
+    }));
+  }
 }
 
 export function applyWeeklyTraining() {
