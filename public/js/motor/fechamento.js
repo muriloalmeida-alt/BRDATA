@@ -209,8 +209,8 @@ export function simulateCupLeg(hostId, guestId, round) {
   const CAREER = carreiraAtual();
   const host = teamById(hostId), guest = teamById(guestId);
   const isHost = String(hostId) === String(CAREER.clubId), isGuest = String(guestId) === String(CAREER.clubId);
-  const hs = isHost ? computeHumanStrength(host) : { ...forcaDeJogo(host), starters: xiDaCpu(hostId, round) };
-  const as = isGuest ? computeHumanStrength(guest) : { ...forcaDeJogo(guest), starters: xiDaCpu(guestId, round) };
+  const hs = isHost ? computeHumanStrength(host) : forcaDaCpu(hostId, host, xiDaCpu(hostId, round));
+  const as = isGuest ? computeHumanStrength(guest) : forcaDaCpu(guestId, guest, xiDaCpu(guestId, round));
   // GE-BALANCE-003 (issue #30) — club.def é "menor = defesa melhor"
   // (coeficiente de propensão a sofrer gol, não uma força — ver
   // buildRealPlayer/buildGeneratedProPlayer, que já fazem
@@ -536,10 +536,7 @@ export function xiDaCpu(clubId, round) { return escalacaoDaCpu(clubId, round).st
 // pela mesma regra do seu elenco (applyConditionRecovery).
 export function recuperarCpu(clubId, jogaramIds) {
   if (!PARIDADE_CPU.convocacao) return;
-  const set = new Set(jogaramIds);
-  leagueSquadFor(clubId).forEach((p) => {
-    if (!set.has(p.id)) p.condition = clamp((p.condition == null ? 100 : p.condition) + (10 + Math.random() * 12), 0, 100);
-  });
+  recuperar(leagueSquadFor(clubId), new Set(jogaramIds));
 }
 
 export const CPU_XI_MIX = { G: 1, D: 4, M: 4, F: 2 };
@@ -682,31 +679,31 @@ export function autoFixLineup(round) {
   return changes;
 }
 
-export function computeHumanStrength(club) {
-  const CAREER = carreiraAtual();
+// PARIDADE-CPU · E1a, PR2 (19/11): a força de jogo de um lado, a MESMA regra
+// para o seu time e para a CPU (antes era só a sua; a CPU jogava com a força
+// do clube). Sobre a força de jogo do clube (GOLS-REAIS, forcaDeJogo):
+// - XI em campo contra a média do elenco principal (ataque e defesa);
+// - completude (titulares aptos; o expulso conta na vaga, EXPULSAO);
+// - formação e tática (tacticMod);
+// - condição média do XI.
+// o: { club, elenco, titulares (jogadores), formation, tacticMod, expulsosEmCampo }
+export function forcaDoLado({ club, elenco, titulares, formation, tacticMod, expulsosEmCampo = 0 }) {
   // "loan" conta junto com "principal" aqui — jogador emprestado é
   // força de verdade do seu elenco enquanto estiver com você (mesmo
   // critério de wageBillOf).
-  const principal = CAREER.squad.filter((p) => p.origin === "principal" || p.origin === "loan");
+  const principal = elenco.filter((p) => p.origin === "principal" || p.origin === "loan");
   const baselineAtk = avg(principal.map((p) => p.atk)) || 60;
   const baselineDef = avg(principal.map((p) => p.def)) || 60;
-  const starters = CAREER.lineup.starters.map((id) => id && CAREER.squad.find((p) => p.id === id)).filter((p) => p && p.status === "ok");
+  const starters = titulares.filter((p) => p && p.status === "ok");
   const usable = starters.length ? starters : principal.filter((p) => p.status === "ok").slice(0, 11);
   const startAtk = avg(usable.map((p) => p.atk)) || baselineAtk;
   const startDef = avg(usable.map((p) => p.def)) || baselineDef;
   // GOLS-REAIS: a força de jogo do clube (nível de gols do campeonato).
   const base = forcaDeJogo(club);
-  // EXPULSAO (17/11): o expulso da partida ao vivo continua contando aqui
-  // (a vaga não é reposta); o peso de jogar com menos vem de
-  // partida.comExpulsoes, aplicado no bloco (aovivo.resolverBloco).
-  const lm = partidaAtual();
-  const expulsosEmCampo = partida.EXPULSAO.ativa && lm && !lm.finished && Array.isArray(lm.expulsos)
-    ? lm.expulsos.filter((id) => CAREER.lineup.starters.includes(id)).length : 0;
   const completeness = clamp((usable.length + expulsosEmCampo) / 11, 0.6, 1);
   let atkMult = clamp(startAtk / baselineAtk, 0.7, 1.3) * completeness;
   let defMult = clamp(startDef / baselineDef, 0.7, 1.3) * completeness;
-  const fMod = FORMATION_MOD[CAREER.lineup.formation] || { atk: 1, def: 1 };
-  const tacticMod = combinedTacticMod();
+  const fMod = FORMATION_MOD[formation] || { atk: 1, def: 1 };
   atkMult *= fMod.atk * tacticMod.atk;
   defMult *= fMod.def * tacticMod.def;
   const avgCond = avg(usable.map((p) => p.condition)) ?? 100;
@@ -717,6 +714,37 @@ export function computeHumanStrength(club) {
     def: clamp(base.def / clamp(defMult, 0.55, 1.6), 0.3, 2.6),
     starters: usable,
   };
+}
+
+export function computeHumanStrength(club) {
+  const CAREER = carreiraAtual();
+  // EXPULSAO (17/11): o expulso da partida ao vivo continua contando aqui
+  // (a vaga não é reposta); o peso de jogar com menos vem de
+  // partida.comExpulsoes, aplicado no bloco (aovivo.resolverBloco).
+  const lm = partidaAtual();
+  const expulsosEmCampo = partida.EXPULSAO.ativa && lm && !lm.finished && Array.isArray(lm.expulsos)
+    ? lm.expulsos.filter((id) => CAREER.lineup.starters.includes(id)).length : 0;
+  return forcaDoLado({
+    club, elenco: CAREER.squad,
+    titulares: CAREER.lineup.starters.map((id) => id && CAREER.squad.find((p) => p.id === id)),
+    formation: CAREER.lineup.formation, tacticMod: combinedTacticMod(), expulsosEmCampo,
+  });
+}
+
+// PARIDADE-CPU · E1a, PR2: a força da CPU pela mesma regra (forcaDoLado), com
+// o XI convocado (escalacaoDaCpu), a formação dela e a tática neutra até o
+// perfil do técnico (E1b). `expulsosEmCampo`: os expulsos dela na partida ao
+// vivo (o XI já não tem o expulso; o peso vem de partida.comExpulsoes).
+// Com a regra desligada (testes de equivalência): a força do clube, como antes.
+export const TATICA_NEUTRA = { atk: 1, def: 1 };
+export function forcaDaCpu(clubId, club, titulares, expulsosEmCampo = 0, formation = "4-4-2") {
+  if (!PARIDADE_CPU.forca) return { ...forcaDeJogo(club), starters: titulares };
+  let elenco = leagueSquadFor(clubId);
+  if (!elenco.length) {
+    const d = (carreiraAtual().serieDPool || []).find((t) => String(t.id) === String(clubId));
+    elenco = d && ganchosMundo.elencoGerado ? ganchosMundo.elencoGerado(d) : titulares;
+  }
+  return forcaDoLado({ club, elenco, titulares, formation, tacticMod: TATICA_NEUTRA, expulsosEmCampo });
 }
 
 export const INJURY_HISTORY_MAX = 10;
@@ -807,7 +835,9 @@ export function applyMatchWearChunk(starters, round, chunkShare, appearedSet) {
           // elenco a suspensão fica pendente até o fim da rodada
           // (semana.refreshAvailability); na CPU, como sempre.
           p.yellowCards = 0;
-          if (CAREER.squad && CAREER.squad.includes(p)) p.suspensaoPendente = round + 1;
+          // PARIDADE-CPU · E1a, PR2: na CPU também (ele segue em campo e conta
+          // na força); a suspensão vale no fim da rodada (refreshAvailability).
+          if ((CAREER.squad && CAREER.squad.includes(p)) || PARIDADE_CPU.forca) p.suspensaoPendente = round + 1;
           else { p.status = "suspenso"; p.outUntilRound = round + 1; }
         } else {
           p.status = "suspenso"; p.outUntilRound = round + 1; p.yellowCards = 0;
@@ -873,12 +903,22 @@ export function freshCareerTotals() {
   };
 }
 
-export function applyConditionRecovery(starterIds) {
-  const CAREER = carreiraAtual();
-  const set = new Set(starterIds);
-  CAREER.squad.forEach((p) => {
-    if (!set.has(p.id)) p.condition = clamp((p.condition == null ? 100 : p.condition) + (10 + Math.random() * 12), 0, 100);
+// PARIDADE-CPU · E1a, PR2 (decisão do Murilo 19/11, "Corrigir e
+// recalibrar"): quem JOGOU também recupera depois do jogo, uma fração do que
+// falta para 100 (sem sorteio). Antes, o seu titular só se recuperava porque
+// cada jogo CPU × CPU da rodada chamava, por engano, a recuperação do seu
+// elenco (~9 vezes por rodada). Com 45%, quem joga toda rodada entra em campo
+// com ~80 de condição; com dois jogos na semana, menos (rodar o elenco vale).
+export const RECUPERACAO_POS_JOGO = 0.45;
+function recuperar(lista, jogaram) {
+  lista.forEach((p) => {
+    const c = p.condition == null ? 100 : p.condition;
+    if (!jogaram.has(p.id)) p.condition = clamp(c + (10 + Math.random() * 12), 0, 100);
+    else if (PARIDADE_CPU.forca) p.condition = clamp(c + RECUPERACAO_POS_JOGO * (100 - c), 0, 100);
   });
+}
+export function applyConditionRecovery(starterIds) {
+  recuperar(carreiraAtual().squad, new Set(starterIds));
 }
 
 export function myLeaguePosition() {
@@ -889,8 +929,8 @@ export function myLeaguePosition() {
 export function resolveCpuFixture(fx, round) {
   const CAREER = carreiraAtual();
   const home = teamById(fx.home), away = teamById(fx.away);
-  const hs = { ...forcaDeJogo(home), starters: xiDaCpu(fx.home, round) };
-  const as = { ...forcaDeJogo(away), starters: xiDaCpu(fx.away, round) };
+  const hs = forcaDaCpu(fx.home, home, xiDaCpu(fx.home, round));
+  const as = forcaDaCpu(fx.away, away, xiDaCpu(fx.away, round));
   // GE-BALANCE-003 (issue #30) — ver comentário em simulateCupLeg.
   const placar = partida.scoreGoals(hs, as, 1, Math.random);
   let { gh, ga } = placar;
@@ -916,8 +956,12 @@ export function resolveCpuFixture(fx, round) {
     homeEvents = simulatePlayerEvents(hs.starters, gh, round);
     awayEvents = simulatePlayerEvents(as.starters, ga, round);
   }
-  applyConditionRecovery(hs.starters.map((p) => p.id));
-  applyConditionRecovery(as.starters.map((p) => p.id));
+  // PARIDADE-CPU · E1a, PR2: jogo CPU × CPU não recupera mais o SEU elenco
+  // (era engano: ~9 recuperações extras por rodada para o seu time).
+  if (!PARIDADE_CPU.forca) {
+    applyConditionRecovery(hs.starters.map((p) => p.id));
+    applyConditionRecovery(as.starters.map((p) => p.id));
+  }
   recuperarCpu(fx.home, hs.starters.map((p) => p.id));
   recuperarCpu(fx.away, as.starters.map((p) => p.id));
   const events = [...homeEvents, ...awayEvents];

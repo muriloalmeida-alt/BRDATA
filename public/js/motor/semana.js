@@ -192,11 +192,16 @@ export function runCalendarOffWeek() {
   const week = calendarWeek();
   if (!week || week.r) return null;
   const round = CAREER.currentRound;
+  // PARIDADE-CPU · E1a, PR2 (19/11): a semana sem jogo recupera a CPU como
+  // recupera o seu elenco (férias: condição cheia; senão, +15).
+  const elencosCpu = PARIDADE_CPU.forca ? Object.values(CAREER.leagueSquads || {}) : [];
   if (week.p === "ferias") {
     CAREER.squad.forEach((p) => { p.condition = 100; });
+    elencosCpu.forEach((sq) => sq.forEach((p) => { p.condition = 100; }));
   } else {
     applyWeeklyTraining();
     CAREER.squad.forEach((p) => { p.condition = clamp((p.condition == null ? 100 : p.condition) + 15, 0, 100); });
+    elencosCpu.forEach((sq) => sq.forEach((p) => { p.condition = clamp((p.condition == null ? 100 : p.condition) + 15, 0, 100); }));
   }
   const healOneWeek = (p) => { if (p.status === "contundido" && p.outUntilRound != null && p.outUntilRound >= round) p.outUntilRound -= 1; };
   CAREER.squad.forEach(healOneWeek);
@@ -443,6 +448,8 @@ export function refreshAvailability(uptoRound) {
   // suspensão pela mesma regra (antes, só na virada da temporada).
   if (PARIDADE_CPU.convocacao) {
     [...Object.values(CAREER.leagueSquads || {}), ...Object.values(CAREER.elencosSerieD || {})].forEach((sq) => (sq || []).forEach((p) => {
+      // E1a, PR2: 3º amarelo acumulado na partida (como o seu).
+      if (p.suspensaoPendente != null) { p.status = "suspenso"; p.outUntilRound = p.suspensaoPendente; delete p.suspensaoPendente; }
       if (p.status !== "ok" && p.outUntilRound != null && r > p.outUntilRound) {
         if (p.status === "contundido") {
           const cap = INJURY_RETURN_CONDITION[p.injurySeverity] ?? 60;
@@ -468,6 +475,14 @@ export function applyWeeklyTraining() {
     round: CAREER.currentRound,
   }, Math.random);
   CAREER.squad.forEach((p) => Object.assign(p, patches.get(p.id)));
+  // PARIDADE-CPU · E1a, PR2 (decisão do Murilo 19/11, "Semana da CPU só na
+  // condição"): a CPU passa pela mesma semana de treino padrão, só no efeito
+  // na condição (descanso e desgaste do treino, treino.condicaoDaSemana); a
+  // evolução por treino da CPU fica para o E4.
+  if (PARIDADE_CPU.forca) {
+    const plano = treino.defaultTrainingPlan();
+    Object.values(CAREER.leagueSquads || {}).forEach((sq) => { if (sq && sq.length) treino.condicaoDaSemana(plano, sq); });
+  }
   CAREER.trainingAppliedForRound = calendarTurnKey();
   // Retenção/Engajamento — "Treine 1 jogador" (objetivo diário) conta
   // a SEMANA aplicada como 1 evento (não 1 por jogador afetado, senão

@@ -11,8 +11,9 @@
 // Uso: node tests/unit/test_motor_semana.js   (sai com 1 se algo falhar)
 const assert = require("assert");
 // PARIDADE-CPU · E1a (18/11): as cópias congeladas não têm a convocação da
-// CPU (11+11), a recuperação dela nem o retorno de lesão/suspensão dela.
-const CONVOCACAO_DESLIGADA = "window.BRDATA_MOTOR.estado.PARIDADE_CPU.convocacao = false;\n";
+// CPU (11+11), a recuperação dela, o retorno de lesão/suspensão dela nem a
+// força dela pelo XI (E1a, PR2).
+const CONVOCACAO_DESLIGADA = "window.BRDATA_MOTOR.estado.PARIDADE_CPU.convocacao = false; window.BRDATA_MOTOR.estado.PARIDADE_CPU.forca = false;\n";
 const fs = require("fs");
 const path = require("path");
 const vm = require("vm");
