@@ -18,7 +18,7 @@
 import { carreiraAtual, timePorId, partidaAtual, definirPartida, definirColetivaPendente, definirColetivaEncadeada } from "./estado.js";
 import { pushNotification } from "./registro.js";
 import { ambiente, calendarTurnKey, leagueSquadFor, pushLedger } from "./semana.js";
-import { applyConditionRecovery, decidirPrelimDoTecnico, finalizeCupPhaseExpanded, finalizePrelim, pickCpuXI, settleCupTieOutcome } from "./fechamento.js";
+import { applyConditionRecovery, decidirPrelimDoTecnico, finalizeCupPhaseExpanded, finalizePrelim, pickCpuXI, recuperarCpu, settleCupTieOutcome, xiDaCpu } from "./fechamento.js";
 import { pressLibraryEntry, computeTicketRevenue, applyNaturalAgingEvolution } from "./aovivo.js";
 
 const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
@@ -72,7 +72,7 @@ export function iniciarPernaCopa(tie, phase, leg, round) {
   const isHome = String(hostId) === String(CAREER.clubId);
   const home = teamById(hostId), away = teamById(guestId);
   const cpuTeamId = isHome ? guestId : hostId;
-  const cpuXI = pickCpuXI(leagueSquadFor(cpuTeamId));
+  const cpuXI = xiDaCpu(cpuTeamId, round);
   return definirPartida({
     round, humanFx: { home: hostId, away: guestId }, isHome, home, away, cpuXI, otherResults: [], standingsBefore: null,
     cupContext: { tie, phase, leg },
@@ -102,6 +102,7 @@ export function encerrarPernaCopa() {
   // careerTotals.copa* (ver settleCupTieOutcome), mesma separação já
   // estabelecida pelo formato legado.
   applyConditionRecovery(Array.from(lm.appeared));
+  recuperarCpu(lm.isHome ? lm.humanFx.away : lm.humanFx.home, Array.from(lm.appeared)); // PARIDADE-CPU · E1a
   let ticketRevenue = null;
   if (lm.isHome) {
     ticketRevenue = computeTicketRevenue(lm.home);
@@ -129,7 +130,7 @@ export function iniciarAmistoso(slot) {
   }]));
   return definirPartida({
     round: CAREER.currentRound, humanFx: { home: CAREER.clubId, away: slot.opp }, isHome: true, home, away,
-    cpuXI: pickCpuXI(leagueSquadFor(slot.opp)), otherResults: [], standingsBefore: null,
+    cpuXI: xiDaCpu(slot.opp, CAREER.currentRound), otherResults: [], standingsBefore: null,
     friendlyContext: { slot, snapshot },
     chunkIndex: 0, gh: 0, ga: 0, events: [], appeared: new Set(),
     subsUsed: 0, subsBonus: 0, formationPenaltyChunksLeft: 0,

@@ -683,6 +683,43 @@ Relatório (17/11):
 
 ⸻
 
+PARIDADE-E1a-1 — Convocação comum (11+11) e recuperação da CPU (PARIDADE-CPU, E1a, PR1)
+
+Status: REVISÃO DO PM NECESSÁRIA.
+Pedido: "Comece" (Murilo, 18/11), o E1a do plano aprovado. Requisitos
+CPU-01 e CPU-05 (parte de condição e retorno), V02.
+Feito (motor):
+- virada.convocacaoDaCpu: a CPU convoca pela mesma escalação automática do
+  seu time (autoLineup: titulares pela formação, banco de 11 com goleiro,
+  principal antes da base, por posição). A formação é 4-4-2 até o perfil
+  do técnico (E1b, D1). Disponível = status "ok".
+- Elenco curto (D7): entram 11 jogadores da base gerados na hora
+  (cpubase_<clube>_<ano>_<n>), sempre os mesmos por clube e temporada,
+  fora do save. A Série D sem elenco no save usa o elenco gerado de 22.
+- fechamento.escalacaoDaCpu/xiDaCpu nas partidas da CPU: ao vivo, direto,
+  CPU × CPU, Copa ao vivo, Copa simulada e amistoso.
+- Recuperação (A4): depois do jogo, quem não jogou recupera condição pela
+  regra do seu elenco (fechamento.recuperarCpu), no CPU × CPU e no
+  adversário ao vivo (liga e Copa).
+- Retorno (A5): semana.refreshAvailability devolve os jogadores da CPU de
+  lesão e suspensão pela mesma regra (antes, só na virada).
+- Chave estado.PARIDADE_CPU.convocacao (false só nos testes de
+  equivalência: aovivo, fechamento, posjogo, semana).
+Igual ao seu time: a escalação automática não olha a condição (a CPU
+escala um cansado, como o seu "Completar automaticamente").
+A força ainda é a do clube (A1): a força pelo XI é o PR2 do E1a.
+Resultado (baseline, 5 seeds × 5 temporadas, comparado ao A14):
+- gols, 0×0 e zebra: dentro de 0,04 gol, 0,4 p.p. e 2 p.p.;
+- rodada p95: 144 ms (antes, 183 ms; variação da medida);
+- pico do save: 867 KB (antes, 837 KB; 83% do limite de 1 MB do envio,
+  abaixo da meta de 900 KB). Mais jogadores da CPU se lesionam, voltam e
+  guardam histórico de lesão.
+- tests/sim/paridade_achados.js: A2, A4 e A5 agora "não confirmados".
+Testes: test_paridade_convocacao (novo, perfil frozen, 6/6); equivalências
+com a regra desligada.
+
+⸻
+
 PARIDADE-D7 — Elenco curto: Série D com 22 e base sob demanda (PARIDADE-CPU, antes do E1a)
 
 Status: REVISÃO DO PM NECESSÁRIA.

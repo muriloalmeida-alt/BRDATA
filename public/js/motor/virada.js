@@ -340,6 +340,43 @@ export function elencoSerieD(club) {
 }
 estado.ganchosMundo.elencoGerado = elencoSerieD;
 
+// PARIDADE-CPU · E1a (18/11): a convocação da CPU é a mesma escalação
+// automática do seu time (autoLineup: titulares pela formação, banco de 11
+// com goleiro, prefere o principal e desce para a base por posição). Formação
+// 4-4-2 até o perfil do técnico (E1b, D1). Disponível = status "ok" (a CPU
+// volta de lesão e suspensão em semana.refreshAvailability). Elenco curto
+// (D7, decisão do Murilo 17/11): entram jogadores da base gerados na hora,
+// sempre os mesmos por clube e temporada, sem ir para o save.
+export const FORMACAO_CPU = "4-4-2";
+const baseDaCpu = new Map();
+export function baseSobDemanda(club, ano) {
+  const chave = `${club.id}:${ano}`;
+  if (!baseDaCpu.has(chave)) {
+    const rng = ambiente.rngDaChave(`cpu-base:${club.id}:${ano}`);
+    baseDaCpu.set(chave, Array.from({ length: 11 }, (_, i) => ({ ...buildBasePlayer(club, i, rng), id: `cpubase_${club.id}_${ano}_${i}` })));
+  }
+  return baseDaCpu.get(chave);
+}
+export function convocacaoDaCpu(clubId, round) {
+  const CAREER = carreiraAtual();
+  let elenco = leagueSquadFor(clubId);
+  const d = (CAREER.serieDPool || []).find((t) => String(t.id) === String(clubId));
+  if (!elenco.length && d) elenco = elencoSerieD(d);
+  const aptos = elenco.filter((p) => p.status === "ok");
+  const curto = aptos.length < 22 || aptos.filter((p) => p.group === "G").length < 2;
+  const club = d || teamById(clubId);
+  const base = curto ? baseSobDemanda(club, CAREER.seasonYear) : [];
+  const l = autoLineup([...elenco, ...base], FORMACAO_CPU, true);
+  const porId = new Map([...elenco, ...base].map((p) => [p.id, p]));
+  return {
+    formation: l.formation,
+    starters: l.starters.map((id) => porId.get(id)).filter(Boolean),
+    bench: l.bench.map((id) => porId.get(id)).filter(Boolean),
+    baseUsada: [...l.starters, ...l.bench].filter((id) => id && String(id).startsWith("cpubase_")).length,
+  };
+}
+estado.ganchosMundo.convocacaoCpu = convocacaoDaCpu;
+
 export function initialStadium() {
   return { capacityBonus: 0, pendingUpgrade: null, completed: [] };
 }

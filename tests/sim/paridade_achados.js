@@ -44,16 +44,17 @@ async function novaPagina() {
 
     // A2 — escalação da CPU: molde fixo 1-4-4-2, sem banco, ignora condição.
     const a2 = a.ler(`(() => { ${MOTOR}
-      const sq = C.leagueSquads[${JSON.stringify(X)}].map((p) => ({ ...p }));
-      const xi = F.pickCpuXI(sq);
+      // A escalação que o jogo usa (E1a: escalacaoDaCpu; antes, pickCpuXI).
+      const usar = () => (F.escalacaoDaCpu ? F.escalacaoDaCpu(${JSON.stringify(X)}, C.currentRound) : { starters: F.pickCpuXI(C.leagueSquads[${JSON.stringify(X)}]), bench: [] });
+      const e = usar(), xi = e.starters;
       const grupos = xi.reduce((o, p) => (o[p.group] = (o[p.group] || 0) + 1, o), {});
       const melhorD = xi.find((p) => p.group === "D");
-      melhorD.condition = 5;
-      const xi2 = F.pickCpuXI(sq);
-      return { molde: F.CPU_XI_MIX, grupos, tamanho: xi.length, elenco: sq.length, exausto: { condicao: 5, escaladoMesmoAssim: xi2.some((p) => p.id === melhorD.id) } };
+      const cond = melhorD.condition; melhorD.condition = 5;
+      const xi2 = usar().starters; melhorD.condition = cond;
+      return { molde: F.CPU_XI_MIX, grupos, tamanho: xi.length, banco: e.bench.length, elenco: C.leagueSquads[${JSON.stringify(X)}].length, exausto: { condicao: 5, escaladoMesmoAssim: xi2.some((p) => p.id === melhorD.id) } };
     })()`);
     achado("A2", "A CPU escala pelo molde fixo 1-4-4-2 por overall, sem banco e sem olhar a condição",
-      a2.tamanho === 11 && JSON.stringify(a2.grupos) === JSON.stringify({ G: 1, D: 4, M: 4, F: 2 }) && a2.exausto.escaladoMesmoAssim, a2);
+      a2.tamanho === 11 && a2.banco === 0 && JSON.stringify(a2.grupos) === JSON.stringify({ G: 1, D: 4, M: 4, F: 2 }) && a2.exausto.escaladoMesmoAssim, a2);
 
     // A1 — força da CPU: o placar do jogo CPU × CPU não muda com o elenco.
     // Na carreira B, o elenco de X vira overall 30 (atk/def 20); mesma seed.
