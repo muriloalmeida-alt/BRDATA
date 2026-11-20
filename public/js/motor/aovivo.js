@@ -19,11 +19,11 @@
    Avisos viram o evento "aviso". A perna da Copa e o amistoso ao vivo
    terminam pela página até a etapa D2.
 =================================================================== */
-import { carreiraAtual, ligaAtual, todosTimes, timePorId, forcaMediaDoElenco, partidaAtual, definirPartida, forcaDeJogo } from "./estado.js";
+import { carreiraAtual, ligaAtual, todosTimes, timePorId, forcaMediaDoElenco, partidaAtual, definirPartida, forcaDeJogo, PARIDADE_CPU } from "./estado.js";
 import { ensureObjectivesFresh, bumpObjective, trailingWinStreak, rankByPoints } from "./registro.js";
 import { fmtBRL, abbreviateName } from "./texto.js";
 import { ambiente, avisar, leagueSquadFor } from "./semana.js";
-import { applyConditionRecovery, applyMatchWearChunk, attributeGoals, computeHumanStrength, finishRoundTail, freshCareerTotals, forcaDaCpu, freshMatchBucket, pickCpuXI, posturaDaCpu, posturaNoIntervalo, recuperarCpu, resolveCpuFixture, resolveRoundInstant, tacticModDe, xiDaCpu } from "./fechamento.js";
+import { applyConditionRecovery, applyMatchWearChunk, attributeGoals, computeHumanStrength, finishRoundTail, freshCareerTotals, escalacaoDaCpu, forcaDaCpu, freshMatchBucket, pickCpuXI, posturaDaCpu, posturaNoIntervalo, recuperarCpu, resolveCpuFixture, resolveRoundInstant, substituicoesDaCpu, tacticModDe, xiDaCpu } from "./fechamento.js";
 import * as financas from "./financas.js";
 import * as partida from "./partida.js";
 import * as tabela from "./tabela.js";
@@ -501,10 +501,13 @@ export function iniciarPartida(round, fixtures, humanFx, standingsBefore) {
   // PARIDADE-CPU · E1a: a escalação da CPU (11 titulares e 11 reservas).
   // E1b: a postura do técnico adversário (formação e eixos) no pré-jogo.
   const cpuPostura = posturaDaCpu(cpuTeamId, CAREER.clubId, !isHome);
-  const cpuXI = xiDaCpu(cpuTeamId, round, cpuPostura ? cpuPostura.formation : undefined);
+  const cpuEsc = escalacaoDaCpu(cpuTeamId, round, cpuPostura ? cpuPostura.formation : undefined);
+  const cpuXI = cpuEsc.starters;
+  // E1b, PR2: o banco da CPU, para as substituições dela (substituicoesDaCpu).
+  const cpuBanco = PARIDADE_CPU.tecnico ? { cpuBench: cpuEsc.bench.slice(), cpuSubs: 0 } : {};
   const otherResults = fixtures.filter((fx) => fx !== humanFx).map((fx) => resolveCpuFixture(fx, round));
   return definirPartida({
-    round, humanFx, isHome, home, away, cpuXI, ...(cpuPostura ? { cpuPostura } : {}), otherResults, standingsBefore,
+    round, humanFx, isHome, home, away, cpuXI, ...(cpuPostura ? { cpuPostura } : {}), ...cpuBanco, otherResults, standingsBefore,
     chunkIndex: 0, gh: 0, ga: 0, events: [], appeared: new Set(),
     subsUsed: 0, subsBonus: 0, formationPenaltyChunksLeft: 0,
     // EXPULSAO (17/11): seus expulsos (ids, a vaga fica vazia) e quantos o adversário perdeu.
@@ -575,6 +578,11 @@ export function resolverBloco() {
       lm.events.push({ type: "tatica", minute: 45, mine: false, text: nova.nivel > lm.cpuPostura.nivel ? `parte para o ataque (${nova.nome})` : `recua para segurar o resultado (${nova.nome})` });
       lm.cpuPostura = nova;
     }
+  }
+  // E1b, PR2: substituições da CPU no início do bloco (lesão, cansaço, plano).
+  if (lm.cpuBench && lm.chunkIndex > 0) {
+    const golsCpu = lm.isHome ? lm.ga : lm.gh, golsMeus = lm.isHome ? lm.gh : lm.ga;
+    lm.events.push(...substituicoesDaCpu(lm, LIVE_MATCH_CHUNK_MINUTES[lm.chunkIndex - 1], golsCpu < golsMeus, MAX_SUBS_PER_MATCH));
   }
   const pf = lm.cpuPostura || { formation: undefined, tactics: {} };
   const cpuTatica = tacticModDe(pf.tactics);
@@ -663,6 +671,10 @@ export function encerrarPartida() {
   const lm = partidaAtual();
   lm.finished = true;
   const result = { home: lm.humanFx.home, away: lm.humanFx.away, gh: lm.gh, ga: lm.ga };
+  // D3 (E1b, PR2): o que o técnico adversário fez, para a notícia do seu jogo.
+  const mudancaCpu = (lm.events || []).find((e) => e.type === "tatica" && !e.mine);
+  const trocasCpu = (lm.events || []).filter((e) => e.type === "substituicao" && !e.mine).length;
+  if (mudancaCpu || trocasCpu) result.decisaoCpu = { tatica: mudancaCpu ? mudancaCpu.text : null, trocas: trocasCpu };
   // "substituicao"/"chance_perdida"/"defesa" só existem pro feed AO
   // VIVO (ver liveEventLabel) — igual lesão (ver comentário no topo de
   // applyMatchWearChunk), o modal de detalhe do jogo de sempre
@@ -746,6 +758,7 @@ export function encerrarPartida() {
   const winlessBefore = (CAREER.teamWinlessStreak || {})[String(CAREER.clubId)] || 0;
   const allResults = [...lm.otherResults, result];
   const summary = finishRoundTail(lm.round, allResults, humanMatch, lm.standingsBefore);
+  delete result.decisaoCpu; // só para a notícia; não vai para o save (resultsByRound)
   // FASE 4 (item 2) — coletiva de imprensa pós-jogo (documento original
   // da Fase 4): decide se alguma situação da PRESS_LIBRARY bateu com
   // essa partida específica — se bateu, "Continuar" do modal "Seu
