@@ -9,9 +9,9 @@
    Só lê a partida e a carreira; aplicar usa as mesmas operações da
    partida ao vivo (applyLiveSub / applyLiveTactics).
 =================================================================== */
-import { carreiraAtual, timePorId, forcaDeJogo } from "./estado.js";
+import { carreiraAtual, timePorId } from "./estado.js";
 import { MAX_SUBS_PER_MATCH, applyLiveSub, applyLiveTactics } from "./aovivo.js";
-import { FORMATIONS, computeHumanStrength } from "./fechamento.js";
+import { FORMATIONS, computeHumanStrength, forcaDaCpu } from "./fechamento.js";
 import { autoLineup } from "./virada.js";
 import { abbreviateName } from "./texto.js";
 import * as partida from "./partida.js";
@@ -35,7 +35,9 @@ function forcaCom(lineup, club) {
 // Gols esperados a favor ÷ contra, do seu ponto de vista.
 function razao(lm, s) {
   const adv = lm.isHome ? lm.away : lm.home;
-  const outro = forcaDeJogo(adv); // GOLS-REAIS: força de jogo, como a sua
+  // PARIDADE-CPU · E1a, PR2: a força do adversário na partida, a mesma que o
+  // jogo usa (o XI dele e os expulsos dele); sem a regra, a do clube.
+  const outro = forcaDaCpu(lm.isHome ? lm.humanFx.away : lm.humanFx.home, adv, lm.cpuXI || [], lm.expulsosCpu || 0);
   const l = partida.goalLambdas(lm.isHome ? s : outro, lm.isHome ? outro : s);
   return lm.isHome ? l.home / l.away : l.away / l.home;
 }

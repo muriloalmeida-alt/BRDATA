@@ -126,6 +126,19 @@ function recordSeasonGain(p, attr, gain) {
   p.seasonGain[attr] = (p.seasonGain[attr] || 0) + gain;
 }
 
+// PARIDADE-CPU · E1a, PR2 (19/11): só o efeito da semana de treino na
+// condição (o mesmo de trainingWeek: descanso +12 para todos; dia de treino
+// cobra 6 × intensidade de quem treina), sem cópias nem ganhos — para os
+// elencos da CPU, toda semana, sem pesar no tempo da rodada.
+export function condicaoDaSemana(plan, squad) {
+  (plan || []).forEach((entry, i) => {
+    if (i === TRAINING_GAME_DAY || !entry || !entry.foco) return;
+    if (entry.foco === "descanso") { squad.forEach((p) => { p.condition = clamp((p.condition == null ? 100 : p.condition) + 12, 0, 100); }); return; }
+    const custo = Math.round(6 * (TRAINING_INTENSITY_MULT[entry.intensidade] || 1));
+    trainingTargets(entry, squad).forEach((p) => { p.condition = clamp((p.condition == null ? 100 : p.condition) - custo, 0, 100); });
+  });
+}
+
 // ---------- Semana de treino ----------
 // plan: os 7 dias; squad: o elenco; roundsSoFar: rodadas já disputadas na
 // temporada; preseason: semana de pré-temporada (físico rende +1);

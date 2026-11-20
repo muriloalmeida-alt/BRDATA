@@ -23,7 +23,7 @@ import { carreiraAtual, ligaAtual, todosTimes, timePorId, forcaMediaDoElenco, pa
 import { ensureObjectivesFresh, bumpObjective, trailingWinStreak, rankByPoints } from "./registro.js";
 import { fmtBRL, abbreviateName } from "./texto.js";
 import { ambiente, avisar, leagueSquadFor } from "./semana.js";
-import { applyConditionRecovery, applyMatchWearChunk, attributeGoals, computeHumanStrength, finishRoundTail, freshCareerTotals, freshMatchBucket, pickCpuXI, recuperarCpu, resolveCpuFixture, resolveRoundInstant, xiDaCpu } from "./fechamento.js";
+import { applyConditionRecovery, applyMatchWearChunk, attributeGoals, computeHumanStrength, finishRoundTail, freshCareerTotals, forcaDaCpu, freshMatchBucket, pickCpuXI, recuperarCpu, resolveCpuFixture, resolveRoundInstant, xiDaCpu } from "./fechamento.js";
 import * as financas from "./financas.js";
 import * as partida from "./partida.js";
 import * as tabela from "./tabela.js";
@@ -560,8 +560,11 @@ export function resolverBloco() {
   // que uma substituição/troca de tática feita na pausa já entra em
   // vigor no próximo tempo sem precisar de nenhum código extra aqui.
   // GOLS-REAIS: força de jogo (nível de gols do campeonato do clube).
-  const hs = lm.isHome ? computeHumanStrength(lm.home) : { ...forcaDeJogo(lm.home), starters: lm.cpuXI };
-  const as = lm.isHome ? { ...forcaDeJogo(lm.away), starters: lm.cpuXI } : computeHumanStrength(lm.away);
+  // PARIDADE-CPU · E1a, PR2: a CPU pela mesma regra (forcaDaCpu: o XI dela,
+  // os expulsos dela contando na vaga, como os seus).
+  const cpuId = lm.isHome ? lm.humanFx.away : lm.humanFx.home;
+  const hs = lm.isHome ? computeHumanStrength(lm.home) : forcaDaCpu(cpuId, lm.home, lm.cpuXI, lm.expulsosCpu || 0);
+  const as = lm.isHome ? forcaDaCpu(cpuId, lm.away, lm.cpuXI, lm.expulsosCpu || 0) : computeHumanStrength(lm.away);
   const humanSide = lm.isHome ? hs : as;
   if (lm.formationPenaltyChunksLeft > 0) {
     // GE-BALANCE-003 (issue #30) — penalidade simétrica em atk+def:

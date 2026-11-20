@@ -683,9 +683,55 @@ Relatório (17/11):
 
 ⸻
 
-PARIDADE-E1a-1 — Convocação comum (11+11) e recuperação da CPU (PARIDADE-CPU, E1a, PR1)
+PARIDADE-E1a-2 — Força comum pelo XI e condição recalibrada (PARIDADE-CPU, E1a, PR2)
 
 Status: REVISÃO DO PM NECESSÁRIA.
+Pedido: "Sim" (Murilo, 19/11), o PR2 do E1a. Requisito CPU-02, V01.
+Feito (motor):
+- fechamento.forcaDoLado: a força de jogo de um lado, a mesma regra para o
+  seu time (computeHumanStrength vira um invólucro dela) e para a CPU
+  (forcaDaCpu). Sobre a força de jogo do clube (GOLS-REAIS), entram:
+  - o XI em campo contra a média do elenco principal;
+  - a completude (o expulso conta na vaga);
+  - a formação e a tática (a CPU fica neutra até o E1b);
+  - a condição média do XI.
+  Usada ao vivo, no direto, em CPU × CPU, na Copa e no conselho do
+  intervalo.
+- 3º amarelo acumulado da CPU: segue em campo e só suspende depois do jogo,
+  como o seu.
+- Defeito antigo achado (decisão do Murilo 19/11, "Corrigir e recalibrar"):
+  - O problema: cada jogo CPU × CPU da rodada chamava a recuperação de
+    condição do SEU elenco (~9 vezes por rodada). Por isso, o seu titular
+    entrava sempre com ~100 de condição; a CPU, com ~30.
+  - A correção: a chamada indevida saiu.
+  - A recalibragem: quem jogou recupera 45% do que falta depois do jogo,
+    dos dois lados (RECUPERACAO_POS_JOGO). Agora o titular de toda rodada
+    entra com ~80, nos dois lados; com dois jogos na semana, menos.
+- Decisão do Murilo (19/11, "Semana da CPU só na condição"): a CPU passa
+  pela semana de treino padrão só no efeito na condição
+  (treino.condicaoDaSemana) e recupera nas semanas sem jogo como o seu
+  elenco (+15; férias: cheia). A evolução por treino da CPU fica no E4.
+- Chave estado.PARIDADE_CPU.forca (false só nos testes de equivalência).
+Resultado (baseline, 5 seeds × 5 temporadas, comparado ao PR1):
+- gols: Brasileirão real 2,61 (antes 2,65), Série B 2,89, Série C 2,83;
+- 0×0: Brasileirão real 8,3% (+1,0 p.p.);
+- zebra CPU × CPU: dentro de 1,6 p.p. por faixa;
+- tempo: rodada p95 igual à main medida na mesma hora (213 × 222 ms);
+- pico do save: 841 KB.
+Observação para decisão (O2): com o cansaço valendo para você, seus
+titulares se lesionam mais. Em 2 de 5 carreiras simuladas, o seu time ficou
+com um só goleiro disponível na temporada 3, e a regra da escalação (goleiro
+no banco, decisão de 12/11) bloqueou o jogo. A simulação não contrata.
+Testes: test_paridade_forca (novo, perfil frozen, 6/6); test_motor_expulsao
+(3º amarelo da CPU); equivalências com a regra desligada (aovivo,
+fechamento, posjogo, semana, jogo). tests/sim/paridade_achados.js: A1 agora
+"não confirmado" (A1, A2, A4, A5 e A14 resolvidos).
+
+⸻
+
+PARIDADE-E1a-1 — Convocação comum (11+11) e recuperação da CPU (PARIDADE-CPU, E1a, PR1)
+
+Status: APROVADO (Murilo, 19/11, "Aprovado"; PR #141).
 Pedido: "Comece" (Murilo, 18/11), o E1a do plano aprovado. Requisitos
 CPU-01 e CPU-05 (parte de condição e retorno), V02.
 Feito (motor):

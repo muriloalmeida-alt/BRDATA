@@ -56,14 +56,23 @@ async function novaPagina() {
     achado("A2", "A CPU escala pelo molde fixo 1-4-4-2 por overall, sem banco e sem olhar a condição",
       a2.tamanho === 11 && a2.banco === 0 && JSON.stringify(a2.grupos) === JSON.stringify({ G: 1, D: 4, M: 4, F: 2 }) && a2.exausto.escaladoMesmoAssim, a2);
 
-    // A1 — força da CPU: o placar do jogo CPU × CPU não muda com o elenco.
-    // Na carreira B, o elenco de X vira overall 30 (atk/def 20); mesma seed.
-    b.rodar(`(() => { ${MOTOR} C.leagueSquads[${JSON.stringify(X)}].forEach((p) => { p.overall = 30; p.atk = 20; p.def = 20; }); })()`, "achados");
+    // A1 — força da CPU: só a do clube. A força que o jogo usa para X com o XI
+    // completo e com os 4 melhores titulares de linha lesionados (o XI muda):
+    // se for a mesma, a força não depende de quem joga.
+    const a1 = a.ler(`(() => { ${MOTOR}
+      const id = ${JSON.stringify(X)}, club = E.timePorId(id), r = C.currentRound;
+      const xi = () => (F.xiDaCpu ? F.xiDaCpu(id, r) : F.pickCpuXI(C.leagueSquads[id]));
+      const forca = () => { const t = xi(); const f = F.forcaDaCpu ? F.forcaDaCpu(id, club, t) : E.forcaDeJogo(club); return { atk: f.atk, def: f.def, ids: t.map((p) => p.id) }; };
+      const cheio = forca();
+      const fora = C.leagueSquads[id].filter((p) => cheio.ids.includes(p.id) && p.group !== "G").sort((p, q) => q.overall - p.overall).slice(0, 4);
+      fora.forEach((p) => { p.status = "contundido"; p.outUntilRound = r + 5; });
+      const desfalcado = forca();
+      fora.forEach((p) => { p.status = "ok"; p.outUntilRound = null; });
+      return { cheio: { atk: cheio.atk, def: cheio.def }, desfalcado: { atk: desfalcado.atk, def: desfalcado.def }, xiMudou: JSON.stringify(cheio.ids) !== JSON.stringify(desfalcado.ids) };
+    })()`);
     const ra = await jogarRodada(a.P), rb = await jogarRodada(b.P);
-    const placar = (pg) => pg.ler(`(() => { ${MOTOR} const r = (C.resultsByRound[1] || []).find((x) => String(x.home) === ${JSON.stringify(X)} || String(x.away) === ${JSON.stringify(X)}); return r ? [r.gh, r.ga] : null; })()`);
-    const pa = placar(a), pb = placar(b);
-    achado("A1", "A força da CPU é só a do clube: com o elenco inteiro rebaixado a overall 30, o mesmo jogo (mesma seed) dá o mesmo placar",
-      ra.ok && rb.ok && pa && pb && pa[0] === pb[0] && pa[1] === pb[1], { clube: X, placarNormal: pa, placarElencoRebaixado: pb });
+    achado("A1", "A força da CPU é só a do clube: com os 4 melhores titulares de linha lesionados (o XI muda), a força de jogo é a mesma",
+      a1.xiMudou && a1.cheio.atk === a1.desfalcado.atk && a1.cheio.def === a1.desfalcado.def, { clube: X, ...a1 });
 
     // A3 — ao vivo, o XI da CPU não muda (só sai expulso).
     await a.P.avancarSemana(true);

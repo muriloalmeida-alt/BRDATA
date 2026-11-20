@@ -193,6 +193,9 @@ const ROTEIRO = (seed) => `(async () => {
     rodar(REDE, "rede");
     rodar(RELOGIO, "relogio");
     rodar("window.BRDATA_MOTOR = {};\n" + motor, "motor");
+    // PARIDADE-CPU · E1a, PR2 (19/11): a cópia congelada usa a força do clube
+    // para a CPU; aqui a regra nova (força pelo XI) fica desligada.
+    rodar("window.BRDATA_MOTOR.estado.PARIDADE_CPU.forca = false;", "forca");
     rodar(dataSrc, "data.js");
     rodar(pagina, "carreira.js");
     if (antes) rodar(ref, "ref_jogo_antes.js");

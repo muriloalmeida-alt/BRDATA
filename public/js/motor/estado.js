@@ -208,4 +208,8 @@ export const ganchosMundo = { elencoGerado: null, convocacaoCpu: null };
 // mesma escalação automática do seu time (virada.convocacaoDaCpu), recupera
 // condição e volta de lesão e suspensão como o seu elenco. `convocacao:
 // false` só nos testes de equivalência com as cópias congeladas.
-export const PARIDADE_CPU = { convocacao: true };
+// E1a, PR2 (19/11): `forca` — a força de jogo dos dois lados sai da mesma
+// regra (fechamento.forcaDoLado: XI em campo, formação, tática, condição e
+// completude sobre a força do clube); o 3º amarelo da CPU também só suspende
+// depois do jogo, como o seu.
+export const PARIDADE_CPU = { convocacao: true, forca: true };

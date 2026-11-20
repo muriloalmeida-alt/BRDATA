@@ -114,11 +114,22 @@ const jogador = (id, extra = {}) => ({ id, name: `Jogador ${id}`, origin: "princ
     assert.strictEqual(p.status, "ok");
     E.definirCarreira(null);
   });
-  await check("3º amarelo na CPU: suspenso para os próximos jogos, sem tirar de campo; vermelho direto continua expulsando", () => {
-    E.definirCarreira({ squad: [] });
+  await check("3º amarelo na CPU: segue em campo e fica suspenso só depois do jogo, como o seu (PARIDADE-CPU E1a); vermelho direto continua expulsando", () => {
     const cpu = jogador("c", { yellowCards: 2 }), outro = jogador("v");
+    E.definirCarreira({ squad: [], leagueSquads: { x: [cpu] } });
     const r1 = comSorteios([0.05], () => F.applyMatchWearChunk([cpu], 4, 1, new Set()));
-    assert.deepStrictEqual(r1.redCardIds, []); assert.strictEqual(cpu.status, "suspenso");
+    assert.deepStrictEqual(r1.redCardIds, []); assert.strictEqual(cpu.status, "ok"); assert.strictEqual(cpu.suspensaoPendente, 5);
+    S.refreshAvailability(5);
+    assert.strictEqual(cpu.status, "suspenso"); assert.strictEqual(cpu.outUntilRound, 5);
+    S.refreshAvailability(6);
+    assert.strictEqual(cpu.status, "ok");
+    // Sem a regra da paridade (equivalência): suspenso na hora, como antes.
+    E.PARIDADE_CPU.forca = false;
+    try {
+      const velho = jogador("w", { yellowCards: 2 });
+      comSorteios([0.05], () => F.applyMatchWearChunk([velho], 4, 1, new Set()));
+      assert.strictEqual(velho.status, "suspenso");
+    } finally { E.PARIDADE_CPU.forca = true; }
     const r2 = comSorteios([0.001], () => F.applyMatchWearChunk([outro], 4, 1, new Set()));
     assert.deepStrictEqual(r2.redCardIds, ["v"]); assert.ok(r2.events.some((e) => e.type === "vermelho"));
     E.definirCarreira(null);
