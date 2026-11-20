@@ -683,6 +683,54 @@ Relatório (17/11):
 
 ⸻
 
+PARIDADE-E2 — Outras divisões e Copa jogando com os jogadores (PARIDADE-CPU, E2)
+
+Status: REVISÃO DO PM NECESSÁRIA (mesclado dentro da autorização de 20/11).
+Requisitos: CPU-05 e V05 (parte da liga e da Copa); achados A6 e A7.
+Decisões do Murilo (20/11):
+- tempo "Aceitar ~+6–10%";
+- Série D "Gerado sob demanda";
+- D6 "Comprimir o envio" (PR próprio, antes do E3);
+- D2 "Guardado por clube" (E3).
+Feito (motor):
+- fechamento.jogoCpuComJogadores: o núcleo do CPU × CPU da sua divisão
+  (postura, XI, força, cartões e lesões, autores, recuperação de quem
+  jogou), agora usado também:
+  - nas rodadas das outras divisões (resolveOtherDivisionsRound), uma vez
+    por partida, na ordem do calendário;
+  - nos jogos de Copa entre dois clubes da CPU (simulateCupLeg).
+  No jogo de Copa simulado contra você, o lado da CPU também leva cartões,
+  lesões, gols e recuperação.
+- Série D (CPU-06, decisão "Gerado sob demanda"): o elenco do clube da D
+  continua gerado na hora, sempre o mesmo. Só vai para o save quando ele
+  enfrenta você ou sobe de divisão; nos jogos de Copa entre CPUs, o
+  desgaste dele não fica guardado.
+- Save: o jogador da CPU guarda as 3 últimas lesões, sem a fadiga (só a
+  preparação física do seu elenco mostra o histórico). A condição depois
+  do jogo é arredondada.
+- Desempenho: busca de time por id com índice (estado.timePorId) e média da
+  divisão do perfil do técnico em cache durante a rodada.
+- Chave estado.PARIDADE_CPU.divisoes (false só nos testes de equivalência).
+Resultado (baseline, dados reais, 5 seeds × 5 temporadas, contra a main):
+- gols: A 2,54 → 2,59; B 2,88 → 2,98; C 2,85 → 2,89 (dentro de 0,15);
+- 0×0: dentro de 1 p.p.;
+- zebras: todas as faixas de todas as divisões dentro de ±4 p.p. (a maior
+  variação é −3,7, na faixa 15–30% da Série B); o CPU × CPU geral fica
+  dentro de 1,2 p.p.;
+- save: pico de 863 → 892 KB (meta de 900 KB; sem o histórico enxuto, eram
+  933 KB);
+- tempo da rodada (Node, com gravação): p95 de 175 → 186 ms (+6%); p50 de
+  93 → 103 ms (+10%). Acima da meta de +5%, aceito pelo Murilo; a V09
+  (iPhone) confirma depois.
+Achados: A6 e A7 "NÃO confirmado" (paridade_achados); A8 segue como está,
+pela decisão.
+Testes:
+- test_paridade_divisoes (novo, perfil frozen, 4/4);
+- suíte completa: 178/178;
+- equivalências com a regra desligada.
+
+⸻
+
 PARIDADE-E1b-2 — Substituições da CPU na sua partida e o resumo do adversário (PARIDADE-CPU, E1b, PR2)
 
 Status: REVISÃO DO PM NECESSÁRIA (mesclado dentro da autorização de 20/11).
