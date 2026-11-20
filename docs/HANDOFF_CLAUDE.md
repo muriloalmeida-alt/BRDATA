@@ -683,6 +683,38 @@ Relatório (17/11):
 
 ⸻
 
+PARIDADE-E1b-2 — Substituições da CPU na sua partida e o resumo do adversário (PARIDADE-CPU, E1b, PR2)
+
+Status: REVISÃO DO PM NECESSÁRIA (mesclado dentro da autorização de 20/11).
+Requisitos: CPU-04 (substituições pela mesma cota) e V03; D3 "Lances +
+resumo" (a parte do resumo).
+Feito (motor):
+- fechamento.substituicoesDaCpu: o adversário da sua partida ao vivo
+  (Brasileirão e Copa) troca jogadores no início de cada bloco, sem sorteio
+  e dentro da mesma cota do seu time (5):
+  - quem se lesiona em campo sai na hora, pelo reserva da mesma posição;
+  - aos 45', 60' e 75', até 2 jogadores com condição abaixo de 55 saem
+    para reservas da posição mais descansados;
+  - aos 75', perdendo, o pior defensor ou meia sai e entra o melhor
+    atacante do banco (uma vez);
+  - o expulso não volta.
+  O banco é o da convocação comum (escalacaoDaCpu), que fica na partida
+  (lm.cpuBench).
+- Cada troca vira um lance "Substituição" nos Lances (a v2 já mostra).
+- D3: a notícia do seu jogo ganha "Do outro lado, <adversário> partiu
+  para o ataque no intervalo e fez N substituições". A linha só vale para
+  a notícia: não vai para o resultado gravado (resultsByRound).
+- Com a chave estado.PARIDADE_CPU.tecnico desligada, nada muda (os
+  testes de equivalência continuam iguais).
+Não muda: os jogos CPU × CPU continuam sem trocas (são de uma vez só, sem
+blocos). O baseline de gols é o do PR1.
+Testes:
+- test_paridade_tecnico: 8/8, com o item 7 (a regra das trocas numa
+  partida montada) e o item 8 (trocas, lances e notícia na sua partida);
+- suíte completa: 177/177.
+
+⸻
+
 PARIDADE-E1b-1 — O técnico da CPU: perfil, postura no pré-jogo e intervalo (PARIDADE-CPU, E1b, PR1)
 
 Status: REVISÃO DO PM NECESSÁRIA (mesclado dentro da autorização de 20/11).
@@ -725,8 +757,8 @@ Resultado (baseline, 5 seeds × 5 temporadas):
 - 0×0: 8,1%;
 - zebra CPU × CPU: dentro de 1,4 p.p. do E0;
 - a 1ª calibração (posturas fortes demais) dava 2,44 gols e foi suavizada.
-Ainda falta: as substituições da CPU e a linha no resumo da rodada (D3)
-vêm no PR2 do E1b.
+As substituições da CPU e a linha no resumo (D3) vieram no PR2
+(PARIDADE-E1b-2).
 Testes:
 - test_paridade_tecnico (novo, perfil frozen, 6/6);
 - domain/match.test.ts (lance "tatica");

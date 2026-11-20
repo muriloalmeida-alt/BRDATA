@@ -264,7 +264,10 @@ export function noticiaDoSeuJogo(allResults, isMine) {
   const texto = pro > contra ? `${meu.name} vence ${adv.name} por ${placar}${casa ? " em casa" : " fora"}`
     : pro < contra ? `${meu.name} perde para ${adv.name} por ${placar}${casa ? " em casa" : " fora"}`
     : `${meu.name} empata com ${adv.name} em ${placar}${casa ? " em casa" : " fora"}`;
-  return { type: "seu_jogo", mine: true, texto };
+  // D3 (PARIDADE-CPU, E1b): o que o técnico adversário fez de marcante.
+  const d = r.decisaoCpu;
+  const feitos = d ? [d.tatica ? `${d.tatica.replace(/ \(.*\)$/, "").replace(/^parte /, "partiu ").replace(/^recua /, "recuou ")} no intervalo` : null, d.trocas ? `fez ${d.trocas} substitui${d.trocas > 1 ? "ções" : "ção"}` : null].filter(Boolean) : [];
+  return { type: "seu_jogo", mine: true, texto: feitos.length ? `${texto}. Do outro lado, ${adv.name} ${feitos.join(" e ")}` : texto };
 }
 // Resumo da rodada: gols, jogos, a maior vitória e o líder.
 export function resumoDaRodada(round, allResults, standings) {

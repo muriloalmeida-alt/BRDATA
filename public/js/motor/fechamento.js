@@ -590,6 +590,49 @@ export function posturaDaCpu(clubId, adversarioId, mandante) {
   const nivel = ponto <= -0.9 ? 0 : ponto <= -0.4 ? 1 : ponto < 0.5 ? 2 : 3;
   return { ...POSTURAS_CPU[nivel], nivel };
 }
+// E1b, PR2: as substituições da CPU na sua partida, no início de cada bloco
+// (sem sorteio), dentro da mesma cota do seu time (`limite`):
+// 1) lesionado em campo sai na hora (reserva da mesma posição, senão o melhor);
+// 2) nas janelas do 2º tempo (45', 60', 75'), os 2 mais cansados (condição
+//    abaixo de 55) dão lugar a reservas da posição;
+// 3) aos 75', perdendo, troca o pior defensor/meia pelo melhor atacante do banco.
+// O expulso não volta (já saiu do XI). Devolve os lances ("substituicao").
+export const CANSACO_TROCA_CPU = 55;
+export function substituicoesDaCpu(lm, minuto, perdendo, limite) {
+  if (!PARIDADE_CPU.tecnico || !lm.cpuBench) return [];
+  lm.cpuSubs = lm.cpuSubs || 0;
+  const lances = [];
+  const disponiveis = () => lm.cpuBench.filter((p) => p.status === "ok");
+  const trocar = (sai, entra) => {
+    const i = lm.cpuXI.indexOf(sai);
+    if (i < 0 || !entra || lm.cpuSubs >= limite) return false;
+    lm.cpuXI[i] = entra;
+    lm.cpuBench = lm.cpuBench.filter((p) => p !== entra);
+    lm.cpuSubs++;
+    lances.push({ type: "substituicao", minute: minuto, mine: false, entra: entra.name, saiu: sai.name });
+    return true;
+  };
+  const daPosicao = (g) => disponiveis().filter((p) => p.group === g).sort((a, b) => b.overall - a.overall)[0] || disponiveis().filter((p) => p.group !== "G").sort((a, b) => b.overall - a.overall)[0];
+  // 1) Lesionado em campo.
+  lm.cpuXI.filter((p) => p.status === "contundido").forEach((p) => {
+    const entra = p.group === "G" ? disponiveis().find((x) => x.group === "G") : daPosicao(p.group);
+    trocar(p, entra);
+  });
+  // 2) Cansaço, nas janelas do 2º tempo.
+  if (minuto >= 45) {
+    lm.cpuXI.filter((p) => p.group !== "G" && (p.condition == null ? 100 : p.condition) < CANSACO_TROCA_CPU)
+      .sort((a, b) => (a.condition ?? 100) - (b.condition ?? 100)).slice(0, 2)
+      .forEach((p) => { const entra = disponiveis().filter((x) => x.group === p.group && (x.condition ?? 100) > (p.condition ?? 100)).sort((a, b) => b.overall - a.overall)[0]; trocar(p, entra); });
+  }
+  // 3) Plano: aos 75', perdendo, mais um atacante.
+  if (minuto === 75 && perdendo && !lm.cpuPlanoUsado) {
+    const atacante = disponiveis().filter((p) => p.group === "F").sort((a, b) => b.overall - a.overall)[0];
+    const sai = lm.cpuXI.filter((p) => p.group === "D" || p.group === "M").sort((a, b) => a.overall - b.overall)[0];
+    if (atacante && sai && trocar(sai, atacante)) lm.cpuPlanoUsado = true;
+  }
+  return lances;
+}
+
 // No intervalo: perdendo, abre um nível; ganhando, fecha um (o perfil
 // ousado segura a vantagem só com 2+ gols); empate, mantém. Devolve a
 // postura nova ou null (sem mudança). Só eixos: a formação fica (como o seu
