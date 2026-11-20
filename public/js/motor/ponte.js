@@ -26,7 +26,7 @@ import { FORMATIONS, SECTOR_IDS, SECTOR_INSTRUCTIONS, TACTIC_AXES, computeHumanS
 import { firePressConference } from "./posjogo.js";
 import { MAX_PRINCIPAL, revendaLiberadaDe, REGION_LABEL, SCOUT_MISSION_DURATIONS, SCOUT_MISSION_TYPES, SUBPOS_LABEL, ambiente, applyWeeklyTraining, avisar, calendarTurnKey, leagueSquadFor, marketTeamsPool, pendingOfferOutFor, pushLedger, subPositionOf, transferWindowStatus } from "./semana.js";
 import { abbreviateName, fmtBRL } from "./texto.js";
-import { autoLineup, defaultSectorTactics, evaluateAlwaysCheckableAchievements, generateSponsorProposals, initialStadium } from "./virada.js";
+import { autoLineup, defaultSectorTactics, evaluateAlwaysCheckableAchievements, generateSponsorProposals, goleirosDeEmergencia, initialStadium } from "./virada.js";
 import * as financas from "./financas.js";
 import * as mercado from "./mercado.js";
 import * as treino from "./treino.js";
@@ -61,6 +61,29 @@ function sponsorshipSeasonTotal() {
 function stadiumCapacityFor(club) {
   return financas.stadiumCapacity(club, ambiente.rngDaChave(`stadium:${club.id}`), stadiumUpgradeBonusFor(club));
 }
+// O2 (decisão do Murilo 19/11, "Base de emergência"): menos de 2 goleiros
+// disponíveis (titular e banco) e nenhum outro para chamar → sobem da base,
+// gerados na hora (virada.goleirosDeEmergencia), com aviso.
+function promoverGoleirosDeEmergencia(CAREER) {
+  const disp = CAREER.squad.filter((p) => p.group === "G" && escalacao.disponivel(p, CAREER.currentRound)).length;
+  const faltam = Math.max(0, 2 - disp);
+  if (!faltam) return [];
+  const novos = goleirosDeEmergencia(faltam);
+  CAREER.squad.push(...novos);
+  return novos;
+}
+function desfazerGoleirosDeEmergencia(CAREER, novos) {
+  if (!novos.length) return;
+  const ids = new Set(novos.map((p) => p.id));
+  CAREER.squad = CAREER.squad.filter((p) => !ids.has(p.id));
+}
+function avisarGoleirosDeEmergencia(novos) {
+  if (!novos.length) return;
+  const nomes = novos.map((p) => abbreviateName(p.name)).join(" e ");
+  avisar({ title: "Goleiro da base", detail: `Sem goleiro disponível, ${nomes} ${novos.length > 1 ? "subiram" : "subiu"} da base para completar a escalação.` }, { type: "info" });
+  registro.pushNotification("lesao", `${nomes} ${novos.length > 1 ? "subiram" : "subiu"} da base: sem goleiro disponível para a escalação.`);
+}
+
 function teamById(id) {
   return estado.timePorId(id);
 }
@@ -1002,24 +1025,31 @@ export const comandosGestao = {
       if (partidaAtual() && !partidaAtual().finished) return { ok: false, motivo: "partida" };
       const l = CAREER.lineup;
       const grupos = (FORMATIONS[l.formation] || []).map((s) => s[0]);
+      const subiram = promoverGoleirosDeEmergencia(CAREER);
       const r = escalacao.completarEscalacao(l, CAREER.squad, CAREER.currentRound, grupos);
-      if (r.mudou) {
+      if (r.mudou || subiram.length) {
         const antes = { starters: [...l.starters], bench: [...(l.bench || [])] };
         l.starters = r.lineup.starters; l.bench = r.lineup.bench;
         markLineupDirty();
         const g = await ambiente.gravar();
-        if (!g.ok) { Object.assign(l, antes); return g; }
+        if (!g.ok) { Object.assign(l, antes); desfazerGoleirosDeEmergencia(CAREER, subiram); return g; }
+        avisarGoleirosDeEmergencia(subiram);
       }
-      return { ok: true, mudou: r.mudou, valida: r.valida, pendencias: r.pendencias };
+      return { ok: true, mudou: r.mudou || subiram.length > 0, valida: r.valida, pendencias: r.pendencias, goleirosDaBase: subiram.map((p) => ({ id: p.id, nome: p.name })) };
     },
     async escalarAutomaticamente(incluirBase) {
       const CAREER = carreiraAtual();
       if (!CAREER) return { ok: false, motivo: "sem-carreira" };
+      // O2: com a base incluída, falta de goleiro disponível sobe goleiros da base.
+      const subiram = incluirBase ? promoverGoleirosDeEmergencia(CAREER) : [];
       const r = autoLineup(CAREER.squad, CAREER.lineup.formation, !!incluirBase);
       CAREER.lineup.starters = r.starters;
       CAREER.lineup.bench = r.bench;
       markLineupDirty();
-      return ambiente.gravar();
+      const g = await ambiente.gravar();
+      if (g && g.ok) avisarGoleirosDeEmergencia(subiram);
+      else desfazerGoleirosDeEmergencia(CAREER, subiram);
+      return g;
     },
     marcacao() {
       const CAREER = carreiraAtual();

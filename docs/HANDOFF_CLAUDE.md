@@ -683,9 +683,30 @@ Relatório (17/11):
 
 ⸻
 
-PARIDADE-E1a-2 — Força comum pelo XI e condição recalibrada (PARIDADE-CPU, E1a, PR2)
+PARIDADE-O2 — Goleiro da base de emergência (PARIDADE-CPU, fecha o E1a)
 
 Status: REVISÃO DO PM NECESSÁRIA.
+Decisão do Murilo (19/11, "Base de emergência"), observação O2 do PR #142:
+com o cansaço valendo, o seu time pode ficar com um só goleiro disponível,
+e a regra "goleiro no banco" (12/11) bloqueava o jogo.
+Autorização (20/11): "Pode trabalhar até concluir todas as atividades".
+Feito:
+- virada.goleirosDeEmergencia: goleiros gerados na hora pelo gerador da
+  base, sempre os mesmos por clube, temporada e ordem de subida.
+- ponte.completarEscalacao ("Completar automaticamente") e
+  escalarAutomaticamente(com a base): com menos de 2 goleiros disponíveis,
+  sobem da base os que faltam (1 ou 2). Eles ficam no elenco (origem base).
+  Há um aviso ("Goleiro da base") e uma notificação. Se a gravação
+  falhar, os goleiros saem de novo.
+- Nenhuma mudança na regra da escalação (validarEscalacao) nem na v2.
+Testes: test_goleiro_emergencia (novo, 5/5). A baseline volta a completar
+as 5 temporadas nas carreiras que travavam (seeds 1 e 3, dados reais).
+
+⸻
+
+PARIDADE-E1a-2 — Força comum pelo XI e condição recalibrada (PARIDADE-CPU, E1a, PR2)
+
+Status: APROVADO (Murilo, 20/11, "Aprovado e fazer o merge"; PR #142).
 Pedido: "Sim" (Murilo, 19/11), o PR2 do E1a. Requisito CPU-02, V01.
 Feito (motor):
 - fechamento.forcaDoLado: a força de jogo de um lado, a mesma regra para o
