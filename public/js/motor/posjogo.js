@@ -18,7 +18,7 @@
 import { carreiraAtual, timePorId, partidaAtual, definirPartida, definirColetivaPendente, definirColetivaEncadeada } from "./estado.js";
 import { pushNotification } from "./registro.js";
 import { ambiente, calendarTurnKey, leagueSquadFor, pushLedger } from "./semana.js";
-import { applyConditionRecovery, decidirPrelimDoTecnico, finalizeCupPhaseExpanded, finalizePrelim, pickCpuXI, recuperarCpu, settleCupTieOutcome, xiDaCpu } from "./fechamento.js";
+import { applyConditionRecovery, decidirPrelimDoTecnico, finalizeCupPhaseExpanded, finalizePrelim, pickCpuXI, posturaDaCpu, recuperarCpu, settleCupTieOutcome, xiDaCpu } from "./fechamento.js";
 import { pressLibraryEntry, computeTicketRevenue, applyNaturalAgingEvolution } from "./aovivo.js";
 
 const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
@@ -72,9 +72,10 @@ export function iniciarPernaCopa(tie, phase, leg, round) {
   const isHome = String(hostId) === String(CAREER.clubId);
   const home = teamById(hostId), away = teamById(guestId);
   const cpuTeamId = isHome ? guestId : hostId;
-  const cpuXI = xiDaCpu(cpuTeamId, round);
+  const cpuPostura = posturaDaCpu(cpuTeamId, CAREER.clubId, !isHome); // E1b
+  const cpuXI = xiDaCpu(cpuTeamId, round, cpuPostura ? cpuPostura.formation : undefined);
   return definirPartida({
-    round, humanFx: { home: hostId, away: guestId }, isHome, home, away, cpuXI, otherResults: [], standingsBefore: null,
+    round, humanFx: { home: hostId, away: guestId }, isHome, home, away, cpuXI, ...(cpuPostura ? { cpuPostura } : {}), otherResults: [], standingsBefore: null,
     cupContext: { tie, phase, leg },
     chunkIndex: 0, gh: 0, ga: 0, events: [], appeared: new Set(),
     subsUsed: 0, subsBonus: 0, formationPenaltyChunksLeft: 0,

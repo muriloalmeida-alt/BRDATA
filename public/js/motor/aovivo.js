@@ -23,7 +23,7 @@ import { carreiraAtual, ligaAtual, todosTimes, timePorId, forcaMediaDoElenco, pa
 import { ensureObjectivesFresh, bumpObjective, trailingWinStreak, rankByPoints } from "./registro.js";
 import { fmtBRL, abbreviateName } from "./texto.js";
 import { ambiente, avisar, leagueSquadFor } from "./semana.js";
-import { applyConditionRecovery, applyMatchWearChunk, attributeGoals, computeHumanStrength, finishRoundTail, freshCareerTotals, forcaDaCpu, freshMatchBucket, pickCpuXI, recuperarCpu, resolveCpuFixture, resolveRoundInstant, xiDaCpu } from "./fechamento.js";
+import { applyConditionRecovery, applyMatchWearChunk, attributeGoals, computeHumanStrength, finishRoundTail, freshCareerTotals, forcaDaCpu, freshMatchBucket, pickCpuXI, posturaDaCpu, posturaNoIntervalo, recuperarCpu, resolveCpuFixture, resolveRoundInstant, tacticModDe, xiDaCpu } from "./fechamento.js";
 import * as financas from "./financas.js";
 import * as partida from "./partida.js";
 import * as tabela from "./tabela.js";
@@ -499,10 +499,12 @@ export function iniciarPartida(round, fixtures, humanFx, standingsBefore) {
   // cada tempo só re-selecionaria o mesmo time mesmo, mas fixar deixa
   // a intenção clara: só o SEU lado pode mudar de gente em campo).
   // PARIDADE-CPU · E1a: a escalação da CPU (11 titulares e 11 reservas).
-  const cpuXI = xiDaCpu(cpuTeamId, round);
+  // E1b: a postura do técnico adversário (formação e eixos) no pré-jogo.
+  const cpuPostura = posturaDaCpu(cpuTeamId, CAREER.clubId, !isHome);
+  const cpuXI = xiDaCpu(cpuTeamId, round, cpuPostura ? cpuPostura.formation : undefined);
   const otherResults = fixtures.filter((fx) => fx !== humanFx).map((fx) => resolveCpuFixture(fx, round));
   return definirPartida({
-    round, humanFx, isHome, home, away, cpuXI, otherResults, standingsBefore,
+    round, humanFx, isHome, home, away, cpuXI, ...(cpuPostura ? { cpuPostura } : {}), otherResults, standingsBefore,
     chunkIndex: 0, gh: 0, ga: 0, events: [], appeared: new Set(),
     subsUsed: 0, subsBonus: 0, formationPenaltyChunksLeft: 0,
     // EXPULSAO (17/11): seus expulsos (ids, a vaga fica vazia) e quantos o adversário perdeu.
@@ -563,8 +565,21 @@ export function resolverBloco() {
   // PARIDADE-CPU · E1a, PR2: a CPU pela mesma regra (forcaDaCpu: o XI dela,
   // os expulsos dela contando na vaga, como os seus).
   const cpuId = lm.isHome ? lm.humanFx.away : lm.humanFx.home;
-  const hs = lm.isHome ? computeHumanStrength(lm.home) : forcaDaCpu(cpuId, lm.home, lm.cpuXI, lm.expulsosCpu || 0);
-  const as = lm.isHome ? forcaDaCpu(cpuId, lm.away, lm.cpuXI, lm.expulsosCpu || 0) : computeHumanStrength(lm.away);
+  // E1b: no intervalo (1º bloco do 2º tempo), o técnico adversário reavalia
+  // a postura pelo placar; a mudança aparece nos lances (D3).
+  if (lm.chunkIndex === 3 && lm.cpuPostura && !lm.cpuIntervaloVisto) {
+    lm.cpuIntervaloVisto = true;
+    const golsCpu = lm.isHome ? lm.ga : lm.gh, golsMeus = lm.isHome ? lm.gh : lm.ga;
+    const nova = posturaNoIntervalo(cpuId, lm.cpuPostura, golsCpu, golsMeus);
+    if (nova) {
+      lm.events.push({ type: "tatica", minute: 45, mine: false, text: nova.nivel > lm.cpuPostura.nivel ? `parte para o ataque (${nova.nome})` : `recua para segurar o resultado (${nova.nome})` });
+      lm.cpuPostura = nova;
+    }
+  }
+  const pf = lm.cpuPostura || { formation: undefined, tactics: {} };
+  const cpuTatica = tacticModDe(pf.tactics);
+  const hs = lm.isHome ? computeHumanStrength(lm.home) : forcaDaCpu(cpuId, lm.home, lm.cpuXI, lm.expulsosCpu || 0, pf.formation, cpuTatica);
+  const as = lm.isHome ? forcaDaCpu(cpuId, lm.away, lm.cpuXI, lm.expulsosCpu || 0, pf.formation, cpuTatica) : computeHumanStrength(lm.away);
   const humanSide = lm.isHome ? hs : as;
   if (lm.formationPenaltyChunksLeft > 0) {
     // GE-BALANCE-003 (issue #30) — penalidade simétrica em atk+def:

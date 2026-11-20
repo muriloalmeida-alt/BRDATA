@@ -10,6 +10,8 @@ export interface MatchEvent {
   jogador: string | null; assistencia: string | null; entra: string | null; sai: string | null; penalti: boolean;
   // Nome clicável (12/11/2026): ids dos jogadores do lance, quando o motor tem.
   jogadorId?: string | null; assistenciaId?: string | null;
+  // PARIDADE-CPU E1b (20/11): mudança tática do adversário ("tatica"), em texto.
+  texto?: string | null;
 }
 export interface MatchSnapshot {
   fase: MatchPhase;

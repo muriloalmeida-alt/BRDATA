@@ -54,6 +54,8 @@ function describe(e: MatchEvent, team: string): { title: string; sub: string } {
     case "penalty_awarded": return { title: "Pênalti marcado", sub: team };
     case "penalty_missed": return { title: `Pênalti perdido · ${nm(e.jogador)}`, sub: team };
     case "var_check": return { title: "Revisão do VAR", sub: team };
+    // PARIDADE-CPU E1b: o técnico adversário muda a postura (intervalo).
+    case "tatica": return { title: "Mudança tática", sub: e.texto ? `${team} ${e.texto}` : team };
     default: return { title: "Lance", sub: team };
   }
 }
