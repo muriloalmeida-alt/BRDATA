@@ -347,6 +347,27 @@ estado.ganchosMundo.elencoGerado = elencoSerieD;
 // volta de lesão e suspensão em semana.refreshAvailability). Elenco curto
 // (D7, decisão do Murilo 17/11): entram jogadores da base gerados na hora,
 // sempre os mesmos por clube e temporada, sem ir para o save.
+// O2 (decisão do Murilo 19/11, "Base de emergência"): sem goleiro disponível
+// para titular e banco, o seu time sobe da base goleiros gerados na hora (o
+// mesmo gerador da base), que ficam no elenco. `faltam`: quantos (1 ou 2).
+// Sempre os mesmos para o mesmo clube, temporada e ordem de subida.
+export function goleirosDeEmergencia(faltam) {
+  const CAREER = carreiraAtual();
+  const club = teamById(CAREER.clubId);
+  // Conta os que já subiram assim (outro socorro na mesma rodada não repete).
+  const ja = CAREER.squad.filter((p) => String(p.id).startsWith(`base_${CAREER.clubId}_gol_`)).length;
+  const usados = new Set(CAREER.squad.map((p) => p.id));
+  return Array.from({ length: faltam }, (_, k) => {
+    const n = ja + k;
+    const rng = ambiente.rngDaChave(`base-emergencia-gol:${CAREER.clubId}:${CAREER.seasonYear}:${n}`);
+    const p = buildBasePlayer(club, 0, rng); // posição 0 da base = goleiro
+    let id = `base_${club.id}_gol_${CAREER.seasonYear}_${n}`;
+    while (usados.has(id)) id += "x";
+    usados.add(id);
+    return { ...p, id, group: "G" };
+  });
+}
+
 export const FORMACAO_CPU = "4-4-2";
 const baseDaCpu = new Map();
 export function baseSobDemanda(club, ano) {
