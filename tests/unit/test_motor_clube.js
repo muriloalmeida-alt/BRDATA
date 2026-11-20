@@ -244,7 +244,7 @@ const limpa = (x) => JSON.parse(JSON.stringify(x, (k, v) => (k === "ts" && typeo
       ["aovivo", "TALK_BENCH_STREAK_THRESHOLD WANTS_TRANSFER_BENCH_STREAK WANTS_TRANSFER_MORALE_MAX PRESS_LIBRARY"],
       ["clube", codigo.includes("motorClube") ? "OFFER_WAIT_ROUNDS LOAN_REFUSAL_EFFECTIVE_THRESHOLD STADIUM_UPGRADES SCOUT_MARKET SCOUT_GROUP_LABEL BOARD_REQUEST_COOLDOWN PURCHASE_HISTORY_MAX" : ""]]
       .flatMap(([m, l]) => l.split(" ").filter(Boolean).map((n) => `Object.defineProperty(globalThis, "${n}", { configurable: true, get() { return window.BRDATA_MOTOR.${m}.${n}; } });`)).join("\n") + "\n";
-    vm.runInContext("var window = globalThis; window.BRDATA_MOTOR = {};\n" + motorCode() + dataSrc + STUBS + ACESSOS + "\n" + consts + comuns + codigo + "\nouvirAvisosDoMotor();", sb);
+    vm.runInContext("var window = globalThis; window.BRDATA_MOTOR = {};\n" + motorCode() + dataSrc + STUBS + ACESSOS + "\n" + consts + comuns + codigo + "\nouvirAvisosDoMotor(); window.BRDATA_MOTOR.estado.PARIDADE_CPU.financas = false;", sb);
     return sb;
   };
   // ANTES: as funções congeladas. DEPOIS: os atalhos de hoje, que chamam o motor.

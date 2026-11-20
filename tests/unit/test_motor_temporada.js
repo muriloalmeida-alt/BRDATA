@@ -53,6 +53,7 @@ const FUNCS = [
 
 // O resto do jogo de que essas funções dependem, igual nos dois lados.
 const STUBS = String.raw`
+function viradaDoCaixaCpu() {} // PARIDADE-CPU · E3 desligado (equivalência)
 var CAREER = null, LEAGUE_TEAMS = [], ALL_TEAMS_FLAT = [], CURRENT_COMPETITION_ID = "brasileirao", NOTES = [];
 var LIVE_SEASON = 2026;
 var DEMO_FIRST_NAMES = ["Gabriel", "Lucas", "Matheus", "Rafael", "Bruno", "Diego"], DEMO_LAST_NAMES = ["Souza", "Silva", "Oliveira", "Santos", "Costa"];

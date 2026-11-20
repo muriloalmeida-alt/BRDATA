@@ -378,11 +378,13 @@ const { newCareer, globaisDoMotor } = require("./_v2_carreira");
   // não uma chave nova de CAREER), o transferLog já usado no teste
   // 1.3.2 (não é novo desta fase), e recentDeclines (Fase 1.5 —
   // cooldown pós-recusa, pequeno e podado a cada rodada, ver
-  // test_transfer_ai_market_dynamics.js).
+  // test_transfer_ai_market_dynamics.js). PARIDADE-CPU · E3: caixaCpu (o
+  // caixa da CPU guardado por clube, decisão D2 do Murilo, ~1,5 KB) e
+  // agentesLivres (os dispensados da CPU, até 40).
   const schemaAfter = await page.evaluate(() => Object.keys(CAREER).sort());
   const newTopLevelKeys = schemaAfter.filter((k) => !schemaBefore.includes(k));
-  const ALLOWED_NEW_KEYS = ["transferLog", "recentDeclines"];
-  check("24) Nenhuma chave nova em CAREER além das já justificadas (transferLog/recentDeclines):",
+  const ALLOWED_NEW_KEYS = ["transferLog", "recentDeclines", "caixaCpu", "agentesLivres"];
+  check("24) Nenhuma chave nova em CAREER além das já justificadas (transferLog/recentDeclines/caixaCpu/agentesLivres):",
     newTopLevelKeys.filter((k) => !ALLOWED_NEW_KEYS.includes(k)).length === 0, JSON.stringify(newTopLevelKeys));
 
   // 25) persistência existente continua funcionando — cria uma oferta

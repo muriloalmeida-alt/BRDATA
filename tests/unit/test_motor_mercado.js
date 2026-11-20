@@ -73,6 +73,7 @@ function marketTeamsPool() {
   return pool.filter((t) => t.competitionId !== "serie_d");
 }
 function calendarOn() { return !!CAREER.calendar; }
+function caixaDaCpu() { return null; } // PARIDADE-CPU · E3 desligado (equivalência)
 const CALENDAR_WINDOW_PHASES = new Set(["ferias", "pre", "pausa"]);
 const MONTH_LONG = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
 function calendarWeekMonth(w) { return w.m; }

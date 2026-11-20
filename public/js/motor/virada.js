@@ -20,7 +20,7 @@
 =================================================================== */
 import { carreiraAtual, definirCarreira, ligaAtual, definirLigaAtual, todosTimes, definirTodosTimes, competicaoAtual, definirCompeticaoAtual, timePorId, forcaMediaDoElenco } from "./estado.js";
 import * as estado from "./estado.js";
-import { CALENDAR_PHASE_BY_MONTH, MAX_LEAGUE_SQUAD, MAX_LEAGUE_SQUAD_OTHER_DIVISION, MAX_PRINCIPAL, MIN_LEAGUE_SQUAD, MIN_LEAGUE_SQUAD_OTHER_DIVISION, ambiente, applyCalendarMonthlyFinances, avisar, leagueSquadFor, marketTeamsPool, minSquadSizeFor, pushTransferLog } from "./semana.js";
+import { ambiente, applyCalendarMonthlyFinances, avisar, CALENDAR_PHASE_BY_MONTH, leagueSquadFor, marketTeamsPool, MAX_LEAGUE_SQUAD, MAX_LEAGUE_SQUAD_OTHER_DIVISION, MAX_PRINCIPAL, MIN_LEAGUE_SQUAD, MIN_LEAGUE_SQUAD_OTHER_DIVISION, minSquadSizeFor, pushTransferLog, viradaDoCaixaCpu } from "./semana.js";
 import { CUP_PRELIM_ROUND, CUP_ROUNDS, CUP_ROUNDS_EXPANDED, FORMATIONS, SECTOR_IDS, SECTOR_INSTRUCTIONS, freshCareerTotals, freshCupTie, materializarAdversarioDaCopa, resolveCupPhase, settleLoanIn, settleLoanOut, shuffleWithRng } from "./fechamento.js";
 import { ensureObjectivesFresh, evaluateSeasonEndAchievements, freshAchievementsState, freshObjectiveList, freshObjectivesState, pushNotification } from "./registro.js";
 import { freshTeamStats } from "./aovivo.js";
@@ -752,6 +752,8 @@ export async function applyPromotionRelegation() {
     const desloca = CAREER.seasonYear - ambiente.temporadaReal();
     promotedD.forEach((t) => (CAREER.leagueSquads[String(t.id)] || []).forEach((p) => { if (desloca > 0) p.contractUntil += desloca; }));
   }
+  // PARIDADE-CPU · E3 (D2): receitas da temporada menos a folha no caixa da CPU.
+  viradaDoCaixaCpu();
 
   CAREER.divisionTeams = {
     brasileirao: newA.map((t) => ({ ...t, competitionId: "brasileirao" })),
