@@ -220,6 +220,11 @@ export function simulateCupLeg(hostId, guestId, round) {
   const CAREER = carreiraAtual();
   const host = teamById(hostId), guest = teamById(guestId);
   const isHost = String(hostId) === String(CAREER.clubId), isGuest = String(guestId) === String(CAREER.clubId);
+  // PARIDADE-CPU · E2 (A7): Copa CPU × CPU com os jogadores, como na liga.
+  if (PARIDADE_CPU.divisoes && !isHost && !isGuest) {
+    const { gh, ga } = jogoCpuComJogadores({ home: hostId, away: guestId }, round, host, guest);
+    return { gh, ga };
+  }
   const ph = isHost ? null : posturaDaCpu(hostId, guestId, true), pg = isGuest ? null : posturaDaCpu(guestId, hostId, false);
   const fh = ph ? ph.formation : undefined, fg = pg ? pg.formation : undefined;
   const hs = isHost ? computeHumanStrength(host) : forcaDaCpu(hostId, host, xiDaCpu(hostId, round, fh), 0, fh, tacticModDe(ph && ph.tactics));
@@ -237,15 +242,19 @@ export function simulateCupLeg(hostId, guestId, round) {
   if (partida.EXPULSAO.ativa) {
     // EXPULSAO (17/11): cartões do seu lado antes dos autores; o expulso
     // pesa do minuto dele até o fim.
-    const wh = isHost ? applyMatchWearChunk(hs.starters, round, 1, new Set()) : null;
-    const wa = isGuest ? applyMatchWearChunk(as.starters, round, 1, new Set()) : null;
+    // PARIDADE-CPU · E2: o lado da CPU também leva cartões, lesões e gols.
+    const cpuJoga = PARIDADE_CPU.divisoes;
+    const wh = isHost || cpuJoga ? applyMatchWearChunk(hs.starters, round, 1, new Set()) : null;
+    const wa = isGuest || cpuJoga ? applyMatchWearChunk(as.starters, round, 1, new Set()) : null;
     ({ gh, ga } = partida.golsComExpulsoes(gh, ga, partida.goalLambdas(hs, as), wh ? wh.redCardIds.length : 0, wa ? wa.redCardIds.length : 0, Math.random));
-    if (isHost) attributeGoals(hs.starters, gh);
-    if (isGuest) attributeGoals(as.starters, ga);
+    if (isHost || cpuJoga) attributeGoals(hs.starters, gh);
+    if (isGuest || cpuJoga) attributeGoals(as.starters, ga);
+    if (cpuJoga) recuperarCpu(isHost ? guestId : hostId, (isHost ? as : hs).starters.map((p) => p.id));
     return { gh, ga };
   }
-  if (isHost) simulatePlayerEvents(hs.starters, gh, round);
-  if (isGuest) simulatePlayerEvents(as.starters, ga, round);
+  if (isHost || PARIDADE_CPU.divisoes) simulatePlayerEvents(hs.starters, gh, round);
+  if (isGuest || PARIDADE_CPU.divisoes) simulatePlayerEvents(as.starters, ga, round);
+  if (PARIDADE_CPU.divisoes) recuperarCpu(isHost ? guestId : hostId, (isHost ? as : hs).starters.map((p) => p.id));
   return { gh, ga };
 }
 
@@ -552,6 +561,7 @@ export function xiDaCpu(clubId, round, formation) { return escalacaoDaCpu(clubId
 // (retranca) a +1 (ofensivo), do porte do clube (força de jogo contra a média
 // da divisão) mais uma variação sorteada uma vez por clube e guardada no save
 // (CAREER.perfisCpu). A comissão técnica da CPU fica embutida aqui (D12).
+const mediasDaDivisao = new WeakMap();
 export function perfilDoTecnico(clubId) {
   const CAREER = carreiraAtual();
   CAREER.perfisCpu = CAREER.perfisCpu || {};
@@ -562,8 +572,17 @@ export function perfilDoTecnico(clubId) {
   }
   const forca = (t) => { const f = forcaDeJogo(t); return f.atk && f.def ? f.atk / f.def : 1; };
   const club = teamById(clubId);
-  const pares = (ligaAtual().some((t) => String(t.id) === id) ? ligaAtual() : (CAREER.divisionTeams[club.competitionId] || ligaAtual())).map(forca);
-  const media = pares.length ? pares.reduce((a, b) => a + b, 0) / pares.length : 1;
+  const lista = ligaAtual().some((t) => String(t.id) === id) ? ligaAtual() : (CAREER.divisionTeams[club.competitionId] || ligaAtual());
+  // A média da divisão, guardada só na memória durante a rodada (E2: a
+  // rodada das 3 divisões pede o perfil de ~120 técnicos).
+  const chave = `${CAREER.seasonYear}:${CAREER.currentRound}:${lista.length}:${lista.map((t) => t.id).join(",")}`;
+  let media = mediasDaDivisao.get(lista);
+  if (!media || media.chave !== chave) {
+    const pares = lista.map(forca);
+    media = { chave, valor: pares.length ? pares.reduce((a, b) => a + b, 0) / pares.length : 1 };
+    mediasDaDivisao.set(lista, media);
+  }
+  media = media.valor;
   const porte = clamp((forca(club) / media - 1) * 2, -0.6, 0.6);
   return clamp(porte + CAREER.perfisCpu[id], -1, 1);
 }
@@ -677,6 +696,18 @@ export function resolveOtherDivisionsRound(round) {
   const CAREER = carreiraAtual();
   if (!CAREER.otherDivisions) return; // carreira sem o sistema ativado (ver migrateCareerDefaults) — nada a fazer
   Object.entries(CAREER.otherDivisions).forEach(([compId, division]) => {
+    // PARIDADE-CPU · E2: com os jogadores, como os jogos CPU × CPU da sua
+    // divisão (minutos, cartões, lesões, autores e recuperação por atleta).
+    if (PARIDADE_CPU.divisoes) {
+      const times = new Map((CAREER.divisionTeams[compId] || []).map((t) => [String(t.id), { ...t, competitionId: t.competitionId || compId }]));
+      (division.schedule[round] || []).forEach((fx) => {
+        const home = times.get(String(fx.home)), away = times.get(String(fx.away));
+        if (!home || !away) return;
+        const { gh, ga } = jogoCpuComJogadores(fx, round, home, away);
+        tabela.applyResult(division.standings, { home: fx.home, away: fx.away, gh, ga });
+      });
+      return;
+    }
     // GOLS-REAIS: a força de jogo (nível de gols da divisão).
     const teamsById = new Map((CAREER.divisionTeams[compId] || []).map((t) => [String(t.id), forcaDeJogo({ ...t, competitionId: t.competitionId || compId })]));
     // Fase 12, etapa 2: rodada só de placar (motor/rodada.js).
@@ -863,6 +894,7 @@ export function forcaDaCpu(clubId, club, titulares, expulsosEmCampo = 0, formati
 }
 
 export const INJURY_HISTORY_MAX = 10;
+export const INJURY_HISTORY_MAX_CPU = 3;
 
 export const INJURY_SEVERITY = [
   { type: "leve", label: "Leve", chance: 0.70, minRounds: 1, maxRounds: 3 },
@@ -971,8 +1003,12 @@ export function applyMatchWearChunk(starters, round, chunkShare, appearedSet) {
       const fadigaAntes = Math.round(100 - (p.condition == null ? 100 : p.condition));
       p.status = "contundido"; p.outUntilRound = round + dur; p.injurySeverity = severity.type;
       p.injuryHistory = p.injuryHistory || [];
-      p.injuryHistory.push({ round, severity: severity.type, durationRounds: dur, fadigaAtInjury: fadigaAntes });
-      if (p.injuryHistory.length > INJURY_HISTORY_MAX) p.injuryHistory.shift();
+      // PARIDADE-CPU · E2: o jogador da CPU guarda as últimas 3 lesões, sem a
+      // fadiga (só a preparação física do seu elenco mostra o histórico),
+      // para o save caber com as 3 divisões jogando com os jogadores.
+      const daCpu = PARIDADE_CPU.divisoes && !(CAREER.squad && CAREER.squad.includes(p));
+      p.injuryHistory.push(daCpu ? { round, severity: severity.type, durationRounds: dur } : { round, severity: severity.type, durationRounds: dur, fadigaAtInjury: fadigaAntes });
+      while (p.injuryHistory.length > (daCpu ? INJURY_HISTORY_MAX_CPU : INJURY_HISTORY_MAX)) p.injuryHistory.shift();
       // Central de notificações (Bloco 8 pendentes) — só o SEU clube
       // (applyMatchWearChunk também roda pros outros 19 times, ver
       // resolveCpuFixture; CAREER.squad contém as MESMAS referências de
@@ -1029,7 +1065,7 @@ function recuperar(lista, jogaram) {
   lista.forEach((p) => {
     const c = p.condition == null ? 100 : p.condition;
     if (!jogaram.has(p.id)) p.condition = clamp(c + (10 + Math.random() * 12), 0, 100);
-    else if (PARIDADE_CPU.forca) p.condition = clamp(c + RECUPERACAO_POS_JOGO * (100 - c), 0, 100);
+    else if (PARIDADE_CPU.forca) p.condition = clamp(Math.round(c + RECUPERACAO_POS_JOGO * (100 - c)), 0, 100);
   });
 }
 export function applyConditionRecovery(starterIds) {
@@ -1043,7 +1079,18 @@ export function myLeaguePosition() {
 
 export function resolveCpuFixture(fx, round) {
   const CAREER = carreiraAtual();
-  const home = teamById(fx.home), away = teamById(fx.away);
+  const { gh, ga, events } = jogoCpuComJogadores(fx, round, teamById(fx.home), teamById(fx.away));
+  const result = { home: fx.home, away: fx.away, gh, ga };
+  if (events.length) result.events = events;
+  applyResultToStandings(result);
+  (CAREER.resultsByRound[round] = CAREER.resultsByRound[round] || []).push(result);
+  return result;
+}
+
+// O jogo CPU × CPU com os jogadores (PARIDADE-CPU, E2: o mesmo da sua divisão,
+// das outras divisões e da Copa): postura, XI, força, cartões e lesões,
+// autores dos gols e recuperação de quem jogou. Devolve o placar e os lances.
+export function jogoCpuComJogadores(fx, round, home, away) {
   // E1b: a postura de cada técnico (formação e eixos) no pré-jogo.
   const ph = posturaDaCpu(fx.home, fx.away, true), pa = posturaDaCpu(fx.away, fx.home, false);
   const fh = ph ? ph.formation : undefined, fa = pa ? pa.formation : undefined;
@@ -1082,12 +1129,7 @@ export function resolveCpuFixture(fx, round) {
   }
   recuperarCpu(fx.home, hs.starters.map((p) => p.id));
   recuperarCpu(fx.away, as.starters.map((p) => p.id));
-  const events = [...homeEvents, ...awayEvents];
-  const result = { home: fx.home, away: fx.away, gh, ga };
-  if (events.length) result.events = events;
-  applyResultToStandings(result);
-  (CAREER.resultsByRound[round] = CAREER.resultsByRound[round] || []).push(result);
-  return result;
+  return { gh, ga, events: [...homeEvents, ...awayEvents] };
 }
 
 export function finishRoundTail(round, allResults, humanMatch, standingsBefore) {

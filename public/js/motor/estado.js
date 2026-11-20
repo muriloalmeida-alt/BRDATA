@@ -177,10 +177,28 @@ export function definirCompeticaoAtual(id) { mundo.competicaoAtual = id; return 
 
 // Time pelo id: primeiro a liga atual (com a competição atual), depois os
 // outros; sem achar, um time genérico (como sempre foi).
+// PARIDADE-CPU · E2: busca por id nas listas de times por índice (a rodada
+// das 3 divisões com os jogadores chama timePorId milhares de vezes). As
+// listas só são trocadas inteiras (definirLigaAtual/definirTodosTimes); mesmo
+// assim, o índice é conferido a cada acerto e refeito se o tamanho mudou.
+const indices = new WeakMap();
+function acharPorId(lista, k) {
+  let idx = indices.get(lista);
+  if (!idx || idx.n !== lista.length) {
+    idx = { n: lista.length, pos: new Map() };
+    lista.forEach((t, j) => { if (t && !idx.pos.has(String(t.id))) idx.pos.set(String(t.id), j); });
+    indices.set(lista, idx);
+  }
+  const i = idx.pos.get(k);
+  if (i == null) return undefined;
+  if (lista[i] && String(lista[i].id) === k) return lista[i];
+  indices.delete(lista);
+  return lista.find((t) => t && String(t.id) === k);
+}
 export function timePorId(id) {
-  const own = mundo.ligaAtual.find((t) => String(t.id) === String(id));
+  const own = acharPorId(mundo.ligaAtual, String(id));
   if (own) return { ...own, competitionId: mundo.competicaoAtual };
-  const other = mundo.todosTimes.find((t) => String(t.id) === String(id));
+  const other = acharPorId(mundo.todosTimes, String(id));
   if (other) return other;
   // SERIED-001: clubes da Série D (jogam a Copa do Brasil, fora das ligas).
   const d = carreira && (carreira.serieDPool || []).find((t) => String(t.id) === String(id));
@@ -214,4 +232,4 @@ export const ganchosMundo = { elencoGerado: null, convocacaoCpu: null };
 // depois do jogo, como o seu.
 // E1b (20/11): `tecnico` — o técnico da CPU (perfil, postura no pré-jogo e
 // mudança no intervalo, fechamento.posturaDaCpu).
-export const PARIDADE_CPU = { convocacao: true, forca: true, tecnico: true };
+export const PARIDADE_CPU = { convocacao: true, forca: true, tecnico: true, divisoes: true };
