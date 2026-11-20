@@ -453,6 +453,42 @@ function readBody(req) {
   });
 }
 
+// D6 (decisão do Murilo 20/11, "Comprimir o envio"): o corpo do PUT
+// /api/career pode vir em gzip (Content-Encoding: gzip), ~10x menor. Limites:
+// 1 MB no fio (como sempre) e 8 MB depois de abrir (contra "zip bomb"; o
+// careerStore ainda limita o comprimido em 768 KB). Sem gzip, o mesmo de
+// sempre (readBody). Erro de tamanho vira 413; gzip ou JSON quebrado, 400.
+const CAREER_BODY_WIRE_MAX = 1024 * 1024;
+const CAREER_BODY_OPEN_MAX = 8 * 1024 * 1024;
+function readCareerBody(req) {
+  const gz = /\bgzip\b/i.test(req.headers["content-encoding"] || "");
+  if (!gz) {
+    return readBody(req).catch((err) => { err.status = 413; throw err; });
+  }
+  return new Promise((resolve, reject) => {
+    let size = 0;
+    const chunks = [];
+    req.on("data", (chunk) => {
+      size += chunk.length;
+      if (size > CAREER_BODY_WIRE_MAX) { const e = new Error("corpo da requisição grande demais"); e.status = 413; reject(e); req.destroy(); return; }
+      chunks.push(chunk);
+    });
+    req.on("end", () => {
+      let raw;
+      try {
+        raw = zlib.gunzipSync(Buffer.concat(chunks), { maxOutputLength: CAREER_BODY_OPEN_MAX });
+      } catch (err) {
+        const e = new Error(err && err.code === "ERR_BUFFER_TOO_LARGE" ? "save grande demais" : "corpo gzip inválido");
+        e.status = err && err.code === "ERR_BUFFER_TOO_LARGE" ? 413 : 400;
+        return reject(e);
+      }
+      try { resolve(JSON.parse(raw.toString("utf8"))); }
+      catch { const e = new Error("JSON inválido"); e.status = 400; reject(e); }
+    });
+    req.on("error", reject);
+  });
+}
+
 function sendJSON(res, status, obj) {
   const body = JSON.stringify(obj);
   res.writeHead(status, {
@@ -2339,9 +2375,12 @@ const server = http.createServer(async (req, res) => {
       return sendJSONMaybeGzip(req, res, 200, { career: careerStore.getCareer(req.authUser.id) });
     }
     if (pathname === "/api/career" && req.method === "PUT") {
-      const body = await readBody(req);
+      let body;
+      try { body = await readCareerBody(req); }
+      catch (err) { return sendJSON(res, err.status || 400, { error: err.message }); }
       const saved = careerStore.saveCareer(req.authUser.id, body);
-      return sendJSON(res, 200, { career: saved });
+      // D6: a resposta (o save inteiro) também vai comprimida, se o cliente aceitar.
+      return sendJSONMaybeGzip(req, res, 200, { career: saved });
     }
     if (pathname === "/api/career" && req.method === "DELETE") {
       careerStore.deleteCareer(req.authUser.id);

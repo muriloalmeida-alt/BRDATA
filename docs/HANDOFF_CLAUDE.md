@@ -683,6 +683,33 @@ Relatório (17/11):
 
 ⸻
 
+PARIDADE-D6 — Save comprimido no envio (PARIDADE-CPU, antes do E3)
+
+Status: REVISÃO DO PM NECESSÁRIA (mesclado dentro da autorização de 20/11).
+Decisão do Murilo (20/11): D6 "Comprimir o envio".
+Feito:
+- Servidor: o PUT /api/career aceita o corpo em gzip (Content-Encoding:
+  gzip). Os limites são:
+  - 1 MB no fio, como sempre;
+  - 8 MB depois de abrir (proteção contra "zip bomb"); o careerStore segue
+    limitando o comprimido a 768 KB.
+  Erros: tamanho vira 413; gzip ou JSON quebrado vira 400 (antes, o corpo
+  grande caía num erro genérico). A resposta (o save) também vai
+  comprimida quando o cliente aceita.
+- Cliente (repositorio.js, a cópia ao servidor): envia em gzip quando o
+  navegador tem CompressionStream (Safari 16.4+, Chrome, Firefox). Um
+  servidor que ainda não abre gzip recusa com 400 sem gravar nada (o
+  formato não confere); aí vai de novo sem compressão, uma vez.
+- Bundle da v2 regerado (o repositório entra no build).
+Efeito: um save de ~890 KB vai ao servidor com ~100 KB. O limite de 1 MB
+deixa de ser o teto do save; o novo teto é o do careerStore (768 KB
+comprimidos, ~7 MB em JSON).
+Não muda: o formato do save, o armazenamento, a leitura (GET já era
+comprimido) e o modo offline.
+Testes:
+- test_save_gzip (novo, 6/6): cópia em gzip, PUT direto, gzip quebrado,
+  "zip bomb", JSON puro e servidor antigo;
+- suíte completa: 178/178.
 PARIDADE-E2 — Outras divisões e Copa jogando com os jogadores (PARIDADE-CPU, E2)
 
 Status: REVISÃO DO PM NECESSÁRIA (mesclado dentro da autorização de 20/11).
