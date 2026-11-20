@@ -114,6 +114,25 @@ export function criarRepositorio(opts = {}) {
     }
   }
 
+  // D6 (decisão do Murilo 20/11, "Comprimir o envio"): o save vai em gzip
+  // (~10x menor) quando o navegador sabe comprimir (CompressionStream). Um
+  // servidor que ainda não abre gzip recusa com 400 sem gravar nada (o
+  // formato não confere); aí vai de novo sem compressão, uma vez.
+  async function comprimir(texto) {
+    if (typeof CompressionStream !== "function" || typeof Blob !== "function" || typeof Response !== "function") return null;
+    try { return await new Response(new Blob([texto]).stream().pipeThrough(new CompressionStream("gzip"))).arrayBuffer(); }
+    catch (_) { return null; }
+  }
+  async function enviarSave(save) {
+    const texto = JSON.stringify(save);
+    const gz = await comprimir(texto);
+    if (gz) {
+      const r = await servidor("/api/career", { method: "PUT", headers: { "Content-Type": "application/json", "Content-Encoding": "gzip" }, body: gz });
+      if (!(r.rede && r.status === 400)) return r;
+    }
+    return servidor("/api/career", { method: "PUT", headers: { "Content-Type": "application/json" }, body: texto });
+  }
+
   // Avisa a tela (evento "brdata:copia" na janela) quando a cópia no
   // servidor não foi: a tela mostra o aviso não bloqueante (sessão expirada).
   function avisarCopia(conta, copia) {
@@ -323,7 +342,7 @@ export function criarRepositorio(opts = {}) {
       if (me.status === 401 || (me.ok && !(me.corpo && me.corpo.authenticated))) return avisarCopia(id, "sessao");
       if (!me.ok) return avisarCopia(id, "falha");
       if (!me.corpo.user || String(me.corpo.user.id) !== id) return avisarCopia(id, "outra-conta");
-      const r = await servidor("/api/career", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(reg.save) });
+      const r = await enviarSave(reg.save);
       if (!r.rede) return avisarCopia(id, "offline");
       if (r.status === 401) return avisarCopia(id, "sessao");
       if (r.status === 413) return avisarCopia(id, "grande");
