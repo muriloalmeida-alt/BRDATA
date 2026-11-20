@@ -378,7 +378,7 @@ export function baseSobDemanda(club, ano) {
   }
   return baseDaCpu.get(chave);
 }
-export function convocacaoDaCpu(clubId, round) {
+export function convocacaoDaCpu(clubId, round, formation = FORMACAO_CPU) {
   const CAREER = carreiraAtual();
   let elenco = leagueSquadFor(clubId);
   const d = (CAREER.serieDPool || []).find((t) => String(t.id) === String(clubId));
@@ -387,7 +387,7 @@ export function convocacaoDaCpu(clubId, round) {
   const curto = aptos.length < 22 || aptos.filter((p) => p.group === "G").length < 2;
   const club = d || teamById(clubId);
   const base = curto ? baseSobDemanda(club, CAREER.seasonYear) : [];
-  const l = autoLineup([...elenco, ...base], FORMACAO_CPU, true);
+  const l = autoLineup([...elenco, ...base], FORMATIONS[formation] ? formation : FORMACAO_CPU, true);
   const porId = new Map([...elenco, ...base].map((p) => [p.id, p]));
   return {
     formation: l.formation,

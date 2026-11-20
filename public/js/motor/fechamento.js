@@ -104,6 +104,17 @@ export function tacticAxisMod(axisId, level) {
   return { atk: 1 + d.atk * steps, def: 1 + d.def * steps };
 }
 
+// PARIDADE-CPU · E1b: o efeito dos 4 eixos de uma tática qualquer (o mesmo
+// cálculo do seu time, sem as instruções por setor, que a CPU deixa neutras).
+export function tacticModDe(t) {
+  let atk = 1, def = 1;
+  TACTIC_AXES.forEach((ax) => {
+    const m = tacticAxisMod(ax.id, (t || {})[ax.id]);
+    atk *= m.atk; def *= m.def;
+  });
+  return { atk: clamp(atk, 0.7, 1.35), def: clamp(def, 0.7, 1.35) };
+}
+
 export function combinedTacticMod() {
   const CAREER = carreiraAtual();
   const t = CAREER.lineup.tactics || {};
@@ -209,8 +220,10 @@ export function simulateCupLeg(hostId, guestId, round) {
   const CAREER = carreiraAtual();
   const host = teamById(hostId), guest = teamById(guestId);
   const isHost = String(hostId) === String(CAREER.clubId), isGuest = String(guestId) === String(CAREER.clubId);
-  const hs = isHost ? computeHumanStrength(host) : forcaDaCpu(hostId, host, xiDaCpu(hostId, round));
-  const as = isGuest ? computeHumanStrength(guest) : forcaDaCpu(guestId, guest, xiDaCpu(guestId, round));
+  const ph = isHost ? null : posturaDaCpu(hostId, guestId, true), pg = isGuest ? null : posturaDaCpu(guestId, hostId, false);
+  const fh = ph ? ph.formation : undefined, fg = pg ? pg.formation : undefined;
+  const hs = isHost ? computeHumanStrength(host) : forcaDaCpu(hostId, host, xiDaCpu(hostId, round, fh), 0, fh, tacticModDe(ph && ph.tactics));
+  const as = isGuest ? computeHumanStrength(guest) : forcaDaCpu(guestId, guest, xiDaCpu(guestId, round, fg), 0, fg, tacticModDe(pg && pg.tactics));
   // GE-BALANCE-003 (issue #30) — club.def é "menor = defesa melhor"
   // (coeficiente de propensão a sofrer gol, não uma força — ver
   // buildRealPlayer/buildGeneratedProPlayer, que já fazem
@@ -527,11 +540,70 @@ export function registrarEdicaoDaCopa(finalTie) {
 // PARIDADE-CPU · E1a: a escalação da CPU (11 titulares e 11 reservas, pela
 // mesma escalação automática do seu time, virada.convocacaoDaCpu). Com a
 // regra desligada (testes de equivalência), o XI de sempre (pickCpuXI).
-export function escalacaoDaCpu(clubId, round) {
-  if (PARIDADE_CPU.convocacao && ganchosMundo.convocacaoCpu) return ganchosMundo.convocacaoCpu(clubId, round);
+export function escalacaoDaCpu(clubId, round, formation) {
+  if (PARIDADE_CPU.convocacao && ganchosMundo.convocacaoCpu) return ganchosMundo.convocacaoCpu(clubId, round, formation);
   return { formation: null, starters: pickCpuXI(leagueSquadFor(clubId)), bench: [] };
 }
-export function xiDaCpu(clubId, round) { return escalacaoDaCpu(clubId, round).starters; }
+export function xiDaCpu(clubId, round, formation) { return escalacaoDaCpu(clubId, round, formation).starters; }
+
+// ---------- PARIDADE-CPU · E1b: o técnico da CPU ----------
+// `PARIDADE_CPU.tecnico` (estado.js): false só nos testes de equivalência.
+// Perfil (D1, decisão do Murilo 19/11, "Do clube + variação"): ousadia de −1
+// (retranca) a +1 (ofensivo), do porte do clube (força de jogo contra a média
+// da divisão) mais uma variação sorteada uma vez por clube e guardada no save
+// (CAREER.perfisCpu). A comissão técnica da CPU fica embutida aqui (D12).
+export function perfilDoTecnico(clubId) {
+  const CAREER = carreiraAtual();
+  CAREER.perfisCpu = CAREER.perfisCpu || {};
+  const id = String(clubId);
+  if (CAREER.perfisCpu[id] == null) {
+    const r = ambiente.rngDaChave(`perfil-tecnico:${id}`)();
+    CAREER.perfisCpu[id] = Math.round((r * 0.6 - 0.3) * 100) / 100;
+  }
+  const forca = (t) => { const f = forcaDeJogo(t); return f.atk && f.def ? f.atk / f.def : 1; };
+  const club = teamById(clubId);
+  const pares = (ligaAtual().some((t) => String(t.id) === id) ? ligaAtual() : (CAREER.divisionTeams[club.competitionId] || ligaAtual())).map(forca);
+  const media = pares.length ? pares.reduce((a, b) => a + b, 0) / pares.length : 1;
+  const porte = clamp((forca(club) / media - 1) * 2, -0.6, 0.6);
+  return clamp(porte + CAREER.perfisCpu[id], -1, 1);
+}
+// As 4 posturas, da mais fechada à mais aberta: formação e eixos (ritmo,
+// pressão, linha defensiva; passe neutro), pelas mesmas tabelas do seu time.
+export const POSTURAS_CPU = [
+  { id: "retranca", nome: "retranca", formation: "5-4-1", tactics: { ritmo: 2, pressao: 3, linhaDefensiva: 2, estiloPasse: 3 } },
+  { id: "defensiva", nome: "postura defensiva", formation: "4-5-1", tactics: { ritmo: 3, pressao: 3, linhaDefensiva: 3, estiloPasse: 3 } },
+  { id: "equilibrada", nome: "postura equilibrada", formation: "4-4-2", tactics: { ritmo: 3, pressao: 3, linhaDefensiva: 3, estiloPasse: 3 } },
+  { id: "ofensiva", nome: "postura ofensiva", formation: "4-3-3", tactics: { ritmo: 4, pressao: 4, linhaDefensiva: 3, estiloPasse: 3 } },
+];
+const NEUTRA = 2;
+// Postura no pré-jogo: o perfil, a diferença de força para o adversário
+// (observável: a força de jogo dos clubes) e o mando. O mais fraco tende a
+// se fechar contra o mais forte; o mais forte, a propor o jogo.
+export function posturaDaCpu(clubId, adversarioId, mandante) {
+  if (!PARIDADE_CPU.tecnico) return null; // sem a regra: a escalação e a tática neutras de antes
+  const forca = (id) => { const f = forcaDeJogo(teamById(id)); return f.atk && f.def ? f.atk / f.def : 1; };
+  const razao = forca(clubId) / Math.max(0.01, forca(adversarioId));
+  // Calibrado (baseline 20/11) para a maioria dos jogos sair equilibrada e a
+  // retranca ficar para quem é bem mais fraco; a média de gols da divisão
+  // fica na da GOLS-REAIS.
+  const ponto = 0.5 * perfilDoTecnico(clubId) + clamp((razao - 1) * 1.2, -0.8, 0.8) + (mandante ? 0.1 : -0.1);
+  const nivel = ponto <= -0.9 ? 0 : ponto <= -0.4 ? 1 : ponto < 0.5 ? 2 : 3;
+  return { ...POSTURAS_CPU[nivel], nivel };
+}
+// No intervalo: perdendo, abre um nível; ganhando, fecha um (o perfil
+// ousado segura a vantagem só com 2+ gols); empate, mantém. Devolve a
+// postura nova ou null (sem mudança). Só eixos: a formação fica (como o seu
+// time, mudar a formação no meio do jogo custa efetividade).
+export function posturaNoIntervalo(clubId, atual, golsPro, golsContra) {
+  if (!PARIDADE_CPU.tecnico) return null;
+  const saldo = golsPro - golsContra;
+  const ousadia = perfilDoTecnico(clubId);
+  let nivel = atual.nivel;
+  if (saldo < 0) nivel = Math.min(3, nivel + 1);
+  else if (saldo >= (ousadia > 0.3 ? 2 : 1)) nivel = Math.max(0, nivel - 1);
+  if (nivel === atual.nivel) return null;
+  return { ...POSTURAS_CPU[nivel], formation: atual.formation, nivel };
+}
 // Recuperação de condição da CPU depois do jogo: quem não jogou recupera,
 // pela mesma regra do seu elenco (applyConditionRecovery).
 export function recuperarCpu(clubId, jogaramIds) {
@@ -737,14 +809,14 @@ export function computeHumanStrength(club) {
 // vivo (o XI já não tem o expulso; o peso vem de partida.comExpulsoes).
 // Com a regra desligada (testes de equivalência): a força do clube, como antes.
 export const TATICA_NEUTRA = { atk: 1, def: 1 };
-export function forcaDaCpu(clubId, club, titulares, expulsosEmCampo = 0, formation = "4-4-2") {
+export function forcaDaCpu(clubId, club, titulares, expulsosEmCampo = 0, formation = "4-4-2", tacticMod = TATICA_NEUTRA) {
   if (!PARIDADE_CPU.forca) return { ...forcaDeJogo(club), starters: titulares };
   let elenco = leagueSquadFor(clubId);
   if (!elenco.length) {
     const d = (carreiraAtual().serieDPool || []).find((t) => String(t.id) === String(clubId));
     elenco = d && ganchosMundo.elencoGerado ? ganchosMundo.elencoGerado(d) : titulares;
   }
-  return forcaDoLado({ club, elenco, titulares, formation, tacticMod: TATICA_NEUTRA, expulsosEmCampo });
+  return forcaDoLado({ club, elenco, titulares, formation, tacticMod, expulsosEmCampo });
 }
 
 export const INJURY_HISTORY_MAX = 10;
@@ -929,8 +1001,11 @@ export function myLeaguePosition() {
 export function resolveCpuFixture(fx, round) {
   const CAREER = carreiraAtual();
   const home = teamById(fx.home), away = teamById(fx.away);
-  const hs = forcaDaCpu(fx.home, home, xiDaCpu(fx.home, round));
-  const as = forcaDaCpu(fx.away, away, xiDaCpu(fx.away, round));
+  // E1b: a postura de cada técnico (formação e eixos) no pré-jogo.
+  const ph = posturaDaCpu(fx.home, fx.away, true), pa = posturaDaCpu(fx.away, fx.home, false);
+  const fh = ph ? ph.formation : undefined, fa = pa ? pa.formation : undefined;
+  const hs = forcaDaCpu(fx.home, home, xiDaCpu(fx.home, round, fh), 0, fh, tacticModDe(ph && ph.tactics));
+  const as = forcaDaCpu(fx.away, away, xiDaCpu(fx.away, round, fa), 0, fa, tacticModDe(pa && pa.tactics));
   // GE-BALANCE-003 (issue #30) — ver comentário em simulateCupLeg.
   const placar = partida.scoreGoals(hs, as, 1, Math.random);
   let { gh, ga } = placar;

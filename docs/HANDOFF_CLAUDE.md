@@ -683,9 +683,61 @@ Relatório (17/11):
 
 ⸻
 
+PARIDADE-E1b-1 — O técnico da CPU: perfil, postura no pré-jogo e intervalo (PARIDADE-CPU, E1b, PR1)
+
+Status: REVISÃO DO PM NECESSÁRIA (mesclado dentro da autorização de 20/11).
+Decisões do Murilo (20/11):
+- D1 "Do clube + variação";
+- D3 "Lances + resumo";
+- D8 "Depois do E1b";
+- D12 "Embutida no perfil".
+Requisito CPU-03 (postura e decisão pelo contexto), parte do CPU-04 (o
+intervalo).
+Feito (motor):
+- fechamento.perfilDoTecnico: ousadia de −1 a +1, que soma:
+  - o porte (força de jogo contra a média da divisão);
+  - uma variação de ±0,3, sorteada uma vez por clube e guardada em
+    CAREER.perfisCpu (~2 KB).
+- fechamento.posturaDaCpu: 4 posturas (retranca 5-4-1, defensiva 4-5-1,
+  equilibrada 4-4-2, ofensiva 4-3-3), com eixos pelas tabelas do seu time.
+  A escolha usa o perfil, a diferença de força para o adversário e o mando.
+  Calibrada para ~51% de jogos equilibrados, 22% defensivos, 22% ofensivos
+  e 4% de retranca.
+- fechamento.posturaNoIntervalo: perdendo, abre um nível; ganhando, fecha
+  um (o perfil ousado só com 2+ gols de vantagem); empate, mantém. A
+  formação fica.
+- A postura entra na convocação (formação) e na força (tacticModDe): em
+  CPU × CPU, na Copa, na sua partida ao vivo (o adversário) e no conselho
+  do intervalo.
+- D3: a mudança do intervalo aparece nos Lances da sua partida ("Mudança
+  tática · <time> parte para o ataque (...)" / "recua para segurar o
+  resultado (...)"). v2: tipo "tatica" (domain/match.ts).
+- Chave estado.PARIDADE_CPU.tecnico (false só nos testes de equivalência).
+Critério da retranca (pedido do Murilo, conta exata pelo modelo de gols):
+- contra um adversário 30% mais forte, o mais fraco que se fecha faz 0,90
+  ponto por jogo (equilibrado: 0,86), e a zebra sobe de 46,5% para 50,5%,
+  com menos gols a favor;
+- em jogo parelho, a retranca rende menos que a postura ofensiva (1,25
+  contra 1,27).
+Nenhuma postura fixa domina.
+Resultado (baseline, 5 seeds × 5 temporadas):
+- gols, Brasileirão real: 2,54 (E0: 2,63; dentro de 0,15);
+- 0×0: 8,1%;
+- zebra CPU × CPU: dentro de 1,4 p.p. do E0;
+- a 1ª calibração (posturas fortes demais) dava 2,44 gols e foi suavizada.
+Ainda falta: as substituições da CPU e a linha no resumo da rodada (D3)
+vêm no PR2 do E1b.
+Testes:
+- test_paridade_tecnico (novo, perfil frozen, 6/6);
+- domain/match.test.ts (lance "tatica");
+- equivalências com a regra desligada.
+
+⸻
+
 PARIDADE-O2 — Goleiro da base de emergência (PARIDADE-CPU, fecha o E1a)
 
-Status: REVISÃO DO PM NECESSÁRIA.
+Status: APROVADO e mesclado (#143, dentro da autorização de 20/11 "Pode
+trabalhar até concluir todas as atividades").
 Decisão do Murilo (19/11, "Base de emergência"), observação O2 do PR #142:
 com o cansaço valendo, o seu time pode ficar com um só goleiro disponível,
 e a regra "goleiro no banco" (12/11) bloqueava o jogo.

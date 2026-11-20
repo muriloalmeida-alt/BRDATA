@@ -212,4 +212,6 @@ export const ganchosMundo = { elencoGerado: null, convocacaoCpu: null };
 // regra (fechamento.forcaDoLado: XI em campo, formação, tática, condição e
 // completude sobre a força do clube); o 3º amarelo da CPU também só suspende
 // depois do jogo, como o seu.
-export const PARIDADE_CPU = { convocacao: true, forca: true };
+// E1b (20/11): `tecnico` — o técnico da CPU (perfil, postura no pré-jogo e
+// mudança no intervalo, fechamento.posturaDaCpu).
+export const PARIDADE_CPU = { convocacao: true, forca: true, tecnico: true };

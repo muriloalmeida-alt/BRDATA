@@ -148,3 +148,12 @@ test("Parada automática: uma linha por lance (lesão, expulsão), chave por par
   const outra = stoppageOf({ fase: "pausada", paradaPor: [{ tipo: "lesao", jogador: "Gabriel Barbosa", minuto: 60 }] })!;
   assert.notEqual(outra.key, s.key);
 });
+
+test("PARIDADE-CPU E1b: mudança tática do adversário nos lances (D3)", () => {
+  const s = snap();
+  s.eventos = [...s.eventos, { ...ev(45, "tatica", false), texto: "parte para o ataque (postura ofensiva)" }];
+  const m = buildMatch(s)!;
+  const t = m.timeline.find((x) => x.title === "Mudança tática")!;
+  assert.equal(t.sub, "Palmeiras parte para o ataque (postura ofensiva)");
+  assert.equal(t.minute, 45);
+});
