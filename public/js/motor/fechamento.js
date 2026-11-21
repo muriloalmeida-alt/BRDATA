@@ -21,7 +21,7 @@
 import { carreiraAtual, ligaAtual, todosTimes, timePorId, forcaMediaDoElenco, ganchosMundo, PARIDADE_CPU, forcaDeJogo, partidaAtual } from "./estado.js";
 import { pushNotification, generateRoundNews } from "./registro.js";
 import { fmtBRL, abbreviateName } from "./texto.js";
-import { advanceCalendarWeek, ambiente, applyFinanceEntries, avisar, calendarOn, finalizeIncomingPurchase, leagueSquadFor, maybeGenerateOffer, moverCaixaCpu, processPendingInstallments, processPendingReceivables, pushLedger, pushTransferLog, refreshAvailability, resolveLoanListingsRound, resolvePendingListingsRound, resolvePendingOffersOutRound, simulateAiTransfers, tickScoutMissions, tickStadiumUpgrade, transferWindowStatus } from "./semana.js";
+import { advanceCalendarWeek, ambiente, applyFinanceEntries, avisar, calendarOn, finalizeIncomingPurchase, leagueSquadFor, maybeGenerateOffer, moverCaixaCpu, processPendingInstallments, processPendingReceivables, pushLedger, pushTransferLog, refreshAvailability, resolveLoanListingsRound, resolvePendingListingsRound, resolvePendingOffersOutRound, simulateAiTransfers, tickScoutMissions, tickStadiumUpgrade, transferWindowStatus, entrarNoElencoCpu, aplicarSuspensaoPendente } from "./semana.js";
 import * as financas from "./financas.js";
 import * as partida from "./partida.js";
 import * as rodada from "./rodada.js";
@@ -250,11 +250,13 @@ export function simulateCupLeg(hostId, guestId, round) {
     if (isHost || cpuJoga) attributeGoals(hs.starters, gh);
     if (isGuest || cpuJoga) attributeGoals(as.starters, ga);
     if (cpuJoga) recuperarCpu(isHost ? guestId : hostId, (isHost ? as : hs).starters.map((p) => p.id));
+    fecharSuspensoesCpu(isHost ? guestId : hostId, round);
     return { gh, ga };
   }
   if (isHost || PARIDADE_CPU.divisoes) simulatePlayerEvents(hs.starters, gh, round);
   if (isGuest || PARIDADE_CPU.divisoes) simulatePlayerEvents(as.starters, ga, round);
   if (PARIDADE_CPU.divisoes) recuperarCpu(isHost ? guestId : hostId, (isHost ? as : hs).starters.map((p) => p.id));
+  fecharSuspensoesCpu(isHost ? guestId : hostId, round);
   return { gh, ga };
 }
 
@@ -782,7 +784,7 @@ export function settleLoanIn(p) {
   p.origin = "principal";
   if (p.loanOriginalWage != null) p.wage = p.loanOriginalWage;
   delete p.loanFromClubId; delete p.loanOriginalWage; delete p.loanReturnRound; delete p.loanBuyOption;
-  (CAREER.leagueSquads[fromId] = CAREER.leagueSquads[fromId] || []).push(p);
+  entrarNoElencoCpu(fromId, p);
   const remainingIds = new Set(CAREER.squad.map((x) => x.id));
   CAREER.lineup.starters = CAREER.lineup.starters.map((id) => (id && remainingIds.has(id) ? id : null));
   CAREER.lineup.bench = CAREER.lineup.bench.filter((id) => remainingIds.has(id));
@@ -1092,6 +1094,14 @@ export function resolveCpuFixture(fx, round) {
 // O jogo CPU × CPU com os jogadores (PARIDADE-CPU, E2: o mesmo da sua divisão,
 // das outras divisões e da Copa): postura, XI, força, cartões e lesões,
 // autores dos gols e recuperação de quem jogou. Devolve o placar e os lances.
+// O 3º amarelo da CPU vale logo depois do jogo dela (a suspensão pendente só
+// existia para o jogador terminar a partida em campo). Aplicar aqui, e não no
+// fim da rodada, deixa o jogo do meio da semana (Copa) e qualquer tela vendo o
+// mesmo elenco (PARIDADE-CPU · E3).
+export function fecharSuspensoesCpu(clubId, round) {
+  if (!PARIDADE_CPU.mercado) return;
+  leagueSquadFor(clubId).forEach((p) => aplicarSuspensaoPendente(p, round));
+}
 export function jogoCpuComJogadores(fx, round, home, away) {
   // E1b: a postura de cada técnico (formação e eixos) no pré-jogo.
   const ph = posturaDaCpu(fx.home, fx.away, true), pa = posturaDaCpu(fx.away, fx.home, false);
@@ -1131,6 +1141,7 @@ export function jogoCpuComJogadores(fx, round, home, away) {
   }
   recuperarCpu(fx.home, hs.starters.map((p) => p.id));
   recuperarCpu(fx.away, as.starters.map((p) => p.id));
+  fecharSuspensoesCpu(fx.home, round); fecharSuspensoesCpu(fx.away, round);
   return { gh, ga, events: [...homeEvents, ...awayEvents] };
 }
 

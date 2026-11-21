@@ -74,6 +74,7 @@ function marketTeamsPool() {
 }
 function calendarOn() { return !!CAREER.calendar; }
 function caixaDaCpu() { return null; } // PARIDADE-CPU · E3 desligado (equivalência)
+function temVagaCpu(id) { return leagueSquadFor(id).length < maxSquadSizeFor(id); } // E3, PR2 desligado
 const CALENDAR_WINDOW_PHASES = new Set(["ferias", "pre", "pausa"]);
 const MONTH_LONG = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
 function calendarWeekMonth(w) { return w.m; }

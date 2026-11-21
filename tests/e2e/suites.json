@@ -70,6 +70,7 @@
         "test_paridade_divisoes.js",
         "test_paridade_financas.js",
         "test_paridade_forca.js",
+        "test_paridade_mercado.js",
         "test_paridade_tecnico.js",
         "test_v2_offline_catalogo.js",
         "test_gols_reais_catalogo.js"

@@ -254,15 +254,22 @@ const { newCareer, globaisDoMotor } = require("./_v2_carreira");
   // QUALQUER clube real de Série C (financeiro permanece 0 mesmo com a
   // rampa contínua — o clamp em 2,5x da capacidade segue bloqueando o
   // caso extremo, dado real, não fabricado).
-  const t14 = await page.evaluate((byDiv) => {
+  const t14 = await page.evaluate(async (byDiv) => {
     let priciest = null;
     byDiv.brasileirao.forEach((id) => {
       (CAREER.leagueSquads[id] || []).forEach((p) => { if (!priciest || p.value > priciest.value) priciest = p; });
     });
-    const results = byDiv.serie_c.map((id) => ({ id, fin: financeiroScore(priciest, CAREER.leagueSquads[id], id) }));
-    return { priciestValue: priciest ? priciest.value : null, priciestName: priciest ? priciest.name : null, results, noneCanAfford: results.every((r) => r.fin === 0) };
+    // PARIDADE-CPU · E3: com o caixa guardado por clube (D2), um clube da C
+    // que vendeu bem pode ter nota financeira > 0; o que barra a combinação
+    // absurda é a negociação de verdade (teto do comprador e o atleta, que
+    // não aceita cair de divisão). Com a regra, confere a negociação.
+    const N = await import("/js/motor/negociacao.js"), E = await import("/js/motor/estado.js");
+    const comRegra = !!(N.negociacaoCpu && E.PARIDADE_CPU.mercado);
+    const dono = comRegra ? byDiv.brasileirao.find((id) => (CAREER.leagueSquads[id] || []).includes(priciest)) : null;
+    const results = byDiv.serie_c.map((id) => comRegra ? { id, fechou: N.negociacaoCpu(priciest, dono, id).ok } : { id, fin: financeiroScore(priciest, CAREER.leagueSquads[id], id) });
+    return { comRegra, priciestValue: priciest ? priciest.value : null, priciestName: priciest ? priciest.name : null, results, noneCanAfford: results.every((r) => comRegra ? !r.fechou : r.fin === 0) };
   }, divisionInfo);
-  check("14) O craque mais caro do Brasileirão real continua inacessível pra QUALQUER clube real de Série C (sem combinação absurda):", t14.noneCanAfford, JSON.stringify({ priciestValue: t14.priciestValue, priciestName: t14.priciestName, noneCanAfford: t14.noneCanAfford }));
+  check("14) O craque mais caro do Brasileirão real continua inacessível pra QUALQUER clube real de Série C (sem combinação absurda):", t14.noneCanAfford, JSON.stringify({ priciestValue: t14.priciestValue, priciestName: t14.priciestName, noneCanAfford: t14.noneCanAfford, comRegra: t14.comRegra, results: t14.results.filter((r) => r.fechou || r.fin > 0) }));
 
   // ---------- TRANSFERSCORE ----------
 

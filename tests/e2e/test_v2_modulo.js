@@ -26,7 +26,7 @@ const { novaCarreiraV2, saveNoServidor, base } = require("./_v2_carreira");
   // Semanas até o jogo, a partida inteira e o pós-jogo, só pela UI.
   const clicar = (sel) => page.click(sel, { timeout: 2000 }).then(() => true, () => false);
   const passos = [];
-  let jogou = false;
+  let jogou = false, gravada = false;
   for (let k = 0; k < 300; k++) {
     const tela = await page.evaluate(() => {
       const h1 = (document.querySelector("h1") || {}).textContent || "";
@@ -44,7 +44,20 @@ const { novaCarreiraV2, saveNoServidor, base } = require("./_v2_carreira");
     // mostra onde ele parou (o resumo do item 2 só sai no fim).
     if (passos[passos.length - 1] !== tela) { passos.push(tela); console.log(`   passo ${k}: ${tela}`); }
     // Para quando a rodada avançou no servidor (amistoso não conta).
-    if (tela === "inicio" && jogou && ((await saveNoServidor(page)) || {}).currentRound > save0.currentRound) break;
+    // A cópia ao servidor é assíncrona: no Início (ou no pré-jogo seguinte)
+    // depois da partida, espera até 15 s a rodada chegar lá antes de seguir
+    // (antes, o teste jogava uma 2ª rodada; CI do #149).
+    // Em qualquer tela depois de jogar (a proposta pelo seu jogador, desde o
+    // E3, leva direto ao pré-jogo seguinte, sem passar pelo Início), para
+    // assim que a rodada estiver no servidor.
+    if (jogou && !gravada && tela !== "partida") {
+      const parada = tela === "inicio" || tela === "prejogo";
+      for (const t0 = Date.now(); !gravada && Date.now() - t0 < (parada ? 15000 : 0) + 1; await page.waitForTimeout(500)) {
+        gravada = ((await saveNoServidor(page)) || {}).currentRound > save0.currentRound;
+      }
+    }
+    // Gravada: segue pelo pós-jogo sem jogar de novo, até o Início ou o pré-jogo.
+    if (gravada && (tela === "inicio" || tela === "prejogo")) break;
     if (tela === "partida") { await clicar(".mt-skip"); jogou = true; }
     else if (tela === "bloqueada") await page.getByRole("button", { name: "Completar automaticamente" }).click({ timeout: 2000 }).catch(() => {});
     else if (tela === "resultado") await clicar('.pz-foot .cta[data-save="saved"]');
@@ -60,7 +73,9 @@ const { novaCarreiraV2, saveNoServidor, base } = require("./_v2_carreira");
   }
   const save1 = await saveNoServidor(page);
   const jogos = (s) => (s && s.matchLog ? s.matchLog.length : 0);
-  check("2) Partida jogada ao vivo e pós-jogo até o Início, pela UI da v2:", jogou && (await page.locator(".home").count()) > 0, passos.join(" → "));
+  // (Depois de uma proposta pelo seu jogador, o fluxo segue direto para o
+  // pré-jogo seguinte, sem passar pelo Início.)
+  check("2) Partida jogada ao vivo e pós-jogo até o Início (ou o pré-jogo seguinte), pela UI da v2:", jogou && ((await page.locator(".home").count()) > 0 || (await page.locator(".pm-cta").count()) > 0), passos.join(" → "));
   check("3) A rodada foi gravada no servidor (a partida está no histórico e a rodada avançou):",
     jogos(save1) === jogos(save0) + 1 && save1.currentRound === save0.currentRound + 1, JSON.stringify({ antes: [save0.currentRound, jogos(save0)], depois: [save1.currentRound, jogos(save1)] }));
   check("4) Sem quadro escondido: nenhum /carreira/motor aberto nem pedido:",

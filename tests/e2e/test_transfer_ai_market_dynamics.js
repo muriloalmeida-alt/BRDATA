@@ -132,12 +132,15 @@ const { newCareer, globaisDoMotor } = require("./_v2_carreira");
   // 1ª rodada mudou (squad ao vivo, sem cache).
   const n6 = await page.evaluate(() => {
     const before = JSON.parse(JSON.stringify(Object.keys(CAREER.leagueSquads).map((id) => CAREER.leagueSquads[id].length)));
+    const livresAntes = (CAREER.agentesLivres || []).length;
     simulateAiTransfers(CAREER.currentRound);
     const afterFirst = Object.keys(CAREER.leagueSquads).map((id) => CAREER.leagueSquads[id].length);
     simulateAiTransfers(CAREER.currentRound);
     const afterSecond = Object.keys(CAREER.leagueSquads).map((id) => CAREER.leagueSquads[id].length);
-    const totalBefore = before.reduce((s, x) => s + x, 0);
-    const totalAfter = afterSecond.reduce((s, x) => s + x, 0);
+    // PARIDADE-CPU · E3: quem é dispensado vai para os agentes livres.
+    const livres0 = livresAntes;
+    const totalBefore = before.reduce((s, x) => s + x, 0) + livres0;
+    const totalAfter = afterSecond.reduce((s, x) => s + x, 0) + (CAREER.agentesLivres || []).length;
     return { totalBefore, totalAfterFirst: afterFirst.reduce((s, x) => s + x, 0), totalAfter, conservedCount: totalBefore === totalAfter };
   });
   check("6) simulateAiTransfers real roda 2x seguidas lendo estado sempre atualizado (nenhum jogador perdido/duplicado no total):", n6.conservedCount, JSON.stringify(n6));

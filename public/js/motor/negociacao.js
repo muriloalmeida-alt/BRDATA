@@ -23,7 +23,8 @@ import * as mercado from "./mercado.js";
 import { fairWageFor } from "./temporada.js";
 import { fmtBRL, abbreviateName } from "./texto.js";
 import { pushNotification } from "./registro.js";
-import { ambiente, avisar, leagueSquadFor, marketClub, pushTransferLog, finalizeIncomingPurchase, maybeSpawnRivalOffer, calendarOn, CALENDAR_WINDOW_PHASES, ganchos } from "./semana.js";
+import { ambiente, avisar, leagueSquadFor, marketClub, pushTransferLog, finalizeIncomingPurchase, maybeSpawnRivalOffer, calendarOn, CALENDAR_WINDOW_PHASES, ganchos, pickRandomOtherClub, temVagaCpu, entrarNoElencoCpu, moverCaixaCpu, transferScore, financeiroScore, pickWeightedByScore, minSquadSizeFor, SUBPOS_LABEL, subPositionOf } from "./semana.js";
+import { wageBill } from "./financas.js";
 
 const ORDEM_DIVISOES = ["brasileirao", "serie_b", "serie_c"];
 export const PAPEIS = ["titular", "rotacao", "reserva"];
@@ -263,3 +264,78 @@ export async function comOperacao(opId, fn) {
 
 // A rodada das propostas (motor/semana.js) chama a negociação daqui.
 ganchos.resolverProposta = resolverProposta;
+
+// ---------- PARIDADE-CPU · E3, PR2: mercado CPU × CPU (CPU-07, V06, A9) ----------
+// O mesmo do seu mercado, com a CPU dos dois lados:
+// 1) o comprador olha poucos vendedores (4 clubes sorteados) e ranqueia os
+//    jogadores pela necessidade, adequação, caixa e contexto (transferScore);
+// 2) o vendedor pede a reserva da regra do seu mercado (papel, cobertura,
+//    reposição; "à venda" pelos mesmos motivos), e o comprador só paga até o
+//    teto dele (caixa e 1,5× o valor);
+// 3) o atleta decide pela mesma regra (papel no destino, divisão, força,
+//    salário): aceita, pede mais salário (cabendo na folha) ou recusa;
+// 4) elenco cheio só compra com um excedente para dispensar (agentes livres).
+// Roda nas janelas, como antes.
+// Volume (decisão do Murilo 21/11, "Moderado"): 6 tentativas por semana de
+// janela, ~20–30 transferências por temporada.
+export const MERCADO_CPU = { tentativas: 6, vendedores: 4, candidatos: 8 };
+export function contextoDoAtletaEntreClubes(p, deId, paraId) {
+  return {
+    papelAtual: mercado.papelNoElenco(p, leagueSquadFor(deId)),
+    divisaoAtual: divisaoDoClube(deId),
+    divisaoComprador: divisaoDoClube(paraId),
+    forcaAtual: forcaMediaDoElenco(deId),
+    forcaComprador: forcaMediaDoElenco(paraId),
+    reputacao: 50,
+    aVenda: motivosAVendaNoClube(p, deId).length > 0,
+  };
+}
+export function negociacaoCpu(p, deId, paraId) {
+  const comprador = marketClub(paraId), vendedorSq = leagueSquadFor(deId);
+  if (vendedorSq.length <= minSquadSizeFor(deId)) return { ok: false, motivo: "vendedor sem peças" };
+  if (!temVagaCpu(paraId)) return { ok: false, motivo: "sem vaga" };
+  const aVenda = motivosAVendaNoClube(p, deId).length > 0;
+  const r = mercado.reservaParaProposta(p, marketClub(deId), { aVenda });
+  const teto = mercado.buyerHardCap(p, comprador);
+  if (r.reserva > teto) return { ok: false, motivo: "acima do teto do comprador", reserva: r.reserva, teto };
+  const papel = mercado.papelNoElenco(p, leagueSquadFor(paraId));
+  const a = mercado.avaliacaoAtleta(p, { salario: p.wage, papel, anos: 3 }, contextoDoAtletaEntreClubes(p, deId, paraId));
+  if (a.decisao === "recusa") return { ok: false, motivo: "atleta recusou", atleta: a.motivo };
+  const salario = a.decisao === "pede" ? a.salarioPedido : p.wage;
+  const { wageCap } = mercado.clubBudget(comprador);
+  if (wageBill(leagueSquadFor(paraId)) + salario > wageCap) return { ok: false, motivo: "folha do comprador" };
+  return { ok: true, preco: r.reserva, salario, papel, aVenda };
+}
+export function mercadoCpuDaRodada(round) {
+  const CAREER = carreiraAtual();
+  const count = MERCADO_CPU.tentativas;
+  const feitas = [];
+  for (let i = 0; i < count; i++) {
+    const comprador = pickRandomOtherClub(CAREER.clubId);
+    if (!comprador || !temVagaCpu(comprador.id)) continue;
+    const vendedores = [];
+    for (let k = 0; k < MERCADO_CPU.vendedores; k++) {
+      const v = pickRandomOtherClub(comprador.id);
+      if (v && String(v.id) !== String(CAREER.clubId) && !vendedores.some((x) => String(x.id) === String(v.id))) vendedores.push(v);
+    }
+    const compradorSq = leagueSquadFor(comprador.id);
+    const cands = vendedores.flatMap((v) => leagueSquadFor(v.id)
+      .filter((p) => p.onLoanFromClubId == null && financeiroScore(p, compradorSq, comprador.id) > 0)
+      .map((p) => ({ item: { p, v }, score: transferScore(p, comprador.id) })))
+      .sort((a, b) => b.score - a.score).slice(0, MERCADO_CPU.candidatos);
+    if (!cands.length) continue;
+    const { p, v } = pickWeightedByScore(cands);
+    const n = negociacaoCpu(p, v.id, comprador.id);
+    if (!n.ok) continue;
+    const sq = leagueSquadFor(v.id);
+    sq.splice(sq.indexOf(p), 1);
+    p.wage = n.salario;
+    p.contractUntil = CAREER.seasonYear + 2;
+    entrarNoElencoCpu(comprador.id, p);
+    moverCaixaCpu(comprador.id, -n.preco); moverCaixaCpu(v.id, n.preco);
+    pushTransferLog(`${comprador.name} contratou ${p.name} (${SUBPOS_LABEL[subPositionOf(p)]}) do ${v.name} por ${fmtBRL(n.preco)}.`, round);
+    feitas.push({ jogador: p.id, de: String(v.id), para: String(comprador.id), preco: n.preco });
+  }
+  return feitas;
+}
+ganchos.mercadoCpu = mercadoCpuDaRodada;

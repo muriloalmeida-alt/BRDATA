@@ -18,7 +18,7 @@
 import { carreiraAtual, timePorId, partidaAtual, definirPartida, definirColetivaPendente, definirColetivaEncadeada } from "./estado.js";
 import { pushNotification } from "./registro.js";
 import { ambiente, calendarTurnKey, leagueSquadFor, pushLedger } from "./semana.js";
-import { applyConditionRecovery, decidirPrelimDoTecnico, escalacaoDaCpu, finalizeCupPhaseExpanded, finalizePrelim, pickCpuXI, posturaDaCpu, recuperarCpu, settleCupTieOutcome, xiDaCpu } from "./fechamento.js";
+import { applyConditionRecovery, decidirPrelimDoTecnico, escalacaoDaCpu, finalizeCupPhaseExpanded, finalizePrelim, pickCpuXI, posturaDaCpu, recuperarCpu, settleCupTieOutcome, xiDaCpu, fecharSuspensoesCpu } from "./fechamento.js";
 import { pressLibraryEntry, computeTicketRevenue, applyNaturalAgingEvolution } from "./aovivo.js";
 
 const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
@@ -106,6 +106,7 @@ export function encerrarPernaCopa() {
   // estabelecida pelo formato legado.
   applyConditionRecovery(Array.from(lm.appeared));
   recuperarCpu(lm.isHome ? lm.humanFx.away : lm.humanFx.home, Array.from(lm.appeared)); // PARIDADE-CPU · E1a
+  fecharSuspensoesCpu(lm.isHome ? lm.humanFx.away : lm.humanFx.home, lm.round); // PARIDADE-CPU · E3
   let ticketRevenue = null;
   if (lm.isHome) {
     ticketRevenue = computeTicketRevenue(lm.home);

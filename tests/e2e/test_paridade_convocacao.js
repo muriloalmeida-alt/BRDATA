@@ -89,7 +89,8 @@ const { abrirPagina, jogarRodada } = require("./_sem_tela");
     return { id, cansado: cansado.id, les: les.id, rodada: C.currentRound };`);
   const rr = await jogarRodada(pg.P);
   const r5 = ler(`
-    const sq = M.semana.leagueSquadFor(${JSON.stringify(prep.id)});
+    // (O mercado da CPU pode ter levado o jogador para outro clube na rodada.)
+    const sq = [...Object.values(C.leagueSquads).flat(), ...(C.agentesLivres || [])];
     const p = (id) => sq.find((x) => x.id === id) || {};
     return { rodada: C.currentRound, cond: p(${JSON.stringify(prep.cansado)}).condition, status: p(${JSON.stringify(prep.les)}).status };`);
   check("5) Depois da rodada: o reserva cansado da CPU recupera condição e o lesionado com retorno vencido volta:",
