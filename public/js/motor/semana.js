@@ -95,6 +95,48 @@ export function viradaDoCaixaCpu() {
   });
 }
 
+// PARIDADE-CPU · E3, PR2 (decisão do Murilo 20/11, "Libera excedente antes"):
+// os elencos da CPU nascem cheios (26), e a regra de vaga travava o mercado
+// CPU × CPU e as propostas da CPU pelos seus jogadores. Agora o clube cheio
+// pode comprar se tiver um excedente: um reserva com a posição coberta sem
+// ele (o pior, e o mais velho no empate). Quando o reforço chega, o
+// excedente é dispensado para a lista de agentes livres (decisão "Lista de
+// agentes livres": CAREER.agentesLivres, até 40, os mais antigos saem).
+export function excedenteDoElenco(clubId) {
+  const sq = leagueSquadFor(clubId);
+  const cob = mercado.MER_PARAMETROS.coberturaMinima;
+  const cands = sq.filter((p) => p.onLoanFromClubId == null && mercado.papelNoElenco(p, sq) === "reserva"
+    && sq.filter((x) => x.group === p.group && x !== p).length >= (cob[p.group] || 1));
+  return cands.sort((a, b) => ((a.overall || 0) - (b.overall || 0)) || ((b.age || 0) - (a.age || 0)) || String(a.id).localeCompare(String(b.id)))[0] || null;
+}
+export function temVagaCpu(clubId) {
+  if (leagueSquadFor(clubId).length < maxSquadSizeFor(clubId)) return true;
+  return !!PARIDADE_CPU.mercado && !!excedenteDoElenco(clubId);
+}
+export const AGENTES_LIVRES_MAX = 40;
+export function dispensarParaAgentesLivres(clubId, p) {
+  const CAREER = carreiraAtual();
+  const sq = leagueSquadFor(clubId);
+  const i = sq.indexOf(p);
+  if (i < 0) return false;
+  sq.splice(i, 1);
+  CAREER.agentesLivres = CAREER.agentesLivres || [];
+  CAREER.agentesLivres.push({ ...p, status: p.status === "suspenso" ? "ok" : p.status, livreDesde: { temporada: CAREER.seasonYear, rodada: CAREER.currentRound }, ultimoClube: String(clubId) });
+  while (CAREER.agentesLivres.length > AGENTES_LIVRES_MAX) CAREER.agentesLivres.shift();
+  pushTransferLog(`${teamById(clubId).name} dispensou ${p.name}, que está livre no mercado.`, CAREER.currentRound);
+  return true;
+}
+// Todo jogador que chega a um elenco da CPU passa por aqui.
+export function entrarNoElencoCpu(clubId, p) {
+  const CAREER = carreiraAtual();
+  const id = String(clubId);
+  if (PARIDADE_CPU.mercado && leagueSquadFor(id).length >= maxSquadSizeFor(id)) {
+    const ex = excedenteDoElenco(id);
+    if (ex) dispensarParaAgentesLivres(id, ex);
+  }
+  (CAREER.leagueSquads[id] = CAREER.leagueSquads[id] || []).push(p);
+}
+
 export function marketClub(clubId) {
   const CAREER = carreiraAtual();
   let avg, amb, roster;
@@ -362,6 +404,8 @@ export function negotiateOffer(player, buyingClubId, sellingClubId, context = {}
 
 export function simulateAiTransfers(round) {
   const CAREER = carreiraAtual();
+  // PARIDADE-CPU · E3, PR2: com os avaliadores do seu mercado (negociacao.js).
+  if (PARIDADE_CPU.mercado && ganchos.mercadoCpu) return ganchos.mercadoCpu(round);
   let count = 0;
   if (Math.random() < 0.35) count = 1;
   if (Math.random() < 0.08) count = 2;
@@ -393,7 +437,7 @@ export function simulateAiTransfers(round) {
     if (!candidatos.length) continue; // nenhum jogador daquele elenco cabe no orçamento do comprador agora
     const player = pickWeightedByScore(candidatos);
     fromSquad.splice(fromSquad.indexOf(player), 1);
-    (CAREER.leagueSquads[String(toClub.id)] = CAREER.leagueSquads[String(toClub.id)] || []).push(player);
+    entrarNoElencoCpu(toClub.id, player);
     // PARIDADE-CPU · E3 (D2): o dinheiro sai de um caixa e entra no outro.
     moverCaixaCpu(toClub.id, -player.value); moverCaixaCpu(fromClub.id, player.value);
     pushTransferLog(`${toClub.name} contratou ${player.name} (${SUBPOS_LABEL[subPositionOf(player)]}) do ${fromClub.name} por ${fmtBRL(player.value)}.`, round);
@@ -421,16 +465,18 @@ export function urgencyMultiplier(necessidade, round) {
 }
 
 export const OFFER_CHANCE_PER_ROUND = 0.18;
+// PARIDADE-CPU · E3, PR2 (decisão do Murilo 21/11, "Aumentar para ~35%").
+export const OFFER_CHANCE_PER_ROUND_E3 = 0.35;
 
 export function maybeGenerateOffer(round) {
   const CAREER = carreiraAtual();
   if (CAREER.pendingOffer) return; // só 1 proposta pendente por vez
-  if (Math.random() >= OFFER_CHANCE_PER_ROUND) return;
+  if (Math.random() >= (PARIDADE_CPU.mercado ? OFFER_CHANCE_PER_ROUND_E3 : OFFER_CHANCE_PER_ROUND)) return;
   const principal = CAREER.squad.filter((p) => p.origin === "principal");
   if (principal.length <= 14) return;
   const player = principal[Math.floor(Math.random() * principal.length)];
   const eligible = marketTeamsPool().filter((t) =>
-    String(t.id) !== String(CAREER.clubId) && leagueSquadFor(t.id).length < maxSquadSizeFor(t.id)
+    String(t.id) !== String(CAREER.clubId) && temVagaCpu(t.id)
   );
   if (!eligible.length) return;
   const scored = eligible
@@ -443,7 +489,9 @@ export function maybeGenerateOffer(round) {
   // Fase 1.5 — urgência de fim de janela (necessidade REAL do clube por
   // este jogador específico, não um estado de clube inventado).
   const urgency = urgencyMultiplier(necessidadeScore(player, leagueSquadFor(club.id), club.id), round);
-  if (Math.random() >= offerProbabilityFromScore(score) * urgency) return; // score baixo -> raríssimo; score alto -> frequente
+  // PARIDADE-CPU · E3, PR2: com a regra nova, a chance da semana é a de cima
+  // (35%, decisão do Murilo 21/11); a nota já escolheu o clube.
+  if (!PARIDADE_CPU.mercado && Math.random() >= offerProbabilityFromScore(score) * urgency) return; // score baixo -> raríssimo; score alto -> frequente
   // Fase 1.4 — a proposta única (transferValuation) vira o PONTO DE
   // PARTIDA de uma negociação interna (reserva do vendedor = você vs.
   // tolerância do comprador = o clube), resolvida antes de qualquer
@@ -458,16 +506,32 @@ export function maybeGenerateOffer(round) {
   CAREER.pendingOffer = { playerId: player.id, playerName: player.name, clubId: String(club.id), clubName: club.name, fee, round };
 }
 
+// A suspensão pendente (3º amarelo na partida) vale depois do jogo. Quem se
+// lesionou no mesmo jogo cumpre a suspensão durante a lesão: a lesão não é
+// apagada (antes, virava "suspenso" e a lesão sumia) e nada muda até ele
+// voltar; na volta, a suspensão só vale se ia além da lesão. Assim a
+// mesma regra dá o mesmo resultado em qualquer momento em que for chamada.
+export function aplicarSuspensaoPendente(p, r) {
+  if (p.suspensaoPendente == null) return;
+  if (p.status === "contundido") {
+    if (p.outUntilRound != null && r > p.outUntilRound) {
+      const pend = p.suspensaoPendente;
+      delete p.suspensaoPendente;
+      if (pend > p.outUntilRound) { p.status = "suspenso"; p.outUntilRound = pend; p.injurySeverity = null; }
+    }
+    return;
+  }
+  p.status = "suspenso"; p.outUntilRound = p.suspensaoPendente;
+  delete p.suspensaoPendente;
+}
+
 export function refreshAvailability(uptoRound) {
   const CAREER = carreiraAtual();
   const r = uptoRound != null ? uptoRound : CAREER.currentRound;
   CAREER.squad.forEach((p) => {
     // EXPULSAO (17/11): 3º amarelo acumulado na partida — a suspensão vale
     // agora, depois do jogo (ele terminou a partida em campo).
-    if (p.suspensaoPendente != null) {
-      p.status = "suspenso"; p.outUntilRound = p.suspensaoPendente;
-      delete p.suspensaoPendente;
-    }
+    aplicarSuspensaoPendente(p, r);
     if (p.status !== "ok" && p.outUntilRound != null && r > p.outUntilRound) {
       // Pedido do usuário: retorno de lesão baixa a condição (o
       // jogador não está com ritmo de jogo, mesmo tendo passado a
@@ -486,7 +550,7 @@ export function refreshAvailability(uptoRound) {
   if (PARIDADE_CPU.convocacao) {
     [...Object.values(CAREER.leagueSquads || {}), ...Object.values(CAREER.elencosSerieD || {})].forEach((sq) => (sq || []).forEach((p) => {
       // E1a, PR2: 3º amarelo acumulado na partida (como o seu).
-      if (p.suspensaoPendente != null) { p.status = "suspenso"; p.outUntilRound = p.suspensaoPendente; delete p.suspensaoPendente; }
+      aplicarSuspensaoPendente(p, r);
       if (p.status !== "ok" && p.outUntilRound != null && r > p.outUntilRound) {
         if (p.status === "contundido") {
           const cap = INJURY_RETURN_CONDITION[p.injurySeverity] ?? 60;
@@ -607,7 +671,7 @@ export function maybeSpawnRivalOffer(o) {
   const player = leagueSquadFor(o.clubId).find((x) => String(x.id) === String(o.playerId));
   if (!player) return; // jogador já não está mais lá — nada a disputar
   const pool = marketTeamsPool().filter((t) =>
-    String(t.id) !== String(o.clubId) && String(t.id) !== String(CAREER.clubId) && leagueSquadFor(t.id).length < maxSquadSizeFor(t.id)
+    String(t.id) !== String(o.clubId) && String(t.id) !== String(CAREER.clubId) && temVagaCpu(t.id)
   );
   if (!pool.length) return;
   const scored = pool
@@ -647,7 +711,7 @@ export function resolvePendingOffersOutRound(round) {
 
 // Ganchos preenchidos por módulos que vêm depois deste (a negociação do
 // técnico, motor/negociacao.js), sem import circular.
-export const ganchos = { resolverProposta: null };
+export const ganchos = { resolverProposta: null, mercadoCpu: null };
 
 export function processPendingInstallments() {
   const CAREER = carreiraAtual();
@@ -671,7 +735,7 @@ export function maybeSpawnListingOffer(listing) {
   if (!p) return;
   const alreadyOffered = new Set(listing.offers.map((o) => String(o.clubId)));
   const eligible = marketTeamsPool().filter((t) =>
-    String(t.id) !== String(CAREER.clubId) && !alreadyOffered.has(String(t.id)) && leagueSquadFor(t.id).length < maxSquadSizeFor(t.id)
+    String(t.id) !== String(CAREER.clubId) && !alreadyOffered.has(String(t.id)) && temVagaCpu(t.id)
   );
   if (!eligible.length) return;
   const scored = eligible
@@ -752,7 +816,7 @@ export function resolveLoanListingsRound() {
     const ja = new Set(abertas.map((o) => String(o.clubId)));
     const aqui = mercado.papelNoElenco(p, CAREER.squad.filter((x) => x.origin !== "base"));
     const elig = marketTeamsPool()
-      .filter((t) => String(t.id) !== String(CAREER.clubId) && !ja.has(String(t.id)) && leagueSquadFor(t.id).length < maxSquadSizeFor(t.id))
+      .filter((t) => String(t.id) !== String(CAREER.clubId) && !ja.has(String(t.id)) && temVagaCpu(t.id))
       .map((t) => ({ t, papel: mercado.papelNoElenco(p, [...leagueSquadFor(t.id), p]) }))
       .filter((x) => (x.papel === "titular" || x.papel === "rotacao") && !(aqui === "titular" && x.papel !== "titular"))
       .sort((a, b) => String(a.t.id).localeCompare(String(b.t.id)));
