@@ -21,7 +21,7 @@
 import { carreiraAtual, ligaAtual, todosTimes, timePorId, forcaMediaDoElenco, ganchosMundo, PARIDADE_CPU, forcaDeJogo, partidaAtual } from "./estado.js";
 import { pushNotification, generateRoundNews } from "./registro.js";
 import { fmtBRL, abbreviateName } from "./texto.js";
-import { advanceCalendarWeek, ambiente, applyFinanceEntries, avisar, calendarOn, finalizeIncomingPurchase, leagueSquadFor, maybeGenerateOffer, processPendingInstallments, processPendingReceivables, pushLedger, pushTransferLog, refreshAvailability, resolveLoanListingsRound, resolvePendingListingsRound, resolvePendingOffersOutRound, simulateAiTransfers, tickScoutMissions, tickStadiumUpgrade, transferWindowStatus } from "./semana.js";
+import { advanceCalendarWeek, ambiente, applyFinanceEntries, avisar, calendarOn, finalizeIncomingPurchase, leagueSquadFor, maybeGenerateOffer, moverCaixaCpu, processPendingInstallments, processPendingReceivables, pushLedger, pushTransferLog, refreshAvailability, resolveLoanListingsRound, resolvePendingListingsRound, resolvePendingOffersOutRound, simulateAiTransfers, tickScoutMissions, tickStadiumUpgrade, transferWindowStatus } from "./semana.js";
 import * as financas from "./financas.js";
 import * as partida from "./partida.js";
 import * as rodada from "./rodada.js";
@@ -737,6 +737,7 @@ export function settleLoanOut(clubId, p) {
   const option = p.loanBuyOption;
   if (shouldExerciseBuyOption(option, { human: false })) {
     CAREER.finances.cash += option.value;
+    moverCaixaCpu(clubId, -option.value); // PARIDADE-CPU · E3 (D2)
     delete p.onLoanFromClubId; delete p.loanReturnRound; delete p.loanBuyOption;
     pushTransferLog(`${club.name} acionou a cláusula de compra e ficou definitivamente com ${p.name} por ${fmtBRL(option.value)}.`, CAREER.currentRound);
     pushLedger("transferencia", `Cláusula de compra — ${p.name} (${club.name})`, option.value, CAREER.currentRound);
@@ -766,6 +767,7 @@ export function settleLoanIn(p) {
   }
   if (buys) {
     CAREER.finances.cash -= option.value;
+    moverCaixaCpu(p.loanFromClubId, option.value); // PARIDADE-CPU · E3 (D2)
     p.wage = p.loanOriginalWage;
     p.origin = "principal";
     delete p.loanFromClubId; delete p.loanOriginalWage; delete p.loanReturnRound; delete p.loanBuyOption;

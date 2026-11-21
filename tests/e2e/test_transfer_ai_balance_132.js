@@ -341,7 +341,8 @@ const { newCareer, globaisDoMotor } = require("./_v2_carreira");
   const schemaAfter = await page.evaluate(() => Object.keys(CAREER).sort());
   const newKeys = schemaAfter.filter((k) => !schemaBefore.includes(k));
   check("19/20/21) Nenhuma chave nova em CAREER (sem schema/persistência nova) além de transferLog (só usado neste teste, array já suportado por pushTransferLog original):",
-    newKeys.filter((k) => k !== "transferLog").length === 0, JSON.stringify(newKeys));
+    // PARIDADE-CPU · E3: caixaCpu (D2) e agentesLivres (dispensados da CPU).
+    newKeys.filter((k) => !["transferLog", "caixaCpu", "agentesLivres"].includes(k)).length === 0, JSON.stringify(newKeys));
 
   // 22) fluxo de empréstimo continua intacto — findInterestedBuyer
   // (usado pelo empréstimo OUT) continua respondendo null ou clube

@@ -683,6 +683,38 @@ Relatório (17/11):
 
 ⸻
 
+PARIDADE-E3-1 — Caixa da CPU guardado por clube (PARIDADE-CPU, E3, PR1)
+
+Status: REVISÃO DO PM NECESSÁRIA (mesclado dentro da autorização de 20/11).
+Decisão do Murilo (20/11): D2 "Guardado por clube". Achado A10.
+Feito (motor):
+- semana.caixaDaCpu / moverCaixaCpu: o caixa de cada clube da CPU fica em
+  CAREER.caixaCpu (por id, ~1,5 KB). Nasce no "normal" do porte (6 tetos de
+  folha, mercado.caixaNormal) na primeira vez que o clube negocia. A folha
+  continua derivada do elenco.
+- O mercado (mercado.clubBudget) usa o caixa guardado: sem dinheiro, o
+  clube não consegue pagar.
+- O dinheiro mexe nos dois lados:
+  - você vende para a CPU (anúncio, proposta recebida, empréstimo);
+  - você compra da CPU (o vendedor recebe o valor);
+  - CPU × CPU;
+  - cláusula de compra exercida pela CPU ou por você.
+- Virada (viradaDoCaixaCpu): as receitas da temporada menos a folha levam o
+  caixa metade do caminho até o normal; quem caiu para a Série D sai da
+  lista.
+- Chave estado.PARIDADE_CPU.financas (false só nos testes de equivalência).
+Achado para o PR2, já decidido pelo Murilo ("Libera excedente antes"):
+os 59 elencos da CPU nascem com o máximo (26), e a regra de vaga travava
+todo o mercado CPU × CPU e as propostas da CPU pelos seus jogadores (já era
+assim na main). Dispensados vão para uma lista de agentes livres (decisão
+"Lista de agentes livres", PR3).
+Testes:
+- test_paridade_financas (novo, perfil frozen, 6/6);
+- suíte completa: 180/180;
+- equivalências (clube, mercado, temporada) com a regra desligada.
+
+⸻
+
 PARIDADE-D6 — Save comprimido no envio (PARIDADE-CPU, antes do E3)
 
 Status: REVISÃO DO PM NECESSÁRIA (mesclado dentro da autorização de 20/11).

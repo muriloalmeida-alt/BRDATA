@@ -61,11 +61,46 @@ export function subPositionOf(p) {
   return { G: "GOL", D: "DEF", M: "MEI", F: "ATA" }[p.group] || "DEF";
 }
 
+// PARIDADE-CPU · E3 (D2, decisão do Murilo 20/11 "Guardado por clube"): o
+// caixa de cada clube da CPU fica no save (CAREER.caixaCpu, por id). Nasce no
+// "normal" do porte (mercado.caixaNormal: 6 tetos de folha) na primeira vez
+// que o dinheiro do clube se mexe; a folha continua derivada do elenco. Transferências
+// mexem nos dois lados (inclusive com você); na virada, as receitas da
+// temporada menos a folha levam o caixa metade do caminho até o normal.
+// Ler não grava: sem caixa guardado, devolve o normal de hoje; o caixa só
+// entra no save na primeira movimentação (moverCaixaCpu).
+export function caixaDaCpu(clubId) {
+  const CAREER = carreiraAtual();
+  const id = String(clubId);
+  if (!PARIDADE_CPU.financas || id === String(CAREER.clubId)) return null;
+  const guardado = CAREER.caixaCpu && CAREER.caixaCpu[id];
+  return guardado != null ? guardado : mercado.clubBudget({ squad: leagueSquadFor(id) }).cash;
+}
+export function moverCaixaCpu(clubId, valor) {
+  const atual = caixaDaCpu(clubId);
+  if (atual == null || !valor) return;
+  const CAREER = carreiraAtual();
+  CAREER.caixaCpu = CAREER.caixaCpu || {};
+  CAREER.caixaCpu[String(clubId)] = Math.round(atual + valor);
+}
+export const CAIXA_CPU_REVERSAO = 0.5;
+export function viradaDoCaixaCpu() {
+  const CAREER = carreiraAtual();
+  if (!PARIDADE_CPU.financas || !CAREER.caixaCpu) return;
+  Object.keys(CAREER.caixaCpu).forEach((id) => {
+    const sq = leagueSquadFor(id);
+    if (!sq.length) { delete CAREER.caixaCpu[id]; return; } // saiu das divisões com elenco (caiu para a D)
+    const normal = mercado.clubBudget({ squad: sq }).cash;
+    CAREER.caixaCpu[id] = Math.round(CAREER.caixaCpu[id] + CAIXA_CPU_REVERSAO * (normal - CAREER.caixaCpu[id]));
+  });
+}
+
 export function marketClub(clubId) {
   const CAREER = carreiraAtual();
   let avg, amb, roster;
   return {
     id: String(clubId),
+    get caixa() { return caixaDaCpu(clubId); },
     squad: leagueSquadFor(clubId),
     minSize: minSquadSizeFor(clubId),
     maxSize: maxSquadSizeFor(clubId),
@@ -359,6 +394,8 @@ export function simulateAiTransfers(round) {
     const player = pickWeightedByScore(candidatos);
     fromSquad.splice(fromSquad.indexOf(player), 1);
     (CAREER.leagueSquads[String(toClub.id)] = CAREER.leagueSquads[String(toClub.id)] || []).push(player);
+    // PARIDADE-CPU · E3 (D2): o dinheiro sai de um caixa e entra no outro.
+    moverCaixaCpu(toClub.id, -player.value); moverCaixaCpu(fromClub.id, player.value);
     pushTransferLog(`${toClub.name} contratou ${player.name} (${SUBPOS_LABEL[subPositionOf(player)]}) do ${fromClub.name} por ${fmtBRL(player.value)}.`, round);
   }
 }
@@ -539,6 +576,8 @@ export function finalizeIncomingPurchase(o) {
   }
   squad.splice(idx, 1);
   CAREER.finances.cash -= firstPayment;
+  // PARIDADE-CPU · E3 (D2): o clube vendedor recebe o valor da venda.
+  moverCaixaCpu(o.clubId, o.offerValue);
   if (o.installments > 1) {
     CAREER.pendingInstallments = CAREER.pendingInstallments || [];
     CAREER.pendingInstallments.push({ roundsLeft: o.installments - 1, perRoundAmount: perInstallment, label: `Parcela de ${p.name}` });
