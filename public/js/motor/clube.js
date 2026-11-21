@@ -23,7 +23,7 @@ import { carreiraAtual, ligaAtual, todosTimes, timePorId, forcaMediaDoElenco, co
 import { emitir } from "./eventos.js";
 import { pushNotification, ensureObjectivesFresh, bumpObjective } from "./registro.js";
 import { fmtBRL, abbreviateName } from "./texto.js";
-import { MAX_PRINCIPAL, REGION_LABEL, SCOUT_MISSION_DURATIONS, SCOUT_MISSION_TYPES, UF_TO_REGION, ambiente, avisar, finalizeIncomingPurchase, financeiroScore, leagueSquadFor, marketTeamsPool, maxSquadSizeFor, pickWeightedByScore, pruneRecentDeclines, pushLedger, pushTransferLog, transferScore, transferWindowStatus } from "./semana.js";
+import { ambiente, avisar, finalizeIncomingPurchase, financeiroScore, leagueSquadFor, marketTeamsPool, MAX_PRINCIPAL, maxSquadSizeFor, moverCaixaCpu, pickWeightedByScore, pruneRecentDeclines, pushLedger, pushTransferLog, REGION_LABEL, SCOUT_MISSION_DURATIONS, SCOUT_MISSION_TYPES, transferScore, transferWindowStatus, UF_TO_REGION } from "./semana.js";
 import { TALK_BENCH_STREAK_THRESHOLD, WANTS_TRANSFER_BENCH_STREAK, WANTS_TRANSFER_MORALE_MAX, playerComplaintFactor } from "./aovivo.js";
 import { firePressConference } from "./posjogo.js";
 import * as financas from "./financas.js";
@@ -237,6 +237,7 @@ export async function finalizeLoanOut(id, { returnRound, buyOption, buyer: passe
   // valor de mercado; metade disso se for só por 6 meses).
   const fee = Math.round((p.value * 0.10 * (returnRound ? 0.5 : 1)) / 1000) * 1000;
   CAREER.finances.cash += fee;
+  moverCaixaCpu(buyer.id, -fee); // PARIDADE-CPU · E3 (D2)
   const durationLabel = returnRound ? "por 6 meses" : "até o fim da temporada";
   const clauseLabel = buyOption ? (buyOption.mandatory ? ` (compra obrigatória de ${fmtBRL(buyOption.value)} ao fim)` : ` (opção de compra de ${fmtBRL(buyOption.value)} ao fim)`) : "";
   pushTransferLog(`Você emprestou ${p.name} pro ${buyer.name} ${durationLabel} por ${fmtBRL(fee)}${clauseLabel}.`, CAREER.currentRound);
@@ -553,6 +554,7 @@ export function acceptListingOffer(listingId, offerId) {
   CAREER.lineup.starters = CAREER.lineup.starters.map((x) => (x === p.id ? null : x));
   CAREER.lineup.bench = CAREER.lineup.bench.filter((x) => x !== p.id);
   CAREER.finances.cash += firstPayment;
+  moverCaixaCpu(offer.clubId, -offer.value); // PARIDADE-CPU · E3 (D2)
   if (offer.installments > 1) {
     CAREER.pendingReceivables = CAREER.pendingReceivables || [];
     CAREER.pendingReceivables.push({ roundsLeft: offer.installments - 1, perRoundAmount: perInstallment, label: `Parcela da venda de ${p.name}` });
@@ -670,6 +672,7 @@ export function acceptOffer() {
   const p = CAREER.squad.find((x) => x.id === offer.playerId);
   if (!p) { CAREER.pendingOffer = null; tela("renderMercado"); return; } // jogador já saiu do elenco por outro motivo
   CAREER.finances.cash += offer.fee;
+  moverCaixaCpu(offer.clubId, -offer.fee); // PARIDADE-CPU · E3 (D2)
   CAREER.squad = CAREER.squad.filter((x) => x.id !== p.id);
   CAREER.lineup.starters = CAREER.lineup.starters.map((x) => (x === p.id ? null : x));
   CAREER.lineup.bench = CAREER.lineup.bench.filter((x) => x !== p.id);

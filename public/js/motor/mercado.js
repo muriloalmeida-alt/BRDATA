@@ -131,9 +131,13 @@ export function adequacaoScore(candidate, squad, club) {
 // 3) Financeiro (20%): orçamento do clube derivado do próprio elenco.
 export function clubBudget(club) {
   const wageCap = Math.round(wageBill(club.squad) * 1.35 / 1000) * 1000;
-  const cash = Math.round(wageCap * 6 / 1000) * 1000;
+  // PARIDADE-CPU · E3 (D2 "Guardado por clube"): o caixa guardado do clube,
+  // quando há; sem ele, o derivado da folha de sempre (o "normal" do porte).
+  const cash = club.caixa != null ? Math.max(0, club.caixa) : caixaNormal(wageCap);
   return { cash, wageCap };
 }
+// O caixa "normal" do porte do clube: 6 tetos de folha.
+export function caixaNormal(wageCap) { return Math.round(wageCap * 6 / 1000) * 1000; }
 export function affordabilityRatio(ratio) {
   if (ratio <= 1) return 1;
   if (ratio >= 2.5) return 0;

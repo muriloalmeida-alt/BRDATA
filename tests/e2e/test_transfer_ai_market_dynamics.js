@@ -420,7 +420,8 @@ const { newCareer, globaisDoMotor } = require("./_v2_carreira");
 
   const schemaAfter = await page.evaluate(() => Object.keys(CAREER).sort());
   const newTopLevelKeys = schemaAfter.filter((k) => !schemaBefore.includes(k));
-  const ALLOWED_NEW_KEYS = ["transferLog", "recentDeclines", "pendingOffersOut"];
+  // PARIDADE-CPU · E3: caixaCpu (D2) e agentesLivres (dispensados da CPU).
+  const ALLOWED_NEW_KEYS = ["transferLog", "recentDeclines", "pendingOffersOut", "caixaCpu", "agentesLivres"];
   check("24) Schema preservado — única chave nova de CAREER é recentDeclines (temporária, podada, justificada no relatório):",
     newTopLevelKeys.filter((k) => !ALLOWED_NEW_KEYS.includes(k)).length === 0, JSON.stringify(newTopLevelKeys));
 
