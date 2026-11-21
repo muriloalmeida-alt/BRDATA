@@ -23,7 +23,7 @@ import { carreiraAtual, ligaAtual, todosTimes, timePorId, forcaMediaDoElenco, pa
 import { ensureObjectivesFresh, bumpObjective, trailingWinStreak, rankByPoints } from "./registro.js";
 import { fmtBRL, abbreviateName } from "./texto.js";
 import { ambiente, avisar, leagueSquadFor } from "./semana.js";
-import { applyConditionRecovery, applyMatchWearChunk, attributeGoals, computeHumanStrength, finishRoundTail, freshCareerTotals, escalacaoDaCpu, forcaDaCpu, freshMatchBucket, pickCpuXI, posturaDaCpu, posturaNoIntervalo, recuperarCpu, resolveCpuFixture, resolveRoundInstant, substituicoesDaCpu, tacticModDe, xiDaCpu } from "./fechamento.js";
+import { applyConditionRecovery, applyMatchWearChunk, attributeGoals, computeHumanStrength, finishRoundTail, freshCareerTotals, escalacaoDaCpu, forcaDaCpu, freshMatchBucket, pickCpuXI, posturaDaCpu, posturaNoIntervalo, recuperarCpu, resolveCpuFixture, resolveRoundInstant, substituicoesDaCpu, tacticModDe, xiDaCpu, fecharSuspensoesCpu } from "./fechamento.js";
 import * as financas from "./financas.js";
 import * as partida from "./partida.js";
 import * as tabela from "./tabela.js";
@@ -695,6 +695,7 @@ export function encerrarPartida() {
   applyConditionRecovery(Array.from(lm.appeared));
   // PARIDADE-CPU · E1a: o adversário também recupera quem não jogou.
   recuperarCpu(lm.isHome ? lm.humanFx.away : lm.humanFx.home, Array.from(lm.appeared));
+  fecharSuspensoesCpu(lm.isHome ? lm.humanFx.away : lm.humanFx.home, lm.round); // PARIDADE-CPU · E3
   let ticketRevenue = null;
   if (lm.isHome) {
     ticketRevenue = computeTicketRevenue(lm.home);

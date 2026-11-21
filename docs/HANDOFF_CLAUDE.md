@@ -683,6 +683,60 @@ Relatório (17/11):
 
 ⸻
 
+PARIDADE-E3-2 — Mercado CPU × CPU com os avaliadores do seu mercado (PARIDADE-CPU, E3, PR2)
+
+Status: REVISÃO DO PM NECESSÁRIA (mesclado dentro da autorização de 20/11).
+Requisitos: CPU-07 e V06; achado A9.
+Decisões do Murilo:
+- 20/11: "Libera excedente antes" e "Lista de agentes livres";
+- 21/11: volume "Moderado" e propostas pelos seus jogadores "~35%".
+Feito (motor):
+- Vaga (semana.temVagaCpu): o elenco cheio (26) tem vaga se houver um
+  excedente, isto é, um reserva com a posição coberta sem ele (o pior, e o
+  mais velho no empate). Vale para o CPU × CPU, para as propostas da CPU
+  pelos seus jogadores, para os anúncios e para os empréstimos.
+- Todo jogador que chega a um elenco da CPU passa por
+  semana.entrarNoElencoCpu. Se o elenco está cheio, o excedente é dispensado
+  para CAREER.agentesLivres (até 40, com a data e o último clube). A
+  contratação dos agentes livres vem no PR3.
+- Mercado CPU × CPU (negociacao.mercadoCpuDaRodada), nas janelas, com 6
+  tentativas por semana (~15–25 transferências por temporada):
+  - o comprador olha 4 vendedores sorteados e ranqueia por transferScore
+    (necessidade, adequação, caixa, contexto);
+  - o vendedor pede a reserva da regra do seu mercado
+    (reservaParaProposta: papel, cobertura, reposição, "à venda");
+  - o comprador paga até o teto dele (caixa e 1,5× o valor);
+  - o atleta decide pela mesma regra (avaliacaoAtleta: papel no destino,
+    divisão, força, salário) e pode pedir mais salário, desde que caiba na
+    folha;
+  - o contrato novo é de 3 anos.
+- Propostas da CPU pelos seus jogadores: 35% por semana de janela (a nota
+  escolhe o clube). Dá cerca de 1 por janela; antes era sempre 0, por causa
+  dos elencos cheios.
+- Chave estado.PARIDADE_CPU.mercado (false só nos testes de equivalência).
+Medido (1 temporada, dados congelados):
+- 14–18 transferências CPU × CPU;
+- uma dispensa por transferência para elenco cheio;
+- caixas entre R$ 0,04 mi e R$ 30 mi;
+- 2 propostas pelos seus jogadores.
+Correções achadas no caminho (o teste do hospedeiro, página × motor):
+- A suspensão pendente da CPU (3º amarelo) passa a valer logo no fim do jogo
+  dela (fechamento.fecharSuspensoesCpu), não no fim da rodada. Antes, o jogo
+  de Copa no meio da semana via o jogador disponível ou suspenso conforme o
+  momento em que alguma tela chamava refreshAvailability.
+- Quem leva o 3º amarelo e se lesiona no mesmo jogo cumpre a suspensão
+  durante a lesão (semana.aplicarSuspensaoPendente). Antes, a lesão era
+  apagada e ele virava só "suspenso".
+Testes:
+- test_paridade_mercado (novo, perfil frozen, 6/6);
+- test_transfer_ai_balance_132, item 14: com o caixa guardado, confere que a
+  negociação real não fecha (antes, a nota financeira);
+- test_transfer_ai_market_dynamics, item 6: conta também os agentes livres;
+- equivalências com a regra desligada; hospedeiro (40 mundos) ok;
+- suíte completa: 181/181.
+
+⸻
+
 PARIDADE-E3-1 — Caixa da CPU guardado por clube (PARIDADE-CPU, E3, PR1)
 
 Status: REVISÃO DO PM NECESSÁRIA (mesclado dentro da autorização de 20/11).
