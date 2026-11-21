@@ -232,4 +232,4 @@ export const ganchosMundo = { elencoGerado: null, convocacaoCpu: null };
 // depois do jogo, como o seu.
 // E1b (20/11): `tecnico` — o técnico da CPU (perfil, postura no pré-jogo e
 // mudança no intervalo, fechamento.posturaDaCpu).
-export const PARIDADE_CPU = { convocacao: true, forca: true, tecnico: true, divisoes: true, financas: true };
+export const PARIDADE_CPU = { convocacao: true, forca: true, tecnico: true, divisoes: true, financas: true, mercado: true };

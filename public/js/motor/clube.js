@@ -23,7 +23,7 @@ import { carreiraAtual, ligaAtual, todosTimes, timePorId, forcaMediaDoElenco, co
 import { emitir } from "./eventos.js";
 import { pushNotification, ensureObjectivesFresh, bumpObjective } from "./registro.js";
 import { fmtBRL, abbreviateName } from "./texto.js";
-import { ambiente, avisar, finalizeIncomingPurchase, financeiroScore, leagueSquadFor, marketTeamsPool, MAX_PRINCIPAL, maxSquadSizeFor, moverCaixaCpu, pickWeightedByScore, pruneRecentDeclines, pushLedger, pushTransferLog, REGION_LABEL, SCOUT_MISSION_DURATIONS, SCOUT_MISSION_TYPES, transferScore, transferWindowStatus, UF_TO_REGION } from "./semana.js";
+import { ambiente, avisar, finalizeIncomingPurchase, financeiroScore, leagueSquadFor, marketTeamsPool, MAX_PRINCIPAL, maxSquadSizeFor, moverCaixaCpu, pickWeightedByScore, pruneRecentDeclines, pushLedger, pushTransferLog, REGION_LABEL, SCOUT_MISSION_DURATIONS, SCOUT_MISSION_TYPES, transferScore, transferWindowStatus, UF_TO_REGION, temVagaCpu, entrarNoElencoCpu } from "./semana.js";
 import { TALK_BENCH_STREAK_THRESHOLD, WANTS_TRANSFER_BENCH_STREAK, WANTS_TRANSFER_MORALE_MAX, playerComplaintFactor } from "./aovivo.js";
 import { firePressConference } from "./posjogo.js";
 import * as financas from "./financas.js";
@@ -188,7 +188,7 @@ export function startStadiumUpgrade(id) {
 
 export function findInterestedBuyer(excludeId, player) {
   const eligible = marketTeamsPool().filter((t) =>
-    String(t.id) !== String(excludeId) && leagueSquadFor(t.id).length < maxSquadSizeFor(t.id)
+    String(t.id) !== String(excludeId) && temVagaCpu(t.id)
   );
   if (!eligible.length) return null;
   if (Math.random() < 0.2) return null; // 20% de chance de ninguém topar agora, mesmo com vaga
@@ -232,7 +232,7 @@ export async function finalizeLoanOut(id, { returnRound, buyOption, buyer: passe
   p.onLoanFromClubId = CAREER.clubId;
   p.loanReturnRound = returnRound;
   p.loanBuyOption = buyOption;
-  (CAREER.leagueSquads[String(buyer.id)] = CAREER.leagueSquads[String(buyer.id)] || []).push(p);
+  entrarNoElencoCpu(buyer.id, p);
   // Taxa de empréstimo — bem menor que uma venda de verdade (10% do
   // valor de mercado; metade disso se for só por 6 meses).
   const fee = Math.round((p.value * 0.10 * (returnRound ? 0.5 : 1)) / 1000) * 1000;
@@ -559,7 +559,7 @@ export function acceptListingOffer(listingId, offerId) {
     CAREER.pendingReceivables = CAREER.pendingReceivables || [];
     CAREER.pendingReceivables.push({ roundsLeft: offer.installments - 1, perRoundAmount: perInstallment, label: `Parcela da venda de ${p.name}` });
   }
-  (CAREER.leagueSquads[String(offer.clubId)] = CAREER.leagueSquads[String(offer.clubId)] || []).push(p);
+  entrarNoElencoCpu(offer.clubId, p);
   pushTransferLog(`Você vendeu ${p.name} pro ${offer.clubName} por ${fmtBRL(offer.value)}${offer.installments > 1 ? ` (${offer.installments}x)` : ""}.`, CAREER.currentRound);
   pushLedger("transferencia", `Venda — ${p.name} (${offer.clubName})${offer.installments > 1 ? ` — 1ª de ${offer.installments} parcelas` : ""}`, firstPayment, CAREER.currentRound);
   avisar(`${abbreviateName(p.name)} vendido! O ${offer.clubName} pagou ${fmtBRL(offer.value)}.`, { type: "pos" });
@@ -676,7 +676,7 @@ export function acceptOffer() {
   CAREER.squad = CAREER.squad.filter((x) => x.id !== p.id);
   CAREER.lineup.starters = CAREER.lineup.starters.map((x) => (x === p.id ? null : x));
   CAREER.lineup.bench = CAREER.lineup.bench.filter((x) => x !== p.id);
-  (CAREER.leagueSquads[offer.clubId] = CAREER.leagueSquads[offer.clubId] || []).push(p);
+  entrarNoElencoCpu(offer.clubId, p);
   pushTransferLog(`Você vendeu ${p.name} pro ${offer.clubName} por ${fmtBRL(offer.fee)}.`, CAREER.currentRound);
   pushLedger("transferencia", `Venda — ${p.name} (${offer.clubName})`, offer.fee, CAREER.currentRound);
   avisar(`Proposta aceita — ${fmtBRL(offer.fee)} no caixa.`, { type: "pos" });
