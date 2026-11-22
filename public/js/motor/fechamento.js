@@ -25,6 +25,7 @@ import { advanceCalendarWeek, ambiente, applyFinanceEntries, avisar, calendarOn,
 import * as financas from "./financas.js";
 import * as partida from "./partida.js";
 import * as rodada from "./rodada.js";
+import * as treino from "./treino.js";
 import * as mercado from "./mercado.js";
 import * as tabela from "./tabela.js";
 import * as registro from "./registro.js";
@@ -706,7 +707,7 @@ export function resolveOtherDivisionsRound(round) {
       (division.schedule[round] || []).forEach((fx) => {
         const home = times.get(String(fx.home)), away = times.get(String(fx.away));
         if (!home || !away) return;
-        const { gh, ga } = jogoCpuComJogadores(fx, round, home, away);
+        const { gh, ga } = jogoCpuComJogadores(fx, round, home, away, true);
         tabela.applyResult(division.standings, { home: fx.home, away: fx.away, gh, ga });
       });
       return;
@@ -1092,7 +1093,7 @@ export function myLeaguePosition() {
 
 export function resolveCpuFixture(fx, round) {
   const CAREER = carreiraAtual();
-  const { gh, ga, events } = jogoCpuComJogadores(fx, round, teamById(fx.home), teamById(fx.away));
+  const { gh, ga, events } = jogoCpuComJogadores(fx, round, teamById(fx.home), teamById(fx.away), true);
   const result = { home: fx.home, away: fx.away, gh, ga };
   if (events.length) result.events = events;
   applyResultToStandings(result);
@@ -1111,12 +1112,24 @@ export function fecharSuspensoesCpu(clubId, round) {
   if (!PARIDADE_CPU.mercado) return;
   leagueSquadFor(clubId).forEach((p) => aplicarSuspensaoPendente(p, round));
 }
-export function jogoCpuComJogadores(fx, round, home, away) {
+// PARIDADE-CPU · E4: depois do jogo de liga da CPU, a mesma evolução por
+// rodada jogada do seu elenco (treino.agingWeek) e a moral pela regra da sua
+// partida (gancho moralCpu, em aovivo.js).
+export function depoisDoJogoDaCpu(clubId, titulares, banco, golsPro, golsContra) {
+  if (!PARIDADE_CPU.evolucao) return;
+  const sq = leagueSquadFor(clubId);
+  if (!sq.length) return;
+  const patches = treino.agingWeek({ squad: sq, playedIds: titulares.map((p) => p.id), roundsSoFar: Math.max(0, carreiraAtual().currentRound - 1) }, Math.random);
+  sq.forEach((p) => { Object.assign(p, patches.get(p.id)); delete p.attrTrend; });
+  if (ganchosMundo.moralCpu) ganchosMundo.moralCpu(sq, titulares, banco, golsPro, golsContra);
+}
+export function jogoCpuComJogadores(fx, round, home, away, liga = false) {
   // E1b: a postura de cada técnico (formação e eixos) no pré-jogo.
   const ph = posturaDaCpu(fx.home, fx.away, true), pa = posturaDaCpu(fx.away, fx.home, false);
   const fh = ph ? ph.formation : undefined, fa = pa ? pa.formation : undefined;
-  const hs = forcaDaCpu(fx.home, home, xiDaCpu(fx.home, round, fh), 0, fh, tacticModDe(ph && ph.tactics));
-  const as = forcaDaCpu(fx.away, away, xiDaCpu(fx.away, round, fa), 0, fa, tacticModDe(pa && pa.tactics));
+  const eh = escalacaoDaCpu(fx.home, round, fh), ea = escalacaoDaCpu(fx.away, round, fa);
+  const hs = forcaDaCpu(fx.home, home, eh.starters, 0, fh, tacticModDe(ph && ph.tactics));
+  const as = forcaDaCpu(fx.away, away, ea.starters, 0, fa, tacticModDe(pa && pa.tactics));
   // GE-BALANCE-003 (issue #30) — ver comentário em simulateCupLeg.
   const placar = partida.scoreGoals(hs, as, 1, Math.random);
   let { gh, ga } = placar;
@@ -1151,6 +1164,7 @@ export function jogoCpuComJogadores(fx, round, home, away) {
   recuperarCpu(fx.home, hs.starters.map((p) => p.id));
   recuperarCpu(fx.away, as.starters.map((p) => p.id));
   fecharSuspensoesCpu(fx.home, round); fecharSuspensoesCpu(fx.away, round);
+  if (liga) { depoisDoJogoDaCpu(fx.home, hs.starters, eh.bench, gh, ga); depoisDoJogoDaCpu(fx.away, as.starters, ea.bench, ga, gh); }
   return { gh, ga, events: [...homeEvents, ...awayEvents] };
 }
 

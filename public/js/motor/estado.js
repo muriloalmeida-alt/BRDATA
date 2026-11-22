@@ -220,7 +220,7 @@ export function forcaMediaDoElenco(clubId) {
   return d && ganchosMundo.elencoGerado ? mediaOverall(ganchosMundo.elencoGerado(d)) : 0;
 }
 // Ganchos preenchidos por módulos carregados depois (motor/virada.js).
-export const ganchosMundo = { elencoGerado: null, convocacaoCpu: null };
+export const ganchosMundo = { elencoGerado: null, convocacaoCpu: null, moralCpu: null };
 
 // PARIDADE-CPU · E1a (18/11): a CPU convoca 11 titulares e 11 reservas pela
 // mesma escalação automática do seu time (virada.convocacaoDaCpu), recupera
@@ -232,4 +232,4 @@ export const ganchosMundo = { elencoGerado: null, convocacaoCpu: null };
 // depois do jogo, como o seu.
 // E1b (20/11): `tecnico` — o técnico da CPU (perfil, postura no pré-jogo e
 // mudança no intervalo, fechamento.posturaDaCpu).
-export const PARIDADE_CPU = { convocacao: true, forca: true, tecnico: true, divisoes: true, financas: true, mercado: true, contratos: true };
+export const PARIDADE_CPU = { convocacao: true, forca: true, tecnico: true, divisoes: true, financas: true, mercado: true, contratos: true, evolucao: true };

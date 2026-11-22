@@ -116,7 +116,13 @@ function copyOf(p) {
 function patchOf(c, orig) {
   const out = {};
   [...TOUCH, "seasonGain", "attrTrend", "fatigueHistory"].forEach((k) => {
-    if (c[k] !== undefined || k in orig) { if (JSON.stringify(c[k]) !== JSON.stringify(orig[k])) out[k] = c[k]; }
+    if (c[k] !== undefined || k in orig) {
+      // PARIDADE-CPU · E4 (desempenho): número e texto comparados direto (o
+      // mesmo resultado do JSON.stringify); só os objetos passam por ele.
+      const a = c[k], b = orig[k];
+      const igual = (a === null || typeof a !== "object") && (b === null || typeof b !== "object") ? a === b || (a !== a && b !== b) : JSON.stringify(a) === JSON.stringify(b);
+      if (!igual) out[k] = c[k];
+    }
   });
   return out;
 }
