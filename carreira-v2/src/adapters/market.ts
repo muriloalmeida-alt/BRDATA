@@ -7,7 +7,7 @@ import type { MarketInfo } from "../domain/market.ts";
 import type { OfferRole } from "../domain/types.ts";
 
 const SAFE = new Set(["janela-fechada", "ja-proposta", "parcelas-invalidas", "indisponivel", "teto", "elenco-grande", "proposta-invalida", "valor-baixo", "contra",
-  "jogador-invalido", "ja-anunciado", "nao-principal", "minimo", "anuncio-invalido", "recusa", "sem-interessado", "sem-emprestimo", "opcao-invalida", "sem-proposta", "decisao-invalida"]);
+  "jogador-invalido", "ja-anunciado", "nao-principal", "minimo", "anuncio-invalido", "recusa", "sem-interessado", "sem-emprestimo", "opcao-invalida", "sem-proposta", "decisao-invalida", "elenco-cheio"]);
 async function write<T = object>(name: string, ...args: unknown[]): Promise<Res<T>> {
   try {
     const s = await engine.get();
@@ -54,4 +54,6 @@ export const MarketGateway = {
   loanAvailable: (playerId: string, on: boolean) => write<{ disponivel: boolean }>("disponivelEmprestimo", playerId, on),
   acceptLoanOffer: (offerId: string, opId?: string) => write<{ taxa: number; clube: string }>("aceitarPropostaEmprestimo", offerId, opId),
   rejectLoanOffer: (offerId: string) => write("recusarPropostaEmprestimo", offerId),
+  // PARIDADE-CPU · E3: contratar um agente livre (sem taxa, só o salário).
+  signFreeAgent: (playerId: string) => write<{ salario: number }>("contratarAgenteLivre", playerId),
 };

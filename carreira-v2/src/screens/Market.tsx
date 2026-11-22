@@ -14,7 +14,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { MarketGateway, newOpId, type LoanPrep, type OfferPreview, type Preview } from "../adapters/market.ts";
 import { DIVISION, NO_MARKET_FILTERS, ROLE, ROLES, YEARS, buildHistory, buildNegotiation, buildSales, buildTarget, findTarget, initialOffer, installmentsLabel, loanWage, marketFiltersActive, marketList, saleOf, wageHint, yearsLabel,
-  type HistoryTab, type LoanClause, type LoanDuration, type MarketFilters, type MarketInfo, type Range } from "../domain/market.ts";
+  type FreeAgent, type HistoryTab, type LoanClause, type LoanDuration, type MarketFilters, type MarketInfo, type Range } from "../domain/market.ts";
 import { POSITION } from "../domain/squadplus.ts";
 import { moneyShort } from "../domain/home.ts";
 import { shortName } from "../domain/lineup.ts";
@@ -175,6 +175,7 @@ export function Market({ career }: { career: Career }) {
             <NavRow to={`${M}/vendas`} title="Minhas vendas" value={sales ? String(sales) : null} />
             <NavRow to={`${M}/emprestimos`} title="Meus jogadores para empréstimo" value={loanOffers ? `${loanOffers} proposta${loanOffers === 1 ? "" : "s"}` : null} />
             <NavRow to={`${M}/historico`} title="Histórico de negociações" />
+            <NavRow to={`${M}/agentes-livres`} title="Agentes livres" sub="Sem taxa de transferência, só o salário" value={(i.agentesLivres || []).length ? String((i.agentesLivres || []).length) : null} />
           </nav>
           <div className="sq-tools mk-tools">
             <label className="sr-only" htmlFor="mk-q">Buscar jogador</label>
@@ -967,6 +968,51 @@ export function LoanListings({ career, onChanged }: { career: Career; onChanged:
           </section>
         );
       }) : <p className="wk-note pr-pad">Nenhum jogador seu está disponível para empréstimo. Para marcar, abra a ficha do jogador, toque em "A temporada em números" e ligue "Disponível para empréstimo".</p>}
+      <div className="cal-foot">
+        <Status msg={msg} err={err} />
+        <button type="button" className="link-back" onClick={() => goBackTo(M)}>Voltar ao mercado</button>
+      </div>
+    </div>
+  );
+}
+
+// ---------- Agentes livres (PARIDADE-CPU · E3) ----------
+// Jogadores dispensados pela CPU ou sem renovação: você contrata sem taxa de
+// transferência, só com o salário que ele pede, por 2 temporadas.
+export function FreeAgents({ onChanged }: { onChanged: () => Promise<void> | void }) {
+  const [info, reload] = useInfo();
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<string | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+  const sign = async (a: FreeAgent) => {
+    if (busy) return;
+    setBusy(true); setErr(null); setMsg(null);
+    const r = await MarketGateway.signFreeAgent(a.id);
+    setBusy(false);
+    if (!r.ok) { setErr(msgOf(r)); return; }
+    setMsg(`${shortName(a.nome)} contratado, com salário de ${moneyShort(a.salario)}.`);
+    await onChanged(); reload();
+  };
+  return (
+    <div className="wk pr">
+      <Head ctx="Mercado" back={M} />
+      <h1 className="screen-title">Agentes livres.</h1>
+      <span className="tb-bar" aria-hidden="true" />
+      <p className="screen-sub">Sem clube: contrate sem taxa, só com o salário que ele pede, por 2 temporadas.</p>
+      <Loading data={info}>{() => {
+        const list = ((info as MarketInfo).agentesLivres || []);
+        return list.length ? (
+          <ul className="mk-list">
+            {list.map((a) => (
+              <li key={a.id}>
+                <PlayerRow name={shortName(a.nome)} position={`${POSITION[a.grupo]} · overall ${a.overall}${a.idade != null ? ` · ${a.idade} anos` : ""}${a.lesionado ? " · lesionado" : ""}`} />
+                <Rows rows={[{ label: "Último clube", value: a.ultimoClube || "—" }, { label: "Salário pedido", value: moneyShort(a.salario) }]} />
+                <button type="button" className="row pr-row" disabled={busy} onClick={() => sign(a)}><span className="row-body"><span className="row-title">Contratar sem taxa</span></span><IconChevron className="row-chevron" /></button>
+              </li>
+            ))}
+          </ul>
+        ) : <p className="wk-note pr-pad">Nenhum jogador livre agora. Eles aparecem quando os clubes dispensam alguém ou não renovam um contrato.</p>;
+      }}</Loading>
       <div className="cal-foot">
         <Status msg={msg} err={err} />
         <button type="button" className="link-back" onClick={() => goBackTo(M)}>Voltar ao mercado</button>

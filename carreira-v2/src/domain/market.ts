@@ -29,7 +29,10 @@ export interface MarketInfo {
   // VENDA-DISPONIVEL: jogadores que a CPU pôs à venda, com os motivos, a
   // chance de vir (maior = mais provável) e o valor que o clube aceita.
   aVenda?: SaleListing[];
+  // PARIDADE-CPU · E3: agentes livres (sem taxa, só o salário).
+  agentesLivres?: FreeAgent[];
 }
+export interface FreeAgent { id: string; nome: string; grupo: PlayerGroup; idade: number | null; overall: number; potencial: number | null; salario: number; ultimoClube: string | null; lesionado: boolean }
 export interface SaleListing { id: string; clubeId: string; motivos: string[]; motivo: string; papelNoSeuTime: "titular" | "rotacao" | "reserva"; chance: number; valorMinimo: number }
 export const DIVISION: Record<string, string> = { brasileirao: "Série A", serie_b: "Série B", serie_c: "Série C" };
 const norm = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();

@@ -18,9 +18,9 @@
    fonte de dados (modoReal) e a herança do técnico que trocou de clube.
    Não chama a tela: avisos viram o evento "aviso".
 =================================================================== */
-import { carreiraAtual, definirCarreira, ligaAtual, definirLigaAtual, todosTimes, definirTodosTimes, competicaoAtual, definirCompeticaoAtual, timePorId, forcaMediaDoElenco } from "./estado.js";
+import { carreiraAtual, definirCarreira, ligaAtual, definirLigaAtual, todosTimes, definirTodosTimes, competicaoAtual, definirCompeticaoAtual, timePorId, forcaMediaDoElenco, PARIDADE_CPU } from "./estado.js";
 import * as estado from "./estado.js";
-import { ambiente, applyCalendarMonthlyFinances, avisar, CALENDAR_PHASE_BY_MONTH, leagueSquadFor, marketTeamsPool, MAX_LEAGUE_SQUAD, MAX_LEAGUE_SQUAD_OTHER_DIVISION, MAX_PRINCIPAL, MIN_LEAGUE_SQUAD, MIN_LEAGUE_SQUAD_OTHER_DIVISION, minSquadSizeFor, pushTransferLog, viradaDoCaixaCpu } from "./semana.js";
+import { ambiente, applyCalendarMonthlyFinances, avisar, CALENDAR_PHASE_BY_MONTH, leagueSquadFor, marketTeamsPool, MAX_LEAGUE_SQUAD, MAX_LEAGUE_SQUAD_OTHER_DIVISION, MAX_PRINCIPAL, MIN_LEAGUE_SQUAD, MIN_LEAGUE_SQUAD_OTHER_DIVISION, minSquadSizeFor, pushTransferLog, viradaDoCaixaCpu, AGENTES_LIVRES_MAX } from "./semana.js";
 import { CUP_PRELIM_ROUND, CUP_ROUNDS, CUP_ROUNDS_EXPANDED, FORMATIONS, SECTOR_IDS, SECTOR_INSTRUCTIONS, freshCareerTotals, freshCupTie, materializarAdversarioDaCopa, resolveCupPhase, settleLoanIn, settleLoanOut, shuffleWithRng } from "./fechamento.js";
 import { ensureObjectivesFresh, evaluateSeasonEndAchievements, freshAchievementsState, freshObjectiveList, freshObjectivesState, pushNotification } from "./registro.js";
 import { freshTeamStats } from "./aovivo.js";
@@ -404,6 +404,43 @@ export function initialStadium() {
 
 export const MAX_SEASON_HISTORY = 15;
 
+// PARIDADE-CPU · E3, PR3 (CPU-08; decisão do Murilo "Lista de agentes
+// livres"): na virada, quem a CPU não renova vai para os agentes livres, e a
+// reposição usa primeiro um agente livre da mesma posição e do nível de quem
+// saiu (até 2 abaixo), com o contrato e o salário do gerado que ocuparia a
+// vaga. Quem ficou uma temporada inteira sem clube sai da lista.
+export function renovarElencoDaCpu(club, squad) {
+  const novo = renewLeagueSquad(club, squad);
+  if (!PARIDADE_CPU.contratos) return novo;
+  const CAREER = carreiraAtual();
+  const ficam = new Set(novo.map((p) => p.id));
+  const sairam = squad.filter((p) => !ficam.has(p.id) && p.onLoanFromClubId == null);
+  CAREER.agentesLivres = CAREER.agentesLivres || [];
+  const gerados = new Set(novo.filter((p) => !squad.some((x) => x.id === p.id)).map((p) => p.id));
+  const final = novo.map((f) => {
+    if (!gerados.has(f.id)) return f;
+    const i = CAREER.agentesLivres.findIndex((a) => a.group === f.group && (a.overall || 0) >= (f.overall || 0) - 2 && (a.age || 0) <= 33 && String(a.ultimoClube) !== String(club.id) && !novo.some((x) => x.id === a.id));
+    if (i < 0) return f;
+    const a = CAREER.agentesLivres.splice(i, 1)[0];
+    delete a.livreDesde; delete a.ultimoClube;
+    a.contractUntil = f.contractUntil; a.wage = f.wage; a.status = "ok"; a.outUntilRound = null; a.injurySeverity = null;
+    a.appsSeason = 0; a.goalsSeason = 0; a.assistsSeason = 0;
+    pushTransferLog(`${club.name} contratou ${a.name}, que estava livre no mercado.`, CAREER.currentRound);
+    return a;
+  });
+  sairam.forEach((p) => {
+    CAREER.agentesLivres.push({ ...p, age: (p.age || 0) + 1, status: "ok", outUntilRound: null, injurySeverity: null, livreDesde: { temporada: CAREER.seasonYear - 1, rodada: 0 }, ultimoClube: String(club.id) });
+  });
+  while (CAREER.agentesLivres.length > AGENTES_LIVRES_MAX) CAREER.agentesLivres.shift();
+  return final;
+}
+// Na virada (antes das renovações): sai da lista quem está livre desde antes
+// da temporada que acabou.
+export function viradaDosAgentesLivres() {
+  const CAREER = carreiraAtual();
+  if (!PARIDADE_CPU.contratos || !CAREER.agentesLivres) return;
+  CAREER.agentesLivres = CAREER.agentesLivres.filter((a) => !a.livreDesde || a.livreDesde.temporada >= CAREER.seasonYear - 1);
+}
 export function renewLeagueSquad(club, squad) {
   const CAREER = carreiraAtual();
   return temporada.renewLeagueSquad({
@@ -531,8 +568,9 @@ export async function advanceSeason() {
   // de temporada). Patrocínio já escala sozinho com título/posição
   // (ver sponsorshipTier), sem precisar de nada extra aqui.
   applySeasonAwardMoraleBoost(CAREER.seasonAwards[0]);
+  viradaDosAgentesLivres();
   Object.keys(CAREER.leagueSquads).forEach((clubId) => {
-    CAREER.leagueSquads[clubId] = renewLeagueSquad(teamById(clubId), CAREER.leagueSquads[clubId]);
+    CAREER.leagueSquads[clubId] = renovarElencoDaCpu(teamById(clubId), CAREER.leagueSquads[clubId]);
   });
 
   // Nova feature (pedido do usuário: "reinicie o tema do

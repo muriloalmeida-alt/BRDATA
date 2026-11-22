@@ -699,3 +699,29 @@ export function declineOffer() {
   ambiente.persistir();
   tela("renderMercado");
 }
+
+// PARIDADE-CPU · E3, PR3 (decisão do Murilo "Lista de agentes livres"): você
+// contrata um agente livre sem taxa de transferência, só com o salário que ele
+// pede (o salário justo pelo nível e pela idade, temporada.fairWageFor), por 2
+// temporadas, a qualquer momento. Cabe no teto salarial e no tamanho do elenco.
+export function salarioDoAgenteLivre(p) {
+  return Math.max(Math.round((temporada.fairWageFor(p) || p.wage || 0) / 100) * 100, 100);
+}
+export function contratarAgenteLivre(id) {
+  const CAREER = carreiraAtual();
+  const lista = CAREER.agentesLivres || [];
+  const i = lista.findIndex((p) => String(p.id) === String(id));
+  if (i < 0) return { ok: false, motivo: "indisponivel", texto: "Esse jogador não está mais livre no mercado." };
+  const p = lista[i];
+  const salario = salarioDoAgenteLivre(p);
+  if (CAREER.squad.length >= MAX_PRINCIPAL + 20) return { ok: false, motivo: "elenco-cheio", texto: "Seu elenco está grande demais agora." };
+  if (wageBillOf(CAREER.squad) + salario > CAREER.finances.wageCap) return { ok: false, motivo: "teto", texto: `O salário dele (${fmtBRL(salario)}) estouraria o teto salarial.` };
+  lista.splice(i, 1);
+  delete p.livreDesde; delete p.ultimoClube;
+  Object.assign(p, { wage: salario, contractUntil: CAREER.seasonYear + 1, origin: "principal", status: p.status === "contundido" ? p.status : "ok", appsSeason: 0, goalsSeason: 0, assistsSeason: 0 });
+  CAREER.squad.push(p);
+  pushTransferLog(`Você contratou ${p.name}, que estava livre no mercado (salário de ${fmtBRL(salario)}).`, CAREER.currentRound);
+  avisar(`${abbreviateName(p.name)} contratado sem custo de transferência!`, { type: "pos" });
+  ensureObjectivesFresh(); bumpObjective("daily", "obj_market_1_move", 1);
+  return { ok: true, player: p, salario };
+}
