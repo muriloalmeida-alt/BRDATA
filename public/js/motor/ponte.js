@@ -21,7 +21,7 @@
 =================================================================== */
 import { carreiraAtual, ligaAtual, todosTimes, competicaoAtual, partidaAtual, coletivaPendente } from "./estado.js";
 import { stadiumUpgradeBonusFor } from "./aovivo.js";
-import { BOARD_REQUEST_COOLDOWN, OFFER_WAIT_ROUNDS, SCOUT_GROUP_LABEL, SCOUT_MARKET, STADIUM_UPGRADES, acceptCounterOffer, acceptListingOffer, acceptLoanOfferIn, acceptOffer, applyTalkEffect, boardRequest, canTalkTo, cancelListing, computeLeaderboardScore, createListing, declineOffer, finalizeLoanIn, finalizeLoanOut, findInterestedBuyer, fireTechnicalStaff, hireScout, hireTechnicalStaff, increaseOffer, isContractExpiring, isLoanOutRefused, listingFor, markLineupDirty, recruitProspectToBase, rejectListingOffer, rejectLoanOfferIn, releaseScout, renewalVerdict, scoutAllowedRegions, scoutingAvailableRegions, setLoanListed, signSponsorProposal, startScoutMission, startStadiumUpgrade, submitOfferOut, withdrawOffer } from "./clube.js";
+import { BOARD_REQUEST_COOLDOWN, OFFER_WAIT_ROUNDS, SCOUT_GROUP_LABEL, SCOUT_MARKET, STADIUM_UPGRADES, acceptCounterOffer, acceptListingOffer, acceptLoanOfferIn, acceptOffer, applyTalkEffect, boardRequest, canTalkTo, cancelListing, computeLeaderboardScore, createListing, declineOffer, finalizeLoanIn, finalizeLoanOut, findInterestedBuyer, fireTechnicalStaff, hireScout, hireTechnicalStaff, increaseOffer, isContractExpiring, isLoanOutRefused, listingFor, markLineupDirty, recruitProspectToBase, rejectListingOffer, rejectLoanOfferIn, releaseScout, renewalVerdict, scoutAllowedRegions, scoutingAvailableRegions, setLoanListed, signSponsorProposal, startScoutMission, startStadiumUpgrade, submitOfferOut, withdrawOffer, contratarAgenteLivre, salarioDoAgenteLivre } from "./clube.js";
 import { FORMATIONS, SECTOR_IDS, SECTOR_INSTRUCTIONS, TACTIC_AXES, computeHumanStrength } from "./fechamento.js";
 import { firePressConference } from "./posjogo.js";
 import { MAX_PRINCIPAL, revendaLiberadaDe, REGION_LABEL, SCOUT_MISSION_DURATIONS, SCOUT_MISSION_TYPES, SUBPOS_LABEL, ambiente, applyWeeklyTraining, avisar, calendarTurnKey, leagueSquadFor, marketTeamsPool, pendingOfferOutFor, pushLedger, subPositionOf, transferWindowStatus } from "./semana.js";
@@ -476,7 +476,21 @@ export const comandosGestao = {
         clubes: marketTeamsPool().map((t) => ({ id: String(t.id), nome: t.name, sigla: t.short || null, divisao: t.competitionId || competicaoAtual() })),
         desconto: CAREER.nextSigningDiscountPct || 0, parcelas: [1, 2, 3, 4], esperaRodadas: OFFER_WAIT_ROUNDS,
         recusaEmprestimo, disponiveisEmprestimo,
+        // PARIDADE-CPU · E3, PR3: agentes livres (sem taxa, só o salário).
+        agentesLivres: (CAREER.agentesLivres || []).map((p) => ({
+          id: String(p.id), nome: p.name, grupo: p.group, idade: p.age, overall: p.overall, potencial: p.potential == null ? null : p.potential,
+          salario: salarioDoAgenteLivre(p), ultimoClube: p.ultimoClube ? (teamById(p.ultimoClube) || {}).name || null : null,
+          lesionado: p.status === "contundido",
+        })).sort((a, b) => b.overall - a.overall),
       };
+    },
+    async contratarAgenteLivre(id) {
+      const CAREER = carreiraAtual();
+      if (!CAREER) return { ok: false, motivo: "sem-carreira" };
+      const r = contratarAgenteLivre(String(id));
+      if (!r.ok) return { ok: false, motivo: r.motivo, mensagem: r.texto };
+      const g = await ambiente.gravar();
+      return g.ok ? { ok: true, salario: r.salario } : g;
     },
     // FASE1-MER: a proposta leva salário, papel prometido e duração
     // (termos = { salario, papel, anos }); sem termos, os do jogador hoje.

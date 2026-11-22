@@ -683,6 +683,42 @@ Relatório (17/11):
 
 ⸻
 
+PARIDADE-E3-3 — Contratos da CPU e agentes livres (PARIDADE-CPU, E3, PR3)
+
+Status: REVISÃO DO PM NECESSÁRIA (mesclado dentro da autorização de 20/11).
+Requisito: CPU-08. Decisão do Murilo: "Lista de agentes livres" (20/11).
+Feito (motor):
+- Virada (virada.renovarElencoDaCpu):
+  - quem a CPU não renova (regra do A14) vai para CAREER.agentesLivres (até
+    40), com o último clube;
+  - a reposição usa primeiro um agente livre da mesma posição e do nível de
+    quem saiu (até 2 abaixo, até 33 anos, de outro clube), com o contrato e
+    o salário do gerado que ocuparia a vaga;
+  - sai da lista quem está livre desde antes da temporada que acabou
+    (viradaDosAgentesLivres): uma temporada sem clube.
+- Você contrata um agente livre (clube.contratarAgenteLivre; ponte
+  contratarAgenteLivre; a lista vem em mercado().agentesLivres):
+  - sem taxa de transferência, só com o salário que ele pede (o justo pelo
+    nível e pela idade, temporada.fairWageFor);
+  - contrato de 2 temporadas, a qualquer momento;
+  - cabendo no teto salarial e no tamanho do elenco.
+- Cláusula de compra da CPU (fechamento.shouldExerciseBuyOption): a opção
+  facultativa passa a ser decidida pelo preço (até 1,2× o valor), pelo caixa
+  e pela contribuição (ele não seria reserva no elenco dela), sem sorteio.
+  A compra obrigatória e os retornos seguem como estavam.
+- Chave estado.PARIDADE_CPU.contratos (false só nos testes de equivalência).
+v2:
+- Mercado → "Agentes livres" (com a quantidade);
+- a tela lista posição, overall, idade, último clube e salário pedido, com
+  "Contratar sem taxa".
+Testes:
+- test_paridade_contratos (novo, frozen, 6/6);
+- test_v2_agentes_livres (novo, 5/5, com 360 px);
+- equivalências com a regra desligada; hospedeiro e virada (100 mundos) ok;
+- suíte completa: 183/183.
+
+⸻
+
 PARIDADE-E3-2 — Mercado CPU × CPU com os avaliadores do seu mercado (PARIDADE-CPU, E3, PR2)
 
 Status: REVISÃO DO PM NECESSÁRIA (mesclado dentro da autorização de 20/11).

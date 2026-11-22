@@ -21,10 +21,11 @@
 import { carreiraAtual, ligaAtual, todosTimes, timePorId, forcaMediaDoElenco, ganchosMundo, PARIDADE_CPU, forcaDeJogo, partidaAtual } from "./estado.js";
 import { pushNotification, generateRoundNews } from "./registro.js";
 import { fmtBRL, abbreviateName } from "./texto.js";
-import { advanceCalendarWeek, ambiente, applyFinanceEntries, avisar, calendarOn, finalizeIncomingPurchase, leagueSquadFor, maybeGenerateOffer, moverCaixaCpu, processPendingInstallments, processPendingReceivables, pushLedger, pushTransferLog, refreshAvailability, resolveLoanListingsRound, resolvePendingListingsRound, resolvePendingOffersOutRound, simulateAiTransfers, tickScoutMissions, tickStadiumUpgrade, transferWindowStatus, entrarNoElencoCpu, aplicarSuspensaoPendente } from "./semana.js";
+import { advanceCalendarWeek, ambiente, applyFinanceEntries, avisar, calendarOn, finalizeIncomingPurchase, leagueSquadFor, maybeGenerateOffer, moverCaixaCpu, processPendingInstallments, processPendingReceivables, pushLedger, pushTransferLog, refreshAvailability, resolveLoanListingsRound, resolvePendingListingsRound, resolvePendingOffersOutRound, simulateAiTransfers, tickScoutMissions, tickStadiumUpgrade, transferWindowStatus, entrarNoElencoCpu, aplicarSuspensaoPendente, caixaDaCpu } from "./semana.js";
 import * as financas from "./financas.js";
 import * as partida from "./partida.js";
 import * as rodada from "./rodada.js";
+import * as mercado from "./mercado.js";
 import * as tabela from "./tabela.js";
 import * as registro from "./registro.js";
 
@@ -726,10 +727,18 @@ export function pushCashSnapshot(round) {
   if (CAREER.cashHistory.length > CASH_HISTORY_MAX) CAREER.cashHistory.shift();
 }
 
-export function shouldExerciseBuyOption(option, { human }) {
+// PARIDADE-CPU · E3, PR3 (CPU-08): a CPU exerce a opção facultativa pelo
+// preço (até 1,2× o valor de mercado), pelo caixa e pela contribuição (ele
+// seria titular ou rotação no elenco dela), em vez de sorteio.
+export function shouldExerciseBuyOption(option, { human, clubId, player }) {
   if (!option) return false;
   if (option.mandatory) return true;
   if (human) return false;
+  if (PARIDADE_CPU.contratos && clubId != null && player) {
+    const caixa = caixaDaCpu(clubId);
+    const papel = mercado.papelNoElenco(player, leagueSquadFor(clubId));
+    return option.value <= (player.value || 0) * 1.2 && (caixa == null || caixa >= option.value) && papel !== "reserva";
+  }
   return Math.random() < 0.55;
 }
 
@@ -737,7 +746,7 @@ export function settleLoanOut(clubId, p) {
   const CAREER = carreiraAtual();
   const club = teamById(clubId);
   const option = p.loanBuyOption;
-  if (shouldExerciseBuyOption(option, { human: false })) {
+  if (shouldExerciseBuyOption(option, { human: false, clubId, player: p })) {
     CAREER.finances.cash += option.value;
     moverCaixaCpu(clubId, -option.value); // PARIDADE-CPU · E3 (D2)
     delete p.onLoanFromClubId; delete p.loanReturnRound; delete p.loanBuyOption;

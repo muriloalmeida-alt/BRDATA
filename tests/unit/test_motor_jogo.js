@@ -195,7 +195,7 @@ const ROTEIRO = (seed) => `(async () => {
     rodar("window.BRDATA_MOTOR = {};\n" + motor, "motor");
     // PARIDADE-CPU · E1a, PR2 (19/11): a cópia congelada usa a força do clube
     // para a CPU; aqui a regra nova (força pelo XI) fica desligada.
-    rodar("window.BRDATA_MOTOR.estado.PARIDADE_CPU.forca = false; window.BRDATA_MOTOR.estado.PARIDADE_CPU.tecnico = false; window.BRDATA_MOTOR.estado.PARIDADE_CPU.divisoes = false; window.BRDATA_MOTOR.estado.PARIDADE_CPU.financas = false; window.BRDATA_MOTOR.estado.PARIDADE_CPU.mercado = false;", "forca");
+    rodar("window.BRDATA_MOTOR.estado.PARIDADE_CPU.forca = false; window.BRDATA_MOTOR.estado.PARIDADE_CPU.tecnico = false; window.BRDATA_MOTOR.estado.PARIDADE_CPU.divisoes = false; window.BRDATA_MOTOR.estado.PARIDADE_CPU.financas = false; window.BRDATA_MOTOR.estado.PARIDADE_CPU.mercado = false; window.BRDATA_MOTOR.estado.PARIDADE_CPU.contratos = false;", "forca");
     rodar(dataSrc, "data.js");
     rodar(pagina, "carreira.js");
     if (antes) rodar(ref, "ref_jogo_antes.js");
