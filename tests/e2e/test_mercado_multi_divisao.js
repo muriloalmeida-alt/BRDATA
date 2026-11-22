@@ -85,7 +85,8 @@ const { carreiraV2, signup, ensureDailyClaimed, globaisDoMotor, saveNoServidor, 
       passos.push(o.status);
       if (o.status === "countered") aceitarContraDoClube(o.id);
       else if (o.status === "pede-salario") aceitarSalarioPedido(o.id);
-      else if (o.status === "pending") resolvePendingOffersOutRound(CAREER.currentRound);
+      // Sem rival sorteado no meio (a disputa tem teste próprio).
+      else if (o.status === "pending") { const r = Math.random; Math.random = () => 0.99; try { resolvePendingOffersOutRound(CAREER.currentRound); } finally { Math.random = r; } }
       else break;
     }
     await persistCareer();

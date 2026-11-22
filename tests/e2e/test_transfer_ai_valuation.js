@@ -395,9 +395,13 @@ const { newCareer, globaisDoMotor } = require("./_v2_carreira");
     const o = { playerId: player.id, playerName: player.name, clubId: sellerId, marketValue: player.value, offerValue: Math.round(player.value * 0.9), installments: 1, roundsLeft: 2, status: "pending", counterValue: null };
     const restoreNegotiation = fixNegotiationRng();
     let found = null;
+    // O sorteio fixo vale também dentro do motor (a negociação do rival usa o
+    // Math.random do motor, não o window.negotiateOffer do teste): sem isso,
+    // a oferta e o recálculo podiam seguir caminhos diferentes (CI do #150).
     for (let i = 0; i < 200 && !found; i++) {
       o.rivalOffer = null;
-      maybeSpawnRivalOffer(o);
+      const r = Math.random; Math.random = () => 0.01;
+      try { maybeSpawnRivalOffer(o); } finally { Math.random = r; }
       if (o.rivalOffer) found = { ...o.rivalOffer };
     }
     let result;

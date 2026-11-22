@@ -44,7 +44,9 @@ const { carreiraV2, signup, ensureDailyClaimed, globaisDoMotor, noMotor, base } 
       if (!o) break;
       if (o.status === "countered") await ponte.aceitarContraproposta(o.id);
       else if (o.status === "pede-salario") await ponte.aceitarSalarioPedido(o.id);
-      else if (o.status === "pending") semana.resolvePendingOffersOutRound(CAREER.currentRound);
+      // Sem rival sorteado no meio (a disputa tem teste próprio; aqui o que
+      // importa é o histórico): Math.random alto fecha a porta do rival.
+      else if (o.status === "pending") { const r = Math.random; Math.random = () => 0.99; try { semana.resolvePendingOffersOutRound(CAREER.currentRound); } finally { Math.random = r; } }
       else break;
     }
     return { ok: r.ok, id: e.p.id, comprado: CAREER.squad.some((p) => p.id === e.p.id) };
