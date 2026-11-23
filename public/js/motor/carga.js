@@ -1240,7 +1240,11 @@ export const comandosCarga = {
       ponte.criando = true;
       try {
         endCurrentClubStint("accepted_proposal");
-        await startCareer(p.clubId); CAREER = carreiraAtual();
+        // PARIDADE-CPU · E4, PR2: o mundo segue (virada.trocarDeClube); sem a
+        // regra, uma carreira nova, como antes.
+        if (estado.PARIDADE_CPU.troca) { virada.trocarDeClube(p.clubId); estado.definirHerancaDoTecnico(null); }
+        else await startCareer(p.clubId);
+        CAREER = carreiraAtual();
         if (!CAREER || String(CAREER.clubId) !== String(p.clubId)) return { ok: false, motivo: "falha" };
         const salvo = await persistCareer();
         return salvo ? { ok: true } : { ok: false, motivo: ponte.erroGravacao || "falha" };
