@@ -315,9 +315,12 @@ const { newCareer, globaisDoMotor } = require("./_v2_carreira");
     Object.keys(CAREER.leagueSquads).forEach((id) => { CAREER.leagueSquads[id] = fabricateSquad(18, 66, 0); });
     const restoreNegotiation = fixNegotiationRng();
     let found = null;
+    // O sorteio fixo vale também dentro do motor (como no 10c): a negociação
+    // usa o Math.random do motor, não o window.negotiateOffer do teste.
     for (let i = 0; i < 300 && !found; i++) {
       CAREER.pendingOffer = null;
-      maybeGenerateOffer(CAREER.currentRound);
+      const r = Math.random; Math.random = () => 0.01;
+      try { maybeGenerateOffer(CAREER.currentRound); } finally { Math.random = r; }
       if (CAREER.pendingOffer) found = { ...CAREER.pendingOffer };
     }
     let result;
