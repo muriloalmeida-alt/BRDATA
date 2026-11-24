@@ -20,7 +20,7 @@
 =================================================================== */
 import { carreiraAtual, definirCarreira, ligaAtual, definirLigaAtual, todosTimes, definirTodosTimes, competicaoAtual, definirCompeticaoAtual, timePorId, forcaMediaDoElenco, PARIDADE_CPU } from "./estado.js";
 import * as estado from "./estado.js";
-import { ambiente, applyCalendarMonthlyFinances, avisar, CALENDAR_PHASE_BY_MONTH, leagueSquadFor, marketTeamsPool, MAX_LEAGUE_SQUAD, MAX_LEAGUE_SQUAD_OTHER_DIVISION, MAX_PRINCIPAL, MIN_LEAGUE_SQUAD, MIN_LEAGUE_SQUAD_OTHER_DIVISION, minSquadSizeFor, pushTransferLog, viradaDoCaixaCpu, AGENTES_LIVRES_MAX } from "./semana.js";
+import { ambiente, applyCalendarMonthlyFinances, avisar, CALENDAR_PHASE_BY_MONTH, leagueSquadFor, marketTeamsPool, MAX_LEAGUE_SQUAD, MAX_LEAGUE_SQUAD_OTHER_DIVISION, MAX_PRINCIPAL, MIN_LEAGUE_SQUAD, MIN_LEAGUE_SQUAD_OTHER_DIVISION, minSquadSizeFor, pushTransferLog, viradaDoCaixaCpu, AGENTES_LIVRES_MAX, entrarNoElencoCpu, caixaDaCpu, maxSquadSizeFor } from "./semana.js";
 import { CUP_PRELIM_ROUND, CUP_ROUNDS, CUP_ROUNDS_EXPANDED, FORMATIONS, SECTOR_IDS, SECTOR_INSTRUCTIONS, freshCareerTotals, freshCupTie, materializarAdversarioDaCopa, resolveCupPhase, settleLoanIn, settleLoanOut, shuffleWithRng } from "./fechamento.js";
 import { ensureObjectivesFresh, evaluateSeasonEndAchievements, freshAchievementsState, freshObjectiveList, freshObjectivesState, pushNotification } from "./registro.js";
 import { freshTeamStats } from "./aovivo.js";
@@ -431,8 +431,46 @@ export function renovarElencoDaCpu(club, squad) {
   sairam.forEach((p) => {
     CAREER.agentesLivres.push({ ...p, age: (p.age || 0) + 1, status: "ok", outUntilRound: null, injurySeverity: null, livreDesde: { temporada: CAREER.seasonYear - 1, rodada: 0 }, ultimoClube: String(club.id) });
   });
+  const comBase = PARIDADE_CPU.evolucao ? promoverBaseDaCpu(club, final) : final;
+  // O histórico de lesões da CPU só serve dentro da temporada (nenhuma tela o
+  // mostra para a CPU): na virada ele recomeça, para o save não crescer
+  // temporada a temporada (a lesão em curso segue pelo status).
+  if (PARIDADE_CPU.evolucao) comBase.forEach((p) => { delete p.injuryHistory; });
   while (CAREER.agentesLivres.length > AGENTES_LIVRES_MAX) CAREER.agentesLivres.shift();
-  return final;
+  return comBase;
+}
+// PARIDADE-CPU · E4 (decisão do Murilo 23/11, "Base da CPU"): na virada, cada
+// clube da CPU olha 4 jovens da base (o gerador da sua base, com o potencial
+// pelo porte do clube) e promove os de maior potencial ao profissional,
+// prontos para jogar (overall em BASE_CPU.fatorOverall do potencial), cada um
+// no lugar do mais velho da posição (que vai para os agentes livres). Sem isso, com a
+// evolução semanal, o nível dos elencos caía ~1,2 por temporada.
+export const BASE_CPU = { olhados: 6, promovidos: 3, fatorOverall: 0.9, idadeMin: 18, idadeMax: 20 };
+export function promoverBaseDaCpu(club, elenco) {
+  const CAREER = carreiraAtual();
+  const rng = ambiente.rngDaChave(`base-cpu:${club.id}:${CAREER.seasonYear}`);
+  const env = { ...envJogador(), liveSeason: CAREER.seasonYear };
+  const jovens = Array.from({ length: BASE_CPU.olhados }, (_, i) => temporada.buildBasePlayer(club, i, rng, env))
+    .sort((a, b) => (b.potential || 0) - (a.potential || 0)).slice(0, BASE_CPU.promovidos);
+  const lista = elenco.slice();
+  jovens.forEach((j, i) => {
+    j.id = `basecpu_${club.id}_${CAREER.seasonYear}_${i}`;
+    j.origin = "principal";
+    j.age = BASE_CPU.idadeMin + Math.floor(rng() * (BASE_CPU.idadeMax - BASE_CPU.idadeMin + 1));
+    j.overall = Math.max(j.overall, Math.round((j.potential || 60) * BASE_CPU.fatorOverall));
+    j.atk = Math.max(j.atk, j.overall + (j.group === "F" ? 4 : j.group === "M" ? 1 : -8));
+    j.def = Math.max(j.def, j.overall + (j.group === "D" || j.group === "G" ? 4 : -8));
+    Object.assign(j, temporada.computeContractFields(j.overall, j.age, j.potential, rng, CAREER.seasonYear - 1));
+    // Sempre no lugar do mais velho da posição (o elenco não cresce).
+    {
+      const velho = lista.filter((p) => p.onLoanFromClubId == null && p.group === j.group && !voltaramNaVirada.has(String(p.id))).sort((a, b) => (b.age || 0) - (a.age || 0) || a.overall - b.overall)[0];
+      if (!velho) return;
+      lista.splice(lista.indexOf(velho), 1);
+      CAREER.agentesLivres.push({ ...velho, status: "ok", outUntilRound: null, injurySeverity: null, livreDesde: { temporada: CAREER.seasonYear - 1, rodada: 0 }, ultimoClube: String(club.id) });
+    }
+    lista.push(j);
+  });
+  return lista;
 }
 // Na virada (antes das renovações): sai da lista quem está livre desde antes
 // da temporada que acabou.
@@ -851,8 +889,13 @@ export function buildSeasonCalendar(year) {
   return { year, idx: 0, weeks, tvMonthly: Math.round(monthlyCosts * CALENDAR_EXTRA_MONTHS / 12 / 1000) * 1000 };
 }
 
+// Quem volta de empréstimo nesta virada (para a base da CPU não promover um
+// jovem no lugar de quem acabou de voltar ao clube; só na memória).
+const voltaramNaVirada = new Set();
 export function resolveLoanReturns() {
   const CAREER = carreiraAtual();
+  voltaramNaVirada.clear();
+  CAREER.squad.filter((p) => p.origin === "loan").forEach((p) => voltaramNaVirada.add(String(p.id)));
   Object.keys(CAREER.leagueSquads).forEach((clubId) => {
     const returning = (CAREER.leagueSquads[clubId] || []).filter((p) => p.onLoanFromClubId && String(p.onLoanFromClubId) === String(CAREER.clubId));
     returning.forEach((p) => settleLoanOut(clubId, p));
@@ -1141,4 +1184,64 @@ export function montarCarreira(club, squad, leagueSquads, liveModeByCompetition)
   // esportivo (ver initSponsorship).
   initSponsorship();
   return CAREER;
+}
+
+// ---------- PARIDADE-CPU · E4, PR2: troca de clube sem recomeçar (CPU-10, A12) ----------
+// Decisão do Murilo (22/11, "Mundo segue, clube novo como está"): tabela,
+// calendário, rodada, divisões, Copa, elencos e contas da CPU, agentes livres,
+// notícias, reputação e histórico do técnico seguem. O seu clube antigo volta
+// à CPU (o elenco principal e o caixa); quem você pegou emprestado volta ao
+// dono; quem você emprestou volta ao elenco do clube antigo; a base do clube
+// antigo fica com ele (não vai para a CPU, que não tem base). Você assume o
+// elenco e o caixa guardado do clube novo; estádio, patrocínio, metas,
+// conselho, comissão, olheiros, esquemas e estatísticas da passagem começam
+// como numa carreira nova.
+export const MUNDO_NA_TROCA = ["schemaVersion", "competitionId", "liveMode", "liveModeByCompetition", "marketScope", "createdAt",
+  "schedule", "currentRound", "standings", "resultsByRound", "leagueChampions", "transferLog", "seasonYear", "teamWinlessStreak",
+  "calendar", "divisionTeams", "serieDPool", "otherDivisions", "cup", "nivelGols", "agentesLivres", "caixaCpu", "perfisCpu",
+  "elencosSerieD", "newsFeed", "notifications", "notificationSettings", "purchaseHistory", "achievements", "objectives",
+  "titlesWonNacional", "titlesWonCopa", "seasonAwards", "trainingAppliedForRound", "baseRevealedCount", "pressLog"];
+export function trocarDeClube(clubId) {
+  const prev = carreiraAtual();
+  const club = ligaAtual().find((t) => String(t.id) === String(clubId));
+  if (!prev || !club || String(clubId) === String(prev.clubId)) return false;
+  const velho = String(prev.clubId), novo = String(club.id);
+  // 1) O clube antigo volta à CPU.
+  prev.leagueSquads[velho] = [];
+  Object.entries(prev.leagueSquads).forEach(([cid, sq]) => {
+    if (cid === velho) return;
+    sq.filter((p) => String(p.onLoanFromClubId) === velho).forEach((p) => {
+      sq.splice(sq.indexOf(p), 1);
+      delete p.onLoanFromClubId; delete p.loanReturnRound; delete p.loanBuyOption;
+      prev.leagueSquads[velho].push(p);
+    });
+  });
+  prev.squad.forEach((p) => {
+    if (p.origin === "loan" && p.loanFromClubId != null) {
+      const dono = String(p.loanFromClubId);
+      if (p.loanOriginalWage != null) p.wage = p.loanOriginalWage;
+      delete p.loanFromClubId; delete p.loanOriginalWage; delete p.loanReturnRound; delete p.loanBuyOption;
+      if (dono !== novo) entrarNoElencoCpu(dono, p);
+      else (prev.leagueSquads[novo] = prev.leagueSquads[novo] || []).push(p);
+      return;
+    }
+    if (p.origin === "base") return;
+    delete p.promessa; delete p.loanListed;
+    entrarNoElencoCpu(velho, p);
+  });
+  prev.caixaCpu = prev.caixaCpu || {};
+  prev.caixaCpu[velho] = Math.round((prev.finances && prev.finances.cash) || 0);
+  // 2) O clube novo: o elenco e o caixa guardado dele.
+  const caixaNovo = caixaDaCpu(novo);
+  const squad = (prev.leagueSquads[novo] || []).map((p) => ({ ...p, origin: "principal" }));
+  delete prev.leagueSquads[novo];
+  delete prev.caixaCpu[novo];
+  // 3) A carreira do clube novo, como numa carreira nova, com o mundo de antes.
+  montarCarreira(club, squad, prev.leagueSquads, prev.liveModeByCompetition);
+  const CAREER = carreiraAtual();
+  MUNDO_NA_TROCA.forEach((k) => { if (k in prev) CAREER[k] = prev[k]; });
+  if (caixaNovo != null) CAREER.finances.cash = caixaNovo;
+  CAREER.clubProposals = [];
+  pushTransferLog(`Você deixou o ${prev.clubName} e assumiu o ${club.name}.`, CAREER.currentRound);
+  return true;
 }

@@ -138,6 +138,9 @@ const ROTEIRO = (seed) => `(async () => {
     rodar(SEMEAR(seed), "semente");
     rodar(API, "api");
     rodar("window.BRDATA_MOTOR = {};\n" + motor, "motor");
+    // PARIDADE-CPU · E4, PR2: a cópia congelada monta uma carreira nova ao
+    // aceitar outro clube (a troca sem recomeçar tem teste próprio).
+    rodar("window.BRDATA_MOTOR.estado.PARIDADE_CPU.troca = false;", "troca");
     rodar(dataSrc, "data.js");
     rodar(pagina, "carreira.js");
     if (antes) rodar(ref, "ref_carga_antes.js");

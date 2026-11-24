@@ -683,6 +683,54 @@ Relatório (17/11):
 
 ⸻
 
+PARIDADE-E4-2 — Troca de clube sem recomeçar o mundo (PARIDADE-CPU, E4, PR2)
+
+Status: REVISÃO DO PM NECESSÁRIA.
+Requisitos: CPU-10, V07, V08; achado A12. Decisão do Murilo (22/11): "Mundo
+segue, clube novo como está".
+Feito (motor, virada.trocarDeClube, chamado por aceitarPropostaClube):
+- O mundo segue: temporada, rodada, calendário, tabela, divisões, Copa,
+  elencos e contas da CPU, agentes livres, perfis dos técnicos, notícias,
+  conquistas e objetivos (MUNDO_NA_TROCA). A reputação e o histórico do
+  técnico seguem como antes (endCurrentClubStint).
+- O clube antigo volta à CPU:
+  - o elenco principal (pela entrada comum, com dispensa de excedente para
+    os agentes livres se passar de 26);
+  - o seu caixa vira o caixa guardado dele;
+  - quem você pegou emprestado volta ao dono;
+  - quem você emprestou volta ao elenco do clube antigo;
+  - a base fica de fora (a CPU não tem base).
+- Você assume o elenco e o caixa guardado do clube novo (ele sai da CPU).
+  Estádio, patrocínio, meta do conselho, comissão, olheiros, esquemas e
+  estatísticas da passagem começam como numa carreira nova (montarCarreira).
+- Chave estado.PARIDADE_CPU.troca (sem ela, carreira nova como antes; false
+  no test_motor_carga, que compara com a cópia congelada).
+Ficam de fora (registrado):
+- as parcelas a pagar e a receber do clube antigo deixam de existir;
+- o clube novo começa sem jogadores da base.
+Também neste PR (fecha o E4):
+- Base da CPU (decisão do Murilo 23/11, "Base da CPU"):
+  - na virada, cada clube olha 6 jovens da base (o gerador da sua base) e
+    promove os 3 de maior potencial ao profissional, com 90% do potencial
+    (BASE_CPU);
+  - cada um entra no lugar do mais velho da posição, que vai para os
+    agentes livres; o elenco não cresce;
+  - quem acabou de voltar de empréstimo na virada não é substituído.
+- O histórico de lesões da CPU recomeça na virada (o save não cresce
+  temporada a temporada; test_motor_serie_d de 10 temporadas: 664 → 688 KB).
+- paridade_achados: o A9 passa a olhar o mercado que roda com a regra
+  ligada.
+- Relatório final: docs/paridade-cpu/RELATORIO_FINAL.md, com a validação
+  de 5 temporadas e os pontos em aberto. O principal: o overall médio da
+  CPU ainda cai ~0,9–1,1 por temporada.
+Testes:
+- test_paridade_troca (novo, frozen, 6/6): mundo, clube antigo, clube novo,
+  técnico, jogar e gravar depois da troca, chave;
+- test_motor_carga com a chave desligada;
+- suíte completa: 185/185 (com a base da CPU e o relatório).
+
+⸻
+
 PARIDADE-E4-1 — Treino, evolução e moral da CPU (PARIDADE-CPU, E4, PR1)
 
 Status: REVISÃO DO PM NECESSÁRIA (mesclado dentro da autorização de 20/11).
