@@ -33,6 +33,10 @@ import * as Fo from "./formatos.js";
 import * as Vp from "./viradapais.js";
 import { classificar, opcoesDaLiga, rngDaChave } from "./desempate.js";
 import { scoreGoals, nivelDeGols, forcaComNivel } from "./partida.js";
+import { generateAllRounds } from "./calendario.js";
+import { sortRows } from "./tabela.js";
+import { promotionRelegation } from "./temporada.js";
+import { CALENDAR_PHASE_BY_MONTH } from "./semana.js";
 
 export const FORMATO_MUNDO = 1;
 // Mudança de divisão: a força relativa muda pela razão dos níveis das ligas,
@@ -65,7 +69,9 @@ export function decodificarPlacares(s, n) {
 // leve (o do técnico; a etapa M6b liga a carreira). A semana inicial é a da
 // pré-temporada da liga escolhida (MUN-06); a pré-simulação até ela é feita
 // por prepararInicio().
-export function criarMundoLeve(indice, { ligaEscolhida, ativos = [], chave = "mundo" } = {}) {
+// inicio (opcional): a semana em que o jogo começa, quando a liga do técnico
+// não está no índice (carreira no Brasil, M6b-5).
+export function criarMundoLeve(indice, { ligaEscolhida, ativos = [], chave = "mundo", inicio = null } = {}) {
   const paises = {};
   for (const p of indice.paises) {
     const [l1, l2] = p.ligas;
@@ -79,8 +85,18 @@ export function criarMundoLeve(indice, { ligaEscolhida, ativos = [], chave = "mu
       forcas: {}, viradas: [], campeoes: [],
     };
   }
+  // Brasil (M6b-5b): Séries A, B e C e o catálogo da Série D, como na carreira.
+  if (indice.brasil) {
+    const B = indice.brasil;
+    paises.BR = {
+      k: 0, ano: Number(String(inicio || "2026").slice(0, 4)),
+      ligas: Object.fromEntries(DIVISOES_BR.map((l) => [l, { clubes: B.ligas[l].clubes.map((c) => c.id), placares: "" }])),
+      pos: null, catalogo: B.serieD.map((c) => c.id), catalogoExtra: {}, zonas: {}, historico: {},
+      forcas: {}, viradas: [], campeoes: [],
+    };
+  }
   const agendaEscolhida = ligaEscolhida ? Rel.agendaDoPacote(indice.partidas[ligaEscolhida]) : null;
-  const inicioJogo = agendaEscolhida ? Rel.inicioDoMundo(agendaEscolhida) : null;
+  const inicioJogo = inicio || (agendaEscolhida ? Rel.inicioDoMundo(agendaEscolhida) : null);
   const primeira = Object.keys(indice.competicoes).map((l) => Rel.primeiraSemana(Rel.agendaDoPacote(indice.partidas[l]))).sort()[0];
   return {
     formato: FORMATO_MUNDO, versaoCatalogo: indice.versao, chave, ativos: ativos.slice(),
@@ -119,10 +135,32 @@ export function salvarMundo(m) {
   return JSON.parse(JSON.stringify(e));
 }
 
-const ligasDe = (m, cod) => m.indice.paises.find((p) => p.codigo === cod).ligas;
+const DIVISOES_BR = ["brasileirao", "serie_b", "serie_c"];
+const ligasDe = (m, cod) => (cod === "BR" ? DIVISOES_BR : m.indice.paises.find((p) => p.codigo === cod).ligas);
+
+// Agenda do Brasil num ano: a mesma regra do calendário da carreira
+// (virada.buildSeasonCalendar): segundas do ano, rodadas 1–38 nas semanas de
+// "temporada", em ordem; turno e returno de calendario.generateAllRounds.
+// O jogo é no domingo da semana.
+export function agendaBrasil(ano, clubes) {
+  const jan1 = Date.UTC(ano, 0, 1);
+  const primeira = jan1 + ((8 - new Date(jan1).getUTCDay()) % 7) * 86400000;
+  const rodadas = generateAllRounds(clubes);
+  const agenda = new Map();
+  let r = 1;
+  for (let d = primeira; new Date(d).getUTCFullYear() === ano && r <= 38; d += 7 * 86400000) {
+    if (CALENDAR_PHASE_BY_MONTH[new Date(d).getUTCMonth()] !== "temporada") continue;
+    const semana = new Date(d).toISOString().slice(0, 10);
+    const data = new Date(d + 6 * 86400000).toISOString().slice(0, 10);
+    agenda.set(semana, (rodadas[r] || []).map((x) => ({ fase: "Fase Regular", rodada: r, data, casa: x.home, fora: x.away })));
+    r++;
+  }
+  return agenda;
+}
 
 function agendaDaLiga(m, cod, liga) {
   const P = m.estado.paises[cod];
+  if (cod === "BR") return agendaBrasil(P.ano, P.ligas[liga].clubes);
   const comp = m.indice.competicoes[liga];
   const pacote = Rel.agendaDoPacote(m.indice.partidas[liga]);
   if (P.k === 0) return pacote;
@@ -137,7 +175,7 @@ function prepararPais(m, cod) {
   const P = m.estado.paises[cod];
   const rt = { ligas: {} };
   for (const liga of ligasDe(m, cod)) {
-    const comp = m.indice.competicoes[liga];
+    const comp = m.indice.competicoes[liga] || { regiao: "brasil" };
     const agenda = agendaDaLiga(m, cod, liga);
     const fixos = [...agenda.values()].flat();
     const L = P.ligas[liga];
@@ -170,7 +208,10 @@ function reservasAtivas(m, clubes) {
 // ---------- força e placar ----------
 
 function clubeDoIndice(m, id) {
-  if (!m.cache.porId) m.cache.porId = new Map([...m.indice.clubes, ...m.indice.terceira].map((c) => [S(c.id), c]));
+  if (!m.cache.porId) {
+    const br = m.indice.brasil ? [...Object.values(m.indice.brasil.ligas).flatMap((l) => l.clubes), ...m.indice.brasil.serieD] : [];
+    m.cache.porId = new Map([...m.indice.clubes, ...m.indice.terceira, ...br].map((c) => [S(c.id), c]));
+  }
   return m.cache.porId.get(S(id)) || null;
 }
 
@@ -180,12 +221,12 @@ function forcaBase(m, cod, liga, id) {
   const c = clubeDoIndice(m, id);
   if (c && c.atk != null && c.def != null) return { atk: c.atk, def: c.def };
   // Clube do catálogo sem força no pacote: um pouco abaixo do mais fraco da liga.
-  const da = m.indice.clubes.filter((x) => x.liga === liga);
+  const da = m.indice.brasil && m.indice.brasil.ligas[liga] ? m.indice.brasil.ligas[liga].clubes : m.indice.clubes.filter((x) => x.liga === liga);
   return { atk: Math.min(...da.map((x) => x.atk)) * 0.97, def: Math.max(...da.map((x) => x.def)) * 1.03 };
 }
 
 function forcaDeJogo(m, cod, liga, id) {
-  const comp = m.indice.competicoes[liga];
+  const comp = m.indice.competicoes[liga] || m.indice.brasil.ligas[liga];
   return forcaComNivel(forcaBase(m, cod, liga, id), nivelDeGols(comp.mediaGolsPorTime));
 }
 
@@ -244,6 +285,7 @@ export function avancarSemana(m) {
   const eventos = [];
   for (const cod of Object.keys(e.paises)) {
     if (e.ativos.includes(cod)) continue;
+    if (cod === "BR") { semanaBrasil(m, semana, eventos); continue; }
     const regiao = m.indice.paises.find((p) => p.codigo === cod).regiao;
     if (regiao === "europa") semanaEuropa(m, cod, semana, eventos);
     else semanaAmericaDoSul(m, cod, semana, eventos);
@@ -399,4 +441,61 @@ export function prepararInicio(m) {
   const eventos = [];
   while (m.estado.semana < m.estado.inicioJogo) eventos.push(...avancarSemana(m));
   return eventos;
+}
+
+// ---------- Brasil (M6b-5b) ----------
+// A semana do Brasil e a virada pela cascata de sempre (temporada.
+// promotionRelegation): 4 descem e 4 sobem entre A, B e C (com o perdão da
+// tradição), 4 sobem do catálogo da Série D por sorteio; a força de quem muda
+// de divisão pela regra da carreira (arrivalStrength).
+function semanaBrasil(m, semana, eventos) {
+  const P = m.estado.paises.BR;
+  for (const liga of DIVISOES_BR) {
+    const r = m.cache.BR.ligas[liga];
+    for (const [s, jogos] of r.agenda) {
+      if (s > semana) break;
+      for (const j of jogos) {
+        const i = r.posicao.get(j);
+        if (!r.placares[i]) r.placares[i] = placar(m, "BR", liga, P.ano, i, j.casa, j.fora);
+      }
+    }
+  }
+  if (!DIVISOES_BR.every((l) => m.cache.BR.ligas[l].placares.length && m.cache.BR.ligas[l].placares.every(Boolean))) return;
+  // Tabelas finais (critérios do Brasileirão, tabela.sortRows).
+  const tabela = (liga) => {
+    const r = m.cache.BR.ligas[liga];
+    const linhas = Object.fromEntries(P.ligas[liga].clubes.map((id) => [S(id), { id, j: 0, v: 0, e: 0, d: 0, gp: 0, gc: 0, sg: 0, pts: 0 }]));
+    r.fixos.forEach((j, i) => {
+      const p = r.placares[i];
+      for (const [id, a, b] of [[j.casa, p.gh, p.ga], [j.fora, p.ga, p.gh]]) {
+        const L = linhas[S(id)];
+        L.j++; L.gp += a; L.gc += b; L.sg = L.gp - L.gc;
+        if (a > b) { L.v++; L.pts += 3; } else if (a === b) { L.e++; L.pts++; } else L.d++;
+      }
+    });
+    return sortRows(linhas);
+  };
+  const rows = { A: tabela("brasileirao"), B: tabela("serie_b"), C: tabela("serie_c") };
+  const time = (id) => { const f = forcaBase(m, "BR", null, id); const c = clubeDoIndice(m, id) || {}; return { id, name: c.nome, atk: f.atk, def: f.def }; };
+  const teams = { A: P.ligas.brasileirao.clubes.map(time), B: P.ligas.serie_b.clubes.map(time), C: P.ligas.serie_c.clubes.map(time) };
+  const dPool = P.catalogo.map(time);
+  const ch = `${m.estado.chave}:BR:${P.ano}`;
+  const plano = promotionRelegation({ rows, teams, dPool, protectedC: null, reprieveRng: { A: rngDaChave(`${ch}:A`), B: rngDaChave(`${ch}:B`), C: rngDaChave(`${ch}:C`) }, rng: rngDaChave(`${ch}:D`) });
+  plano.strength.forEach(({ team, atk, def }) => { P.forcas[S(team.id)] = [Math.round(atk * 1000) / 1000, Math.round(def * 1000) / 1000]; });
+  const novo = plano.compose();
+  const ids = (l) => l.map((t) => t.id);
+  const resumo = {
+    ano: P.ano, semana, campeoes: { brasileirao: rows.A[0].id, serie_b: rows.B[0].id, serie_c: rows.C[0].id },
+    sobem: [...plano.promotedB, ...plano.promotedC], descem: [...plano.relegatedA, ...plano.relegatedB],
+    entraram: ids(novo.promotedD), sairam: plano.relegatedC, excecoes: [],
+  };
+  P.viradas = [...P.viradas, resumo].slice(-3);
+  P.campeoes = [...P.campeoes, { ano: P.ano, ...resumo.campeoes }].slice(-20);
+  P.ligas.brasileirao = { clubes: ids(novo.newA), placares: "" };
+  P.ligas.serie_b = { clubes: ids(novo.newB), placares: "" };
+  P.ligas.serie_c = { clubes: ids(novo.newC), placares: "" };
+  P.catalogo = ids(novo.newDPool);
+  P.k += 1; P.ano += 1;
+  prepararPais(m, "BR");
+  eventos.push({ tipo: "virada", pais: "BR", ...resumo });
 }

@@ -32,7 +32,11 @@
 //      (Apertura e Clausura com os mata-matas gerados pela semana, o plano
 //      compacto no save), virada com 2 quedas por critérios distintos (anual e
 //      promedio), zonas novas 15/15 e 18/18, histórico do promedio; e a Segunda
-//      uruguaia com rodada de folga do técnico (grupos de 7 do Competencia).
+//      uruguaia com rodada de folga do técnico (grupos de 7 do Competencia);
+//  11) M6b-5a, Brasil com o mundo em paralelo: carreira nova no Brasileirão
+//      (modo exemplo, sem rede) com o índice do mundo -> os 10 países no mundo
+//      leve, na semana da carreira, andando junto; sem o índice (mundo
+//      desligado), a carreira nasce como sempre, sem `mundoLeve`.
 // Uso: node tests/unit/test_motor_mundo_carreira.js
 const assert = require("assert");
 const path = require("path");
@@ -394,6 +398,66 @@ const imp = (m) => import(pathToFileURL(path.join(ROOT, "public/js/motor", m)).h
     assert.ok(folgas >= 1, "sem rodada de folga no Competencia");
     const r2 = await P.proximaTemporada();
     assert.ok(r2.ok, "virada no Uruguai");
+  });
+
+  await check("M6b-5a: carreira nova no Brasil com o mundo em paralelo (e sem ele, como sempre)", async () => {
+    const v2 = await imp("v2.js");
+    const semana = await imp("semana.js");
+    const CMu = await imp("carreiramundo.js");
+    const ponteMod = await imp("ponte.js");
+    const fetchAntes = globalThis.fetch;
+    globalThis.fetch = async () => { throw new Error("sem rede"); };
+    const C = () => estado.carreiraAtual();
+    const ate = async (f, ms) => { const t = Date.now(); while (Date.now() - t < ms) { const v = f(); if (v) return v; await new Promise((r) => setTimeout(r, 5)); } return null; };
+    const nova = async (comIndice) => {
+      estado.definirCarreira(null);
+      CMu.definirIndiceDoMundo(null);
+      semana.definirAmbiente({ ...v2.ambienteSemPagina(), indiceDoMundo: comIndice ? async () => indice : null, armazem: { pedir: async (u, o) => (o && o.body ? { ok: true } : {}) } });
+      const P = v2.criarPonte();
+      ponteMod.ponte.pronta = true;
+      const comp = await P.escolherCompeticao("brasileirao");
+      assert.ok(comp.ok, "escolher competição");
+      const r = await P.criarCarreira(comp.clubes[0].id);
+      assert.ok(r && r.ok !== false, "criar carreira");
+      return P;
+    };
+    try {
+      // Sem o índice: como sempre.
+      await nova(false);
+      assert.strictEqual(C().mundoLeve, undefined, "nasceu com mundo sem o índice");
+      assert.strictEqual(C().mundo, undefined);
+      // Com o índice: o mundo em paralelo.
+      const P = await nova(true);
+      assert.ok(C().mundoLeve, "sem mundo leve");
+      assert.strictEqual(C().mundo, undefined, "o Brasil não é save do mundo");
+      assert.ok(C().cup, "a Copa do Brasil continua");
+      assert.strictEqual(C().mundoLeve.semana, `${C().calendar.year}-${C().calendar.weeks[C().calendar.idx].d}`);
+      assert.deepStrictEqual(C().mundoLeve.ativos, ["BR"]);
+      for (let k = 0; k < 3; k++) {
+        await P.avancarSemana(true);
+        let i = P.iniciar();
+        if (i && i.motivo === "escalacao") { await P.escalarAutomaticamente(true); i = P.iniciar(); }
+        assert.ok(i && i.ok, `rodada: ${i && i.motivo}`);
+        if (i.aoVivo) { P.pularParaFim(); await ate(() => { const e = P.estado(); return e.fase === "encerrada" && e.gravada != null ? e : null; }, 30000); }
+        let etapa = P.iniciarPosJogo();
+        for (let g = 0; etapa && etapa.ok !== false && etapa.etapa !== "fim" && g < 12; g++) {
+          if (etapa.etapa === "coletiva") etapa = await P.responderColetiva(etapa.respostas[0].letra);
+          else if (etapa.etapa === "noticias" || etapa.etapa === "resultados") etapa = P.concluirEtapa(etapa.etapa);
+          else if (etapa.etapa === "proposta") etapa = await P.responderProposta("recusar");
+          else if (etapa.etapa === "copa") {
+            let c = P.iniciarPernaCopa();
+            if (c.motivo === "escalacao") { await P.escalarAutomaticamente(true); c = P.iniciarPernaCopa(); }
+            if (c.ok && c.aoVivo) { P.pularParaFim(); await ate(() => { const e = P.estado(); return e.fase === "encerrada" && e.gravada != null; }, 30000); }
+            etapa = P.posJogo();
+          } else break;
+        }
+        P.encerrarPosJogo();
+      }
+      assert.strictEqual(C().mundoLeve.semana, `${C().calendar.year}-${C().calendar.weeks[C().calendar.idx].d}`, "mundo leve fora da semana");
+      assert.ok(C().mundoLeve.paises.AR.ligas.arg_liga_profesional.placares.replace(/\.\./g, "").length > 0, "a Argentina não jogou");
+    } finally {
+      globalThis.fetch = fetchAntes;
+    }
   });
 
   console.log(`\n${n - failed}/${n} ok`);

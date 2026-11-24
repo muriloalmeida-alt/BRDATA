@@ -15,7 +15,27 @@ Status: REVISÃO DO PM NECESSÁRIA.
 - Etapas M1 a M6a: PR #154 (suíte completa 191/191).
 - M6b, passos 1 a 4: PR #155, empilhado sobre o #154 (suíte completa
   191/192; a falha, instável e sem relação com o mundo, está no PR).
-Próximo: M6b-5 (o Brasil no mundo). A especificação saiu do pedido do
+- M6b, passo 5 (o Brasil no mundo): PR #156, empilhado sobre o #155
+  (suíte completa 192/192).
+Próximo: M7 (moeda e finanças por país).
+
+M6b-5a, carreira no Brasil com o mundo em paralelo (24/11/2026):
+- Carreira nova no Brasil com o mundo ligado (o hospedeiro fornece o índice
+  em `ambiente.indiceDoMundo`; a v2 passa a fornecê-lo na liberação, M10):
+  os 10 países entram no mundo leve, pré-simulados até a semana em que a
+  carreira começa, e andam junto com o calendário do Brasil.
+  - A carreira continua brasileira: Copa do Brasil, Série D e o caminho de
+    hoje.
+- Sem o índice, a carreira nasce exatamente como hoje, sem nenhum pedido a
+  mais ao servidor. A equivalência de carga (`test_motor_carga`) pegou o
+  pedido extra na 1ª versão e ele saiu.
+- Reabrir: o save do Brasil com o mundo carrega só o índice. Sem o índice,
+  o mundo leve fica parado até ele voltar.
+- Testes:
+  - `test_motor_mundo_carreira` 11/11. Caso novo: carreira no Brasileirão
+    sem rede, sem o índice (como sempre) e com o índice (10 países em
+    paralelo, Copa mantida, 3 rodadas com o mundo na mesma semana).
+  - Testes do motor: 39/39. Rota rápida: 54/54. A especificação saiu do pedido do
 Murilo (24/11/2026), dos três pacotes de dados anexos e das decisões dele
 na mesma data:
 - D1: simulação híbrida;
@@ -26,11 +46,22 @@ Especificação: `docs/mundo/01_Requisitos.md` (MUN-01 a MUN-15, aceite).
 Plano: `docs/mundo/02_Plano_de_execucao.md` (etapas M1 a M11, um PR por
 etapa; liberação no seletor só na M10).
 Pendências de decisão do Murilo (não bloqueiam M1 a M8):
-- DEP-1: clubes de Bolívia, Paraguai, Peru, Venezuela e das associações
-  UEFA sem liga jogável. Opção (a): 4º pacote de dados. Opção (b): nome
-  real com elenco fictício gerado. Precisa ser decidida antes da M9.
-- DEP-2: tabela de acesso UEFA. Proposta: tabela de jogo fixa e versionada
-  para as 5 associações jogáveis. Precisa ser decidida antes da M10.
+- DEP-1: DECIDIDA (Murilo, 24/11/2026).
+  - CONMEBOL: o 4º pacote (Bolívia, Paraguai, Peru e Venezuela, recebido em
+    24/11 e guardado em `docs/mundo/pacotes/bol-par-per-ven/`) entra só nas
+    copas. São 60 clubes das 1ªs divisões, com elencos reais, como CPU na
+    Libertadores e na Sul-Americana, e uma tabela anual simplificada para
+    os classificados. A força é estimada pelo elenco.
+  - UEFA: as outras associações entram com nome real e elenco fictício.
+  - Leitura do pacote: não traz jogos, força, finanças nem escudos locais;
+    as segundas divisões estão incompletas (21 de 24 clubes bolivianos sem
+    elenco nominal).
+- DEP-2: DECIDIDA (Murilo, 24/11/2026, "Aprovado"). Tabela de jogo fixa
+  com as vagas por posição na liga, +1 vaga na Champions pelo desempenho
+  europeu no save, vaga dos campeões continentais e potes pelo coeficiente
+  do clube no save. Detalhe em `docs/mundo/01_Requisitos.md`, DEP-2.
+  Conferir na fonte qual associação é a 5ª do ranking de 2026/27 antes de
+  implementar.
 - DEP-3: promedio da 2ª uruguaia sem 2025. Proposta: começar sem
   histórico.
 Divergência registrada: os handoffs dos pacotes supõem um país por save,
@@ -492,7 +523,39 @@ M6b-4b, América do Sul no país do técnico (24/11/2026):
   - Fora da suíte: 2 temporadas em cada uma das 10 ligas sul-americanas,
     sem falha, ~2 s por temporada, com o técnico subindo e caindo (Chile,
     Colômbia, Uruguai).
-  - Testes do motor: 39/39. Rota rápida: 54/54. Testes da v2: 47/47.
+  - Testes do motor: 39/39. Rota rápida: 54/54.
+
+M6b-5b, o Brasil no mundo leve (24/11/2026):
+- Índice do mundo (`scripts/mundo_catalogo.js`): ganhou o Brasil.
+  - Séries A, B e C do catálogo congelado, com a força calculada pela mesma
+    função da carreira (`carga.calibrateStrengths`, importada pelo script,
+    sem segunda implementação) e a média de gols da liga.
+  - A Série D do jogo (`js/data.js`).
+- Mundo leve (`mundoleve.js`): o Brasil joga quando o técnico está fora
+  dele.
+  - Calendário pela regra da carreira (segundas do ano, rodadas 1–38 nas
+    semanas de "temporada") e turno e returno de
+    `calendario.generateAllRounds`.
+  - Tabelas pelos critérios do Brasileirão (`tabela.sortRows`).
+  - Virada pela cascata da carreira (`temporada.promotionRelegation`):
+    perdão da tradição, 4 da Série D por sorteio e força de quem muda de
+    divisão.
+- Carreira no Brasil com o mundo (M6b-5a): o Brasil fica de fora do mundo
+  leve (`ativos: ["BR"]`).
+- Testes:
+  - `test_motor_mundoleve` 6/6. Os 3 anos de mundo agora incluem o Brasil
+    (3 viradas, 20/20/20 clubes, Série D conservada, 4 sobem e 4 descem por
+    fronteira). A parte do mundo no save foi a 82 KB de JSON e 16 KB
+    comprimida.
+  - `test_motor_mundo_carreira` 11/11. Testes do motor: 39/39. Rota rápida:
+    54/54.
+  - Fora da suíte: 2 temporadas na Premier League com o Brasil jogando no
+    mundo leve (2 viradas, campeões registrados).
+- Com isso, a M6b está completa. Ficam registrados para as etapas
+  seguintes:
+  - jogar ao vivo os playoffs e as fases geradas do técnico;
+  - os elencos dos clubes de fora do país do técnico, para o mercado (M8);
+  - a moeda (M7). Testes da v2: 47/47.
     `test_v2_venda_disponivel` falhou uma vez em paralelo, passou 2/2
     sozinho e 47/47 numa segunda rodada (instável, sem relação com o
     mundo).

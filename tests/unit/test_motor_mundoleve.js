@@ -3,9 +3,12 @@
 // Confere:
 //   1) início na Premier League: a pré-simulação leva a América do Sul até
 //      20/07/2026 e nenhum jogo europeu acontece antes;
-//   2) 3 anos de mundo: 3 viradas por país, divisões com o tamanho certo e
+//   2) 3 anos de mundo (os 10 países e o Brasil, M6b-5b): 3 viradas por país,
+//      divisões com o tamanho certo e
 //      disjuntas, catálogo conservado, cada temporada jogada inteira;
-//   3) salvar e reabrir a cada 5 semanas dá o mesmo mundo de jogar direto;
+//   3) Brasil: a cascata da carreira (4 sobem e 4 descem por fronteira, 4 da
+//      Série D, força de quem muda de divisão);
+//   3b) salvar e reabrir a cada 5 semanas dá o mesmo mundo de jogar direto;
 //   4) placares codificados (ida e volta) e gols por jogo de cada liga perto da
 //      referência do pacote (o nível de gols da liga);
 //   5) desempenho e save: média e pior semana (relatados), save do mundo em
@@ -47,7 +50,7 @@ async function check(name, fn) {
   const totais = {};
   let tempos = [], maior = { json: 0, gz: 0 };
   await check("3 anos de mundo: 3 viradas por país, divisões certas, catálogo conservado", () => {
-    for (const p of indice.paises) totais[p.codigo] = totalPais(mundo.estado.paises[p.codigo]);
+    for (const cod of Object.keys(mundo.estado.paises)) totais[cod] = totalPais(mundo.estado.paises[cod]);
     const viradas = {};
     for (let w = 0; w < 156; w++) {
       const t = process.hrtime.bigint();
@@ -56,8 +59,8 @@ async function check(name, fn) {
       for (const e of ev) {
         viradas[e.pais] = (viradas[e.pais] || 0) + 1;
         const P = mundo.estado.paises[e.pais];
-        const pais = indice.paises.find((x) => x.codigo === e.pais);
-        for (const l of pais.ligas) assert.strictEqual(P.ligas[l].clubes.length, indice.competicoes[l].clubes, `${l} ${e.ano}: tamanho`);
+        const pais = indice.paises.find((x) => x.codigo === e.pais) || { codigo: "BR", ligas: ["brasileirao", "serie_b", "serie_c"] };
+        for (const l of pais.ligas) assert.strictEqual(P.ligas[l].clubes.length, indice.competicoes[l] ? indice.competicoes[l].clubes : 20, `${l} ${e.ano}: tamanho`);
         const todos = [...pais.ligas.flatMap((l) => P.ligas[l].clubes), ...P.catalogo].map(String);
         assert.strictEqual(new Set(todos).size, todos.length, `${e.pais}: clube repetido`);
         assert.strictEqual(totalPais(P), totais[e.pais], `${e.pais}: catálogo não conservado`);
@@ -69,7 +72,22 @@ async function check(name, fn) {
         maior.gz = Math.max(maior.gz, zlib.gzipSync(s).length);
       }
     }
-    for (const p of indice.paises) assert.strictEqual(viradas[p.codigo], 3, `${p.codigo}: ${viradas[p.codigo]} viradas`);
+    for (const cod of Object.keys(mundo.estado.paises)) assert.strictEqual(viradas[cod], 3, `${cod}: ${viradas[cod]} viradas`);
+    assert.ok(mundo.estado.paises.BR, "o Brasil não está no mundo leve");
+  });
+
+  await check("Brasil no mundo leve: a cascata de sempre (4 sobem e 4 descem em cada fronteira, 4 da Série D)", () => {
+    const BR = mundo.estado.paises.BR;
+    assert.strictEqual(BR.viradas.length, 3);
+    for (const v of BR.viradas) {
+      assert.strictEqual(v.sobem.length, 8, "B->A e C->B");
+      assert.strictEqual(v.descem.length, 8, "A->B e B->C");
+      assert.strictEqual(v.entraram.length, 4, "D->C");
+      assert.strictEqual(v.sairam.length, 4, "C->D");
+      assert.ok(v.campeoes.brasileirao != null);
+    }
+    assert.strictEqual(BR.catalogo.length, indice.brasil.serieD.length, "Série D não conservada");
+    assert.ok(Object.keys(BR.forcas).length > 0, "força de quem mudou de divisão");
   });
 
   await check("salvar e reabrir a cada 5 semanas = jogar direto", () => {

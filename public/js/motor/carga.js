@@ -424,6 +424,10 @@ export async function startCareer(clubId) {
     // GOLS-REAIS: nível de gols dos campeonatos com dados reais.
     estado.completarNivelGols(carreiraAtual(), liveModeByCompetition);
     estado.definirHerancaDoTecnico(null);
+    // MUNDO-001 (M6b-5a): com o mundo ligado (o hospedeiro fornece o índice),
+    // os outros países jogam em paralelo (carreiramundo.anexarMundoAoBrasil);
+    // sem ele, nada muda (nem um pedido a mais ao servidor).
+    if (estado.ganchosMundo.anexarMundo) await estado.ganchosMundo.anexarMundo(carreiraAtual());
     await persistCareer();
     tela("openFirstEntry");
   } finally {
@@ -1085,6 +1089,8 @@ export async function enterAfterAuth() {
     const doMundo = !!(saved.career.mundo && estado.ganchosMundo.abrirSave);
     if (doMundo) await estado.ganchosMundo.abrirSave(saved.career, fetchJSON);
     else await loadLeague(homeCompetitionId, { forceDemo: saved.career.liveMode === false });
+    // Save do Brasil com o mundo em paralelo (M6b-5a): só o índice do mundo.
+    if (!doMundo && saved.career.mundoLeve && estado.ganchosMundo.abrirIndice) await estado.ganchosMundo.abrirIndice(saved.career, fetchJSON);
     tela("setBootProgress", 3, 5, "Carregando a competição...");
     // AJUSTE (pedido do usuário: "o mercado deve trazer jogadores das
     // 3 ligas") — carreira "multi" (ver startCareer) também recarrega

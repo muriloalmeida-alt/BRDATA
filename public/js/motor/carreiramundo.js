@@ -48,7 +48,10 @@ export function indiceDoMundo() { return indiceAtual; }
 // A semana do calendário da carreira (segunda-feira com o ano).
 export function semanaDaCarreira(CAREER) {
   const w = CAREER.calendar && CAREER.calendar.weeks[CAREER.calendar.idx];
-  return w && w.a ? `${w.a}-${w.d}` : null;
+  if (!w) return null;
+  // Save do mundo: o ano vem na semana; Brasil: o ano do calendário.
+  const ano = w.a || CAREER.calendar.year;
+  return ano ? `${ano}-${w.d}` : null;
 }
 
 // Anda o mundo leve até a semana da carreira (as semanas antes dela jogadas).
@@ -494,3 +497,42 @@ export async function abrirSaveDoMundo(career, buscar) {
   definirTodosTimes(career.divisoes.flatMap((l) => career.divisionTeams[l] || []));
 }
 ganchosMundo.abrirSave = (career, buscar) => abrirSaveDoMundo(career, buscar);
+
+// ---------- Brasil com o mundo em paralelo (M6b-5a) ----------
+// Carreira nova no Brasil (carga.startCareer) com o mundo ligado (o
+// hospedeiro fornece o índice): os 10 países do índice entram no mundo leve, pré-simulados até a
+// semana em que a carreira começa, e andam junto com o calendário do Brasil.
+// Sem o mundo (rota desligada, sem rede), a carreira nasce como sempre.
+// buscar: só quando o save já tem o mundo (reabrir). Na criação, o índice vem
+// do hospedeiro (ambiente.indiceDoMundo, que a v2 fornece com o mundo ligado):
+// sem ele, nenhum pedido novo ao servidor.
+async function obterIndice(buscar) {
+  if (indiceAtual) return indiceAtual;
+  try {
+    const indice = ambiente.indiceDoMundo ? await ambiente.indiceDoMundo() : buscar ? await buscar("/api/career/mundo") : null;
+    return indice && indice.competicoes ? indice : null;
+  } catch (_) { return null; }
+}
+export async function anexarMundoAoBrasil(CAREER) {
+  if (!CAREER || CAREER.mundo || CAREER.mundoLeve || !ambiente.indiceDoMundo) return false;
+  const indice = await obterIndice(null);
+  if (!indice) return false;
+  definirIndiceDoMundo(indice);
+  const inicio = semanaDaCarreira(CAREER);
+  if (!inicio) return false;
+  // O Brasil é o país do técnico: fora do mundo leve.
+  const m = ML.abrirMundo(ML.criarMundoLeve(indice, { ativos: ["BR"], chave: `mundo:${CAREER.clubId}`, inicio }), indice);
+  ML.prepararInicio(m);
+  CAREER.mundoLeve = ML.salvarMundo(m);
+  return true;
+}
+// Reabrir um save do Brasil com o mundo: só o índice (as divisões são as do
+// Brasil). Sem o índice, o mundo leve fica parado até ele voltar.
+export async function abrirIndiceDoSave(career, buscar) {
+  if (!career || !career.mundoLeve) return false;
+  const indice = await obterIndice(buscar);
+  if (indice) definirIndiceDoMundo(indice);
+  return !!indice;
+}
+ganchosMundo.anexarMundo = (CAREER) => anexarMundoAoBrasil(CAREER);
+ganchosMundo.abrirIndice = (career, buscar) => abrirIndiceDoSave(career, buscar);
