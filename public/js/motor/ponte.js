@@ -168,7 +168,7 @@ export function saveTacticalScheme(name) {
     starters: [...CAREER.lineup.starters],
     bench: [...CAREER.lineup.bench],
     tactics: { ...CAREER.lineup.tactics },
-    createdRound: Math.min(CAREER.currentRound, 38),
+    createdRound: Math.min(CAREER.currentRound, estado.rodadasDaTemporada(CAREER)),
   };
   CAREER.tacticalSchemes.push(scheme);
   CAREER.activeSchemeId = scheme.id;
@@ -212,7 +212,7 @@ export function deleteTacticalScheme(id) {
 export function nextOpponentId() {
   const CAREER = carreiraAtual();
   const round = CAREER.currentRound;
-  if (round > 38) return null;
+  if (round > estado.rodadasDaTemporada()) return null;
   const fx = (CAREER.schedule[round] || []).find((m) => String(m.home) === String(CAREER.clubId) || String(m.away) === String(CAREER.clubId));
   if (!fx) return null;
   return String(fx.home) === String(CAREER.clubId) ? fx.away : fx.home;
@@ -293,7 +293,7 @@ export function comissaoForca(lineup, club) {
 export function comissaoProximoJogo() {
   const CAREER = carreiraAtual();
   const round = CAREER.currentRound;
-  if (round > 38) return null;
+  if (round > estado.rodadasDaTemporada()) return null;
   const fx = (CAREER.schedule[round] || []).find((m) => String(m.home) === String(CAREER.clubId) || String(m.away) === String(CAREER.clubId));
   if (!fx) return null;
   const casa = String(fx.home) === String(CAREER.clubId);
@@ -375,7 +375,7 @@ export function ponteOpcoesEmprestimo(duracao, clausula, valorClausula) {
   if (!["temporada", "meia"].includes(duracao) || !["nenhuma", "opcional", "obrigatoria"].includes(clausula)) return null;
   const buyValue = Math.max(0, Math.round(Number(valorClausula) || 0));
   const buyOption = clausula === "nenhuma" ? null : { mandatory: clausula === "obrigatoria", value: buyValue };
-  const returnRound = duracao === "meia" ? Math.min(CAREER.currentRound + LOAN_HALF_SEASON_ROUNDS, 38) : null;
+  const returnRound = duracao === "meia" ? Math.min(CAREER.currentRound + Math.round(estado.rodadasDaTemporada(CAREER) / 2), estado.rodadasDaTemporada(CAREER)) : null;
   return { returnRound, buyOption };
 }
 

@@ -325,6 +325,42 @@ Próxima etapa: M6b, o save do mundo na carreira. O país do técnico na
 simulação completa de hoje e o resto no mundo leve. O Brasil também entra
 no mundo leve quando o técnico está fora dele.
 
+Relatório da M6b, passos 1 e 2 (24/11/2026; branch `claude/mundo-m6b`,
+empilhada sobre o PR #154, por decisão do Murilo)
+
+M6b-1, divisões do país do save:
+- `estado.divisoesDoPais()` no lugar da lista fixa das 3 divisões
+  brasileiras: na criação da carreira, na carga, nas divisões e nos
+  amistosos (`virada.js`, `carga.js`) e na divisão do clube na negociação
+  (`negociacao.js`).
+- Sem o campo `divisoes` no save (todos os saves de hoje), continuam as 3
+  do Brasil.
+- A cascata de acesso do Brasil (`applyPromotionRelegation`) não mudou: o
+  save do mundo terá a virada dele (M6b-4).
+
+M6b-2, calendário:
+- `estado.rodadasDaTemporada()` no lugar do 38 fixo onde ele é o tamanho
+  da temporada: fim da temporada, rodada do técnico, empréstimo de meia
+  temporada, notícia de título, demissão no fim do ano.
+  - Sem o campo `rodadasLiga`, continua 38.
+  - Ficam como estão o calendário do Brasil, o patrocínio por rodada das
+    carreiras antigas (sem calendário) e as escalas de evolução do jogador
+    (`temporada.js`), que usam 38 como temporada de referência.
+- Janela de transferências: a semana do save do mundo traz `j` (janela do
+  país pelas datas da FIFA). Sem `j` (Brasil), vale a fase do ano, como
+  sempre.
+- `public/js/motor/calendariomundo.js` (+ `.d.ts`), módulo puro: monta o
+  calendário do save do mundo no formato de hoje, com o ano em cada semana.
+  - As rodadas da liga do técnico são numeradas em sequência: Apertura e
+    Clausura viram 1–32.
+  - A semana com 2 rodadas vira 2 entradas.
+  - Os jogos da outra divisão vão para a entrada da semana deles.
+- Testes: o carregador dos testes de equivalência (`tests/e2e/_motor_vm.js`)
+  aprendeu os dois atalhos.
+  - `test_motor_mundo_carreira`: 5/5 (Premier League, Championship com 46
+    rodadas e semanas duplas, Argentina 1–32, janela, rodadas).
+  - Testes do motor: 39/39. Rota rápida: 54/54.
+
 ⸻
 
 FASE1-ESC — Fase 1: escalação e orientação da comissão técnica

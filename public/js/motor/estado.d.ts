@@ -49,3 +49,7 @@ export function herancaDoTecnico(): { reputation: number; clubHistory: any[] } |
 export function definirHerancaDoTecnico(v: { reputation: number; clubHistory: any[] } | null): any;
 // SERIED-001: ganchos de módulos carregados depois (elenco gerado da Série D).
 export const ganchosMundo: { elencoGerado: ((club: any) => any[]) | null };
+// MUNDO-001 (M6b): divisões do país do save e rodadas da temporada.
+export const DIVISOES_BRASIL: readonly string[];
+export function divisoesDoPais(c?: { divisoes?: string[] } | null): readonly string[];
+export function rodadasDaTemporada(c?: { rodadasLiga?: number } | null): number;

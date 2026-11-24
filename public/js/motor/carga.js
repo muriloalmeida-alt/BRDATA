@@ -1224,7 +1224,7 @@ export const comandosCarga = {
     },
     async demitir() {
       let CAREER = carreiraAtual();
-      if (!CAREER || CAREER.currentRound <= 38) return { ok: false, motivo: "sem-demissao" };
+      if (!CAREER || CAREER.currentRound <= estado.rodadasDaTemporada(CAREER)) return { ok: false, motivo: "sem-demissao" };
       if ((CAREER.negativeSeasonsStreak || 0) < temporada.DISMISSAL_STREAK) return { ok: false, motivo: "sem-demissao" };
       endCurrentClubStint("dismissed");
       try { await pedirCarreira("/api/career", { method: "DELETE" }); } catch (err) { return { ok: false, motivo: err.status === 401 ? "sessao" : "falha" }; }

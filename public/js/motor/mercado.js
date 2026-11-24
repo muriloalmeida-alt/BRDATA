@@ -57,13 +57,17 @@ export function revendaLiberada(compra, agora) {
 }
 // Com calendário: a janela é a fase do ano (férias, pré-temporada, pausa).
 // Devolve a última semana da janela aberta, ou a 1ª semana da próxima.
+// MUNDO-001 (M6b-2): no save do mundo, cada semana traz `j` (1 = janela do
+// país aberta, 0 = fechada, pelas datas da FIFA). Sem `j` (save brasileiro),
+// vale a fase do ano, como sempre.
+const janelaAberta = (w, windowPhases) => (w.j != null ? w.j === 1 : windowPhases.has(w.p));
 export function windowByCalendar(weeks, idx, windowPhases) {
-  if (windowPhases.has(weeks[idx].p)) {
+  if (janelaAberta(weeks[idx], windowPhases)) {
     let j = idx;
-    while (j + 1 < weeks.length && windowPhases.has(weeks[j + 1].p)) j++;
+    while (j + 1 < weeks.length && janelaAberta(weeks[j + 1], windowPhases)) j++;
     return { open: true, lastIdx: j };
   }
-  const k = weeks.findIndex((w, i) => i > idx && windowPhases.has(w.p));
+  const k = weeks.findIndex((w, i) => i > idx && janelaAberta(w, windowPhases));
   return { open: false, nextIdx: k };
 }
 // Urgência no fim da janela: só quem tem necessidade real sente.

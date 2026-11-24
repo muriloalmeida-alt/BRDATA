@@ -19,7 +19,7 @@
    sempre. Nomes de jogador, sorteio por chave e o ano da temporada real
    vêm do ambiente (dados do mundo real, definirAmbiente).
 =================================================================== */
-import { carreiraAtual, ligaAtual, todosTimes, timePorId, forcaMediaDoElenco, PARIDADE_CPU } from "./estado.js";
+import { carreiraAtual, ligaAtual, todosTimes, timePorId, forcaMediaDoElenco, PARIDADE_CPU, rodadasDaTemporada } from "./estado.js";
 import { emitir } from "./eventos.js";
 import { pushNotification, ensureObjectivesFresh, bumpObjective } from "./registro.js";
 import { fmtBRL, abbreviateName } from "./texto.js";
@@ -233,7 +233,7 @@ export function calendarWeekIndexOfRound(round) {
 
 export function syncCalendarToRound() {
   const CAREER = carreiraAtual();
-  if (!calendarOn() || CAREER.currentRound > 38) return;
+  if (!calendarOn() || CAREER.currentRound > rodadasDaTemporada(CAREER)) return;
   const wi = calendarWeekIndexOfRound(CAREER.currentRound);
   if (wi >= 0 && CAREER.calendar.idx > wi) CAREER.calendar.idx = wi;
 }

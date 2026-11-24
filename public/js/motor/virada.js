@@ -18,7 +18,7 @@
    fonte de dados (modoReal) e a herança do técnico que trocou de clube.
    Não chama a tela: avisos viram o evento "aviso".
 =================================================================== */
-import { carreiraAtual, definirCarreira, ligaAtual, definirLigaAtual, todosTimes, definirTodosTimes, competicaoAtual, definirCompeticaoAtual, timePorId, forcaMediaDoElenco, PARIDADE_CPU, divisoesDoPais, DIVISOES_BRASIL } from "./estado.js";
+import { carreiraAtual, definirCarreira, ligaAtual, definirLigaAtual, todosTimes, definirTodosTimes, competicaoAtual, definirCompeticaoAtual, timePorId, forcaMediaDoElenco, PARIDADE_CPU, divisoesDoPais, DIVISOES_BRASIL, rodadasDaTemporada } from "./estado.js";
 import * as estado from "./estado.js";
 import { ambiente, applyCalendarMonthlyFinances, avisar, CALENDAR_PHASE_BY_MONTH, leagueSquadFor, marketTeamsPool, MAX_LEAGUE_SQUAD, MAX_LEAGUE_SQUAD_OTHER_DIVISION, MAX_PRINCIPAL, MIN_LEAGUE_SQUAD, MIN_LEAGUE_SQUAD_OTHER_DIVISION, minSquadSizeFor, pushTransferLog, viradaDoCaixaCpu, AGENTES_LIVRES_MAX, entrarNoElencoCpu, caixaDaCpu, maxSquadSizeFor } from "./semana.js";
 import { CUP_PRELIM_ROUND, CUP_ROUNDS, CUP_ROUNDS_EXPANDED, FORMATIONS, SECTOR_IDS, SECTOR_INSTRUCTIONS, freshCareerTotals, freshCupTie, materializarAdversarioDaCopa, resolveCupPhase, settleLoanIn, settleLoanOut, shuffleWithRng } from "./fechamento.js";
@@ -530,7 +530,7 @@ export function applySeasonAwardMoraleBoost(award) {
 
 export async function advanceSeason() {
   const CAREER = carreiraAtual();
-  if (CAREER.currentRound <= 38) return null;
+  if (CAREER.currentRound <= rodadasDaTemporada(CAREER)) return null;
   const finishedYear = CAREER.seasonYear;
   const finishedPos = myLeaguePosition();
   const finishedPts = (CAREER.standings[CAREER.clubId] || {}).pts || 0;

@@ -87,6 +87,7 @@ function paginaComoAntes(src, rev, so) {
     .replace(/(^|[^\w.])ponte\./gm, "$1PONTE.").replace(/\bambiente\.gravar\(\)/g, "ponteGravar()")
     .replace(/\bambiente\.somLigado\(\)/g, "SFX_ENABLED").replace(/\bambiente\.nomeTecnico\(\)/g, "(ME && ME.name)")
     // MUNDO-001 (M6b-1): na página, as divisões eram sempre as 3 do Brasil.
+    .replace(/(^|[^\w.])(?:estado\.)?rodadasDaTemporada\([^()]*\)/gm, "$138")
     .replace(/\bDIVISOES_BRASIL\b/g, '["brasileirao", "serie_b", "serie_c"]')
     .replace(/(^|[^\w.])(?:estado\.)?divisoesDoPais\([^()]*\)/gm, "$1ALL_COMPETITIONS_ORDER")
     .replace(/(^|[^\w./]|\.\.\.)(estado|calendario)\.(?=[A-Za-z_])/gm, (_, a, m) => m === "estado" ? `${a}motorEstado().` : `${a}motorModulo("calendario").`)

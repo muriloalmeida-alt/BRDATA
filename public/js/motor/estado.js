@@ -38,6 +38,12 @@ export const DIVISOES_BRASIL = Object.freeze(["brasileirao", "serie_b", "serie_c
 export function divisoesDoPais(c = carreira) {
   return c && Array.isArray(c.divisoes) && c.divisoes.length ? c.divisoes : DIVISOES_BRASIL;
 }
+// MUNDO-001 (M6b-2): rodadas da fase de liga do técnico na temporada. Save do
+// mundo: `rodadasLiga` gravado com o calendário (ex.: 46 na Championship).
+// Sem o campo (todo save de hoje): as 38 do Brasileirão.
+export function rodadasDaTemporada(c = carreira) {
+  return c && c.rodadasLiga > 0 ? c.rodadasLiga : 38;
+}
 
 // ---------- Versão do save e migrações numeradas ----------
 // Versão atual do save que este jogo escreve.
