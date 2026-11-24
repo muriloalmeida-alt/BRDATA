@@ -1,0 +1,122 @@
+{
+  "result": "passed",
+  "preparedOn": "2026-11-24",
+  "competitions": 10,
+  "playableClubs": 198,
+  "registeredPlayers": 5755,
+  "fixtures": 3758,
+  "poolClubs": 162,
+  "clubLogoFiles": 360,
+  "topTwoTiersWithStadium": 198,
+  "topTwoTiersWithStadiumCity": 198,
+  "playersWithBirthDate": 5732,
+  "playersWithoutBirthDate": 23,
+  "minimumRoster": 22,
+  "minimumGoalkeepers": 2,
+  "verified": [
+    "unique_player_and_club_ids",
+    "player_to_club_links",
+    "frozen_api_shape",
+    "participant_counts",
+    "every_directed_fixture_once",
+    "every_club_once_per_round",
+    "calendar_dates_and_reference_scores",
+    "reserve_parent_links",
+    "european_ids_above_highest_current_brazilian_snapshot_id",
+    "stadium_capacity_sanity",
+    "wage_cap_and_transfer_cash",
+    "local_badges_decodable"
+  ],
+  "byLeague": [
+    {
+      "league": "Premier League",
+      "clubs": 20,
+      "players": 547,
+      "rounds": 38,
+      "fixtures": 380,
+      "fixturesWithReferenceScore": 110,
+      "fixturesWithTime": 380
+    },
+    {
+      "league": "EFL Championship",
+      "clubs": 24,
+      "players": 738,
+      "rounds": 46,
+      "fixtures": 552,
+      "fixturesWithReferenceScore": 192,
+      "fixturesWithTime": 288
+    },
+    {
+      "league": "LaLiga",
+      "clubs": 20,
+      "players": 515,
+      "rounds": 38,
+      "fixtures": 380,
+      "fixturesWithReferenceScore": 129,
+      "fixturesWithTime": 90
+    },
+    {
+      "league": "LaLiga Hypermotion",
+      "clubs": 22,
+      "players": 698,
+      "rounds": 42,
+      "fixtures": 462,
+      "fixturesWithReferenceScore": 162,
+      "fixturesWithTime": 187
+    },
+    {
+      "league": "Serie A",
+      "clubs": 20,
+      "players": 578,
+      "rounds": 38,
+      "fixtures": 380,
+      "fixturesWithReferenceScore": 120,
+      "fixturesWithTime": 120
+    },
+    {
+      "league": "Serie B",
+      "clubs": 20,
+      "players": 652,
+      "rounds": 38,
+      "fixtures": 380,
+      "fixturesWithReferenceScore": 120,
+      "fixturesWithTime": 230
+    },
+    {
+      "league": "Bundesliga",
+      "clubs": 18,
+      "players": 505,
+      "rounds": 34,
+      "fixtures": 306,
+      "fixturesWithReferenceScore": 90,
+      "fixturesWithTime": 108
+    },
+    {
+      "league": "2. Bundesliga",
+      "clubs": 18,
+      "players": 522,
+      "rounds": 34,
+      "fixtures": 306,
+      "fixturesWithReferenceScore": 108,
+      "fixturesWithTime": 306
+    },
+    {
+      "league": "Ligue 1",
+      "clubs": 18,
+      "players": 478,
+      "rounds": 34,
+      "fixtures": 306,
+      "fixturesWithReferenceScore": 99,
+      "fixturesWithTime": 114
+    },
+    {
+      "league": "Ligue 2",
+      "clubs": 18,
+      "players": 522,
+      "rounds": 34,
+      "fixtures": 306,
+      "fixturesWithReferenceScore": 117,
+      "fixturesWithTime": 153
+    }
+  ]
+}

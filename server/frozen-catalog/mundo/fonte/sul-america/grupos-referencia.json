@@ -1,0 +1,566 @@
+[
+  {
+    "competitionId": "arg_liga_profesional",
+    "label": "Clausura Group A",
+    "clubIds": [
+      "sa_arg_fm_10090",
+      "sa_arg_fm_10077",
+      "sa_arg_fm_10079",
+      "sa_arg_fm_161730",
+      "sa_arg_fm_10082",
+      "sa_arg_fm_10201",
+      "sa_arg_fm_10078",
+      "sa_arg_fm_568727",
+      "sa_arg_fm_10096",
+      "sa_arg_fm_10089",
+      "sa_arg_fm_10083",
+      "sa_arg_fm_10094",
+      "sa_arg_fm_10101",
+      "sa_arg_fm_298629",
+      "sa_arg_fm_213596"
+    ],
+    "referenceDate": "2026-11-24",
+    "isReferenceSnapshot": true
+  },
+  {
+    "competitionId": "arg_liga_profesional",
+    "label": "Clausura Group B",
+    "clubIds": [
+      "sa_arg_fm_10084",
+      "sa_arg_fm_10086",
+      "sa_arg_fm_10103",
+      "sa_arg_fm_10076",
+      "sa_arg_fm_213534",
+      "sa_arg_fm_10092",
+      "sa_arg_fm_161729",
+      "sa_arg_fm_10081",
+      "sa_arg_fm_202757",
+      "sa_arg_fm_89396",
+      "sa_arg_fm_161727",
+      "sa_arg_fm_10087",
+      "sa_arg_fm_10080",
+      "sa_arg_fm_161728",
+      "sa_arg_fm_213591"
+    ],
+    "referenceDate": "2026-11-24",
+    "isReferenceSnapshot": true
+  },
+  {
+    "competitionId": "arg_liga_profesional",
+    "label": "Apertura Group A",
+    "clubIds": [
+      "sa_arg_fm_10094",
+      "sa_arg_fm_10077",
+      "sa_arg_fm_10079",
+      "sa_arg_fm_10101",
+      "sa_arg_fm_10078",
+      "sa_arg_fm_10082",
+      "sa_arg_fm_10083",
+      "sa_arg_fm_10096",
+      "sa_arg_fm_10090",
+      "sa_arg_fm_161730",
+      "sa_arg_fm_568727",
+      "sa_arg_fm_10089",
+      "sa_arg_fm_213596",
+      "sa_arg_fm_10201",
+      "sa_arg_fm_298629"
+    ],
+    "referenceDate": "2026-11-24",
+    "isReferenceSnapshot": true
+  },
+  {
+    "competitionId": "arg_liga_profesional",
+    "label": "Apertura Group B",
+    "clubIds": [
+      "sa_arg_fm_161729",
+      "sa_arg_fm_10076",
+      "sa_arg_fm_10086",
+      "sa_arg_fm_10084",
+      "sa_arg_fm_10092",
+      "sa_arg_fm_10103",
+      "sa_arg_fm_10081",
+      "sa_arg_fm_10080",
+      "sa_arg_fm_213534",
+      "sa_arg_fm_89396",
+      "sa_arg_fm_202757",
+      "sa_arg_fm_10087",
+      "sa_arg_fm_161727",
+      "sa_arg_fm_161728",
+      "sa_arg_fm_213591"
+    ],
+    "referenceDate": "2026-11-24",
+    "isReferenceSnapshot": true
+  },
+  {
+    "competitionId": "arg_primera_nacional",
+    "label": "Zona A",
+    "clubIds": [
+      "sa_arg_fm_10227",
+      "sa_arg_fm_161733",
+      "sa_arg_fm_213530",
+      "sa_arg_fm_568706",
+      "sa_arg_fm_10088",
+      "sa_arg_fm_207874",
+      "sa_arg_fm_1239548",
+      "sa_arg_fm_213523",
+      "sa_arg_fm_465716",
+      "sa_arg_fm_10097",
+      "sa_arg_fm_161732",
+      "sa_arg_fm_213522",
+      "sa_arg_fm_568714",
+      "sa_arg_fm_213592",
+      "sa_arg_fm_213603",
+      "sa_arg_fm_213597",
+      "sa_arg_fm_213529",
+      "sa_arg_fm_581826"
+    ],
+    "referenceDate": "2026-11-24",
+    "isReferenceSnapshot": true
+  },
+  {
+    "competitionId": "arg_primera_nacional",
+    "label": "Zona B",
+    "clubIds": [
+      "sa_arg_fm_213528",
+      "sa_arg_fm_213525",
+      "sa_arg_fm_213531",
+      "sa_arg_fm_10095",
+      "sa_arg_fm_425965",
+      "sa_arg_fm_213590",
+      "sa_arg_fm_213535",
+      "sa_arg_fm_276511",
+      "sa_arg_fm_89395",
+      "sa_arg_fm_146371",
+      "sa_arg_fm_10085",
+      "sa_arg_fm_769348",
+      "sa_arg_fm_10226",
+      "sa_arg_fm_10093",
+      "sa_arg_fm_10099",
+      "sa_arg_fm_207875",
+      "sa_arg_fm_10091",
+      "sa_arg_fm_719912"
+    ],
+    "referenceDate": "2026-11-24",
+    "isReferenceSnapshot": true
+  },
+  {
+    "competitionId": "chi_liga_primera",
+    "label": "Primera División",
+    "clubIds": [
+      "sa_chi_fm_7815",
+      "sa_chi_fm_6310",
+      "sa_chi_fm_6458",
+      "sa_chi_fm_4062",
+      "sa_chi_fm_584840",
+      "sa_chi_fm_1890",
+      "sa_chi_fm_1891",
+      "sa_chi_fm_4134",
+      "sa_chi_fm_6455",
+      "sa_chi_fm_49559",
+      "sa_chi_fm_4056",
+      "sa_chi_fm_6296",
+      "sa_chi_fm_4058",
+      "sa_chi_fm_4055",
+      "sa_chi_fm_192435",
+      "sa_chi_fm_4054"
+    ],
+    "referenceDate": "2026-11-24",
+    "isReferenceSnapshot": true
+  },
+  {
+    "competitionId": "chi_liga_ascenso",
+    "label": "Primera B",
+    "clubIds": [
+      "sa_chi_fm_1843",
+      "sa_chi_fm_191607",
+      "sa_chi_fm_6201",
+      "sa_chi_fm_1849",
+      "sa_chi_fm_246503",
+      "sa_chi_fm_192433",
+      "sa_chi_fm_1264972",
+      "sa_chi_fm_192436",
+      "sa_chi_fm_7843",
+      "sa_chi_fm_162904",
+      "sa_chi_fm_4059",
+      "sa_chi_fm_4060",
+      "sa_chi_fm_162905",
+      "sa_chi_fm_584834",
+      "sa_chi_fm_4061",
+      "sa_chi_fm_4057"
+    ],
+    "referenceDate": "2026-11-24",
+    "isReferenceSnapshot": true
+  },
+  {
+    "competitionId": "col_primera_a",
+    "label": "Group A",
+    "clubIds": [
+      "sa_col_fm_2528",
+      "sa_col_fm_6368",
+      "sa_col_fm_6024",
+      "sa_col_fm_7818"
+    ],
+    "referenceDate": "2026-11-24",
+    "isReferenceSnapshot": true
+  },
+  {
+    "competitionId": "col_primera_a",
+    "label": "Group B",
+    "clubIds": [
+      "sa_col_fm_10280",
+      "sa_col_fm_4401",
+      "sa_col_fm_6387",
+      "sa_col_fm_4403"
+    ],
+    "referenceDate": "2026-11-24",
+    "isReferenceSnapshot": true
+  },
+  {
+    "competitionId": "col_primera_a",
+    "label": "Clausura",
+    "clubIds": [
+      "sa_col_fm_6368",
+      "sa_col_fm_10280",
+      "sa_col_fm_6387",
+      "sa_col_fm_4401",
+      "sa_col_fm_7818",
+      "sa_col_fm_2528",
+      "sa_col_fm_4403",
+      "sa_col_fm_6024",
+      "sa_col_fm_1894",
+      "sa_col_fm_6254",
+      "sa_col_fm_193025",
+      "sa_col_fm_348397",
+      "sa_col_fm_47240",
+      "sa_col_fm_2254",
+      "sa_col_fm_6255",
+      "sa_col_fm_193029",
+      "sa_col_fm_4404",
+      "sa_col_fm_4405",
+      "sa_col_fm_424270",
+      "sa_col_fm_244167"
+    ],
+    "referenceDate": "2026-11-24",
+    "isReferenceSnapshot": true
+  },
+  {
+    "competitionId": "col_primera_a",
+    "label": "Apertura",
+    "clubIds": [
+      "sa_col_fm_6368",
+      "sa_col_fm_2254",
+      "sa_col_fm_4405",
+      "sa_col_fm_10280",
+      "sa_col_fm_6024",
+      "sa_col_fm_1894",
+      "sa_col_fm_7818",
+      "sa_col_fm_47240",
+      "sa_col_fm_6387",
+      "sa_col_fm_4403",
+      "sa_col_fm_2528",
+      "sa_col_fm_193025",
+      "sa_col_fm_4401",
+      "sa_col_fm_348397",
+      "sa_col_fm_244167",
+      "sa_col_fm_424270",
+      "sa_col_fm_193029",
+      "sa_col_fm_6255",
+      "sa_col_fm_6254",
+      "sa_col_fm_4404"
+    ],
+    "referenceDate": "2026-11-24",
+    "isReferenceSnapshot": true
+  },
+  {
+    "competitionId": "col_primera_b",
+    "label": "Clausura - Quadrangular Group A",
+    "clubIds": [
+      "sa_col_fm_193023",
+      "sa_col_fm_4402",
+      "sa_col_fm_4408",
+      "sa_col_fm_4400"
+    ],
+    "referenceDate": "2026-11-24",
+    "isReferenceSnapshot": true
+  },
+  {
+    "competitionId": "col_primera_b",
+    "label": "Clausura - Quadrangular Group B",
+    "clubIds": [
+      "sa_col_fm_4407",
+      "sa_col_fm_7731",
+      "sa_col_fm_193026",
+      "sa_col_fm_193030"
+    ],
+    "referenceDate": "2026-11-24",
+    "isReferenceSnapshot": true
+  },
+  {
+    "competitionId": "col_primera_b",
+    "label": "Clausura",
+    "clubIds": [
+      "sa_col_fm_4400",
+      "sa_col_fm_193026",
+      "sa_col_fm_193030",
+      "sa_col_fm_4407",
+      "sa_col_fm_7731",
+      "sa_col_fm_193023",
+      "sa_col_fm_4402",
+      "sa_col_fm_4408",
+      "sa_col_fm_193022",
+      "sa_col_fm_193032",
+      "sa_col_fm_193031",
+      "sa_col_fm_193028",
+      "sa_col_fm_721594",
+      "sa_col_fm_192963",
+      "sa_col_fm_193027",
+      "sa_col_fm_193033"
+    ],
+    "referenceDate": "2026-11-24",
+    "isReferenceSnapshot": true
+  },
+  {
+    "competitionId": "col_primera_b",
+    "label": "Apertura - Quadrangular Group A",
+    "clubIds": [
+      "sa_col_fm_4402",
+      "sa_col_fm_4407",
+      "sa_col_fm_192963",
+      "sa_col_fm_193030"
+    ],
+    "referenceDate": "2026-11-24",
+    "isReferenceSnapshot": true
+  },
+  {
+    "competitionId": "col_primera_b",
+    "label": "Apertura - Quadrangular Group B",
+    "clubIds": [
+      "sa_col_fm_7731",
+      "sa_col_fm_4408",
+      "sa_col_fm_193027",
+      "sa_col_fm_193032"
+    ],
+    "referenceDate": "2026-11-24",
+    "isReferenceSnapshot": true
+  },
+  {
+    "competitionId": "col_primera_b",
+    "label": "Apertura",
+    "clubIds": [
+      "sa_col_fm_192963",
+      "sa_col_fm_4408",
+      "sa_col_fm_4407",
+      "sa_col_fm_4402",
+      "sa_col_fm_7731",
+      "sa_col_fm_193032",
+      "sa_col_fm_193027",
+      "sa_col_fm_193030",
+      "sa_col_fm_4400",
+      "sa_col_fm_721594",
+      "sa_col_fm_193028",
+      "sa_col_fm_193023",
+      "sa_col_fm_193026",
+      "sa_col_fm_193033",
+      "sa_col_fm_193031",
+      "sa_col_fm_193022"
+    ],
+    "referenceDate": "2026-11-24",
+    "isReferenceSnapshot": true
+  },
+  {
+    "competitionId": "ecu_ligapro_a",
+    "label": "Championship Round",
+    "clubIds": [
+      "sa_ecu_fm_192875",
+      "sa_ecu_fm_6609",
+      "sa_ecu_fm_6608",
+      "sa_ecu_fm_113053",
+      "sa_ecu_fm_6721",
+      "sa_ecu_fm_6453"
+    ],
+    "referenceDate": "2026-11-24",
+    "isReferenceSnapshot": true
+  },
+  {
+    "competitionId": "ecu_ligapro_a",
+    "label": "Relegation Round",
+    "clubIds": [
+      "sa_ecu_fm_4144",
+      "sa_ecu_fm_304929",
+      "sa_ecu_fm_113054",
+      "sa_ecu_fm_1014174",
+      "sa_ecu_fm_519457",
+      "sa_ecu_fm_162922"
+    ],
+    "referenceDate": "2026-11-24",
+    "isReferenceSnapshot": true
+  },
+  {
+    "competitionId": "ecu_ligapro_a",
+    "label": "Copa Sudamericana Play-off",
+    "clubIds": [
+      "sa_ecu_fm_1345405",
+      "sa_ecu_fm_194754",
+      "sa_ecu_fm_1370528",
+      "sa_ecu_fm_1850"
+    ],
+    "referenceDate": "2026-11-24",
+    "isReferenceSnapshot": true
+  },
+  {
+    "competitionId": "ecu_ligapro_a",
+    "label": "Regular Season",
+    "clubIds": [
+      "sa_ecu_fm_192875",
+      "sa_ecu_fm_113053",
+      "sa_ecu_fm_6609",
+      "sa_ecu_fm_6608",
+      "sa_ecu_fm_6721",
+      "sa_ecu_fm_6453",
+      "sa_ecu_fm_1345405",
+      "sa_ecu_fm_1370528",
+      "sa_ecu_fm_194754",
+      "sa_ecu_fm_1850",
+      "sa_ecu_fm_304929",
+      "sa_ecu_fm_4144",
+      "sa_ecu_fm_1014174",
+      "sa_ecu_fm_113054",
+      "sa_ecu_fm_519457",
+      "sa_ecu_fm_162922"
+    ],
+    "referenceDate": "2026-11-24",
+    "isReferenceSnapshot": true
+  },
+  {
+    "competitionId": "uru_primera",
+    "label": "Clausura",
+    "clubIds": [
+      "sa_uru_fm_2219",
+      "sa_uru_fm_395613",
+      "sa_uru_fm_8304",
+      "sa_uru_fm_8450",
+      "sa_uru_fm_1836",
+      "sa_uru_fm_6043",
+      "sa_uru_fm_1833",
+      "sa_uru_fm_7863",
+      "sa_uru_fm_1838",
+      "sa_uru_fm_9883",
+      "sa_uru_fm_188313",
+      "sa_uru_fm_7796",
+      "sa_uru_fm_924934",
+      "sa_uru_fm_8562",
+      "sa_uru_fm_1834",
+      "sa_uru_fm_148967"
+    ],
+    "referenceDate": "2026-11-24",
+    "isReferenceSnapshot": true
+  },
+  {
+    "competitionId": "uru_primera",
+    "label": "Intermedio Grp. A",
+    "clubIds": [
+      "sa_uru_fm_8450",
+      "sa_uru_fm_148967",
+      "sa_uru_fm_6043",
+      "sa_uru_fm_2219",
+      "sa_uru_fm_1834",
+      "sa_uru_fm_1836",
+      "sa_uru_fm_7796",
+      "sa_uru_fm_188313"
+    ],
+    "referenceDate": "2026-11-24",
+    "isReferenceSnapshot": true
+  },
+  {
+    "competitionId": "uru_primera",
+    "label": "Intermedio Grp. B",
+    "clubIds": [
+      "sa_uru_fm_7863",
+      "sa_uru_fm_8304",
+      "sa_uru_fm_1833",
+      "sa_uru_fm_395613",
+      "sa_uru_fm_9883",
+      "sa_uru_fm_924934",
+      "sa_uru_fm_1838",
+      "sa_uru_fm_8562"
+    ],
+    "referenceDate": "2026-11-24",
+    "isReferenceSnapshot": true
+  },
+  {
+    "competitionId": "uru_primera",
+    "label": "Apertura",
+    "clubIds": [
+      "sa_uru_fm_6043",
+      "sa_uru_fm_1833",
+      "sa_uru_fm_924934",
+      "sa_uru_fm_8450",
+      "sa_uru_fm_1834",
+      "sa_uru_fm_395613",
+      "sa_uru_fm_8304",
+      "sa_uru_fm_7796",
+      "sa_uru_fm_2219",
+      "sa_uru_fm_7863",
+      "sa_uru_fm_8562",
+      "sa_uru_fm_148967",
+      "sa_uru_fm_188313",
+      "sa_uru_fm_9883",
+      "sa_uru_fm_1838",
+      "sa_uru_fm_1836"
+    ],
+    "referenceDate": "2026-11-24",
+    "isReferenceSnapshot": true
+  },
+  {
+    "competitionId": "uru_segunda",
+    "label": "Segunda Division",
+    "clubIds": [
+      "sa_uru_fm_2221",
+      "sa_uru_fm_181912",
+      "sa_uru_fm_1223580",
+      "sa_uru_fm_4669",
+      "sa_uru_fm_688270",
+      "sa_uru_fm_215609",
+      "sa_uru_fm_1319664",
+      "sa_uru_fm_2220",
+      "sa_uru_fm_7808",
+      "sa_uru_fm_4660",
+      "sa_uru_fm_6381",
+      "sa_uru_fm_4424",
+      "sa_uru_fm_1257662",
+      "sa_uru_fm_1837"
+    ],
+    "referenceDate": "2026-11-24",
+    "isReferenceSnapshot": true
+  },
+  {
+    "competitionId": "uru_segunda",
+    "label": "Grp. A",
+    "clubIds": [
+      "sa_uru_fm_7808",
+      "sa_uru_fm_215609",
+      "sa_uru_fm_1257662",
+      "sa_uru_fm_2220",
+      "sa_uru_fm_1319664",
+      "sa_uru_fm_181912",
+      "sa_uru_fm_1837"
+    ],
+    "referenceDate": "2026-11-24",
+    "isReferenceSnapshot": true
+  },
+  {
+    "competitionId": "uru_segunda",
+    "label": "Grp. B",
+    "clubIds": [
+      "sa_uru_fm_688270",
+      "sa_uru_fm_4669",
+      "sa_uru_fm_1223580",
+      "sa_uru_fm_2221",
+      "sa_uru_fm_4424",
+      "sa_uru_fm_4660",
+      "sa_uru_fm_6381"
+    ],
+    "referenceDate": "2026-11-24",
+    "isReferenceSnapshot": true
+  }
+]

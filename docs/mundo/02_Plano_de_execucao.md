@@ -13,7 +13,7 @@ junto). Até lá, ficam atrás de uma chave de desenvolvimento
 
 | Etapa | Entrega | Depende de | Arquivos principais |
 |---|---|---|---|
-| **M1** | Catálogo do mundo: dados dos pacotes no jogo, escudos locais, registro das competições, validação | — | `scripts/mundo_catalogo.js`, `server/frozen-catalog/`, `server/frozen-catalog/mundo/`, `public/img/teams/mundo/`, `server/src/competitions.js` |
+| **M1** | Catálogo do mundo: dados dos pacotes no jogo, escudos locais, rotas do servidor, validação | — | `scripts/mundo_catalogo.js`, `server/frozen-catalog/`, `server/frozen-catalog/mundo/`, `public/img/teams/mundo/`, `server/src/mundo.js` |
 | **M2** | Relógio do mundo por data e virada por liga; Brasil equivalente | M1 | `public/js/motor/mundo/relogio.js`, `calendario.js`, `semana.js`, `fechamento.js`, `virada.js` |
 | **M3** | Motor de fases declarativo e desempates: Europa | M2 | `public/js/motor/mundo/fases.js`, `desempate.js`, configuração por liga |
 | **M4** | Formatos sul-americanos fiéis: Apertura/Clausura, anual, promedios, reducido, quadrangulares, hexagonais, Intermedio | M3 | idem + configuração SA |
@@ -41,9 +41,13 @@ junto). Até lá, ficam atrás de uma chave de desenvolvimento
    - os escudos em `public/img/teams/mundo/`.
    Os dados dos pacotes não são editados: o que o jogo acrescenta fica
    marcado como tal.
-2. As 20 competições entram em `server/competitions.js` com
-   `providerLeagueIds.frozen` igual ao próprio ID. As entradas antigas
-   `premier_league` e `la_liga` são reaproveitadas.
+2. O servidor entrega o mundo por rotas próprias
+   (`/api/career/mundo` e `/api/career/mundo/elencos/<liga>`, em
+   `server/src/mundo.js`), ligadas só com `MUNDO_ATIVO=true`.
+   - Feito assim, e não por `server/competitions.js` como sugeriam os
+     pacotes: aquele registro também alimenta o seletor do site principal, e
+     18 ligas novas apareceriam lá como "em breve".
+   - O resultado é o mesmo: leitura do arquivo local, sem rede.
 3. Validação automática (`tests/unit/test_mundo_catalogo.js`):
    - contagem de clubes por liga igual ao regulamento;
    - IDs únicos no mundo e sem colisão com o Brasil;
@@ -52,8 +56,9 @@ junto). Até lá, ficam atrás de uma chave de desenvolvimento
    - todo jogo cita clubes da própria liga;
    - cada clube tem o número de jogos da fase regular previsto;
    - vínculos duplicados resolvidos (MUN-03).
-4. O catálogo offline (`catalogoOffline.js`) passa a servir as ligas do
-   mundo quando `MUNDO_ATIVO` estiver ligado. O Brasil não muda.
+4. A cópia offline do mundo no aparelho fica para a M10, junto com o
+   seletor. As rotas já devolvem `{ versao, atual: true }` quando o cliente
+   tem a versão, como o catálogo offline do Brasil.
 
 ## Medição (vale para todas as etapas)
 

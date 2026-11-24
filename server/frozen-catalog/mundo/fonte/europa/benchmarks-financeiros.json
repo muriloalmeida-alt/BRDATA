@@ -1,0 +1,163 @@
+{
+  "observed": [
+    {
+      "competitionId": "premier_league",
+      "season": "2024-25",
+      "currency": "GBP",
+      "amount": 6800000000,
+      "metric": "clubRevenue",
+      "sourceUrl": "https://www.deloitte.com/uk/en/about/press-room/european-football-revenues-surpass-40bn-for-the-first-time.html"
+    },
+    {
+      "competitionId": "premier_league",
+      "season": "2024-25",
+      "currency": "GBP",
+      "amount": 3400000000,
+      "metric": "broadcastRevenue",
+      "sourceUrl": "https://www.deloitte.com/uk/en/about/press-room/european-football-revenues-surpass-40bn-for-the-first-time.html"
+    },
+    {
+      "competitionId": "efl_championship",
+      "season": "2024-25",
+      "currency": "GBP",
+      "amount": 942000000,
+      "metric": "clubRevenue",
+      "sourceUrl": "https://www.deloitte.com/uk/en/about/press-room/european-football-revenues-surpass-40bn-for-the-first-time.html"
+    },
+    {
+      "competitionId": "efl_championship",
+      "season": "2024-25",
+      "currency": "GBP",
+      "amount": 903000000,
+      "metric": "wages",
+      "sourceUrl": "https://www.deloitte.com/uk/en/about/press-room/european-football-revenues-surpass-40bn-for-the-first-time.html"
+    },
+    {
+      "competitionId": "la_liga",
+      "season": "2024-25",
+      "currency": "EUR",
+      "amount": 4100000000,
+      "metric": "clubRevenue",
+      "sourceUrl": "https://www.deloitte.com/uk/en/about/press-room/european-football-revenues-surpass-40bn-for-the-first-time.html"
+    },
+    {
+      "competitionId": "serie_a_italia",
+      "season": "2024-25",
+      "currency": "EUR",
+      "amount": 3000000000,
+      "metric": "clubRevenue",
+      "sourceUrl": "https://www.deloitte.com/uk/en/about/press-room/european-football-revenues-surpass-40bn-for-the-first-time.html"
+    },
+    {
+      "competitionId": "ligue_1",
+      "season": "2024-25",
+      "currency": "EUR",
+      "amount": 2200000000,
+      "metric": "clubRevenue",
+      "sourceUrl": "https://www.deloitte.com/uk/en/about/press-room/european-football-revenues-surpass-40bn-for-the-first-time.html"
+    },
+    {
+      "competitionId": "bundesliga",
+      "season": "2024-25",
+      "currency": "EUR",
+      "amount": 5122707000,
+      "metric": "totalRevenueDflDefinition",
+      "sourceUrl": "https://report.dfl.de/2425/en/_assets/downloads/entire-dfl-er25.pdf?h=t5VA6-_4"
+    },
+    {
+      "competitionId": "bundesliga_2",
+      "season": "2024-25",
+      "currency": "EUR",
+      "amount": 1208529000,
+      "metric": "totalRevenueDflDefinition",
+      "sourceUrl": "https://report.dfl.de/2425/en/_assets/downloads/entire-dfl-er25.pdf?h=t5VA6-_4"
+    }
+  ],
+  "models": [
+    {
+      "competitionId": "premier_league",
+      "currency": "GBP",
+      "baseAnnualOperatingRevenue": 120000000,
+      "broadcastShare": 0.56,
+      "gateShare": 0.23,
+      "gameplayLevel": 1.22
+    },
+    {
+      "competitionId": "efl_championship",
+      "currency": "GBP",
+      "baseAnnualOperatingRevenue": 24000000,
+      "broadcastShare": 0.49,
+      "gateShare": 0.27,
+      "gameplayLevel": 0.98
+    },
+    {
+      "competitionId": "la_liga",
+      "currency": "EUR",
+      "baseAnnualOperatingRevenue": 78000000,
+      "broadcastShare": 0.5,
+      "gateShare": 0.24,
+      "gameplayLevel": 1.18
+    },
+    {
+      "competitionId": "laliga_hypermotion",
+      "currency": "EUR",
+      "baseAnnualOperatingRevenue": 14000000,
+      "broadcastShare": 0.44,
+      "gateShare": 0.25,
+      "gameplayLevel": 0.93
+    },
+    {
+      "competitionId": "serie_a_italia",
+      "currency": "EUR",
+      "baseAnnualOperatingRevenue": 82000000,
+      "broadcastShare": 0.48,
+      "gateShare": 0.22,
+      "gameplayLevel": 1.15
+    },
+    {
+      "competitionId": "serie_b_italia",
+      "currency": "EUR",
+      "baseAnnualOperatingRevenue": 14000000,
+      "broadcastShare": 0.45,
+      "gateShare": 0.24,
+      "gameplayLevel": 0.91
+    },
+    {
+      "competitionId": "bundesliga",
+      "currency": "EUR",
+      "baseAnnualOperatingRevenue": 105000000,
+      "broadcastShare": 0.46,
+      "gateShare": 0.29,
+      "gameplayLevel": 1.13
+    },
+    {
+      "competitionId": "bundesliga_2",
+      "currency": "EUR",
+      "baseAnnualOperatingRevenue": 27000000,
+      "broadcastShare": 0.44,
+      "gateShare": 0.33,
+      "gameplayLevel": 0.95
+    },
+    {
+      "competitionId": "ligue_1",
+      "currency": "EUR",
+      "baseAnnualOperatingRevenue": 60000000,
+      "broadcastShare": 0.38,
+      "gateShare": 0.25,
+      "gameplayLevel": 1.1
+    },
+    {
+      "competitionId": "ligue_2",
+      "currency": "EUR",
+      "baseAnnualOperatingRevenue": 12000000,
+      "broadcastShare": 0.35,
+      "gateShare": 0.29,
+      "gameplayLevel": 0.89
+    }
+  ],
+  "additionalSources": {
+    "SpainSecondDivision": "https://assets.laliga.com/assets/2026/03/18/originals/5658090da03d3a5134540accdc341c89.pdf",
+    "ItalySecondDivision": "https://www.figc.it/media/277126/report-calcio-2025.pdf",
+    "FranceSecondDivision": "https://www.sta.lfp.fr/reports-dncg"
+  }
+}

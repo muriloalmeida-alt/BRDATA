@@ -1,0 +1,953 @@
+{
+  "UCL": {
+    "nome": "UEFA Champions League",
+    "edicao": "2026/27",
+    "fonte": "UCL",
+    "fases": [
+      "Q1",
+      "Q2",
+      "Q3",
+      "PO",
+      "liga",
+      "playoff_mata_mata",
+      "oitavas",
+      "quartas",
+      "semifinal",
+      "final"
+    ],
+    "liga": {
+      "clubes": 36,
+      "rodadas": 8,
+      "potes": 4,
+      "clubes_por_pote": 9,
+      "mandos_por_clube": [
+        4,
+        4
+      ],
+      "mandos_por_potes": [
+        [
+          1
+        ],
+        [
+          2
+        ],
+        [
+          3
+        ],
+        [
+          4
+        ]
+      ],
+      "adversarios_por_pote": 2,
+      "mesma_associacao": "vedada_em_principio",
+      "max_por_outra_associacao": 2,
+      "ultima_rodada_simultanea": true,
+      "criterios_apos_pontos": [
+        "saldo",
+        "gols_pro",
+        "gols_pro_fora",
+        "vitorias",
+        "vitorias_fora",
+        "pontos_dos_adversarios",
+        "saldo_dos_adversarios",
+        "gols_pro_dos_adversarios",
+        "menor_pontuacao_disciplinar",
+        "coeficiente_clube"
+      ],
+      "disciplina": {
+        "amarelo": 1,
+        "vermelho": 3,
+        "expulsao_por_dois_amarelos": 3
+      },
+      "oitavas": [
+        1,
+        8
+      ],
+      "playoff": [
+        9,
+        24
+      ],
+      "eliminados": [
+        25,
+        36
+      ]
+    },
+    "mata_mata": {
+      "playoff_blocos": [
+        [
+          [
+            9,
+            10
+          ],
+          [
+            23,
+            24
+          ]
+        ],
+        [
+          [
+            11,
+            12
+          ],
+          [
+            21,
+            22
+          ]
+        ],
+        [
+          [
+            13,
+            14
+          ],
+          [
+            19,
+            20
+          ]
+        ],
+        [
+          [
+            15,
+            16
+          ],
+          [
+            17,
+            18
+          ]
+        ]
+      ],
+      "oitavas_blocos": [
+        [
+          [
+            1,
+            2
+          ],
+          [
+            15,
+            16
+          ]
+        ],
+        [
+          [
+            3,
+            4
+          ],
+          [
+            13,
+            14
+          ]
+        ],
+        [
+          [
+            5,
+            6
+          ],
+          [
+            11,
+            12
+          ]
+        ],
+        [
+          [
+            7,
+            8
+          ],
+          [
+            9,
+            10
+          ]
+        ]
+      ],
+      "oitavas_ref": "Anexo B",
+      "volta_casa_preferencial_playoff": [
+        9,
+        16
+      ],
+      "volta_casa_preferencial_oitavas": [
+        1,
+        8
+      ],
+      "volta_casa_quartas": {
+        "seeds": [
+          1,
+          4
+        ],
+        "herdavel": true
+      },
+      "volta_casa_semis": {
+        "seeds": [
+          1,
+          2
+        ],
+        "herdavel": true
+      },
+      "restricao_associacao": false,
+      "partidas_por_duelo": 2,
+      "desempate": [
+        "saldo_agregado",
+        "prorrogacao",
+        "penaltis"
+      ],
+      "final": {
+        "partidas": 1,
+        "prorrogacao_min": 30,
+        "penaltis_se_empate": true
+      }
+    }
+  },
+  "UEL": {
+    "nome": "UEFA Europa League",
+    "edicao": "2026/27",
+    "fonte": "UEL",
+    "fases": [
+      "Q1",
+      "Q2",
+      "Q3",
+      "PO",
+      "liga",
+      "playoff_mata_mata",
+      "oitavas",
+      "quartas",
+      "semifinal",
+      "final"
+    ],
+    "liga": {
+      "clubes": 36,
+      "rodadas": 8,
+      "potes": 4,
+      "clubes_por_pote": 9,
+      "mandos_por_clube": [
+        4,
+        4
+      ],
+      "mandos_por_potes": [
+        [
+          1
+        ],
+        [
+          2
+        ],
+        [
+          3
+        ],
+        [
+          4
+        ]
+      ],
+      "adversarios_por_pote": 2,
+      "mesma_associacao": "vedada_em_principio",
+      "max_por_outra_associacao": 2,
+      "ultima_rodada_simultanea": true,
+      "criterios_apos_pontos": [
+        "saldo",
+        "gols_pro",
+        "gols_pro_fora",
+        "vitorias",
+        "vitorias_fora",
+        "pontos_dos_adversarios",
+        "saldo_dos_adversarios",
+        "gols_pro_dos_adversarios",
+        "menor_pontuacao_disciplinar",
+        "coeficiente_clube"
+      ],
+      "disciplina": {
+        "amarelo": 1,
+        "vermelho": 3,
+        "expulsao_por_dois_amarelos": 3
+      },
+      "oitavas": [
+        1,
+        8
+      ],
+      "playoff": [
+        9,
+        24
+      ],
+      "eliminados": [
+        25,
+        36
+      ]
+    },
+    "mata_mata": {
+      "playoff_blocos": [
+        [
+          [
+            9,
+            10
+          ],
+          [
+            23,
+            24
+          ]
+        ],
+        [
+          [
+            11,
+            12
+          ],
+          [
+            21,
+            22
+          ]
+        ],
+        [
+          [
+            13,
+            14
+          ],
+          [
+            19,
+            20
+          ]
+        ],
+        [
+          [
+            15,
+            16
+          ],
+          [
+            17,
+            18
+          ]
+        ]
+      ],
+      "oitavas_blocos": [
+        [
+          [
+            1,
+            2
+          ],
+          [
+            15,
+            16
+          ]
+        ],
+        [
+          [
+            3,
+            4
+          ],
+          [
+            13,
+            14
+          ]
+        ],
+        [
+          [
+            5,
+            6
+          ],
+          [
+            11,
+            12
+          ]
+        ],
+        [
+          [
+            7,
+            8
+          ],
+          [
+            9,
+            10
+          ]
+        ]
+      ],
+      "oitavas_ref": "Anexo B",
+      "volta_casa_preferencial_playoff": [
+        9,
+        16
+      ],
+      "volta_casa_preferencial_oitavas": [
+        1,
+        8
+      ],
+      "volta_casa_quartas": {
+        "seeds": [
+          1,
+          4
+        ],
+        "herdavel": true
+      },
+      "volta_casa_semis": {
+        "seeds": [
+          1,
+          2
+        ],
+        "herdavel": true
+      },
+      "restricao_associacao": false,
+      "partidas_por_duelo": 2,
+      "desempate": [
+        "saldo_agregado",
+        "prorrogacao",
+        "penaltis"
+      ],
+      "final": {
+        "partidas": 1,
+        "prorrogacao_min": 30,
+        "penaltis_se_empate": true
+      }
+    }
+  },
+  "UECL": {
+    "nome": "UEFA Conference League",
+    "edicao": "2026/27",
+    "fonte": "UECL",
+    "fases": [
+      "Q1",
+      "Q2",
+      "Q3",
+      "PO",
+      "liga",
+      "playoff_mata_mata",
+      "oitavas",
+      "quartas",
+      "semifinal",
+      "final"
+    ],
+    "liga": {
+      "clubes": 36,
+      "rodadas": 6,
+      "potes": 6,
+      "clubes_por_pote": 6,
+      "mandos_por_clube": [
+        3,
+        3
+      ],
+      "mandos_por_potes": [
+        [
+          1,
+          2
+        ],
+        [
+          3,
+          4
+        ],
+        [
+          5,
+          6
+        ]
+      ],
+      "adversarios_por_pote": 1,
+      "mesma_associacao": "vedada_em_principio",
+      "max_por_outra_associacao": 2,
+      "ultima_rodada_simultanea": true,
+      "criterios_apos_pontos": [
+        "saldo",
+        "gols_pro",
+        "gols_pro_fora",
+        "vitorias",
+        "vitorias_fora",
+        "pontos_dos_adversarios",
+        "saldo_dos_adversarios",
+        "gols_pro_dos_adversarios",
+        "menor_pontuacao_disciplinar",
+        "coeficiente_clube"
+      ],
+      "disciplina": {
+        "amarelo": 1,
+        "vermelho": 3,
+        "expulsao_por_dois_amarelos": 3
+      },
+      "oitavas": [
+        1,
+        8
+      ],
+      "playoff": [
+        9,
+        24
+      ],
+      "eliminados": [
+        25,
+        36
+      ]
+    },
+    "mata_mata": {
+      "playoff_blocos": [
+        [
+          [
+            9,
+            10
+          ],
+          [
+            23,
+            24
+          ]
+        ],
+        [
+          [
+            11,
+            12
+          ],
+          [
+            21,
+            22
+          ]
+        ],
+        [
+          [
+            13,
+            14
+          ],
+          [
+            19,
+            20
+          ]
+        ],
+        [
+          [
+            15,
+            16
+          ],
+          [
+            17,
+            18
+          ]
+        ]
+      ],
+      "oitavas_blocos": [
+        [
+          [
+            1,
+            2
+          ],
+          [
+            15,
+            16
+          ]
+        ],
+        [
+          [
+            3,
+            4
+          ],
+          [
+            13,
+            14
+          ]
+        ],
+        [
+          [
+            5,
+            6
+          ],
+          [
+            11,
+            12
+          ]
+        ],
+        [
+          [
+            7,
+            8
+          ],
+          [
+            9,
+            10
+          ]
+        ]
+      ],
+      "oitavas_ref": "Anexo B",
+      "volta_casa_preferencial_playoff": [
+        9,
+        16
+      ],
+      "volta_casa_preferencial_oitavas": [
+        1,
+        8
+      ],
+      "volta_casa_quartas": {
+        "seeds": [
+          1,
+          4
+        ],
+        "herdavel": true
+      },
+      "volta_casa_semis": {
+        "seeds": [
+          1,
+          2
+        ],
+        "herdavel": true
+      },
+      "restricao_associacao": false,
+      "partidas_por_duelo": 2,
+      "desempate": [
+        "saldo_agregado",
+        "prorrogacao",
+        "penaltis"
+      ],
+      "final": {
+        "partidas": 1,
+        "prorrogacao_min": 30,
+        "penaltis_se_empate": true
+      }
+    }
+  },
+  "LIB": {
+    "nome": "CONMEBOL Libertadores",
+    "edicao": "2026",
+    "fonte": "LIB",
+    "ranking_sorteio_data": "2025-12-15",
+    "grupos": {
+      "grupos": 8,
+      "clubes_por_grupo": 4,
+      "rodadas": 6,
+      "mandos_por_clube": [
+        3,
+        3
+      ],
+      "criterios_apos_pontos": [
+        "mini_tabela_pontos",
+        "mini_tabela_saldo",
+        "mini_tabela_gols_pro",
+        "saldo",
+        "gols_pro",
+        "menos_vermelhos",
+        "menos_amarelos",
+        "sorteio"
+      ],
+      "reiniciar_criterios_em_subempate": false,
+      "mesma_associacao": "excecao_clube_proveniente_da_fase_3_LIB",
+      "rodadas_por_posicao": [
+        [
+          [
+            4,
+            2
+          ],
+          [
+            3,
+            1
+          ]
+        ],
+        [
+          [
+            2,
+            3
+          ],
+          [
+            1,
+            4
+          ]
+        ],
+        [
+          [
+            2,
+            1
+          ],
+          [
+            4,
+            3
+          ]
+        ],
+        [
+          [
+            3,
+            2
+          ],
+          [
+            4,
+            1
+          ]
+        ],
+        [
+          [
+            1,
+            2
+          ],
+          [
+            3,
+            4
+          ]
+        ],
+        [
+          [
+            1,
+            3
+          ],
+          [
+            2,
+            4
+          ]
+        ]
+      ],
+      "classificados_diretos": [
+        1,
+        2
+      ],
+      "transferencia_terceiros": "SUD.playoff",
+      "segundos_para_playoff": false
+    },
+    "mata_mata": {
+      "partidas_por_duelo": 2,
+      "desempate": [
+        "pontos_do_duelo",
+        "saldo_agregado",
+        "penaltis"
+      ],
+      "restricao_associacao": false,
+      "rematch_grupo_permitido": true,
+      "oitavas_semeadura": "por_potes_sorteados",
+      "volta_oitavas": "pote_1",
+      "volta_quartas_e_semis": "menor_numero_de_performance_original",
+      "chave": {
+        "QF": {
+          "S1": [
+            "A",
+            "H"
+          ],
+          "S2": [
+            "B",
+            "G"
+          ],
+          "S3": [
+            "C",
+            "F"
+          ],
+          "S4": [
+            "D",
+            "E"
+          ]
+        },
+        "SF": [
+          [
+            "S1",
+            "S4"
+          ],
+          [
+            "S2",
+            "S3"
+          ]
+        ]
+      },
+      "final": {
+        "partidas": 1,
+        "prorrogacao_min": 30,
+        "penaltis_se_empate": true
+      }
+    },
+    "entrada": {
+      "total": 47,
+      "grupos_diretos": 28,
+      "fase_1": 6,
+      "fase_2_diretos": 13,
+      "fase_1_classificam": 3,
+      "fase_2_classificam": 8,
+      "fase_3_classificam": 4
+    },
+    "fase_3": {
+      "cruzamentos": [
+        [
+          "C1",
+          "C8"
+        ],
+        [
+          "C2",
+          "C7"
+        ],
+        [
+          "C3",
+          "C6"
+        ],
+        [
+          "C4",
+          "C5"
+        ]
+      ],
+      "volta_em_casa": "melhor_ranking"
+    }
+  },
+  "SUD": {
+    "nome": "CONMEBOL Sudamericana",
+    "edicao": "2026",
+    "fonte": "SUD",
+    "ranking_sorteio_data": "2025-12-15",
+    "grupos": {
+      "grupos": 8,
+      "clubes_por_grupo": 4,
+      "rodadas": 6,
+      "mandos_por_clube": [
+        3,
+        3
+      ],
+      "criterios_apos_pontos": [
+        "mini_tabela_pontos",
+        "mini_tabela_saldo",
+        "mini_tabela_gols_pro",
+        "saldo",
+        "gols_pro",
+        "menos_vermelhos",
+        "menos_amarelos",
+        "sorteio"
+      ],
+      "reiniciar_criterios_em_subempate": false,
+      "mesma_associacao": "vedada",
+      "rodadas_por_posicao": [
+        [
+          [
+            4,
+            2
+          ],
+          [
+            3,
+            1
+          ]
+        ],
+        [
+          [
+            2,
+            3
+          ],
+          [
+            1,
+            4
+          ]
+        ],
+        [
+          [
+            2,
+            1
+          ],
+          [
+            4,
+            3
+          ]
+        ],
+        [
+          [
+            3,
+            2
+          ],
+          [
+            4,
+            1
+          ]
+        ],
+        [
+          [
+            1,
+            2
+          ],
+          [
+            3,
+            4
+          ]
+        ],
+        [
+          [
+            1,
+            3
+          ],
+          [
+            2,
+            4
+          ]
+        ]
+      ],
+      "classificados_diretos": [
+        1
+      ],
+      "transferencia_terceiros": null,
+      "segundos_para_playoff": true
+    },
+    "mata_mata": {
+      "partidas_por_duelo": 2,
+      "desempate": [
+        "pontos_do_duelo",
+        "saldo_agregado",
+        "penaltis"
+      ],
+      "restricao_associacao": false,
+      "rematch_grupo_permitido": true,
+      "oitavas_semeadura": "por_potes_sorteados",
+      "volta_oitavas": "pote_1",
+      "volta_quartas_e_semis": "menor_numero_de_performance_original",
+      "chave": {
+        "QF": {
+          "S1": [
+            "A",
+            "H"
+          ],
+          "S2": [
+            "B",
+            "G"
+          ],
+          "S3": [
+            "C",
+            "F"
+          ],
+          "S4": [
+            "D",
+            "E"
+          ]
+        },
+        "SF": [
+          [
+            "S1",
+            "S4"
+          ],
+          [
+            "S2",
+            "S3"
+          ]
+        ]
+      },
+      "final": {
+        "partidas": 1,
+        "prorrogacao_min": 30,
+        "penaltis_se_empate": true
+      }
+    },
+    "entrada": {
+      "vagas_domesticas": 44,
+      "grupos_domesticos_diretos": 12,
+      "primeira_fase": 32,
+      "partidas_por_duelo": 1,
+      "mesma_associacao_obrigatoria": true,
+      "empate_primeira_fase": "penaltis_diretos",
+      "primeira_fase_classificam": 16,
+      "grupos_via_LIB_fase3": 4,
+      "playoff_via_LIB_grupos": 8
+    },
+    "playoff": {
+      "cruzamentos": [
+        [
+          9,
+          24
+        ],
+        [
+          10,
+          23
+        ],
+        [
+          11,
+          22
+        ],
+        [
+          12,
+          21
+        ],
+        [
+          13,
+          20
+        ],
+        [
+          14,
+          19
+        ],
+        [
+          15,
+          18
+        ],
+        [
+          16,
+          17
+        ]
+      ],
+      "mandante_ida": "terceiro_LIB",
+      "mandante_volta": "segundo_SUD",
+      "criterio": "ordem_de_performance_por_competicao",
+      "sorteio": false
+    }
+  }
+}

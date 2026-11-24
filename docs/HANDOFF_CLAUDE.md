@@ -34,6 +34,50 @@ com "as outras ligas disponíveis só para outro save". O pedido do Murilo
 (ligas em paralelo) prevalece (CLAUDE.md, seção 2, ordem de conflito). A
 D1 (híbrido) é a forma de caber no save e no celular.
 
+Relatório da etapa M1, catálogo do mundo (24/11/2026)
+
+O que foi feito:
+- `scripts/mundo_catalogo.js` lê os 3 pacotes e grava:
+  - os 20 snapshots das ligas novas em `server/frozen-catalog/`;
+  - o índice `server/frozen-catalog/mundo/mundo.json`: 10 países, 20 ligas
+    com regulamento, calendário e moeda, 390 clubes, 305 da 3ª divisão e
+    6.822 jogos das fases fixas com data local;
+  - os JSON originais em `mundo/fonte/`, sem alteração;
+  - 625 escudos em `public/img/teams/mundo/`.
+- Servidor: `server/src/mundo.js` e as rotas `/api/career/mundo` (índice
+  versionado, gzip ~110 KB) e `/api/career/mundo/elencos/<liga>`. Só
+  respondem com `MUNDO_ATIVO=true` (`server/.env.example`). Sem a chave,
+  devolvem 404 e nada muda para o jogador.
+- Validação: `tests/unit/test_mundo_catalogo.js`, 8 verificações:
+  - contagens por liga;
+  - IDs únicos e sem colisão com o Brasil;
+  - escudos existentes;
+  - elencos com 22+ atletas e 2 goleiros, sem atleta repetido;
+  - jogos por clube iguais em cada fase (34/38/42/46 nas europeias);
+  - clubes B ligados ao clube pai;
+  - versão do índice;
+  - as rotas.
+
+Decisões tomadas na M1 (para o Murilo conferir):
+1. Vínculos duplicados (MUN-03): os 10 atletas listados pelo próprio pacote
+   ficam no clube com menos atletas e saem do outro, que continua com 23+
+   e 2 goleiros. A lista está em `mundo.json` (`vinculosResolvidos`).
+   - Há ~90 homônimos de mesmo nome e idade entre clubes, inclusive com o
+     Brasil, que NÃO foram mexidos: sem id de origem comum, podem ser
+     pessoas diferentes.
+2. Mínimo de elenco: o Everton tem 22 atletas no pacote (o pacote prometia
+   23 na América do Sul, que cumpre). O teste exige 22 (11 + 11). O motor
+   completa o elenco como já faz hoje.
+3. Os jogos das fases que dependem de resultado ficam fora do índice: 333
+   jogos de mata-mata, quadrangulares, hexagonais, Intermedio e finais. O
+   motor vai gerá-los na M4. O original continua em `mundo/fonte/`.
+4. O registro `server/competitions.js` não foi usado: ver o item 2 da M1 em
+   `docs/mundo/02_Plano_de_execucao.md`.
+
+Testes: `test_mundo_catalogo` 8/8; rota rápida (`test:fast`) 48/48.
+
+Próxima etapa: M2, o relógio do mundo por data, com o Brasil equivalente.
+
 ⸻
 
 FASE1-ESC — Fase 1: escalação e orientação da comissão técnica

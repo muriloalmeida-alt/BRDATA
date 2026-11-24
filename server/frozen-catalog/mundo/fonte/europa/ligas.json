@@ -1,0 +1,1055 @@
+{
+  "version": 1,
+  "season": "2026-27",
+  "preparedOn": "2026-11-24",
+  "countries": [
+    {
+      "id": "GB-ENG",
+      "name": "Inglaterra",
+      "currency": "GBP",
+      "timezone": "Europe/London",
+      "competitionIds": [
+        "premier_league",
+        "efl_championship"
+      ],
+      "transferWindows": [
+        {
+          "opens": "2026-06-15",
+          "closes": "2026-09-01"
+        },
+        {
+          "opens": "2027-01-01",
+          "closes": "2027-02-01"
+        }
+      ],
+      "transferWindowSource": "https://inside.fifa.com/associations/ENG/snapshot",
+      "thirdTier": {
+        "name": "EFL League One",
+        "thirdRealUp": {
+          "direct": 2,
+          "playoffWinner": 1
+        },
+        "simulation": {
+          "directEntrants": 3
+        },
+        "sourceUrls": [
+          "https://www.efl.com/documents/efl-regulations/",
+          "https://www.efl.com/documents/play-off-rules/",
+          "https://www.efl.com/news/2026/june/25/the-2026-27-efl-fixtures-are-here/",
+          "https://www.efl.com/news/2026/june/25/the-2026-27-efl-fixtures-are-here/"
+        ],
+        "playable": false,
+        "clubCount": 24,
+        "selection": "seeded_uniform_without_replacement_from_eligible_clubs",
+        "protectHumanAtLowestPlayableTier": true,
+        "dropRelegatedIntoPool": true
+      }
+    },
+    {
+      "id": "ES",
+      "name": "Espanha",
+      "currency": "EUR",
+      "timezone": "Europe/Madrid",
+      "competitionIds": [
+        "la_liga",
+        "laliga_hypermotion"
+      ],
+      "transferWindows": [
+        {
+          "opens": "2026-07-01",
+          "closes": "2026-09-01"
+        },
+        {
+          "opens": "2027-01-02",
+          "closes": "2027-02-01"
+        }
+      ],
+      "transferWindowSource": "https://inside.fifa.com/associations/ESP/snapshot",
+      "thirdTier": {
+        "name": "Primera Federación",
+        "thirdRealUp": {
+          "groupWinners": 2,
+          "playoffWinners": 2
+        },
+        "simulation": {
+          "directEntrants": 4
+        },
+        "sourceUrls": [
+          "https://rfef.es/sites/default/files/pdf/circulares/2._Circular_85_-_CNL_Primera_Federacion___Anexo.pdf?cb=be5f965d",
+          "https://rfef.es/es/noticias/calendarios-completos-primera-federacion-temporada-202627",
+          "https://rfef.es/es/noticias/aprobados-los-grupos-de-primera-federacion-para-la-temporada-202627"
+        ],
+        "playable": false,
+        "clubCount": 40,
+        "selection": "seeded_uniform_without_replacement_from_eligible_clubs",
+        "protectHumanAtLowestPlayableTier": true,
+        "dropRelegatedIntoPool": true
+      }
+    },
+    {
+      "id": "IT",
+      "name": "Itália",
+      "currency": "EUR",
+      "timezone": "Europe/Rome",
+      "competitionIds": [
+        "serie_a_italia",
+        "serie_b_italia"
+      ],
+      "transferWindows": [
+        {
+          "opens": "2026-06-29",
+          "closes": "2026-09-01"
+        },
+        {
+          "opens": "2026-12-28",
+          "closes": "2027-02-01"
+        }
+      ],
+      "transferWindowSource": "https://inside.fifa.com/associations/ITA/snapshot",
+      "thirdTier": {
+        "name": "Serie C",
+        "thirdRealUp": {
+          "groupWinners": 3,
+          "playoffWinner": 1
+        },
+        "simulation": {
+          "directEntrants": 4
+        },
+        "sourceUrls": [
+          "https://figc.it/media/264649/tit3_noif_art_da47a70_-aggiornato-al-cu228-del-27-03-2025-seg-gen.pdf",
+          "https://files.figc.it/version/c%3AMWM3NDFkYTMtNTEzMC00%3AOTMyZGU1YzgtYzcwNi00/222%20-%20Seconde%20Squadre%20-%20Disposizioni%20partecipazione%20al%20Campionato%20Serie%20C%202026-2027.pdf",
+          "https://www.seriec.com/storage/app/media/comunicati/2026-2027/Lega/2627-33L.pdf"
+        ],
+        "playable": false,
+        "clubCount": 60,
+        "selection": "seeded_uniform_without_replacement_from_eligible_clubs",
+        "protectHumanAtLowestPlayableTier": true,
+        "dropRelegatedIntoPool": true
+      }
+    },
+    {
+      "id": "DE",
+      "name": "Alemanha",
+      "currency": "EUR",
+      "timezone": "Europe/Berlin",
+      "competitionIds": [
+        "bundesliga",
+        "bundesliga_2"
+      ],
+      "transferWindows": [
+        {
+          "opens": "2026-07-01",
+          "closes": "2026-09-01"
+        },
+        {
+          "opens": "2027-01-01",
+          "closes": "2027-02-01"
+        }
+      ],
+      "transferWindowSource": "https://inside.fifa.com/associations/GER/snapshot",
+      "thirdTier": {
+        "name": "3. Liga",
+        "thirdRealUp": {
+          "direct": 2,
+          "crossDivisionPlayoffCandidate": 1
+        },
+        "simulation": {
+          "directEntrants": 2,
+          "playoffCandidates": 1
+        },
+        "sourceUrls": [
+          "https://media.dfl.de/sites/2/2026/03/Spielordnung-SpOL-2026-03-06-Stand.pdf",
+          "https://www.bundesliga.com/en/bundesliga/news/how-does-promotion-and-relegation-work-in-the-bundesliga-10645",
+          "https://www.dfb.de/news/detail/wo-duerfen-zweite-mannschaften-spielen-das-ist-zu-beachten-144294",
+          "https://datencenter.dfb.de/datencenter/3-liga/2026-2027/20"
+        ],
+        "playable": false,
+        "clubCount": 20,
+        "selection": "seeded_uniform_without_replacement_from_eligible_clubs",
+        "protectHumanAtLowestPlayableTier": true,
+        "dropRelegatedIntoPool": true
+      }
+    },
+    {
+      "id": "FR",
+      "name": "França",
+      "currency": "EUR",
+      "timezone": "Europe/Paris",
+      "competitionIds": [
+        "ligue_1",
+        "ligue_2"
+      ],
+      "transferWindows": [
+        {
+          "opens": "2026-06-15",
+          "closes": "2026-09-01"
+        },
+        {
+          "opens": "2027-01-01",
+          "closes": "2027-02-01"
+        }
+      ],
+      "transferWindowSource": "https://inside.fifa.com/associations/FRA/snapshot",
+      "thirdTier": {
+        "name": "Ligue 3",
+        "thirdRealUp": {
+          "direct": 2,
+          "thirdLevelPlayoffWinner": 1,
+          "playoffPositions": [
+            3,
+            4,
+            5,
+            6
+          ]
+        },
+        "simulation": {
+          "directEntrants": 2,
+          "playoffCandidates": 1
+        },
+        "sourceUrls": [
+          "https://media.fff.fr/uploads/documents/partie-3-reglement-du-championnat-de-l3.pdf",
+          "https://www.fff.fr/article/17022-le-calendrier-2026-2027-est-servi.html",
+          "https://www.fff.fr/article/17022-le-calendrier-2026-2027-est-servi.html"
+        ],
+        "playable": false,
+        "clubCount": 18,
+        "selection": "seeded_uniform_without_replacement_from_eligible_clubs",
+        "protectHumanAtLowestPlayableTier": true,
+        "dropRelegatedIntoPool": true
+      }
+    }
+  ],
+  "competitions": [
+    {
+      "id": "premier_league",
+      "name": "Premier League",
+      "countryCode": "GB-ENG",
+      "countryName": "Inglaterra",
+      "sourceCompetitionCode": "eng.1",
+      "division": 1,
+      "playable": true,
+      "seasonKey": "2026-27",
+      "seasonStartYear": 2026,
+      "seasonEndYear": 2027,
+      "timezone": "Europe/London",
+      "currency": "GBP",
+      "format": "double_round_robin",
+      "clubs": 20,
+      "rounds": 38,
+      "points": {
+        "win": 3,
+        "draw": 1,
+        "loss": 0
+      },
+      "rules": {
+        "down": [
+          18,
+          19,
+          20
+        ],
+        "up": [],
+        "table": "premier",
+        "sourceUrls": [
+          "https://www.premierleague.com/en/news/62625",
+          "https://www.premierleague.com/en/news/4657245/202526-premier-league-relegation-faq"
+        ]
+      },
+      "calendar": {
+        "regularSeasonOpener": "2026-08-21",
+        "regularSeasonClosingWindowEnd": "2027-05-30",
+        "snapshotFirstMatchDate": "2026-08-21",
+        "snapshotLastMatchDate": "2027-05-30",
+        "sourceUrls": [
+          "https://www.premierleague.com/en/news/4675097/all-380-fixtures-for-2026-27"
+        ],
+        "fixtureFile": "partidas-2026-27.json"
+      }
+    },
+    {
+      "id": "efl_championship",
+      "name": "EFL Championship",
+      "countryCode": "GB-ENG",
+      "countryName": "Inglaterra",
+      "sourceCompetitionCode": "eng.2",
+      "division": 2,
+      "playable": true,
+      "seasonKey": "2026-27",
+      "seasonStartYear": 2026,
+      "seasonEndYear": 2027,
+      "timezone": "Europe/London",
+      "currency": "GBP",
+      "format": "double_round_robin",
+      "clubs": 24,
+      "rounds": 46,
+      "points": {
+        "win": 3,
+        "draw": 1,
+        "loss": 0
+      },
+      "rules": {
+        "down": [
+          22,
+          23,
+          24
+        ],
+        "up": [
+          1,
+          2
+        ],
+        "table": "efl",
+        "promotionPlayoff": {
+          "positions": [
+            3,
+            4,
+            5,
+            6,
+            7,
+            8
+          ],
+          "eliminators": [
+            [
+              5,
+              8
+            ],
+            [
+              6,
+              7
+            ]
+          ],
+          "eliminatorLegs": 1,
+          "semifinalByes": [
+            3,
+            4
+          ],
+          "semifinalPairing": "3rd_faces_lowest_remaining_seed",
+          "semifinalLegs": 2,
+          "finalLegs": 1,
+          "finalVenue": "Wembley",
+          "betterSeedHostsFinalLegExceptNeutralFinal": true,
+          "tieResolution": [
+            "extraTime",
+            "penalties"
+          ]
+        },
+        "sourceUrls": [
+          "https://www.efl.com/documents/efl-regulations/",
+          "https://www.efl.com/documents/play-off-rules/",
+          "https://www.efl.com/news/2026/march/05/efl-statement--sky-bet-championship-play-off-format/",
+          "https://www.skysports.com/football/news/13571710/championship-play-offs-change-explained-how-revamped-2026-27-format-from-top-six-to-top-eight-will-work"
+        ]
+      },
+      "calendar": {
+        "regularSeasonOpener": "2026-08-14",
+        "regularSeasonClosingWindowEnd": "2027-05-01",
+        "snapshotFirstMatchDate": "2026-08-14",
+        "snapshotLastMatchDate": "2027-05-01",
+        "sourceUrls": [
+          "https://www.efl.com/competitions/key-dates/",
+          "https://www.efl.com/news/2026/june/25/the-2026-27-efl-fixtures-are-here/"
+        ],
+        "fixtureFile": "partidas-2026-27.json",
+        "notes": [
+          "A rodada 6 é distribuída entre semanas de setembro no calendário da EFL. Use as datas das partidas."
+        ]
+      }
+    },
+    {
+      "id": "la_liga",
+      "name": "LaLiga",
+      "countryCode": "ES",
+      "countryName": "Espanha",
+      "sourceCompetitionCode": "esp.1",
+      "division": 1,
+      "playable": true,
+      "seasonKey": "2026-27",
+      "seasonStartYear": 2026,
+      "seasonEndYear": 2027,
+      "timezone": "Europe/Madrid",
+      "currency": "EUR",
+      "format": "double_round_robin",
+      "clubs": 20,
+      "rounds": 38,
+      "points": {
+        "win": 3,
+        "draw": 1,
+        "loss": 0
+      },
+      "rules": {
+        "down": [
+          18,
+          19,
+          20
+        ],
+        "up": [],
+        "table": "spainTwo",
+        "multiClubTable": "spainMulti",
+        "sourceUrls": [
+          "https://rfef.es/sites/default/files/pdf/circulares/1._Circular_84_-_CNL_Primera_y_Segunda_Division___Anexo.pdf?cb=6df81e55"
+        ]
+      },
+      "calendar": {
+        "regularSeasonOpener": "2026-08-15",
+        "regularSeasonClosingWindowEnd": "2027-05-30",
+        "snapshotFirstMatchDate": "2026-08-15",
+        "snapshotLastMatchDate": "2027-05-30",
+        "sourceUrls": [
+          "https://rfef.es/es/noticias/calendario-completo-primera-division-temporada-202627"
+        ],
+        "fixtureFile": "partidas-2026-27.json"
+      }
+    },
+    {
+      "id": "laliga_hypermotion",
+      "name": "LaLiga Hypermotion",
+      "countryCode": "ES",
+      "countryName": "Espanha",
+      "sourceCompetitionCode": "esp.2",
+      "division": 2,
+      "playable": true,
+      "seasonKey": "2026-27",
+      "seasonStartYear": 2026,
+      "seasonEndYear": 2027,
+      "timezone": "Europe/Madrid",
+      "currency": "EUR",
+      "format": "double_round_robin",
+      "clubs": 22,
+      "rounds": 42,
+      "points": {
+        "win": 3,
+        "draw": 1,
+        "loss": 0
+      },
+      "rules": {
+        "down": [
+          19,
+          20,
+          21,
+          22
+        ],
+        "up": [
+          1,
+          2
+        ],
+        "table": "spainTwo",
+        "multiClubTable": "spainMulti",
+        "promotionPlayoff": {
+          "positions": [
+            3,
+            4,
+            5,
+            6
+          ],
+          "semifinals": [
+            [
+              3,
+              6
+            ],
+            [
+              4,
+              5
+            ]
+          ],
+          "semifinalLegs": 2,
+          "finalLegs": 2,
+          "betterSeedHostsFinalLegExceptNeutralFinal": true,
+          "tieResolution": [
+            "aggregateGoals",
+            "extraTime",
+            "betterRegularSeasonSeed"
+          ]
+        },
+        "reservePolicy": "skip_reserves_for_tier_1_and_playoff_reallocate_to_next_eligible",
+        "sourceUrls": [
+          "https://rfef.es/sites/default/files/pdf/circulares/1._Circular_84_-_CNL_Primera_y_Segunda_Division___Anexo.pdf?cb=6df81e55",
+          "https://rfef.es/sites/default/files/pdf/circulares/2._Circular_85_-_CNL_Primera_Federacion___Anexo.pdf?cb=be5f965d"
+        ]
+      },
+      "calendar": {
+        "regularSeasonOpener": "2026-08-14",
+        "regularSeasonClosingWindowEnd": "2027-06-06",
+        "snapshotFirstMatchDate": "2026-08-14",
+        "snapshotLastMatchDate": "2027-06-06",
+        "sourceUrls": [
+          "https://rfef.es/sites/default/files/2026-06/Campeonato_de_Segunda_Division.pdf"
+        ],
+        "fixtureFile": "partidas-2026-27.json"
+      }
+    },
+    {
+      "id": "serie_a_italia",
+      "name": "Serie A",
+      "countryCode": "IT",
+      "countryName": "Itália",
+      "sourceCompetitionCode": "ita.1",
+      "division": 1,
+      "playable": true,
+      "seasonKey": "2026-27",
+      "seasonStartYear": 2026,
+      "seasonEndYear": 2027,
+      "timezone": "Europe/Rome",
+      "currency": "EUR",
+      "format": "double_round_robin",
+      "clubs": 20,
+      "rounds": 38,
+      "points": {
+        "win": 3,
+        "draw": 1,
+        "loss": 0
+      },
+      "rules": {
+        "down": [
+          18,
+          19,
+          20
+        ],
+        "up": [],
+        "table": "italy",
+        "decisionMatches": [
+          {
+            "positions": [
+              1,
+              2
+            ],
+            "ifEqualPoints": true,
+            "legs": 1,
+            "host": "betterH2HTable",
+            "tieResolution": [
+              "penalties"
+            ]
+          },
+          {
+            "positions": [
+              17,
+              18
+            ],
+            "ifEqualPoints": true,
+            "legs": 2,
+            "returnHost": "betterH2HTable",
+            "tieResolution": [
+              "aggregateGoals",
+              "penalties"
+            ]
+          }
+        ],
+        "decisionMatchException": "IF_Uefa_finalist_involved_use_head_to_head_table",
+        "sourceUrls": [
+          "https://images.legaseriea.it/image/private/fl_attachment/prd/aegoankwttfmjaamki5o.pdf"
+        ]
+      },
+      "calendar": {
+        "regularSeasonOpener": "2026-08-22",
+        "regularSeasonClosingWindowEnd": "2027-05-30",
+        "snapshotFirstMatchDate": "2026-08-22",
+        "snapshotLastMatchDate": "2027-05-30",
+        "sourceUrls": [
+          "https://www.legaseriea.it/serie-a/news/le-date-della-stagione-2026-2027",
+          "https://www.legaseriea.it/serie-a/news/calendario-della-serie-a-enilive-2026-27"
+        ],
+        "fixtureFile": "partidas-2026-27.json",
+        "midweek": [
+          "2026-10-28",
+          "2027-01-06"
+        ],
+        "breaks": [
+          [
+            "2026-09-27",
+            "2026-10-04"
+          ],
+          [
+            "2026-11-15",
+            "2026-11-15"
+          ],
+          [
+            "2026-12-27",
+            "2026-12-27"
+          ],
+          [
+            "2027-03-28",
+            "2027-03-28"
+          ]
+        ]
+      }
+    },
+    {
+      "id": "serie_b_italia",
+      "name": "Serie B",
+      "countryCode": "IT",
+      "countryName": "Itália",
+      "sourceCompetitionCode": "ita.2",
+      "division": 2,
+      "playable": true,
+      "seasonKey": "2026-27",
+      "seasonStartYear": 2026,
+      "seasonEndYear": 2027,
+      "timezone": "Europe/Rome",
+      "currency": "EUR",
+      "format": "double_round_robin",
+      "clubs": 20,
+      "rounds": 38,
+      "points": {
+        "win": 3,
+        "draw": 1,
+        "loss": 0
+      },
+      "rules": {
+        "down": [
+          18,
+          19,
+          20
+        ],
+        "up": [
+          1,
+          2
+        ],
+        "table": "italy",
+        "promotionPlayoff": {
+          "positions": [
+            3,
+            4,
+            5,
+            6,
+            7,
+            8
+          ],
+          "skipIfThirdAheadOfFourthByMoreThan": 14,
+          "eliminators": [
+            [
+              5,
+              8
+            ],
+            [
+              6,
+              7
+            ]
+          ],
+          "eliminatorLegs": 1,
+          "eliminatorTieResolution": [
+            "extraTime",
+            "betterRegularSeasonSeed"
+          ],
+          "semifinalByes": [
+            3,
+            4
+          ],
+          "semifinals": [
+            [
+              3,
+              "winner_6_7"
+            ],
+            [
+              4,
+              "winner_5_8"
+            ]
+          ],
+          "semifinalLegs": 2,
+          "finalLegs": 2,
+          "betterSeedHostsFinalLegExceptNeutralFinal": true,
+          "semifinalTieResolution": [
+            "matchPoints",
+            "aggregateGoalDifference",
+            "betterRegularSeasonSeed"
+          ],
+          "finalTieResolution": [
+            "matchPoints",
+            "aggregateGoalDifference",
+            "betterRegularSeasonSeed_or_extraTime_penalties_when_equal_regular_points"
+          ]
+        },
+        "relegationPlayout": {
+          "positions": [
+            16,
+            17
+          ],
+          "legs": 2,
+          "directRelegationOf17thIfGapAbove": 4,
+          "returnHostPosition": 16,
+          "tieResolution": [
+            "matchPoints",
+            "aggregateGoalDifference",
+            "betterRegularSeasonSeed_or_extraTime_penalties_when_equal_regular_points"
+          ]
+        },
+        "sourceUrls": [
+          "https://www.seriec.com/storage/app/media/comunicati/2026-2027/Lega/2627-26L.pdf",
+          "https://figc.it/media/264649/tit3_noif_art_da47a70_-aggiornato-al-cu228-del-27-03-2025-seg-gen.pdf",
+          "https://files.figc.it/version/c%3AMWM3NDFkYTMtNTEzMC00%3AOTMyZGU1YzgtYzcwNi00/222%20-%20Seconde%20Squadre%20-%20Disposizioni%20partecipazione%20al%20Campionato%20Serie%20C%202026-2027.pdf"
+        ]
+      },
+      "calendar": {
+        "regularSeasonOpener": "2026-08-21",
+        "regularSeasonClosingWindowEnd": "2027-05-16",
+        "snapshotFirstMatchDate": "2026-08-21",
+        "snapshotLastMatchDate": "2027-05-14",
+        "sourceUrls": [
+          "https://www.legab.it/news/ecco-le-date-della-serie-bkt-2026-2027",
+          "https://www.legab.it/seriebkt/calendario"
+        ],
+        "fixtureFile": "partidas-2026-27.json",
+        "midweek": [
+          "2026-10-27",
+          "2026-11-24",
+          "2026-12-08",
+          "2027-03-02"
+        ],
+        "breaks": [
+          [
+            "2026-09-21",
+            "2026-10-06"
+          ],
+          [
+            "2026-11-09",
+            "2026-11-17"
+          ],
+          [
+            "2026-12-28",
+            "2027-01-08"
+          ],
+          [
+            "2027-03-22",
+            "2027-03-30"
+          ]
+        ]
+      }
+    },
+    {
+      "id": "bundesliga",
+      "name": "Bundesliga",
+      "countryCode": "DE",
+      "countryName": "Alemanha",
+      "sourceCompetitionCode": "ger.1",
+      "division": 1,
+      "playable": true,
+      "seasonKey": "2026-27",
+      "seasonStartYear": 2026,
+      "seasonEndYear": 2027,
+      "timezone": "Europe/Berlin",
+      "currency": "EUR",
+      "format": "double_round_robin",
+      "clubs": 18,
+      "rounds": 34,
+      "points": {
+        "win": 3,
+        "draw": 1,
+        "loss": 0
+      },
+      "rules": {
+        "down": [
+          17,
+          18
+        ],
+        "up": [],
+        "table": "germany",
+        "interDivisionPlayoff": {
+          "upperPosition": 16,
+          "lowerDivisionCode": "ger.2",
+          "lowerPosition": 3,
+          "legs": 2,
+          "returnHost": "fewer_rest_days_then_lots",
+          "tieResolution": [
+            "aggregateGoals",
+            "extraTime",
+            "penalties"
+          ]
+        },
+        "sourceUrls": [
+          "https://media.dfl.de/sites/2/2026/03/Spielordnung-SpOL-2026-03-06-Stand.pdf",
+          "https://www.bundesliga.com/en/bundesliga/news/how-does-promotion-and-relegation-work-in-the-bundesliga-10645"
+        ]
+      },
+      "calendar": {
+        "regularSeasonOpener": "2026-08-28",
+        "regularSeasonClosingWindowEnd": "2027-05-22",
+        "snapshotFirstMatchDate": "2026-08-28",
+        "snapshotLastMatchDate": "2027-05-22",
+        "sourceUrls": [
+          "https://www.dfb.de/news/rahmenterminkalender-fuer-saison-2026/2027-festgelegt",
+          "https://www.bundesliga.com/en/bundesliga/news/2026-27-fixture-lists-now-available-38068"
+        ],
+        "fixtureFile": "partidas-2026-27.json",
+        "notes": [
+          "Sem rodada no fim de semana de 1 de maio. Relegation prevista até 1 de junho."
+        ]
+      }
+    },
+    {
+      "id": "bundesliga_2",
+      "name": "2. Bundesliga",
+      "countryCode": "DE",
+      "countryName": "Alemanha",
+      "sourceCompetitionCode": "ger.2",
+      "division": 2,
+      "playable": true,
+      "seasonKey": "2026-27",
+      "seasonStartYear": 2026,
+      "seasonEndYear": 2027,
+      "timezone": "Europe/Berlin",
+      "currency": "EUR",
+      "format": "double_round_robin",
+      "clubs": 18,
+      "rounds": 34,
+      "points": {
+        "win": 3,
+        "draw": 1,
+        "loss": 0
+      },
+      "rules": {
+        "down": [
+          17,
+          18
+        ],
+        "up": [
+          1,
+          2
+        ],
+        "table": "germany",
+        "interDivisionPlayoff": {
+          "upperPosition": 16,
+          "lowerDivisionCode": "ger.3",
+          "lowerPosition": 3,
+          "legs": 2,
+          "returnHost": "fewer_rest_days_then_lots",
+          "tieResolution": [
+            "aggregateGoals",
+            "extraTime",
+            "penalties"
+          ]
+        },
+        "sourceUrls": [
+          "https://media.dfl.de/sites/2/2026/03/Spielordnung-SpOL-2026-03-06-Stand.pdf",
+          "https://www.bundesliga.com/en/bundesliga/news/how-does-promotion-and-relegation-work-in-the-bundesliga-10645",
+          "https://www.dfb.de/news/detail/wo-duerfen-zweite-mannschaften-spielen-das-ist-zu-beachten-144294"
+        ]
+      },
+      "calendar": {
+        "regularSeasonOpener": "2026-08-07",
+        "regularSeasonClosingWindowEnd": "2027-05-23",
+        "snapshotFirstMatchDate": "2026-08-07",
+        "snapshotLastMatchDate": "2027-05-23",
+        "sourceUrls": [
+          "https://www.dfb.de/news/rahmenterminkalender-fuer-saison-2026/2027-festgelegt",
+          "https://www.bundesliga.com/en/bundesliga/news/2026-27-fixture-lists-now-available-38068"
+        ],
+        "fixtureFile": "partidas-2026-27.json",
+        "notes": [
+          "Sem rodada no fim de semana de 1 de maio. Relegation prevista até 1 de junho."
+        ]
+      }
+    },
+    {
+      "id": "ligue_1",
+      "name": "Ligue 1",
+      "countryCode": "FR",
+      "countryName": "França",
+      "sourceCompetitionCode": "fra.1",
+      "division": 1,
+      "playable": true,
+      "seasonKey": "2026-27",
+      "seasonStartYear": 2026,
+      "seasonEndYear": 2027,
+      "timezone": "Europe/Paris",
+      "currency": "EUR",
+      "format": "double_round_robin",
+      "clubs": 18,
+      "rounds": 34,
+      "points": {
+        "win": 3,
+        "draw": 1,
+        "loss": 0
+      },
+      "rules": {
+        "down": [
+          17,
+          18
+        ],
+        "up": [],
+        "table": "france",
+        "interDivisionPlayoff": {
+          "upperPosition": 16,
+          "lowerDivisionCode": "fra.2",
+          "lowerQualifier": "winner_L2_playoff",
+          "legs": 2,
+          "dates": [
+            "2027-06-03",
+            "2027-06-06"
+          ],
+          "returnHostPosition": 16,
+          "tieResolution": [
+            "aggregateGoals",
+            "extraTime",
+            "penalties"
+          ]
+        },
+        "sourceUrls": [
+          "https://www.lfp.fr/article/ligue-1-mc-donald-s-le-calendrier-de-la-saison-2026-2027",
+          "https://ligue1.com/fr/articles/l1_article_5281-saison-26-27-le-calendrier-des-matchs-de-ligue-2-bkt",
+          "https://ligue1.com/fr/articles/l1_article_2160-",
+          "https://www.lfp.fr/assets/24_25_Reglement_Championnats_France_26_07_2024_7cdc2a4af9.pdf"
+        ]
+      },
+      "calendar": {
+        "regularSeasonOpener": "2026-08-21",
+        "regularSeasonClosingWindowEnd": "2027-05-29",
+        "snapshotFirstMatchDate": "2026-08-21",
+        "snapshotLastMatchDate": "2027-05-29",
+        "sourceUrls": [
+          "https://www.lfp.fr/article/ligue-1-mc-donald-s-le-calendrier-de-la-saison-2026-2027",
+          "https://www.lfp.fr/assets/calendrier_1_2026_2027_4aed1df140.pdf"
+        ],
+        "fixtureFile": "partidas-2026-27.json"
+      }
+    },
+    {
+      "id": "ligue_2",
+      "name": "Ligue 2",
+      "countryCode": "FR",
+      "countryName": "França",
+      "sourceCompetitionCode": "fra.2",
+      "division": 2,
+      "playable": true,
+      "seasonKey": "2026-27",
+      "seasonStartYear": 2026,
+      "seasonEndYear": 2027,
+      "timezone": "Europe/Paris",
+      "currency": "EUR",
+      "format": "double_round_robin",
+      "clubs": 18,
+      "rounds": 34,
+      "points": {
+        "win": 3,
+        "draw": 1,
+        "loss": 0
+      },
+      "rules": {
+        "down": [
+          17,
+          18
+        ],
+        "up": [
+          1,
+          2
+        ],
+        "table": "france",
+        "promotionPlayoff": {
+          "positions": [
+            3,
+            4,
+            5
+          ],
+          "eliminators": [
+            [
+              4,
+              5
+            ]
+          ],
+          "eliminatorLegs": 1,
+          "eliminatorDate": "2027-05-25",
+          "qualifier": [
+            3,
+            "winner_4_5"
+          ],
+          "qualifierLegs": 1,
+          "qualifierDate": "2027-05-28",
+          "winner": "plays_16th_fra_1",
+          "higherSeedHosts": true,
+          "drawAfter90": "penalties_prior_reference"
+        },
+        "interDivisionPlayoff": {
+          "upperPosition": 16,
+          "lowerDivisionCode": "fra.3",
+          "lowerQualifier": "winner_L3_playoff",
+          "legs": 2,
+          "dates": [
+            "2027-06-01",
+            "2027-06-06"
+          ],
+          "returnHostPosition": 16,
+          "tieResolution": [
+            "aggregateGoals",
+            "extraTime",
+            "penalties"
+          ]
+        },
+        "sourceUrls": [
+          "https://ligue1.com/fr/articles/l1_article_5281-saison-26-27-le-calendrier-des-matchs-de-ligue-2-bkt",
+          "https://media.fff.fr/uploads/documents/partie-3-reglement-du-championnat-de-l3.pdf",
+          "https://www.fff.fr/article/17022-le-calendrier-2026-2027-est-servi.html",
+          "https://ligue1.com/fr/articles/l1_article_2160-",
+          "https://www.lfp.fr/assets/24_25_Reglement_Championnats_France_26_07_2024_7cdc2a4af9.pdf"
+        ]
+      },
+      "calendar": {
+        "regularSeasonOpener": "2026-08-08",
+        "regularSeasonClosingWindowEnd": "2027-05-22",
+        "snapshotFirstMatchDate": "2026-08-08",
+        "snapshotLastMatchDate": "2027-05-22",
+        "sourceUrls": [
+          "https://ligue1.com/fr/articles/l1_article_5281-saison-26-27-le-calendrier-des-matchs-de-ligue-2-bkt",
+          "https://s3.eu-west-1.amazonaws.com/image.mpg/L2BKT_2627_CALENDRIER.pdf",
+          "https://www.lfp.fr/assets/calendrier_1_2026_2027_4aed1df140.pdf"
+        ],
+        "fixtureFile": "partidas-2026-27.json"
+      }
+    }
+  ],
+  "tieBreakProfiles": {
+    "premier": [
+      "goalDifference",
+      "goalsFor",
+      "headToHeadPointsForDecisivePositions",
+      "headToHeadAwayGoalsForDecisivePositions",
+      "neutralDeciderForDecisivePositions"
+    ],
+    "efl": [
+      "goalDifference",
+      "goalsFor",
+      "headToHeadPoints",
+      "headToHeadGoalDifference",
+      "headToHeadGoalsFor",
+      "wins",
+      "awayGoals",
+      "disciplinePointsAfter42Matches",
+      "straightRedOffences",
+      "deciderIfRequired"
+    ],
+    "spainTwo": [
+      "headToHeadGoalDifference",
+      "goalDifference",
+      "goalsFor",
+      "fairPlay",
+      "neutralDecider"
+    ],
+    "spainMulti": [
+      "headToHeadPoints",
+      "headToHeadGoalDifference",
+      "goalDifference",
+      "goalsFor",
+      "fairPlay",
+      "neutralDecider"
+    ],
+    "italy": [
+      "headToHeadPoints",
+      "headToHeadGoalDifference",
+      "goalDifference",
+      "goalsFor",
+      "drawLots"
+    ],
+    "germany": [
+      "goalDifference",
+      "goalsFor",
+      "headToHeadAggregate",
+      "headToHeadAwayGoals",
+      "awayGoals",
+      "neutralDecider"
+    ],
+    "france": [
+      "goalDifference",
+      "headToHeadPoints",
+      "headToHeadGoalDifference",
+      "headToHeadGoalsFor",
+      "headToHeadAwayGoals",
+      "goalsFor",
+      "awayGoals",
+      "fairPlay"
+    ]
+  }
+}
