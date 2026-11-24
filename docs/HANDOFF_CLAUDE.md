@@ -11,7 +11,8 @@ Demandas vigentes
 
 MUNDO-001 — Ligas da Europa e da América do Sul, em paralelo, com continentais
 
-Status: EM IMPLEMENTAÇÃO (etapa M1). A especificação saiu do pedido do
+Status: REVISÃO DO PM NECESSÁRIA para as etapas M1 a M6a (PR #154, suíte
+completa 191/191). A M6b começa depois da revisão. A especificação saiu do pedido do
 Murilo (24/11/2026), dos três pacotes de dados anexos e das decisões dele
 na mesma data:
 - D1: simulação híbrida;
