@@ -81,8 +81,12 @@ const { carreiraV2, noMotor, saveNoServidor, base } = require("./_v2_carreira");
     if (!o) return { erro: "sem proposta", erroTela: (document.querySelector(".inline-error") || {}).textContent || null };
     const papel = o.papel, salario = o.salario, wage = o.marketValue;
     let fica = true, voltas = 0;
-    while (fica && o.status === "pending" && voltas++ < 6) fica = N.resolverProposta(o, C.currentRound);
-    return { status: o.status, fica, motivo: o.motivo || null, papel, salario, comprado: C.squad.some((p) => String(p.id) === id), resultado: o.resultado || null, wage };
+    // O item mede o aceite do clube vendedor, não a concorrência: Math.random
+    // alto impede a proposta rival (semana.maybeSpawnRivalOffer), que de vez
+    // em quando nascia e levava o jogador.
+    const r = Math.random; Math.random = () => 0.99;
+    try { while (fica && o.status === "pending" && voltas++ < 6) fica = N.resolverProposta(o, C.currentRound); } finally { Math.random = r; }
+    return { status: o.status, fica, motivo: o.motivo || null, papel, salario, comprado: C.squad.some((p) => String(p.id) === id), resultado: o.resultado || null, wage, rival: o.rivalOffer ? o.rivalOffer.clubName : null, noClube: (C.leagueSquads[o.clubId] || []).some((p) => String(p.id) === id) };
   }, { id: a.id });
   check("4) Com papel de rotação e o salário atual, o clube aceita sem contraproposta e o jogador chega ao seu elenco:",
     r4.comprado && r4.fica === false && r4.status === "pending", JSON.stringify(r4));
