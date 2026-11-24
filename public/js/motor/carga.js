@@ -26,7 +26,7 @@ import { ponteAvisar, ponteFim } from "./jogo.js";
 import { BOOST_ITEMS, nextOpponentId, ponte } from "./ponte.js";
 import { SUBPOS_LABEL, allMarketPlayers, ambiente, avisar, subPositionOf, syncCalendarToRound, transferWindowStatus } from "./semana.js";
 import { abbreviateName, fmtBRL } from "./texto.js";
-import { ALL_COMPETITIONS_ORDER, autoLineup, backfillPlayerPotential, buildLeagueSquads, buildSquad, computeBoardGoal, defaultSectorTactics, ensureUniquePlayerIds, evaluateAlwaysCheckableAchievements, initSponsorship, initialStadium, setupCup } from "./virada.js";
+import { autoLineup, backfillPlayerPotential, buildLeagueSquads, buildSquad, computeBoardGoal, defaultSectorTactics, ensureUniquePlayerIds, evaluateAlwaysCheckableAchievements, initSponsorship, initialStadium, setupCup } from "./virada.js";
 import * as financas from "./financas.js";
 import * as mercado from "./mercado.js";
 import * as treino from "./treino.js";
@@ -298,7 +298,7 @@ export async function loadLeague(competitionId = "brasileirao", opts = {}) {
 }
 
 export async function loadOtherCompetitionsTeams(homeCompetitionId, forceDemoMap = {}) {
-  const others = ALL_COMPETITIONS_ORDER.filter((c) => c !== homeCompetitionId);
+  const others = estado.divisoesDoPais().filter((c) => c !== homeCompetitionId);
   const health = await saudeDoServidor();
   const liveModeByCompetition = { [homeCompetitionId]: estado.modoReal() };
   const otherTeams = await Promise.all(others.map(async (compId) => {
@@ -1094,7 +1094,7 @@ export async function enterAfterAuth() {
     if (saved.career.marketScope === "multi") {
       const lm = saved.career.liveModeByCompetition || {};
       const forceDemoMap = {};
-      ALL_COMPETITIONS_ORDER.forEach((c) => { if (lm[c] === false) forceDemoMap[c] = true; });
+      estado.divisoesDoPais(saved.career).forEach((c) => { if (lm[c] === false) forceDemoMap[c] = true; });
       await loadOtherCompetitionsTeams(homeCompetitionId, forceDemoMap);
     }
     tela("setBootProgress", 4, 5, "Preparando o clube...");
@@ -1115,7 +1115,7 @@ export async function enterAfterAuth() {
     // carreira) — sem efeito em carreira sem o sistema ativado.
     if (CAREER.divisionTeams) {
       definirLigaAtual(CAREER.divisionTeams[competicaoAtual()]);
-      definirTodosTimes(ALL_COMPETITIONS_ORDER.flatMap((id) => CAREER.divisionTeams[id]));
+      definirTodosTimes(estado.divisoesDoPais(CAREER).flatMap((id) => CAREER.divisionTeams[id]));
     }
     // Modo ponte (motor escondido da v2): NÃO grava ao abrir. O motor pode
     // ficar aberto enquanto a v2 grava a escalação; uma gravação de abertura

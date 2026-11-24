@@ -18,7 +18,7 @@
    fonte de dados (modoReal) e a herança do técnico que trocou de clube.
    Não chama a tela: avisos viram o evento "aviso".
 =================================================================== */
-import { carreiraAtual, definirCarreira, ligaAtual, definirLigaAtual, todosTimes, definirTodosTimes, competicaoAtual, definirCompeticaoAtual, timePorId, forcaMediaDoElenco, PARIDADE_CPU } from "./estado.js";
+import { carreiraAtual, definirCarreira, ligaAtual, definirLigaAtual, todosTimes, definirTodosTimes, competicaoAtual, definirCompeticaoAtual, timePorId, forcaMediaDoElenco, PARIDADE_CPU, divisoesDoPais, DIVISOES_BRASIL } from "./estado.js";
 import * as estado from "./estado.js";
 import { ambiente, applyCalendarMonthlyFinances, avisar, CALENDAR_PHASE_BY_MONTH, leagueSquadFor, marketTeamsPool, MAX_LEAGUE_SQUAD, MAX_LEAGUE_SQUAD_OTHER_DIVISION, MAX_PRINCIPAL, MIN_LEAGUE_SQUAD, MIN_LEAGUE_SQUAD_OTHER_DIVISION, minSquadSizeFor, pushTransferLog, viradaDoCaixaCpu, AGENTES_LIVRES_MAX, entrarNoElencoCpu, caixaDaCpu, maxSquadSizeFor } from "./semana.js";
 import { CUP_PRELIM_ROUND, CUP_ROUNDS, CUP_ROUNDS_EXPANDED, FORMATIONS, SECTOR_IDS, SECTOR_INSTRUCTIONS, freshCareerTotals, freshCupTie, materializarAdversarioDaCopa, resolveCupPhase, settleLoanIn, settleLoanOut, shuffleWithRng } from "./fechamento.js";
@@ -59,7 +59,9 @@ export function defaultSectorTactics() {
   return out;
 }
 
-export const ALL_COMPETITIONS_ORDER = ["brasileirao", "serie_b", "serie_c"];
+// As 3 do Brasil (a tela antiga e saves brasileiros). No motor, use
+// estado.divisoesDoPais(): no save do mundo são as divisões do país.
+export const ALL_COMPETITIONS_ORDER = DIVISOES_BRASIL;
 
 export function mapPositionGroup(raw) {
   const s = String(raw || "").toLowerCase();
@@ -767,13 +769,13 @@ export function freshDivisionRound(teams) {
 export function initDivisionSystem() {
   const CAREER = carreiraAtual();
   CAREER.divisionTeams = {};
-  ALL_COMPETITIONS_ORDER.forEach((compId) => {
+  divisoesDoPais().forEach((compId) => {
     const source = compId === competicaoAtual() ? ligaAtual() : todosTimes().filter((t) => t.competitionId === compId);
     CAREER.divisionTeams[compId] = source.map((t) => ({ ...t, competitionId: compId }));
   });
   CAREER.serieDPool = ambiente.timesSerieD().map((t) => ({ ...t, competitionId: "serie_d" })); // global de js/data.js
   CAREER.otherDivisions = {};
-  ALL_COMPETITIONS_ORDER.filter((id) => id !== competicaoAtual()).forEach((compId) => {
+  divisoesDoPais().filter((id) => id !== competicaoAtual()).forEach((compId) => {
     CAREER.otherDivisions[compId] = freshDivisionRound(CAREER.divisionTeams[compId]);
   });
 }
@@ -852,9 +854,9 @@ export async function applyPromotionRelegation() {
     CAREER.competitionId = humanNewCompId;
   }
   definirLigaAtual(CAREER.divisionTeams[competicaoAtual()]);
-  definirTodosTimes(ALL_COMPETITIONS_ORDER.flatMap((id) => CAREER.divisionTeams[id]));
+  definirTodosTimes(divisoesDoPais().flatMap((id) => CAREER.divisionTeams[id]));
   CAREER.otherDivisions = {};
-  ALL_COMPETITIONS_ORDER.filter((id) => id !== competicaoAtual()).forEach((compId) => {
+  divisoesDoPais().filter((id) => id !== competicaoAtual()).forEach((compId) => {
     CAREER.otherDivisions[compId] = freshDivisionRound(CAREER.divisionTeams[compId]);
   });
 
@@ -957,10 +959,11 @@ export function evaluateAlwaysCheckableAchievements() {
 
 export function buildFriendlySlots(cal) {
   const CAREER = carreiraAtual();
-  const myComp = ALL_COMPETITIONS_ORDER.indexOf(competicaoAtual());
+  const ordem = divisoesDoPais();
+  const myComp = ordem.indexOf(competicaoAtual());
   const pool = marketTeamsPool().filter((t) => String(t.id) !== String(CAREER.clubId)
     && leagueSquadFor(t.id).length >= 11
-    && ALL_COMPETITIONS_ORDER.indexOf(t.competitionId || competicaoAtual()) >= myComp);
+    && ordem.indexOf(t.competitionId || competicaoAtual()) >= myComp);
   const slots = [];
   const addFor = (phase, count, optional) => {
     const idxs = cal.weeks.map((w, i) => (w.p === phase ? i : -1)).filter((i) => i >= 0).slice(-count);

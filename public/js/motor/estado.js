@@ -30,6 +30,15 @@ let carreira = null;
 export function carreiraAtual() { return carreira; }
 export function definirCarreira(c) { carreira = c == null ? null : c; return carreira; }
 
+// MUNDO-001 (M6b-1): as divisões jogáveis do país do save, da mais alta
+// para a mais baixa. Save do mundo: `divisoes` gravado na criação (ex.:
+// ["premier_league", "efl_championship"]). Sem o campo (todo save de hoje):
+// as 3 do Brasil, como sempre.
+export const DIVISOES_BRASIL = Object.freeze(["brasileirao", "serie_b", "serie_c"]);
+export function divisoesDoPais(c = carreira) {
+  return c && Array.isArray(c.divisoes) && c.divisoes.length ? c.divisoes : DIVISOES_BRASIL;
+}
+
 // ---------- Versão do save e migrações numeradas ----------
 // Versão atual do save que este jogo escreve.
 export const SCHEMA_VERSION = 2;
