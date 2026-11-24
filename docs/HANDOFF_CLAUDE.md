@@ -64,6 +64,53 @@ Limites desta etapa:
 - a CPU de países no mundo leve não negocia entre si (não tem elencos);
 - a tela do mercado do mundo vem com as telas (M10).
 
+Relatório da M8b, propostas de emprego de outros países (24/11/2026)
+
+O que foi feito (`carreiramundo.js`):
+- `propostaDeFora`, chamada no fim da virada quando não há proposta da
+  própria liga (gancho `ganchosMundo.propostaDeFora`). Um clube de outro
+  país pode chamar o técnico:
+  - prestígio exigido pelo nível da liga do clube e pela força dele nela,
+    contra a reputação do técnico;
+  - sorteio entre os 5 mais exigentes que ele alcança.
+  - Só países com o mesmo tipo de calendário (Europa com Europa; América
+    do Sul e Brasil com América do Sul) e cuja temporada nova ainda não
+    começou: a troca cai entre temporadas dos dois lados.
+  - O Brasil, que tem caminho próprio na carreira, não entra como destino
+    nesta etapa.
+- Aceitar (`ponte.aceitarPropostaClube`, por `trocarDePais`):
+  - a carreira continua no clube novo, no mesmo mundo, com reputação e
+    histórico herdados;
+  - o país novo sai do mundo leve com a composição de agora (inclusive
+    clubes que subiram do catálogo, com a força guardada);
+  - o país antigo volta ao mundo leve com a composição da virada;
+  - saindo do Brasil, a entrada do Brasil no mundo leve recebe a
+    composição e a temporada da carreira.
+- `criarCarreiraNoMundo` aceita a composição do mundo leve (`mundoLeve`)
+  além da do pacote. Nova função `timeDoMundo`.
+
+Defeito achado e corrigido (vinha da M6b): na Argentina, da 2ª temporada
+em diante, o calendário do técnico lia as zonas no lugar errado
+(`CAREER.mundo.zonas` em vez da entrada do país no mundo leve), e clubes
+recém-promovidos podiam ficar sem jogo. Agora a Liga Profesional tem 30
+clubes com 32 jogos e a Primera Nacional 36 com 36, conferido no teste.
+
+Testes:
+- `test_motor_mundo_carreira` 14/14. Caso novo: o técnico do Arsenal
+  aceita um clube de outro país europeu e joga 8 rodadas lá; a Inglaterra
+  segue jogando no mundo leve.
+- O caso da Argentina passou a checar a temporada nova. A 1ª versão da
+  checagem supunha a Liga Profesional e falhou quando o clube caiu para a
+  Primera Nacional; corrigido.
+- Fora da suíte: saída do Brasil para o Equador.
+- Testes do motor: 39/39. Testes da v2: 47/47.
+
+Limites (propostas para o Murilo):
+1. Troca entre hemisférios (Europa ↔ América do Sul/Brasil): cairia no
+   meio da temporada do destino. Ideia para depois: a proposta vale "a
+   partir da próxima temporada" do destino, com o técnico terminando a sua.
+2. O Brasil como destino de um técnico que está fora dele.
+
 Relatório da M7, moeda e finanças por país (24/11/2026)
 
 Decisões do Murilo (24/11):

@@ -130,7 +130,12 @@ export async function criarCarreiraNoMundo(o) {
   const pais = paisDaLiga(indice, liga);
   const [l1, l2] = pais.ligas;
   const outra = liga === l1 ? l2 : l1;
-  const times = { [l1]: timesDaLiga(indice, l1), [l2]: timesDaLiga(indice, l2) };
+  // Composição: a do pacote (carreira nova) ou a do mundo leve (troca de país,
+  // M8b), com a força guardada de quem mudou de divisão.
+  const Pleve = o.mundoLeve ? o.mundoLeve.paises[pais.codigo] : null;
+  const times = Pleve
+    ? Object.fromEntries([l1, l2].map((l) => [l, Pleve.ligas[l].clubes.map((id) => timeDoMundo(indice, Pleve, id, l))]))
+    : { [l1]: timesDaLiga(indice, l1), [l2]: timesDaLiga(indice, l2) };
   const club = times[liga].find((t) => String(t.id) === String(o.clubId));
   if (!club) throw new Error(`mundo: clube ${o.clubId} fora da ${liga}`);
 
@@ -177,6 +182,18 @@ export async function criarCarreiraNoMundo(o) {
     CAREER.caixaCpu[id] = Math.round(mercado.caixaNormal(wageCap) * porteDoClube(indice, id) / 1000) * 1000;
   }
 
+  if (Pleve) {
+    // Troca de país (M8b): o mesmo mundo; o país novo sai do mundo leve.
+    CAREER.mundoLeve = { ...o.mundoLeve, ativos: [pais.codigo] };
+    CAREER.mundo = { formato: 1, versaoCatalogo: indice.versao, pais: pais.codigo, k: Pleve.k, ano: Pleve.ano };
+    aplicarCalendario(CAREER, indice, Pleve.k);
+    // A semana da carreira não volta atrás: começa na semana do mundo.
+    const idx = CAREER.calendar.weeks.findIndex((w) => `${w.a}-${w.d}` >= CAREER.mundoLeve.semana);
+    CAREER.calendar.idx = Math.max(0, idx);
+    leve = null;
+    return CAREER;
+  }
+
   // Calendário e rodadas pela agenda do relógio.
   aplicarCalendario(CAREER, indice, 0);
 
@@ -186,6 +203,23 @@ export async function criarCarreiraNoMundo(o) {
   CAREER.mundoLeve = ML.salvarMundo(m);
   CAREER.mundo = { formato: 1, versaoCatalogo: indice.versao, pais: pais.codigo, k: 0, ano: comp.temporada.anoInicial };
   return CAREER;
+}
+
+// Time de uma liga do mundo pela composição do mundo leve: do índice (clube
+// jogável ou do catálogo de 3ª), com a força guardada quando mudou de divisão.
+export function timeDoMundo(indice, P, id, liga) {
+  const S = String(id);
+  const c = indice.clubes.find((x) => String(x.id) === S) || indice.terceira.find((x) => String(x.id) === S);
+  const comp = indice.competicoes[liga];
+  const ajusteNivel = comp && comp.nivel ? Math.round((comp.nivel - 1) * OVERALL_POR_NIVEL * 10) / 10 : 0;
+  const f = P && P.forcas && P.forcas[S];
+  const fraco = () => { const ts = timesDaLiga(indice, liga); return { atk: Math.min(...ts.map((t) => t.atk)) * 0.97, def: Math.max(...ts.map((t) => t.def)) * 1.03 }; };
+  const base = f ? { atk: f[0], def: f[1] } : c && c.atk != null ? { atk: c.atk, def: c.def } : fraco();
+  return {
+    id: c.id, name: c.nome, short: c.sigla, logo: c.escudo || c.logoOrigem || null, c1: c.c1 || "#5B6B7F", c2: c.c2 || "#1F2933",
+    venue: c.estadio ? { name: c.estadio.nome, city: c.estadio.cidade || null, capacity: c.estadio.capacidade } : null,
+    ...base, competitionId: liga, ajusteNivel,
+  };
 }
 
 // Agenda de uma liga do país do técnico na temporada k (0 = a do pacote),
@@ -208,7 +242,9 @@ export function aplicarCalendario(CAREER, indice, k) {
   const liga = CAREER.competitionId;
   const outra = liga === l1 ? l2 : l1;
   const clubesDe = (l) => (CAREER.divisionTeams && CAREER.divisionTeams[l] ? CAREER.divisionTeams[l].map((t) => t.id) : null);
-  const zonasDe = (l) => (CAREER.mundo && CAREER.mundo.zonas && CAREER.mundo.zonas[l]) || null;
+  // Zonas/grupos da temporada: na entrada do país no mundo leve (a virada as atualiza).
+  const P = CAREER.mundoLeve && CAREER.mundo && CAREER.mundoLeve.paises[CAREER.mundo.pais];
+  const zonasDe = (l) => (P && P.zonas && P.zonas[l]) || null;
   const c = CM.montarCalendarioDaCarreira({
     agendaTecnico: agendaDaLiga(indice, liga, k, clubesDe(liga), zonasDe(liga)),
     agendaSeguinte: agendaDaLiga(indice, liga, k + 1, clubesDe(liga), zonasDe(liga)),
@@ -698,3 +734,88 @@ export function podarExterior(CAREER) {
   return podados;
 }
 ganchosMundo.podarExterior = (CAREER) => podarExterior(CAREER);
+
+// ---------- propostas de emprego de outros países (M8b) ----------
+// No início da temporada, um clube de outro país do mundo pode chamar o
+// técnico, pela reputação dele e pelo nível da liga do clube. Só países com o
+// mesmo tipo de calendário (Europa com Europa; América do Sul com América do
+// Sul), para a troca cair entre temporadas dos dois lados. O Brasil (caminho
+// próprio da carreira) não entra como destino nesta etapa.
+const anoCivilDoPais = (indice, cod) => {
+  if (cod === "BR") return true;
+  const p = indice.paises.find((x) => x.codigo === cod);
+  return !!(p && indice.competicoes[p.ligas[0]].temporada.anoCivil);
+};
+// A temporada do país no mundo leve ainda não teve jogo (a troca cai entre
+// temporadas: o técnico começa a temporada nova desde a 1ª rodada).
+export function temporadaNaoComecou(P) {
+  return Object.values(P.ligas).every((L) => !String(L.placares || "").replace(/\./g, "") && !(L.plano && (L.plano.gerados || []).length));
+}
+
+export function propostaDeFora(CAREER) {
+  const indice = indiceAtual;
+  if (!indice || !CAREER || !CAREER.mundoLeve) return null;
+  if ((CAREER.clubProposals || []).length) return null;
+  const meuPais = CAREER.mundo ? CAREER.mundo.pais : "BR";
+  const minhaLiga = indice.competicoes[CAREER.competitionId];
+  const meuNivel = minhaLiga && minhaLiga.nivel ? minhaLiga.nivel : 1.1;
+  const reputacao = CAREER.reputation == null ? 50 : CAREER.reputation;
+  const civil = anoCivilDoPais(indice, meuPais);
+  const candidatos = [];
+  for (const [cod, P] of Object.entries(CAREER.mundoLeve.paises)) {
+    if (cod === meuPais || cod === "BR" || (CAREER.mundoLeve.ativos || []).includes(cod)) continue;
+    if (anoCivilDoPais(indice, cod) !== civil) continue;
+    if (!temporadaNaoComecou(P)) continue;
+    for (const [liga, L] of Object.entries(P.ligas)) {
+      const comp = indice.competicoes[liga];
+      if (!comp || !comp.nivel) continue;
+      for (const id of L.clubes) {
+        const t = timeDoMundo(indice, P, id, liga);
+        // Prestígio: o nível da liga e a força do clube nela (atk alto e def baixo).
+        const forca = (t.atk || 1) / (t.def || 1);
+        const exigida = Math.max(40, Math.min(95, Math.round(50 + (comp.nivel - meuNivel) * 120 + (forca - 1) * 25)));
+        if (reputacao >= exigida && comp.nivel >= meuNivel - 0.05) candidatos.push({ id, nome: t.name, cod, liga, exigida, comp });
+      }
+    }
+  }
+  if (!candidatos.length) return null;
+  candidatos.sort((a, b) => b.exigida - a.exigida || String(a.id).localeCompare(String(b.id)));
+  const rng = rngDaChave(`proposta-fora:${CAREER.clubId}:${CAREER.seasonYear}`);
+  // Entre os mais exigentes que ele alcança, um por sorteio (sem repetir sempre o mesmo).
+  const topo = candidatos.slice(0, 5);
+  const c = topo[Math.floor(rng() * topo.length)];
+  const proposta = {
+    clubId: String(c.id), clubName: c.nome, reputationRequired: c.exigida, budgetOffered: null, seasonYear: CAREER.seasonYear,
+    mundo: { pais: c.cod, liga: c.liga, ligaNome: c.comp.nome },
+  };
+  CAREER.clubProposals = [...(CAREER.clubProposals || []), proposta];
+  return proposta;
+}
+ganchosMundo.propostaDeFora = (CAREER) => { avancarMundoLeve(CAREER); return propostaDeFora(CAREER); };
+
+// Aceitar a proposta de outro país: a carreira continua no clube novo, no
+// mesmo mundo. O país antigo vai para o mundo leve (a composição e o catálogo
+// dele já estão lá, atualizados pela virada); o novo sai do mundo leve com a
+// composição de agora. Reputação e histórico do técnico seguem (herança,
+// como na demissão ou na troca de clube de sempre).
+export async function trocarDePais(CAREER, proposta, buscar) {
+  const indice = indiceAtual;
+  if (!indice || !proposta || !proposta.mundo) return { ok: false, motivo: "proposta-invalida" };
+  const P = CAREER.mundoLeve.paises[proposta.mundo.pais];
+  if (!P || !P.ligas[proposta.mundo.liga] || !P.ligas[proposta.mundo.liga].clubes.some((x) => String(x) === String(proposta.clubId))) return { ok: false, motivo: "clube-invalido" };
+  if (!temporadaNaoComecou(P)) return { ok: false, motivo: "temporada-em-andamento", mensagem: "A temporada desse país já começou: a proposta vale na próxima." };
+  const mundoLeve = { ...JSON.parse(JSON.stringify(CAREER.mundoLeve)) };
+  // Saindo do Brasil: a entrada do Brasil no mundo leve passa a ter a
+  // composição e a temporada da carreira (a que vale), para seguir sem ele.
+  if (!CAREER.mundo && mundoLeve.paises.BR && CAREER.divisionTeams) {
+    const BR = mundoLeve.paises.BR;
+    for (const l of ["brasileirao", "serie_b", "serie_c"]) if (CAREER.divisionTeams[l]) BR.ligas[l] = { clubes: CAREER.divisionTeams[l].map((t) => t.id), placares: "" };
+    BR.catalogo = (CAREER.serieDPool || []).map((t) => t.id);
+    for (const t of [...Object.values(CAREER.divisionTeams).flat(), ...(CAREER.serieDPool || [])]) if (t.atk != null) BR.forcas[String(t.id)] = [t.atk, t.def];
+    BR.k += CAREER.seasonYear - BR.ano; BR.ano = CAREER.seasonYear;
+  }
+  const elencosDaLiga = (l) => elencosDaLigaDoMundo(l, buscar);
+  await criarCarreiraNoMundo({ indice, liga: proposta.mundo.liga, clubId: proposta.clubId, elencosDaLiga, mundoLeve });
+  return { ok: true };
+}
+ganchosMundo.trocarDePais = (CAREER, proposta, buscar) => trocarDePais(CAREER, proposta, buscar);

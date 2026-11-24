@@ -705,6 +705,8 @@ export async function advanceSeason() {
   }
   // MUNDO-001 (M8): clubes de fora sem vínculo com o técnico saem do save.
   if (CAREER.exterior && estado.ganchosMundo.podarExterior) estado.ganchosMundo.podarExterior(CAREER);
+  // MUNDO-001 (M8b): sem proposta da própria liga, a de um clube de outro país.
+  if (CAREER.mundoLeve && estado.ganchosMundo.propostaDeFora) estado.ganchosMundo.propostaDeFora(CAREER);
   // P0-IDS-001 — reposição de base/elenco e times vindos da Série D
   // reusam ids (`base_<clube>_<n>`, `gen_<clube>_<n>`) — garante ids
   // únicos de novo antes da temporada nova começar.
