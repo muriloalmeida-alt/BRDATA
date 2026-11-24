@@ -15,7 +15,7 @@
 | E2 | #146 | As outras divisões e os jogos de Copa entre CPUs jogam com os jogadores (cartões, lesões, autores, recuperação). |
 | D6 | #147 | O save vai comprimido ao servidor (~10x menor). |
 | E3 | #148–#150 | Caixa por clube (D2). Mercado CPU × CPU com os seus avaliadores, liberando excedente. Agentes livres que você e a CPU contratam. Cláusula de compra decidida por preço, caixa e papel. |
-| E4 | #151–#152 | Treino semanal, evolução por rodada e moral pela sua regra. Base da CPU. Troca de clube sem recomeçar o mundo. |
+| E4 | #151–#153 | Treino semanal, evolução por rodada e moral pela sua regra. Base da CPU. Troca de clube sem recomeçar o mundo. Minutos para os jovens; orçamento e base ficam com o clube na troca. |
 
 Cada regra nova tem uma chave em `estado.PARIDADE_CPU` (`convocacao`, `forca`, `tecnico`, `divisoes`, `financas`, `mercado`, `contratos`, `evolucao`, `troca`). Todas ficam ligadas no jogo e desligadas nos testes de equivalência com as cópias congeladas.
 
@@ -39,36 +39,43 @@ Cada regra nova tem uma chave em `estado.PARIDADE_CPU` (`convocacao`, `forca`, `
 
 ## 3. Validação de 5 temporadas
 
-Base: a branch do E4 completa. Dados reais e Modo Exemplo, 3 seeds × 5 temporadas.
+Base: a branch do E4 completa (com o PR3, 24/11). Dados reais e Modo Exemplo, 3 seeds × 5 temporadas.
 
 | Métrica | Dados reais | Modo Exemplo | Meta |
 |---|---|---|---|
-| Gols por jogo (A / B / C) | 2,60 / 2,97 / 2,91 | 3,16 / 2,99 / 2,88 | ±0,15 do E0 (A real 2,63) |
-| Zebras por faixa | todas dentro de ±4 p.p. do E0 | idem | D13: manter o nível |
-| Pico do save (JSON) | 880 KB | 838 KB | vai comprimido (~100 KB) desde a D6 |
-| Rodada, p50 / p95 (Node, com gravação) | 150 / 300 ms | 152 / 279 ms | aceito pelo Murilo (E2 e E4); confirmar no iPhone |
+| Gols por jogo (A / B / C) | 2,60 / 3,02 / 2,87 | 3,13 / 3,00 / 2,85 | ±0,15 do E0 (A real 2,63) |
+| Zebras CPU × CPU por faixa (<5% / 5–15% / 15–30% / >30%) | 62,1 / 59,6 / 55,4 / 46,1% (E0: 62,5 / 60,2 / 56,6 / 47,6%) | todas dentro de ±4 p.p. do E0 | D13: manter o nível |
+| Pico do save (JSON) | 883 KB | 844 KB | vai comprimido (~97 KB) desde a D6 |
+| Rodada, p50 / p95 (Node, com gravação) | 168 / 319 ms | 172 / 319 ms | aceito pelo Murilo (E2 e E4); iPhone dado como concluído (24/11) |
 | Problemas (demissão, falha de virada) | nenhum | nenhum | nenhum |
 
-Overall médio dos elencos da CPU por temporada:
+Nível dos elencos da CPU no fim de cada temporada (overall médio do elenco /
+média dos 11 melhores de cada clube):
 
 | Temporada | 1 | 2 | 3 | 4 | 5 |
 |---|---|---|---|---|---|
-| Dados reais | 72,3 | 71,6 | 70,8 | 69,6 | 68,5 |
-| Modo Exemplo | 76,4 | 75,5 | 74,6 | 73,5 | 72,2 |
+| Dados reais | 72,3 / 77,1 | 72,4 / 77,0 | 72,8 / 77,1 | 73,0 / 77,0 | 73,5 / 77,1 |
+| Modo Exemplo | 76,4 / 80,6 | 76,3 / 80,0 | 76,2 / 79,5 | 76,3 / 79,1 | 76,3 / 78,9 |
+
+Antes do PR3 (só com a base de 6 olhados), o overall médio caía de 72,3 para
+68,5 (real) e de 76,4 para 72,2 (exemplo).
 
 ## 4. Pontos em aberto
 
-1. **Nível da CPU ao longo das temporadas.** Com o treino semanal igual ao seu e a base da CPU, o overall médio cai cerca de 0,9 a 1,1 por temporada. Antes do E4 a queda era de ~0,5, e sem a base seria de ~1,25.
-   - Causa: o envelhecimento por rodada derruba os veteranos mais rápido do que os jovens crescem. Os jovens da CPU jogam pouco, e a evolução por rodada depende de jogar.
-   - Opções para uma próxima etapa:
-     - a CPU dar minutos aos jovens (rodízio em jogos de menor peso);
-     - calibrar a evolução da base (`BASE_CPU`);
-     - rever o declínio por idade para os dois lados.
-2. **Validação no iPhone (D5/V09).** O tempo da rodada subiu nas etapas E2, E3 e E4. Os números do Node estão acima; falta medir no aparelho.
-3. **Troca de clube:**
-   - as parcelas a pagar e a receber do clube antigo deixam de existir;
-   - o clube novo começa sem jogadores da base.
-4. **Série D (A8):** o desgaste dos clubes da D nos jogos de Copa entre CPUs não fica guardado, por decisão.
+Resolvidos no PR3 (decisões do Murilo, 24/11):
+
+- **Nível da CPU** ("Dar minutos para os jovens"): a CPU escala até 2 jovens de potencial por jogo (`JOVENS_CPU`). Com isso eles chegam ao potencial em 1–2 temporadas; o teto passou a ser o potencial de quem sobe, e a peneira da base foi de 6 para 20 olhados (`BASE_CPU`). Resultado: o XI dos dados reais fica estável (77,1 → 77,1). Restos medidos:
+  - dados reais: o overall médio do elenco sobe ~0,3 por temporada (os reservas jovens chegam ao potencial);
+  - Modo Exemplo: o XI ainda cai ~0,45 por temporada (antes, ~1,1).
+- **Validação no iPhone (D5/V09):** dada como concluída pelo Murilo.
+- **Troca de clube** ("o orçamento e a base são do clube, não do treinador"):
+  - as parcelas a pagar e a receber ficam com o clube antigo; o saldo entra de uma vez no caixa dele;
+  - a base fica guardada no clube antigo e ele promove dela primeiro na virada;
+  - o clube novo vem com a base dele (a guardada, ou 16 jovens como numa carreira nova).
+
+Em aberto:
+
+1. **Série D (A8):** o desgaste dos clubes da D nos jogos de Copa entre CPUs não fica guardado, por decisão.
 
 ## 5. Como reproduzir
 

@@ -186,6 +186,9 @@ const base = "http://localhost:8787";
     JSON.stringify({ after1, cash: [cash6, s6.finances.cash] }));
 
   // 7) Empréstimos: entrada (75%) e saída (clube sorteado; tenta de novo se ninguém quiser).
+  // Os 75% valem sobre o salário na hora do empréstimo (loanOriginalWage): até
+  // aqui o mercado e as renovações da CPU podem ter mudado o salário lido no
+  // preparo.
   await go(`/mercado/emprestimo?clube=${encodeURIComponent(prep.d.club)}&id=${encodeURIComponent(prep.d.id)}`, "Combine o empréstimo.");
   await v2.locator('[aria-labelledby="ln-p"] .pr-seg-btn', { hasText: "75%" }).click();
   await at360("emprestimo-entrada");
@@ -206,9 +209,9 @@ const base = "http://localhost:8787";
   const s7 = await serverCareer(v2);
   const lent = Object.values(s7.leagueSquads).flat().find((p) => p.id === out.id);
   check("7) Empréstimo de entrada (75% do salário) e de saída (clube interessado e taxa, sem campo de %):",
-    !!in7 && in7.origin === "loan" && in7.wage === Math.round(prep.d.wage * 0.75 / 100) * 100 && prepOk && prep7.includes("Clube interessado") && prep7.includes("Taxa que você recebe")
+    !!in7 && in7.origin === "loan" && in7.wage === Math.round(in7.loanOriginalWage * 0.75 / 100) * 100 && prepOk && prep7.includes("Clube interessado") && prep7.includes("Taxa que você recebe")
     && !s7.squad.some((p) => p.id === out.id) && !!lent && String(lent.onLoanFromClubId) === String(s7.clubId),
-    JSON.stringify({ in7: in7 && [in7.origin, in7.wage], prep7, lent: !!lent }));
+    JSON.stringify({ in7: in7 && [in7.origin, in7.wage, in7.loanOriginalWage], prep7, lent: !!lent }));
 
   // 8) Histórico e proposta pendente.
   await go("/mercado/historico", "O mercado do clube.");

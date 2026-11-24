@@ -683,6 +683,53 @@ Relatório (17/11):
 
 ⸻
 
+PARIDADE-E4-3 — Minutos para os jovens; orçamento e base do clube na troca (PARIDADE-CPU, E4, PR3)
+
+Status: REVISÃO DO PM NECESSÁRIA.
+Decisões do Murilo (24/11), sobre os pontos em aberto do relatório final:
+"1. Dar minutos para os jovens"; "2. Pode considerar concluído" (validação
+no iPhone, D5/V09); "3. O orçamento e a base é do clube e não do treinador.
+Não faz sentido ter mudanças porque um treinador mudou de clube".
+Feito (motor):
+- Minutos para os jovens (virada.minutosParaJovem, na convocação da CPU,
+  JOVENS_CPU): a CPU põe até 2 jovens por jogo (até 21 anos, potencial ao
+  menos 6 acima do overall, do elenco todo, não só do banco) no lugar do
+  titular mais fraco da posição, se a diferença for de até 12; quem sai
+  vai para o banco. Jogando, o jovem evolui pela regra da rodada jogada,
+  como os seus.
+- Medido: os jovens passaram a jogar (~860 escalações por temporada) e
+  chegam ao potencial em 1–2 temporadas, mas só isso não segurava o nível
+  (o XI caía de 77,1 para 73,6 em 5 temporadas): o teto é o potencial de
+  quem sobe da base. Por isso a peneira da base da CPU foi ampliada:
+  BASE_CPU.olhados 6 → 20 (sobem os 3 de maior potencial, como antes).
+  Calibração (dados reais, 3 seeds × 5 temporadas; overall médio / XI):
+  6 olhados 72,3→68,4 / 77,1→73,6; 12: 72,3→71,7 / 77,1→75,4;
+  16: 72,3→72,3 / 77,1→75,8; 20: 72,3→73,1 / 77,1→76,7 (escolhido: o XI,
+  que decide o jogo, fica estável; o overall sobe ~0,2 por temporada).
+- Troca de clube (virada.trocarDeClube):
+  - as parcelas a pagar e a receber ficam com o clube antigo: o saldo delas
+    (a receber menos a pagar) entra no caixa guardado dele
+    (saldoDasParcelas); você não leva nem paga as do clube antigo;
+  - a base fica no clube antigo (CAREER.basesCpu[clube], no mundo da
+    troca); na virada, ele olha primeiro a base guardada, junto com os
+    gerados, e promove os de maior potencial; ela envelhece um ano e quem
+    passa de 21 sem subir sai;
+  - o clube novo vem com a base dele: a guardada, se um treinador a deixou
+    lá; senão, 16 jovens como numa carreira nova nesse clube.
+- Simplificação (registrada): as parcelas do clube antigo entram de uma vez
+  no caixa dele, não rodada a rodada (a CPU não tem parcelas).
+Testes:
+- test_paridade_troca (7/7): itens 2 e 3 com parcelas e base; novo item 7
+  (o clube antigo promove primeiro da base guardada);
+- test_paridade_evolucao (6/6): novo item 6 (minutos para os jovens).
+Validação de 5 temporadas (real e exemplo, 3 seeds; RELATORIO_FINAL.md):
+- XI da CPU: real 77,1 → 77,1; exemplo 80,6 → 78,9;
+- gols A/B/C real 2,60 / 3,02 / 2,87; zebras dentro de ±1,5 p.p. do E0;
+- rodada p50/p95 168/319 ms; pico do save 883 KB (JSON), ~97 KB comprimido;
+  nenhum problema.
+
+⸻
+
 PARIDADE-E4-2 — Troca de clube sem recomeçar o mundo (PARIDADE-CPU, E4, PR2)
 
 Status: REVISÃO DO PM NECESSÁRIA.

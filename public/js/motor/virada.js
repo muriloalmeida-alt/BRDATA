@@ -389,14 +389,52 @@ export function convocacaoDaCpu(clubId, round, formation = FORMACAO_CPU) {
   const base = curto ? baseSobDemanda(club, CAREER.seasonYear) : [];
   const l = autoLineup([...elenco, ...base], FORMATIONS[formation] ? formation : FORMACAO_CPU, true);
   const porId = new Map([...elenco, ...base].map((p) => [p.id, p]));
+  const starters = l.starters.map((id) => porId.get(id)).filter(Boolean);
+  const bench = l.bench.map((id) => porId.get(id)).filter(Boolean);
+  if (PARIDADE_CPU.evolucao) minutosParaJovem(starters, bench, elenco);
   return {
     formation: l.formation,
-    starters: l.starters.map((id) => porId.get(id)).filter(Boolean),
-    bench: l.bench.map((id) => porId.get(id)).filter(Boolean),
+    starters, bench,
     baseUsada: [...l.starters, ...l.bench].filter((id) => id && String(id).startsWith("cpubase_")).length,
   };
 }
 estado.ganchosMundo.convocacaoCpu = convocacaoDaCpu;
+
+// PARIDADE-CPU · E4 (decisão do Murilo 24/11, "Dar minutos para os jovens"):
+// a CPU escala, por jogo, até 2 jovens do banco de maior potencial (até 21
+// anos, com espaço de crescimento), cada um no lugar do titular mais fraco da
+// posição dele, quando a diferença de overall é pequena (JOVENS_CPU.margem). Jogando, ele
+// evolui pela regra da rodada jogada (treino.agingWeek), como os seus.
+export const JOVENS_CPU = { idadeMax: 21, espaco: 6, margem: 12, porJogo: 2 };
+export function minutosParaJovem(starters, bench, elenco = bench) {
+  const escalados = [];
+  for (let k = 0; k < JOVENS_CPU.porJogo; k++) {
+    const j = umJovem(starters, bench, elenco);
+    if (!j) break;
+    escalados.push(j);
+  }
+  return escalados;
+}
+function umJovem(starters, bench, elenco) {
+  const jovens = elenco.filter((p) => !starters.includes(p) && p.status === "ok" && (p.age || 99) <= JOVENS_CPU.idadeMax && p.group !== "G"
+    && (p.potential || 0) - (p.overall || 0) >= JOVENS_CPU.espaco)
+    .sort((a, b) => (b.potential || 0) - (a.potential || 0) || String(a.id).localeCompare(String(b.id)));
+  for (const j of jovens) {
+    const alvo = starters.filter((p) => p.group === j.group).sort((a, b) => (a.overall || 0) - (b.overall || 0))[0];
+    if (!alvo || (alvo.overall || 0) - (j.overall || 0) > JOVENS_CPU.margem) continue;
+    starters[starters.indexOf(alvo)] = j;
+    // Quem sai do time vai para o banco: no lugar do jovem, se ele estava lá;
+    // senão, no do reserva mais fraco da mesma posição (ou no último).
+    let vaga = bench.indexOf(j);
+    if (vaga < 0) {
+      const mesmo = bench.filter((p) => p.group === j.group).sort((a, b) => (a.overall || 0) - (b.overall || 0))[0];
+      vaga = mesmo ? bench.indexOf(mesmo) : bench.length - 1;
+    }
+    if (vaga >= 0) bench[vaga] = alvo;
+    return j;
+  }
+  return null;
+}
 
 export function initialStadium() {
   return { capacityBonus: 0, pendingUpgrade: null, completed: [] };
@@ -440,23 +478,43 @@ export function renovarElencoDaCpu(club, squad) {
   return comBase;
 }
 // PARIDADE-CPU · E4 (decisão do Murilo 23/11, "Base da CPU"): na virada, cada
-// clube da CPU olha 4 jovens da base (o gerador da sua base, com o potencial
+// clube da CPU olha 20 jovens da base (o gerador da sua base, com o potencial
 // pelo porte do clube) e promove os de maior potencial ao profissional,
 // prontos para jogar (overall em BASE_CPU.fatorOverall do potencial), cada um
 // no lugar do mais velho da posição (que vai para os agentes livres). Sem isso, com a
 // evolução semanal, o nível dos elencos caía ~1,2 por temporada.
-export const BASE_CPU = { olhados: 6, promovidos: 3, fatorOverall: 0.9, idadeMin: 18, idadeMax: 20 };
+export const BASE_CPU = { olhados: 20, promovidos: 3, fatorOverall: 0.9, idadeMin: 18, idadeMax: 20 };
 export function promoverBaseDaCpu(club, elenco) {
   const CAREER = carreiraAtual();
   const rng = ambiente.rngDaChave(`base-cpu:${club.id}:${CAREER.seasonYear}`);
   const env = { ...envJogador(), liveSeason: CAREER.seasonYear };
-  const jovens = Array.from({ length: BASE_CPU.olhados }, (_, i) => temporada.buildBasePlayer(club, i, rng, env))
-    .sort((a, b) => (b.potential || 0) - (a.potential || 0)).slice(0, BASE_CPU.promovidos);
-  const lista = elenco.slice();
-  jovens.forEach((j, i) => {
+  const gerados = Array.from({ length: BASE_CPU.olhados }, (_, i) => temporada.buildBasePlayer(club, i, rng, env));
+  gerados.forEach((j, i) => {
     j.id = `basecpu_${club.id}_${CAREER.seasonYear}_${i}`;
-    j.origin = "principal";
     j.age = BASE_CPU.idadeMin + Math.floor(rng() * (BASE_CPU.idadeMax - BASE_CPU.idadeMin + 1));
+  });
+  // Decisão do Murilo 24/11 ("a base é do clube"): a base que um treinador
+  // deixou no clube (CAREER.basesCpu, ver trocarDeClube) é olhada primeiro,
+  // junto com os gerados; ela envelhece um ano e quem passa de 21 sem subir
+  // sai do clube.
+  const guardada = (CAREER.basesCpu || {})[String(club.id)];
+  const daBase = [];
+  if (guardada) {
+    guardada.forEach((p) => { p.age = (p.age || 0) + 1; });
+    const fica = guardada.filter((p) => p.age <= JOVENS_CPU.idadeMax);
+    daBase.push(...fica.filter((p) => p.age >= BASE_CPU.idadeMin));
+    CAREER.basesCpu[String(club.id)] = fica;
+  }
+  const jovens = [...daBase, ...gerados]
+    .sort((a, b) => (b.potential || 0) - (a.potential || 0) || (daBase.includes(b) - daBase.includes(a))).slice(0, BASE_CPU.promovidos);
+  if (guardada) {
+    const sobe = new Set(jovens.map((j) => j.id));
+    const resto = CAREER.basesCpu[String(club.id)].filter((p) => !sobe.has(p.id));
+    if (resto.length) CAREER.basesCpu[String(club.id)] = resto; else delete CAREER.basesCpu[String(club.id)];
+  }
+  const lista = elenco.slice();
+  jovens.forEach((j) => {
+    j.origin = "principal";
     j.overall = Math.max(j.overall, Math.round((j.potential || 60) * BASE_CPU.fatorOverall));
     j.atk = Math.max(j.atk, j.overall + (j.group === "F" ? 4 : j.group === "M" ? 1 : -8));
     j.def = Math.max(j.def, j.overall + (j.group === "D" || j.group === "G" ? 4 : -8));
@@ -1200,7 +1258,12 @@ export const MUNDO_NA_TROCA = ["schemaVersion", "competitionId", "liveMode", "li
   "schedule", "currentRound", "standings", "resultsByRound", "leagueChampions", "transferLog", "seasonYear", "teamWinlessStreak",
   "calendar", "divisionTeams", "serieDPool", "otherDivisions", "cup", "nivelGols", "agentesLivres", "caixaCpu", "perfisCpu",
   "elencosSerieD", "newsFeed", "notifications", "notificationSettings", "purchaseHistory", "achievements", "objectives",
-  "titlesWonNacional", "titlesWonCopa", "seasonAwards", "trainingAppliedForRound", "baseRevealedCount", "pressLog"];
+  "titlesWonNacional", "titlesWonCopa", "seasonAwards", "trainingAppliedForRound", "baseRevealedCount", "pressLog", "basesCpu"];
+// O que as parcelas pendentes ainda valem: a receber menos a pagar.
+export function saldoDasParcelas(c) {
+  const soma = (l) => (l || []).reduce((s, x) => s + (x.roundsLeft || 0) * (x.perRoundAmount || 0), 0);
+  return soma(c.pendingReceivables) - soma(c.pendingInstallments);
+}
 export function trocarDeClube(clubId) {
   const prev = carreiraAtual();
   const club = ligaAtual().find((t) => String(t.id) === String(clubId));
@@ -1229,11 +1292,26 @@ export function trocarDeClube(clubId) {
     delete p.promessa; delete p.loanListed;
     entrarNoElencoCpu(velho, p);
   });
+  // Decisão do Murilo 24/11 ("o orçamento e a base são do clube, não do
+  // treinador"): a base fica guardada no clube antigo (ele promove dela na
+  // virada) e as parcelas a pagar e a receber ficam com ele, no caixa dele.
+  prev.basesCpu = prev.basesCpu || {};
+  const baseVelha = prev.squad.filter((p) => p.origin === "base");
+  if (baseVelha.length) prev.basesCpu[velho] = baseVelha.map((p) => { const c = { ...p }; delete c.promessa; delete c.loanListed; return c; });
+  else delete prev.basesCpu[velho];
   prev.caixaCpu = prev.caixaCpu || {};
-  prev.caixaCpu[velho] = Math.round((prev.finances && prev.finances.cash) || 0);
-  // 2) O clube novo: o elenco e o caixa guardado dele.
+  prev.caixaCpu[velho] = Math.round(((prev.finances && prev.finances.cash) || 0) + saldoDasParcelas(prev));
+  // 2) O clube novo: o elenco, o caixa e a base dele (a guardada, se um
+  // treinador a deixou lá; senão, a de uma carreira nova nesse clube).
   const caixaNovo = caixaDaCpu(novo);
   const squad = (prev.leagueSquads[novo] || []).map((p) => ({ ...p, origin: "principal" }));
+  const rngBase = ambiente.rngDaChave(`base-troca:${novo}:${prev.seasonYear}`);
+  const baseNova = prev.basesCpu[novo]
+    ? prev.basesCpu[novo].map((p) => ({ ...p, origin: "base" }))
+    : Array.from({ length: 16 }, (_, i) => ({ ...buildBasePlayer(club, i, rngBase), id: `basetroca_${novo}_${prev.seasonYear}_${i}` }));
+  squad.push(...baseNova);
+  delete prev.basesCpu[novo];
+  if (!Object.keys(prev.basesCpu).length) delete prev.basesCpu;
   delete prev.leagueSquads[novo];
   delete prev.caixaCpu[novo];
   // 3) A carreira do clube novo, como numa carreira nova, com o mundo de antes.

@@ -10,6 +10,9 @@
 //     como "Insatisfeito".
 //  4) Virada: sem a evolução anual de antes (quem fica mantém o overall).
 //  5) Regra desligada (equivalência): a semana da CPU só mexe na condição.
+//  6) Minutos para os jovens: na convocação, a CPU põe até 2 jovens de
+//     potencial (mesmo fora do banco) no lugar do titular mais fraco da
+//     posição, se a diferença for pequena; um jovem muito abaixo não entra.
 const { check } = require("./_check");
 const { abrirPagina } = require("./_sem_tela");
 
@@ -73,6 +76,18 @@ const { abrirPagina } = require("./_sem_tela");
       return { igual: sq.map((p) => p.overall + p.atk + p.def + p.phys).join() === antes }; }
     finally { E.PARIDADE_CPU.evolucao = true; }`);
   check("5) Regra desligada (só os testes de equivalência): a semana da CPU só mexe na condição:", r5.igual, JSON.stringify(r5));
+
+  const r6 = ler(`const V = M.virada;
+    const pj = (id, group, overall, age, potential) => ({ id, group, overall, age, potential, status: "ok" });
+    const starters = [pj("g", "G", 75, 28, 76), pj("d1", "D", 74, 29, 75), pj("d2", "D", 70, 31, 70), pj("m1", "M", 76, 27, 78), pj("f1", "F", 77, 26, 79)];
+    const bench = [pj("d3", "D", 69, 30, 69), pj("m2", "M", 60, 20, 80)];
+    const fora = pj("d9", "D", 63, 19, 82), longe = pj("f9", "F", 50, 18, 85);
+    const elenco = [...starters, ...bench, fora, longe];
+    const esc = V.minutosParaJovem(starters, bench, elenco).map((p) => p.id);
+    return { esc, titulares: starters.map((p) => p.id), banco: bench.map((p) => p.id) };`);
+  check("6) Minutos para os jovens: entram os jovens de potencial perto do titular mais fraco da posição (até 2); muito abaixo, não:",
+    r6.esc.includes("d9") && r6.titulares.includes("d9") && !r6.titulares.includes("d2") && r6.banco.includes("d2")
+      && !r6.titulares.includes("f9") && r6.esc.length <= 2, JSON.stringify(r6));
 
   console.log("OK");
   process.exit(0);
