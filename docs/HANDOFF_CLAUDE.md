@@ -46,9 +46,16 @@ Especificação: `docs/mundo/01_Requisitos.md` (MUN-01 a MUN-15, aceite).
 Plano: `docs/mundo/02_Plano_de_execucao.md` (etapas M1 a M11, um PR por
 etapa; liberação no seletor só na M10).
 Pendências de decisão do Murilo (não bloqueiam M1 a M8):
-- DEP-1: clubes de Bolívia, Paraguai, Peru, Venezuela e das associações
-  UEFA sem liga jogável. Opção (a): 4º pacote de dados. Opção (b): nome
-  real com elenco fictício gerado. Precisa ser decidida antes da M9.
+- DEP-1: DECIDIDA (Murilo, 24/11/2026).
+  - CONMEBOL: o 4º pacote (Bolívia, Paraguai, Peru e Venezuela, recebido em
+    24/11 e guardado em `docs/mundo/pacotes/bol-par-per-ven/`) entra só nas
+    copas. São 60 clubes das 1ªs divisões, com elencos reais, como CPU na
+    Libertadores e na Sul-Americana, e uma tabela anual simplificada para
+    os classificados. A força é estimada pelo elenco.
+  - UEFA: as outras associações entram com nome real e elenco fictício.
+  - Leitura do pacote: não traz jogos, força, finanças nem escudos locais;
+    as segundas divisões estão incompletas (21 de 24 clubes bolivianos sem
+    elenco nominal).
 - DEP-2: DECIDIDA (Murilo, 24/11/2026, "Aprovado"). Tabela de jogo fixa
   com as vagas por posição na liga, +1 vaga na Champions pelo desempenho
   europeu no save, vaga dos campeões continentais e potes pelo coeficiente

@@ -202,7 +202,16 @@ Série D hoje.
     força, estádio, elenco ≥ 23), só para os clubes continentais.
   - Alternativa de produto: nome real com elenco fictício gerado, marcado
     como tal (como a Série D).
-  - **Decisão do Murilo pendente antes da M9.**
+  - **Decidido pelo Murilo (24/11/2026):**
+    - CONMEBOL: o 4º pacote (Bolívia, Paraguai, Peru e Venezuela, guardado
+      em `pacotes/bol-par-per-ven/`) entra só nas copas. As 4 primeiras
+      divisões (60 clubes, elencos reais) são clubes da CPU na
+      Libertadores e na Sul-Americana. Os classificados de cada ano saem de
+      uma tabela anual simulada de forma simples. A força é estimada pelo
+      elenco, porque o pacote não traz força, finanças nem jogos. Não há
+      liga jogável nem segundas divisões nesses países.
+    - UEFA: as associações fora das 5 ligas entram com nome real e elenco
+      fictício (como a Série D), com força estimada.
 - **DEP-2. Acesso UEFA por associação.**
   - O pacote continental não traz o Anexo A da UEFA nem os coeficientes em
     JSON.
@@ -276,4 +285,4 @@ Série D hoje.
 | Avanço lento no iPhone | Leve = só placar e tabela por jogo. Trabalho pesado só na virada de cada país. Medição p50/p95 por etapa. |
 | Refatorar o loop de rodada para relógio por data quebra o Brasil | Etapa M2 com equivalência: o save brasileiro antigo roda no caminho de hoje e o novo save no Brasil dá os mesmos resultados com a mesma seed. |
 | Formatos fiéis têm muitas exceções | Motor de fases declarativo, um teste por evento do aceite 3 e regras por configuração, não por `if` de país. |
-| Clubes continentais sem dados (DEP-1) | Decisão do Murilo antes da M9. DEP-2 decidida em 24/11/2026. |
+| Clubes continentais sem dados (DEP-1) | DEP-1 e DEP-2 decididas em 24/11/2026. A força dos clubes estimados precisa de calibração e de medição na M9/M10. |
