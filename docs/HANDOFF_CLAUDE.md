@@ -9,6 +9,33 @@ divergências, aprovação) — elas não são repetidas aqui.
 
 Demandas vigentes
 
+MUNDO-001 — Ligas da Europa e da América do Sul, em paralelo, com continentais
+
+Status: EM IMPLEMENTAÇÃO (etapa M1). A especificação saiu do pedido do
+Murilo (24/11/2026), dos três pacotes de dados anexos e das decisões dele
+na mesma data:
+- D1: simulação híbrida;
+- D2: formatos sul-americanos fiéis;
+- D3: continentais junto com as ligas;
+- D4: só saves novos.
+Especificação: `docs/mundo/01_Requisitos.md` (MUN-01 a MUN-15, aceite).
+Plano: `docs/mundo/02_Plano_de_execucao.md` (etapas M1 a M11, um PR por
+etapa; liberação no seletor só na M10).
+Pendências de decisão do Murilo (não bloqueiam M1 a M8):
+- DEP-1: clubes de Bolívia, Paraguai, Peru, Venezuela e das associações
+  UEFA sem liga jogável. Opção (a): 4º pacote de dados. Opção (b): nome
+  real com elenco fictício gerado. Precisa ser decidida antes da M9.
+- DEP-2: tabela de acesso UEFA. Proposta: tabela de jogo fixa e versionada
+  para as 5 associações jogáveis. Precisa ser decidida antes da M10.
+- DEP-3: promedio da 2ª uruguaia sem 2025. Proposta: começar sem
+  histórico.
+Divergência registrada: os handoffs dos pacotes supõem um país por save,
+com "as outras ligas disponíveis só para outro save". O pedido do Murilo
+(ligas em paralelo) prevalece (CLAUDE.md, seção 2, ordem de conflito). A
+D1 (híbrido) é a forma de caber no save e no celular.
+
+⸻
+
 FASE1-ESC — Fase 1: escalação e orientação da comissão técnica
 
 Status: APROVADO (Murilo, 12/11/2026, "Aprovado" sobre a recomendação
