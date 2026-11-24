@@ -1,0 +1,62 @@
+{
+  "regulationsAndCalendars": {
+    "en1_rule": "https://www.premierleague.com/en/news/62625",
+    "en1_rank": "https://www.premierleague.com/en/news/4657245/202526-premier-league-relegation-faq",
+    "en1_cal": "https://www.premierleague.com/en/news/4675097/all-380-fixtures-for-2026-27",
+    "en2_rule": "https://www.efl.com/documents/efl-regulations/",
+    "en2_play": "https://www.efl.com/documents/play-off-rules/",
+    "en2_detail": "https://www.skysports.com/football/news/13571710/championship-play-offs-change-explained-how-revamped-2026-27-format-from-top-six-to-top-eight-will-work",
+    "en2_expand": "https://www.efl.com/news/2026/march/05/efl-statement--sky-bet-championship-play-off-format/",
+    "en2_cal": "https://www.efl.com/competitions/key-dates/",
+    "en3_cal": "https://www.efl.com/news/2026/june/25/the-2026-27-efl-fixtures-are-here/",
+    "es_rule": "https://rfef.es/sites/default/files/pdf/circulares/1._Circular_84_-_CNL_Primera_y_Segunda_Division___Anexo.pdf?cb=6df81e55",
+    "es3_rule": "https://rfef.es/sites/default/files/pdf/circulares/2._Circular_85_-_CNL_Primera_Federacion___Anexo.pdf?cb=be5f965d",
+    "es1_cal": "https://rfef.es/es/noticias/calendario-completo-primera-division-temporada-202627",
+    "es2_cal": "https://rfef.es/sites/default/files/2026-06/Campeonato_de_Segunda_Division.pdf",
+    "es3_cal": "https://rfef.es/es/noticias/calendarios-completos-primera-federacion-temporada-202627",
+    "it1_rule": "https://images.legaseriea.it/image/private/fl_attachment/prd/aegoankwttfmjaamki5o.pdf",
+    "it2_rule": "https://www.seriec.com/storage/app/media/comunicati/2026-2027/Lega/2627-26L.pdf",
+    "it1_cal": "https://www.legaseriea.it/serie-a/news/le-date-della-stagione-2026-2027",
+    "it1_full": "https://www.legaseriea.it/serie-a/news/calendario-della-serie-a-enilive-2026-27",
+    "it2_cal": "https://www.legab.it/news/ecco-le-date-della-serie-bkt-2026-2027",
+    "it2_full": "https://www.legab.it/seriebkt/calendario",
+    "it3_rule": "https://figc.it/media/264649/tit3_noif_art_da47a70_-aggiornato-al-cu228-del-27-03-2025-seg-gen.pdf",
+    "it3_b": "https://files.figc.it/version/c%3AMWM3NDFkYTMtNTEzMC00%3AOTMyZGU1YzgtYzcwNi00/222%20-%20Seconde%20Squadre%20-%20Disposizioni%20partecipazione%20al%20Campionato%20Serie%20C%202026-2027.pdf",
+    "de_rule": "https://media.dfl.de/sites/2/2026/03/Spielordnung-SpOL-2026-03-06-Stand.pdf",
+    "de_play": "https://www.bundesliga.com/en/bundesliga/news/how-does-promotion-and-relegation-work-in-the-bundesliga-10645",
+    "de_cal": "https://www.dfb.de/news/rahmenterminkalender-fuer-saison-2026/2027-festgelegt",
+    "de_fixtures": "https://www.bundesliga.com/en/bundesliga/news/2026-27-fixture-lists-now-available-38068",
+    "de3_b": "https://www.dfb.de/news/detail/wo-duerfen-zweite-mannschaften-spielen-das-ist-zu-beachten-144294",
+    "fr1_cal": "https://www.lfp.fr/article/ligue-1-mc-donald-s-le-calendrier-de-la-saison-2026-2027",
+    "fr2_cal": "https://ligue1.com/fr/articles/l1_article_5281-saison-26-27-le-calendrier-des-matchs-de-ligue-2-bkt",
+    "fr_general": "https://www.lfp.fr/assets/calendrier_1_2026_2027_4aed1df140.pdf",
+    "fr2_full": "https://s3.eu-west-1.amazonaws.com/image.mpg/L2BKT_2627_CALENDRIER.pdf",
+    "fr_rank": "https://ligue1.com/fr/articles/l1_article_2160-",
+    "fr_sport_prior": "https://www.lfp.fr/assets/24_25_Reglement_Championnats_France_26_07_2024_7cdc2a4af9.pdf",
+    "fr3_rule": "https://media.fff.fr/uploads/documents/partie-3-reglement-du-championnat-de-l3.pdf",
+    "fr3_cal": "https://www.fff.fr/article/17022-le-calendrier-2026-2027-est-servi.html"
+  },
+  "thirdTierMembership": {
+    "eng": "https://www.efl.com/news/2026/june/25/the-2026-27-efl-fixtures-are-here/",
+    "esp": "https://rfef.es/es/noticias/aprobados-los-grupos-de-primera-federacion-para-la-temporada-202627",
+    "ita": "https://www.seriec.com/storage/app/media/comunicati/2026-2027/Lega/2627-33L.pdf",
+    "ger": "https://datencenter.dfb.de/datencenter/3-liga/2026-2027/20",
+    "fra": "https://www.fff.fr/article/17022-le-calendrier-2026-2027-est-servi.html"
+  },
+  "finance": {
+    "eng": "https://www.deloitte.com/uk/en/about/press-room/european-football-revenues-surpass-40bn-for-the-first-time.html",
+    "esp": "https://www.laliga.com/transparencia/gestion-economica/limite-coste-plantilla",
+    "ger": "https://report.dfl.de/2425/en/_assets/downloads/entire-dfl-er25.pdf?h=t5VA6-_4",
+    "ita": "https://www.figc.it/it/federazione/reportcalcio/",
+    "fra": "https://www.sta.lfp.fr/reports-dncg"
+  },
+  "payrollBenchmark": "https://ecfil.uefa.com/",
+  "marketValue": "https://huggingface.co/datasets/minmaxxxer/transfermarkt-player-market-values-2026-11",
+  "roster": "https://footballsquads.co.uk/squads.htm",
+  "matchSources": [
+    "https://github.com/openfootball/football.json/tree/master/2026-27",
+    "https://api.openligadb.de/getmatchdata/bl2/2026",
+    "https://www.espn.com/soccer/"
+  ],
+  "updatedOn": "2026-11-24"
+}

@@ -1,0 +1,40 @@
+{
+  "regulations": {
+    "arg1": "https://assets1.afa.com.ar/2026/BOLETINES/Boletin-Resoluciones-6818---Complementario-01---Reglamento-Torneos-LPF-Primera-2026.pdf",
+    "arg2": "https://assets1.afa.com.ar/2026/Lau/Boletin-Especial-6823---Reglamento-del-Campeonato-de-Primera-Nacional-2026.pdf",
+    "chi1": "https://www.anfp.cl/?jet_download=76787e8731095b0f64dc7be885f0c3ab1294adb9",
+    "chi2": "https://www.anfp.cl/?jet_download=a898ca3a48a908876f672feb1c84cc30f7021e4d",
+    "col1": "https://dimayor.com.co/wp-content/uploads/2026/01/REGLAMENTO-LIGA-2026-V12-1.pdf",
+    "col2": "https://dimayor.com.co/wp-content/uploads/2026/01/REGLAMENTO-TORNEO-2026-V3.pdf",
+    "ecu1": "https://ligapro.ec/wp-content/uploads/2024/07/Reglamento-Competiciones-v2025.pdf",
+    "ecu2": "https://ligapro.ec/wp-content/uploads/2024/07/Reglamento-Competiciones-v2025.pdf",
+    "uru1": "https://www.auf.org.uy/normativa/",
+    "uru2": "https://www.auf.org.uy/se-sorteo-el-fixture-de-la-segunda-division-profesional-2026/"
+  },
+  "calendars": {
+    "arg1": "https://www.afa.com.ar/11275/posts/la-agenda-de-la-afa",
+    "arg2": "https://assets1.afa.com.ar/2025/LEA-2026/OCTUBRE/Boletin-Resoluciones-6969-%2830-10-2026%29.pdf",
+    "chi1": "https://www.campeonatochileno.cl/inicio/",
+    "chi2": "https://www.campeonatochileno.cl/inicio/",
+    "col1": "https://dimayor.com.co/2026/01/14/reglamento-liga-betplay-dimayor-2026/",
+    "col2": "https://dimayor.com.co/2026/01/22/reglamento-torneo-betplay-dimayor-2026/",
+    "ecu1": "https://ligapro.ec/calendario/",
+    "ecu2": "https://www.futbol24.com/national/Ecuador/Campeonato-Serie-B/2026/results",
+    "uru1": "https://www.auf.org.uy/fixtures/",
+    "uru2": "https://www.auf.org.uy/segunda-division-profesional/"
+  },
+  "extra": {
+    "arg3a": "https://www.afa.com.ar/11275/posts/la-agenda-de-la-afa",
+    "arg3b": "https://assets1.afa.com.ar/2025/LEA-2026/FEBRERO/14-REGLAMENTO-FEDERAL-A-2026-%281%29.pdf",
+    "chi3": "https://www.anfp.cl/wp-content/uploads/2026/03/Bases-Segunda-Division-2026-2.pdf",
+    "col3": "https://difutbol.org/wp-content/uploads/2025/12/REGLAMENTO-INTERCLUBES-2026_VF.pdf",
+    "ecu3": "https://www.primicias.ec/deportes/futbol/grupos-cuadrangulares-ascenso-nacional-133603/",
+    "uru3": "https://www.auf.org.uy/se-sorteo-el-fixture-de-la-primera-divisional-c-2026/",
+    "uru2_model": "https://www.auf.org.uy/download.php?archivo=Q29udGVuaWRvcy8xNTQ4OC9SRUdMQU1FTlRPIDIwMTkucGRm&nombre=UkVHTEFNRU5UTyAyMDE5LnBkZg%3D%3D&tipo=YXBwbGljYXRpb24vcGRm&tk=951c58693207bbcc2e8f57468f470990",
+    "ecu2_participantes": "https://ligapro.ec/tabla-de-posiciones/",
+    "ecu2_plantel": "https://www.besoccer.com/competition/teams/ecuador_primera_b/2026",
+    "libertadores": "https://cdn.conmebol.com/wp-content/uploads/2025/12/CL-2026-Manual-de-Clubes-POR-Fev26.pdf",
+    "sudamericana": "https://cdn.conmebol.com/wp-content/uploads/2026/05/ORG_CONMEBOL_Resumen-Ejecutivo-2025-DIGITAL-FLIPBOOK-ESP.pdf"
+  },
+  "sourceDates": "2026-11-24"
+}

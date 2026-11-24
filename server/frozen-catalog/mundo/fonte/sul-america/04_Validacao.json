@@ -1,0 +1,97 @@
+{
+  "result": "passed",
+  "at": "2026-11-24",
+  "clubs": 192,
+  "players": 6659,
+  "fixtures": 3392,
+  "pool": 143,
+  "minimumPlayers": 23,
+  "minimumGoalkeepers": 2,
+  "clubStadiums": 186,
+  "clubCapacities": 183,
+  "clubLogos": 192,
+  "poolLogos": 73,
+  "historicalRows": 420,
+  "covered": [
+    {
+      "competitionId": "arg_liga_profesional",
+      "league": "Liga Profesional",
+      "clubs": 30,
+      "players": 1132,
+      "matches": 506,
+      "validatedPhaseMatches": 480
+    },
+    {
+      "competitionId": "arg_primera_nacional",
+      "league": "Primera Nacional",
+      "clubs": 36,
+      "players": 1237,
+      "matches": 664,
+      "validatedPhaseMatches": 648
+    },
+    {
+      "competitionId": "chi_liga_primera",
+      "league": "Liga de Primera",
+      "clubs": 16,
+      "players": 596,
+      "matches": 240,
+      "validatedPhaseMatches": 240
+    },
+    {
+      "competitionId": "chi_liga_ascenso",
+      "league": "Liga de Ascenso",
+      "clubs": 16,
+      "players": 550,
+      "matches": 247,
+      "validatedPhaseMatches": 240
+    },
+    {
+      "competitionId": "col_primera_a",
+      "league": "Liga BetPlay",
+      "clubs": 20,
+      "players": 671,
+      "matches": 410,
+      "validatedPhaseMatches": 380
+    },
+    {
+      "competitionId": "col_primera_b",
+      "league": "Torneo BetPlay",
+      "clubs": 16,
+      "players": 532,
+      "matches": 292,
+      "validatedPhaseMatches": 240
+    },
+    {
+      "competitionId": "ecu_ligapro_a",
+      "league": "LigaPro Serie A",
+      "clubs": 16,
+      "players": 535,
+      "matches": 312,
+      "validatedPhaseMatches": 312
+    },
+    {
+      "competitionId": "ecu_ligapro_b",
+      "league": "LigaPro Serie B",
+      "clubs": 12,
+      "players": 381,
+      "matches": 192,
+      "validatedPhaseMatches": 192
+    },
+    {
+      "competitionId": "uru_primera",
+      "league": "Liga AUF Uruguaya",
+      "clubs": 16,
+      "players": 540,
+      "matches": 298,
+      "validatedPhaseMatches": 296
+    },
+    {
+      "competitionId": "uru_segunda",
+      "league": "Segunda Profesional AUF",
+      "clubs": 14,
+      "players": 485,
+      "matches": 231,
+      "validatedPhaseMatches": 224
+    }
+  ]
+}

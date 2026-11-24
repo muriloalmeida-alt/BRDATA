@@ -1,0 +1,662 @@
+{
+  "season": "2026",
+  "preparedOn": "2026-11-24",
+  "competitions": [
+    {
+      "id": "arg_liga_profesional",
+      "name": "Liga Profesional",
+      "sourceCode": "arg1",
+      "season": "2026",
+      "countryCode": "AR",
+      "division": 1,
+      "clubs": 30,
+      "calendarYearSeason": true,
+      "timezone": "America/Argentina/Buenos_Aires",
+      "localCurrency": "ARS",
+      "simulationCurrency": "USD",
+      "points": {
+        "win": 3,
+        "draw": 1,
+        "loss": 0
+      },
+      "rules": {
+        "regular": {
+          "tournaments": [
+            "Apertura",
+            "Clausura"
+          ],
+          "groupsPerTournament": 2,
+          "clubsPerGroup": 15,
+          "roundsPerTournament": 16,
+          "interzonalGames": 2,
+          "matchesPerRound": 15
+        },
+        "finals": {
+          "topPerGroup": 8,
+          "legsPerTie": 1,
+          "earlyTieResolution": "verify_AFA_articles_8_14",
+          "laterTieResolution": [
+            "extra_time",
+            "penalties"
+          ]
+        },
+        "annual": {
+          "phases": [
+            "Apertura regular",
+            "Clausura regular"
+          ],
+          "title": true,
+          "tieBreak": [
+            "goalDifference",
+            "goalsFor",
+            "fairPlay",
+            "lots"
+          ]
+        },
+        "relegation": {
+          "total": 2,
+          "oneByAverage": true,
+          "oneByAnnual": true,
+          "seasonWindow": 3,
+          "deciderIfTie": true,
+          "fillDistinctSlots": true
+        }
+      },
+      "regulationSourceUrl": "https://assets1.afa.com.ar/2026/BOLETINES/Boletin-Resoluciones-6818---Complementario-01---Reglamento-Torneos-LPF-Primera-2026.pdf",
+      "calendarSourceUrl": "https://www.afa.com.ar/11275/posts/la-agenda-de-la-afa",
+      "firstFixtureDate": "2026-01-22",
+      "lastFixtureDateInSnapshot": "2026-11-29",
+      "fixtureCount": 506
+    },
+    {
+      "id": "arg_primera_nacional",
+      "name": "Primera Nacional",
+      "sourceCode": "arg2",
+      "season": "2026",
+      "countryCode": "AR",
+      "division": 2,
+      "clubs": 36,
+      "calendarYearSeason": true,
+      "timezone": "America/Argentina/Buenos_Aires",
+      "localCurrency": "ARS",
+      "simulationCurrency": "USD",
+      "points": {
+        "win": 3,
+        "draw": 1,
+        "loss": 0
+      },
+      "rules": {
+        "regular": {
+          "groups": 2,
+          "clubsPerGroup": 18,
+          "rounds": 36,
+          "matchesPerRound": 18,
+          "includesInterzonal": true
+        },
+        "promotion": {
+          "slots": 2,
+          "first": "group_winners_one_match_neutral",
+          "second": "reducido_positions_2_to_8_each_group_plus_loser_of_first_final",
+          "qualifierPairs": [
+            "A2-B8",
+            "B2-A8",
+            "A3-B7",
+            "B3-A7",
+            "A4-B6",
+            "B4-A6",
+            "A5-B5"
+          ],
+          "bye": "loser_of_first_final",
+          "bracketSource": "AFA 6823 item 7"
+        },
+        "relegation": {
+          "total": 4,
+          "bottomPerGroup": 2,
+          "deciderIfTie": true,
+          "routeByAffiliation": true
+        }
+      },
+      "regulationSourceUrl": "https://assets1.afa.com.ar/2026/Lau/Boletin-Especial-6823---Reglamento-del-Campeonato-de-Primera-Nacional-2026.pdf",
+      "calendarSourceUrl": "https://assets1.afa.com.ar/2025/LEA-2026/OCTUBRE/Boletin-Resoluciones-6969-%2830-10-2026%29.pdf",
+      "firstFixtureDate": "2026-02-13",
+      "lastFixtureDateInSnapshot": "2026-11-28",
+      "fixtureCount": 664
+    },
+    {
+      "id": "chi_liga_primera",
+      "name": "Liga de Primera",
+      "sourceCode": "chi1",
+      "season": "2026",
+      "countryCode": "CL",
+      "division": 1,
+      "clubs": 16,
+      "calendarYearSeason": true,
+      "timezone": "America/Santiago",
+      "localCurrency": "CLP",
+      "simulationCurrency": "USD",
+      "points": {
+        "win": 3,
+        "draw": 1,
+        "loss": 0
+      },
+      "rules": {
+        "regular": {
+          "format": "double_round_robin",
+          "rounds": 30
+        },
+        "relegation": {
+          "total": 2,
+          "positions": [
+            15,
+            16
+          ],
+          "deciderIfTie": "ANFP bases"
+        }
+      },
+      "regulationSourceUrl": "https://www.anfp.cl/?jet_download=76787e8731095b0f64dc7be885f0c3ab1294adb9",
+      "calendarSourceUrl": "https://www.campeonatochileno.cl/inicio/",
+      "firstFixtureDate": "2026-01-30",
+      "lastFixtureDateInSnapshot": "2026-12-06",
+      "fixtureCount": 240
+    },
+    {
+      "id": "chi_liga_ascenso",
+      "name": "Liga de Ascenso",
+      "sourceCode": "chi2",
+      "season": "2026",
+      "countryCode": "CL",
+      "division": 2,
+      "clubs": 16,
+      "calendarYearSeason": true,
+      "timezone": "America/Santiago",
+      "localCurrency": "CLP",
+      "simulationCurrency": "USD",
+      "points": {
+        "win": 3,
+        "draw": 1,
+        "loss": 0
+      },
+      "rules": {
+        "regular": {
+          "format": "double_round_robin",
+          "rounds": 30
+        },
+        "promotion": {
+          "total": 2,
+          "direct": [
+            1
+          ],
+          "playoffPositions": [
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8
+          ],
+          "preliminary": [
+            [
+              3,
+              8
+            ],
+            [
+              4,
+              7
+            ],
+            [
+              5,
+              6
+            ]
+          ],
+          "semifinalBye": [
+            2
+          ],
+          "cupResolution": "ANFP Art 85"
+        },
+        "relegation": {
+          "total": 1,
+          "positions": [
+            16
+          ],
+          "deciderIfTie": true
+        }
+      },
+      "regulationSourceUrl": "https://www.anfp.cl/?jet_download=a898ca3a48a908876f672feb1c84cc30f7021e4d",
+      "calendarSourceUrl": "https://www.campeonatochileno.cl/inicio/",
+      "firstFixtureDate": "2026-02-20",
+      "lastFixtureDateInSnapshot": "2026-11-28",
+      "fixtureCount": 247
+    },
+    {
+      "id": "col_primera_a",
+      "name": "Liga BetPlay",
+      "sourceCode": "col1",
+      "season": "2026",
+      "countryCode": "CO",
+      "division": 1,
+      "clubs": 20,
+      "calendarYearSeason": true,
+      "timezone": "America/Bogota",
+      "localCurrency": "COP",
+      "simulationCurrency": "USD",
+      "points": {
+        "win": 3,
+        "draw": 1,
+        "loss": 0
+      },
+      "rules": {
+        "regular": {
+          "tournaments": [
+            "Apertura",
+            "Clausura"
+          ],
+          "roundsPerTournament": 19
+        },
+        "finals": {
+          "qualifiers": 8,
+          "apertura": "knockout",
+          "clausura": "two_quadrangular_groups_then_final"
+        },
+        "relegation": {
+          "total": 2,
+          "method": "points_per_game",
+          "seasonWindow": 3,
+          "qualifyingPhaseOnly": true
+        }
+      },
+      "regulationSourceUrl": "https://dimayor.com.co/wp-content/uploads/2026/01/REGLAMENTO-LIGA-2026-V12-1.pdf",
+      "calendarSourceUrl": "https://dimayor.com.co/2026/01/14/reglamento-liga-betplay-dimayor-2026/",
+      "firstFixtureDate": "2026-01-16",
+      "lastFixtureDateInSnapshot": "2026-12-03",
+      "fixtureCount": 410
+    },
+    {
+      "id": "col_primera_b",
+      "name": "Torneo BetPlay",
+      "sourceCode": "col2",
+      "season": "2026",
+      "countryCode": "CO",
+      "division": 2,
+      "clubs": 16,
+      "calendarYearSeason": true,
+      "timezone": "America/Bogota",
+      "localCurrency": "COP",
+      "simulationCurrency": "USD",
+      "points": {
+        "win": 3,
+        "draw": 1,
+        "loss": 0
+      },
+      "rules": {
+        "regular": {
+          "tournaments": [
+            "Apertura",
+            "Clausura"
+          ],
+          "roundsPerTournament": 15
+        },
+        "finals": {
+          "top": 8,
+          "groups": 2,
+          "roundsInQuadrangular": 6,
+          "groupWinnersFinalLegs": 2
+        },
+        "promotion": {
+          "total": 2,
+          "method": "DIMAYOR_2026_articles_19_25",
+          "checkSameChampion": true,
+          "checkReclassificationLeader": true,
+          "grandFinalAndRepechageConditional": true
+        },
+        "relegation": {
+          "realOpenExchangeVerified": false,
+          "defaultGameSlots": 0,
+          "alternateGameDesign": "opt_in_fixed_slot_replacement_from_amateur_pool"
+        }
+      },
+      "regulationSourceUrl": "https://dimayor.com.co/wp-content/uploads/2026/01/REGLAMENTO-TORNEO-2026-V3.pdf",
+      "calendarSourceUrl": "https://dimayor.com.co/2026/01/22/reglamento-torneo-betplay-dimayor-2026/",
+      "firstFixtureDate": "2026-01-23",
+      "lastFixtureDateInSnapshot": "2026-11-28",
+      "fixtureCount": 292
+    },
+    {
+      "id": "ecu_ligapro_a",
+      "name": "LigaPro Serie A",
+      "sourceCode": "ecu1",
+      "season": "2026",
+      "countryCode": "EC",
+      "division": 1,
+      "clubs": 16,
+      "calendarYearSeason": true,
+      "timezone": "America/Guayaquil",
+      "localCurrency": "USD",
+      "simulationCurrency": "USD",
+      "points": {
+        "win": 3,
+        "draw": 1,
+        "loss": 0
+      },
+      "rules": {
+        "regular": {
+          "rounds": 30
+        },
+        "finals": {
+          "carryInitialPoints": true,
+          "groups": [
+            {
+              "from": 1,
+              "to": 6,
+              "rounds": 10,
+              "purpose": "title"
+            },
+            {
+              "from": 7,
+              "to": 10,
+              "rounds": 6,
+              "purpose": "Sudamericana"
+            },
+            {
+              "from": 11,
+              "to": 16,
+              "rounds": 10,
+              "purpose": "relegation"
+            }
+          ]
+        },
+        "relegation": {
+          "total": 2,
+          "bottomFinalGroup": 2
+        }
+      },
+      "regulationSourceUrl": "https://ligapro.ec/wp-content/uploads/2024/07/Reglamento-Competiciones-v2025.pdf",
+      "calendarSourceUrl": "https://ligapro.ec/calendario/",
+      "firstFixtureDate": "2026-02-21",
+      "lastFixtureDateInSnapshot": "2026-12-13",
+      "fixtureCount": 312
+    },
+    {
+      "id": "ecu_ligapro_b",
+      "name": "LigaPro Serie B",
+      "sourceCode": "ecu2",
+      "season": "2026",
+      "countryCode": "EC",
+      "division": 2,
+      "clubs": 12,
+      "calendarYearSeason": true,
+      "timezone": "America/Guayaquil",
+      "localCurrency": "USD",
+      "simulationCurrency": "USD",
+      "points": {
+        "win": 3,
+        "draw": 1,
+        "loss": 0
+      },
+      "rules": {
+        "regular": {
+          "rounds": 22
+        },
+        "finals": {
+          "carryInitialPoints": true,
+          "groups": [
+            {
+              "from": 1,
+              "to": 6,
+              "rounds": 10,
+              "purpose": "promotion"
+            },
+            {
+              "from": 7,
+              "to": 12,
+              "rounds": 10,
+              "purpose": "relegation"
+            }
+          ]
+        },
+        "promotion": {
+          "total": 2,
+          "filterReserveTeams": true,
+          "ranking": "promotion_hexagonal"
+        },
+        "relegation": {
+          "total": 2,
+          "bottomFinalGroup": 2
+        }
+      },
+      "regulationSourceUrl": "https://ligapro.ec/wp-content/uploads/2024/07/Reglamento-Competiciones-v2025.pdf",
+      "calendarSourceUrl": "https://www.futbol24.com/national/Ecuador/Campeonato-Serie-B/2026/results",
+      "firstFixtureDate": "2026-03-18",
+      "lastFixtureDateInSnapshot": "2026-10-28",
+      "fixtureCount": 192
+    },
+    {
+      "id": "uru_primera",
+      "name": "Liga AUF Uruguaya",
+      "sourceCode": "uru1",
+      "season": "2026",
+      "countryCode": "UY",
+      "division": 1,
+      "clubs": 16,
+      "calendarYearSeason": true,
+      "timezone": "America/Montevideo",
+      "localCurrency": "UYU",
+      "simulationCurrency": "USD",
+      "points": {
+        "win": 3,
+        "draw": 1,
+        "loss": 0
+      },
+      "rules": {
+        "regular": {
+          "aperturaRounds": 15,
+          "intermedioGroups": 2,
+          "intermedioRounds": 7,
+          "clausuraRounds": 15
+        },
+        "title": {
+          "method": "annual_leader_championship_vs_tournament_winners_according_to_AUF",
+          "intermedioSeparateFinal": true
+        },
+        "relegation": {
+          "total": 3,
+          "method": "points_per_game",
+          "seasonWindow": 2
+        }
+      },
+      "regulationSourceUrl": "https://www.auf.org.uy/normativa/",
+      "calendarSourceUrl": "https://www.auf.org.uy/fixtures/",
+      "firstFixtureDate": "2026-02-06",
+      "lastFixtureDateInSnapshot": "2026-11-27",
+      "fixtureCount": 298
+    },
+    {
+      "id": "uru_segunda",
+      "name": "Segunda Profesional AUF",
+      "sourceCode": "uru2",
+      "season": "2026",
+      "countryCode": "UY",
+      "division": 2,
+      "clubs": 14,
+      "calendarYearSeason": true,
+      "timezone": "America/Montevideo",
+      "localCurrency": "UYU",
+      "simulationCurrency": "USD",
+      "points": {
+        "win": 3,
+        "draw": 1,
+        "loss": 0
+      },
+      "rules": {
+        "regular": {
+          "competenciaGroups": 2,
+          "competenciaRounds": 7,
+          "regularRounds": 26,
+          "doubleRoundRobinInRegular": true
+        },
+        "promotion": {
+          "total": 3,
+          "direct": [
+            1,
+            2
+          ],
+          "playoffPositions": [
+            3,
+            4,
+            5,
+            6
+          ],
+          "playoffLegs": 2
+        },
+        "relegation": {
+          "total": 2,
+          "method": "points_per_game",
+          "seasonWindow": 2,
+          "checkAdministrativeDecisions": true
+        }
+      },
+      "regulationSourceUrl": "https://www.auf.org.uy/se-sorteo-el-fixture-de-la-segunda-division-profesional-2026/",
+      "calendarSourceUrl": "https://www.auf.org.uy/segunda-division-profesional/",
+      "firstFixtureDate": "2026-03-13",
+      "lastFixtureDateInSnapshot": "2026-12-05",
+      "fixtureCount": 231
+    }
+  ],
+  "countries": [
+    {
+      "id": "AR",
+      "name": "Argentina",
+      "timezone": "America/Argentina/Buenos_Aires",
+      "localCurrency": "ARS",
+      "simulationCurrency": "USD",
+      "transferWindows": [
+        [
+          "2026-01-14",
+          "2026-03-10"
+        ],
+        [
+          "2026-07-09",
+          "2026-09-02"
+        ]
+      ],
+      "transferWindowSource": "https://inside.fifa.com/associations/ARG/snapshot",
+      "thirdTier": {
+        "name": "Primera B Metropolitana e Torneo Federal A",
+        "playable": false,
+        "catalogCount": 59,
+        "maximumEntrants": 4,
+        "method": "separate_affiliation_tracks_verify_yearly_quotas",
+        "draw": "seeded_uniform_without_replacement_from_eligible_pool",
+        "protectHumanBelowLowestPlayableTier": true
+      }
+    },
+    {
+      "id": "CL",
+      "name": "Chile",
+      "timezone": "America/Santiago",
+      "localCurrency": "CLP",
+      "simulationCurrency": "USD",
+      "transferWindows": [
+        [
+          "2026-01-12",
+          "2026-03-15"
+        ],
+        [
+          "2026-06-29",
+          "2026-08-16"
+        ]
+      ],
+      "transferWindowSource": "https://inside.fifa.com/associations/CHI/snapshot",
+      "thirdTier": {
+        "name": "Segunda División Profesional",
+        "playable": false,
+        "catalogCount": 14,
+        "maximumEntrants": 1,
+        "method": "pool_draw",
+        "draw": "seeded_uniform_without_replacement_from_eligible_pool",
+        "protectHumanBelowLowestPlayableTier": true
+      }
+    },
+    {
+      "id": "CO",
+      "name": "Colômbia",
+      "timezone": "America/Bogota",
+      "localCurrency": "COP",
+      "simulationCurrency": "USD",
+      "transferWindows": [
+        [
+          "2025-12-22",
+          "2026-03-06"
+        ],
+        [
+          "2026-07-13",
+          "2026-08-10"
+        ]
+      ],
+      "transferWindowSource": "https://inside.fifa.com/associations/COL/snapshot",
+      "thirdTier": {
+        "name": "Primera C Interclubes",
+        "playable": false,
+        "catalogCount": 25,
+        "maximumEntrants": 0,
+        "method": "optional_simulation_only_no_default_movement",
+        "draw": "seeded_uniform_without_replacement_from_eligible_pool",
+        "protectHumanBelowLowestPlayableTier": true
+      }
+    },
+    {
+      "id": "EC",
+      "name": "Equador",
+      "timezone": "America/Guayaquil",
+      "localCurrency": "USD",
+      "simulationCurrency": "USD",
+      "transferWindows": [
+        [
+          "2026-01-20",
+          "2026-03-16"
+        ],
+        [
+          "2026-06-30",
+          "2026-08-24"
+        ]
+      ],
+      "transferWindowSource": "https://inside.fifa.com/associations/ECU/snapshot",
+      "thirdTier": {
+        "name": "Segunda Categoría / Ascenso Nacional",
+        "playable": false,
+        "catalogCount": 16,
+        "maximumEntrants": 2,
+        "method": "pool_draw_from_national_stage",
+        "draw": "seeded_uniform_without_replacement_from_eligible_pool",
+        "protectHumanBelowLowestPlayableTier": true
+      }
+    },
+    {
+      "id": "UY",
+      "name": "Uruguai",
+      "timezone": "America/Montevideo",
+      "localCurrency": "UYU",
+      "simulationCurrency": "USD",
+      "transferWindows": [
+        [
+          "2026-01-01",
+          "2026-02-25"
+        ],
+        [
+          "2026-07-08",
+          "2026-09-01"
+        ]
+      ],
+      "transferWindowSource": "https://inside.fifa.com/associations/URU/snapshot",
+      "thirdTier": {
+        "name": "Primera Divisional C",
+        "playable": false,
+        "catalogCount": 29,
+        "maximumEntrants": 2,
+        "method": "pool_draw",
+        "draw": "seeded_uniform_without_replacement_from_eligible_pool",
+        "protectHumanBelowLowestPlayableTier": true
+      }
+    }
+  ]
+}

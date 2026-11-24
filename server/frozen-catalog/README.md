@@ -52,3 +52,25 @@ problema, em menor escala, que já existia com `DEMO_TEAMS_SERIE_B`
 antes da Série B ganhar dado real — ver histórico de correções em
 `public/js/data.js`). Recapturar exigiria voltar a ter uma credencial de
 fornecedor configurada (mesmo que temporariamente).
+
+## Mundo: Europa e América do Sul (MUNDO-001)
+
+20 ligas novas, gravadas em 24/11/2026 por `scripts/mundo_catalogo.js` a
+partir dos pacotes de dados guardados em `docs/mundo/pacotes/`:
+
+| Onde | O quê |
+|---|---|
+| `snapshot-<liga>.json` (20 arquivos) | Times, tabela de referência e elencos, no formato acima, com o escudo local em `localLogo` |
+| `mundo/mundo.json` | Índice do mundo: países, ligas (regulamento, calendário, moeda), 390 clubes, 305 da 3ª divisão (catálogo), jogos das fases fixas com data local e vínculos duplicados resolvidos |
+| `mundo/fonte/` | JSON originais dos pacotes, sem alteração (auditoria e regeração) |
+| `public/img/teams/mundo/` | 625 escudos WebP |
+
+As rotas `/api/career/mundo` e `/api/career/mundo/elencos/<liga>` (ver
+`server/src/mundo.js`) só respondem com `MUNDO_ATIVO=true` no host. A
+validação está em `tests/unit/test_mundo_catalogo.js`.
+
+Para regerar, com os pacotes descompactados:
+
+```
+node scripts/mundo_catalogo.js --europa DIR --sul-america DIR --continentais DIR --gravar
+```

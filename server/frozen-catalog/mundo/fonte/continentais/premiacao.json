@@ -1,0 +1,50 @@
+{
+  "fonte": "CAN_PREMIACAO",
+  "moeda": "USD",
+  "edicao": "2026",
+  "LIB": {
+    "por_mando": {
+      "fase_1": 400000,
+      "fase_2": 500000,
+      "fase_3": 600000,
+      "grupos": 1000000,
+      "oitavas": 1250000,
+      "quartas": 1700000,
+      "semifinal": 2300000
+    },
+    "por_vitoria_grupos": 340000,
+    "final": {
+      "campeao": 25000000,
+      "vice": 7000000
+    }
+  },
+  "SUD": {
+    "primeira_fase": {
+      "mandante": 225000,
+      "visitante": 250000
+    },
+    "por_mando": {
+      "grupos": 300000,
+      "playoff": 500000,
+      "oitavas": 600000,
+      "quartas": 700000,
+      "semifinal": 800000
+    },
+    "por_vitoria_grupos": 125000,
+    "final": {
+      "campeao": 10000000,
+      "vice": 2500000
+    }
+  },
+  "UEFA": {
+    "fonte": "UEFA_DISTRIBUICAO",
+    "moeda": "EUR",
+    "edicao": "2026/27",
+    "status": "aguarda_circular_da_edicao",
+    "componentes": [
+      "participacao",
+      "desempenho",
+      "pilar_de_valor"
+    ]
+  }
+}

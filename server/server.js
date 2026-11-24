@@ -340,6 +340,10 @@ function loadDotEnv() {
   });
 }
 
+// MUNDO-001: catálogo do mundo (ligas da Europa e da América do Sul).
+const { criarMundo, mundoAtivo } = require("./src/mundo");
+const mundo = criarMundo();
+
 // OFFLINE-001: catálogo da carreira para jogar sem rede, com as mesmas
 // fontes e chaves de cache das rotas /api/career/* abaixo.
 const catalogoOffline = require("./src/catalogoOffline").criarCatalogoOffline({
@@ -1992,6 +1996,17 @@ const server = http.createServer(async (req, res) => {
     // e reabrir a carreira sem rede (ver server/src/catalogoOffline.js).
     if (pathname === "/api/career/catalogo-offline") {
       return sendJSON(res, 200, await catalogoOffline.resposta(searchParams.get("versao")));
+    }
+
+    // MUNDO-001 (etapa M1): índice e elencos das 20 ligas da Europa e da
+    // América do Sul (ver server/src/mundo.js). Só com MUNDO_ATIVO=true.
+    if (pathname === "/api/career/mundo" || pathname.startsWith("/api/career/mundo/")) {
+      if (!mundoAtivo()) return sendJSON(res, 404, { error: "mundo desligado" });
+      if (pathname === "/api/career/mundo") return sendJSONMaybeGzip(req, res, 200, mundo.indice(searchParams.get("versao")));
+      const m = pathname.match(/^\/api\/career\/mundo\/elencos\/([a-z0-9_]+)$/);
+      const corpo = m && mundo.elencos(m[1]);
+      if (!corpo) return sendJSON(res, 404, { error: "liga fora do mundo" });
+      return sendJSONMaybeGzip(req, res, 200, corpo);
     }
 
     if (pathname === "/api/career/teams") {

@@ -1,0 +1,167 @@
+{
+  "CONMEBOL": {
+    "colunas": [
+      "LIB_grupos",
+      "LIB_fase_2",
+      "LIB_fase_1",
+      "SUD_grupos",
+      "SUD_primeira_fase"
+    ],
+    "por_associacao": {
+      "ARG": [
+        5,
+        1,
+        0,
+        6,
+        0
+      ],
+      "BRA": [
+        5,
+        2,
+        0,
+        6,
+        0
+      ],
+      "CHI": [
+        2,
+        2,
+        0,
+        0,
+        4
+      ],
+      "COL": [
+        2,
+        2,
+        0,
+        0,
+        4
+      ],
+      "BOL": [
+        2,
+        1,
+        1,
+        0,
+        4
+      ],
+      "ECU": [
+        2,
+        1,
+        1,
+        0,
+        4
+      ],
+      "PAR": [
+        2,
+        1,
+        1,
+        0,
+        4
+      ],
+      "PER": [
+        2,
+        1,
+        1,
+        0,
+        4
+      ],
+      "URU": [
+        2,
+        1,
+        1,
+        0,
+        4
+      ],
+      "VEN": [
+        2,
+        1,
+        1,
+        0,
+        4
+      ]
+    },
+    "vagas_titulares_LIB_grupos": [
+      "campeao_LIB_anterior",
+      "campeao_SUD_anterior"
+    ],
+    "fluxos": [
+      [
+        "LIB.fase_3",
+        "derrotado",
+        "SUD.grupos",
+        4
+      ],
+      [
+        "LIB.grupos",
+        "terceiro",
+        "SUD.playoff",
+        8
+      ]
+    ]
+  },
+  "UEFA": {
+    "fonte_tabela": "UEFA_ANEXO_A",
+    "fonte_lista_aplicada": "UEFA_ACESSO",
+    "coeficientes_associacoes_temporadas": [
+      "2020/21",
+      "2021/22",
+      "2022/23",
+      "2023/24",
+      "2024/25"
+    ],
+    "vagas_european_performance_spots": 2,
+    "fluxos_base": [
+      [
+        "UCL.Q1.campeoes",
+        "UECL.Q2.campeoes"
+      ],
+      [
+        "UCL.Q2.campeoes",
+        "UEL.Q3.campeoes"
+      ],
+      [
+        "UCL.Q3.campeoes",
+        "UEL.PO"
+      ],
+      [
+        "UCL.PO",
+        "UEL.liga"
+      ],
+      [
+        "UCL.Q2.liga",
+        "UEL.Q3.principal"
+      ],
+      [
+        "UCL.Q3.liga",
+        "UEL.liga"
+      ],
+      [
+        "UEL.Q1.principal",
+        "UECL.Q2.principal"
+      ],
+      [
+        "UEL.Q2.principal",
+        "UECL.Q3.principal"
+      ],
+      [
+        "UEL.Q3.campeoes",
+        "UECL.PO.campeoes"
+      ],
+      [
+        "UEL.Q3.principal",
+        "UECL.PO.principal"
+      ],
+      [
+        "UEL.PO",
+        "UECL.liga"
+      ]
+    ],
+    "fase_liga_ou_posterior_transfere": false,
+    "vagas_titulares": {
+      "UCL": "UCL.liga",
+      "UEL": "UCL.liga",
+      "UECL": "UEL.liga"
+    },
+    "fonte_fluxos": "UEFA_TRANSFERENCIAS",
+    "tabela_resolvida_incluida": false
+  }
+}

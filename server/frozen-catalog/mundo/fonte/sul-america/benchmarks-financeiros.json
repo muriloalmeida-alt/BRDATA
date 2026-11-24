@@ -1,0 +1,108 @@
+{
+  "currencies": {
+    "model": "USD",
+    "local": {
+      "AR": "ARS",
+      "CL": "CLP",
+      "CO": "COP",
+      "EC": "USD",
+      "UY": "UYU"
+    }
+  },
+  "model": [
+    {
+      "competitionId": "arg_liga_profesional",
+      "baseAnnualOperatingRevenueUsd": 8800000,
+      "broadcastShare": 0.29,
+      "gateShare": 0.3,
+      "relativeGameplayLevel": 1.16
+    },
+    {
+      "competitionId": "arg_primera_nacional",
+      "baseAnnualOperatingRevenueUsd": 1700000,
+      "broadcastShare": 0.29,
+      "gateShare": 0.29,
+      "relativeGameplayLevel": 0.94
+    },
+    {
+      "competitionId": "chi_liga_primera",
+      "baseAnnualOperatingRevenueUsd": 4700000,
+      "broadcastShare": 0.37,
+      "gateShare": 0.25,
+      "relativeGameplayLevel": 1.03
+    },
+    {
+      "competitionId": "chi_liga_ascenso",
+      "baseAnnualOperatingRevenueUsd": 1360000,
+      "broadcastShare": 0.37,
+      "gateShare": 0.25,
+      "relativeGameplayLevel": 0.87
+    },
+    {
+      "competitionId": "col_primera_a",
+      "baseAnnualOperatingRevenueUsd": 5000000,
+      "broadcastShare": 0.34,
+      "gateShare": 0.26,
+      "relativeGameplayLevel": 1.06
+    },
+    {
+      "competitionId": "col_primera_b",
+      "baseAnnualOperatingRevenueUsd": 1260000,
+      "broadcastShare": 0.33,
+      "gateShare": 0.23,
+      "relativeGameplayLevel": 0.88
+    },
+    {
+      "competitionId": "ecu_ligapro_a",
+      "baseAnnualOperatingRevenueUsd": 4400000,
+      "broadcastShare": 0.33,
+      "gateShare": 0.25,
+      "relativeGameplayLevel": 1.05
+    },
+    {
+      "competitionId": "ecu_ligapro_b",
+      "baseAnnualOperatingRevenueUsd": 970000,
+      "broadcastShare": 0.33,
+      "gateShare": 0.22,
+      "relativeGameplayLevel": 0.85
+    },
+    {
+      "competitionId": "uru_primera",
+      "baseAnnualOperatingRevenueUsd": 3350000,
+      "broadcastShare": 0.31,
+      "gateShare": 0.25,
+      "relativeGameplayLevel": 1.02
+    },
+    {
+      "competitionId": "uru_segunda",
+      "baseAnnualOperatingRevenueUsd": 790000,
+      "broadcastShare": 0.31,
+      "gateShare": 0.23,
+      "relativeGameplayLevel": 0.85
+    }
+  ],
+  "publicReferences": [
+    {
+      "name": "CONMEBOL Libertadores 2026, manual de clubes",
+      "sourceUrl": "https://cdn.conmebol.com/wp-content/uploads/2025/12/CL-2026-Manual-de-Clubes-POR-Fev26.pdf",
+      "purpose": "receita contingente por fase"
+    },
+    {
+      "name": "CONMEBOL, balanço e tabela de aportes",
+      "sourceUrl": "https://cdn.conmebol.com/wp-content/uploads/2026/05/ORG_CONMEBOL_Resumen-Ejecutivo-2025-DIGITAL-FLIPBOOK-ESP.pdf",
+      "purpose": "escala e natureza das receitas internacionais"
+    },
+    {
+      "name": "Projeção de direitos de TV do Equador para 2026",
+      "amountUsd": 20000000,
+      "metric": "projected_aggregate_domestic_broadcast",
+      "publishedYear": 2025,
+      "sourceUrl": "https://www.ecuavisa.com/futbol-nacional/equipos-de-ecuador-recibiran-usd-20-millones-por-derechos-de-tv-en-el-2026-20250709-0080.html"
+    },
+    {
+      "name": "FIFA Global Transfer Report",
+      "sourceUrl": "https://inside.fifa.com/transfer-system/transfer-reports",
+      "purpose": "escala do mercado internacional"
+    }
+  ]
+}

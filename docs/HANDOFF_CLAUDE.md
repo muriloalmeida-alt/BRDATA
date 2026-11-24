@@ -9,6 +9,324 @@ divergências, aprovação) — elas não são repetidas aqui.
 
 Demandas vigentes
 
+MUNDO-001 — Ligas da Europa e da América do Sul, em paralelo, com continentais
+
+Status: REVISÃO DO PM NECESSÁRIA para as etapas M1 a M6a (PR #154, suíte
+completa 191/191). A M6b começa depois da revisão. A especificação saiu do pedido do
+Murilo (24/11/2026), dos três pacotes de dados anexos e das decisões dele
+na mesma data:
+- D1: simulação híbrida;
+- D2: formatos sul-americanos fiéis;
+- D3: continentais junto com as ligas;
+- D4: só saves novos.
+Especificação: `docs/mundo/01_Requisitos.md` (MUN-01 a MUN-15, aceite).
+Plano: `docs/mundo/02_Plano_de_execucao.md` (etapas M1 a M11, um PR por
+etapa; liberação no seletor só na M10).
+Pendências de decisão do Murilo (não bloqueiam M1 a M8):
+- DEP-1: clubes de Bolívia, Paraguai, Peru, Venezuela e das associações
+  UEFA sem liga jogável. Opção (a): 4º pacote de dados. Opção (b): nome
+  real com elenco fictício gerado. Precisa ser decidida antes da M9.
+- DEP-2: tabela de acesso UEFA. Proposta: tabela de jogo fixa e versionada
+  para as 5 associações jogáveis. Precisa ser decidida antes da M10.
+- DEP-3: promedio da 2ª uruguaia sem 2025. Proposta: começar sem
+  histórico.
+Divergência registrada: os handoffs dos pacotes supõem um país por save,
+com "as outras ligas disponíveis só para outro save". O pedido do Murilo
+(ligas em paralelo) prevalece (CLAUDE.md, seção 2, ordem de conflito). A
+D1 (híbrido) é a forma de caber no save e no celular.
+
+Relatório da etapa M1, catálogo do mundo (24/11/2026)
+
+O que foi feito:
+- `scripts/mundo_catalogo.js` lê os 3 pacotes e grava:
+  - os 20 snapshots das ligas novas em `server/frozen-catalog/`;
+  - o índice `server/frozen-catalog/mundo/mundo.json`: 10 países, 20 ligas
+    com regulamento, calendário e moeda, 390 clubes, 305 da 3ª divisão e
+    6.822 jogos das fases fixas com data local;
+  - os JSON originais em `mundo/fonte/`, sem alteração;
+  - 625 escudos em `public/img/teams/mundo/`.
+- Servidor: `server/src/mundo.js` e as rotas `/api/career/mundo` (índice
+  versionado, gzip ~110 KB) e `/api/career/mundo/elencos/<liga>`. Só
+  respondem com `MUNDO_ATIVO=true` (`server/.env.example`). Sem a chave,
+  devolvem 404 e nada muda para o jogador.
+- Validação: `tests/unit/test_mundo_catalogo.js`, 8 verificações:
+  - contagens por liga;
+  - IDs únicos e sem colisão com o Brasil;
+  - escudos existentes;
+  - elencos com 22+ atletas e 2 goleiros, sem atleta repetido;
+  - jogos por clube iguais em cada fase (34/38/42/46 nas europeias);
+  - clubes B ligados ao clube pai;
+  - versão do índice;
+  - as rotas.
+
+Decisões tomadas na M1 (para o Murilo conferir):
+1. Vínculos duplicados (MUN-03): os 10 atletas listados pelo próprio pacote
+   ficam no clube com menos atletas e saem do outro, que continua com 23+
+   e 2 goleiros. A lista está em `mundo.json` (`vinculosResolvidos`).
+   - Há ~90 homônimos de mesmo nome e idade entre clubes, inclusive com o
+     Brasil, que NÃO foram mexidos: sem id de origem comum, podem ser
+     pessoas diferentes.
+2. Mínimo de elenco: o Everton tem 22 atletas no pacote (o pacote prometia
+   23 na América do Sul, que cumpre). O teste exige 22 (11 + 11). O motor
+   completa o elenco como já faz hoje.
+3. Os jogos das fases que dependem de resultado ficam fora do índice: 333
+   jogos de mata-mata, quadrangulares, hexagonais, Intermedio e finais. O
+   motor vai gerá-los na M4. O original continua em `mundo/fonte/`.
+4. O registro `server/competitions.js` não foi usado: ver o item 2 da M1 em
+   `docs/mundo/02_Plano_de_execucao.md`.
+
+Testes: `test_mundo_catalogo` 8/8; rota rápida (`test:fast`) 48/48.
+
+Relatório da etapa M2, relógio do mundo (24/11/2026)
+
+O que foi feito: `public/js/motor/relogio.js` (+ `.d.ts`), módulo puro.
+- Semana do mundo = segunda-feira com o ano, a mesma unidade do calendário
+  da carreira brasileira.
+- Agenda por liga:
+  - temporada 1: os jogos com data dos pacotes;
+  - temporadas seguintes: as semanas e os dias de cada rodada da temporada
+    do pacote, k anos depois, com os confrontos gerados para os clubes do
+    save. O padrão é turno e returno, como no Brasil. Formatos com grupos
+    passam o próprio gerador (M4).
+- Início do save (MUN-06): 4 semanas antes do 1º jogo da liga escolhida.
+  As outras ligas jogam até lá, na ordem do relógio (`jogosAntesDe`).
+- O calendário brasileiro de hoje é convertido em semanas do relógio sem
+  mudar nenhuma rodada.
+
+Testes: `test_motor_relogio` 8/8, com os jogos reais das 20 ligas:
+- nenhum jogo perdido e cada jogo na semana da própria data;
+- temporadas geradas com um jogo por rodada e nenhum clube com dois jogos
+  no mesmo dia;
+- sem escorregar o calendário em 12 anos;
+- Apertura/Clausura;
+- Premier League começando em 20/07/2026 com a América do Sul pré-simulada;
+- as 52/53 semanas do Brasil com as rodadas 1–38 intactas.
+
+Observações:
+1. Nos pacotes, há 1.517 casos de clube com 2 jogos na mesma semana
+   (rodadas de meio de semana, como na Championship). A M6 trata a semana
+   com 2 jogos do técnico como a semana de Copa de hoje (`w.c`).
+2. Mudança de rota no plano:
+   - o relógio só passa a conduzir o avanço de semana no save do mundo,
+     na M6;
+   - na M2, o Brasil não muda (risco zero para os saves de hoje);
+   - os módulos novos ficam em `public/js/motor/` sem subpasta.
+
+Relatório da etapa M3, desempates e fases das ligas europeias (24/11/2026)
+
+O que foi feito (módulos puros, com `.d.ts`):
+- `public/js/motor/desempate.js`: classificação pelos perfis do pacote
+  (`premier`, `efl`, `spainTwo`/`spainMulti`, `italy`, `germany`,
+  `france`).
+  - O confronto direto usa a minitabela só dos empatados, refeita para cada
+    subgrupo.
+  - Os critérios "em posição decisiva" (Premier) só valem quando o empate
+    disputa título, acesso, playoff ou queda.
+  - Na Alemanha e na França, o confronto direto só conta com os dois jogos
+    feitos.
+  - O fim da lista (jogo neutro, sorteio) vira sorteio determinístico pela
+    chave da temporada. Quando decide algo, volta em `sorteios`, para a tela
+    explicar.
+- `public/js/motor/fases.js`: o plano de fim de temporada do país, em JSON
+  (vai no save), jogado perna a perna no relógio:
+  - Championship: playoff de 8 (5×8 e 6×7; o 3º pega o vencedor pior
+    colocado; final neutra);
+  - Hypermotion: clubes B pulados, com a vaga indo ao próximo elegível;
+    semis e final em ida e volta; empate = melhor campanha;
+  - Serie A: jogo de título e decisão de queda com pontos iguais;
+  - Serie B: 3º direto com +15; playoff 3º–8º; playout com até 4 pontos;
+  - Alemanha: 16º × 3º da divisão de baixo, com mando da volta por sorteio
+    (ver a nota 2);
+  - França: 4º × 5º, o vencedor no 3º, e o sobrevivente × 16º da Ligue 1;
+  - barrage da 2ª com o representante da 3ª, quando ele é informado.
+  - Resultado: campeão, quem sobe e quem desce de cada divisão. A troca
+    efetiva de clubes e o sorteio do catálogo ficam para a M5.
+
+Testes: `test_motor_fases_europa` 11/11, com as regras reais do índice:
+- cada evento do critério de aceite 3 da Europa, com placares roteirizados;
+- o plano salvo e relido no meio, terminando igual;
+- 5 países × 300 temporadas aleatórias: sempre termina, quem sobe = quem
+  cai, e clube B nunca sobe.
+
+Notas para o Murilo:
+1. "Jogo neutro" (Premier, Espanha e Alemanha no fim da lista de
+   desempate) virou sorteio determinístico. É raríssimo, e a tela vai
+   dizer que foi sorteio. Os jogos de decisão que o regulamento italiano
+   prevê são jogados de verdade.
+2. Alemanha: o regulamento dá a volta a quem teve menos descanso. Na
+   simulação, o descanso é igual para os dois, então vale o desempate do
+   próprio regulamento, que é o sorteio.
+
+Relatório da etapa M4, formatos sul-americanos fiéis (24/11/2026)
+
+O que foi feito: `public/js/motor/formatos.js` (+ `.d.ts`). O plano é a
+temporada inteira de cada liga, em JSON (vai no save). As fases que
+dependem de resultado são criadas quando a anterior acaba.
+- Argentina, 1ª:
+  - Apertura e Clausura por zonas, com interzonais;
+  - mata-mata dos 8 de cada zona (A1 e B1 só se cruzam na final);
+  - tabela anual;
+  - 1 queda pela anual e 1 pelo promedio de 3 temporadas, clubes distintos;
+  - empate em pontos ou em promedio (fração exata) = jogo de decisão.
+- Argentina, 2ª: final dos líderes em campo neutro (1º acesso) e Reducido
+  com os pares do regulamento (o perdedor da final entra na 2ª fase) para o
+  2º acesso; caem os 2 últimos de cada zona.
+- Chile: turno e returno.
+  - Na 1ª, caem 15º e 16º.
+  - Na 2ª, o campeão sobe e a Liguilla (3×8, 4×7, 5×6; o 2º pega o pior
+    vencedor) dá a 2ª vaga; cai o último.
+  - Empate em pontos no título ou na queda = decisão.
+- Colômbia:
+  - 1ª: Apertura com mata-mata dos 8; Clausura com 2 quadrangulares
+    (cabeças 1º e 2º, sorteio do resto) e final; caem 2 pelo promedio de 3
+    temporadas (só todos contra todos);
+  - 2ª: quadrangulares e final nos dois torneios, e os 4 cenários de acesso
+    (campeão repetido, os dois no top 2, só um, nenhum: Gran Final e
+    repechaje).
+- Equador: hexagonais (e o grupo da Sul-Americana) com os pontos da 1ª fase
+  carregados. Na B, o clube vinculado é pulado no acesso.
+- Uruguai, 1ª:
+  - Apertura;
+  - Intermedio em 2 grupos (ímpares e pares do Apertura), com final;
+  - Clausura;
+  - anual das três fases;
+  - título: semifinal Apertura × Clausura e final contra o líder da anual;
+  - 3 quedas pelo promedio de 2 temporadas.
+- Uruguai, 2ª: Competencia com final; sobem 1º e 2º da anual e o vencedor
+  do playoff 3º–6º; caem 2 pelo promedio.
+- Temporadas seguintes: gerador de confrontos por liga, para o relógio
+  (zonas com interzonal na Argentina, turno único por torneio, grupos do
+  Competencia).
+- Catálogo (`scripts/mundo_catalogo.js`):
+  - zonas da Argentina e grupos do Competencia no índice;
+  - promedio inicial do histórico do pacote, sem as tabelas repetidas:
+    Argentina 2024–25, Colômbia 2024–25 e Uruguai 2025.
+
+Testes: `test_motor_formatos_sa` 8/8.
+- As 10 ligas jogam 2026 (pacote) e 2027 (gerada) inteiras, com:
+  - acessos e quedas certos;
+  - nenhum clube com 2 jogos no mesmo dia;
+  - as fases geradas nas pausas entre as fases fixas;
+  - tudo dentro do ano.
+- Cada caso do critério de aceite 3 da América do Sul.
+- Plano relido no meio termina igual.
+- Fora da suíte: 400 temporadas aleatórias, sem falha. Apareceram todos os
+  jogos de decisão e 3 dos 4 cenários colombianos; o 4º está no teste.
+
+Interpretações de regulamento (para o Murilo conferir):
+1. Datas das fases geradas: um jogo a cada 3–4 dias depois da fase
+   anterior. Cabem nas pausas reais (o teste confere).
+2. Reducido argentino: jogo único com vantagem do melhor colocado nas duas
+   primeiras fases, semis em ida e volta e final em ida e volta com
+   pênaltis. O pacote remete ao "item 7" do boletim sem detalhar.
+3. Liguilla chilena: ida e volta, com vantagem do melhor colocado; na final,
+   pênaltis (art. 85 citado, sem os detalhes).
+4. Equador: arrastre total (pontos, jogos e gols da 1ª fase).
+5. Uruguai, 2ª: a anual soma os grupos do Competencia e a fase regular; a
+   final do Competencia fica de fora.
+6. Colômbia, 1ª: quadrangular empatado em pontos = vantagem do melhor
+   colocado no Clausura. A reclassificação da B soma todos os jogos do ano,
+   menos as finais.
+7. Primera C colombiana: zero trocas, o padrão do pacote.
+
+Etapa M5, a virada por país (acesso e queda aplicados, clubes B,
+catálogo de 3ª divisão, proteção do clube do jogador).
+
+Relatório da etapa M5, virada por país (24/11/2026)
+
+O que foi feito: `public/js/motor/viradapais.js` (+ `.d.ts`), módulo puro.
+A virada é uma transação só: confere contagens e conjuntos disjuntos antes
+de devolver, e não mexe na entrada.
+- Troca entre 1ª e 2ª pelo resultado das fases (Europa) ou dos formatos
+  (América do Sul).
+- Reposição da 2ª pelo catálogo de 3ª, como a Série D: sorteio
+  determinístico (país + ano), sem repetição, entre os elegíveis. Quem cai
+  entra no catálogo e quem sobe sai.
+- Argentina: metade das vagas pela Primera B Metropolitana e metade pelo
+  Federal A.
+- Clubes B:
+  - nunca na 1ª;
+  - se o principal cai para a 2ª onde está o B, o B cai para o catálogo e
+    entra mais um;
+  - no catálogo, o "condicional" só é elegível com o principal na 1ª da
+    temporada nova, e o "bloqueado" (II alemães) nunca;
+  - Colômbia: a Primera C (`simulation_only`) fica fora.
+- Representante do catálogo no barrage (Alemanha e França), sorteado ao
+  montar as fases.
+- Proteção do clube do jogador na divisão jogável mais baixa: cai o próximo
+  da zona de baixo, e a exceção vai no resumo.
+- Zonas da temporada nova (Argentina: quem chega ocupa a vaga de quem saiu),
+  grupos sorteados (Competencia uruguaio) e histórico do promedio pela
+  janela.
+
+Testes: `test_motor_viradapais` 6/6.
+- 3 temporadas encadeadas nos 10 países, com o calendário gerado com os
+  clubes do save, as fases ou formatos de verdade e a virada:
+  - tamanhos e disjunção certos;
+  - o total de clubes conservado entre divisões e catálogo;
+  - bloqueado e `simulation_only` nunca entram;
+  - mesma seed, mesma virada.
+- Cada regra de clube B, os 200 sorteios alemães, a proteção (Inglaterra e
+  Uruguai pelo promedio), as zonas argentinas e os circuitos.
+- O histórico do promedio pela janela, e a entrada inválida falhando sem
+  mexer em nada.
+
+Nota: o destino de quem cai da Primera Nacional (Metropolitana ou Federal
+A) não vem no pacote. O clube volta ao catálogo sem circuito e conta em
+qualquer um dos dois.
+
+Relatório da etapa M6a, mundo leve (24/11/2026)
+
+A M6 foi dividida em duas:
+- M6a: o mundo leve, as ligas fora do país do técnico;
+- M6b: a ligação com o save e a carreira do técnico (próxima).
+
+O que foi feito: `public/js/motor/mundoleve.js` (+ `.d.ts`). As 20 ligas
+andam semana a semana com as peças M1–M5:
+- agenda pelo relógio;
+- placar pela mesma conta de gols do motor (`partida.scoreGoals`), com a
+  força do clube no nível de gols da liga (`partida.forcaComNivel`), como as
+  divisões que o técnico não joga no Brasil;
+- Europa: tabela com os desempates e o fim de temporada pelas fases;
+- América do Sul: a temporada pelos formatos;
+- virada por país.
+
+Detalhes:
+- O sorteio de cada jogo é pela chave (liga, temporada, jogo). Salvar e
+  reabrir não muda nada.
+- Save enxuto:
+  - a agenda é derivada do índice e não vai no save;
+  - os placares das fases fixas viram uma string (2 caracteres por jogo);
+  - a tabela é recalculada a partir dos placares;
+  - vão no save as fases geradas, os confrontos, o catálogo alterado, as
+    zonas, o histórico do promedio e a força de quem mudou de divisão.
+- Força de quem muda de divisão: pela razão do nível das ligas
+  (`nivel`/gameplayLevel do pacote), amortecida (expoente 0,5, parâmetro de
+  balanceamento).
+- Início do save: a pré-temporada da liga escolhida. As ligas que já
+  estariam em andamento são pré-simuladas até lá.
+- Catálogo do mundo: o índice ganhou o nível e a média de gols de cada
+  liga.
+
+Testes: `test_motor_mundoleve` 5/5.
+- Início na Premier League com a América do Sul pré-simulada até
+  20/07/2026.
+- 3 anos de mundo com 3 viradas por país e todas as contagens certas.
+- Salvar e reabrir a cada 5 semanas igual a jogar direto.
+- Gols por jogo de cada liga a menos de 25% da referência do pacote.
+
+Medições (ambiente de teste), mundo inteiro, 3 anos:
+- semana: média 3,9 ms, p95 10,3 ms, pior 16,5 ms;
+- parte do mundo no save: 77 KB de JSON e 15 KB comprimida.
+- A decisão D1 (híbrido) cabe com folga: o save da carreira brasileira de
+  hoje tem ~830 KB de JSON e ~100 KB comprimido.
+
+Próxima etapa: M6b, o save do mundo na carreira. O país do técnico na
+simulação completa de hoje e o resto no mundo leve. O Brasil também entra
+no mundo leve quando o técnico está fora dele.
+
+⸻
+
 FASE1-ESC — Fase 1: escalação e orientação da comissão técnica
 
 Status: APROVADO (Murilo, 12/11/2026, "Aprovado" sobre a recomendação
