@@ -11,8 +11,9 @@ Demandas vigentes
 
 MUNDO-001 — Ligas da Europa e da América do Sul, em paralelo, com continentais
 
-Status: REVISÃO DO PM NECESSÁRIA.
-- Etapas M1 a M6a: PR #154 (suíte completa 191/191).
+Status: M1 a M7 APROVADAS (Murilo, 24/11/2026: #154 mesclado por ele; #155 a
+#157 com "Vamos fazer os merges pendentes?"). M8 em revisão.
+- Etapas M1 a M6a: PR #154 (suíte completa 191/191), mesclado.
 - M6b, passos 1 a 4: PR #155, empilhado sobre o #154 (suíte completa
   191/192; a falha, instável e sem relação com o mundo, está no PR).
 - M6b, passo 5 (o Brasil no mundo): PR #156, empilhado sobre o #155
