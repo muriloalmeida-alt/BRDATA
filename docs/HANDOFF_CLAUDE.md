@@ -11,8 +11,9 @@ Demandas vigentes
 
 MUNDO-001 — Ligas da Europa e da América do Sul, em paralelo, com continentais
 
-Status: M1 a M7 APROVADAS (Murilo, 24/11/2026: #154 mesclado por ele; #155 a
-#157 com "Vamos fazer os merges pendentes?"). M8 em revisão.
+Status: M1 a M7 APROVADAS e mescladas (Murilo, 24/11/2026: #154 mesclado por
+ele; #155 a #157 com "Vamos fazer os merges pendentes?"). M8 em revisão (PR
+#158). M9 em implementação (branch `claude/mundo-m9`, empilhada sobre o #158).
 - Etapas M1 a M6a: PR #154 (suíte completa 191/191), mesclado.
 - M6b, passos 1 a 4: PR #155, empilhado sobre o #154 (suíte completa
   191/192; a falha, instável e sem relação com o mundo, está no PR).
@@ -111,6 +112,56 @@ Limites (propostas para o Murilo):
    meio da temporada do destino. Ideia para depois: a proposta vale "a
    partir da próxima temporada" do destino, com o técnico terminando a sua.
 2. O Brasil como destino de um técnico que está fora dele.
+
+Relatório da M9a, motor das copas da CONMEBOL (25/11/2026)
+
+A M9 foi dividida em três partes:
+- M9a: o motor das copas;
+- M9b: os classificados pelas ligas do save e a ligação com o mundo, as
+  finanças e as notícias;
+- M9c: as partidas do técnico ao vivo.
+
+O que foi feito: `public/js/motor/continental.js` (+ `.d.ts`), módulo puro
+e serializável. A Libertadores e a Sul-Americana de uma edição andam juntas,
+pelo regulamento do pacote continental:
+- Libertadores:
+  - fase 1 (pote 1 decide em casa);
+  - fase 2, sem cruzar clubes da mesma associação (só o vindo da fase 1
+    pode);
+  - fase 3, C1×C8 pelo ranking, volta na casa do melhor;
+  - 8 grupos de 4 pelos potes do ranking, sem dois clubes da mesma
+    associação (exceto quem vem da fase 3), com o padrão de mandos das
+    rodadas do pacote;
+  - 1º e 2º às oitavas.
+- Sul-Americana:
+  - 1ª fase com dois duelos nacionais por associação, jogo único e pênaltis
+    no empate;
+  - grupos com os 12 diretos, os 16 vencedores e os 4 derrotados da fase 3
+    da Libertadores, sem a mesma associação no grupo;
+  - playoff 2º da Sul-Americana × 3º da Libertadores pelos pares do pacote
+    (9×24, 10×23...), com a ida na casa do 3º da Libertadores.
+- Mata-mata das duas copas:
+  - oitavas por potes (o líder decide em casa), rotuladas A–H;
+  - quartas e semis pela chave do pacote (S1 = A×H...), volta na casa do
+    melhor na ordem de performance;
+  - ida e volta por pontos, saldo e pênaltis;
+  - final neutra em jogo único, com prorrogação e pênaltis.
+- Sorteios com seed (a chave da edição), resolvidos por busca com volta
+  para as últimas vagas não travarem.
+- Datas: as janelas do pacote no ano da edição (mesma semana, k anos
+  depois).
+- Premiação em USD do pacote: mando por fase, vitória nos grupos, campeão e
+  vice. Cada crédito tem chave única (jogo, clube e tipo).
+
+Testes: `test_motor_continental` 7/7, com os critérios de aceite do pacote:
+- 155 jogos na Libertadores e 157 na Sul-Americana, 96 de grupos em cada,
+  3 em casa e 3 fora;
+- as transferências e os pares do playoff;
+- grupos sem a mesma associação;
+- oitavas com volta na casa do líder, pênaltis e final;
+- premiação de mando e vitória sem duplicar;
+- determinismo, plano relido no meio e edição de 2027;
+- 80 edições aleatórias terminam (fora da suíte: 200).
 
 Relatório da M7, moeda e finanças por país (24/11/2026)
 
