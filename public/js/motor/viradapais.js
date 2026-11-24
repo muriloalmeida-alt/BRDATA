@@ -143,7 +143,7 @@ export function aplicarVirada(o) {
   if (n1.length !== tam1) throw new Error(`virada ${o.pais}: 1ª com ${n1.length} clubes (eram ${tam1})`);
   if (n2.length !== tam2) throw new Error(`virada ${o.pais}: 2ª com ${n2.length} clubes (eram ${tam2})`);
   const todos = [...n1, ...n2, ...catalogoNovo.map((c) => S(c.id))];
-  if (new Set(todos).size !== todos.length) throw new Error(`virada ${o.pais}: clube repetido entre divisões e catálogo`);
+  if (new Set(todos).size !== todos.length) { const vistos = new Set(); const rep = todos.filter((x) => (vistos.has(x) ? true : (vistos.add(x), false))); throw new Error(`virada ${o.pais}: clube repetido entre divisões e catálogo (${rep.join(", ")})`); }
   if (humano && !d1.has(humano) && !d2.has(humano)) throw new Error(`virada ${o.pais}: clube do jogador saiu das divisões jogáveis`);
 
   const ordenar = (ids) => ids.map(N).sort((a, b) => S(a).localeCompare(S(b), "en", { numeric: true }));

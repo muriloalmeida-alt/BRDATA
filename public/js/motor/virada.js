@@ -624,7 +624,8 @@ export async function advanceSeason() {
   // clube subiu ou caiu de divisão, ligaAtual() já reflete a divisão
   // nova a partir daqui (sem efeito nenhum em carreira sem o sistema
   // ativado, ver migrateCareerDefaults).
-  const promotionRelegation = await applyPromotionRelegation();
+  // MUNDO-001 (M6b-4): no save do mundo, a virada do país (carreiramundo.js).
+  const promotionRelegation = CAREER.mundo && estado.ganchosMundo.viradaDoPais ? await estado.ganchosMundo.viradaDoPais(CAREER) : await applyPromotionRelegation();
 
   // "Novo orçamento" (pedido do usuário) — teto recalculado pelo
   // elenco renovado; caixa NÃO reseta, transfere pro ano que vem
@@ -680,7 +681,7 @@ export async function advanceSeason() {
   CAREER.boardGoal = computeBoardGoal();
   // FASE 2 (a) — novo chaveamento da Copa do Brasil, mesmo motivo do
   // boardGoal acima (elenco renovado de todo mundo, não só o seu).
-  setupCup();
+  if (!CAREER.mundo) setupCup(); // save do mundo: sem Copa do Brasil
   // FASE 4 (item 4) — checa proposta de outro clube pra temporada que
   // está começando agora (reputação já atualizada acima, elenco já
   // renovado nos dois lados) — ver showSeasonModal/btnSeasonContinue,
@@ -690,11 +691,18 @@ export async function advanceSeason() {
   // GE-CALENDAR-001 — toda temporada nova (inclusive a 1ª de uma carreira
   // de antes do calendário) começa em janeiro, nas férias, com a folha
   // de janeiro já cobrada (12 meses por ano, ver applyCalendarMonthlyFinances).
-  CAREER.calendar = buildSeasonCalendar(CAREER.seasonYear);
-  // SERIED-001: a semana da preliminar da Copa (com a Série D) tem 2 jogos.
-  if (CAREER.cup && CAREER.cup.prelim) CAREER.calendar.weeks.forEach((w) => { if (w.r === CAREER.cup.prelim.round) w.c = 1; });
-  CAREER.calendar.friendlies = buildFriendlySlots(CAREER.calendar);
-  applyCalendarMonthlyFinances(0);
+  if (CAREER.mundo && estado.ganchosMundo.novaTemporada) {
+    // MUNDO-001 (M6b-4): calendário, rodadas e tabela da temporada nova pelo
+    // relógio (a temporada europeia começa na pré-temporada de julho).
+    estado.ganchosMundo.novaTemporada(CAREER);
+    applyCalendarMonthlyFinances(Number(CAREER.calendar.weeks[0].d.slice(0, 2)) - 1);
+  } else {
+    CAREER.calendar = buildSeasonCalendar(CAREER.seasonYear);
+    // SERIED-001: a semana da preliminar da Copa (com a Série D) tem 2 jogos.
+    if (CAREER.cup && CAREER.cup.prelim) CAREER.calendar.weeks.forEach((w) => { if (w.r === CAREER.cup.prelim.round) w.c = 1; });
+    CAREER.calendar.friendlies = buildFriendlySlots(CAREER.calendar);
+    applyCalendarMonthlyFinances(0);
+  }
   // P0-IDS-001 — reposição de base/elenco e times vindos da Série D
   // reusam ids (`base_<clube>_<n>`, `gen_<clube>_<n>`) — garante ids
   // únicos de novo antes da temporada nova começar.

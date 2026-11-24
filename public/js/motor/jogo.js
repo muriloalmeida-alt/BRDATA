@@ -473,6 +473,7 @@ export async function goToMatch() {
 export function humanDivisionMove(pr) {
   const CAREER = carreiraAtual();
   const mine = (list) => list.some((t) => String(t.id) === String(CAREER.clubId));
+  if (pr.mundo) return pr.texto ? { text: pr.texto, positive: /^Acesso/.test(pr.texto) } : null; // save do mundo (MUNDO-001)
   if (mine(pr.relegatedA)) return { text: "Rebaixado(a): Série A → Série B.", positive: false };
   if (mine(pr.promotedB)) return { text: "Acesso! Série B → Série A.", positive: true };
   if (mine(pr.relegatedB)) return { text: "Rebaixado(a): Série B → Série C.", positive: false };

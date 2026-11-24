@@ -18,7 +18,13 @@
 //      pré-temporada; save gravável (JSON) e de tamanho medido;
 //   7) M6b-3, jogar: 4 rodadas do Arsenal pela ponte da v2 (semana, partida ao
 //      vivo até o fim, pós-jogo), gravando; a Championship joga pelas datas e o
-//      mundo leve acompanha a semana da carreira.
+//      mundo leve acompanha a semana da carreira;
+//   8) M6b-4, virada no save do mundo: temporada inteira na Championship com o
+//      técnico em 1º -> sobe para a Premier League (divisões, rodadas 38,
+//      calendário de 2027/28, elencos de quem entrou do catálogo, catálogo
+//      conservado, aviso de acesso, sem Copa); segunda temporada na Premier
+//      com o técnico em último -> volta à Championship (46 rodadas); o mundo
+//      leve segue na semana da carreira.
 // Uso: node tests/unit/test_motor_mundo_carreira.js
 const assert = require("assert");
 const path = require("path");
@@ -207,6 +213,75 @@ const imp = (m) => import(pathToFileURL(path.join(ROOT, "public/js/motor", m)).h
     const w = C().calendar.weeks[C().calendar.idx];
     assert.strictEqual(C().mundoLeve.semana, `${w.a}-${w.d}`, "mundo leve fora da semana da carreira");
     assert.ok(gravados.length >= 4, "a carreira não gravou");
+  });
+
+  await check("M6b-4: acesso e queda do técnico no save do mundo (Championship <-> Premier League)", async () => {
+    const v2 = await imp("v2.js");
+    const semana = await imp("semana.js");
+    const CMu = await imp("carreiramundo.js");
+    const ponteMod = await imp("ponte.js");
+    const jogo = await imp("jogo.js");
+    semana.definirAmbiente({ ...v2.ambienteSemPagina(), buscarJogadores: async () => [], armazem: { pedir: async () => ({ ok: true }) } });
+    const elencosDaLiga = async (liga) => JSON.parse(fs.readFileSync(path.join(ROOT, `server/frozen-catalog/snapshot-${liga}.json`), "utf8")).playersByTeamId;
+    const clube = indice.clubes.find((c) => c.liga === "efl_championship");
+    await CMu.criarCarreiraNoMundo({ indice, liga: "efl_championship", clubId: clube.id, elencosDaLiga });
+    const P = v2.criarPonte();
+    ponteMod.ponte.pronta = true;
+    const C = () => estado.carreiraAtual();
+    const ate = async (f, ms) => { const t = Date.now(); while (Date.now() - t < ms) { const v = f(); if (v) return v; await new Promise((r) => setTimeout(r, 5)); } return null; };
+    const temporadaInteira = async () => {
+      for (let g = 0; C().currentRound <= C().rodadasLiga && g < 60; g++) {
+        await P.avancarSemana(true);
+        let i = P.iniciar();
+        if (i && i.motivo === "escalacao") { await P.escalarAutomaticamente(true); i = P.iniciar(); }
+        assert.ok(i && i.ok, `rodada ${C().currentRound}: ${i && i.motivo}`);
+        P.pularParaFim();
+        await ate(() => { const e = P.estado(); return e.fase === "encerrada" && e.gravada != null ? e : null; }, 30000);
+        let etapa = P.iniciarPosJogo();
+        for (let k = 0; etapa && etapa.ok !== false && etapa.etapa !== "fim" && k < 12; k++) {
+          if (etapa.etapa === "coletiva") etapa = await P.responderColetiva(etapa.respostas[0].letra);
+          else if (etapa.etapa === "noticias" || etapa.etapa === "resultados") etapa = P.concluirEtapa(etapa.etapa);
+          else if (etapa.etapa === "proposta") etapa = await P.responderProposta("recusar");
+          else break;
+        }
+        P.encerrarPosJogo();
+      }
+    };
+    const total = () => { const [a, b] = C().divisoes; return C().divisionTeams[a].length + C().divisionTeams[b].length + C().mundoLeve.paises["GB-ENG"].catalogo.length; };
+    const antes = total();
+    await temporadaInteira();
+    C().standings[C().clubId].pts = 999; // o técnico termina em 1º
+    let r = await P.proximaTemporada();
+    assert.ok(r.ok && !r.demitido, `virada: ${JSON.stringify(r).slice(0, 200)}`);
+    assert.strictEqual(C().competitionId, "premier_league", "o técnico não subiu");
+    assert.strictEqual(C().rodadasLiga, 38);
+    assert.strictEqual(C().seasonYear, 2027);
+    assert.strictEqual(C().calendar.weeks[0].a, 2027);
+    assert.strictEqual(C().cup, null);
+    assert.deepStrictEqual(Object.keys(C().otherDivisions), ["efl_championship"]);
+    assert.strictEqual(C().divisionTeams.premier_league.length, 20);
+    assert.strictEqual(C().divisionTeams.efl_championship.length, 24);
+    assert.ok(C().divisionTeams.premier_league.some((t) => String(t.id) === C().clubId));
+    assert.strictEqual(total(), antes, "clubes sumiram ou apareceram");
+    const ids = [...C().divisionTeams.premier_league, ...C().divisionTeams.efl_championship].map((t) => String(t.id)).filter((id) => id !== C().clubId);
+    // Mínimo da regra de hoje para elenco da CPU de outra divisão (semana.MIN_LEAGUE_SQUAD_OTHER_DIVISION).
+    const curtos = ids.filter((id) => (C().leagueSquads[id] || []).length < 12).map((id) => `${id}:${(C().leagueSquads[id] || []).length}`);
+    assert.ok(!curtos.length, `clube sem elenco: ${curtos.join(" ")}`);
+    assert.ok(/^Acesso! EFL Championship/.test(jogo.humanDivisionMove({ mundo: true, texto: `Acesso! EFL Championship → Premier League.` }).text));
+    assert.strictEqual(C().mundo.k, 1);
+    await temporadaInteira();
+    C().standings[C().clubId].pts = -999; // agora em último
+    r = await P.proximaTemporada();
+    assert.ok(r.ok, "segunda virada");
+    if (!r.demitido) {
+      assert.strictEqual(C().competitionId, "efl_championship", "o técnico não caiu");
+      assert.strictEqual(C().rodadasLiga, 46);
+      assert.strictEqual(C().seasonYear, 2028);
+      assert.strictEqual(total(), antes);
+    }
+    await P.avancarSemana(true);
+    const w = C().calendar.weeks[C().calendar.idx];
+    assert.strictEqual(C().mundoLeve.semana, `${w.a}-${w.d}`, "mundo leve fora da semana");
   });
 
   console.log(`\n${n - failed}/${n} ok`);

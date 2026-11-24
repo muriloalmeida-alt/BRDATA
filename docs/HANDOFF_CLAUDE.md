@@ -399,6 +399,47 @@ M6b-3, carreira nova num país do mundo (24/11/2026):
     do país (M6b-4);
   - a moeda (o caixa ainda sai na escala do Brasil, M7).
 
+M6b-4a, virada do país do técnico na Europa (24/11/2026):
+- A virada de temporada de hoje (`virada.advanceSeason`) faz tudo o que já
+  fazia (meta, prêmios, reputação, renovação dos elencos, caixa da CPU...).
+  No save do mundo, troca só três pontos, todos por ganchos
+  (`estado.ganchosMundo`):
+  - acesso e queda: `carreiramundo.viradaDoPaisAtivo` no lugar da cascata
+    do Brasil;
+  - sem Copa do Brasil;
+  - calendário, rodadas e tabela da temporada nova pelo relógio
+    (`novaTemporadaDoMundo`).
+- `viradaDoPaisAtivo`:
+  - tabelas finais com os desempates da liga;
+  - fim de temporada pelas fases da M3;
+  - troca entre divisões e catálogo pela virada da M5, com a proteção do
+    clube do técnico;
+  - quem chega do catálogo ganha elenco gerado (como a Série D) e quem sai
+    para o catálogo sai do save;
+  - catálogo, campeões e histórico de viradas guardados na entrada do país
+    no mundo leve;
+  - mudança de divisão do técnico, com aviso ("Acesso! EFL Championship →
+    Premier League.").
+- Limite desta etapa: os jogos de fim de temporada do país são simulados
+  na hora, inclusive os do técnico. Jogar o playoff ao vivo fica para uma
+  etapa seguinte (registrado).
+- Defeito achado e corrigido no caminho: o mundo leve aberto em memória
+  regravava o catálogo antigo do país depois da virada, e a 2ª virada
+  acusava clube repetido. A checagem da transação pegou o problema e agora
+  diz quais clubes se repetem.
+- Testes:
+  - `test_motor_mundo_carreira` 8/8. Novo caso: temporada inteira na
+    Championship com o técnico em 1º (sobe para a Premier League, 38
+    rodadas, 2027/28, total de clubes conservado), depois em último (volta
+    à Championship, 46 rodadas).
+  - Fora da suíte: 2 temporadas em cada uma das 10 ligas europeias, sem
+    falha. ~1,3 s por temporada; saves entre 650 e 780 KB de JSON.
+  - Testes do motor: 39/39. Rota rápida: 54/54.
+- Falta na M6b-4:
+  - América do Sul (fases do técnico pelo plano dos formatos e a virada do
+    país);
+  - reabrir o save do mundo (carregar o índice e os elencos ao abrir).
+
 ⸻
 
 FASE1-ESC — Fase 1: escalação e orientação da comissão técnica

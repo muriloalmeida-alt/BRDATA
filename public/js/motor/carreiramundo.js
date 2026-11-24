@@ -27,6 +27,14 @@ import * as ML from "./mundoleve.js";
 import * as Fo from "./formatos.js";
 import * as partida from "./partida.js";
 
+import * as Fa from "./fases.js";
+import * as Vp from "./viradapais.js";
+import { classificar, opcoesDaLiga, rngDaChave } from "./desempate.js";
+import { buildLeagueSquad } from "./virada.js";
+import { viradaDoCaixaCpu } from "./semana.js";
+import * as temporada from "./temporada.js";
+import * as tabela from "./tabela.js";
+
 // Pontos de overall por unidade de nível da liga (gameplayLevel) acima de 1
 // (parâmetro de balanceamento; a Premier League, 1,22, ganha ~5,5).
 export const OVERALL_POR_NIVEL = 25;
@@ -186,3 +194,149 @@ export function aplicarCalendario(CAREER, indice, k) {
   if (CAREER.otherDivisions && CAREER.otherDivisions[outra]) CAREER.otherDivisions[outra].schedule = sched;
   return c;
 }
+
+// ---------- virada do país do técnico (M6b-4) ----------
+// Fim de temporada do país do técnico no save do mundo, no lugar da cascata
+// do Brasil (virada.applyPromotionRelegation). Europa: o plano de fim de
+// temporada (fases.js) a partir das tabelas finais das duas divisões, jogado
+// na hora pela mesma conta de gols (os jogos do técnico nesse plano também:
+// a partida ao vivo de playoff fica para uma etapa seguinte). Depois a
+// virada do país (viradapais.js), com o catálogo, as zonas e as forças que
+// moram no mundo leve (a entrada do país do técnico, que o mundo leve não
+// joga). Clube que sobe do catálogo ganha elenco gerado (como a Série D);
+// quem cai para o catálogo sai do save. Devolve o resumo no formato de
+// applyPromotionRelegation (para a tela) e `mundo: true`.
+
+function tabelaFinal(indice, liga, standings, chave) {
+  const linhas = Object.values(standings).map((r) => ({ ...r }));
+  return classificar(linhas, opcoesDaLiga(indice.competicoes[liga], indice.perfisDesempate, [], chave)).ordem;
+}
+
+function simuladorDoPais(CAREER, chave) {
+  const rng = rngDaChave(chave);
+  const forca = (id) => estado.forcaDeJogo(estado.timePorId(id));
+  return {
+    jogar: (p) => partida.scoreGoals(forca(p.casa), forca(p.fora), 1, rng),
+    prorrogacao: (p) => partida.scoreGoals(forca(p.casa), forca(p.fora), 1 / 3, rng),
+    penaltis: (p) => (rng() < 0.5 ? p.casa : p.fora),
+  };
+}
+
+export async function viradaDoPaisAtivo(CAREER) {
+  const indice = indiceAtual;
+  if (!indice) throw new Error("mundo: índice não carregado");
+  const cod = CAREER.mundo.pais;
+  const pais = paisDaLiga(indice, CAREER.divisoes[0]);
+  const [l1, l2] = pais.ligas;
+  const P = CAREER.mundoLeve.paises[cod];
+  const chave = `${CAREER.mundoLeve.chave}:${cod}:${CAREER.mundo.ano}`;
+  const standingsDe = (l) => (l === CAREER.competitionId ? CAREER.standings : CAREER.otherDivisions[l].standings);
+  const S = (x) => String(x);
+  const N = (x) => (Number.isFinite(Number(x)) ? Number(x) : x);
+
+  if (pais.regiao !== "europa") throw new Error("mundo: virada da América do Sul na carreira ainda não ligada (M6b-4b)");
+  const ordem = {}, pontos = {};
+  for (const l of [l1, l2]) {
+    const t = tabelaFinal(indice, l, standingsDe(l), `${chave}:${l}`);
+    ordem[l] = t.map((r) => N(r.id));
+    pontos[l] = Object.fromEntries(t.map((r) => [N(r.id), r.pts]));
+  }
+  const catalogo = P.catalogo.map((id) => {
+    const extra = P.catalogoExtra[S(id)];
+    const c = indice.terceira.find((x) => S(x.id) === S(id));
+    return extra ? { id, ...extra } : { id, elegibilidade: c && c.elegibilidade, clubePai: c && c.clubePai, grupo: c && c.grupo };
+  });
+  const naDivisao = (id) => (ordem[l1].some((x) => S(x) === S(id)) ? 1 : ordem[l2].some((x) => S(x) === S(id)) ? 2 : null);
+  const reservasDoMundo = indice.clubes.filter((c) => c.reserva && c.clubePai).map((c) => ({ id: c.id, clubePai: c.clubePai }))
+    .concat(indice.terceira.filter((c) => c.clubePai).map((c) => ({ id: c.id, clubePai: c.clubePai })));
+  const ativos = new Set([...ordem[l1], ...ordem[l2]].map(S));
+  const temBarrage = !!(indice.competicoes[l2].regras || {}).interDivisionPlayoff;
+  const rep = temBarrage ? Vp.sortearRepresentante({ catalogo, divisaoAtual: naDivisao, chave }) : null;
+  const plano = Fa.montarPosTemporada({
+    pais: cod, comps: [indice.competicoes[l1], indice.competicoes[l2]], ordens: ordem, pontos,
+    reservas: reservasDoMundo.filter((r) => ativos.has(S(r.id))).map((r) => r.id), representanteTerceira: rep, chave,
+  });
+  const res = Fa.jogarTudo(plano, simuladorDoPais(CAREER, `${chave}:pos`));
+  const v = Vp.aplicarVirada({
+    pais: cod, chave, d1: { id: l1, clubes: ordem[l1] }, d2: { id: l2, clubes: ordem[l2] },
+    sobemD2: res.sobem[l2], descemD1: res.descem[l1], descemD2: res.descem[l2], sobemTerceira: res.sobem.terceira,
+    quedaD2: ordem[l2].slice().reverse(), catalogo, reservas: reservasDoMundo, humano: N(CAREER.clubId),
+  });
+
+  // Times das divisões novas (os que ficam, com a força de agora; os que
+  // chegam do catálogo, do índice com a força guardada no mundo leve).
+  const timeDe = (id) => {
+    const atual = estado.todosTimes().find((t) => S(t.id) === S(id)) || (S(id) === S(CAREER.clubId) ? estado.ligaAtual().find((t) => S(t.id) === S(id)) : null);
+    if (atual) return { ...atual };
+    const c = indice.terceira.find((x) => S(x.id) === S(id)) || indice.clubes.find((x) => S(x.id) === S(id));
+    const f = P.forcas[S(id)];
+    const fraco = (l) => { const ts = timesDaLiga(indice, l); return { atk: Math.min(...ts.map((t) => t.atk)) * 0.97, def: Math.max(...ts.map((t) => t.def)) * 1.03 }; };
+    const base = f ? { atk: f[0], def: f[1] } : c && c.atk != null ? { atk: c.atk, def: c.def } : fraco(l2);
+    return { id: c.id, name: c.nome, short: c.sigla, logo: c.escudo || c.logoOrigem || null, c1: c.c1 || "#5B6B7F", c2: c.c2 || "#1F2933", ...base };
+  };
+  const ajuste = (l) => { const n = indice.competicoes[l].nivel; return n ? Math.round((n - 1) * OVERALL_POR_NIVEL * 10) / 10 : 0; };
+  const novos = { [l1]: v[l1].map((id) => ({ ...timeDe(id), competitionId: l1, ajusteNivel: ajuste(l1) })), [l2]: v[l2].map((id) => ({ ...timeDe(id), competitionId: l2, ajusteNivel: ajuste(l2) })) };
+
+  // Elencos: quem saiu para o catálogo some do save; quem chegou ganha elenco.
+  for (const id of v.foramParaOCatalogo) delete CAREER.leagueSquads[S(id)];
+  for (const id of v.entraramDoCatalogo) {
+    const t = [...novos[l1], ...novos[l2]].find((x) => S(x.id) === S(id));
+    CAREER.leagueSquads[S(id)] = await buildLeagueSquad(t);
+    if (temporada.RENOVACAO_CPU.ativa) {
+      const desloca = CAREER.seasonYear - ambiente.temporadaReal();
+      CAREER.leagueSquads[S(id)].forEach((p) => { if (desloca > 0) p.contractUntil += desloca; });
+    }
+  }
+  viradaDoCaixaCpu();
+
+  // Catálogo e mundo do país (na entrada dele no mundo leve).
+  P.catalogo = v.catalogo.map((c) => c.id);
+  P.catalogoExtra = {};
+  for (const c of v.catalogo) {
+    const doIndice = indice.terceira.find((x) => S(x.id) === S(c.id));
+    if (!doIndice || c.exJogavel) P.catalogoExtra[S(c.id)] = { elegibilidade: c.elegibilidade, clubePai: c.clubePai ?? null, grupo: c.grupo ?? null };
+  }
+  P.ligas[l1] = { clubes: v[l1], placares: "" };
+  P.ligas[l2] = { clubes: v[l2], placares: "" };
+  P.campeoes = [...P.campeoes, { ano: CAREER.mundo.ano, [l1]: res.campeao[l1], [l2]: res.campeao[l2] }].slice(-20);
+  P.viradas = [...P.viradas, { ano: CAREER.mundo.ano, sobem: res.sobem[l2], descem: res.descem[l1], entraram: v.entraramDoCatalogo, sairam: v.foramParaOCatalogo, excecoes: v.excecoes }].slice(-3);
+  P.k += 1; P.ano += 1;
+  CAREER.mundo.k += 1; CAREER.mundo.ano += 1;
+  // O mundo leve aberto em memória tem a cópia de antes: reabre na próxima semana.
+  leve = null;
+
+  // Divisões do motor e a do técnico.
+  const humanoEm = v[l1].some((x) => S(x) === S(CAREER.clubId)) ? l1 : l2;
+  const mudou = humanoEm !== CAREER.competitionId;
+  CAREER.divisionTeams = { [l1]: novos[l1], [l2]: novos[l2] };
+  estado.definirCompeticaoAtual(humanoEm);
+  CAREER.competitionId = humanoEm;
+  estado.definirLigaAtual(novos[humanoEm].map((t) => ({ ...t, competitionId: undefined })));
+  estado.definirTodosTimes([...novos[l1], ...novos[l2]]);
+  const outra = humanoEm === l1 ? l2 : l1;
+  CAREER.otherDivisions = { [outra]: { schedule: {}, standings: tabela.emptyStandings(novos[outra].map((t) => t.id)) } };
+
+  const nomeDe = (l) => indice.competicoes[l].nome;
+  const times = (ids) => ids.map((id) => [...novos[l1], ...novos[l2]].find((t) => S(t.id) === S(id)) || { id, name: (indice.terceira.find((c) => S(c.id) === S(id)) || {}).nome || String(id) });
+  const humano = S(CAREER.clubId);
+  let texto = null;
+  if (mudou) texto = humanoEm === l1 ? `Acesso! ${nomeDe(l2)} → ${nomeDe(l1)}.` : `Rebaixado(a): ${nomeDe(l1)} → ${nomeDe(l2)}.`;
+  return {
+    mundo: true, pais: cod, campeoes: res.campeao, confrontos: plano.confrontos,
+    relegatedA: times(res.descem[l1]), promotedB: times(res.sobem[l2]), relegatedB: times(v.foramParaOCatalogo), promotedC: times(v.entraramDoCatalogo),
+    relegatedC: [], promotedD: [], excecoes: v.excecoes,
+    divisionChanged: mudou, newCompetitionId: humanoEm, texto,
+    humanoNoPlayoff: plano.confrontos.some((c) => S(c.a) === humano || S(c.b) === humano),
+  };
+}
+
+// Calendário e rodadas da temporada nova no save do mundo (no fim da virada).
+export function novaTemporadaDoMundo(CAREER) {
+  const indice = indiceAtual;
+  aplicarCalendario(CAREER, indice, CAREER.mundo.k);
+  CAREER.standings = tabela.emptyStandings(estado.ligaAtual().map((t) => t.id));
+  CAREER.cup = null;
+}
+
+ganchosMundo.viradaDoPais = (CAREER) => viradaDoPaisAtivo(CAREER);
+ganchosMundo.novaTemporada = (CAREER) => novaTemporadaDoMundo(CAREER);
