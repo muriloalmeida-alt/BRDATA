@@ -73,6 +73,47 @@ junto). Até lá, ficam atrás de uma chave de desenvolvimento
   sempre a partir da original (encadear ano a ano escorrega o calendário),
   com o dia de cada rodada preservado.
 
+## M6b — Ligação com o save e a carreira (detalhe)
+
+Levantamento no código (24/11/2026): o que prende a carreira ao Brasil.
+
+| Ponto | Onde | Quantidade |
+|---|---|---|
+| Lista fixa das 3 divisões (`ALL_COMPETITIONS_ORDER`) | `carga.js`, `virada.js` | 12 usos |
+| 38 rodadas fixas | `aovivo`, `carga`, `fechamento`, `financas`, `jogo`, `partida`, `ponte`, `semana`, `temporada`, `virada` | 19 lugares |
+| Copa do Brasil (`CAREER.cup`) | `carga`, `fechamento`, `jogo`, `posjogo`, `virada` | 34 usos |
+| Série D (`serieDPool`) | `carga`, `estado`, `fechamento`, `virada` | 14 usos |
+| Janela de transferências pela fase do ano brasileiro | `semana.js` (`transferWindowStatus`), `mercado.windowByCalendar` | — |
+| Moeda R$ (`fmtBRL`) | motor (55) e v2 (20 arquivos) | etapa M7 |
+
+Passos, cada um com teste de equivalência do Brasil (o save brasileiro e o
+caminho de hoje não mudam):
+
+1. **M6b-1. Divisões do país do save.**
+   - `divisoesDoPais()` no estado substitui a lista fixa.
+   - O padrão é o Brasil, então não há mudança nenhuma nos saves de hoje.
+2. **M6b-2. Calendário do save do mundo pelo relógio.**
+   - Uma entrada por compromisso, com data e ano; a semana com 2 rodadas
+     vira 2 entradas.
+   - Janela de transferências pelas datas do país (`paises[].janelas`).
+   - Folha mensal pela virada de mês.
+   - "38" passa a ser o número de rodadas da liga.
+3. **M6b-3. Carreira nova num país do mundo.**
+   - Elencos pela rota `/api/career/mundo/elencos`.
+   - Simulação completa nas 2 divisões do país.
+   - `CAREER.mundo` com o mundo leve dos outros países.
+   - Copa do Brasil desligada fora do Brasil.
+   - Catálogo de 3ª do país no lugar da Série D.
+4. **M6b-4. Temporada do técnico pela agenda.**
+   - Europa: rodadas do pacote.
+   - América do Sul: o plano de `formatos.js`. Mata-mata, quadrangular e
+     hexagonal do técnico passam pelo fluxo da perna de Copa que já existe.
+   - Fim de temporada: fases/formatos, `viradapais` e elenco fictício para
+     quem sobe do catálogo, como a Série D.
+5. **M6b-5. Brasil no mundo leve quando o técnico está fora dele.**
+   - As regras das Séries A–D vêm de `temporada.js`, sem segunda
+     implementação.
+
 ## Medição (vale para todas as etapas)
 
 Da M6 em diante, cada relatório traz, no cenário de pior caso (técnico na
