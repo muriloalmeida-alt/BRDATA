@@ -212,6 +212,13 @@ Série D hoje.
       liga jogável nem segundas divisões nesses países.
     - UEFA: as associações fora das 5 ligas entram com nome real e elenco
       fictício (como a Série D), com força estimada.
+    - UEFA, 5º pacote (recebido em 24/11/2026): Portugal, Países Baixos,
+      Bélgica e Turquia (18 clubes cada) e Escócia (12), 84 clubes da 1ª
+      divisão com elencos reais (2.562 atletas, todos com 22+ e 2
+      goleiros). Mesma regra do pacote andino: só nas copas da UEFA, como
+      CPU, com tabela anual simplificada para os classificados e força
+      estimada pelo elenco. As outras associações seguem com elenco
+      fictício.
 - **DEP-2. Acesso UEFA por associação.**
   - O pacote continental não traz o Anexo A da UEFA nem os coeficientes em
     JSON.

@@ -20,7 +20,7 @@
 import { carreiraAtual, definirCompeticaoAtual, definirLigaAtual, definirTodosTimes, todosTimes, ganchosMundo } from "./estado.js";
 import * as estado from "./estado.js";
 import { ambiente } from "./semana.js";
-import { buildSquad, buildLeagueSquads, montarCarreira, buildFriendlySlots } from "./virada.js";
+import { buildSquad, buildLeagueSquads, montarCarreira, buildFriendlySlots, buildSeasonCalendar } from "./virada.js";
 import * as Rel from "./relogio.js";
 import * as CM from "./calendariomundo.js";
 import * as ML from "./mundoleve.js";
@@ -34,6 +34,9 @@ import { buildLeagueSquad } from "./virada.js";
 import { viradaDoCaixaCpu } from "./semana.js";
 import * as temporada from "./temporada.js";
 import * as tabela from "./tabela.js";
+import * as texto from "./texto.js";
+import * as financas from "./financas.js";
+import * as mercado from "./mercado.js";
 
 // Pontos de overall por unidade de nível da liga (gameplayLevel) acima de 1
 // (parâmetro de balanceamento; a Premier League, 1,22, ganha ~5,5).
@@ -68,6 +71,26 @@ export function avancarMundoLeve(CAREER) {
   return eventos;
 }
 ganchosMundo.semanaDoMundo = (CAREER) => { const ev = avancarMundoLeve(CAREER); semanaDasFasesGeradas(CAREER); return ev; };
+
+// ---------- moeda e porte (M7) ----------
+// Decisões do Murilo (24/11): economia única pelo overall (salário, valor e
+// orçamento pela regra de hoje); dos pacotes, só o porte relativo entre os
+// clubes da mesma liga. A moeda do país é só exibição (texto.fmtBRL).
+export function moedaDoPais(indice, cod) {
+  const p = indice.paises.find((x) => x.codigo === cod);
+  return p ? p.moeda : "BRL";
+}
+// Porte relativo de um clube na liga pelo número do pacote (receita anual ou
+// TV): raiz da razão com a mediana da liga, entre 0,6 e 1,8.
+export const PORTE_MIN = 0.6, PORTE_MAX = 1.8;
+export function porteDoClube(indice, id, campo = "annualRevenue") {
+  const c = indice.clubes.find((x) => String(x.id) === String(id));
+  if (!c || !c.financas || !(c.financas[campo] > 0)) return 1;
+  const valores = indice.clubes.filter((x) => x.liga === c.liga && x.financas && x.financas[campo] > 0).map((x) => x.financas[campo]).sort((a, b) => a - b);
+  const mediana = valores[Math.floor(valores.length / 2)];
+  return Math.max(PORTE_MIN, Math.min(PORTE_MAX, Math.sqrt(c.financas[campo] / mediana)));
+}
+ganchosMundo.moeda = (codigo) => texto.definirMoeda(codigo);
 
 export function paisDaLiga(indice, liga) {
   const p = indice.paises.find((x) => x.ligas.includes(liga));
@@ -142,6 +165,17 @@ export async function criarCarreiraNoMundo(o) {
   CAREER.cup = null;
   CAREER.serieDPool = [];
 
+  // Moeda do país (exibição) e porte do clube (M7): o caixa do técnico e o
+  // caixa guardado dos clubes da CPU do país pelo porte relativo na liga.
+  CAREER.moeda = moedaDoPais(indice, pais.codigo);
+  texto.definirMoeda(CAREER.moeda);
+  CAREER.finances.cash = Math.round(CAREER.finances.cash * porteDoClube(indice, club.id) / 1000) * 1000;
+  CAREER.caixaCpu = CAREER.caixaCpu || {};
+  for (const [id, sq] of Object.entries(CAREER.leagueSquads)) {
+    const wageCap = Math.round(financas.wageBill(sq) * 1.35 / 1000) * 1000;
+    CAREER.caixaCpu[id] = Math.round(mercado.caixaNormal(wageCap) * porteDoClube(indice, id) / 1000) * 1000;
+  }
+
   // Calendário e rodadas pela agenda do relógio.
   aplicarCalendario(CAREER, indice, 0);
 
@@ -182,6 +216,9 @@ export function aplicarCalendario(CAREER, indice, k) {
   });
   CAREER.calendar = c.calendar;
   CAREER.calendar.friendlies = buildFriendlySlots(CAREER.calendar);
+  // Cota de TV mensal: a regra do Brasil (pelos custos do clube) vezes o
+  // porte do clube na TV da liga (M7).
+  CAREER.calendar.tvMonthly = Math.round(buildSeasonCalendar(indice.competicoes[liga].temporada.anoInicial + k).tvMonthly * porteDoClube(indice, CAREER.clubId, "monthlyTV") / 1000) * 1000;
   CAREER.rodadasLiga = c.rodadas;
   CAREER.schedule = Object.fromEntries(Object.entries(c.schedule).map(([r, js]) => [r, js.map((m) => ({ home: m.home, away: m.away }))]));
   CAREER.seasonYear = indice.competicoes[liga].temporada.anoInicial + k;
@@ -487,6 +524,7 @@ export async function abrirSaveDoMundo(career, buscar) {
     if (!indice || !indice.competicoes) throw new Error("mundo: índice do mundo indisponível para abrir a carreira");
   }
   definirIndiceDoMundo(indice);
+  texto.definirMoeda(career.moeda || moedaDoPais(indice, career.mundo.pais));
   const liga = career.competitionId;
   const comp = indice.competicoes[liga];
   estado.definirTemporadaReal(comp.temporada.anoInicial);

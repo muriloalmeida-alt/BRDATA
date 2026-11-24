@@ -428,6 +428,7 @@ export async function startCareer(clubId) {
     // os outros países jogam em paralelo (carreiramundo.anexarMundoAoBrasil);
     // sem ele, nada muda (nem um pedido a mais ao servidor).
     if (estado.ganchosMundo.anexarMundo) await estado.ganchosMundo.anexarMundo(carreiraAtual());
+    if (estado.ganchosMundo.moeda) estado.ganchosMundo.moeda(null); // carreira no Brasil: R$ (M7)
     await persistCareer();
     tela("openFirstEntry");
   } finally {
@@ -1089,6 +1090,8 @@ export async function enterAfterAuth() {
     const doMundo = !!(saved.career.mundo && estado.ganchosMundo.abrirSave);
     if (doMundo) await estado.ganchosMundo.abrirSave(saved.career, fetchJSON);
     else await loadLeague(homeCompetitionId, { forceDemo: saved.career.liveMode === false });
+    // Moeda de exibição (M7): a do país no save do mundo; R$ no Brasil.
+    if (!doMundo && estado.ganchosMundo.moeda) estado.ganchosMundo.moeda(null);
     // Save do Brasil com o mundo em paralelo (M6b-5a): só o índice do mundo.
     if (!doMundo && saved.career.mundoLeve && estado.ganchosMundo.abrirIndice) await estado.ganchosMundo.abrirIndice(saved.career, fetchJSON);
     tela("setBootProgress", 3, 5, "Carregando a competição...");

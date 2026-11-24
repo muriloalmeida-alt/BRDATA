@@ -1,7 +1,7 @@
 # BRDATA — CHANGELOG
 **Gerado em:** 09/09/2026 (atualizado em 26/10/2026)
 **Cobertura:** 2026-08-14 até 2026-09-11 (251 commits em 18 dias, branch `main`)
-**Versão atual:** v11.0.0
+**Versão atual:** v12.0.0
 
 ## Metodologia
 
@@ -78,6 +78,31 @@ bump.
 ---
 
 ## Histórico completo (mais recente primeiro)
+
+### 2026-11-24 — v12.0.0  (MUNDO-001, PRs #154 a #157)
+
+> **Bump MAJOR porque:** a carreira passa de um Brasil com 3 divisões para um
+> mundo de 25 ligas (Europa e América do Sul) rodando em paralelo. Tudo fica
+> desligado para o jogador até a liberação (seletor de novo save, M10).
+> Nota: este changelog não registra os PRs de 27/10 a 23/11 (#50 a #153); o
+> histórico deles está em `docs/HANDOFF_CLAUDE.md`.
+
+- `ea0b996` — PR #154, M1 a M6a:
+  - catálogo das 20 ligas (pacotes de 24/11, escudos e rotas do servidor
+    desligadas por `MUNDO_ATIVO`);
+  - relógio por data;
+  - desempates e fases europeias;
+  - formatos sul-americanos fiéis;
+  - virada por país;
+  - mundo leve.
+- PR #155, M6b passos 1 a 4: carreira num país do mundo (divisões, rodadas,
+  janela por data, calendário, criação, virada do país do técnico na Europa
+  e na América do Sul, reabrir o save).
+- PR #156, M6b passo 5: o Brasil no mundo (carreira brasileira com o mundo
+  em paralelo; o Brasil no mundo leve quando o técnico está fora).
+- PR #157, M7: moeda do país (câmbio fixo, só exibição) e porte do clube no
+  caixa, na TV e na bilheteria; decisões DEP-1 e DEP-2 e 4º e 5º pacotes de
+  clubes registrados.
 
 ### 2026-10-26 — v11.0.0  (7 PRs + 1 em revisão)
 

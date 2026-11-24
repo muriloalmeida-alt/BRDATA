@@ -36,7 +36,11 @@
 //  11) M6b-5a, Brasil com o mundo em paralelo: carreira nova no Brasileirão
 //      (modo exemplo, sem rede) com o índice do mundo -> os 10 países no mundo
 //      leve, na semana da carreira, andando junto; sem o índice (mundo
-//      desligado), a carreira nasce como sempre, sem `mundoLeve`.
+//      desligado), a carreira nasce como sempre, sem `mundoLeve`;
+//  12) M7, moeda e porte: carreira no Arsenal em libras (texto.fmtBRL pelo
+//      câmbio fixo), caixa e caixa da CPU pelo porte relativo do pacote, TV
+//      mensal > 0, bilheteria pela capacidade real do estádio; Argentina em
+//      dólar; carreira no Brasil volta a R$.
 // Uso: node tests/unit/test_motor_mundo_carreira.js
 const assert = require("assert");
 const path = require("path");
@@ -458,6 +462,35 @@ const imp = (m) => import(pathToFileURL(path.join(ROOT, "public/js/motor", m)).h
     } finally {
       globalThis.fetch = fetchAntes;
     }
+  });
+
+  await check("M7: moeda do país, porte do clube, TV e capacidade do estádio", async () => {
+    const v2 = await imp("v2.js");
+    const semana = await imp("semana.js");
+    const CMu = await imp("carreiramundo.js");
+    const texto = await imp("texto.js");
+    const financas = await imp("financas.js");
+    semana.definirAmbiente({ ...v2.ambienteSemPagina(), buscarJogadores: async () => [], indiceDoMundo: null, armazem: { pedir: async () => ({ ok: true }) } });
+    const elencosDaLiga = async (liga) => JSON.parse(fs.readFileSync(path.join(ROOT, `server/frozen-catalog/snapshot-${liga}.json`), "utf8")).playersByTeamId;
+    const ars = indice.clubes.find((c) => c.liga === "premier_league" && /Arsenal/.test(c.nome));
+    const C = await CMu.criarCarreiraNoMundo({ indice, liga: "premier_league", clubId: ars.id, elencosDaLiga });
+    assert.strictEqual(C.moeda, "GBP");
+    assert.strictEqual(texto.moedaDeExibicao(), "GBP");
+    assert.ok(/£/.test(texto.fmtBRL(7000000)), texto.fmtBRL(7000000));
+    assert.strictEqual(texto.fmtBRL(7000000).replace(/\D/g, ""), "1000000", "câmbio de 7 por libra");
+    const porte = CMu.porteDoClube(indice, ars.id);
+    assert.ok(porte > 1, `Arsenal deveria ter porte acima da mediana (${porte})`);
+    assert.ok(Object.keys(C.caixaCpu).length >= 43, "caixa da CPU do país");
+    assert.ok(C.calendar.tvMonthly > 0, "sem cota de TV");
+    const cap = financas.stadiumCapacity({ venue: { capacity: 60704 } }, () => 0.5, 0);
+    assert.strictEqual(cap, 61000, "capacidade real do estádio");
+    assert.strictEqual(financas.stadiumCapacity({ atk: 1.3 }, () => 0.5, 0), Math.round((15000 + 0.5 * 20000 + 0.3 * 45000) / 1000) * 1000, "sem capacidade: a estimativa de sempre");
+    const arg = indice.clubes.find((c) => c.liga === "arg_liga_profesional");
+    const A = await CMu.criarCarreiraNoMundo({ indice, liga: "arg_liga_profesional", clubId: arg.id, elencosDaLiga });
+    assert.strictEqual(A.moeda, "USD");
+    assert.ok(/US\$/.test(texto.fmtBRL(5500000)), texto.fmtBRL(5500000));
+    texto.definirMoeda(null);
+    assert.ok(/R\$/.test(texto.fmtBRL(1000)), "Brasil em reais");
   });
 
   console.log(`\n${n - failed}/${n} ok`);

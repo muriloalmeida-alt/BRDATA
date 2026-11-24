@@ -11,13 +11,59 @@ Demandas vigentes
 
 MUNDO-001 — Ligas da Europa e da América do Sul, em paralelo, com continentais
 
-Status: REVISÃO DO PM NECESSÁRIA.
-- Etapas M1 a M6a: PR #154 (suíte completa 191/191).
+Status: M1 a M7 APROVADAS (Murilo, 24/11/2026: #154 mesclado por ele; #155 a
+#157 com "Vamos fazer os merges pendentes?"). M8 em revisão.
+- Etapas M1 a M6a: PR #154 (suíte completa 191/191), mesclado.
 - M6b, passos 1 a 4: PR #155, empilhado sobre o #154 (suíte completa
   191/192; a falha, instável e sem relação com o mundo, está no PR).
 - M6b, passo 5 (o Brasil no mundo): PR #156, empilhado sobre o #155
   (suíte completa 192/192).
-Próximo: M7 (moeda e finanças por país).
+- M7, moeda e porte: PR #157, empilhado sobre o #156 (suíte completa
+  192/192).
+Próximo: M8 (mercado e carreira do técnico no mundo).
+
+Relatório da M7, moeda e finanças por país (24/11/2026)
+
+Decisões do Murilo (24/11):
+- economia única pelo overall (salário, valor e orçamento pela regra de
+  hoje; dos pacotes, só o porte relativo entre clubes da mesma liga);
+- câmbio fixo só para exibição: 1 libra = R$ 7,00; 1 euro = R$ 6,00;
+  1 dólar = R$ 5,50 (a América do Sul usa dólar, como nos pacotes).
+
+O que foi feito:
+- `texto.fmtBRL` mostra a moeda do país do save (`texto.definirMoeda`,
+  `CAMBIO`). O motor continua guardando tudo em R$. Sem moeda definida
+  (todo save do Brasil), o formatador é o de sempre.
+  - A moeda fica em `globalThis.BRDATA_MOEDA`, para a remontagem da página
+    antiga nos testes de equivalência continuar funcionando.
+- Save do mundo:
+  - `CAREER.moeda` (GBP, EUR ou USD);
+  - caixa inicial do técnico e caixa guardado de cada clube da CPU do país
+    pelo porte relativo no pacote (raiz da razão com a mediana da liga,
+    entre 0,6 e 1,8, pela receita anual);
+  - TV mensal pela regra do Brasil vezes o porte na TV da liga;
+  - bilheteria pela capacidade real do estádio do pacote
+    (`financas.stadiumCapacity`; sem capacidade, a estimativa de sempre).
+- A carga e a criação no Brasil voltam a moeda para R$ (gancho
+  `ganchosMundo.moeda`).
+- A v2 ainda formata dinheiro por conta própria em R$. A moeda nas telas da
+  v2 entra com as telas (M10).
+
+Testes:
+- `test_motor_mundo_carreira` 12/12. Caso novo: Arsenal em libras (câmbio
+  conferido), porte acima da mediana, caixa da CPU, TV, capacidade real;
+  Argentina em dólar; Brasil em reais.
+- Testes do motor: 39/39. Rota rápida: 54/54. Testes da v2: 47/47.
+
+Pontos para o Murilo (efeito da economia única, a tratar no balanceamento
+do mercado, M8):
+1. Em moeda estrangeira, os valores ficam na escala do Brasil. Exemplo: o
+   teto salarial mensal de um clube da Premier League fica entre £ 170 mil
+   e £ 250 mil (no real, milhões).
+2. Em 2 temporadas sem o técnico mexer em nada, um clube da Ligue 2 juntou
+   € 8,4 milhões de caixa, mais que clubes da Premier League. A folha baixa
+   com as receitas da regra de hoje acumula caixa. Vale conferir se a
+   Série C brasileira tem o mesmo comportamento antes de mudar a regra.
 
 M6b-5a, carreira no Brasil com o mundo em paralelo (24/11/2026):
 - Carreira nova no Brasil com o mundo ligado (o hospedeiro fornece o índice
@@ -53,6 +99,11 @@ Pendências de decisão do Murilo (não bloqueiam M1 a M8):
     Libertadores e na Sul-Americana, e uma tabela anual simplificada para
     os classificados. A força é estimada pelo elenco.
   - UEFA: as outras associações entram com nome real e elenco fictício.
+  - 5º pacote (24/11/2026, clubes e elencos da Europa): Portugal, Países
+    Baixos, Bélgica, Turquia e Escócia, 84 clubes das 1ªs divisões com
+    elencos reais. Mesma regra do pacote andino (só nas copas da UEFA).
+    Assim como ele, não traz jogos, força, finanças nem escudos locais.
+    A importação vai com a M10.
   - Leitura do pacote: não traz jogos, força, finanças nem escudos locais;
     as segundas divisões estão incompletas (21 de 24 clubes bolivianos sem
     elenco nominal).

@@ -107,6 +107,9 @@ export function sponsorshipSeasonTotal(sponsorship) {
 // Capacidade estimada pela força do clube, com sorteio fixo por clube
 // (`rng` = seededRngFromKey(`stadium:${id}`)), mais as obras concluídas.
 export function stadiumCapacity(club, rng, upgradeBonus = 0) {
+  // MUNDO-001 (M7): clube do mundo com a capacidade do estádio no pacote.
+  const real = club && club.venue && club.venue.capacity;
+  if (real > 0) return Math.round(real / 1000) * 1000 + upgradeBonus;
   const base = 15000 + rng() * 20000;
   const bonus = clamp((club.atk || 1.3) - 1, 0, 1) * 45000;
   return Math.round((base + bonus) / 1000) * 1000 + upgradeBonus;
