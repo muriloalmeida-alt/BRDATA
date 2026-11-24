@@ -274,8 +274,55 @@ Nota: o destino de quem cai da Primera Nacional (Metropolitana ou Federal
 A) não vem no pacote. O clube volta ao catálogo sem circuito e conta em
 qualquer um dos dois.
 
-Próxima etapa: M6, a simulação híbrida e o save do mundo (liga as peças
-M1–M5 ao avanço de semana).
+Relatório da etapa M6a, mundo leve (24/11/2026)
+
+A M6 foi dividida em duas:
+- M6a: o mundo leve, as ligas fora do país do técnico;
+- M6b: a ligação com o save e a carreira do técnico (próxima).
+
+O que foi feito: `public/js/motor/mundoleve.js` (+ `.d.ts`). As 20 ligas
+andam semana a semana com as peças M1–M5:
+- agenda pelo relógio;
+- placar pela mesma conta de gols do motor (`partida.scoreGoals`), com a
+  força do clube no nível de gols da liga (`partida.forcaComNivel`), como as
+  divisões que o técnico não joga no Brasil;
+- Europa: tabela com os desempates e o fim de temporada pelas fases;
+- América do Sul: a temporada pelos formatos;
+- virada por país.
+
+Detalhes:
+- O sorteio de cada jogo é pela chave (liga, temporada, jogo). Salvar e
+  reabrir não muda nada.
+- Save enxuto:
+  - a agenda é derivada do índice e não vai no save;
+  - os placares das fases fixas viram uma string (2 caracteres por jogo);
+  - a tabela é recalculada a partir dos placares;
+  - vão no save as fases geradas, os confrontos, o catálogo alterado, as
+    zonas, o histórico do promedio e a força de quem mudou de divisão.
+- Força de quem muda de divisão: pela razão do nível das ligas
+  (`nivel`/gameplayLevel do pacote), amortecida (expoente 0,5, parâmetro de
+  balanceamento).
+- Início do save: a pré-temporada da liga escolhida. As ligas que já
+  estariam em andamento são pré-simuladas até lá.
+- Catálogo do mundo: o índice ganhou o nível e a média de gols de cada
+  liga.
+
+Testes: `test_motor_mundoleve` 5/5.
+- Início na Premier League com a América do Sul pré-simulada até
+  20/07/2026.
+- 3 anos de mundo com 3 viradas por país e todas as contagens certas.
+- Salvar e reabrir a cada 5 semanas igual a jogar direto.
+- Gols por jogo de cada liga a menos de 25% da referência do pacote.
+
+Medições (ambiente de teste), mundo inteiro, 3 anos:
+- semana: média 3,9 ms, p95 10,3 ms, pior 16,5 ms;
+- parte do mundo no save: 77 KB de JSON e 15 KB comprimida.
+- A decisão D1 (híbrido) cabe com folga: o save da carreira brasileira de
+  hoje tem ~830 KB de JSON e ~100 KB comprimido.
+
+Próxima etapa: M6b, o save do mundo na carreira. O país do técnico na
+simulação completa de hoje e o resto no mundo leve. O Brasil também entra
+no mundo leve quando o técnico está fora dele.
 
 ⸻
 

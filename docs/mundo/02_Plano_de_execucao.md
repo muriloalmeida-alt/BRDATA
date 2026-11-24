@@ -18,7 +18,7 @@ junto). Até lá, ficam atrás de uma chave de desenvolvimento
 | **M3** | Motor de fases declarativo e desempates: Europa | M2 | `public/js/motor/fases.js`, `desempate.js`, configuração por liga |
 | **M4** | Formatos sul-americanos fiéis: Apertura/Clausura, anual, promedios, reducido, quadrangulares, hexagonais, Intermedio | M3 | idem + configuração SA |
 | **M5** | Virada por país: acesso, queda, clubes B, catálogo de 3ª divisão, proteção do humano | M3, M4 | `temporada.js`, `virada_pais.js` |
-| **M6** | Simulação híbrida (completa no país ativo, leve no resto), save enxuto (catálogo fora do save, delta por atleta), força comparável entre ligas; liga o relógio ao avanço de semana do save do mundo | M2 | `fechamento.js`, `carga.js`, `estado.js`, `leve.js` |
+| **M6** | (M6a, feita: mundo leve `mundoleve.js`; M6b: ligação com o save e a carreira) Simulação híbrida (completa no país ativo, leve no resto), save enxuto (catálogo fora do save, delta por atleta), força comparável entre ligas; liga o relógio ao avanço de semana do save do mundo | M2 | `fechamento.js`, `carga.js`, `estado.js`, `leve.js` |
 | **M7** | Moeda de jogo e finanças por país (seeds, folha normalizada, TV mensal, bilheteria pela capacidade) | M6 | `financas.js`, `moeda.js` |
 | **M8** | Mercado e carreira do técnico no mundo (índice global, CPU entre países, propostas de emprego de fora, troca de país ativo) | M6, M7 | `mercado.js`, `negociacao.js`, `clube.js` |
 | **M9** | Libertadores e Sul-Americana | M5, M8, **DEP-1** | `continental.js`, `sorteio.js` |

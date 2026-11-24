@@ -283,6 +283,30 @@ function montar(opts) {
     }
   }
 
+  // --- nível da liga e média de gols ----------------------------------------
+  // nivel: o gameplayLevel do pacote (igual para todos os clubes da liga), na
+  // mesma escala para as 20 ligas; força comparável entre ligas (MUN-02).
+  // mediaGolsPorTime: gols por clube por jogo da referência (Europa: a base
+  // da calibração do pacote; América do Sul: as tabelas de referência), para
+  // o nível de gols do motor (partida.nivelDeGols).
+  {
+    const refSA = lerJSON(path.join(P.sa, "dados/tabelas-referencia.json"));
+    const somaSA = {};
+    for (const r of refSA) { const x = (somaSA[r.competitionId] ||= { gp: 0, j: 0 }); x.gp += r.gp; x.j += r.j; }
+    for (const [id, comp] of Object.entries(competicoes)) {
+      const doClube = clubes.filter((c) => c.liga === id);
+      const niveis = [...new Set(doClube.map((c) => c.nivel).filter((x) => x != null))];
+      comp.nivel = niveis.length === 1 ? niveis[0] : null;
+      if (comp.regiao === "europa") {
+        const base = [...new Set(eu.clubes.filter((c) => c.competitionId === id).map((c) => c.strength && c.strength.reference && c.strength.reference.baselineGfPerClubMatch).filter((x) => x != null))];
+        comp.mediaGolsPorTime = base.length === 1 ? base[0] : null;
+      } else {
+        const x = somaSA[id];
+        comp.mediaGolsPorTime = x && x.j ? Math.round((x.gp / x.j) * 10000) / 10000 : null;
+      }
+    }
+  }
+
   // --- zonas fixas (Argentina) e grupos do Competencia (Uruguai) -------------
   // Argentina: as zonas de referência do pacote (as mesmas no Apertura e no
   // Clausura). Uruguai (Segunda): os grupos saem dos próprios jogos do
