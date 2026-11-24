@@ -65,7 +65,10 @@ const CALENDARIO = (comp, rodada) => `JSON.stringify((() => {
 const SAVE_JSON = "JSON.stringify(window.BRDATA_MOTOR.estado.carreiraAtual())";
 // Elencos da CPU no fim da temporada (achado A14: encolhem a cada virada).
 const ELENCOS_CPU = `JSON.stringify((() => { const C = window.BRDATA_MOTOR.estado.carreiraAtual(); const t = Object.values(C.leagueSquads).flat();
-  return { jogadores: t.length, reais: t.filter((p) => p.real).length, overall: t.length ? Math.round(t.reduce((s, p) => s + p.overall, 0) / t.length * 10) / 10 : null }; })())`;
+  const xis = Object.values(C.leagueSquads).map((sq) => sq.slice().sort((a, b) => b.overall - a.overall).slice(0, 11)).flat();
+  return { jogadores: t.length, reais: t.filter((p) => p.real).length, overall: t.length ? Math.round(t.reduce((s, p) => s + p.overall, 0) / t.length * 10) / 10 : null,
+    overallXI: xis.length ? Math.round(xis.reduce((s, p) => s + p.overall, 0) / xis.length * 10) / 10 : null,
+    jovens: t.filter((p) => (p.age || 99) <= 21).length }; })())`;
 const N_RODADAS = "Object.keys(window.BRDATA_MOTOR.estado.carreiraAtual().schedule || {}).length";
 
 // ---------- estatística ----------
@@ -189,7 +192,7 @@ async function carreira(modo, seed) {
       // server.js readBody: 1 MB) e o save guardado (comprimido,
       // careerStore.js MAX_BYTES: 768 KB).
       bytesSave: Object.fromEntries([...new Set(rs.flatMap((r) => r.bytes.map((b) => b.temporada)))].map((t) => { const b = rs.map((r) => r.bytes.find((x) => x.temporada === t)).filter(Boolean); const v = b.map((x) => x.fim), g = b.map((x) => x.gzip); return [`temporada${t}`, { json: { media: Math.round(media(v)), max: Math.max(...v) }, gzip: { media: Math.round(media(g)), max: Math.max(...g) } }]; })),
-      elencosCpu: Object.fromEntries([...new Set(rs.flatMap((r) => (r.elencos || []).map((e) => e.temporada)))].map((t) => { const e = rs.map((r) => (r.elencos || []).find((x) => x.temporada === t)).filter(Boolean); return [`temporada${t}`, { jogadores: Math.round(media(e.map((x) => x.jogadores))), reais: Math.round(media(e.map((x) => x.reais))), overall: r3(media(e.map((x) => x.overall))) }]; })),
+      elencosCpu: Object.fromEntries([...new Set(rs.flatMap((r) => (r.elencos || []).map((e) => e.temporada)))].map((t) => { const e = rs.map((r) => (r.elencos || []).find((x) => x.temporada === t)).filter(Boolean); return [`temporada${t}`, { jogadores: Math.round(media(e.map((x) => x.jogadores))), reais: Math.round(media(e.map((x) => x.reais))), overall: r3(media(e.map((x) => x.overall))), overallXI: r3(media(e.map((x) => x.overallXI || 0))), jovens: Math.round(media(e.map((x) => x.jovens || 0))) }]; })),
       picoJsonEmQualquerRodada: Math.max(...rs.map((r) => r.picoJson || 0)),
       limites: { corpoPutJson: 1024 * 1024, saveGzip: 768 * 1024 },
       picoHeapMB: r3(Math.max(...rs.map((r) => r.picoHeap || 0)) / 1048576),
