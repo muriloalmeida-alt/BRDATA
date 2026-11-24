@@ -96,6 +96,11 @@ Pendências de decisão do Murilo (não bloqueiam M1 a M8):
     Libertadores e na Sul-Americana, e uma tabela anual simplificada para
     os classificados. A força é estimada pelo elenco.
   - UEFA: as outras associações entram com nome real e elenco fictício.
+  - 5º pacote (24/11/2026, clubes e elencos da Europa): Portugal, Países
+    Baixos, Bélgica, Turquia e Escócia, 84 clubes das 1ªs divisões com
+    elencos reais. Mesma regra do pacote andino (só nas copas da UEFA).
+    Assim como ele, não traz jogos, força, finanças nem escudos locais.
+    A importação vai com a M10.
   - Leitura do pacote: não traz jogos, força, finanças nem escudos locais;
     as segundas divisões estão incompletas (21 de 24 clubes bolivianos sem
     elenco nominal).
