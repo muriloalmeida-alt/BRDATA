@@ -19,11 +19,11 @@
    Avisos viram o evento "aviso". A perna da Copa e o amistoso ao vivo
    terminam pela página até a etapa D2.
 =================================================================== */
-import { carreiraAtual, ligaAtual, todosTimes, timePorId, forcaMediaDoElenco, partidaAtual, definirPartida, forcaDeJogo, PARIDADE_CPU } from "./estado.js";
+import { carreiraAtual, ligaAtual, todosTimes, timePorId, forcaMediaDoElenco, partidaAtual, definirPartida, forcaDeJogo, PARIDADE_CPU, ganchosMundo } from "./estado.js";
 import { ensureObjectivesFresh, bumpObjective, trailingWinStreak, rankByPoints } from "./registro.js";
 import { fmtBRL, abbreviateName } from "./texto.js";
 import { ambiente, avisar, leagueSquadFor } from "./semana.js";
-import { applyConditionRecovery, applyMatchWearChunk, attributeGoals, computeHumanStrength, finishRoundTail, freshCareerTotals, escalacaoDaCpu, forcaDaCpu, freshMatchBucket, pickCpuXI, posturaDaCpu, posturaNoIntervalo, recuperarCpu, resolveCpuFixture, resolveRoundInstant, substituicoesDaCpu, tacticModDe, xiDaCpu, fecharSuspensoesCpu } from "./fechamento.js";
+import { applyConditionRecovery, applyMatchWearChunk, attributeGoals, computeHumanStrength, finishRoundTail, freshCareerTotals, escalacaoDaCpu, forcaDaCpu, freshMatchBucket, pickCpuXI, posturaDaCpu, posturaNoIntervalo, recuperarCpu, resolveCpuFixture, resolveRoundInstant, substituicoesDaCpu, tacticModDe, xiDaCpu, fecharSuspensoesCpu, depoisDoJogoDaCpu } from "./fechamento.js";
 import * as financas from "./financas.js";
 import * as partida from "./partida.js";
 import * as tabela from "./tabela.js";
@@ -103,6 +103,29 @@ export function applyMoraleAfterMatch(myGoals, oppGoals) {
       || (quebrada && p.benchStreak >= PROMESSA_RODADAS_PEDE_SAIDA && p.morale <= PROMESSA_MORAL_PEDE_SAIDA);
   });
 }
+
+// PARIDADE-CPU · E4 (decisão do Murilo 22/11, "Mesma regra, sem
+// conversas"): a moral da CPU muda pela regra da sua partida (resultado;
+// titular, banco ou fora da lista; o quanto ele reclama de não jogar) e o
+// "pede para sair" segue o mesmo critério. Sem motivo em texto e sem
+// conversas (só o seu elenco conversa com o técnico).
+export function moralDaCpu(sq, titulares, banco, golsPro, golsContra) {
+  const resultDelta = golsPro > golsContra ? 3 : golsPro === golsContra ? 0 : -3;
+  const t = new Set(titulares.map((p) => p.id)), b = new Set((banco || []).map((p) => p.id));
+  sq.forEach((p) => {
+    const base = p.morale == null ? 70 : p.morale;
+    let delta;
+    if (t.has(p.id)) { delta = resultDelta + 2; p.benchStreak = 0; }
+    else {
+      p.benchStreak = (p.benchStreak || 0) + 1;
+      const complaint = playerComplaintFactor(p);
+      delta = b.has(p.id) ? Math.round(resultDelta / 2) + Math.round(-1 * complaint) : Math.round(-2 * complaint);
+    }
+    p.morale = clamp(base + delta, 0, 100);
+    p.wantsTransfer = p.benchStreak >= WANTS_TRANSFER_BENCH_STREAK && p.morale <= WANTS_TRANSFER_MORALE_MAX;
+  });
+}
+ganchosMundo.moralCpu = moralDaCpu;
 
 // Promessa de papel (FASE1-MER): quanto a mais a moral cai por partida e
 // quando o jogador pede para sair.
@@ -696,6 +719,11 @@ export function encerrarPartida() {
   // PARIDADE-CPU · E1a: o adversário também recupera quem não jogou.
   recuperarCpu(lm.isHome ? lm.humanFx.away : lm.humanFx.home, Array.from(lm.appeared));
   fecharSuspensoesCpu(lm.isHome ? lm.humanFx.away : lm.humanFx.home, lm.round); // PARIDADE-CPU · E3
+  { // PARIDADE-CPU · E4: evolução por rodada jogada e moral do adversário.
+    const cpuId = lm.isHome ? lm.humanFx.away : lm.humanFx.home;
+    const jogaram = leagueSquadFor(cpuId).filter((p) => lm.appeared.has(p.id));
+    depoisDoJogoDaCpu(cpuId, jogaram, lm.cpuBench || [], lm.isHome ? lm.ga : lm.gh, lm.isHome ? lm.gh : lm.ga);
+  }
   let ticketRevenue = null;
   if (lm.isHome) {
     ticketRevenue = computeTicketRevenue(lm.home);

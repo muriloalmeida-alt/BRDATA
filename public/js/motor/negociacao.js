@@ -319,9 +319,12 @@ export function mercadoCpuDaRodada(round) {
       if (v && String(v.id) !== String(CAREER.clubId) && !vendedores.some((x) => String(x.id) === String(v.id))) vendedores.push(v);
     }
     const compradorSq = leagueSquadFor(comprador.id);
+    // O clube comprador montado uma vez (média, ambição e caixa ficam em
+    // cache nele): o mesmo resultado de financeiroScore/transferScore por id.
+    const clube = marketClub(comprador.id);
     const cands = vendedores.flatMap((v) => leagueSquadFor(v.id)
-      .filter((p) => p.onLoanFromClubId == null && financeiroScore(p, compradorSq, comprador.id) > 0)
-      .map((p) => ({ item: { p, v }, score: transferScore(p, comprador.id) })))
+      .filter((p) => p.onLoanFromClubId == null && mercado.financeiroScore(p, compradorSq, clube) > 0)
+      .map((p) => ({ item: { p, v }, score: mercado.transferScore(p, clube) })))
       .sort((a, b) => b.score - a.score).slice(0, MERCADO_CPU.candidatos);
     if (!cands.length) continue;
     const { p, v } = pickWeightedByScore(cands);

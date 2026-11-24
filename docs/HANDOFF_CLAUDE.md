@@ -683,6 +683,52 @@ Relatório (17/11):
 
 ⸻
 
+PARIDADE-E4-1 — Treino, evolução e moral da CPU (PARIDADE-CPU, E4, PR1)
+
+Status: REVISÃO DO PM NECESSÁRIA (mesclado dentro da autorização de 20/11).
+Requisito: CPU-09; achado A11.
+Decisões do Murilo (22/11):
+- "Treino semanal igual ao seu";
+- "Mesma regra, sem conversas";
+- custo: "Aceitar e validar no iPhone".
+Feito (motor):
+- Semana: a CPU treina com o plano padrão pela mesma regra do seu treino
+  (treino.trainingWeek: condição, evolução com potencial, teto da temporada
+  e faixa alta). Não guarda o histórico de fadiga nem a tendência, que só as
+  telas do seu elenco usam.
+- Depois de cada jogo de liga da CPU (direto, outras divisões e o adversário
+  da sua partida), duas regras do seu elenco passam a valer para ela:
+  - a evolução por rodada jogada (treino.agingWeek);
+  - a moral pela regra da sua partida (aovivo.moralDaCpu): resultado;
+    titular, banco ou fora da lista; fator de reclamação; "pede para sair"
+    com banco seguido e moral baixa. Sem conversas e sem motivo em texto.
+- Quem pede para sair entra nos motivos de venda como "Insatisfeito".
+- Virada: sem a evolução anual de antes (temporada.renewLeagueSquad,
+  evolucaoAnual).
+- Desempenho:
+  - treino.patchOf compara números e textos direto (só os objetos passam
+    pelo JSON);
+  - o mercado CPU × CPU monta o clube comprador uma vez por tentativa;
+  - os resultados são os mesmos.
+- Chave estado.PARIDADE_CPU.evolucao (false só nos testes de equivalência).
+Medido (baseline, dados reais, 3 seeds × 3 temporadas):
+- gols iguais aos do E3;
+- overall médio da CPU 72,3 / 71,1 / 70,0 por temporada (antes: 71,1 /
+  70,6 / 70,2);
+- save: pico de 916 KB (o envio vai comprimido desde a D6);
+- tempo da rodada (Node, com gravação, medido no mesmo momento): p50 de
+  131 → 177 ms e p95 de 245 → 373 ms em relação ao E2. Disso, o E3 (mercado
+  e save) responde por ~+23% e o E4 pelo resto. Aceito pelo Murilo; validar
+  no iPhone (D5/V09).
+Testes:
+- test_paridade_evolucao (novo, frozen, 5/5);
+- test_training_evolution, item 2: agora confere que o seu plano não vale
+  para a CPU (ela treina pelo plano padrão dela);
+- suíte completa: 184/184 (com o item 2 ajustado);
+- equivalências com a regra desligada.
+
+⸻
+
 PARIDADE-E3-3 — Contratos da CPU e agentes livres (PARIDADE-CPU, E3, PR3)
 
 Status: REVISÃO DO PM NECESSÁRIA (mesclado dentro da autorização de 20/11).

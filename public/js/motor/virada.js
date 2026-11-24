@@ -446,6 +446,7 @@ export function renewLeagueSquad(club, squad) {
   return temporada.renewLeagueSquad({
     club, squad, seasonYear: CAREER.seasonYear, minSize: minSquadSizeFor(club.id),
     evoRng: ambiente.rngDaChave(`cpu-evo:${club.id}:${CAREER.seasonYear}`),
+    evolucaoAnual: !PARIDADE_CPU.evolucao,
     rng: ambiente.rngDaChave(`renew-league:${club.id}:${CAREER.seasonYear}`),
     // A14 (17/11): o gerado na virada (reposição da CPU, base e profissionais
     // do seu elenco) ganha contrato contado do ano da CARREIRA, não do ano do

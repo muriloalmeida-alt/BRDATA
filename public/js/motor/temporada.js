@@ -219,10 +219,12 @@ function reporNoNivel(p, ref, rng, env) {
 // de contrato (com a renovação do A14) e reposição até o mínimo com
 // profissionais gerados.
 // o: { club, squad, seasonYear, minSize, evoRng, rng, env }
-export function renewLeagueSquad({ club, squad, seasonYear, minSize, evoRng, rng, env }) {
+export function renewLeagueSquad({ club, squad, seasonYear, minSize, evoRng, rng, env, evolucaoAnual = true }) {
   const players = squad.map(copyPlayer);
   players.forEach((p) => {
-    applyCpuAnnualEvolution(p, evoRng);
+    // PARIDADE-CPU · E4: com a evolução semanal (treino e minutos, como o seu
+    // elenco), a evolução anual da CPU fica de fora.
+    if (evolucaoAnual) applyCpuAnnualEvolution(p, evoRng);
     turnOver(p);
     if (p.potential != null) p.potential = clamp(p.potential - potentialDeclineFor(p.age, p.group), 20, 99);
   });

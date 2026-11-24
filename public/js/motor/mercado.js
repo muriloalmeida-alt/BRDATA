@@ -408,6 +408,9 @@ export function motivosAVenda(player, roster, ctx = {}, P = MER_PARAMETROS) {
   if (ctx.temporada != null && player.contractUntil != null && player.contractUntil <= ctx.temporada) m.push("fim-de-contrato");
   if (papel === "reserva" && (player.age || 0) >= A_VENDA.idadeExcedente) m.push("excedente");
   if (ctx.salarioJusto > 0 && (player.wage || 0) > ctx.salarioJusto * A_VENDA.salarioAlto) m.push("salario-alto");
+  // PARIDADE-CPU · E4: quem pede para sair (moral baixa e banco seguido, a
+  // regra do seu elenco) também está à venda por insatisfação.
+  if (player.wantsTransfer && !m.includes("insatisfeito")) m.unshift("insatisfeito");
   return m;
 }
 

@@ -580,7 +580,19 @@ export function applyWeeklyTraining() {
   // condição"): a CPU passa pela mesma semana de treino padrão, só no efeito
   // na condição (descanso e desgaste do treino, treino.condicaoDaSemana); a
   // evolução por treino da CPU fica para o E4.
-  if (PARIDADE_CPU.forca) {
+  if (PARIDADE_CPU.evolucao) {
+    // PARIDADE-CPU · E4 (decisão do Murilo 22/11, "Treino semanal igual ao
+    // seu"): a CPU treina com o plano padrão pela mesma regra (condição e
+    // evolução, com o potencial e o teto da temporada); sem guardar o
+    // histórico de fadiga e a tendência (só as telas do seu elenco usam).
+    const plano = treino.defaultTrainingPlan();
+    const preseason = !!(calendarOn() && (calendarWeek() || {}).p === "pre");
+    Object.values(CAREER.leagueSquads || {}).forEach((sq) => {
+      if (!sq || !sq.length) return;
+      const { patches } = treino.trainingWeek({ plan: plano, squad: sq, roundsSoFar: CAREER.currentRound - 1, preseason, round: CAREER.currentRound }, Math.random);
+      sq.forEach((p) => { Object.assign(p, patches.get(p.id)); delete p.fatigueHistory; delete p.attrTrend; });
+    });
+  } else if (PARIDADE_CPU.forca) {
     const plano = treino.defaultTrainingPlan();
     Object.values(CAREER.leagueSquads || {}).forEach((sq) => { if (sq && sq.length) treino.condicaoDaSemana(plano, sq); });
   }
