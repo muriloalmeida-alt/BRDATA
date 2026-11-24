@@ -53,7 +53,7 @@ function novoConfronto(plano, etapa, a, b, o) {
   return c;
 }
 
-function mandanteDaPerna(c, i) {
+export function mandanteDaPerna(c, i) {
   if (i === 0) return c.casaIda;
   return c.casaIda === c.a ? c.b : c.a;
 }
@@ -389,4 +389,4 @@ export const RESOLUCOES = R;
 
 // Usados também pelos formatos sul-americanos (formatos.js): a mesma regra
 // de mandante por perna e de decisão de confronto.
-export { decidir as decidirConfronto, mandanteDaPerna };
+export const decidirConfronto = decidir;

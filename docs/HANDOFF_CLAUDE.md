@@ -11,8 +11,11 @@ Demandas vigentes
 
 MUNDO-001 — Ligas da Europa e da América do Sul, em paralelo, com continentais
 
-Status: REVISÃO DO PM NECESSÁRIA para as etapas M1 a M6a (PR #154, suíte
-completa 191/191). A M6b começa depois da revisão. A especificação saiu do pedido do
+Status: REVISÃO DO PM NECESSÁRIA.
+- Etapas M1 a M6a: PR #154 (suíte completa 191/191).
+- M6b, passos 1 a 4: PR #155, empilhado sobre o #154 (suíte completa
+  191/192; a falha, instável e sem relação com o mundo, está no PR).
+Próximo: M6b-5 (o Brasil no mundo). A especificação saiu do pedido do
 Murilo (24/11/2026), dos três pacotes de dados anexos e das decisões dele
 na mesma data:
 - D1: simulação híbrida;
@@ -324,6 +327,180 @@ Medições (ambiente de teste), mundo inteiro, 3 anos:
 Próxima etapa: M6b, o save do mundo na carreira. O país do técnico na
 simulação completa de hoje e o resto no mundo leve. O Brasil também entra
 no mundo leve quando o técnico está fora dele.
+
+Relatório da M6b, passos 1 e 2 (24/11/2026; branch `claude/mundo-m6b`,
+empilhada sobre o PR #154, por decisão do Murilo)
+
+M6b-1, divisões do país do save:
+- `estado.divisoesDoPais()` no lugar da lista fixa das 3 divisões
+  brasileiras: na criação da carreira, na carga, nas divisões e nos
+  amistosos (`virada.js`, `carga.js`) e na divisão do clube na negociação
+  (`negociacao.js`).
+- Sem o campo `divisoes` no save (todos os saves de hoje), continuam as 3
+  do Brasil.
+- A cascata de acesso do Brasil (`applyPromotionRelegation`) não mudou: o
+  save do mundo terá a virada dele (M6b-4).
+
+M6b-2, calendário:
+- `estado.rodadasDaTemporada()` no lugar do 38 fixo onde ele é o tamanho
+  da temporada: fim da temporada, rodada do técnico, empréstimo de meia
+  temporada, notícia de título, demissão no fim do ano.
+  - Sem o campo `rodadasLiga`, continua 38.
+  - Ficam como estão o calendário do Brasil, o patrocínio por rodada das
+    carreiras antigas (sem calendário) e as escalas de evolução do jogador
+    (`temporada.js`), que usam 38 como temporada de referência.
+- Janela de transferências: a semana do save do mundo traz `j` (janela do
+  país pelas datas da FIFA). Sem `j` (Brasil), vale a fase do ano, como
+  sempre.
+- `public/js/motor/calendariomundo.js` (+ `.d.ts`), módulo puro: monta o
+  calendário do save do mundo no formato de hoje, com o ano em cada semana.
+  - As rodadas da liga do técnico são numeradas em sequência: Apertura e
+    Clausura viram 1–32.
+  - A semana com 2 rodadas vira 2 entradas.
+  - Os jogos da outra divisão vão para a entrada da semana deles.
+- Testes: o carregador dos testes de equivalência (`tests/e2e/_motor_vm.js`)
+  aprendeu os dois atalhos.
+  - `test_motor_mundo_carreira`: 5/5 (Premier League, Championship com 46
+    rodadas e semanas duplas, Argentina 1–32, janela, rodadas).
+  - Testes do motor: 39/39. Rota rápida: 54/54.
+
+M6b-3, carreira nova num país do mundo (24/11/2026):
+- `public/js/motor/carreiramundo.js` (+ `.d.ts`) cria a carreira num clube
+  do índice. Reaproveita a montagem de sempre (`virada.montarCarreira`) e
+  troca o que é do Brasil:
+  - as 2 divisões do país com simulação completa;
+  - calendário, rodadas e janela pelo relógio;
+  - sem Copa do Brasil e sem Série D;
+  - os outros 9 países no mundo leve (`CAREER.mundoLeve`), pré-simulados
+    até a pré-temporada. O mundo leve anda junto com a semana da carreira
+    pelo gancho `ganchosMundo.semanaDoMundo`, chamado na virada de semana
+    do calendário.
+- Mudanças no núcleo, todas sem efeito no Brasil:
+  - `montarCarreira` ganhou `extras` (vazio no Brasil);
+  - `buildRealPlayer` soma `club.ajusteNivel` (MUN-02; os clubes do Brasil
+    não têm o campo);
+  - a carga não recria a Copa num save do mundo.
+- Força entre ligas (MUN-02, 1ª versão): o overall do jogador ganha
+  (nível da liga − 1) × 25. Medido na criação: Premier League 70,6 e
+  Championship 64,8 de média.
+  - O Brasil fica sem ajuste até a calibração do mercado (M8): é preciso
+    pôr a Série A na mesma escala.
+- Testes: `test_motor_mundo_carreira` 7/7.
+  - Carreira no Arsenal: criação em ~0,15 s; save de 525 KB de JSON
+    (56 KB comprimido).
+  - 4 rodadas jogadas pela ponte da v2 (semana, partida, pós-jogo,
+    gravação), com a Championship jogando pelas datas e o mundo leve na
+    mesma semana.
+  - Fora da suíte, também jogaram: a Championship (46 rodadas, semanas
+    duplas) e a Argentina (save de 907 KB de JSON, o pior caso, com 66
+    clubes; o envio vai comprimido).
+  - Testes do motor: 39/39. Rota rápida: 54/54.
+- Ainda não ligado:
+  - a tela (seletor de novo save, M10);
+  - a reabertura do save do mundo (carga do índice ao abrir, M6b-4);
+  - as fases do técnico (a Argentina ainda joga numa tabela só) e a virada
+    do país (M6b-4);
+  - a moeda (o caixa ainda sai na escala do Brasil, M7).
+
+M6b-4a, virada do país do técnico na Europa (24/11/2026):
+- A virada de temporada de hoje (`virada.advanceSeason`) faz tudo o que já
+  fazia (meta, prêmios, reputação, renovação dos elencos, caixa da CPU...).
+  No save do mundo, troca só três pontos, todos por ganchos
+  (`estado.ganchosMundo`):
+  - acesso e queda: `carreiramundo.viradaDoPaisAtivo` no lugar da cascata
+    do Brasil;
+  - sem Copa do Brasil;
+  - calendário, rodadas e tabela da temporada nova pelo relógio
+    (`novaTemporadaDoMundo`).
+- `viradaDoPaisAtivo`:
+  - tabelas finais com os desempates da liga;
+  - fim de temporada pelas fases da M3;
+  - troca entre divisões e catálogo pela virada da M5, com a proteção do
+    clube do técnico;
+  - quem chega do catálogo ganha elenco gerado (como a Série D) e quem sai
+    para o catálogo sai do save;
+  - catálogo, campeões e histórico de viradas guardados na entrada do país
+    no mundo leve;
+  - mudança de divisão do técnico, com aviso ("Acesso! EFL Championship →
+    Premier League.").
+- Limite desta etapa: os jogos de fim de temporada do país são simulados
+  na hora, inclusive os do técnico. Jogar o playoff ao vivo fica para uma
+  etapa seguinte (registrado).
+- Defeito achado e corrigido no caminho: o mundo leve aberto em memória
+  regravava o catálogo antigo do país depois da virada, e a 2ª virada
+  acusava clube repetido. A checagem da transação pegou o problema e agora
+  diz quais clubes se repetem.
+- Testes:
+  - `test_motor_mundo_carreira` 8/8. Novo caso: temporada inteira na
+    Championship com o técnico em 1º (sobe para a Premier League, 38
+    rodadas, 2027/28, total de clubes conservado), depois em último (volta
+    à Championship, 46 rodadas).
+  - Fora da suíte: 2 temporadas em cada uma das 10 ligas europeias, sem
+    falha. ~1,3 s por temporada; saves entre 650 e 780 KB de JSON.
+  - Testes do motor: 39/39. Rota rápida: 54/54.
+- Falta na M6b-4: América do Sul (fases do técnico pelo plano dos formatos
+  e a virada do país); feito em seguida, ver M6b-4b abaixo.
+
+M6b-4, reabrir o save do mundo (24/11/2026):
+- A carga de hoje (`carga.enterAfterAuth`) chama
+  `carreiramundo.abrirSaveDoMundo` quando o save é do mundo (gancho
+  `ganchosMundo.abrirSave`). Ela carrega o índice (rota
+  `/api/career/mundo`, ou o do ambiente) e monta o mundo do motor com as
+  divisões gravadas no save, sem buscar times pela rota do Brasil.
+- Os módulos do mundo entram no app:
+  - `v2.js` importa `carreiramundo.js`, que registra os ganchos;
+  - o app shell do service worker (`public/sw.js`) recebe os 8 módulos
+    novos, para o modo offline;
+  - o carregador dos testes (`tests/e2e/_motor_vm.js`) recebe os módulos
+    na ordem de dependência e passa a aceitar `import { a as b }`.
+- `fases.js` e `desempate.js` deixaram o `export { ... }` pelo formato de
+  exportação dos outros módulos.
+- Testes:
+  - `test_motor_mundo_carreira` 9/9. Novo caso: o save reaberto mantém a
+    liga, as divisões, a rodada e a semana, não recria a Copa e segue
+    jogando e gravando.
+  - Testes do motor: 39/39. Testes da v2: 47/47. Rota rápida: 54/54.
+
+M6b-4b, América do Sul no país do técnico (24/11/2026):
+- Cada liga do país tem o plano da temporada (`formatos.js`), guardado
+  compacto em `CAREER.mundo.planos`.
+- Os jogos das fases de tabela fixa são os que o motor já joga por rodada,
+  na liga do técnico e na outra divisão. O placar chega ao plano por um
+  gancho (`ganchosMundo.resultadoDoMundo`), colocado nos dois pontos por
+  onde passa todo resultado: `applyResultToStandings` e
+  `resolveOtherDivisionsRound`.
+- As fases geradas (mata-matas, quadrangulares, hexagonais, Intermedio,
+  finais, acesso) são jogadas pela semana, com a mesma conta de gols,
+  inclusive as do técnico. A partida ao vivo nessas fases fica para uma
+  etapa seguinte, como o playoff europeu.
+- Virada: termina o que faltar dos planos e aplica o acesso e a queda do
+  regulamento:
+  - zonas argentinas novas;
+  - grupos do Competencia sorteados;
+  - histórico do promedio atualizado;
+  - proteção do clube do técnico.
+- A tabela do técnico na tela soma as fases de tabela fixa (a "anual"). As
+  tabelas por zona, grupo e fase vêm com as telas (M10).
+- Rodada de folga do técnico (grupos de 7 do Competencia uruguaio): o motor
+  já resolvia a rodada na hora (`resolveRoundInstant`), caminho que o
+  Brasil nunca usou. A tela da v2 precisa ser conferida nesse caso (M10).
+- Testes:
+  - `test_motor_mundo_carreira` 10/10. Caso novo: temporada inteira na Liga
+    Profesional (15 jogos de mata-mata do Apertura, 480 placares de zonas no
+    plano), virada com 2 quedas distintas, zonas 15/15 e 18/18, histórico de
+    2026 no promedio; Segunda uruguaia com folga.
+  - Fora da suíte: 2 temporadas em cada uma das 10 ligas sul-americanas,
+    sem falha, ~2 s por temporada, com o técnico subindo e caindo (Chile,
+    Colômbia, Uruguai).
+  - Testes do motor: 39/39. Rota rápida: 54/54. Testes da v2: 47/47.
+    `test_v2_venda_disponivel` falhou uma vez em paralelo, passou 2/2
+    sozinho e 47/47 numa segunda rodada (instável, sem relação com o
+    mundo).
+- Risco: o save argentino chega a ~1,1 MB de JSON. Ele vai comprimido
+  (~120 KB) desde a D6. Um navegador sem `CompressionStream` (Safari
+  anterior ao 16.4) manda o JSON cru, que passa do limite de 1 MB do
+  servidor. Proposta: tratar na M7/M10 (podar o save do mundo ou recusar o
+  mundo nesses navegadores).
 
 ⸻
 

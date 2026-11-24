@@ -19,7 +19,7 @@
    Avisos viram o evento "aviso". A perna da Copa e o amistoso ao vivo
    terminam pela página até a etapa D2.
 =================================================================== */
-import { carreiraAtual, ligaAtual, todosTimes, timePorId, forcaMediaDoElenco, partidaAtual, definirPartida, forcaDeJogo, PARIDADE_CPU, ganchosMundo } from "./estado.js";
+import { carreiraAtual, ligaAtual, todosTimes, timePorId, forcaMediaDoElenco, partidaAtual, definirPartida, forcaDeJogo, PARIDADE_CPU, ganchosMundo, rodadasDaTemporada } from "./estado.js";
 import { ensureObjectivesFresh, bumpObjective, trailingWinStreak, rankByPoints } from "./registro.js";
 import { fmtBRL, abbreviateName } from "./texto.js";
 import { ambiente, avisar, leagueSquadFor } from "./semana.js";
@@ -403,7 +403,7 @@ export function determineMatchPressTrigger(ctx) {
   // Título/vice só na última rodada da temporada (proxy: posição final
   // na tabela — clinch matemático antecipado exigiria simular as
   // rodadas restantes, fora de escopo).
-  if (roundPlayed >= 38) {
+  if (roundPlayed >= rodadasDaTemporada()) {
     if (myPosAfter === 1) candidates.push("06");
     else if (myPosAfter === 2) candidates.push("07");
   }
@@ -508,7 +508,12 @@ export function activeManMarkingSuppression(opponentId) {
 // torcida, desenhar o placar, timers, destaque de gol, modais) continua na
 // página, que chama estas funções.
 
-const applyResultToStandings = (r, standings = carreiraAtual().standings) => { tabela.applyResult(standings, r); };
+// MUNDO-001 (M6b-4b): no save do mundo, o placar da liga do técnico também vai
+// para o plano da temporada (formatos sul-americanos, carreiramundo.js).
+const applyResultToStandings = (r, standings = carreiraAtual().standings) => {
+  tabela.applyResult(standings, r);
+  if (carreiraAtual().mundo && ganchosMundo.resultadoDoMundo && standings === carreiraAtual().standings) ganchosMundo.resultadoDoMundo(carreiraAtual().competitionId, r);
+};
 
 // Início: adversário, XI do adversário e os outros jogos da rodada.
 // Monta o LIVE_MATCH (motor/estado.js) e o devolve.
@@ -806,7 +811,7 @@ export function encerrarPartida() {
 export function simulateRound(abrirAoVivo) {
   const CAREER = carreiraAtual();
   const round = CAREER.currentRound;
-  if (round > 38) return null;
+  if (round > rodadasDaTemporada()) return null;
   const fixtures = CAREER.schedule[round] || [];
   // FASE 4 (item 3) — cópia da tabela ANTES de qualquer resultado dessa
   // rodada aplicar (ver applyResultToStandings, chamado fixture a

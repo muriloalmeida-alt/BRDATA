@@ -77,7 +77,7 @@ function valorDoCriterio(nome, linha, ctx) {
 }
 
 // Sorteio determinístico (mulberry32 pela chave).
-function rngDaChave(chave) {
+export function rngDaChave(chave) {
   let h = 2166136261;
   for (const c of String(chave)) h = Math.imul(h ^ c.charCodeAt(0), 16777619);
   let a = h >>> 0;
@@ -182,4 +182,3 @@ export function opcoesDaLiga(comp, perfisDesempate, resultados, chaveSorteio) {
   };
 }
 
-export { rngDaChave };

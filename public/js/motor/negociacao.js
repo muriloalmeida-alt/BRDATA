@@ -18,7 +18,7 @@
    A IA CPU x CPU não passa por aqui.
 =================================================================== */
 
-import { carreiraAtual, competicaoAtual, timePorId, forcaMediaDoElenco } from "./estado.js";
+import { carreiraAtual, competicaoAtual, timePorId, forcaMediaDoElenco, divisoesDoPais } from "./estado.js";
 import * as mercado from "./mercado.js";
 import { fairWageFor } from "./temporada.js";
 import { fmtBRL, abbreviateName } from "./texto.js";
@@ -26,15 +26,14 @@ import { pushNotification } from "./registro.js";
 import { ambiente, avisar, leagueSquadFor, marketClub, pushTransferLog, finalizeIncomingPurchase, maybeSpawnRivalOffer, calendarOn, CALENDAR_WINDOW_PHASES, ganchos, pickRandomOtherClub, temVagaCpu, entrarNoElencoCpu, moverCaixaCpu, transferScore, financeiroScore, pickWeightedByScore, minSquadSizeFor, SUBPOS_LABEL, subPositionOf } from "./semana.js";
 import { wageBill } from "./financas.js";
 
-const ORDEM_DIVISOES = ["brasileirao", "serie_b", "serie_c"];
 export const PAPEIS = ["titular", "rotacao", "reserva"];
 export const ANOS = [1, 2, 3, 4, 5];
 
-// Divisão de um clube: 0 = Série A, 1 = B, 2 = C.
+// Divisão de um clube: 0 = a 1ª do país do save (Série A), 1 = a 2ª, 2 = a 3ª.
 export function divisaoDoClube(clubId) {
   const CAREER = carreiraAtual();
   const comp = String(clubId) === String(CAREER.clubId) ? competicaoAtual() : (timePorId(clubId).competitionId || competicaoAtual());
-  return Math.max(0, ORDEM_DIVISOES.indexOf(comp));
+  return Math.max(0, divisoesDoPais().indexOf(comp));
 }
 
 // VENDA-DISPONIVEL (17/11): os motivos do clube para vender o jogador

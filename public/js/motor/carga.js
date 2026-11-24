@@ -26,7 +26,7 @@ import { ponteAvisar, ponteFim } from "./jogo.js";
 import { BOOST_ITEMS, nextOpponentId, ponte } from "./ponte.js";
 import { SUBPOS_LABEL, allMarketPlayers, ambiente, avisar, subPositionOf, syncCalendarToRound, transferWindowStatus } from "./semana.js";
 import { abbreviateName, fmtBRL } from "./texto.js";
-import { ALL_COMPETITIONS_ORDER, autoLineup, backfillPlayerPotential, buildLeagueSquads, buildSquad, computeBoardGoal, defaultSectorTactics, ensureUniquePlayerIds, evaluateAlwaysCheckableAchievements, initSponsorship, initialStadium, setupCup } from "./virada.js";
+import { autoLineup, backfillPlayerPotential, buildLeagueSquads, buildSquad, computeBoardGoal, defaultSectorTactics, ensureUniquePlayerIds, evaluateAlwaysCheckableAchievements, initSponsorship, initialStadium, setupCup } from "./virada.js";
 import * as financas from "./financas.js";
 import * as mercado from "./mercado.js";
 import * as treino from "./treino.js";
@@ -298,7 +298,7 @@ export async function loadLeague(competitionId = "brasileirao", opts = {}) {
 }
 
 export async function loadOtherCompetitionsTeams(homeCompetitionId, forceDemoMap = {}) {
-  const others = ALL_COMPETITIONS_ORDER.filter((c) => c !== homeCompetitionId);
+  const others = estado.divisoesDoPais().filter((c) => c !== homeCompetitionId);
   const health = await saudeDoServidor();
   const liveModeByCompetition = { [homeCompetitionId]: estado.modoReal() };
   const otherTeams = await Promise.all(others.map(async (compId) => {
@@ -880,7 +880,7 @@ export function migrateCareerDefaults() {
   // um chaveamento novo e fecha por trás (fast-forward, sem prêmio nem
   // log) qualquer fase cujo round já passou nessa temporada em
   // andamento — ver comentário em setupCup.
-  if (!CAREER.cup) setupCup(CAREER.currentRound);
+  if (!CAREER.cup && !CAREER.mundo) setupCup(CAREER.currentRound); // save do mundo: sem Copa do Brasil
   // FASE 4 (item 5) — carreira criada antes do patrocínio existir:
   // assina um contrato inicial de cada tipo, mesma função de sempre
   // (ver initSponsorship) — sem isso o save ficaria pra sempre sem
@@ -1080,7 +1080,11 @@ export async function enterAfterAuth() {
     // comportamento de sempre (tenta dado real, cai pro exemplo se
     // faltar chave), sem mudança de risco pra quem nunca teve esse bug.
     const homeCompetitionId = saved.career.competitionId || "brasileirao";
-    await loadLeague(homeCompetitionId, { forceDemo: saved.career.liveMode === false });
+    // MUNDO-001 (M6b-4): save do mundo abre pelo índice do mundo
+    // (carreiramundo.abrirSaveDoMundo); as divisões vêm do próprio save.
+    const doMundo = !!(saved.career.mundo && estado.ganchosMundo.abrirSave);
+    if (doMundo) await estado.ganchosMundo.abrirSave(saved.career, fetchJSON);
+    else await loadLeague(homeCompetitionId, { forceDemo: saved.career.liveMode === false });
     tela("setBootProgress", 3, 5, "Carregando a competição...");
     // AJUSTE (pedido do usuário: "o mercado deve trazer jogadores das
     // 3 ligas") — carreira "multi" (ver startCareer) também recarrega
@@ -1091,10 +1095,10 @@ export async function enterAfterAuth() {
     // sozinha pra ela. Carreira "single" (de antes desta mudança, sem
     // marketScope) não entra aqui — continua só com o mercado da
     // própria divisão, por decisão do usuário (sem migração automática).
-    if (saved.career.marketScope === "multi") {
+    if (saved.career.marketScope === "multi" && !doMundo) {
       const lm = saved.career.liveModeByCompetition || {};
       const forceDemoMap = {};
-      ALL_COMPETITIONS_ORDER.forEach((c) => { if (lm[c] === false) forceDemoMap[c] = true; });
+      estado.divisoesDoPais(saved.career).forEach((c) => { if (lm[c] === false) forceDemoMap[c] = true; });
       await loadOtherCompetitionsTeams(homeCompetitionId, forceDemoMap);
     }
     tela("setBootProgress", 4, 5, "Preparando o clube...");
@@ -1115,7 +1119,7 @@ export async function enterAfterAuth() {
     // carreira) — sem efeito em carreira sem o sistema ativado.
     if (CAREER.divisionTeams) {
       definirLigaAtual(CAREER.divisionTeams[competicaoAtual()]);
-      definirTodosTimes(ALL_COMPETITIONS_ORDER.flatMap((id) => CAREER.divisionTeams[id]));
+      definirTodosTimes(estado.divisoesDoPais(CAREER).flatMap((id) => CAREER.divisionTeams[id]));
     }
     // Modo ponte (motor escondido da v2): NÃO grava ao abrir. O motor pode
     // ficar aberto enquanto a v2 grava a escalação; uma gravação de abertura
@@ -1224,7 +1228,7 @@ export const comandosCarga = {
     },
     async demitir() {
       let CAREER = carreiraAtual();
-      if (!CAREER || CAREER.currentRound <= 38) return { ok: false, motivo: "sem-demissao" };
+      if (!CAREER || CAREER.currentRound <= estado.rodadasDaTemporada(CAREER)) return { ok: false, motivo: "sem-demissao" };
       if ((CAREER.negativeSeasonsStreak || 0) < temporada.DISMISSAL_STREAK) return { ok: false, motivo: "sem-demissao" };
       endCurrentClubStint("dismissed");
       try { await pedirCarreira("/api/career", { method: "DELETE" }); } catch (err) { return { ok: false, motivo: err.status === 401 ? "sessao" : "falha" }; }

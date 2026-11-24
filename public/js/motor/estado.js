@@ -30,6 +30,21 @@ let carreira = null;
 export function carreiraAtual() { return carreira; }
 export function definirCarreira(c) { carreira = c == null ? null : c; return carreira; }
 
+// MUNDO-001 (M6b-1): as divisões jogáveis do país do save, da mais alta
+// para a mais baixa. Save do mundo: `divisoes` gravado na criação (ex.:
+// ["premier_league", "efl_championship"]). Sem o campo (todo save de hoje):
+// as 3 do Brasil, como sempre.
+export const DIVISOES_BRASIL = Object.freeze(["brasileirao", "serie_b", "serie_c"]);
+export function divisoesDoPais(c = carreira) {
+  return c && Array.isArray(c.divisoes) && c.divisoes.length ? c.divisoes : DIVISOES_BRASIL;
+}
+// MUNDO-001 (M6b-2): rodadas da fase de liga do técnico na temporada. Save do
+// mundo: `rodadasLiga` gravado com o calendário (ex.: 46 na Championship).
+// Sem o campo (todo save de hoje): as 38 do Brasileirão.
+export function rodadasDaTemporada(c = carreira) {
+  return c && c.rodadasLiga > 0 ? c.rodadasLiga : 38;
+}
+
 // ---------- Versão do save e migrações numeradas ----------
 // Versão atual do save que este jogo escreve.
 export const SCHEMA_VERSION = 2;
@@ -220,7 +235,12 @@ export function forcaMediaDoElenco(clubId) {
   return d && ganchosMundo.elencoGerado ? mediaOverall(ganchosMundo.elencoGerado(d)) : 0;
 }
 // Ganchos preenchidos por módulos carregados depois (motor/virada.js).
-export const ganchosMundo = { elencoGerado: null, convocacaoCpu: null, moralCpu: null };
+// semanaDoMundo (MUNDO-001, M6b-3): anda o mundo leve (os outros países) até a
+// semana do calendário da carreira; só no save do mundo (motor/carreiramundo.js).
+// viradaDoPais / novaTemporada (M6b-4): a virada do país e o calendário da
+// temporada nova no save do mundo.
+// abrirSave (M6b-4): reabre um save do mundo (índice e divisões do save).
+export const ganchosMundo = { elencoGerado: null, convocacaoCpu: null, moralCpu: null, semanaDoMundo: null, viradaDoPais: null, novaTemporada: null, abrirSave: null, resultadoDoMundo: null };
 
 // PARIDADE-CPU · E1a (18/11): a CPU convoca 11 titulares e 11 reservas pela
 // mesma escalação automática do seu time (virada.convocacaoDaCpu), recupera

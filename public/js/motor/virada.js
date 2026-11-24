@@ -18,7 +18,7 @@
    fonte de dados (modoReal) e a herança do técnico que trocou de clube.
    Não chama a tela: avisos viram o evento "aviso".
 =================================================================== */
-import { carreiraAtual, definirCarreira, ligaAtual, definirLigaAtual, todosTimes, definirTodosTimes, competicaoAtual, definirCompeticaoAtual, timePorId, forcaMediaDoElenco, PARIDADE_CPU } from "./estado.js";
+import { carreiraAtual, definirCarreira, ligaAtual, definirLigaAtual, todosTimes, definirTodosTimes, competicaoAtual, definirCompeticaoAtual, timePorId, forcaMediaDoElenco, PARIDADE_CPU, divisoesDoPais, DIVISOES_BRASIL, rodadasDaTemporada } from "./estado.js";
 import * as estado from "./estado.js";
 import { ambiente, applyCalendarMonthlyFinances, avisar, CALENDAR_PHASE_BY_MONTH, leagueSquadFor, marketTeamsPool, MAX_LEAGUE_SQUAD, MAX_LEAGUE_SQUAD_OTHER_DIVISION, MAX_PRINCIPAL, MIN_LEAGUE_SQUAD, MIN_LEAGUE_SQUAD_OTHER_DIVISION, minSquadSizeFor, pushTransferLog, viradaDoCaixaCpu, AGENTES_LIVRES_MAX, entrarNoElencoCpu, caixaDaCpu, maxSquadSizeFor } from "./semana.js";
 import { CUP_PRELIM_ROUND, CUP_ROUNDS, CUP_ROUNDS_EXPANDED, FORMATIONS, SECTOR_IDS, SECTOR_INSTRUCTIONS, freshCareerTotals, freshCupTie, materializarAdversarioDaCopa, resolveCupPhase, settleLoanIn, settleLoanOut, shuffleWithRng } from "./fechamento.js";
@@ -59,7 +59,9 @@ export function defaultSectorTactics() {
   return out;
 }
 
-export const ALL_COMPETITIONS_ORDER = ["brasileirao", "serie_b", "serie_c"];
+// As 3 do Brasil (a tela antiga e saves brasileiros). No motor, use
+// estado.divisoesDoPais(): no save do mundo são as divisões do país.
+export const ALL_COMPETITIONS_ORDER = DIVISOES_BRASIL;
 
 export function mapPositionGroup(raw) {
   const s = String(raw || "").toLowerCase();
@@ -83,7 +85,10 @@ export function buildRealPlayer(raw, club, rng) {
   const apg = raw.games ? (raw.assists || 0) / raw.games : 0;
   const prod = clamp(gpg * 3 + apg * 1.6, 0, 1);
   const clubFactor = (group === "F" || group === "M") ? club.atk : (2 - club.def);
-  const overall = Math.round(clamp(56 + ratingBase * 18 + prod * 10 + (clubFactor - 1) * 10 + (rng() * 10 - 5), 42, 92));
+  // MUNDO-001 (M6b-3): `club.ajusteNivel` desloca o overall pelo nível da
+  // liga do clube no mundo (MUN-02, força comparável entre ligas); clube do
+  // Brasil não tem o campo (0, como sempre).
+  const overall = Math.round(clamp(56 + ratingBase * 18 + prod * 10 + (clubFactor - 1) * 10 + (club.ajusteNivel || 0) + (rng() * 10 - 5), 42, 92));
   const atk = clamp(Math.round(overall + (group === "F" ? 6 : group === "M" ? 2 : -10) + Math.round(rng() * 6 - 3)), 30, 96);
   const def = clamp(Math.round(overall + (group === "D" || group === "G" ? 6 : -10) + Math.round(rng() * 6 - 3)), 30, 96);
   const phys = clamp(Math.round(58 + rng() * 30), 40, 92);
@@ -586,7 +591,7 @@ export function applySeasonAwardMoraleBoost(award) {
 
 export async function advanceSeason() {
   const CAREER = carreiraAtual();
-  if (CAREER.currentRound <= 38) return null;
+  if (CAREER.currentRound <= rodadasDaTemporada(CAREER)) return null;
   const finishedYear = CAREER.seasonYear;
   const finishedPos = myLeaguePosition();
   const finishedPts = (CAREER.standings[CAREER.clubId] || {}).pts || 0;
@@ -677,7 +682,8 @@ export async function advanceSeason() {
   // clube subiu ou caiu de divisão, ligaAtual() já reflete a divisão
   // nova a partir daqui (sem efeito nenhum em carreira sem o sistema
   // ativado, ver migrateCareerDefaults).
-  const promotionRelegation = await applyPromotionRelegation();
+  // MUNDO-001 (M6b-4): no save do mundo, a virada do país (carreiramundo.js).
+  const promotionRelegation = CAREER.mundo && estado.ganchosMundo.viradaDoPais ? await estado.ganchosMundo.viradaDoPais(CAREER) : await applyPromotionRelegation();
 
   // "Novo orçamento" (pedido do usuário) — teto recalculado pelo
   // elenco renovado; caixa NÃO reseta, transfere pro ano que vem
@@ -733,7 +739,7 @@ export async function advanceSeason() {
   CAREER.boardGoal = computeBoardGoal();
   // FASE 2 (a) — novo chaveamento da Copa do Brasil, mesmo motivo do
   // boardGoal acima (elenco renovado de todo mundo, não só o seu).
-  setupCup();
+  if (!CAREER.mundo) setupCup(); // save do mundo: sem Copa do Brasil
   // FASE 4 (item 4) — checa proposta de outro clube pra temporada que
   // está começando agora (reputação já atualizada acima, elenco já
   // renovado nos dois lados) — ver showSeasonModal/btnSeasonContinue,
@@ -743,11 +749,18 @@ export async function advanceSeason() {
   // GE-CALENDAR-001 — toda temporada nova (inclusive a 1ª de uma carreira
   // de antes do calendário) começa em janeiro, nas férias, com a folha
   // de janeiro já cobrada (12 meses por ano, ver applyCalendarMonthlyFinances).
-  CAREER.calendar = buildSeasonCalendar(CAREER.seasonYear);
-  // SERIED-001: a semana da preliminar da Copa (com a Série D) tem 2 jogos.
-  if (CAREER.cup && CAREER.cup.prelim) CAREER.calendar.weeks.forEach((w) => { if (w.r === CAREER.cup.prelim.round) w.c = 1; });
-  CAREER.calendar.friendlies = buildFriendlySlots(CAREER.calendar);
-  applyCalendarMonthlyFinances(0);
+  if (CAREER.mundo && estado.ganchosMundo.novaTemporada) {
+    // MUNDO-001 (M6b-4): calendário, rodadas e tabela da temporada nova pelo
+    // relógio (a temporada europeia começa na pré-temporada de julho).
+    estado.ganchosMundo.novaTemporada(CAREER);
+    applyCalendarMonthlyFinances(Number(CAREER.calendar.weeks[0].d.slice(0, 2)) - 1);
+  } else {
+    CAREER.calendar = buildSeasonCalendar(CAREER.seasonYear);
+    // SERIED-001: a semana da preliminar da Copa (com a Série D) tem 2 jogos.
+    if (CAREER.cup && CAREER.cup.prelim) CAREER.calendar.weeks.forEach((w) => { if (w.r === CAREER.cup.prelim.round) w.c = 1; });
+    CAREER.calendar.friendlies = buildFriendlySlots(CAREER.calendar);
+    applyCalendarMonthlyFinances(0);
+  }
   // P0-IDS-001 — reposição de base/elenco e times vindos da Série D
   // reusam ids (`base_<clube>_<n>`, `gen_<clube>_<n>`) — garante ids
   // únicos de novo antes da temporada nova começar.
@@ -825,13 +838,13 @@ export function freshDivisionRound(teams) {
 export function initDivisionSystem() {
   const CAREER = carreiraAtual();
   CAREER.divisionTeams = {};
-  ALL_COMPETITIONS_ORDER.forEach((compId) => {
+  divisoesDoPais().forEach((compId) => {
     const source = compId === competicaoAtual() ? ligaAtual() : todosTimes().filter((t) => t.competitionId === compId);
     CAREER.divisionTeams[compId] = source.map((t) => ({ ...t, competitionId: compId }));
   });
   CAREER.serieDPool = ambiente.timesSerieD().map((t) => ({ ...t, competitionId: "serie_d" })); // global de js/data.js
   CAREER.otherDivisions = {};
-  ALL_COMPETITIONS_ORDER.filter((id) => id !== competicaoAtual()).forEach((compId) => {
+  divisoesDoPais().filter((id) => id !== competicaoAtual()).forEach((compId) => {
     CAREER.otherDivisions[compId] = freshDivisionRound(CAREER.divisionTeams[compId]);
   });
 }
@@ -910,9 +923,9 @@ export async function applyPromotionRelegation() {
     CAREER.competitionId = humanNewCompId;
   }
   definirLigaAtual(CAREER.divisionTeams[competicaoAtual()]);
-  definirTodosTimes(ALL_COMPETITIONS_ORDER.flatMap((id) => CAREER.divisionTeams[id]));
+  definirTodosTimes(divisoesDoPais().flatMap((id) => CAREER.divisionTeams[id]));
   CAREER.otherDivisions = {};
-  ALL_COMPETITIONS_ORDER.filter((id) => id !== competicaoAtual()).forEach((compId) => {
+  divisoesDoPais().filter((id) => id !== competicaoAtual()).forEach((compId) => {
     CAREER.otherDivisions[compId] = freshDivisionRound(CAREER.divisionTeams[compId]);
   });
 
@@ -1015,10 +1028,11 @@ export function evaluateAlwaysCheckableAchievements() {
 
 export function buildFriendlySlots(cal) {
   const CAREER = carreiraAtual();
-  const myComp = ALL_COMPETITIONS_ORDER.indexOf(competicaoAtual());
+  const ordem = divisoesDoPais();
+  const myComp = ordem.indexOf(competicaoAtual());
   const pool = marketTeamsPool().filter((t) => String(t.id) !== String(CAREER.clubId)
     && leagueSquadFor(t.id).length >= 11
-    && ALL_COMPETITIONS_ORDER.indexOf(t.competitionId || competicaoAtual()) >= myComp);
+    && ordem.indexOf(t.competitionId || competicaoAtual()) >= myComp);
   const slots = [];
   const addFor = (phase, count, optional) => {
     const idxs = cal.weeks.map((w, i) => (w.p === phase ? i : -1)).filter((i) => i >= 0).slice(-count);
@@ -1036,7 +1050,9 @@ export function buildFriendlySlots(cal) {
 // A regra da criação de carreira (etapa F): o startCareer da página carrega
 // os times e os elencos, chama esta função e depois grava e abre a primeira
 // entrada. O texto é o de antes (dentro do try do startCareer).
-export function montarCarreira(club, squad, leagueSquads, liveModeByCompetition) {
+// `extras` (MUNDO-001, M6b-3): campos do save do mundo gravados já na criação
+// (divisoes, rodadasLiga), antes de montar as divisões; vazio no Brasil.
+export function montarCarreira(club, squad, leagueSquads, liveModeByCompetition, extras = {}) {
   const formation = "4-3-3";
   const lineup = autoLineup(squad, formation);
   const schedule = calendario.generateAllRounds(ligaAtual().map((t) => t.id)); // Fase 12: motor/calendario.js
@@ -1219,6 +1235,7 @@ export function montarCarreira(club, squad, leagueSquads, liveModeByCompetition)
     // item/recompensa (ver applyDailyLoginReward), não uma compra de
     // verdade (a Loja ainda não cobra nada — ver aviso em renderLoja).
     purchaseHistory: [],
+    ...extras,
   });
   ensureUniquePlayerIds(); // P0-IDS-001 — catálogos de divisões diferentes repetem ids
   // GE-CALENDAR-001 — carreira nova começa na pré-temporada (fevereiro,

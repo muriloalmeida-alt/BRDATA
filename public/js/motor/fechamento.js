@@ -38,7 +38,12 @@ const teamById = (id) => timePorId(id);
 const squadAvgOverallOf = (clubId) => forcaMediaDoElenco(clubId);
 const sortedStandings = () => tabela.sortRows(carreiraAtual().standings);
 const positionInStandings = (standings) => tabela.positionOf(standings, carreiraAtual().clubId);
-const applyResultToStandings = (r, standings = carreiraAtual().standings) => { tabela.applyResult(standings, r); };
+// MUNDO-001 (M6b-4b): no save do mundo, o placar da liga do técnico também vai
+// para o plano da temporada (formatos sul-americanos, carreiramundo.js).
+const applyResultToStandings = (r, standings = carreiraAtual().standings) => {
+  tabela.applyResult(standings, r);
+  if (carreiraAtual().mundo && ganchosMundo.resultadoDoMundo && standings === carreiraAtual().standings) ganchosMundo.resultadoDoMundo(carreiraAtual().competitionId, r);
+};
 const wageBillOf = (squad) => financas.wageBill(squad);
 // "Veterano" usa a data de criação da CONTA, que não é do save (ambiente).
 const evaluateAlwaysCheckableAchievements = () => registro.evaluateAlwaysCheckableAchievements(ambiente.contaCriadaEm());
@@ -709,13 +714,15 @@ export function resolveOtherDivisionsRound(round) {
         if (!home || !away) return;
         const { gh, ga } = jogoCpuComJogadores(fx, round, home, away, true);
         tabela.applyResult(division.standings, { home: fx.home, away: fx.away, gh, ga });
+        if (CAREER.mundo && ganchosMundo.resultadoDoMundo) ganchosMundo.resultadoDoMundo(compId, { home: fx.home, away: fx.away, gh, ga });
       });
       return;
     }
     // GOLS-REAIS: a força de jogo (nível de gols da divisão).
     const teamsById = new Map((CAREER.divisionTeams[compId] || []).map((t) => [String(t.id), forcaDeJogo({ ...t, competitionId: t.competitionId || compId })]));
     // Fase 12, etapa 2: rodada só de placar (motor/rodada.js).
-    rodada.playSimpleRound(division.schedule[round] || [], teamsById, division.standings, Math.random);
+    const feitos = rodada.playSimpleRound(division.schedule[round] || [], teamsById, division.standings, Math.random);
+    if (CAREER.mundo && ganchosMundo.resultadoDoMundo) feitos.forEach((r) => ganchosMundo.resultadoDoMundo(compId, r));
   });
 }
 

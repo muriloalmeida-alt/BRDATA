@@ -95,7 +95,7 @@ export const MONTH_SHORT = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ag
 export function calendarDateLabel(w, plusDays = 0) {
   const CAREER = carreiraAtual();
   const [m, d] = w.d.split("-").map(Number);
-  const dt = new Date(Date.UTC(CAREER.calendar.year, m - 1, d + plusDays));
+  const dt = new Date(Date.UTC(w.a || CAREER.calendar.year, m - 1, d + plusDays)); // `a`: ano da semana no save do mundo
   return `${String(dt.getUTCDate()).padStart(2, "0")}/${MONTH_SHORT[dt.getUTCMonth()]}`;
 }
 
@@ -473,6 +473,7 @@ export async function goToMatch() {
 export function humanDivisionMove(pr) {
   const CAREER = carreiraAtual();
   const mine = (list) => list.some((t) => String(t.id) === String(CAREER.clubId));
+  if (pr.mundo) return pr.texto ? { text: pr.texto, positive: /^Acesso/.test(pr.texto) } : null; // save do mundo (MUNDO-001)
   if (mine(pr.relegatedA)) return { text: "Rebaixado(a): Série A → Série B.", positive: false };
   if (mine(pr.promotedB)) return { text: "Acesso! Série B → Série A.", positive: true };
   if (mine(pr.relegatedB)) return { text: "Rebaixado(a): Série B → Série C.", positive: false };
@@ -600,7 +601,7 @@ export const comandosJogo = {
       if (!ponte.pronta) return { ok: false, motivo: "carregando" };
       if (partidaAtual()) return { ok: false, motivo: "em-andamento" };
       const w = calendarWeek();
-      if ((w && !w.r) || CAREER.currentRound > 38) return { ok: false, motivo: "sem-jogo" };
+      if ((w && !w.r) || CAREER.currentRound > estado.rodadasDaTemporada(CAREER)) return { ok: false, motivo: "sem-jogo" };
       const bloq = bloqueioEscalacao();
       if (bloq) return bloq;
       ponte.ultimo = null; ponte.fim = null; ponte.resumo = null; ponte.posJogo = false; ponte.erroGravacao = null;
@@ -733,7 +734,7 @@ export const comandosJogo = {
       if (!ponte.pronta || !CAREER) return { ok: false, motivo: "carregando" };
       if (partidaAtual()) return { ok: false, motivo: "em-andamento" };
       const w = calendarWeek();
-      if (!w || w.r || CAREER.currentRound > 38) return { ok: false, motivo: "sem-semana" };
+      if (!w || w.r || CAREER.currentRound > estado.rodadasDaTemporada(CAREER)) return { ok: false, motivo: "sem-semana" };
       const fr = friendlySlotThisWeek();
       if (!ateJogo && fr && (!fr.optional || fr.opp)) return { ok: false, motivo: "amistoso" };
       if (ponte.avancando) return { ok: false, motivo: "em-andamento" };
@@ -782,7 +783,7 @@ export const comandosJogo = {
     resumoSemana() { return ponte.semana || null; },
     async proximaTemporada() {
       const CAREER = carreiraAtual();
-      if (!CAREER || CAREER.currentRound <= 38) return { ok: false, motivo: "temporada-em-andamento" };
+      if (!CAREER || CAREER.currentRound <= estado.rodadasDaTemporada(CAREER)) return { ok: false, motivo: "temporada-em-andamento" };
       if (ponte.avancando) return { ok: false, motivo: "em-andamento" };
       ponte.avancando = true;
       try {

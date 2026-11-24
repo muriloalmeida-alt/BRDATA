@@ -108,6 +108,15 @@ const APP_SHELL = [
   "/js/motor/escalacao.js",
   "/js/motor/negociacao.js",
   "/js/motor/repositorio.js",
+  // MUNDO-001: a carreira nos países do mundo.
+  "/js/motor/desempate.js",
+  "/js/motor/relogio.js",
+  "/js/motor/fases.js",
+  "/js/motor/formatos.js",
+  "/js/motor/viradapais.js",
+  "/js/motor/mundoleve.js",
+  "/js/motor/calendariomundo.js",
+  "/js/motor/carreiramundo.js",
   // OFFLINE-001: fontes da Carreira (Barlow), sem Google Fonts.
   "/fonts/barlow.css",
   "/fonts/barlow-latin-400-normal.woff2",

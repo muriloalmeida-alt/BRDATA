@@ -27,6 +27,9 @@ import { checkpointPartida, comandosJogo, retomarPartidaSalva } from "./jogo.js"
 import * as modPonte from "./ponte.js";
 import { comandosCarga, ponteEstado, enterAfterAuth, fetchJSON, fetchRealPlayers, teamLogoSrc, ponteGravar, persistCareer } from "./carga.js";
 import { criarRepositorio } from "./repositorio.js";
+// MUNDO-001: a carreira nos países do mundo (registra os ganchos do motor).
+import * as carreiraMundo from "./carreiramundo.js";
+export { carreiraMundo };
 
 // O ambiente que a página dava ao motor (ver motorSemana em carreira.js),
 // agora sem página.
