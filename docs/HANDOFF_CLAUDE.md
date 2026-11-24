@@ -76,7 +76,42 @@ Decisões tomadas na M1 (para o Murilo conferir):
 
 Testes: `test_mundo_catalogo` 8/8; rota rápida (`test:fast`) 48/48.
 
-Próxima etapa: M2, o relógio do mundo por data, com o Brasil equivalente.
+Relatório da etapa M2, relógio do mundo (24/11/2026)
+
+O que foi feito: `public/js/motor/relogio.js` (+ `.d.ts`), módulo puro.
+- Semana do mundo = segunda-feira com o ano, a mesma unidade do calendário
+  da carreira brasileira.
+- Agenda por liga:
+  - temporada 1: os jogos com data dos pacotes;
+  - temporadas seguintes: as semanas e os dias de cada rodada da temporada
+    do pacote, k anos depois, com os confrontos gerados para os clubes do
+    save. O padrão é turno e returno, como no Brasil. Formatos com grupos
+    passam o próprio gerador (M4).
+- Início do save (MUN-06): 4 semanas antes do 1º jogo da liga escolhida.
+  As outras ligas jogam até lá, na ordem do relógio (`jogosAntesDe`).
+- O calendário brasileiro de hoje é convertido em semanas do relógio sem
+  mudar nenhuma rodada.
+
+Testes: `test_motor_relogio` 8/8, com os jogos reais das 20 ligas:
+- nenhum jogo perdido e cada jogo na semana da própria data;
+- temporadas geradas com um jogo por rodada e nenhum clube com dois jogos
+  no mesmo dia;
+- sem escorregar o calendário em 12 anos;
+- Apertura/Clausura;
+- Premier League começando em 20/07/2026 com a América do Sul pré-simulada;
+- as 52/53 semanas do Brasil com as rodadas 1–38 intactas.
+
+Observações:
+1. Nos pacotes, há 1.517 casos de clube com 2 jogos na mesma semana
+   (rodadas de meio de semana, como na Championship). A M6 trata a semana
+   com 2 jogos do técnico como a semana de Copa de hoje (`w.c`).
+2. Mudança de rota no plano:
+   - o relógio só passa a conduzir o avanço de semana no save do mundo,
+     na M6;
+   - na M2, o Brasil não muda (risco zero para os saves de hoje);
+   - os módulos novos ficam em `public/js/motor/` sem subpasta.
+
+Próxima etapa: M3, o motor de fases e desempates das ligas europeias.
 
 ⸻
 

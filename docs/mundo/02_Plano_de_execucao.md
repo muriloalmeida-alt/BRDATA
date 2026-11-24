@@ -14,14 +14,14 @@ junto). Até lá, ficam atrás de uma chave de desenvolvimento
 | Etapa | Entrega | Depende de | Arquivos principais |
 |---|---|---|---|
 | **M1** | Catálogo do mundo: dados dos pacotes no jogo, escudos locais, rotas do servidor, validação | — | `scripts/mundo_catalogo.js`, `server/frozen-catalog/`, `server/frozen-catalog/mundo/`, `public/img/teams/mundo/`, `server/src/mundo.js` |
-| **M2** | Relógio do mundo por data e virada por liga; Brasil equivalente | M1 | `public/js/motor/mundo/relogio.js`, `calendario.js`, `semana.js`, `fechamento.js`, `virada.js` |
-| **M3** | Motor de fases declarativo e desempates: Europa | M2 | `public/js/motor/mundo/fases.js`, `desempate.js`, configuração por liga |
+| **M2** | Relógio do mundo por data: semana = segunda-feira com ano, agenda por liga (pacote na temporada 1, gerada nas seguintes), início do save e pré-simulação, calendário brasileiro no mesmo relógio | M1 | `public/js/motor/relogio.js` |
+| **M3** | Motor de fases declarativo e desempates: Europa | M2 | `public/js/motor/fases.js`, `desempate.js`, configuração por liga |
 | **M4** | Formatos sul-americanos fiéis: Apertura/Clausura, anual, promedios, reducido, quadrangulares, hexagonais, Intermedio | M3 | idem + configuração SA |
-| **M5** | Virada por país: acesso, queda, clubes B, catálogo de 3ª divisão, proteção do humano | M3, M4 | `temporada.js`, `mundo/virada_pais.js` |
-| **M6** | Simulação híbrida (completa no país ativo, leve no resto), save enxuto (catálogo fora do save, delta por atleta), força comparável entre ligas | M2 | `fechamento.js`, `carga.js`, `estado.js`, `mundo/leve.js` |
-| **M7** | Moeda de jogo e finanças por país (seeds, folha normalizada, TV mensal, bilheteria pela capacidade) | M6 | `financas.js`, `mundo/moeda.js` |
+| **M5** | Virada por país: acesso, queda, clubes B, catálogo de 3ª divisão, proteção do humano | M3, M4 | `temporada.js`, `virada_pais.js` |
+| **M6** | Simulação híbrida (completa no país ativo, leve no resto), save enxuto (catálogo fora do save, delta por atleta), força comparável entre ligas; liga o relógio ao avanço de semana do save do mundo | M2 | `fechamento.js`, `carga.js`, `estado.js`, `leve.js` |
+| **M7** | Moeda de jogo e finanças por país (seeds, folha normalizada, TV mensal, bilheteria pela capacidade) | M6 | `financas.js`, `moeda.js` |
 | **M8** | Mercado e carreira do técnico no mundo (índice global, CPU entre países, propostas de emprego de fora, troca de país ativo) | M6, M7 | `mercado.js`, `negociacao.js`, `clube.js` |
-| **M9** | Libertadores e Sul-Americana | M5, M8, **DEP-1** | `mundo/continental.js`, `mundo/sorteio.js` |
+| **M9** | Libertadores e Sul-Americana | M5, M8, **DEP-1** | `continental.js`, `sorteio.js` |
 | **M10** | Champions, Europa League e Conference; telas da v2 (seletor, calendário, fases, ligas do mundo, chaves); liberação | M9, **DEP-1/2** | `carreira-v2/src/...` |
 | **M11** | Validação final: smoke por país, temporada inteira do mundo, desempenho e save no pior caso, `test:full` | todas | `tests/` |
 
@@ -59,6 +59,19 @@ junto). Até lá, ficam atrás de uma chave de desenvolvimento
 4. A cópia offline do mundo no aparelho fica para a M10, junto com o
    seletor. As rotas já devolvem `{ versao, atual: true }` quando o cliente
    tem a versão, como o catálogo offline do Brasil.
+
+## M2 — Relógio do mundo (detalhe)
+
+- Módulo puro (`relogio.js`), sem estado da carreira. A semana é a
+  segunda-feira com o ano, a mesma unidade do calendário brasileiro de hoje.
+- Os módulos do motor continuam numa pasta só (`public/js/motor/`), sem
+  subpasta `mundo/`: o carregador dos testes junta os módulos pelo nome.
+- O Brasil não muda na M2. O relógio passa a conduzir o avanço de semana só
+  no save do mundo, na M6. Até lá, o save brasileiro segue o caminho de
+  hoje, que a suíte atual cobre.
+- Temporadas seguintes: as semanas da temporada do pacote, k anos depois,
+  sempre a partir da original (encadear ano a ano escorrega o calendário),
+  com o dia de cada rodada preservado.
 
 ## Medição (vale para todas as etapas)
 
