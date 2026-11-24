@@ -15,8 +15,9 @@ Status: REVISÃO DO PM NECESSÁRIA.
 - Etapas M1 a M6a: PR #154 (suíte completa 191/191).
 - M6b, passos 1 a 4: PR #155, empilhado sobre o #154 (suíte completa
   191/192; a falha, instável e sem relação com o mundo, está no PR).
-Próximo: M6b-5 (o Brasil no mundo), na branch `claude/mundo-m6b5`,
-empilhada sobre o #155.
+- M6b, passo 5 (o Brasil no mundo): PR #156, empilhado sobre o #155
+  (suíte completa 192/192).
+Próximo: M7 (moeda e finanças por país).
 
 M6b-5a, carreira no Brasil com o mundo em paralelo (24/11/2026):
 - Carreira nova no Brasil com o mundo ligado (o hospedeiro fornece o índice
