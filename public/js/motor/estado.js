@@ -240,7 +240,7 @@ export function forcaMediaDoElenco(clubId) {
 // viradaDoPais / novaTemporada (M6b-4): a virada do país e o calendário da
 // temporada nova no save do mundo.
 // abrirSave (M6b-4): reabre um save do mundo (índice e divisões do save).
-export const ganchosMundo = { elencoGerado: null, convocacaoCpu: null, moralCpu: null, semanaDoMundo: null, viradaDoPais: null, novaTemporada: null, abrirSave: null, resultadoDoMundo: null, anexarMundo: null, abrirIndice: null };
+export const ganchosMundo = { elencoGerado: null, convocacaoCpu: null, moralCpu: null, semanaDoMundo: null, viradaDoPais: null, novaTemporada: null, abrirSave: null, resultadoDoMundo: null, anexarMundo: null, abrirIndice: null, moeda: null };
 
 // PARIDADE-CPU · E1a (18/11): a CPU convoca 11 titulares e 11 reservas pela
 // mesma escalação automática do seu time (virada.convocacaoDaCpu), recupera
