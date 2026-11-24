@@ -85,7 +85,10 @@ export function buildRealPlayer(raw, club, rng) {
   const apg = raw.games ? (raw.assists || 0) / raw.games : 0;
   const prod = clamp(gpg * 3 + apg * 1.6, 0, 1);
   const clubFactor = (group === "F" || group === "M") ? club.atk : (2 - club.def);
-  const overall = Math.round(clamp(56 + ratingBase * 18 + prod * 10 + (clubFactor - 1) * 10 + (rng() * 10 - 5), 42, 92));
+  // MUNDO-001 (M6b-3): `club.ajusteNivel` desloca o overall pelo nível da
+  // liga do clube no mundo (MUN-02, força comparável entre ligas); clube do
+  // Brasil não tem o campo (0, como sempre).
+  const overall = Math.round(clamp(56 + ratingBase * 18 + prod * 10 + (clubFactor - 1) * 10 + (club.ajusteNivel || 0) + (rng() * 10 - 5), 42, 92));
   const atk = clamp(Math.round(overall + (group === "F" ? 6 : group === "M" ? 2 : -10) + Math.round(rng() * 6 - 3)), 30, 96);
   const def = clamp(Math.round(overall + (group === "D" || group === "G" ? 6 : -10) + Math.round(rng() * 6 - 3)), 30, 96);
   const phys = clamp(Math.round(58 + rng() * 30), 40, 92);
@@ -981,7 +984,9 @@ export function buildFriendlySlots(cal) {
 // A regra da criação de carreira (etapa F): o startCareer da página carrega
 // os times e os elencos, chama esta função e depois grava e abre a primeira
 // entrada. O texto é o de antes (dentro do try do startCareer).
-export function montarCarreira(club, squad, leagueSquads, liveModeByCompetition) {
+// `extras` (MUNDO-001, M6b-3): campos do save do mundo gravados já na criação
+// (divisoes, rodadasLiga), antes de montar as divisões; vazio no Brasil.
+export function montarCarreira(club, squad, leagueSquads, liveModeByCompetition, extras = {}) {
   const formation = "4-3-3";
   const lineup = autoLineup(squad, formation);
   const schedule = calendario.generateAllRounds(ligaAtual().map((t) => t.id)); // Fase 12: motor/calendario.js
@@ -1164,6 +1169,7 @@ export function montarCarreira(club, squad, leagueSquads, liveModeByCompetition)
     // item/recompensa (ver applyDailyLoginReward), não uma compra de
     // verdade (a Loja ainda não cobra nada — ver aviso em renderLoja).
     purchaseHistory: [],
+    ...extras,
   });
   ensureUniquePlayerIds(); // P0-IDS-001 — catálogos de divisões diferentes repetem ids
   // GE-CALENDAR-001 — carreira nova começa na pré-temporada (fevereiro,

@@ -361,6 +361,44 @@ M6b-2, calendário:
     rodadas e semanas duplas, Argentina 1–32, janela, rodadas).
   - Testes do motor: 39/39. Rota rápida: 54/54.
 
+M6b-3, carreira nova num país do mundo (24/11/2026):
+- `public/js/motor/carreiramundo.js` (+ `.d.ts`) cria a carreira num clube
+  do índice. Reaproveita a montagem de sempre (`virada.montarCarreira`) e
+  troca o que é do Brasil:
+  - as 2 divisões do país com simulação completa;
+  - calendário, rodadas e janela pelo relógio;
+  - sem Copa do Brasil e sem Série D;
+  - os outros 9 países no mundo leve (`CAREER.mundoLeve`), pré-simulados
+    até a pré-temporada. O mundo leve anda junto com a semana da carreira
+    pelo gancho `ganchosMundo.semanaDoMundo`, chamado na virada de semana
+    do calendário.
+- Mudanças no núcleo, todas sem efeito no Brasil:
+  - `montarCarreira` ganhou `extras` (vazio no Brasil);
+  - `buildRealPlayer` soma `club.ajusteNivel` (MUN-02; os clubes do Brasil
+    não têm o campo);
+  - a carga não recria a Copa num save do mundo.
+- Força entre ligas (MUN-02, 1ª versão): o overall do jogador ganha
+  (nível da liga − 1) × 25. Medido na criação: Premier League 70,6 e
+  Championship 64,8 de média.
+  - O Brasil fica sem ajuste até a calibração do mercado (M8): é preciso
+    pôr a Série A na mesma escala.
+- Testes: `test_motor_mundo_carreira` 7/7.
+  - Carreira no Arsenal: criação em ~0,15 s; save de 525 KB de JSON
+    (56 KB comprimido).
+  - 4 rodadas jogadas pela ponte da v2 (semana, partida, pós-jogo,
+    gravação), com a Championship jogando pelas datas e o mundo leve na
+    mesma semana.
+  - Fora da suíte, também jogaram: a Championship (46 rodadas, semanas
+    duplas) e a Argentina (save de 907 KB de JSON, o pior caso, com 66
+    clubes; o envio vai comprimido).
+  - Testes do motor: 39/39. Rota rápida: 54/54.
+- Ainda não ligado:
+  - a tela (seletor de novo save, M10);
+  - a reabertura do save do mundo (carga do índice ao abrir, M6b-4);
+  - as fases do técnico (a Argentina ainda joga numa tabela só) e a virada
+    do país (M6b-4);
+  - a moeda (o caixa ainda sai na escala do Brasil, M7).
+
 ⸻
 
 FASE1-ESC — Fase 1: escalação e orientação da comissão técnica

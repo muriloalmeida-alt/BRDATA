@@ -19,7 +19,7 @@
    sempre. Nomes de jogador, sorteio por chave e o ano da temporada real
    vêm do ambiente (dados do mundo real, definirAmbiente).
 =================================================================== */
-import { carreiraAtual, ligaAtual, todosTimes, timePorId, forcaMediaDoElenco, PARIDADE_CPU, rodadasDaTemporada } from "./estado.js";
+import { carreiraAtual, ligaAtual, todosTimes, timePorId, forcaMediaDoElenco, PARIDADE_CPU, rodadasDaTemporada, ganchosMundo } from "./estado.js";
 import { emitir } from "./eventos.js";
 import { pushNotification, ensureObjectivesFresh, bumpObjective } from "./registro.js";
 import { fmtBRL, abbreviateName } from "./texto.js";
@@ -255,6 +255,7 @@ export function advanceCalendarWeek() {
   if (cal.idx >= cal.weeks.length - 1) return { wagePaid: 0, sponsorIncome: 0 };
   cal.idx += 1;
   const cur = calendarWeek();
+  if (CAREER.mundoLeve && ganchosMundo.semanaDoMundo) ganchosMundo.semanaDoMundo(CAREER);
   let money = { wagePaid: 0, sponsorIncome: 0 };
   if (calendarWeekMonth(cur) !== calendarWeekMonth(prev)) money = applyCalendarMonthlyFinances(calendarWeekMonth(cur));
   if (cur.p !== prev.p) {

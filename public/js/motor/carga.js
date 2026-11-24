@@ -880,7 +880,7 @@ export function migrateCareerDefaults() {
   // um chaveamento novo e fecha por trás (fast-forward, sem prêmio nem
   // log) qualquer fase cujo round já passou nessa temporada em
   // andamento — ver comentário em setupCup.
-  if (!CAREER.cup) setupCup(CAREER.currentRound);
+  if (!CAREER.cup && !CAREER.mundo) setupCup(CAREER.currentRound); // save do mundo: sem Copa do Brasil
   // FASE 4 (item 5) — carreira criada antes do patrocínio existir:
   // assina um contrato inicial de cada tipo, mesma função de sempre
   // (ver initSponsorship) — sem isso o save ficaria pra sempre sem
