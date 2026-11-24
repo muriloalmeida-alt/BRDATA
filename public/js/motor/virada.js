@@ -703,6 +703,8 @@ export async function advanceSeason() {
     CAREER.calendar.friendlies = buildFriendlySlots(CAREER.calendar);
     applyCalendarMonthlyFinances(0);
   }
+  // MUNDO-001 (M8): clubes de fora sem vínculo com o técnico saem do save.
+  if (CAREER.exterior && estado.ganchosMundo.podarExterior) estado.ganchosMundo.podarExterior(CAREER);
   // P0-IDS-001 — reposição de base/elenco e times vindos da Série D
   // reusam ids (`base_<clube>_<n>`, `gen_<clube>_<n>`) — garante ids
   // únicos de novo antes da temporada nova começar.

@@ -218,6 +218,9 @@ export function timePorId(id) {
   // SERIED-001: clubes da Série D (jogam a Copa do Brasil, fora das ligas).
   const d = carreira && (carreira.serieDPool || []).find((t) => String(t.id) === String(id));
   if (d) return d;
+  // MUNDO-001 (M8): clube de outro país trazido ao save pelo mercado.
+  const ex = carreira && carreira.exterior && carreira.exterior.clubes && carreira.exterior.clubes[String(id)];
+  if (ex) return ex;
   return { id, name: `Time #${id}`, short: String(id).slice(0, 3).toUpperCase(), c1: "#8892A0", c2: "#333" };
 }
 export function mediaOverall(lista) {
@@ -240,7 +243,7 @@ export function forcaMediaDoElenco(clubId) {
 // viradaDoPais / novaTemporada (M6b-4): a virada do país e o calendário da
 // temporada nova no save do mundo.
 // abrirSave (M6b-4): reabre um save do mundo (índice e divisões do save).
-export const ganchosMundo = { elencoGerado: null, convocacaoCpu: null, moralCpu: null, semanaDoMundo: null, viradaDoPais: null, novaTemporada: null, abrirSave: null, resultadoDoMundo: null, anexarMundo: null, abrirIndice: null, moeda: null };
+export const ganchosMundo = { elencoGerado: null, convocacaoCpu: null, moralCpu: null, semanaDoMundo: null, viradaDoPais: null, novaTemporada: null, abrirSave: null, resultadoDoMundo: null, anexarMundo: null, abrirIndice: null, moeda: null, podarExterior: null };
 
 // PARIDADE-CPU · E1a (18/11): a CPU convoca 11 titulares e 11 reservas pela
 // mesma escalação automática do seu time (virada.convocacaoDaCpu), recupera

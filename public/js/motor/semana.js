@@ -327,7 +327,9 @@ export function revendaLiberadaDe(p) {
 export function marketTeamsPool() {
   const CAREER = carreiraAtual();
   const pool = CAREER.marketScope === "multi" ? todosTimes() : ligaAtual();
-  return pool.filter((t) => t.competitionId !== "serie_d");
+  // MUNDO-001 (M8): clubes de outros países trazidos ao save pelo mercado.
+  const exterior = CAREER.exterior && CAREER.exterior.clubes ? Object.values(CAREER.exterior.clubes) : [];
+  return pool.filter((t) => t.competitionId !== "serie_d").concat(exterior);
 }
 
 export function pickRandomOtherClub(excludeId) {

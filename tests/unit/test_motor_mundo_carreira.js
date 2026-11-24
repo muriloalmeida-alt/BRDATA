@@ -40,7 +40,12 @@
 //  12) M7, moeda e porte: carreira no Arsenal em libras (texto.fmtBRL pelo
 //      câmbio fixo), caixa e caixa da CPU pelo porte relativo do pacote, TV
 //      mensal > 0, bilheteria pela capacidade real do estádio; Argentina em
-//      dólar; carreira no Brasil volta a R$.
+//      dólar; carreira no Brasil volta a R$;
+//  13) M8a, mercado do mundo: no Arsenal, a lista de clubes do mundo (sem os
+//      ingleses e sem o catálogo de 3ª); o Real Madrid entra no save com o
+//      elenco do pacote (time, elenco, mercado e CPU o enxergam); o técnico
+//      contrata um atleta dele pelas regras de hoje; na virada o clube sai do
+//      save e o atleta não reaparece quando ele é aberto de novo.
 // Uso: node tests/unit/test_motor_mundo_carreira.js
 const assert = require("assert");
 const path = require("path");
@@ -491,6 +496,51 @@ const imp = (m) => import(pathToFileURL(path.join(ROOT, "public/js/motor", m)).h
     assert.ok(/US\$/.test(texto.fmtBRL(5500000)), texto.fmtBRL(5500000));
     texto.definirMoeda(null);
     assert.ok(/R\$/.test(texto.fmtBRL(1000)), "Brasil em reais");
+  });
+
+  await check("M8a: mercado do mundo (clube de fora no save, contratação e poda)", async () => {
+    const v2 = await imp("v2.js");
+    const semana = await imp("semana.js");
+    const CMu = await imp("carreiramundo.js");
+    const clube = await imp("clube.js");
+    const negociacao = await imp("negociacao.js");
+    const elencosDaLiga = async (liga) => JSON.parse(fs.readFileSync(path.join(ROOT, `server/frozen-catalog/snapshot-${liga}.json`), "utf8")).playersByTeamId;
+    semana.definirAmbiente({ ...v2.ambienteSemPagina(), buscarJogadores: async () => [], indiceDoMundo: null, elencosDoMundo: elencosDaLiga, armazem: { pedir: async () => ({ ok: true }) } });
+    const ars = indice.clubes.find((c) => c.liga === "premier_league" && /Arsenal/.test(c.nome));
+    const C = await CMu.criarCarreiraNoMundo({ indice, liga: "premier_league", clubId: ars.id, elencosDaLiga });
+    const lista = CMu.clubesDoMundo(C);
+    assert.ok(lista.length >= 300, `clubes do mundo: ${lista.length}`);
+    assert.ok(lista.every((x) => x.pais !== "GB-ENG"), "clube inglês na lista do mundo");
+    assert.ok(lista.some((x) => x.pais === "BR"), "sem o Brasil na lista");
+    const real = indice.clubes.find((c) => /Real Madrid/.test(c.nome) && c.liga === "la_liga");
+    assert.ok(CMu.clubesDoMundo(C, { pais: "ES", texto: "real madrid" }).some((x) => x.id === String(real.id)));
+    const r = await CMu.abrirClubeDoMundo(C, real.id);
+    assert.ok(r.ok && r.jogadores >= 12, `abrir: ${JSON.stringify(r)}`);
+    const id = String(real.id);
+    assert.ok(C.leagueSquads[id] && C.exterior.clubes[id]);
+    assert.strictEqual(estado.timePorId(id).name, real.nome);
+    assert.ok(semana.marketTeamsPool().some((t) => String(t.id) === id), "o mercado não enxerga o clube de fora");
+    const mediaReal = C.leagueSquads[id].reduce((s, p) => s + p.overall, 0) / C.leagueSquads[id].length;
+    assert.ok(mediaReal > 65, `overall do Real Madrid ${mediaReal.toFixed(1)}`);
+    // Contratação pelas regras de hoje: proposta aceita (valor alto, à vista)
+    // e a compra fechada como numa proposta aceita.
+    const alvo = C.leagueSquads[id].slice().sort((a, b) => a.overall - b.overall)[0];
+    C.finances.cash = 1e12; C.finances.wageCap = 1e9;
+    const sub = clube.submitOfferOut(id, alvo.id, alvo.value * 3, 1);
+    assert.ok(sub.ok, `proposta: ${JSON.stringify(sub).slice(0, 120)}`);
+    const fim = semana.finalizeIncomingPurchase(sub.offer);
+    assert.ok(fim.ok !== false, "compra não fechou");
+    assert.ok(C.squad.some((p) => p.id === alvo.id), "o atleta não chegou");
+    assert.ok(!C.leagueSquads[id].some((p) => p.id === alvo.id));
+    // Na virada, o clube sai do save; o atleta fica anotado.
+    C.pendingOffersOut = (C.pendingOffersOut || []).filter((o) => String(o.clubId) !== id);
+    C.pendingInstallments = []; C.pendingReceivables = [];
+    assert.strictEqual(CMu.podarExterior(C), 1);
+    assert.ok(!C.leagueSquads[id] && !C.exterior.clubes[id]);
+    assert.ok(C.exterior.saidas[id].some((x) => `real_${x}` === alvo.id), "saída não anotada");
+    await CMu.abrirClubeDoMundo(C, real.id);
+    assert.ok(!C.leagueSquads[id].some((p) => p.id === alvo.id), "o atleta reapareceu no clube antigo");
+    void negociacao;
   });
 
   console.log(`\n${n - failed}/${n} ok`);

@@ -31,6 +31,7 @@ import * as Fa from "./fases.js";
 import * as Vp from "./viradapais.js";
 import { classificar, opcoesDaLiga, rngDaChave } from "./desempate.js";
 import { buildLeagueSquad } from "./virada.js";
+const montarElencoCpu = buildLeagueSquad;
 import { viradaDoCaixaCpu } from "./semana.js";
 import * as temporada from "./temporada.js";
 import * as tabela from "./tabela.js";
@@ -574,3 +575,126 @@ export async function abrirIndiceDoSave(career, buscar) {
 }
 ganchosMundo.anexarMundo = (CAREER) => anexarMundoAoBrasil(CAREER);
 ganchosMundo.abrirIndice = (career, buscar) => abrirIndiceDoSave(career, buscar);
+
+// ---------- mercado do mundo (M8a) ----------
+// Um clube de outro país entra no save quando o técnico o abre no mercado:
+// o time (CAREER.exterior.clubes) e o elenco (CAREER.leagueSquads), montado
+// do pacote pelo construtor de sempre (virada.buildLeagueSquad, com o ajuste
+// de nível da liga em que o clube está agora). A partir daí, proposta,
+// negociação, venda, empréstimo e a CPU do país usam as regras de hoje. Na
+// virada, quem só foi olhado sai do save (podarExterior); os atletas que
+// saíram dele ficam anotados para não reaparecerem quando ele voltar.
+
+// Onde o clube joga agora no mundo leve: { pais, liga } (null no catálogo de
+// 3ª divisão, no país do técnico ou fora do mundo).
+export function ligaNoMundo(CAREER, clubId) {
+  const S = String(clubId);
+  for (const [cod, P] of Object.entries((CAREER.mundoLeve && CAREER.mundoLeve.paises) || {})) {
+    if ((CAREER.mundoLeve.ativos || []).includes(cod)) continue;
+    for (const [liga, L] of Object.entries(P.ligas)) if (L.clubes.some((x) => String(x) === S)) return { pais: cod, liga };
+  }
+  return null;
+}
+
+function clubeDoIndiceMundo(indice, id) {
+  const S = String(id);
+  return indice.clubes.find((c) => String(c.id) === S)
+    || (indice.brasil ? Object.values(indice.brasil.ligas).flatMap((l) => l.clubes).find((c) => String(c.id) === S) : null);
+}
+
+function nomeDaLiga(indice, liga) {
+  return (indice.competicoes[liga] && indice.competicoes[liga].nome) || (indice.brasil && indice.brasil.ligas[liga] && indice.brasil.ligas[liga].nome) || liga;
+}
+
+// Clubes de outros países para o mercado (sem os do país do técnico e sem o
+// catálogo de 3ª). filtro = { pais, liga, texto }.
+export function clubesDoMundo(CAREER, filtro = {}) {
+  const indice = indiceAtual;
+  if (!indice || !CAREER.mundoLeve) return [];
+  const out = [];
+  for (const [cod, P] of Object.entries(CAREER.mundoLeve.paises)) {
+    if ((CAREER.mundoLeve.ativos || []).includes(cod)) continue;
+    if (filtro.pais && filtro.pais !== cod) continue;
+    for (const [liga, L] of Object.entries(P.ligas)) {
+      if (filtro.liga && filtro.liga !== liga) continue;
+      for (const id of L.clubes) {
+        const c = clubeDoIndiceMundo(indice, id);
+        if (!c) continue;
+        if (filtro.texto && !String(c.nome).toLowerCase().includes(String(filtro.texto).toLowerCase())) continue;
+        out.push({ id: String(id), nome: c.nome, sigla: c.sigla, escudo: c.escudo || c.logoOrigem || null, pais: cod, liga, ligaNome: nomeDaLiga(indice, liga), noSave: !!(CAREER.exterior && CAREER.exterior.clubes[String(id)]) });
+      }
+    }
+  }
+  return out;
+}
+
+// Elencos de uma liga do mundo (rota do servidor, com cache na memória).
+const elencosEmCache = new Map();
+async function elencosDaLigaDoMundo(liga, buscar) {
+  if (elencosEmCache.has(liga)) return elencosEmCache.get(liga);
+  const r = ambiente.elencosDoMundo ? await ambiente.elencosDoMundo(liga) : await buscar(`/api/career/mundo/elencos/${liga}`);
+  const porTime = (r && r.playersByTeamId) || r || {};
+  elencosEmCache.set(liga, porTime);
+  return porTime;
+}
+
+export async function abrirClubeDoMundo(CAREER, clubId, buscar) {
+  const indice = indiceAtual;
+  const id = String(clubId);
+  if (!indice || !CAREER || !CAREER.mundoLeve) return { ok: false, motivo: "sem-mundo" };
+  if (CAREER.exterior && CAREER.exterior.clubes[id]) return { ok: true, ja: true };
+  const onde = ligaNoMundo(CAREER, id);
+  const c = clubeDoIndiceMundo(indice, id);
+  if (!onde || !c) return { ok: false, motivo: "fora-do-mundo" };
+  const P = CAREER.mundoLeve.paises[onde.pais];
+  const f = P.forcas[id];
+  const comp = indice.competicoes[onde.liga];
+  const ajusteNivel = comp && comp.nivel ? Math.round((comp.nivel - 1) * OVERALL_POR_NIVEL * 10) / 10 : 0;
+  const time = {
+    id: c.id, name: c.nome, short: c.sigla, logo: c.escudo || c.logoOrigem || null, c1: c.c1 || "#5B6B7F", c2: c.c2 || "#1F2933",
+    venue: c.estadio ? { name: c.estadio.nome, city: c.estadio.cidade, capacity: c.estadio.capacidade } : null,
+    atk: f ? f[0] : c.atk, def: f ? f[1] : c.def, competitionId: onde.liga, ajusteNivel, exterior: true, pais: onde.pais,
+  };
+  const porTime = await elencosDaLigaDoMundo(onde.liga, buscar);
+  CAREER.exterior = CAREER.exterior || { clubes: {}, saidas: {}, catalogo: {} };
+  const saiu = new Set((CAREER.exterior.saidas[id] || []).map(String));
+  const raw = (porTime[id] || []).filter((p) => !saiu.has(String(p.id)));
+  instalarElencos({ [id]: raw });
+  const elenco = await montarElencoCpu(time);
+  // Idade: os anos que se passaram no save desde a temporada do pacote.
+  const anos = Math.max(0, (CAREER.seasonYear || 0) - ambiente.temporadaReal());
+  if (anos) elenco.forEach((p) => { p.age += anos; });
+  CAREER.exterior.clubes[id] = time;
+  CAREER.exterior.catalogo[id] = raw.map((p) => String(p.id));
+  CAREER.leagueSquads[id] = elenco;
+  return { ok: true, clube: { id, nome: time.name, liga: onde.liga, pais: onde.pais }, jogadores: elenco.length };
+}
+
+// Na virada: sai do save o clube de fora que não tem vínculo com o técnico
+// (atleta que veio do save, proposta, parcela ou empréstimo). Os atletas do
+// pacote que saíram dele ficam em `saidas`.
+export function podarExterior(CAREER) {
+  if (!CAREER || !CAREER.exterior) return 0;
+  const S = String;
+  const ligados = new Set();
+  for (const o of CAREER.pendingOffersOut || []) ligados.add(S(o.clubId));
+  for (const x of [...(CAREER.pendingInstallments || []), ...(CAREER.pendingReceivables || [])]) if (x.clubId != null) ligados.add(S(x.clubId));
+  for (const p of CAREER.squad || []) if (p.loanFromClubId != null) ligados.add(S(p.loanFromClubId));
+  let podados = 0;
+  for (const id of Object.keys(CAREER.exterior.clubes)) {
+    const sq = CAREER.leagueSquads[id] || [];
+    const doCatalogo = new Set((CAREER.exterior.catalogo[id] || []).map((x) => `real_${x}`));
+    // Gerados pelo próprio clube (elenco de reposição, base da CPU) não contam.
+    const veioDoSave = sq.some((p) => !doCatalogo.has(S(p.id)) && !/^(gen_|base_|basecpu_)/.test(S(p.id)));
+    if (veioDoSave || ligados.has(id)) continue;
+    const presentes = new Set(sq.map((p) => S(p.id)));
+    const sairam = (CAREER.exterior.catalogo[id] || []).filter((x) => !presentes.has(`real_${x}`));
+    if (sairam.length) CAREER.exterior.saidas[id] = [...new Set([...(CAREER.exterior.saidas[id] || []), ...sairam])];
+    delete CAREER.exterior.clubes[id];
+    delete CAREER.exterior.catalogo[id];
+    delete CAREER.leagueSquads[id];
+    podados++;
+  }
+  return podados;
+}
+ganchosMundo.podarExterior = (CAREER) => podarExterior(CAREER);
