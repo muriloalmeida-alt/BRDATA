@@ -49,8 +49,12 @@ Pendências de decisão do Murilo (não bloqueiam M1 a M8):
 - DEP-1: clubes de Bolívia, Paraguai, Peru, Venezuela e das associações
   UEFA sem liga jogável. Opção (a): 4º pacote de dados. Opção (b): nome
   real com elenco fictício gerado. Precisa ser decidida antes da M9.
-- DEP-2: tabela de acesso UEFA. Proposta: tabela de jogo fixa e versionada
-  para as 5 associações jogáveis. Precisa ser decidida antes da M10.
+- DEP-2: DECIDIDA (Murilo, 24/11/2026, "Aprovado"). Tabela de jogo fixa
+  com as vagas por posição na liga, +1 vaga na Champions pelo desempenho
+  europeu no save, vaga dos campeões continentais e potes pelo coeficiente
+  do clube no save. Detalhe em `docs/mundo/01_Requisitos.md`, DEP-2.
+  Conferir na fonte qual associação é a 5ª do ranking de 2026/27 antes de
+  implementar.
 - DEP-3: promedio da 2ª uruguaia sem 2025. Proposta: começar sem
   histórico.
 Divergência registrada: os handoffs dos pacotes supõem um país por save,

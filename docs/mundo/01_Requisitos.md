@@ -208,7 +208,24 @@ Série D hoje.
     JSON.
   - Proposta: tabela de jogo fixa e versionada para as 5 associações
     jogáveis (vagas por posição da liga). As outras vêm da DEP-1.
-  - **Decisão do Murilo pendente antes da M10.**
+  - **Decidido pelo Murilo (24/11/2026): tabela de jogo fixa, abaixo.**
+  - Vagas por posição na liga:
+    - Inglaterra, Espanha, Itália e Alemanha: 1º ao 4º na fase de liga da
+      Champions, 5º e 6º na Europa League, 7º no playoff da Conference;
+    - a 5ª associação do ranking (suposta a França; conferir na fonte
+      antes de implementar): 1º ao 3º na fase de liga da Champions, 4º no
+      qualificatório, 5º e 6º na Europa League, 7º no playoff da
+      Conference.
+    - Sem copas nacionais, a vaga do campeão da copa vai para o 6º.
+  - Desempenho europeu: um coeficiente de jogo por associação (resultados
+    europeus das últimas 5 temporadas do save). As 2 melhores da temporada
+    ganham +1 vaga na Champions, para o 5º colocado.
+  - Campeões da Champions e da Europa League: vaga na Champions do ano
+    seguinte. Se já tiverem vaga pela liga, ela passa ao próximo da tabela.
+  - Potes: pelo coeficiente do clube no save (na 1ª temporada, a força do
+    pacote; depois, os resultados europeus). Sorteio pelas regras do pacote
+    continental.
+  - As vagas das outras associações dependem da DEP-1.
 - **DEP-3. Promedios da 2ª uruguaia (2025).**
   - O pacote avisa que falta a tabela oficial consolidada.
   - Proposta: começar sem histórico, como estado próprio e não como zero
@@ -259,4 +276,4 @@ Série D hoje.
 | Avanço lento no iPhone | Leve = só placar e tabela por jogo. Trabalho pesado só na virada de cada país. Medição p50/p95 por etapa. |
 | Refatorar o loop de rodada para relógio por data quebra o Brasil | Etapa M2 com equivalência: o save brasileiro antigo roda no caminho de hoje e o novo save no Brasil dá os mesmos resultados com a mesma seed. |
 | Formatos fiéis têm muitas exceções | Motor de fases declarativo, um teste por evento do aceite 3 e regras por configuração, não por `if` de país. |
-| Clubes continentais sem dados (DEP-1/2) | Decisão do Murilo antes de M9/M10. O resto do épico não espera. |
+| Clubes continentais sem dados (DEP-1) | Decisão do Murilo antes da M9. DEP-2 decidida em 24/11/2026. |
