@@ -255,7 +255,8 @@ function promedio(plano, atual, janela) {
     const hist = (plano.historico[String(l.id)] || []).filter((h) => h.ano > plano.ano - janela && h.ano < plano.ano);
     const pts = l.pts + hist.reduce((s, h) => s + h.pts, 0);
     const j = l.j + hist.reduce((s, h) => s + h.j, 0);
-    out[String(l.id)] = { pts, j, temporadas: hist.length + 1 };
+    // ptsTemporada/jTemporada: o que entra no histórico na virada (viradapais.atualizarHistorico).
+    out[String(l.id)] = { pts, j, temporadas: hist.length + 1, ptsTemporada: l.pts, jTemporada: l.j };
   }
   return out;
 }

@@ -228,8 +228,54 @@ Interpretações de regulamento (para o Murilo conferir):
    menos as finais.
 7. Primera C colombiana: zero trocas, o padrão do pacote.
 
-Próxima etapa: M5, a virada por país (acesso e queda aplicados, clubes B,
+Etapa M5, a virada por país (acesso e queda aplicados, clubes B,
 catálogo de 3ª divisão, proteção do clube do jogador).
+
+Relatório da etapa M5, virada por país (24/11/2026)
+
+O que foi feito: `public/js/motor/viradapais.js` (+ `.d.ts`), módulo puro.
+A virada é uma transação só: confere contagens e conjuntos disjuntos antes
+de devolver, e não mexe na entrada.
+- Troca entre 1ª e 2ª pelo resultado das fases (Europa) ou dos formatos
+  (América do Sul).
+- Reposição da 2ª pelo catálogo de 3ª, como a Série D: sorteio
+  determinístico (país + ano), sem repetição, entre os elegíveis. Quem cai
+  entra no catálogo e quem sobe sai.
+- Argentina: metade das vagas pela Primera B Metropolitana e metade pelo
+  Federal A.
+- Clubes B:
+  - nunca na 1ª;
+  - se o principal cai para a 2ª onde está o B, o B cai para o catálogo e
+    entra mais um;
+  - no catálogo, o "condicional" só é elegível com o principal na 1ª da
+    temporada nova, e o "bloqueado" (II alemães) nunca;
+  - Colômbia: a Primera C (`simulation_only`) fica fora.
+- Representante do catálogo no barrage (Alemanha e França), sorteado ao
+  montar as fases.
+- Proteção do clube do jogador na divisão jogável mais baixa: cai o próximo
+  da zona de baixo, e a exceção vai no resumo.
+- Zonas da temporada nova (Argentina: quem chega ocupa a vaga de quem saiu),
+  grupos sorteados (Competencia uruguaio) e histórico do promedio pela
+  janela.
+
+Testes: `test_motor_viradapais` 6/6.
+- 3 temporadas encadeadas nos 10 países, com o calendário gerado com os
+  clubes do save, as fases ou formatos de verdade e a virada:
+  - tamanhos e disjunção certos;
+  - o total de clubes conservado entre divisões e catálogo;
+  - bloqueado e `simulation_only` nunca entram;
+  - mesma seed, mesma virada.
+- Cada regra de clube B, os 200 sorteios alemães, a proteção (Inglaterra e
+  Uruguai pelo promedio), as zonas argentinas e os circuitos.
+- O histórico do promedio pela janela, e a entrada inválida falhando sem
+  mexer em nada.
+
+Nota: o destino de quem cai da Primera Nacional (Metropolitana ou Federal
+A) não vem no pacote. O clube volta ao catálogo sem circuito e conta em
+qualquer um dos dois.
+
+Próxima etapa: M6, a simulação híbrida e o save do mundo (liga as peças
+M1–M5 ao avanço de semana).
 
 ⸻
 

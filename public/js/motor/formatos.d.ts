@@ -12,7 +12,7 @@ export interface ResultadoDaTemporada {
   sobem: Movimento[];
   descem: Movimento[];
   anual?: Id[];
-  promedio?: Record<string, { pts: number; j: number; temporadas: number }>;
+  promedio?: Record<string, { pts: number; j: number; temporadas: number; ptsTemporada: number; jTemporada: number }>;
   [k: string]: unknown;
 }
 export interface PlanoDaTemporada {
