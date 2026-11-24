@@ -15,7 +15,26 @@ Status: REVISÃO DO PM NECESSÁRIA.
 - Etapas M1 a M6a: PR #154 (suíte completa 191/191).
 - M6b, passos 1 a 4: PR #155, empilhado sobre o #154 (suíte completa
   191/192; a falha, instável e sem relação com o mundo, está no PR).
-Próximo: M6b-5 (o Brasil no mundo). A especificação saiu do pedido do
+Próximo: M6b-5 (o Brasil no mundo), na branch `claude/mundo-m6b5`,
+empilhada sobre o #155.
+
+M6b-5a, carreira no Brasil com o mundo em paralelo (24/11/2026):
+- Carreira nova no Brasil com o mundo ligado (o hospedeiro fornece o índice
+  em `ambiente.indiceDoMundo`; a v2 passa a fornecê-lo na liberação, M10):
+  os 10 países entram no mundo leve, pré-simulados até a semana em que a
+  carreira começa, e andam junto com o calendário do Brasil.
+  - A carreira continua brasileira: Copa do Brasil, Série D e o caminho de
+    hoje.
+- Sem o índice, a carreira nasce exatamente como hoje, sem nenhum pedido a
+  mais ao servidor. A equivalência de carga (`test_motor_carga`) pegou o
+  pedido extra na 1ª versão e ele saiu.
+- Reabrir: o save do Brasil com o mundo carrega só o índice. Sem o índice,
+  o mundo leve fica parado até ele voltar.
+- Testes:
+  - `test_motor_mundo_carreira` 11/11. Caso novo: carreira no Brasileirão
+    sem rede, sem o índice (como sempre) e com o índice (10 países em
+    paralelo, Copa mantida, 3 rodadas com o mundo na mesma semana).
+  - Testes do motor: 39/39. Rota rápida: 54/54. A especificação saiu do pedido do
 Murilo (24/11/2026), dos três pacotes de dados anexos e das decisões dele
 na mesma data:
 - D1: simulação híbrida;

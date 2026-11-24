@@ -65,7 +65,9 @@ export function decodificarPlacares(s, n) {
 // leve (o do técnico; a etapa M6b liga a carreira). A semana inicial é a da
 // pré-temporada da liga escolhida (MUN-06); a pré-simulação até ela é feita
 // por prepararInicio().
-export function criarMundoLeve(indice, { ligaEscolhida, ativos = [], chave = "mundo" } = {}) {
+// inicio (opcional): a semana em que o jogo começa, quando a liga do técnico
+// não está no índice (carreira no Brasil, M6b-5).
+export function criarMundoLeve(indice, { ligaEscolhida, ativos = [], chave = "mundo", inicio = null } = {}) {
   const paises = {};
   for (const p of indice.paises) {
     const [l1, l2] = p.ligas;
@@ -80,7 +82,7 @@ export function criarMundoLeve(indice, { ligaEscolhida, ativos = [], chave = "mu
     };
   }
   const agendaEscolhida = ligaEscolhida ? Rel.agendaDoPacote(indice.partidas[ligaEscolhida]) : null;
-  const inicioJogo = agendaEscolhida ? Rel.inicioDoMundo(agendaEscolhida) : null;
+  const inicioJogo = inicio || (agendaEscolhida ? Rel.inicioDoMundo(agendaEscolhida) : null);
   const primeira = Object.keys(indice.competicoes).map((l) => Rel.primeiraSemana(Rel.agendaDoPacote(indice.partidas[l]))).sort()[0];
   return {
     formato: FORMATO_MUNDO, versaoCatalogo: indice.versao, chave, ativos: ativos.slice(),
