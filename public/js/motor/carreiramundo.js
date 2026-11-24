@@ -64,7 +64,7 @@ export function avancarMundoLeve(CAREER) {
   leve.estado = CAREER.mundoLeve;
   return eventos;
 }
-ganchosMundo.semanaDoMundo = (CAREER) => avancarMundoLeve(CAREER);
+ganchosMundo.semanaDoMundo = (CAREER) => { const ev = avancarMundoLeve(CAREER); semanaDasFasesGeradas(CAREER); return ev; };
 
 export function paisDaLiga(indice, liga) {
   const p = indice.paises.find((x) => x.ligas.includes(liga));
@@ -195,6 +195,99 @@ export function aplicarCalendario(CAREER, indice, k) {
   return c;
 }
 
+// ---------- América do Sul no país do técnico (M6b-4b) ----------
+// O plano da temporada (formatos.js) de cada liga do país. Os jogos das
+// fases de tabela fixa são os que o motor joga por rodada (a liga do técnico
+// e a outra divisão): o placar chega pelo gancho resultadoDoMundo. As fases
+// geradas (mata-matas, quadrangulares, hexagonais, Intermedio, finais e
+// acesso) são jogadas pela semana, com a mesma conta de gols, inclusive as
+// do técnico (a partida ao vivo nessas fases fica para uma etapa seguinte).
+// O save guarda o plano compacto em CAREER.mundo.planos (placares das fases
+// fixas numa string; o resto como está).
+const FASES_FIXAS = new Set(["Fase Regular", "Apertura", "Clausura", "Competencia", "Fase Inicial"]);
+let planos = null; // { career, k, porLiga: { liga: { plano, n, porPar } } }
+
+function paisDoTecnicoNaAmericaDoSul(CAREER) {
+  if (!CAREER || !CAREER.mundo || !CAREER.mundoLeve || !indiceAtual) return false;
+  const p = indiceAtual.paises.find((x) => x.codigo === CAREER.mundo.pais);
+  return !!p && p.regiao === "america_sul";
+}
+
+export function abrirPlanos(CAREER) {
+  if (planos && planos.career === CAREER && planos.k === CAREER.mundo.k) return planos;
+  const indice = indiceAtual;
+  const P = CAREER.mundoLeve.paises[CAREER.mundo.pais];
+  const S = (x) => String(x);
+  const porLiga = {};
+  for (const liga of CAREER.divisoes) {
+    const comp = indice.competicoes[liga];
+    const clubes = CAREER.divisionTeams[liga].map((t) => t.id);
+    const zonas = (P.zonas || {})[liga] || null;
+    const fixos = [...agendaDaLiga(indice, liga, CAREER.mundo.k, clubes, zonas).values()].flat();
+    const set = new Set(clubes.map(S));
+    const reservas = indice.clubes.filter((c) => c.reserva && set.has(S(c.id))).map((c) => c.id)
+      .concat(indice.terceira.filter((c) => c.clubePai && set.has(S(c.id))).map((c) => c.id));
+    const plano = Fo.montarTemporada({
+      comp, ano: CAREER.mundo.ano, clubes, grupos: zonas, jogosFixos: fixos,
+      historico: (P.historico || {})[liga] || {}, reservas, chave: `${CAREER.mundoLeve.chave}:${liga}:${CAREER.mundo.ano}`,
+    });
+    const salvo = (CAREER.mundo.planos || {})[liga];
+    if (salvo) {
+      ML.decodificarPlacares(salvo.placares || "", fixos.length).forEach((x, i) => { if (x) { plano.jogos[i].gh = x.gh; plano.jogos[i].ga = x.ga; } });
+      plano.jogos = [...plano.jogos.slice(0, fixos.length), ...(salvo.gerados || [])];
+      plano.confrontos = salvo.confrontos || []; plano.marcos = salvo.marcos || {}; plano.resultado = salvo.resultado || null;
+    }
+    const porPar = new Map();
+    fixos.forEach((j, i) => { const k = `${S(j.casa)}|${S(j.fora)}`; if (!porPar.has(k)) porPar.set(k, []); porPar.get(k).push(i); });
+    porLiga[liga] = { plano, n: fixos.length, porPar };
+  }
+  planos = { career: CAREER, k: CAREER.mundo.k, porLiga };
+  return planos;
+}
+
+function guardarPlanos(CAREER) {
+  const pl = abrirPlanos(CAREER);
+  CAREER.mundo.planos = Object.fromEntries(Object.entries(pl.porLiga).map(([liga, x]) => [liga, {
+    placares: ML.codificarPlacares(x.plano.jogos.slice(0, x.n).map((j) => (j.gh == null ? null : { gh: j.gh, ga: j.ga }))),
+    gerados: x.plano.jogos.slice(x.n), confrontos: x.plano.confrontos, marcos: x.plano.marcos, resultado: x.plano.resultado,
+  }]));
+}
+
+// Placar de um jogo de fase fixa jogado pelo motor (liga do técnico ou a outra
+// divisão): o 1º jogo ainda sem placar com o mesmo mandante e visitante.
+export function registrarResultadoDoMundo(compId, r) {
+  const CAREER = carreiraAtual();
+  if (!paisDoTecnicoNaAmericaDoSul(CAREER)) return;
+  const x = abrirPlanos(CAREER).porLiga[compId];
+  if (!x) return;
+  const i = (x.porPar.get(`${String(r.home)}|${String(r.away)}`) || []).find((k) => x.plano.jogos[k].gh == null);
+  if (i == null) return;
+  const j = x.plano.jogos[i];
+  Fo.registrarJogo(x.plano, j.id, { gh: r.gh, ga: r.ga }, simuladorDoPais(CAREER, `${CAREER.mundoLeve.chave}:${j.id}`));
+  guardarPlanos(CAREER);
+}
+
+// Fases geradas da semana (até o domingo da semana da carreira).
+function semanaDasFasesGeradas(CAREER) {
+  if (!paisDoTecnicoNaAmericaDoSul(CAREER)) return;
+  const semana = semanaDaCarreira(CAREER);
+  if (!semana) return;
+  const ate = new Date(Date.parse(semana + "T00:00:00Z") + 6 * 86400000).toISOString().slice(0, 10);
+  const pl = abrirPlanos(CAREER);
+  let mudou = false;
+  for (const x of Object.values(pl.porLiga)) {
+    for (let g = 0; g < 500 && !Fo.concluida(x.plano); g++) {
+      const j = Fo.jogosPendentes(x.plano, ate).find((y) => y.conf || !FASES_FIXAS.has(y.fase));
+      if (!j) break;
+      const sim = simuladorDoPais(CAREER, `${CAREER.mundoLeve.chave}:${j.id}`);
+      Fo.registrarJogo(x.plano, j.id, sim.jogar(j), sim);
+      mudou = true;
+    }
+  }
+  if (mudou) guardarPlanos(CAREER);
+}
+ganchosMundo.resultadoDoMundo = (compId, r) => registrarResultadoDoMundo(compId, r);
+
 // ---------- virada do país do técnico (M6b-4) ----------
 // Fim de temporada do país do técnico no save do mundo, no lugar da cascata
 // do Brasil (virada.applyPromotionRelegation). Europa: o plano de fim de
@@ -234,34 +327,74 @@ export async function viradaDoPaisAtivo(CAREER) {
   const S = (x) => String(x);
   const N = (x) => (Number.isFinite(Number(x)) ? Number(x) : x);
 
-  if (pais.regiao !== "europa") throw new Error("mundo: virada da América do Sul na carreira ainda não ligada (M6b-4b)");
-  const ordem = {}, pontos = {};
-  for (const l of [l1, l2]) {
-    const t = tabelaFinal(indice, l, standingsDe(l), `${chave}:${l}`);
-    ordem[l] = t.map((r) => N(r.id));
-    pontos[l] = Object.fromEntries(t.map((r) => [N(r.id), r.pts]));
-  }
   const catalogo = P.catalogo.map((id) => {
     const extra = P.catalogoExtra[S(id)];
     const c = indice.terceira.find((x) => S(x.id) === S(id));
     return extra ? { id, ...extra } : { id, elegibilidade: c && c.elegibilidade, clubePai: c && c.clubePai, grupo: c && c.grupo };
   });
-  const naDivisao = (id) => (ordem[l1].some((x) => S(x) === S(id)) ? 1 : ordem[l2].some((x) => S(x) === S(id)) ? 2 : null);
   const reservasDoMundo = indice.clubes.filter((c) => c.reserva && c.clubePai).map((c) => ({ id: c.id, clubePai: c.clubePai }))
     .concat(indice.terceira.filter((c) => c.clubePai).map((c) => ({ id: c.id, clubePai: c.clubePai })));
-  const ativos = new Set([...ordem[l1], ...ordem[l2]].map(S));
-  const temBarrage = !!(indice.competicoes[l2].regras || {}).interDivisionPlayoff;
-  const rep = temBarrage ? Vp.sortearRepresentante({ catalogo, divisaoAtual: naDivisao, chave }) : null;
-  const plano = Fa.montarPosTemporada({
-    pais: cod, comps: [indice.competicoes[l1], indice.competicoes[l2]], ordens: ordem, pontos,
-    reservas: reservasDoMundo.filter((r) => ativos.has(S(r.id))).map((r) => r.id), representanteTerceira: rep, chave,
-  });
-  const res = Fa.jogarTudo(plano, simuladorDoPais(CAREER, `${chave}:pos`));
+  const sim = simuladorDoPais(CAREER, `${chave}:pos`);
+  const ordem = {};
+  let mov, confrontos = [];
+  if (pais.regiao === "europa") {
+    const pontos = {};
+    for (const l of [l1, l2]) {
+      const t = tabelaFinal(indice, l, standingsDe(l), `${chave}:${l}`);
+      ordem[l] = t.map((r) => N(r.id));
+      pontos[l] = Object.fromEntries(t.map((r) => [N(r.id), r.pts]));
+    }
+    const naDivisao = (id) => (ordem[l1].some((x) => S(x) === S(id)) ? 1 : ordem[l2].some((x) => S(x) === S(id)) ? 2 : null);
+    const ativos = new Set([...ordem[l1], ...ordem[l2]].map(S));
+    const temBarrage = !!(indice.competicoes[l2].regras || {}).interDivisionPlayoff;
+    const rep = temBarrage ? Vp.sortearRepresentante({ catalogo, divisaoAtual: naDivisao, chave }) : null;
+    const plano = Fa.montarPosTemporada({
+      pais: cod, comps: [indice.competicoes[l1], indice.competicoes[l2]], ordens: ordem, pontos,
+      reservas: reservasDoMundo.filter((r) => ativos.has(S(r.id))).map((r) => r.id), representanteTerceira: rep, chave,
+    });
+    const res = Fa.jogarTudo(plano, sim);
+    confrontos = plano.confrontos;
+    mov = { sobemD2: res.sobem[l2], descemD1: res.descem[l1], descemD2: res.descem[l2], sobemTerceira: res.sobem.terceira, quedaD2: ordem[l2].slice().reverse(), campeoes: res.campeao };
+  } else {
+    // América do Sul: termina os planos da temporada (o que faltar das fases
+    // geradas) e usa o resultado do regulamento (formatos.js).
+    const pl = abrirPlanos(CAREER);
+    const r = {};
+    for (const l of [l1, l2]) {
+      const plano = pl.porLiga[l].plano;
+      for (let g = 0; g < 5000 && !Fo.concluida(plano); g++) {
+        const [j] = Fo.jogosPendentes(plano);
+        if (!j) break;
+        Fo.registrarJogo(plano, j.id, sim.jogar(j), sim);
+      }
+      if (!Fo.concluida(plano)) throw new Error(`mundo: temporada de ${l} não terminou`);
+      r[l] = plano.resultado;
+      ordem[l] = CAREER.divisionTeams[l].map((t) => N(t.id));
+      confrontos = confrontos.concat(plano.confrontos);
+      if (r[l].promedio) {
+        const janela = indice.competicoes[l].regras.relegation.seasonWindow;
+        const porClube = Object.fromEntries(Object.entries(r[l].promedio).map(([id, x]) => [id, { pts: x.ptsTemporada, j: x.jTemporada }]));
+        P.historico[l] = Vp.atualizarHistorico(P.historico[l] || {}, CAREER.mundo.ano, porClube, janela);
+      }
+    }
+    const r2 = r[l2];
+    const quedaD2 = r2.promedio
+      ? Object.keys(r2.promedio).map(N).sort((a, b) => r2.promedio[a].pts * r2.promedio[b].j - r2.promedio[b].pts * r2.promedio[a].j)
+      : (r2.anual || r2.reclassificacao || [...(r2.zonas ? [...r2.zonas.A, ...r2.zonas.B] : []), ...(r2.grupos ? Object.values(r2.grupos).flat() : [])]).slice().reverse();
+    mov = { sobemD2: r2.sobem.map((x) => x.id), descemD1: r[l1].descem.map((x) => x.id), descemD2: r2.descem.map((x) => x.id), sobemTerceira: [], quedaD2, campeoes: { [l1]: r[l1].campeoes, [l2]: r2.campeoes } };
+  }
+  const res = { campeao: mov.campeoes, sobem: { [l2]: mov.sobemD2 }, descem: { [l1]: mov.descemD1 } };
+  const zonasArg = Object.fromEntries(Object.entries(P.zonas || {}).filter(([l]) => l.startsWith("arg_")));
   const v = Vp.aplicarVirada({
     pais: cod, chave, d1: { id: l1, clubes: ordem[l1] }, d2: { id: l2, clubes: ordem[l2] },
-    sobemD2: res.sobem[l2], descemD1: res.descem[l1], descemD2: res.descem[l2], sobemTerceira: res.sobem.terceira,
-    quedaD2: ordem[l2].slice().reverse(), catalogo, reservas: reservasDoMundo, humano: N(CAREER.clubId),
+    sobemD2: mov.sobemD2, descemD1: mov.descemD1, descemD2: mov.descemD2, sobemTerceira: mov.sobemTerceira,
+    quedaD2: mov.quedaD2, catalogo, reservas: reservasDoMundo, humano: N(CAREER.clubId),
+    zonas: Object.keys(zonasArg).length ? zonasArg : undefined,
   });
+  if (v.zonas) Object.assign(P.zonas, v.zonas);
+  if (cod === "UY") P.zonas.uru_segunda = Vp.sortearGrupos(v[l2], ["A", "B"], `${CAREER.mundoLeve.chave}:UY:${P.ano + 1}`);
+  if (CAREER.mundo.planos) CAREER.mundo.planos = {};
+  planos = null;
 
   // Times das divisões novas (os que ficam, com a força de agora; os que
   // chegam do catálogo, do índice com a força guardada no mundo leve).
@@ -322,11 +455,11 @@ export async function viradaDoPaisAtivo(CAREER) {
   let texto = null;
   if (mudou) texto = humanoEm === l1 ? `Acesso! ${nomeDe(l2)} → ${nomeDe(l1)}.` : `Rebaixado(a): ${nomeDe(l1)} → ${nomeDe(l2)}.`;
   return {
-    mundo: true, pais: cod, campeoes: res.campeao, confrontos: plano.confrontos,
+    mundo: true, pais: cod, campeoes: res.campeao, confrontos,
     relegatedA: times(res.descem[l1]), promotedB: times(res.sobem[l2]), relegatedB: times(v.foramParaOCatalogo), promotedC: times(v.entraramDoCatalogo),
     relegatedC: [], promotedD: [], excecoes: v.excecoes,
     divisionChanged: mudou, newCompetitionId: humanoEm, texto,
-    humanoNoPlayoff: plano.confrontos.some((c) => S(c.a) === humano || S(c.b) === humano),
+    humanoNoPlayoff: confrontos.some((c) => S(c.a) === humano || S(c.b) === humano),
   };
 }
 

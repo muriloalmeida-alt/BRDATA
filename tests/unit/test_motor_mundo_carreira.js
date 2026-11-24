@@ -27,7 +27,12 @@
 //      leve segue na semana da carreira;
 //   9) M6b-4, reabrir o save do mundo (enterAfterAuth da v2, com o índice do
 //      ambiente): mesma liga, divisões, rodada e semana; e a carreira continua
-//      jogando e gravando depois de reaberta.
+//      jogando e gravando depois de reaberta;
+//  10) M6b-4b, América do Sul: temporada inteira na Liga Profesional argentina
+//      (Apertura e Clausura com os mata-matas gerados pela semana, o plano
+//      compacto no save), virada com 2 quedas por critérios distintos (anual e
+//      promedio), zonas novas 15/15 e 18/18, histórico do promedio; e a Segunda
+//      uruguaia com rodada de folga do técnico (grupos de 7 do Competencia).
 // Uso: node tests/unit/test_motor_mundo_carreira.js
 const assert = require("assert");
 const path = require("path");
@@ -326,6 +331,69 @@ const imp = (m) => import(pathToFileURL(path.join(ROOT, "public/js/motor", m)).h
     assert.ok(gravacoes > 0);
     const w = C().calendar.weeks[C().calendar.idx];
     assert.strictEqual(C().mundoLeve.semana, `${w.a}-${w.d}`);
+  });
+
+  await check("M6b-4b: Argentina (fases, mata-matas, quedas por anual e promedio) e folga na Segunda uruguaia", async () => {
+    const v2 = await imp("v2.js");
+    const semana = await imp("semana.js");
+    const CMu = await imp("carreiramundo.js");
+    const ponteMod = await imp("ponte.js");
+    semana.definirAmbiente({ ...v2.ambienteSemPagina(), buscarJogadores: async () => [], indiceDoMundo: null, armazem: { pedir: async () => ({ ok: true }) } });
+    const elencosDaLiga = async (liga) => JSON.parse(fs.readFileSync(path.join(ROOT, `server/frozen-catalog/snapshot-${liga}.json`), "utf8")).playersByTeamId;
+    const C = () => estado.carreiraAtual();
+    const ate = async (f, ms) => { const t = Date.now(); while (Date.now() - t < ms) { const v = f(); if (v) return v; await new Promise((r) => setTimeout(r, 5)); } return null; };
+    const temporadaInteira = async (P) => {
+      let folgas = 0;
+      for (let g = 0; C().currentRound <= C().rodadasLiga && g < 60; g++) {
+        await P.avancarSemana(true);
+        let i = P.iniciar();
+        if (i && i.motivo === "escalacao") { await P.escalarAutomaticamente(true); i = P.iniciar(); }
+        assert.ok(i && i.ok, `rodada ${C().currentRound}: ${i && i.motivo}`);
+        if (!i.aoVivo) { folgas++; continue; } // rodada de folga do técnico: resolvida na hora
+        P.pularParaFim();
+        await ate(() => { const e = P.estado(); return e.fase === "encerrada" && e.gravada != null ? e : null; }, 30000);
+        let etapa = P.iniciarPosJogo();
+        for (let k = 0; etapa && etapa.ok !== false && etapa.etapa !== "fim" && k < 12; k++) {
+          if (etapa.etapa === "coletiva") etapa = await P.responderColetiva(etapa.respostas[0].letra);
+          else if (etapa.etapa === "noticias" || etapa.etapa === "resultados") etapa = P.concluirEtapa(etapa.etapa);
+          else if (etapa.etapa === "proposta") etapa = await P.responderProposta("recusar");
+          else break;
+        }
+        P.encerrarPosJogo();
+      }
+      return folgas;
+    };
+    // Argentina.
+    const arg = indice.clubes.filter((c) => c.liga === "arg_liga_profesional")[3];
+    await CMu.criarCarreiraNoMundo({ indice, liga: "arg_liga_profesional", clubId: arg.id, elencosDaLiga });
+    let P = v2.criarPonte();
+    ponteMod.ponte.pronta = true;
+    await temporadaInteira(P);
+    const planos = C().mundo.planos;
+    assert.ok(planos && planos.arg_liga_profesional && planos.arg_primera_nacional, "plano da temporada fora do save");
+    const ko = planos.arg_liga_profesional.confrontos.filter((c) => /^Apertura-/.test(c.etapa));
+    assert.strictEqual(ko.length, 8 + 4 + 2 + 1, "mata-mata do Apertura");
+    assert.strictEqual(planos.arg_liga_profesional.placares.replace(/\.\./g, "").length / 2, 480, "jogos das fases de zonas sem placar no plano");
+    const r = await P.proximaTemporada();
+    assert.ok(r.ok, `virada: ${JSON.stringify(r).slice(0, 200)}`);
+    const virada = C().mundoLeve.paises.AR.viradas.slice(-1)[0];
+    assert.strictEqual(virada.descem.length, 2);
+    assert.strictEqual(new Set(virada.descem.map(String)).size, 2);
+    const z = C().mundoLeve.paises.AR.zonas;
+    assert.deepStrictEqual(Object.values(z.arg_liga_profesional).map((x) => x.length), [15, 15]);
+    assert.deepStrictEqual(Object.values(z.arg_primera_nacional).map((x) => x.length), [18, 18]);
+    assert.ok(Object.values(C().mundoLeve.paises.AR.historico.arg_liga_profesional).some((h) => h.some((x) => x.ano === 2026)), "histórico do promedio sem 2026");
+    assert.deepStrictEqual(C().mundo.planos, {}, "planos da temporada anterior ficaram no save");
+    assert.strictEqual(C().seasonYear, 2027);
+    // Segunda uruguaia: rodadas de folga no Competencia.
+    const uru = indice.clubes.filter((c) => c.liga === "uru_segunda")[0];
+    await CMu.criarCarreiraNoMundo({ indice, liga: "uru_segunda", clubId: uru.id, elencosDaLiga });
+    P = v2.criarPonte();
+    ponteMod.ponte.pronta = true;
+    const folgas = await temporadaInteira(P);
+    assert.ok(folgas >= 1, "sem rodada de folga no Competencia");
+    const r2 = await P.proximaTemporada();
+    assert.ok(r2.ok, "virada no Uruguai");
   });
 
   console.log(`\n${n - failed}/${n} ok`);

@@ -508,7 +508,12 @@ export function activeManMarkingSuppression(opponentId) {
 // torcida, desenhar o placar, timers, destaque de gol, modais) continua na
 // página, que chama estas funções.
 
-const applyResultToStandings = (r, standings = carreiraAtual().standings) => { tabela.applyResult(standings, r); };
+// MUNDO-001 (M6b-4b): no save do mundo, o placar da liga do técnico também vai
+// para o plano da temporada (formatos sul-americanos, carreiramundo.js).
+const applyResultToStandings = (r, standings = carreiraAtual().standings) => {
+  tabela.applyResult(standings, r);
+  if (carreiraAtual().mundo && ganchosMundo.resultadoDoMundo && standings === carreiraAtual().standings) ganchosMundo.resultadoDoMundo(carreiraAtual().competitionId, r);
+};
 
 // Início: adversário, XI do adversário e os outros jogos da rodada.
 // Monta o LIVE_MATCH (motor/estado.js) e o devolve.

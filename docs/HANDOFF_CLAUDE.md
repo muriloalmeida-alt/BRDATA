@@ -436,7 +436,7 @@ M6b-4a, virada do país do técnico na Europa (24/11/2026):
     falha. ~1,3 s por temporada; saves entre 650 e 780 KB de JSON.
   - Testes do motor: 39/39. Rota rápida: 54/54.
 - Falta na M6b-4: América do Sul (fases do técnico pelo plano dos formatos
-  e a virada do país).
+  e a virada do país); feito em seguida, ver M6b-4b abaixo.
 
 M6b-4, reabrir o save do mundo (24/11/2026):
 - A carga de hoje (`carga.enterAfterAuth`) chama
@@ -457,6 +457,47 @@ M6b-4, reabrir o save do mundo (24/11/2026):
     liga, as divisões, a rodada e a semana, não recria a Copa e segue
     jogando e gravando.
   - Testes do motor: 39/39. Testes da v2: 47/47. Rota rápida: 54/54.
+
+M6b-4b, América do Sul no país do técnico (24/11/2026):
+- Cada liga do país tem o plano da temporada (`formatos.js`), guardado
+  compacto em `CAREER.mundo.planos`.
+- Os jogos das fases de tabela fixa são os que o motor já joga por rodada,
+  na liga do técnico e na outra divisão. O placar chega ao plano por um
+  gancho (`ganchosMundo.resultadoDoMundo`), colocado nos dois pontos por
+  onde passa todo resultado: `applyResultToStandings` e
+  `resolveOtherDivisionsRound`.
+- As fases geradas (mata-matas, quadrangulares, hexagonais, Intermedio,
+  finais, acesso) são jogadas pela semana, com a mesma conta de gols,
+  inclusive as do técnico. A partida ao vivo nessas fases fica para uma
+  etapa seguinte, como o playoff europeu.
+- Virada: termina o que faltar dos planos e aplica o acesso e a queda do
+  regulamento:
+  - zonas argentinas novas;
+  - grupos do Competencia sorteados;
+  - histórico do promedio atualizado;
+  - proteção do clube do técnico.
+- A tabela do técnico na tela soma as fases de tabela fixa (a "anual"). As
+  tabelas por zona, grupo e fase vêm com as telas (M10).
+- Rodada de folga do técnico (grupos de 7 do Competencia uruguaio): o motor
+  já resolvia a rodada na hora (`resolveRoundInstant`), caminho que o
+  Brasil nunca usou. A tela da v2 precisa ser conferida nesse caso (M10).
+- Testes:
+  - `test_motor_mundo_carreira` 10/10. Caso novo: temporada inteira na Liga
+    Profesional (15 jogos de mata-mata do Apertura, 480 placares de zonas no
+    plano), virada com 2 quedas distintas, zonas 15/15 e 18/18, histórico de
+    2026 no promedio; Segunda uruguaia com folga.
+  - Fora da suíte: 2 temporadas em cada uma das 10 ligas sul-americanas,
+    sem falha, ~2 s por temporada, com o técnico subindo e caindo (Chile,
+    Colômbia, Uruguai).
+  - Testes do motor: 39/39. Rota rápida: 54/54. Testes da v2: 47/47.
+    `test_v2_venda_disponivel` falhou uma vez em paralelo, passou 2/2
+    sozinho e 47/47 numa segunda rodada (instável, sem relação com o
+    mundo).
+- Risco: o save argentino chega a ~1,1 MB de JSON. Ele vai comprimido
+  (~120 KB) desde a D6. Um navegador sem `CompressionStream` (Safari
+  anterior ao 16.4) manda o JSON cru, que passa do limite de 1 MB do
+  servidor. Proposta: tratar na M7/M10 (podar o save do mundo ou recusar o
+  mundo nesses navegadores).
 
 ⸻
 
