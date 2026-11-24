@@ -17,7 +17,9 @@ Status: REVISÃO DO PM NECESSÁRIA.
   191/192; a falha, instável e sem relação com o mundo, está no PR).
 - M6b, passo 5 (o Brasil no mundo): PR #156, empilhado sobre o #155
   (suíte completa 192/192).
-- M7, moeda e porte: branch `claude/mundo-m7`, empilhada sobre o #156.
+- M7, moeda e porte: PR #157, empilhado sobre o #156 (suíte completa
+  192/192).
+Próximo: M8 (mercado e carreira do técnico no mundo).
 
 Relatório da M7, moeda e finanças por país (24/11/2026)
 
