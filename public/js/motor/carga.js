@@ -1080,7 +1080,11 @@ export async function enterAfterAuth() {
     // comportamento de sempre (tenta dado real, cai pro exemplo se
     // faltar chave), sem mudança de risco pra quem nunca teve esse bug.
     const homeCompetitionId = saved.career.competitionId || "brasileirao";
-    await loadLeague(homeCompetitionId, { forceDemo: saved.career.liveMode === false });
+    // MUNDO-001 (M6b-4): save do mundo abre pelo índice do mundo
+    // (carreiramundo.abrirSaveDoMundo); as divisões vêm do próprio save.
+    const doMundo = !!(saved.career.mundo && estado.ganchosMundo.abrirSave);
+    if (doMundo) await estado.ganchosMundo.abrirSave(saved.career, fetchJSON);
+    else await loadLeague(homeCompetitionId, { forceDemo: saved.career.liveMode === false });
     tela("setBootProgress", 3, 5, "Carregando a competição...");
     // AJUSTE (pedido do usuário: "o mercado deve trazer jogadores das
     // 3 ligas") — carreira "multi" (ver startCareer) também recarrega
@@ -1091,7 +1095,7 @@ export async function enterAfterAuth() {
     // sozinha pra ela. Carreira "single" (de antes desta mudança, sem
     // marketScope) não entra aqui — continua só com o mercado da
     // própria divisão, por decisão do usuário (sem migração automática).
-    if (saved.career.marketScope === "multi") {
+    if (saved.career.marketScope === "multi" && !doMundo) {
       const lm = saved.career.liveModeByCompetition || {};
       const forceDemoMap = {};
       estado.divisoesDoPais(saved.career).forEach((c) => { if (lm[c] === false) forceDemoMap[c] = true; });

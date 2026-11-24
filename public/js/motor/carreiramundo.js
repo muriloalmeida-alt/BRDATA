@@ -340,3 +340,24 @@ export function novaTemporadaDoMundo(CAREER) {
 
 ganchosMundo.viradaDoPais = (CAREER) => viradaDoPaisAtivo(CAREER);
 ganchosMundo.novaTemporada = (CAREER) => novaTemporadaDoMundo(CAREER);
+
+// Reabre um save do mundo (carga.enterAfterAuth): o índice do mundo (rota
+// /api/career/mundo, ou o que o ambiente já tem) e o mundo do motor a partir
+// das divisões gravadas no save. Os elencos estão no save.
+export async function abrirSaveDoMundo(career, buscar) {
+  let indice = indiceAtual;
+  if (!indice || indice.versao !== career.mundo.versaoCatalogo) {
+    indice = ambiente.indiceDoMundo ? await ambiente.indiceDoMundo() : await buscar("/api/career/mundo");
+    if (!indice || !indice.competicoes) throw new Error("mundo: índice do mundo indisponível para abrir a carreira");
+  }
+  definirIndiceDoMundo(indice);
+  const liga = career.competitionId;
+  const comp = indice.competicoes[liga];
+  estado.definirTemporadaReal(comp.temporada.anoInicial);
+  estado.definirModoReal(true);
+  for (const l of career.divisoes) estado.modoRealPorCompeticao()[l] = true;
+  definirCompeticaoAtual(liga);
+  definirLigaAtual((career.divisionTeams[liga] || []).map((t) => ({ ...t, competitionId: undefined })));
+  definirTodosTimes(career.divisoes.flatMap((l) => career.divisionTeams[l] || []));
+}
+ganchosMundo.abrirSave = (career, buscar) => abrirSaveDoMundo(career, buscar);

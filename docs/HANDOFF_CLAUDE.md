@@ -435,10 +435,28 @@ M6b-4a, virada do país do técnico na Europa (24/11/2026):
   - Fora da suíte: 2 temporadas em cada uma das 10 ligas europeias, sem
     falha. ~1,3 s por temporada; saves entre 650 e 780 KB de JSON.
   - Testes do motor: 39/39. Rota rápida: 54/54.
-- Falta na M6b-4:
-  - América do Sul (fases do técnico pelo plano dos formatos e a virada do
-    país);
-  - reabrir o save do mundo (carregar o índice e os elencos ao abrir).
+- Falta na M6b-4: América do Sul (fases do técnico pelo plano dos formatos
+  e a virada do país).
+
+M6b-4, reabrir o save do mundo (24/11/2026):
+- A carga de hoje (`carga.enterAfterAuth`) chama
+  `carreiramundo.abrirSaveDoMundo` quando o save é do mundo (gancho
+  `ganchosMundo.abrirSave`). Ela carrega o índice (rota
+  `/api/career/mundo`, ou o do ambiente) e monta o mundo do motor com as
+  divisões gravadas no save, sem buscar times pela rota do Brasil.
+- Os módulos do mundo entram no app:
+  - `v2.js` importa `carreiramundo.js`, que registra os ganchos;
+  - o app shell do service worker (`public/sw.js`) recebe os 8 módulos
+    novos, para o modo offline;
+  - o carregador dos testes (`tests/e2e/_motor_vm.js`) recebe os módulos
+    na ordem de dependência e passa a aceitar `import { a as b }`.
+- `fases.js` e `desempate.js` deixaram o `export { ... }` pelo formato de
+  exportação dos outros módulos.
+- Testes:
+  - `test_motor_mundo_carreira` 9/9. Novo caso: o save reaberto mantém a
+    liga, as divisões, a rodada e a semana, não recria a Copa e segue
+    jogando e gravando.
+  - Testes do motor: 39/39. Testes da v2: 47/47. Rota rápida: 54/54.
 
 ⸻
 

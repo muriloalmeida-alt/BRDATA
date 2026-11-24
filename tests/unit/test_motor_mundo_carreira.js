@@ -24,7 +24,10 @@
 //      calendário de 2027/28, elencos de quem entrou do catálogo, catálogo
 //      conservado, aviso de acesso, sem Copa); segunda temporada na Premier
 //      com o técnico em último -> volta à Championship (46 rodadas); o mundo
-//      leve segue na semana da carreira.
+//      leve segue na semana da carreira;
+//   9) M6b-4, reabrir o save do mundo (enterAfterAuth da v2, com o índice do
+//      ambiente): mesma liga, divisões, rodada e semana; e a carreira continua
+//      jogando e gravando depois de reaberta.
 // Uso: node tests/unit/test_motor_mundo_carreira.js
 const assert = require("assert");
 const path = require("path");
@@ -282,6 +285,47 @@ const imp = (m) => import(pathToFileURL(path.join(ROOT, "public/js/motor", m)).h
     await P.avancarSemana(true);
     const w = C().calendar.weeks[C().calendar.idx];
     assert.strictEqual(C().mundoLeve.semana, `${w.a}-${w.d}`, "mundo leve fora da semana");
+  });
+
+  await check("M6b-4: reabrir o save do mundo e seguir jogando", async () => {
+    const v2 = await imp("v2.js");
+    const semana = await imp("semana.js");
+    const carga = await imp("carga.js");
+    const ponteMod = await imp("ponte.js");
+    const CMu = await imp("carreiramundo.js");
+    const salvo = JSON.parse(JSON.stringify(estado.carreiraAtual()));
+    let gravacoes = 0;
+    semana.definirAmbiente({
+      indiceDoMundo: async () => indice,
+      armazem: { pedir: async (url, opts) => { if (opts && opts.body) { gravacoes++; return { ok: true }; } return url.startsWith("/api/career") ? { career: JSON.parse(JSON.stringify(salvo)) } : {}; } },
+    });
+    estado.definirCarreira(null);
+    estado.definirLigaAtual([]); estado.definirTodosTimes([]); estado.definirCompeticaoAtual("brasileirao");
+    CMu.definirIndiceDoMundo(null);
+    ponteMod.ponte.pronta = false;
+    await carga.enterAfterAuth();
+    const C = () => estado.carreiraAtual();
+    assert.ok(C(), "não reabriu");
+    assert.strictEqual(C().competitionId, salvo.competitionId);
+    assert.strictEqual(estado.competicaoAtual(), salvo.competitionId);
+    assert.strictEqual(estado.ligaAtual().length, salvo.divisionTeams[salvo.competitionId].length);
+    assert.strictEqual(C().currentRound, salvo.currentRound);
+    assert.strictEqual(C().calendar.idx, salvo.calendar.idx);
+    assert.strictEqual(C().cup, null, "a carga recriou a Copa");
+    assert.ok(CMu.indiceDoMundo(), "índice não carregado");
+    ponteMod.ponte.pronta = true;
+    const P = v2.criarPonte();
+    const ate = async (f, ms) => { const t = Date.now(); while (Date.now() - t < ms) { const v = f(); if (v) return v; await new Promise((r) => setTimeout(r, 5)); } return null; };
+    await P.avancarSemana(true);
+    let i = P.iniciar();
+    if (i && i.motivo === "escalacao") { await P.escalarAutomaticamente(true); i = P.iniciar(); }
+    assert.ok(i && i.ok, `não iniciou depois de reabrir (${i && i.motivo})`);
+    P.pularParaFim();
+    const est = await ate(() => { const e = P.estado(); return e.fase === "encerrada" && e.gravada != null ? e : null; }, 30000);
+    assert.ok(est && est.gravada, "não gravou depois de reabrir");
+    assert.ok(gravacoes > 0);
+    const w = C().calendar.weeks[C().calendar.idx];
+    assert.strictEqual(C().mundoLeve.semana, `${w.a}-${w.d}`);
   });
 
   console.log(`\n${n - failed}/${n} ok`);

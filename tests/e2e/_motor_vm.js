@@ -13,7 +13,7 @@ const { execSync } = require("child_process");
 
 const ROOT = path.resolve(__dirname, "../..");
 // Ordem de dependência (quem importa vem depois).
-const ORDER = ["partida", "tabela", "calendario", "rodada", "financas", "treino", "mercado", "temporada", "estado", "eventos", "registro", "texto", "semana", "fechamento", "aovivo", "posjogo", "clube", "virada", "escalacao", "negociacao", "ponte", "jogo", "carga", "repositorio", "v2"];
+const ORDER = ["partida", "tabela", "calendario", "rodada", "financas", "treino", "mercado", "temporada", "estado", "eventos", "registro", "texto", "semana", "fechamento", "aovivo", "posjogo", "clube", "virada", "desempate", "relogio", "fases", "formatos", "viradapais", "mundoleve", "calendariomundo", "carreiramundo", "escalacao", "negociacao", "ponte", "jogo", "carga", "repositorio", "v2"];
 
 function readModule(name, rev) {
   try {
@@ -26,7 +26,8 @@ function moduleCode(name, src) {
   if (src == null) return `window.BRDATA_MOTOR.${name} = null;\n`;
   const names = [...src.matchAll(/^export (?:async )?(?:function|const|let) (\w+)/gm)].map((m) => m[1]);
   const body = src
-    .replace(/^import \{([^}]*)\} from "\.\/(\w+)\.js";$/gm, (_, list, mod) => `const {${list}} = window.BRDATA_MOTOR.${mod};`)
+    // `import { a as b }` vira a desestruturação `{ a: b }`.
+    .replace(/^import \{([^}]*)\} from "\.\/(\w+)\.js";$/gm, (_, list, mod) => `const {${list.replace(/(\w+)\s+as\s+(\w+)/g, "$1: $2")}} = window.BRDATA_MOTOR.${mod};`)
     .replace(/^import \* as (\w+) from "\.\/(\w+)\.js";$/gm, (_, nome, mod) => `const ${nome} = window.BRDATA_MOTOR.${mod};`)
     .replace(/^export /gm, "");
   return `window.BRDATA_MOTOR.${name} = (function () {\n${body}\nreturn { ${names.join(", ")} };\n})();\n`;
