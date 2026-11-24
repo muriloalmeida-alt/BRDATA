@@ -11,8 +11,11 @@ Demandas vigentes
 
 MUNDO-001 — Ligas da Europa e da América do Sul, em paralelo, com continentais
 
-Status: REVISÃO DO PM NECESSÁRIA para as etapas M1 a M6a (PR #154, suíte
-completa 191/191). A M6b começa depois da revisão. A especificação saiu do pedido do
+Status: REVISÃO DO PM NECESSÁRIA.
+- Etapas M1 a M6a: PR #154 (suíte completa 191/191).
+- M6b, passos 1 a 4: PR #155, empilhado sobre o #154 (suíte completa
+  191/192; a falha, instável e sem relação com o mundo, está no PR).
+Próximo: M6b-5 (o Brasil no mundo). A especificação saiu do pedido do
 Murilo (24/11/2026), dos três pacotes de dados anexos e das decisões dele
 na mesma data:
 - D1: simulação híbrida;
