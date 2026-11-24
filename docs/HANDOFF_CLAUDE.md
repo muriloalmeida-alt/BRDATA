@@ -511,7 +511,39 @@ M6b-4b, América do Sul no país do técnico (24/11/2026):
   - Fora da suíte: 2 temporadas em cada uma das 10 ligas sul-americanas,
     sem falha, ~2 s por temporada, com o técnico subindo e caindo (Chile,
     Colômbia, Uruguai).
-  - Testes do motor: 39/39. Rota rápida: 54/54. Testes da v2: 47/47.
+  - Testes do motor: 39/39. Rota rápida: 54/54.
+
+M6b-5b, o Brasil no mundo leve (24/11/2026):
+- Índice do mundo (`scripts/mundo_catalogo.js`): ganhou o Brasil.
+  - Séries A, B e C do catálogo congelado, com a força calculada pela mesma
+    função da carreira (`carga.calibrateStrengths`, importada pelo script,
+    sem segunda implementação) e a média de gols da liga.
+  - A Série D do jogo (`js/data.js`).
+- Mundo leve (`mundoleve.js`): o Brasil joga quando o técnico está fora
+  dele.
+  - Calendário pela regra da carreira (segundas do ano, rodadas 1–38 nas
+    semanas de "temporada") e turno e returno de
+    `calendario.generateAllRounds`.
+  - Tabelas pelos critérios do Brasileirão (`tabela.sortRows`).
+  - Virada pela cascata da carreira (`temporada.promotionRelegation`):
+    perdão da tradição, 4 da Série D por sorteio e força de quem muda de
+    divisão.
+- Carreira no Brasil com o mundo (M6b-5a): o Brasil fica de fora do mundo
+  leve (`ativos: ["BR"]`).
+- Testes:
+  - `test_motor_mundoleve` 6/6. Os 3 anos de mundo agora incluem o Brasil
+    (3 viradas, 20/20/20 clubes, Série D conservada, 4 sobem e 4 descem por
+    fronteira). A parte do mundo no save foi a 82 KB de JSON e 16 KB
+    comprimida.
+  - `test_motor_mundo_carreira` 11/11. Testes do motor: 39/39. Rota rápida:
+    54/54.
+  - Fora da suíte: 2 temporadas na Premier League com o Brasil jogando no
+    mundo leve (2 viradas, campeões registrados).
+- Com isso, a M6b está completa. Ficam registrados para as etapas
+  seguintes:
+  - jogar ao vivo os playoffs e as fases geradas do técnico;
+  - os elencos dos clubes de fora do país do técnico, para o mercado (M8);
+  - a moeda (M7). Testes da v2: 47/47.
     `test_v2_venda_disponivel` falhou uma vez em paralelo, passou 2/2
     sozinho e 47/47 numa segunda rodada (instável, sem relação com o
     mundo).

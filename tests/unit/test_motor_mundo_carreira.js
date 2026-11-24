@@ -432,7 +432,7 @@ const imp = (m) => import(pathToFileURL(path.join(ROOT, "public/js/motor", m)).h
       assert.strictEqual(C().mundo, undefined, "o Brasil não é save do mundo");
       assert.ok(C().cup, "a Copa do Brasil continua");
       assert.strictEqual(C().mundoLeve.semana, `${C().calendar.year}-${C().calendar.weeks[C().calendar.idx].d}`);
-      assert.deepStrictEqual(C().mundoLeve.ativos, []);
+      assert.deepStrictEqual(C().mundoLeve.ativos, ["BR"]);
       for (let k = 0; k < 3; k++) {
         await P.avancarSemana(true);
         let i = P.iniciar();

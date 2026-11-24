@@ -520,7 +520,8 @@ export async function anexarMundoAoBrasil(CAREER) {
   definirIndiceDoMundo(indice);
   const inicio = semanaDaCarreira(CAREER);
   if (!inicio) return false;
-  const m = ML.abrirMundo(ML.criarMundoLeve(indice, { ativos: [], chave: `mundo:${CAREER.clubId}`, inicio }), indice);
+  // O Brasil é o país do técnico: fora do mundo leve.
+  const m = ML.abrirMundo(ML.criarMundoLeve(indice, { ativos: ["BR"], chave: `mundo:${CAREER.clubId}`, inicio }), indice);
   ML.prepararInicio(m);
   CAREER.mundoLeve = ML.salvarMundo(m);
   return true;

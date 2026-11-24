@@ -367,6 +367,7 @@ function montar(opts) {
   }
 
   const mundo = {
+    brasil: opts.brasil || null,
     formato: 1,
     fontes: { europa: eu.ligas.preparedOn || null, americaSul: sa.ligas.preparedOn || null },
     paises, competicoes,
@@ -405,8 +406,37 @@ function gravar({ mundo, snapshots, copias, P }) {
   }
 }
 
-function main() {
+// Brasil (M6b-5b): as Séries A, B e C do catálogo congelado (os mesmos times
+// e a mesma força que a carreira brasileira calcula ao carregar:
+// carga.calibrateStrengths e carga.mediaGolsDaLiga) e a Série D do jogo
+// (js/data.js), para o Brasil jogar no mundo leve quando o técnico está fora.
+async function brasil() {
+  const vm = require("vm");
+  const { pathToFileURL } = require("url");
+  globalThis.window = globalThis;
+  vm.runInThisContext(fs.readFileSync(path.join(ROOT, "public/js/data.js"), "utf8"));
+  const carga = await import(pathToFileURL(path.join(ROOT, "public/js/motor/carga.js")).href);
+  const nomes = { brasileirao: "Brasileirão Série A", serie_b: "Brasileirão Série B", serie_c: "Brasileirão Série C" };
+  const ligas = {};
+  for (const id of Object.keys(nomes)) {
+    const snap = lerJSON(path.join(SNAP_DIR, `snapshot-${id}.json`));
+    const forca = carga.calibrateStrengths(snap.standings || []);
+    ligas[id] = {
+      nome: nomes[id], mediaGolsPorTime: carga.mediaGolsDaLiga(snap.standings || []),
+      clubes: snap.teams.map((t) => {
+        const cor = carga.realTeamColor(t.name);
+        return { id: t.id, nome: t.name, sigla: t.short || siglaDe(t.name), escudo: t.logo || null, c1: (cor && cor.c1) || "#0057B8", c2: (cor && cor.c2) || "#062B5C", atk: (forca[t.id] || {}).atk ?? 1.3, def: (forca[t.id] || {}).def ?? 1.05 };
+      }),
+    };
+  }
+  /* global DEMO_TEAMS_SERIE_D */
+  const serieD = DEMO_TEAMS_SERIE_D.map((t) => ({ id: t.id, nome: t.name, sigla: t.short, escudo: t.logo || null, c1: t.c1, c2: t.c2, atk: t.atk, def: t.def }));
+  return { ligas, serieD };
+}
+
+async function main() {
   const opts = args(process.argv);
+  opts.brasil = await brasil();
   const r = montar(opts);
   const m = r.mundo;
   console.log(`versão ${m.versao}`);
@@ -414,10 +444,11 @@ function main() {
   console.log(`${Object.values(m.partidas).reduce((s, l) => s + l.length, 0)} jogos de fase fixa; fases geradas pelo motor (fora do índice): ${JSON.stringify(r.ignoradas)}`);
   console.log(`${r.copias.size} escudos; ${m.clubes.filter((c) => !c.escudo).length} clubes jogáveis sem escudo local`);
   console.log(`vínculos duplicados resolvidos: ${m.vinculosResolvidos.length}`);
+  console.log(`Brasil: ${Object.values(m.brasil.ligas).map((l) => l.clubes.length).join("/")} clubes e ${m.brasil.serieD.length} na Série D`);
   if (opts.gravar) { gravar(r); console.log("gravado."); } else console.log("(só conferência; use --gravar para escrever)");
 }
 
 if (require.main === module) {
-  try { main(); } catch (e) { console.error(e.message); process.exit(1); }
+  main().catch((e) => { console.error(e.message); process.exit(1); });
 }
 module.exports = { montar, dataLocal, instanteDe, siglaDe };
