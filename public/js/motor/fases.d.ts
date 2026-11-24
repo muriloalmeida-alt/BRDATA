@@ -30,3 +30,5 @@ export function concluido(plano: Plano): boolean;
 export function jogarTudo(plano: Plano, sim: Required<Simulador>): ResultadoDoPais;
 export function resultado(plano: Plano): ResultadoDoPais;
 export const RESOLUCOES: Record<string, string>;
+export function decidirConfronto(c: Confronto, sim: Simulador): void;
+export function mandanteDaPerna(c: Confronto, perna: number): Id;

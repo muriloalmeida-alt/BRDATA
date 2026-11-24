@@ -156,7 +156,80 @@ Notas para o Murilo:
    simulação, o descanso é igual para os dois, então vale o desempate do
    próprio regulamento, que é o sorteio.
 
-Próxima etapa: M4, os formatos sul-americanos.
+Relatório da etapa M4, formatos sul-americanos fiéis (24/11/2026)
+
+O que foi feito: `public/js/motor/formatos.js` (+ `.d.ts`). O plano é a
+temporada inteira de cada liga, em JSON (vai no save). As fases que
+dependem de resultado são criadas quando a anterior acaba.
+- Argentina, 1ª:
+  - Apertura e Clausura por zonas, com interzonais;
+  - mata-mata dos 8 de cada zona (A1 e B1 só se cruzam na final);
+  - tabela anual;
+  - 1 queda pela anual e 1 pelo promedio de 3 temporadas, clubes distintos;
+  - empate em pontos ou em promedio (fração exata) = jogo de decisão.
+- Argentina, 2ª: final dos líderes em campo neutro (1º acesso) e Reducido
+  com os pares do regulamento (o perdedor da final entra na 2ª fase) para o
+  2º acesso; caem os 2 últimos de cada zona.
+- Chile: turno e returno.
+  - Na 1ª, caem 15º e 16º.
+  - Na 2ª, o campeão sobe e a Liguilla (3×8, 4×7, 5×6; o 2º pega o pior
+    vencedor) dá a 2ª vaga; cai o último.
+  - Empate em pontos no título ou na queda = decisão.
+- Colômbia:
+  - 1ª: Apertura com mata-mata dos 8; Clausura com 2 quadrangulares
+    (cabeças 1º e 2º, sorteio do resto) e final; caem 2 pelo promedio de 3
+    temporadas (só todos contra todos);
+  - 2ª: quadrangulares e final nos dois torneios, e os 4 cenários de acesso
+    (campeão repetido, os dois no top 2, só um, nenhum: Gran Final e
+    repechaje).
+- Equador: hexagonais (e o grupo da Sul-Americana) com os pontos da 1ª fase
+  carregados. Na B, o clube vinculado é pulado no acesso.
+- Uruguai, 1ª:
+  - Apertura;
+  - Intermedio em 2 grupos (ímpares e pares do Apertura), com final;
+  - Clausura;
+  - anual das três fases;
+  - título: semifinal Apertura × Clausura e final contra o líder da anual;
+  - 3 quedas pelo promedio de 2 temporadas.
+- Uruguai, 2ª: Competencia com final; sobem 1º e 2º da anual e o vencedor
+  do playoff 3º–6º; caem 2 pelo promedio.
+- Temporadas seguintes: gerador de confrontos por liga, para o relógio
+  (zonas com interzonal na Argentina, turno único por torneio, grupos do
+  Competencia).
+- Catálogo (`scripts/mundo_catalogo.js`):
+  - zonas da Argentina e grupos do Competencia no índice;
+  - promedio inicial do histórico do pacote, sem as tabelas repetidas:
+    Argentina 2024–25, Colômbia 2024–25 e Uruguai 2025.
+
+Testes: `test_motor_formatos_sa` 8/8.
+- As 10 ligas jogam 2026 (pacote) e 2027 (gerada) inteiras, com:
+  - acessos e quedas certos;
+  - nenhum clube com 2 jogos no mesmo dia;
+  - as fases geradas nas pausas entre as fases fixas;
+  - tudo dentro do ano.
+- Cada caso do critério de aceite 3 da América do Sul.
+- Plano relido no meio termina igual.
+- Fora da suíte: 400 temporadas aleatórias, sem falha. Apareceram todos os
+  jogos de decisão e 3 dos 4 cenários colombianos; o 4º está no teste.
+
+Interpretações de regulamento (para o Murilo conferir):
+1. Datas das fases geradas: um jogo a cada 3–4 dias depois da fase
+   anterior. Cabem nas pausas reais (o teste confere).
+2. Reducido argentino: jogo único com vantagem do melhor colocado nas duas
+   primeiras fases, semis em ida e volta e final em ida e volta com
+   pênaltis. O pacote remete ao "item 7" do boletim sem detalhar.
+3. Liguilla chilena: ida e volta, com vantagem do melhor colocado; na final,
+   pênaltis (art. 85 citado, sem os detalhes).
+4. Equador: arrastre total (pontos, jogos e gols da 1ª fase).
+5. Uruguai, 2ª: a anual soma os grupos do Competencia e a fase regular; a
+   final do Competencia fica de fora.
+6. Colômbia, 1ª: quadrangular empatado em pontos = vantagem do melhor
+   colocado no Clausura. A reclassificação da B soma todos os jogos do ano,
+   menos as finais.
+7. Primera C colombiana: zero trocas, o padrão do pacote.
+
+Próxima etapa: M5, a virada por país (acesso e queda aplicados, clubes B,
+catálogo de 3ª divisão, proteção do clube do jogador).
 
 ⸻
 

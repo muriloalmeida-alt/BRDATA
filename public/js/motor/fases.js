@@ -386,3 +386,7 @@ export function resultado(plano) {
 }
 
 export const RESOLUCOES = R;
+
+// Usados também pelos formatos sul-americanos (formatos.js): a mesma regra
+// de mandante por perna e de decisão de confronto.
+export { decidir as decidirConfronto, mandanteDaPerna };

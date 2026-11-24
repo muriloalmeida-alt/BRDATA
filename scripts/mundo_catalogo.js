@@ -283,6 +283,65 @@ function montar(opts) {
     }
   }
 
+  // --- zonas fixas (Argentina) e grupos do Competencia (Uruguai) -------------
+  // Argentina: as zonas de referência do pacote (as mesmas no Apertura e no
+  // Clausura). Uruguai (Segunda): os grupos saem dos próprios jogos do
+  // Competencia (quem joga com quem).
+  const grupos = {};
+  const gruposRef = lerJSON(path.join(P.sa, "dados/grupos-referencia.json"));
+  for (const g of gruposRef) {
+    const m = /^(?:Apertura )?(?:Group|Zona) ([AB])$/.exec(g.label);
+    if (!m || !g.competitionId.startsWith("arg_")) continue;
+    (grupos[g.competitionId] ||= {})[m[1]] = g.clubIds.map(idNum).sort((x, y) => x - y);
+  }
+  {
+    const jogos = (partidas.uru_segunda || []).filter((j) => j[0] === "Competencia");
+    const viz = new Map();
+    for (const [, , , h, a] of jogos) { (viz.get(h) || viz.set(h, new Set()).get(h)).add(a); (viz.get(a) || viz.set(a, new Set()).get(a)).add(h); }
+    const vistos = new Set();
+    const comps = [];
+    for (const id of [...viz.keys()].sort((x, y) => x - y)) {
+      if (vistos.has(id)) continue;
+      const pilha = [id], comp = [];
+      vistos.add(id);
+      while (pilha.length) { const x = pilha.pop(); comp.push(x); for (const y of viz.get(x)) if (!vistos.has(y)) { vistos.add(y); pilha.push(y); } }
+      comps.push(comp.sort((x, y) => x - y));
+    }
+    if (comps.length !== 2) throw new Error(`Competencia uruguaio: esperava 2 grupos, veio ${comps.length}`);
+    grupos.uru_segunda = { A: comps[0], B: comps[1] };
+  }
+
+  // --- promedio inicial (histórico das temporadas anteriores) --------------
+  // Tabelas por fase, sem repetir a mesma fase de um clube (o pacote repete
+  // a tabela da temporada em mais de um recorte). Só as fases que contam:
+  // Argentina (2024 anual; 2025 Apertura + Clausura por zona), Colômbia
+  // (Apertura + Clausura, sem os grupos finais) e Uruguai (Apertura,
+  // Intermedio e Clausura). { liga: { clube: [{ ano, pts, j }] } }.
+  const promedioInicial = {};
+  {
+    const hist = lerJSON(path.join(P.sa, "dados/historico-tabelas.json"));
+    const conta = (r) => {
+      if (r.competitionId === "col_primera_a") return r.phase === "Apertura" || r.phase === "Clausura";
+      return true;
+    };
+    const vistos = new Set();
+    const soma = {};
+    for (const r of hist) {
+      if (!conta(r)) continue;
+      const ano = Number(String(r.seasonRef).slice(0, 4));
+      const id = idNum(r.clubId);
+      const chave = `${r.competitionId}|${ano}|${r.phase}|${id}`;
+      if (vistos.has(chave)) continue;
+      vistos.add(chave);
+      const k = `${r.competitionId}|${id}|${ano}`;
+      soma[k] ||= { liga: r.competitionId, id, ano, pts: 0, j: 0 };
+      soma[k].pts += r.points;
+      soma[k].j += r.games;
+    }
+    for (const x of Object.values(soma)) ((promedioInicial[x.liga] ||= {})[x.id] ||= []).push({ ano: x.ano, pts: x.pts, j: x.j });
+    for (const l of Object.values(promedioInicial)) for (const lst of Object.values(l)) lst.sort((x, y) => x.ano - y.ano);
+  }
+
   const mundo = {
     formato: 1,
     fontes: { europa: eu.ligas.preparedOn || null, americaSul: sa.ligas.preparedOn || null },
@@ -292,6 +351,8 @@ function montar(opts) {
     terceira: terceira.sort((a, b) => a.id - b.id),
     partidas,
     vinculosResolvidos,
+    grupos,
+    promedioInicial,
   };
   mundo.versao = crypto.createHash("sha256").update(JSON.stringify(mundo)).digest("hex").slice(0, 16);
   return { mundo, snapshots, copias, ignoradas, P };
