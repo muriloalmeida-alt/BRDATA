@@ -111,7 +111,52 @@ Observações:
    - na M2, o Brasil não muda (risco zero para os saves de hoje);
    - os módulos novos ficam em `public/js/motor/` sem subpasta.
 
-Próxima etapa: M3, o motor de fases e desempates das ligas europeias.
+Relatório da etapa M3, desempates e fases das ligas europeias (24/11/2026)
+
+O que foi feito (módulos puros, com `.d.ts`):
+- `public/js/motor/desempate.js`: classificação pelos perfis do pacote
+  (`premier`, `efl`, `spainTwo`/`spainMulti`, `italy`, `germany`,
+  `france`).
+  - O confronto direto usa a minitabela só dos empatados, refeita para cada
+    subgrupo.
+  - Os critérios "em posição decisiva" (Premier) só valem quando o empate
+    disputa título, acesso, playoff ou queda.
+  - Na Alemanha e na França, o confronto direto só conta com os dois jogos
+    feitos.
+  - O fim da lista (jogo neutro, sorteio) vira sorteio determinístico pela
+    chave da temporada. Quando decide algo, volta em `sorteios`, para a tela
+    explicar.
+- `public/js/motor/fases.js`: o plano de fim de temporada do país, em JSON
+  (vai no save), jogado perna a perna no relógio:
+  - Championship: playoff de 8 (5×8 e 6×7; o 3º pega o vencedor pior
+    colocado; final neutra);
+  - Hypermotion: clubes B pulados, com a vaga indo ao próximo elegível;
+    semis e final em ida e volta; empate = melhor campanha;
+  - Serie A: jogo de título e decisão de queda com pontos iguais;
+  - Serie B: 3º direto com +15; playoff 3º–8º; playout com até 4 pontos;
+  - Alemanha: 16º × 3º da divisão de baixo, com mando da volta por sorteio
+    (ver a nota 2);
+  - França: 4º × 5º, o vencedor no 3º, e o sobrevivente × 16º da Ligue 1;
+  - barrage da 2ª com o representante da 3ª, quando ele é informado.
+  - Resultado: campeão, quem sobe e quem desce de cada divisão. A troca
+    efetiva de clubes e o sorteio do catálogo ficam para a M5.
+
+Testes: `test_motor_fases_europa` 11/11, com as regras reais do índice:
+- cada evento do critério de aceite 3 da Europa, com placares roteirizados;
+- o plano salvo e relido no meio, terminando igual;
+- 5 países × 300 temporadas aleatórias: sempre termina, quem sobe = quem
+  cai, e clube B nunca sobe.
+
+Notas para o Murilo:
+1. "Jogo neutro" (Premier, Espanha e Alemanha no fim da lista de
+   desempate) virou sorteio determinístico. É raríssimo, e a tela vai
+   dizer que foi sorteio. Os jogos de decisão que o regulamento italiano
+   prevê são jogados de verdade.
+2. Alemanha: o regulamento dá a volta a quem teve menos descanso. Na
+   simulação, o descanso é igual para os dois, então vale o desempate do
+   próprio regulamento, que é o sorteio.
+
+Próxima etapa: M4, os formatos sul-americanos.
 
 ⸻
 
