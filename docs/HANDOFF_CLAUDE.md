@@ -138,6 +138,29 @@ O que foi feito:
     Sul-Americana, mercado e propostas de fora);
   - saves que já existem continuam como estão (D4).
 
+Correções que a suíte completa com o mundo ligado mostrou:
+- Um erro nas copas nunca trava a carreira: o relógio das copas é isolado
+  e a edição com erro é encerrada (antes, uma exceção no sorteio subia até
+  o fim da partida do técnico).
+- Sorteio da fase de liga da UEFA:
+  - busca pelo clube com menos opções;
+  - o par de potes que travou é repetido antes de recomeçar;
+  - com muitos clubes de poucas associações (vaga extra e titular), o
+    limite de 2 adversários de outra associação quase não tem solução.
+    Depois de 15 tentativas ele sobe para 3 (regra de jogo, com a mesma
+    associação continua vedado). Pior caso medido: ~0,3 s.
+- CONMEBOL: a edição é montada até o começo dos grupos. Um save do Brasil
+  começa depois da fase 1 e ficava sem a Libertadores do 1º ano.
+- O jogo continental não trava a semana. A v2 o oferece antes (CTA do
+  Início), e o "avançar até o jogo" da v2 para nele. Os chamadores antigos
+  da ponte avançam, e o jogo é simulado.
+- Testes atualizados para o mundo ligado:
+  - a API de mentira do teste do hospedeiro responde "mundo desligado";
+  - a aba Jogos ganha "Ligas do mundo";
+  - os chips de país têm alvo de 44 px;
+  - teste novo `test_v2_mundo` (seletor, save na Argentina, índice no
+    aparelho, abertura sem rede, ligas do mundo).
+
 Pendente (bloqueado nesta sessão): escudos locais dos 60 clubes andinos e
 dos 84 do 5º pacote. Os pacotes trazem só o link da fotmob, e o download
 está bloqueado na rede desta sessão. As telas mostram o escudo remoto e,

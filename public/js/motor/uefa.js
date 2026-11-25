@@ -105,9 +105,12 @@ export function sortearAdversarios(potes, regra, associacao, rng) {
   // limite) só se o sorteio não achar solução com ele: uma edição com muitos
   // clubes de uma associação (vagas extras e titulares) não pode travar o save.
   const limites = [regra.max_por_outra_associacao ?? 2, (regra.max_por_outra_associacao ?? 2) + 1, Infinity];
-  for (let tentativa = 0; tentativa < 3 * 120; tentativa++) {
-    const maxOutra = limites[Math.floor(tentativa / 120)];
-    let orcamento = 200000; // passos de busca por tentativa
+  // Tentativas por limite: poucas com o do pacote (quando ele quase não tem
+  // solução, cada tentativa custa ~10 ms), mais com o afrouxado.
+  const tentativas = [15, 60, 120];
+  for (let tentativa = 0; tentativa < tentativas.reduce((x, y) => x + y, 0); tentativa++) {
+    const maxOutra = limites[tentativa < tentativas[0] ? 0 : tentativa < tentativas[0] + tentativas[1] ? 1 : 2];
+    let orcamento = 6000; // passos de busca por tentativa
     const registro = []; // arestas ligadas no par de potes em curso
     const arestas = new Set(); // "a|b" com a<b
     const viz = new Map(); // id -> Set
@@ -134,58 +137,58 @@ export function sortearAdversarios(potes, regra, associacao, rng) {
         porAssoc.set(S(x), m);
       }
     };
-    // Emparelhamento perfeito entre p e q (ou dentro de p, se q for null).
+    // Emparelhamento perfeito entre p e q (ou dentro de p, se q for null):
+    // busca com volta, sempre pelo clube com menos opções (MRV), com orçamento
+    // de passos (falha rápido e o sorteio recomeça com outra ordem).
     const emparelhar = (p, q) => {
-      if (q) {
-        const a = embaralhar(p, rng), livres = new Set(q.map(S));
-        const idQ = new Map(q.map((x) => [S(x), x]));
-        const passo = (i) => {
-          if (i === a.length) return true;
-          if (--orcamento < 0) return false;
-          for (const y of embaralhar([...livres], rng)) {
-            const b = idQ.get(y);
-            if (!pode(a[i], b)) continue;
-            livres.delete(y); ligar(a[i], b, 1);
-            if (passo(i + 1)) return true;
-            ligar(a[i], b, -1); livres.add(y);
-          }
-          return false;
-        };
-        return passo(0);
-      }
-      const ordem = embaralhar(p, rng), livres = new Set(ordem.map(S));
-      const idP = new Map(p.map((x) => [S(x), x]));
+      const lado = embaralhar(p, rng);
+      const livres = new Set((q || p).map(S));
+      const idDe2 = new Map([...p, ...(q || [])].map((x) => [S(x), x]));
+      const feitos = new Set(); // do lado p já emparelhados
+      const opcoes = (x) => [...livres].filter((y) => y !== S(x) && pode(x, idDe2.get(y)));
       const passo = () => {
-        const x = ordem.find((z) => livres.has(S(z)));
-        if (x == null) return true;
         if (--orcamento < 0) return false;
-        livres.delete(S(x));
-        for (const y of embaralhar([...livres], rng)) {
-          const b = idP.get(y);
-          if (!pode(x, b)) continue;
-          livres.delete(y); ligar(x, b, 1);
-          if (passo()) return true;
-          ligar(x, b, -1); livres.add(y);
+        let melhor = null, ops = null;
+        for (const x of lado) {
+          if (feitos.has(S(x)) || (!q && !livres.has(S(x)))) continue;
+          const o = opcoes(x);
+          if (!ops || o.length < ops.length) { melhor = x; ops = o; }
+          if (ops.length === 0) break;
         }
-        livres.add(S(x));
+        if (melhor == null) return true;
+        if (!ops.length) return false;
+        feitos.add(S(melhor));
+        if (!q) livres.delete(S(melhor));
+        for (const y of embaralhar(ops, rng)) {
+          const b = idDe2.get(y);
+          livres.delete(y); if (!q) feitos.add(y);
+          ligar(melhor, b, 1);
+          if (passo()) return true;
+          ligar(melhor, b, -1);
+          livres.add(y); if (!q) feitos.delete(y);
+        }
+        feitos.delete(S(melhor));
+        if (!q) livres.add(S(melhor));
         return false;
       };
       return passo();
     };
-    // Ciclo que passa por todos do pote (2 adversários do próprio pote).
+    // Ciclo que passa por todos do pote (2 adversários do próprio pote): o
+    // próximo é o que tem menos saídas (Warnsdorff), com volta e orçamento.
     const cicloNoPote = (p) => {
       const ord = embaralhar(p, rng);
       const caminho = [ord[0]], usado = new Set([S(ord[0])]);
+      const saidas = (y) => p.filter((z) => !usado.has(S(z)) && S(z) !== S(y) && pode(y, z)).length;
       function passo() {
         if (--orcamento < 0) return false;
+        const ult = caminho[caminho.length - 1];
         if (caminho.length === p.length) {
-          if (!pode(caminho[caminho.length - 1], caminho[0])) return false;
-          ligar(caminho[caminho.length - 1], caminho[0], 1);
+          if (!pode(ult, caminho[0])) return false;
+          ligar(ult, caminho[0], 1);
           return true;
         }
-        const ult = caminho[caminho.length - 1];
-        for (const y of embaralhar(p, rng)) {
-          if (usado.has(S(y)) || !pode(ult, y)) continue;
+        const cand = embaralhar(p.filter((y) => !usado.has(S(y)) && pode(ult, y)), rng).sort((a, b) => saidas(a) - saidas(b));
+        for (const y of cand) {
           usado.add(S(y)); caminho.push(y); ligar(ult, y, 1);
           if (passo()) return true;
           ligar(ult, y, -1); caminho.pop(); usado.delete(S(y));
