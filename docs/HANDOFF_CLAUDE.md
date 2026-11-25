@@ -160,6 +160,13 @@ O que mudou:
 Não mudou: nomes internos do código (BRDATA_*, pastas, repositório), as
 cores do DS e o site do Brasileirão.
 
+Ajuste (25/11/2026, pedido do Murilo: "Remova o texto touchline das
+aplicações da marca e deixe apenas o 'T' com exceção da tela de login"):
+o cabeçalho (`Wordmark`), a abertura e a escolha do novo save mostram só o
+"T"; a logo completa (com TOUCHLINE e "Modo Carreira") fica só no login. O
+nome continua no texto alternativo (leitor de tela), no título da página, no
+manifesto do app e no rodapé das imagens de compartilhar (texto, não logo).
+
 ⸻
 
 MUNDO-001 — Ligas da Europa e da América do Sul, em paralelo, com continentais
