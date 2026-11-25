@@ -61,3 +61,6 @@
 .ct-band { font-size: 13px; color: var(--bd-muted); }
 .ct-band--oitavas { color: var(--bd-accent); }
 .ct-duel + .ct-duel { margin-top: 4px; }
+.wd-final { margin: 0; padding: 0; list-style: none; }
+.wd-final li { display: flex; align-items: center; gap: 8px; min-height: 40px; border-bottom: 1px solid var(--bd-line); color: var(--bd-text); }
+.wd-final li.is-mine { color: var(--bd-accent); font-weight: 600; }

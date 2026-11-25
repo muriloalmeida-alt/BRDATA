@@ -18,3 +18,4 @@ export const AJUSTE_FICTICIO: number;
 export function ligasDoMundo(): Promise<{ paises: any[] } | null>;
 export function clubesDaLigaDoMundo(liga: string): Promise<{ id: string; nome: string; sigla: string | null; escudo: string | null; cidade: string | null }[] | null>;
 export function novaCarreiraNoMundo(liga: string, clubId: string, buscar: (url: string) => Promise<any>): Promise<{ ok: boolean; motivo?: string }>;
+export function mercadoDoMundo(CAREER: any, filtro?: { pais?: string; liga?: string; texto?: string }): { paises: { codigo: string; nome: string; ligas: { id: string; nome: string }[] }[]; clubes: any[] } | null;

@@ -80,3 +80,25 @@ test("temporada encerrada: nenhum compromisso futuro", () => {
   const c = career(); c.currentRound = 39; delete c.calendar!.friendlies;
   assert.equal(buildCalendar(c, byId, "Série A").upcoming.length, 0);
 });
+
+// MUNDO-001 (M10c-3): jogos das copas continentais no calendário.
+test("jogos continentais do seu clube entram na semana certa, com a data e a fase", () => {
+  const c = {
+    clubId: "me", clubName: "Meu", seasonYear: 2026, currentRound: 1, standings: {}, schedule: {},
+    calendar: { year: 2026, idx: 0, weeks: [{ d: "04-06", p: "temporada" as const, r: null, a: 2026 }, { d: "04-13", p: "temporada" as const, r: null, a: 2026 }] },
+    copas: { conmebol: { edicao: { jogos: [
+      ["LIB", "grupos", 1, "2026-04-08", "me", "x", 2, 1, null, null, null, "C"],
+      ["LIB", "grupos", 2, "2026-04-15", "y", "me", null, null, null, null, null, "C"],
+      ["LIB", "grupos", 2, "2026-04-15", "a", "b", null, null],
+    ] } } },
+  };
+  const m = buildCalendar(c as never, (id) => ({ id, name: String(id) }), "Liga");
+  assert.equal(m.past.length, 1);
+  assert.equal(m.past[0].label, "Libertadores · Fase de grupos · Grupo C");
+  assert.equal(m.past[0].date, "08 ABR");
+  assert.equal(m.past[0].day, "QUA");
+  assert.deepEqual(m.past[0].score, { gh: 2, ga: 1 });
+  assert.equal(m.upcoming.length, 1);
+  assert.equal(m.upcoming[0].where, "Fora");
+  assert.equal(m.upcoming[0].competition, "continental");
+});

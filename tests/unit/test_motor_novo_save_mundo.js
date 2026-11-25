@@ -6,6 +6,8 @@
 //      escolher uma liga do mundo devolve os clubes do índice; criar a carreira
 //      cria o save no país (divisões, 32 rodadas na Argentina, nomes das
 //      ligas, moeda) e grava;
+//      (M10c-3) as ligas do mundo leve pela ponte (tabelas) e o mercado do
+//      mundo por país e liga, com um clube trazido ao save e gravado;
 //   3) depois de escolher uma liga do mundo, escolher uma do Brasil volta ao
 //      Brasil (a escolha do mundo não fica presa) e a carreira nasce no Brasil.
 // Uso: node tests/unit/test_motor_novo_save_mundo.js
@@ -81,6 +83,23 @@ const imp = (m) => import(pathToFileURL(path.join(ROOT, "public/js/motor", m)).h
       assert.ok(C.mundoLeve && C.mundoLeve.ativos.includes("AR"));
       assert.ok(gravados.length >= 1, "a carreira não foi gravada");
       assert.strictEqual((await P.criarCarreira(boca.id)).motivo, "ja-tem-carreira");
+      // M10c-3: as ligas do mundo leve (sem a Argentina, que é do técnico).
+      const lv = P.ligasDoMundoNoSave();
+      assert.ok(lv.paises.length === 10 && !lv.paises.some((p) => p.codigo === "AR"), "países das ligas do mundo");
+      const es = lv.paises.find((p) => p.codigo === "ES");
+      assert.ok(es.ligas[0].tabelas[0].linhas.length === 20 && es.ligas[0].tabelas[0].linhas.every((l) => l.nome), "tabela de LaLiga");
+      // M10c-3: mercado do mundo por país e liga; abrir o Real Madrid.
+      const mk = P.clubesDoMundo({ pais: "ES", liga: "la_liga" });
+      assert.ok(mk.paises.some((p) => p.codigo === "ES") && !mk.paises.some((p) => p.codigo === "AR"));
+      assert.ok(mk.clubes.length === 20 && mk.clubes.every((c) => c.pais === "ES" && c.liga === "la_liga"));
+      const rm = mk.clubes.find((c) => /Real Madrid/.test(c.nome));
+      gravados.length = 0;
+      const ab = await P.abrirClubeDoMundo(rm.id);
+      assert.ok(ab.ok && ab.jogadores >= 16, `abrir: ${JSON.stringify(ab)}`); // 16: limite de clube de fora (M8)
+      assert.ok(estado.carreiraAtual().leagueSquads[rm.id].length >= 16);
+      assert.ok(gravados.length >= 1, "o clube aberto não foi gravado");
+      assert.ok((await P.abrirClubeDoMundo(rm.id)).ja, "abrir de novo não traz de novo");
+      assert.ok(P.clubesDoMundo({ texto: "real madrid" }).clubes.find((c) => c.id === rm.id).noSave);
     });
 
     await check("escolher o mundo e depois o Brasil: a carreira nasce no Brasil", async () => {

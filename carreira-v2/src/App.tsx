@@ -1,4 +1,4 @@
-import { continentalSummary } from "./domain/continental.ts";
+import { continentalSummary, worldSummary } from "./domain/continental.ts";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { CareerGateway, ClubCatalogGateway, HttpError, SessionGateway, type SessionUser } from "./adapters/gateways.ts";
 import { consumeInvite } from "./adapters/invite.ts";
@@ -47,10 +47,10 @@ import { TacticsAxes, TacticsHub, TacticsMarking, TacticsSchemes, TacticsSectors
 import { Evolution, TrainingCondition, TrainingWeek } from "./screens/Training.tsx";
 import { PrepGateway } from "./adapters/prep.ts";
 import { ClubRoster, Compare, Contracts, Ficha, PressStandalone, Talk } from "./screens/SquadPlus.tsx";
-import { AwardsScreen, CupScreen, ContinentalScreen, H2HScreen, StatsScreen } from "./screens/Games.tsx";
+import { AwardsScreen, CupScreen, ContinentalScreen, WorldScreen, H2HScreen, StatsScreen } from "./screens/Games.tsx";
 import { AchievementsScreen, BudgetScreen, WageCapScreen, EditProfileScreen, HelpScreen, PurchaseHistoryScreen, RankingScreen, SavesScreen, SettingsScreen, ShopScreen } from "./screens/More.tsx";
 import { BaseScreen, HireScoutScreen, LedgerScreen, MissionScreen, ProspectsScreen, ScoutsScreen, SponsorsScreen, StadiumScreen, StaffScreen, SuggestionsScreen } from "./screens/Club.tsx";
-import { FreeAgents, LoanListings, History as MarketHistory, Loan, Market, MyOffers, MySales, Negotiation, PendingOffer, Propose, SaleOffers, Target } from "./screens/Market.tsx";
+import { FreeAgents, WorldMarketScreen, LoanListings, History as MarketHistory, Loan, Market, MyOffers, MySales, Negotiation, PendingOffer, Propose, SaleOffers, Target } from "./screens/Market.tsx";
 
 // Tutorial, assistente e recompensa diária: a abertura automática roda no
 // máximo uma vez por carregamento da v2 (sair pelo "Voltar" não reabre).
@@ -148,7 +148,10 @@ export function App() {
   // Depois da partida (gravada pela ponte), relê o save sem trocar de tela.
   const reloadCareer = useCallback(async () => {
     const fresh = await CareerGateway.loadActive().catch(() => null);
-    if (fresh) setState((s) => s.kind === "ready" ? { kind: "ready", data: { ...s.data, career: fresh } } : s);
+    // MUNDO-001 (M10c-3): clubes de fora que entraram no save (mercado e
+    // copas) passam a ter nome e escudo.
+    const teamById = fresh ? await ClubCatalogGateway.forCareer(fresh).catch(() => null) : null;
+    if (fresh) setState((s) => s.kind === "ready" ? { kind: "ready", data: { ...s.data, career: fresh, ...(teamById ? { teamById } : {}) } } : s);
   }, []);
 
   // Recompensa recebida: relê a sessão (dia da sequência) e o save.
@@ -262,7 +265,7 @@ export function App() {
   if (loc.path === `${BASE}/recompensa`) return <DailyReward onClaimed={refreshAfterReward} />;
   if (loc.path === `${BASE}/boas-vindas`) return <Tutorial onDone={() => continueAuto({ user: { onboardingSeen: true } })} />;
   // P7 — telas de entrada.
-  if (loc.path === `${BASE}/jogos`) return <GamesHub home={home} cup={buildCup(data.career, data.teamById)} continental={continentalSummary(data.career)} worldSave={!!(data.career.divisoes && data.career.divisoes.length)} />;
+  if (loc.path === `${BASE}/jogos`) return <GamesHub home={home} cup={buildCup(data.career, data.teamById)} continental={continentalSummary(data.career)} worldSave={!!(data.career.divisoes && data.career.divisoes.length)} world={worldSummary(data.career)} />;
   if (loc.path === `${BASE}/clube`) return <ClubHub home={home} board={buildBoard(data.career)} finance={buildFinance(data.career)} />;
   if (loc.path === `${BASE}/mais`) return <MoreMenu onLogout={async () => { await SessionGateway.logout(); engine.reset(); navigate(`${BASE}/`, { replace: true }); load(); }} />;
   // Assistente de início: a tela do passo + a barra "Passo N de 4".
@@ -298,6 +301,7 @@ export function App() {
     const c = data.career, tb = data.teamById;
     if (loc.path === `${BASE}/copa`) return <CupScreen career={c} teamById={tb} phase={q.get("fase")} />;
     if (loc.path === `${BASE}/continental`) return <ContinentalScreen copa={q.get("copa")} fase={q.get("fase")} />;
+    if (loc.path === `${BASE}/mundo`) return <WorldScreen pais={q.get("pais")} liga={q.get("liga")} />;
     if (loc.path === `${BASE}/estatisticas`) return <StatsScreen career={c} teamById={tb} scope={q.get("escopo") === "campeonato" ? "campeonato" : "time"} period={q.get("periodo") === "historico" ? "historico" : "temporada"} />;
     if (loc.path === `${BASE}/retrospecto`) return <H2HScreen key={q.get("id") || ""} career={c} teamById={tb} oppId={q.get("id") || ""} back={q.get("volta") || `${BASE}/pre-jogo`} />;
     if (loc.path === `${BASE}/premiacoes`) return <AwardsScreen career={c} teamById={tb} year={q.get("ano") ? Number(q.get("ano")) : null} />;
@@ -343,6 +347,7 @@ export function App() {
     if (sub === "/historico") return <MarketHistory career={data.career} />;
     if (sub === "/oferta") return <PendingOffer career={data.career} onChanged={reloadCareer} />;
     if (sub === "/agentes-livres") return <FreeAgents onChanged={reloadCareer} />;
+    if (sub === "/mundo") return <WorldMarketScreen pais={q.get("pais")} liga={q.get("liga")} onChanged={reloadCareer} />;
   }
   // Fase 7 — elenco avançado.
   {

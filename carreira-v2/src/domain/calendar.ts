@@ -7,6 +7,13 @@ import type { Career, CalendarWeek, Team } from "./types.ts";
 import { MONTH, roundsOf } from "./home.ts";
 import type { CupTie } from "./table.ts";
 import { CUP_PHASE_LABEL } from "./table.ts";
+import { CONTINENTAL_PHASE_LABEL } from "./match.ts";
+
+// Jogos das copas continentais no save (copasmundo.compactarPlano): campos
+// de cada jogo na lista, nesta ordem.
+const CONTINENTAL_FIELDS = ["copa", "fase", "rodada", "data", "casa", "fora", "gh", "ga", "conf", "perna", "neutro", "grupo", "extra"];
+const CONTINENTAL_NAME: Record<string, string> = { LIB: "Libertadores", SUD: "Sul-Americana", UCL: "Champions League", UEL: "Europa League", UECL: "Conference League" };
+const DIAS = ["DOM", "SEG", "TER", "QUA", "QUI", "SEX", "SÁB"];
 
 const CUP_ROUNDS: Record<string, number> = { r16: 6, qf: 14, sf: 22, final: 30 };
 const CUP_ROUNDS_EXPANDED: Record<string, { ida: number; volta: number }> = {
@@ -14,7 +21,7 @@ const CUP_ROUNDS_EXPANDED: Record<string, { ida: number; volta: number }> = {
   qf: { ida: 21, volta: 24 }, sf: { ida: 27, volta: 30 }, final: { ida: 33, volta: 36 },
 };
 
-export type Competition = "liga" | "copa" | "amistoso";
+export type Competition = "liga" | "copa" | "amistoso" | "continental";
 export interface CalendarItem {
   key: string;
   sort: number; // ordem cronológica (semana × 10 + dia)
@@ -54,7 +61,7 @@ export function buildCalendar(career: Career, teamById: (id: string | number) =>
     const res = log.find((m) => m.round === r);
     items.push({
       key: `liga-${r}`, sort: (wi >= 0 ? wi : r) * 10 + 6,
-      date: wi >= 0 && cal ? dateOf(cal.year, weeks[wi], 6) : `R${r}`, day: wi >= 0 ? "DOM" : "",
+      date: wi >= 0 && cal ? dateOf(weeks[wi].a || cal.year, weeks[wi], 6) : `R${r}`, day: wi >= 0 ? "DOM" : "",
       where: isHome ? "Casa" : "Fora", home: teamById(fx.home), away: teamById(fx.away),
       competition: "liga", label: `${competitionName} · Rodada ${r}`,
       score: played && res ? { gh: res.gh, ga: res.ga } : null, played,
@@ -85,7 +92,7 @@ export function buildCalendar(career: Career, teamById: (id: string | number) =>
         // A perna da Copa é jogada depois da rodada (no pós-jogo dela): a
         // quarta-feira seguinte ao domingo da rodada, depois dela na lista.
         key: `copa-${phase}-${leg}`, sort: (wi >= 0 ? wi : round) * 10 + 8,
-        date: wi >= 0 && cal ? dateOf(cal.year, weeks[wi], 9) : `R${round}`, day: wi >= 0 ? "QUA" : "",
+        date: wi >= 0 && cal ? dateOf(weeks[wi].a || cal.year, weeks[wi], 9) : `R${round}`, day: wi >= 0 ? "QUA" : "",
         where: String(host) === me ? "Casa" : "Fora", home: teamById(host), away: teamById(guest),
         competition: "copa", label: `Copa do Brasil · ${CUP_PHASE_LABEL[phase]}${leg === 1 ? " · Ida" : leg === 2 ? " · Volta" : phase === "prelim" ? " · Jogo único" : ""}`,
         score, played: score != null,
@@ -102,11 +109,37 @@ export function buildCalendar(career: Career, teamById: (id: string | number) =>
     if (!w || !cal) continue;
     items.push({
       key: `amistoso-${fr.wi}`, sort: fr.wi * 10 + 1,
-      date: dateOf(cal.year, w, 0), day: "", where: "Casa",
+      date: dateOf(w.a || cal.year, w, 0), day: "", where: "Casa",
       home: teamById(me), away: fr.opp ? teamById(fr.opp) : { id: "?", name: "A definir" },
       competition: "amistoso", label: `Amistoso${fr.optional ? " (opcional)" : ""} · na semana`,
       score: fr.result ? { gh: fr.result.gh, ga: fr.result.ga } : null, played: !!fr.result,
     });
+  }
+
+  // MUNDO-001 (M10c-3): os jogos do seu clube nas copas continentais (mais de
+  // um compromisso na semana), com a data do jogo. Lidos da edição no save
+  // (jogos em lista, na ordem de CONTINENTAL_FIELDS).
+  if (cal) {
+    const seg = (w: CalendarWeek) => Date.UTC(w.a || cal.year, Number(w.d.slice(0, 2)) - 1, Number(w.d.slice(3, 5)));
+    for (const ed of [career.copas?.conmebol?.edicao, career.copas?.uefa?.edicao] as ({ jogos?: unknown[][] } | undefined)[]) {
+      for (const t of ed?.jogos || []) {
+        const j = Object.fromEntries(CONTINENTAL_FIELDS.map((k, i) => [k, t[i] ?? null])) as { copa: string; fase: string; rodada: number; data: string; casa: string | number; fora: string | number; gh: number | null; ga: number | null; perna: number | null; grupo: string | null };
+        if (String(j.casa) !== me && String(j.fora) !== me) continue;
+        const dia = Date.parse(j.data + "T00:00:00Z");
+        const wi = weeks.findIndex((w) => dia >= seg(w) && dia < seg(w) + 7 * 86400000);
+        if (wi < 0) continue;
+        const off = Math.round((dia - seg(weeks[wi])) / 86400000);
+        const dt = new Date(dia);
+        const extra = j.fase === "grupos" && j.grupo ? ` · Grupo ${j.grupo}` : j.fase === "liga" ? ` · Rodada ${j.rodada}` : j.perna ? (j.perna === 2 ? " · Volta" : " · Ida") : "";
+        items.push({
+          key: `cont-${j.copa}-${j.fase}-${j.rodada}-${j.data}`, sort: wi * 10 + off,
+          date: `${String(dt.getUTCDate()).padStart(2, "0")} ${MONTH[dt.getUTCMonth()]}`, day: DIAS[dt.getUTCDay()],
+          where: String(j.casa) === me ? "Casa" : "Fora", home: teamById(j.casa), away: teamById(j.fora),
+          competition: "continental", label: `${CONTINENTAL_NAME[j.copa] || j.copa} · ${CONTINENTAL_PHASE_LABEL[j.fase] || j.fase}${extra}`,
+          score: j.gh != null && j.ga != null ? { gh: j.gh, ga: j.ga } : null, played: j.gh != null,
+        });
+      }
+    }
   }
 
   items.sort((a, b) => a.sort - b.sort);

@@ -674,6 +674,25 @@ export async function novaCarreiraNoMundo(liga, clubId, buscar) {
   await criarCarreiraNoMundo({ indice, liga, clubId, elencosDaLiga });
   return { ok: true };
 }
+// Mercado do mundo nas telas (M10c-3): os clubes dos outros países com os
+// filtros de país e liga, e trazer um clube ao save (o elenco dele entra no
+// mercado, M8a).
+export function mercadoDoMundo(CAREER, filtro = {}) {
+  const indice = indiceAtual;
+  if (!indice || !CAREER || !CAREER.mundoLeve) return null;
+  const ativos = new Set(CAREER.mundoLeve.ativos || []);
+  const nomeLiga = (l) => (indice.competicoes[l] && indice.competicoes[l].nome) || (indice.brasil && indice.brasil.ligas[l] && indice.brasil.ligas[l].nome) || l;
+  const paises = Object.entries(CAREER.mundoLeve.paises).filter(([cod]) => !ativos.has(cod)).map(([cod, P]) => {
+    const meta = indice.paises.find((p) => p.codigo === cod);
+    return { codigo: cod, nome: meta ? meta.nome : cod === "BR" ? "Brasil" : cod, ligas: Object.keys(P.ligas).map((l) => ({ id: l, nome: nomeLiga(l) })) };
+  });
+  return { paises, clubes: clubesDoMundo(CAREER, filtro) };
+}
+ganchosMundo.mercadoMundo = {
+  clubes: (CAREER, filtro) => mercadoDoMundo(CAREER, filtro),
+  abrir: (CAREER, id, buscar) => abrirClubeDoMundo(CAREER, id, buscar),
+};
+
 ganchosMundo.novoSave = { ligas: () => ligasDoMundo(), clubes: (liga) => clubesDaLigaDoMundo(liga), criar: (liga, clubId, buscar) => novaCarreiraNoMundo(liga, clubId, buscar) };
 
 ganchosMundo.anexarMundo = (CAREER) => anexarMundoAoBrasil(CAREER);

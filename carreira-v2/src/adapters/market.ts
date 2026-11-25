@@ -7,7 +7,7 @@ import type { MarketInfo } from "../domain/market.ts";
 import type { OfferRole } from "../domain/types.ts";
 
 const SAFE = new Set(["janela-fechada", "ja-proposta", "parcelas-invalidas", "indisponivel", "teto", "elenco-grande", "proposta-invalida", "valor-baixo", "contra",
-  "jogador-invalido", "ja-anunciado", "nao-principal", "minimo", "anuncio-invalido", "recusa", "sem-interessado", "sem-emprestimo", "opcao-invalida", "sem-proposta", "decisao-invalida", "elenco-cheio"]);
+  "jogador-invalido", "ja-anunciado", "nao-principal", "minimo", "anuncio-invalido", "recusa", "sem-interessado", "sem-emprestimo", "opcao-invalida", "sem-proposta", "decisao-invalida", "elenco-cheio", "sem-mundo", "fora-do-mundo"]);
 async function write<T = object>(name: string, ...args: unknown[]): Promise<Res<T>> {
   try {
     const s = await engine.get();
@@ -56,4 +56,10 @@ export const MarketGateway = {
   rejectLoanOffer: (offerId: string) => write("recusarPropostaEmprestimo", offerId),
   // PARIDADE-CPU · E3: contratar um agente livre (sem taxa, só o salário).
   signFreeAgent: (playerId: string) => write<{ salario: number }>("contratarAgenteLivre", playerId),
+  // MUNDO-001 (M10c-3): clubes de outros países (filtro de país e liga) e
+  // trazer um clube ao save (o elenco dele entra no mercado).
+  worldClubs: async (filtro: { pais?: string; liga?: string; texto?: string }): Promise<WorldMarket | null> => { const s = await engine.get(); return (await s.run<WorldMarket | null>("clubesDoMundo", filtro)) || null; },
+  openWorldClub: (clubId: string) => write<{ jogadores?: number }>("abrirClubeDoMundo", clubId),
 };
+export interface WorldMarketClub { id: string; nome: string; sigla: string | null; escudo: string | null; pais: string; liga: string; ligaNome: string; noSave: boolean }
+export interface WorldMarket { paises: { codigo: string; nome: string; ligas: { id: string; nome: string }[] }[]; clubes: WorldMarketClub[] }

@@ -18,6 +18,7 @@ import { indiceDoMundo } from "./carreiramundo.js";
 import * as Copas from "./copasmundo.js";
 import * as CopasUefa from "./copasuefa.js";
 import * as U from "./uefa.js";
+import * as ML from "./mundoleve.js";
 
 const S = (x) => String(x);
 const NOMES = { LIB: "Libertadores", SUD: "Sul-Americana", UCL: "Champions League", UEL: "Europa League", UECL: "Conference League" };
@@ -123,3 +124,62 @@ export function vistaDasCopas(CAREER) {
   return out.length ? { confederacoes: out } : null;
 }
 ganchosMundo.vistaCopas = (CAREER) => vistaDasCopas(CAREER);
+
+// ---------- ligas do mundo (M10c-3, MUN-15: "consulta das outras ligas") ----------
+// As ligas do mundo leve (fora do país do técnico): a tabela da fase em
+// andamento (por zona quando a fase tem zonas), os últimos resultados e os
+// campeões das temporadas anteriores. Ordem de exibição: pontos, saldo, gols.
+function tabelaSimples(CAREER, indice, ids, jogos) {
+  const l = new Map(ids.map((id) => [S(id), { id, j: 0, v: 0, e: 0, d: 0, gp: 0, gc: 0, pts: 0 }]));
+  for (const j of jogos) {
+    const h = l.get(S(j.casa)), a = l.get(S(j.fora));
+    if (!h || !a) continue;
+    h.j++; a.j++; h.gp += j.gh; h.gc += j.ga; a.gp += j.ga; a.gc += j.gh;
+    if (j.gh > j.ga) { h.v++; h.pts += 3; a.d++; } else if (j.gh < j.ga) { a.v++; a.pts += 3; h.d++; } else { h.e++; a.e++; h.pts++; a.pts++; }
+  }
+  return [...l.values()].map((x) => ({ ...x, sg: x.gp - x.gc })).sort((x, y) => y.pts - x.pts || y.sg - x.sg || y.gp - x.gp || S(x.id).localeCompare(S(y.id)))
+    .map((x, i) => ({ pos: i + 1, ...clube(CAREER, indice, x.id), j: x.j, v: x.v, e: x.e, d: x.d, sg: x.sg, gp: x.gp, pts: x.pts }));
+}
+const NOMES_BR = { brasileirao: "Brasileirão Série A", serie_b: "Brasileirão Série B", serie_c: "Brasileirão Série C" };
+export function vistaDasLigas(CAREER) {
+  const indice = indiceDoMundo();
+  if (!CAREER || !CAREER.mundoLeve || !indice) return null;
+  const m = ML.abrirMundo(CAREER.mundoLeve, indice);
+  const paises = [];
+  const ativos = new Set(CAREER.mundoLeve.ativos || []);
+  for (const [cod, P] of Object.entries(CAREER.mundoLeve.paises)) {
+    if (ativos.has(cod)) continue;
+    const meta = indice.paises.find((p) => p.codigo === cod);
+    const ligas = [];
+    for (const [liga, L] of Object.entries(P.ligas)) {
+      const r = m.cache[cod].ligas[liga];
+      const nome = (indice.competicoes[liga] && indice.competicoes[liga].nome) || NOMES_BR[liga] || liga;
+      let jogos, fase = null, zonas = null;
+      if (r.plano) {
+        const fixos = r.plano.jogos.filter((j) => !j.conf && j.gh != null);
+        fase = fixos.length ? fixos[fixos.length - 1].fase : (r.plano.jogos[0] || {}).fase || null;
+        jogos = r.plano.jogos.filter((j) => !j.conf && j.gh != null && j.fase === fase);
+        if (r.plano.grupos) zonas = r.plano.grupos;
+      } else {
+        jogos = r.fixos.map((j, i) => (r.placares[i] ? { casa: j.casa, fora: j.fora, gh: r.placares[i].gh, ga: r.placares[i].ga } : null)).filter(Boolean);
+      }
+      const tabelas = zonas && Object.values(zonas).every((ids) => ids.length > 1)
+        ? Object.entries(zonas).map(([z, ids]) => ({ titulo: `Zona ${z}`, linhas: tabelaSimples(CAREER, indice, ids, jogos) }))
+        : [{ titulo: null, linhas: tabelaSimples(CAREER, indice, L.clubes, jogos) }];
+      const ultimos = jogos.slice(-6).reverse().map((j) => ({ casa: clube(CAREER, indice, j.casa), fora: clube(CAREER, indice, j.fora), gh: j.gh, ga: j.ga }));
+      const campeoes = (P.campeoes || []).slice().reverse().slice(0, 5).map((c) => {
+        const x = c[liga];
+        const id = x == null ? null : typeof x === "object" ? (x.campeonato ?? x.uruguaio ?? x.anual ?? Object.values(x)[0]) : x;
+        return id == null ? null : { ano: String(c.ano), campeao: clube(CAREER, indice, id) };
+      }).filter(Boolean);
+      // Temporada nova sem jogo: a classificação final da anterior (1ª divisão).
+      const cl = P.classificacao;
+      const final = !jogos.length && cl && cl.ordem && P.ligas[liga] && liga === Object.keys(P.ligas)[0]
+        ? { ano: String(cl.ano), linhas: cl.ordem.map((id, i) => ({ pos: i + 1, ...clube(CAREER, indice, id) })) } : null;
+      ligas.push({ id: liga, nome, fase, jogados: jogos.length, tabelas, ultimos, campeoes, final });
+    }
+    paises.push({ codigo: cod, nome: meta ? meta.nome : cod === "BR" ? "Brasil" : cod, ano: P.ano, ligas });
+  }
+  return { semana: CAREER.mundoLeve.semana, paises };
+}
+ganchosMundo.vistaLigas = (CAREER) => vistaDasLigas(CAREER);
