@@ -193,6 +193,8 @@ export async function criarCarreiraNoMundo(o) {
   // Sem Copa do Brasil e sem Série D.
   CAREER.cup = null;
   CAREER.serieDPool = [];
+  // Nomes das ligas do país para as telas da v2 (M10c).
+  CAREER.nomesDasLigas = { [l1]: indice.competicoes[l1].nome, [l2]: indice.competicoes[l2].nome };
 
   // Moeda do país (exibição) e porte do clube (M7): o caixa do técnico e o
   // caixa guardado dos clubes da CPU do país pelo porte relativo na liga.
@@ -635,6 +637,45 @@ export async function abrirIndiceDoSave(career, buscar) {
   if (indice) definirIndiceDoMundo(indice);
   return !!indice;
 }
+// ---------- novo save no mundo (M10c, MUN-14) ----------
+// Os países e as divisões para o seletor do novo save (sem o índice, null:
+// o seletor mostra só o Brasil, como sempre).
+export async function ligasDoMundo() {
+  const indice = await obterIndice(null);
+  if (!indice) return null;
+  if (indiceAtual !== indice) definirIndiceDoMundo(indice);
+  return {
+    paises: indice.paises.map((p) => ({
+      codigo: p.codigo, nome: p.nome, regiao: p.regiao, moeda: p.moeda,
+      ligas: p.ligas.map((l, i) => {
+        const c = indice.competicoes[l];
+        return { id: l, nome: c.nome, divisao: i + 1, clubes: c.clubes, nivel: c.nivel || null, temporada: c.temporada ? c.temporada.anoInicial : null };
+      }),
+    })),
+  };
+}
+// Os clubes de uma liga do mundo para o seletor (null: liga fora do mundo).
+export async function clubesDaLigaDoMundo(liga) {
+  const indice = indiceAtual || (await obterIndice(null));
+  if (indice && indiceAtual !== indice) definirIndiceDoMundo(indice);
+  if (!indice || !indice.competicoes[liga]) return null;
+  return indice.clubes.filter((c) => c.liga === liga).sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR")).map((c) => ({
+    id: String(c.id), nome: c.nome, sigla: c.sigla || null, escudo: c.escudo || c.logoOrigem || null,
+    cidade: c.estadio && c.estadio.cidade ? c.estadio.cidade : null,
+  }));
+}
+// Cria a carreira na liga do mundo escolhida, com os elencos pela rota do
+// servidor (ou ambiente.elencosDoMundo, nos testes e offline).
+export async function novaCarreiraNoMundo(liga, clubId, buscar) {
+  const indice = indiceAtual || (await obterIndice(null));
+  if (!indice || !indice.competicoes[liga]) return { ok: false, motivo: "liga-invalida" };
+  if (!indice.clubes.some((c) => c.liga === liga && String(c.id) === String(clubId))) return { ok: false, motivo: "clube-invalido" };
+  const elencosDaLiga = (l) => elencosDaLigaDoMundo(l, buscar);
+  await criarCarreiraNoMundo({ indice, liga, clubId, elencosDaLiga });
+  return { ok: true };
+}
+ganchosMundo.novoSave = { ligas: () => ligasDoMundo(), clubes: (liga) => clubesDaLigaDoMundo(liga), criar: (liga, clubId, buscar) => novaCarreiraNoMundo(liga, clubId, buscar) };
+
 ganchosMundo.anexarMundo = (CAREER) => anexarMundoAoBrasil(CAREER);
 ganchosMundo.abrirIndice = (career, buscar) => abrirIndiceDoSave(career, buscar);
 

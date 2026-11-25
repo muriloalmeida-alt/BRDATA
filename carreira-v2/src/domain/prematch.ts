@@ -2,7 +2,7 @@
 // (legado: renderPreMatchConfirm), com a composição da prancha. Só
 // leitura: "Iniciar partida" roda o jogo na versão atual (goToMatch).
 import type { Career, Team } from "./types.ts";
-import { COMPETITION_NAME, buildHome, matchDay } from "./home.ts";
+import { competitionName, buildHome, matchDay } from "./home.ts";
 import { buildLineup, currentLineup, shortName, type LineupModel } from "./lineup.ts";
 import { bloqueioInicio } from "../../../public/js/motor/escalacao.js";
 import { avisoAdversarioMotivado } from "../../../public/js/motor/partida.js";
@@ -25,7 +25,7 @@ export function buildPreMatch(career: Career, teamById: (id: string | number) =>
   const home = buildHome(career, teamById);
   const round = career.currentRound;
   const lineup = buildLineup(career);
-  const comp = COMPETITION_NAME[career.competitionId || "brasileirao"] || "Competição";
+  const comp = competitionName(career);
   const me = String(career.clubId);
   const fx = (career.schedule[round] || []).find((m) => String(m.home) === me || String(m.away) === me);
   const alerts: PreMatchAlert[] = [];

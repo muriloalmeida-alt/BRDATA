@@ -12,7 +12,7 @@
 // proposto"; reputação e status no perfil; demissão sem saída; histórico
 // como a prancha; sem louros.
 import type { Career, Team } from "./types.ts";
-import { COMPETITION_NAME, ROUNDS, moneyShort, sortedStandings } from "./home.ts";
+import { competitionName, roundsOf, moneyShort, sortedStandings } from "./home.ts";
 import { shortName } from "./lineup.ts";
 import { seasonTitles, type TitleKind } from "./onboarding.ts";
 import { DISMISSAL_STREAK } from "../../../public/js/motor/temporada.js";
@@ -43,12 +43,12 @@ export interface SeasonEndModel {
   // Títulos da temporada (campeonato e/ou Copa), para "Compartilhar título".
   titles: TitleKind[];
 }
-export function seasonEnded(career: Career): boolean { return career.currentRound > ROUNDS; }
+export function seasonEnded(career: Career): boolean { return career.currentRound > roundsOf(career); }
 export function dismissalPending(career: Career): boolean {
   return seasonEnded(career) && (career.negativeSeasonsStreak || 0) >= DISMISSAL_STREAK;
 }
 export function buildSeasonEnd(career: Career, teamById: (id: string | number) => Team): SeasonEndModel {
-  const comp = COMPETITION_NAME[career.competitionId || "brasileirao"] || "Competição";
+  const comp = competitionName(career);
   const position = myPosition(career);
   const target = career.boardGoal?.target;
   const met = position != null && target != null && position > 0 && position <= target;

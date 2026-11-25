@@ -1172,9 +1172,23 @@ export const comandosCarga = {
     competicoes() {
       return CAREER_COMPETITIONS.map((c) => ({ id: c.id, nome: c.name, sub: c.sub }));
     },
+    // MUNDO-001 (M10c, MUN-14): os países e as divisões do mundo para o novo
+    // save (null sem o mundo: o seletor mostra só o Brasil).
+    async competicoesDoMundo() {
+      const g = estado.ganchosMundo.novoSave;
+      return g ? await g.ligas() : null;
+    },
     async escolherCompeticao(id) {
       const CAREER = carreiraAtual();
       if (CAREER) return { ok: false, motivo: "ja-tem-carreira" };
+      ponte.ligaDoMundo = null;
+      // Liga do mundo (M10c): os clubes vêm do índice.
+      if (!CAREER_COMPETITIONS.some((c) => c.id === id) && estado.ganchosMundo.novoSave) {
+        const clubes = await estado.ganchosMundo.novoSave.clubes(id);
+        if (!clubes) return { ok: false, motivo: "competicao-invalida" };
+        ponte.ligaDoMundo = id;
+        return { ok: true, competicao: id, clubes };
+      }
       if (!CAREER_COMPETITIONS.some((c) => c.id === id)) return { ok: false, motivo: "competicao-invalida" };
       await loadLeague(id);
       const clubes = ligaAtual().slice().sort((a, b) => a.name.localeCompare(b.name, "pt-BR")).map((t) => ({
@@ -1186,6 +1200,22 @@ export const comandosCarga = {
     async criarCarreira(clubId) {
       let CAREER = carreiraAtual();
       if (CAREER) return { ok: false, motivo: "ja-tem-carreira" };
+      // Liga do mundo escolhida (M10c): a carreira nasce no país dela.
+      if (ponte.ligaDoMundo && estado.ganchosMundo.novoSave) {
+        if (ponte.criando) return { ok: false, motivo: "em-andamento" };
+        ponte.criando = true;
+        try {
+          const r = await estado.ganchosMundo.novoSave.criar(ponte.ligaDoMundo, clubId, fetchJSON);
+          if (!r.ok) return r;
+          CAREER = carreiraAtual();
+          if (!CAREER) return { ok: false, motivo: "falha" };
+          const salvo = await persistCareer();
+          if (salvo) ponte.ligaDoMundo = null;
+          return salvo ? { ok: true } : { ok: false, motivo: ponte.erroGravacao || "falha" };
+        } finally {
+          ponte.criando = false;
+        }
+      }
       if (!ligaAtual().some((t) => String(t.id) === String(clubId))) return { ok: false, motivo: "clube-invalido" };
       if (ponte.criando) return { ok: false, motivo: "em-andamento" };
       ponte.criando = true;
