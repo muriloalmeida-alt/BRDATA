@@ -52,7 +52,7 @@ function Head({ ctx, back }: { ctx: string; back?: string }) {
 const CUP_SHORT: Record<CupModel["outcome"], string | null> = { campeao: "Campeão", eliminado: "Eliminado", encerrada: "Edição encerrada", fora: "Fora desta edição", vivo: null };
 
 // Aba Jogos.
-export function GamesHub({ home, cup }: { home: HomeModel; cup: CupModel }) {
+export function GamesHub({ home, cup, continental = null, worldSave = false }: { home: HomeModel; cup: CupModel; continental?: string | null; worldSave?: boolean }) {
   return (
     <div className="hb">
       <Head ctx="Jogos" back={`${BASE}/`} />
@@ -62,7 +62,10 @@ export function GamesHub({ home, cup }: { home: HomeModel; cup: CupModel }) {
       <Section items={[
         { title: "Calendário", sub: home.next ? `Próximo: ${home.next.home.name} × ${home.next.away.name} · ${home.next.line}` : "Todos os jogos da temporada", to: `${BASE}/calendario` },
         { title: "Tabela", sub: home.position !== null ? `${home.position}º lugar` : "Nenhuma rodada disputada", to: `${BASE}/tabela` },
-        { title: "Copa do Brasil", sub: CUP_SHORT[cup.outcome] || cup.status, to: `${BASE}/copa` },
+        // Save do mundo (M10c): sem Copa do Brasil.
+        ...(worldSave ? [] : [{ title: "Copa do Brasil", sub: CUP_SHORT[cup.outcome] || cup.status, to: `${BASE}/copa` }]),
+        // MUNDO-001 (M10c): Libertadores, Sul-Americana e copas da UEFA.
+        ...(continental ? [{ title: "Copas continentais", sub: continental, to: `${BASE}/continental` }] : []),
         { title: "Estatísticas", sub: "Seu time, o campeonato e o histórico", to: `${BASE}/estatisticas` },
       ]} />
       <TabBar current="jogos" />

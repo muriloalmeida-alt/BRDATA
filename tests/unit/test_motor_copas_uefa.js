@@ -14,7 +14,8 @@
 //      (campeões das ligas na fase de liga da Champions; titulares nela);
 //   4) elencos fictícios das outras associações na escala dos reais (média de
 //      overall de um clube fictício perto da de um real de nível igual);
-//   5) o jogo do técnico na Champions ao vivo pela ponte da v2.
+//   5) a visão das copas para a v2 (M10c): grupos, fase de liga, chaves, histórico;
+//   6) o jogo do técnico na Champions ao vivo pela ponte da v2.
 // Uso: node tests/unit/test_motor_copas_uefa.js
 const assert = require("assert");
 const path = require("path");
@@ -113,6 +114,26 @@ const imp = (m) => import(pathToFileURL(path.join(ROOT, "public/js/motor", m)).h
       assert.ok(plano.participantes.UCL.liga.some((x) => String(x) === String(cl.ordem[0])) || C.copas.uefa.titulares.some((x) => String(x) === String(cl.ordem[0])), `campeão de ${assoc} fora da Champions`);
     }
     for (const t of C.copas.uefa.titulares) assert.ok(plano.participantes.UCL.liga.some((x) => String(x) === String(t)), "titular fora da fase de liga");
+  });
+
+  await check("visão das copas para a v2 (M10c): UEFA com o histórico de 2026/27 e a edição seguinte; CONMEBOL 2027 com grupos e chaves", async () => {
+    await imp("copasvista.js");
+    const v = estado.ganchosMundo.vistaCopas(C);
+    const uefa = v.confederacoes.find((x) => x.confed === "UEFA"), conm = v.confederacoes.find((x) => x.confed === "CONMEBOL");
+    assert.strictEqual(uefa.rotuloAno, "2027/28");
+    assert.deepStrictEqual(uefa.copas.map((c) => c.id), ["UCL", "UEL", "UECL"]);
+    assert.strictEqual(uefa.historico[0].ano, "2026/27");
+    assert.ok(uefa.historico[0].campeoes.every((x) => x.campeao.nome && x.vice.nome));
+    const ucl = uefa.copas[0];
+    assert.ok(ucl.fases.some((f) => f.id === "Q3" && f.tipo === "mata" && f.duelos.length === 6), "3ª pré-eliminatória da Champions");
+    assert.ok(conm && conm.copas.length === 2, "CONMEBOL 2027 em andamento no save do Arsenal");
+    const lib = conm.copas[0];
+    const grupos = lib.fases.find((f) => f.tipo === "grupos");
+    if (grupos) {
+      assert.strictEqual(grupos.grupos.length, 8);
+      assert.ok(grupos.grupos.every((g) => g.linhas.length === 4 && g.linhas[0].nome));
+    }
+    assert.ok(lib.fases.some((f) => f.tipo === "mata" && f.duelos.every((d) => d.a.nome && d.b.nome)));
   });
 
   await check("elencos fictícios na escala dos reais (outra associação x 5º pacote de nível igual)", async () => {

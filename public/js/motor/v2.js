@@ -29,6 +29,7 @@ import { comandosCarga, ponteEstado, enterAfterAuth, fetchJSON, fetchRealPlayers
 import { criarRepositorio } from "./repositorio.js";
 // MUNDO-001: a carreira nos países do mundo (registra os ganchos do motor).
 import * as carreiraMundo from "./carreiramundo.js";
+import "./copasvista.js"; // MUNDO-001 (M10c): a visão das copas para a v2
 export { carreiraMundo };
 
 // O ambiente que a página dava ao motor (ver motorSemana em carreira.js),

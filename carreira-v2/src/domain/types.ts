@@ -129,7 +129,7 @@ export interface Career {
   divisoes?: string[];
   // MUNDO-001: clubes de fora no save (M8) e copas continentais (M9).
   exterior?: { clubes: Record<string, Team> };
-  copas?: { conmebol?: { pendente?: ContinentalPending | null }; uefa?: { pendente?: ContinentalPending | null } };
+  copas?: { conmebol?: { pendente?: ContinentalPending | null; edicao?: unknown; historico?: unknown[] }; uefa?: { pendente?: ContinentalPending | null; edicao?: unknown; historico?: unknown[] } };
   notifications?: import("./week.ts").Notice[];
 }
 

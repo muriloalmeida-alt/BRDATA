@@ -3,9 +3,11 @@
 // - /carreira/estatisticas (?escopo=&periodo=): Estatísticas (CAP04-N08, 41 col. 3 e 42);
 // - /carreira/retrospecto?id=: Retrospecto H2H (CAP04-N09, 43 col. 1);
 // - /carreira/premiacoes (?ano=): Premiações (CAP07-N04, 45 col. 2).
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { buildAwards, buildCupDetail, buildCupEditions, buildH2H, buildStats, type CupSide, type StatsPeriod, type StatsScope } from "../domain/games.ts";
 import type { Career, Team } from "../domain/types.ts";
+import { ContinentalGateway } from "../adapters/continental.ts";
+import { defaultCup, defaultPhase, duelOutcome, duelScore, type CClub, type CDuel, type CRow, type ContinentalView } from "../domain/continental.ts";
 import { Crest } from "../ui/components.tsx";
 import { Sheet } from "../ui/dialog.tsx";
 import { IconCheck, IconChevron } from "../ui/icons.tsx";
@@ -168,6 +170,99 @@ export function AwardsScreen({ career, teamById, year }: { career: Career; teamB
         </section>
       </>) : <p className="wk-note pr-pad">Nenhuma temporada encerrada ainda: as premiações aparecem aqui ao fim de cada temporada.</p>}
       <div className="cal-foot"><button type="button" className="link-back" onClick={() => goBackTo(back)}>Voltar</button></div>
+    </div>
+  );
+}
+
+// ---------- Copas continentais (MUNDO-001, M10c, MUN-15) ----------
+// /carreira/continental (?copa=&fase=): grupos, fase de liga e chaves da
+// Libertadores, Sul-Americana, Champions, Europa League e Conference, com os
+// campeões anteriores. Dados do motor (copasContinentais).
+const FAIXA_LABEL: Record<string, string> = { oitavas: "Oitavas", playoff: "Playoff", fora: "Eliminado" };
+const asClubTeam = (c: CClub): Team => ({ id: c.id, name: c.nome, short: c.sigla || undefined, logo: c.escudo || undefined });
+function CTable({ rows, label, bands }: { rows: CRow[]; label: string; bands?: boolean }) {
+  return (
+    <div className="gm-table-wrap">
+      <table className="gm-table" aria-label={label}>
+        <thead><tr><th scope="col">Clube</th><th scope="col" aria-label="Jogos">J</th><th scope="col" aria-label="Saldo">SG</th><th scope="col" aria-label="Pontos">P</th>{bands && <th scope="col">Faixa</th>}</tr></thead>
+        <tbody>{rows.map((r) => (
+          <tr key={r.id} className={r.meu ? "is-mine" : undefined}>
+            <td><span className="ct-club"><span className="ct-pos">{r.pos}</span><Crest team={asClubTeam(r)} size={22} /><span>{r.nome}</span></span></td>
+            <td>{r.j}</td><td>{r.sg > 0 ? `+${r.sg}` : r.sg}</td><td><b>{r.pts}</b></td>{bands && <td className={`ct-band ct-band--${r.faixa}`}>{FAIXA_LABEL[r.faixa || ""] || ""}</td>}
+          </tr>
+        ))}</tbody>
+      </table>
+    </div>
+  );
+}
+function CDuelRow({ d }: { d: CDuel }) {
+  const out = duelOutcome(d);
+  return (
+    <div className="ct-duel">
+      <div className="gm-duel">
+        <span className={`gm-side${d.a.meu ? " is-mine" : ""}`}><Crest team={asClubTeam(d.a)} size={34} /><b>{d.a.nome}</b></span>
+        <span className="gm-score">{duelScore(d)}</span>
+        <span className={`gm-side${d.b.meu ? " is-mine" : ""}`}><Crest team={asClubTeam(d.b)} size={34} /><b>{d.b.nome}</b></span>
+      </div>
+      {(d.placares.length > 1 || out) && <p className="gm-when">{d.placares.length > 1 ? `Ida ${d.placares[0].gh}×${d.placares[0].ga} · Volta ${d.placares[1].gh}×${d.placares[1].ga}` : d.neutro ? "Jogo único, campo neutro" : ""}{out ? `${d.placares.length > 1 || d.neutro ? " · " : ""}${out}` : ""}</p>}
+    </div>
+  );
+}
+export function ContinentalScreen({ copa, fase }: { copa: string | null; fase: string | null }) {
+  const [st, setSt] = useState<{ kind: "loading" } | { kind: "ok"; v: ContinentalView | null } | { kind: "error" }>({ kind: "loading" });
+  const [n, setN] = useState(0);
+  useEffect(() => {
+    let alive = true;
+    setSt({ kind: "loading" });
+    ContinentalGateway.view().then((v) => { if (alive) setSt({ kind: "ok", v }); }, () => { if (alive) setSt({ kind: "error" }); });
+    return () => { alive = false; };
+  }, [n]);
+  const back = `${BASE}/jogos`;
+  if (st.kind === "loading") return <div className="state" role="status" aria-live="polite"><div className="state-line" />Carregando as copas…</div>;
+  if (st.kind === "error") return <div className="state" role="alert">Não foi possível carregar as copas.<button className="state-btn" onClick={() => setN((x) => x + 1)}>Tentar novamente</button></div>;
+  const v = st.v;
+  if (!v) return (
+    <div className="wk pr"><Head ctx="Jogos" back={back} /><h1 className="screen-title">Copas continentais.</h1><span className="tb-bar" aria-hidden="true" />
+      <p className="screen-sub">Nenhuma edição no seu save ainda. As copas começam com a temporada delas no calendário do mundo.</p></div>
+  );
+  const cups = v.confederacoes.flatMap((c) => c.copas.map((cp) => ({ ...cp, confed: c })));
+  const cur = cups.find((c) => c.id === copa) || cups.find((c) => c.id === defaultCup(v)) || cups[0];
+  const ph = cur ? (cur.fases.find((f) => f.id === fase) || cur.fases.find((f) => f.id === defaultPhase(cur)) || null) : null;
+  const go = (c: string, f?: string | null) => navigate(`${BASE}/continental?copa=${encodeURIComponent(c)}${f ? `&fase=${encodeURIComponent(f)}` : ""}`, { replace: true });
+  return (
+    <div className="wk pr">
+      <Head ctx="Jogos" back={back} />
+      <h1 className="screen-title">{cur ? cur.nome : "Copas continentais"}{cur && cur.confed.rotuloAno ? ` ${cur.confed.rotuloAno}` : ""}.</h1>
+      <span className="tb-bar" aria-hidden="true" />
+      <p className="screen-sub">{cur ? (cur.campeao ? `Campeão: ${cur.campeao.nome}${cur.campeao.meu ? " ★" : ""}` : cur.souParticipante ? "Seu clube está nesta copa." : "Seu clube não está nesta copa.") : "Sem edição em andamento."}</p>
+      {cups.length > 0 && (
+        <section className="wk-sec pr-pad">
+          <Picker id="ct-c" label="Copa" value={cur ? cur.id : ""} options={cups.map((c) => ({ id: c.id, label: `${c.nome}${c.souParticipante ? " ★" : ""}` }))} onPick={(id) => go(id)} />
+          {cur && cur.fases.length > 0 && <Picker id="ct-f" label="Fase" value={ph ? ph.id : ""} options={cur.fases.map((f) => ({ id: f.id, label: f.nome }))} onPick={(id) => go(cur.id, id)} />}
+        </section>
+      )}
+      {ph && ph.tipo === "grupos" && ph.grupos.map((g) => (
+        <section key={g.grupo} className="wk-sec" aria-labelledby={`ct-g-${g.grupo}`}><h2 className="kicker-caps" id={`ct-g-${g.grupo}`}>Grupo {g.grupo}</h2><CTable rows={g.linhas} label={`Grupo ${g.grupo}`} /></section>
+      ))}
+      {ph && ph.tipo === "liga" && (
+        <section className="wk-sec" aria-labelledby="ct-liga"><h2 className="kicker-caps" id="ct-liga">Fase de liga · {ph.rodadas} rodadas</h2>
+          <CTable rows={ph.linhas} label="Fase de liga" bands />
+          <p className="wk-note">1º ao 8º vão às oitavas; 9º ao 24º jogam o playoff; 25º ao 36º estão eliminados.</p>
+        </section>
+      )}
+      {ph && ph.tipo === "mata" && (
+        <section className="wk-sec" aria-labelledby="ct-mm"><h2 className="kicker-caps" id="ct-mm">{ph.nome}</h2>
+          {ph.duelos.slice().sort((x, y) => Number(y.a.meu || y.b.meu) - Number(x.a.meu || x.b.meu)).map((d) => <CDuelRow key={d.id} d={d} />)}
+        </section>
+      )}
+      {cur && cur.confed.historico.length > 0 && (
+        <section className="wk-sec" aria-labelledby="ct-h"><h2 className="kicker-caps" id="ct-h">Edições anteriores</h2>
+          {cur.confed.historico.map((h) => {
+            const x = h.campeoes.find((c) => c.copa === cur.id);
+            return x ? <Rows key={h.ano} rows={[{ label: h.ano, value: `${x.campeao.nome}${x.campeao.meu ? " ★" : ""} (vice: ${x.vice.nome})` }]} /> : null;
+          })}
+        </section>
+      )}
     </div>
   );
 }

@@ -1174,6 +1174,12 @@ export const comandosCarga = {
     },
     // MUNDO-001 (M10c, MUN-14): os países e as divisões do mundo para o novo
     // save (null sem o mundo: o seletor mostra só o Brasil).
+    // MUNDO-001 (M10c, MUN-15): grupos, fase de liga e chaves das copas
+    // continentais do save (null sem copas).
+    copasContinentais() {
+      const g = estado.ganchosMundo.vistaCopas;
+      return g ? g(carreiraAtual()) : null;
+    },
     async competicoesDoMundo() {
       const g = estado.ganchosMundo.novoSave;
       return g ? await g.ligas() : null;
