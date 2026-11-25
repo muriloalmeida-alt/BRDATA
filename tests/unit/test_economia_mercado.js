@@ -153,6 +153,11 @@ const imp = (m) => import(pathToFileURL(path.join(ROOT, "public/js/motor", m)).h
     assert.ok(E.fatorDeDemanda(C, pl, alvoClube) > 1, "Premier League comprando de um clube de fora mais barato");
     assert.strictEqual(E.fatorDeDemanda(C, alvoClube, pl), 1);
     delete C.exterior;
+    // A CPU só propõe o que consegue pagar (proposta pelos seus atletas,
+    // concorrente e anúncio): o caixa dela com 1 mês de folha de reserva.
+    const cx = C.caixaCpu[alvoClube];
+    assert.strictEqual(semana.cpuPodePagar(alvoClube, cx * 2, 1, 0), false);
+    assert.strictEqual(semana.cpuPodePagar(alvoClube, Math.round(cx * 0.2), 1, 0), true);
     // CPU sem caixa não compra pela mesma regra.
     const comprador = Object.keys(C.leagueSquads).find((id) => id !== alvoClube && id !== String(C.clubId));
     C.caixaCpu[comprador] = 1000;

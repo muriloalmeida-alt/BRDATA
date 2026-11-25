@@ -478,6 +478,17 @@ export const OFFER_CHANCE_PER_ROUND = 0.18;
 // PARIDADE-CPU · E3, PR2 (decisão do Murilo 21/11, "Aumentar para ~35%").
 export const OFFER_CHANCE_PER_ROUND_E3 = 0.35;
 
+// ECON-001b: a CPU só faz proposta que consegue pagar, pela mesma
+// capacidade de compra do técnico (economia v2; sem ela, true: a regra de antes).
+export function cpuPodePagar(clubId, valor, parcelas = 1, salario = 0) {
+  const CAREER = carreiraAtual();
+  if (!economia.economiaV2(CAREER)) return true;
+  const sq = leagueSquadFor(clubId);
+  const b = mercado.clubBudget(marketClub(clubId));
+  const cap = economia.capacidadeNoJogo(CAREER, { caixa: b.cash, folha: financas.wageBill(sq), teto: b.wageCap }, { taxa: valor, parcelas, salarioMensal: salario });
+  return !cap || cap.ok;
+}
+
 export function maybeGenerateOffer(round) {
   const CAREER = carreiraAtual();
   if (CAREER.pendingOffer) return; // só 1 proposta pendente por vez
@@ -490,7 +501,7 @@ export function maybeGenerateOffer(round) {
   );
   if (!eligible.length) return;
   const scored = eligible
-    .filter((t) => financeiroScore(player, leagueSquadFor(t.id), t.id) > 0) // elimina quem claramente não pode pagar ANTES do RNG
+    .filter((t) => financeiroScore(player, leagueSquadFor(t.id), t.id) > 0 && cpuPodePagar(t.id, player.value, 1, player.wage)) // elimina quem claramente não pode pagar ANTES do RNG (ECON-001b: com a capacidade de compra)
     .filter((t) => !wasRecentlyDeclined(player.id, t.id, round)) // Fase 1.5 — não reoferece o mesmo par jogador/clube logo depois de recusado
     .map((t) => ({ item: t, score: transferScore(player, t.id) }));
   if (!scored.length) return; // nenhum clube consegue bancar esse jogador agora (ou só sobrou quem já foi recusado)
@@ -513,6 +524,7 @@ export function maybeGenerateOffer(round) {
   const deal = negotiateOffer(player, club.id, CAREER.clubId);
   if (deal.outcome !== "accepted") return;
   const fee = Math.max(1000, deal.finalValue);
+  if (!cpuPodePagar(club.id, fee, 1, player.wage)) return;
   CAREER.pendingOffer = { playerId: player.id, playerName: player.name, clubId: String(club.id), clubName: club.name, fee, round };
 }
 
@@ -720,7 +732,7 @@ export function maybeSpawnRivalOffer(o) {
   );
   if (!pool.length) return;
   const scored = pool
-    .filter((t) => financeiroScore(player, leagueSquadFor(t.id), t.id) > 0)
+    .filter((t) => financeiroScore(player, leagueSquadFor(t.id), t.id) > 0 && cpuPodePagar(t.id, player.value, 1, player.wage))
     .map((t) => ({ item: t, score: transferScore(player, t.id) }));
   if (!scored.length) return; // nenhum clube consegue bancar esse jogador agora
   const rivalClub = pickWeightedByScore(scored);
@@ -736,6 +748,7 @@ export function maybeSpawnRivalOffer(o) {
   if (rivalDeal.outcome !== "accepted") return;
   const rivalValue = Math.max(1000, rivalDeal.finalValue);
   const rivalInstallments = Math.random() < 0.7 ? 1 : 2; // clube CPU quase sempre paga à vista
+  if (!cpuPodePagar(rivalClub.id, rivalValue, rivalInstallments, player.wage)) return;
   o.rivalOffer = { clubId: String(rivalClub.id), clubName: rivalClub.name, offerValue: rivalValue, installments: rivalInstallments };
   avisar({ title: "Concorrência pelo alvo", detail: `${rivalClub.name} também quer ${abbreviateName(o.playerName)} — compare as propostas.` }, { type: "warn" });
 }
@@ -784,7 +797,7 @@ export function maybeSpawnListingOffer(listing) {
   );
   if (!eligible.length) return;
   const scored = eligible
-    .filter((t) => financeiroScore(p, leagueSquadFor(t.id), t.id) > 0) // elimina quem claramente não pode pagar ANTES do RNG
+    .filter((t) => financeiroScore(p, leagueSquadFor(t.id), t.id) > 0 && cpuPodePagar(t.id, p.value, 1, p.wage)) // elimina quem claramente não pode pagar ANTES do RNG (ECON-001b: com a capacidade de compra)
     .map((t) => ({ item: t, score: transferScore(p, t.id) }));
   if (!scored.length) return; // nenhum clube elegível consegue bancar esse jogador agora
   const club = pickWeightedByScore(scored);
@@ -819,6 +832,7 @@ export function maybeSpawnListingOffer(listing) {
   if (dealValue == null) return;
   const value = Math.max(1000, dealValue);
   const installments = Math.random() < 0.6 ? 1 : Math.random() < 0.7 ? 2 : 3; // clube CPU às vezes parcela também
+  if (!cpuPodePagar(club.id, value, installments, p.wage)) return;
   listing.offers.unshift({
     id: `listingoffer_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
     clubId: String(club.id), clubName: club.name, value, installments, round: CAREER.currentRound,
