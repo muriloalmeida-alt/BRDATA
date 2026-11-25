@@ -47,6 +47,9 @@ function proximoTimer() { if (!FILA.length) return false; FILA.sort((a, b) => a.
 const resp = (status, corpo) => ({ ok: status < 400, status, json: async () => corpo });
 fetch = async function (url, opts) {
   const metodo = (opts && opts.method) || "GET";
+  // MUNDO-001 (M10d): a página antiga não tem o mundo; nesta API de mentira ele
+  // está desligado (404), e o pedido do hospedeiro fica fora da comparação.
+  if (String(url).startsWith("/api/career/mundo")) return resp(404, { error: "mundo desligado" });
   CHAMADAS_API.push([metodo, String(url), opts && opts.body ? String(opts.body).length : 0]);
   if (url === "/api/auth/me") return resp(200, { authenticated: true, user: { id: "u1", name: "Técnico", createdAt: 1700000000000, onboardingSeen: true, dailyLogin: { currentStreakDay: 2, lastClaimDate: "2026-01-01" }, creditsBR: CREDITOS, friendCode: "X1", friends: [] } });
   if (url === "/api/career" && metodo === "GET") return resp(200, { career: SALVO ? JSON.parse(SALVO) : null });
