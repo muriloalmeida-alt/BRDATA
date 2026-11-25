@@ -17,6 +17,7 @@ const { newCareer, globaisDoMotor } = require("./_v2_carreira");
   // (antes: a tela antiga, carreira.html, como contexto).
   await newCareer(page, email);
   await globaisDoMotor(page);
+  await page.evaluate(async () => { const E = await import("/js/motor/economia.js"); window.__escalaDoTecnico = () => E.escalaDe(CAREER, CAREER.clubId); });
 
   // ---------- Preparação: garante janela de transferências aberta
   // (rodadas 1-3) e ao menos 20 jogadores principais — o que a
@@ -48,7 +49,8 @@ const { newCareer, globaisDoMotor } = require("./_v2_carreira");
     const backup = CAREER.squad.map((p) => ({ id: p.id, overall: p.overall, wage: p.wage, value: p.value, potential: p.potential }));
     CAREER.squad.filter((p) => p.origin === "principal").forEach((p) => {
       p.overall = 99;
-      const cf = computeContractFields(99, 27, null, () => 0.5);
+      // ECON-001b: o contrato na escala do seu clube (economia v2 nas carreiras novas).
+      const cf = motorTemporada().computeContractFields(99, 27, null, () => 0.5, 2026, window.__escalaDoTecnico());
       p.wage = cf.wage; p.value = cf.value;
     });
     let offers = 0;

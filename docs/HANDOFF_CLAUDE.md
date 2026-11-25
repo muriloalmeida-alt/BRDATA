@@ -11,8 +11,8 @@ Demandas vigentes
 
 ECON-001 — Recalibração da economia do Modo Carreira (Touchline)
 
-Status: EM IMPLEMENTAÇÃO — Entrega 1 (base financeira), branch
-`claude/economia-e1`. Pedido do Murilo (25/11/2026): "execute esse md"
+Status: Entrega 1 mesclada (#167, 25/11/2026). EM IMPLEMENTAÇÃO — Entrega 2
+(mercado), branch `claude/economia-e2`. Pedido do Murilo (25/11/2026): "execute esse md"
 (proposta em `docs/economia/00_Proposta.md`), com o merge na main
 autorizado depois do commit. Especificação e decisões de PM em
 `docs/economia/01_Especificacao.md`: escala real em R$, só carreiras novas
@@ -59,6 +59,76 @@ grandeza, virada, capacidade, pureza).
 
 Próximo: Entrega 2 (valor, reserva e salário dos atletas na mesma escala;
 CPU e técnico pela mesma regra; ativação para carreiras novas).
+
+Relatório da Entrega 2, mercado (25/11/2026)
+
+Base: `main` em e7fe17f (#167). Detalhe, antes × depois e negócios de
+referência em `docs/economia/03_Mercado_E2.md` (gerado por
+`node tests/sim/economia_mercado.js`).
+
+O que foi feito:
+- economia v2 ativada nas carreiras novas (Brasil e mundo; também na troca
+  de país de quem já está nela): `CAREER.economia` com versão, escalas por
+  clube, escala de valor por liga e fluxos do clube do técnico. Save sem o
+  campo segue a regra de antes, sem migração;
+- salário e valor: a regra de sempre (overall, idade, potencial) com a
+  escala:
+  - salário: a da liga (soma das folhas = soma das folhas-base) × o porte
+    do clube^0,4;
+  - valor: média geométrica do clube e da liga;
+  - todos os contratos do save escalados uma vez; contratos gerados depois
+    (base, prospecto, reposição e renovação da CPU) já na escala do clube;
+  - salário justo (moral, agente livre, "à venda") na escala do clube;
+- demanda entre países: comprador de mercado mais caro paga parte da
+  diferença de preço na reserva do vendedor (técnico e CPU). No mercado
+  doméstico, o preço parte do valor exibido;
+- mesma capacidade de compra para o técnico e a CPU
+  (`economia.capacidadeNoJogo`): pagamento inicial com 1 mês de folha de
+  reserva, teto, e parcelas sem caixa negativo. O técnico recebe o motivo
+  na proposta, na prévia e na conclusão;
+- finanças do clube do técnico pela base:
+  - caixa inicial;
+  - TV e despesas operacionais por mês (despesas fecham a margem com a
+    folha real; lançamento "Despesas operacionais");
+  - patrocínio e bilheteria na escala comercial e de dia de jogo;
+  - virada pela divisão nova (rebaixado à Championship com a transição de
+    3 anos) e troca de clube pelos fluxos do clube novo;
+- CPU: caixa inicial da base e volta ao caixa da base na virada.
+
+Decisões:
+- folha real pelos contratos (±30% da folha-base), e não igual a ela. Com a
+  escala exata por clube, um clube da Championship pagava mais que o
+  Arsenal pelo mesmo atleta;
+- parâmetros imputados e exportados: porte salarial 0,4, expoente de valor
+  1,0, demanda (expoente 0,5, teto 3).
+
+Testes:
+- `tests/unit/test_economia_mercado.js` 6/6;
+- `test_economia_base` 6/6;
+- `test_motor_mundo_carreira` 14/14;
+- testes de equivalência com a cópia congelada (`test_motor_carga`,
+  `test_motor_virada`) com a v2 desligada, como as outras chaves de
+  paridade.
+- testes da regra da CPU de antes (`test_paridade_financas`,
+  `test_paridade_mercado`) com a v2 desligada (a regra dos saves de hoje);
+  testes do mercado (`test_transfer_ai_*`, `test_mercado_negociacao`,
+  `test_historico_negociacoes`) com alvos e valores na escala nova;
+- suíte completa local: 204/204.
+
+Save: carreira nova no Arsenal com 547 KB de JSON e 61 KB em gzip (sem a
+v2: 530 KB e 57 KB). O campo `economia` tem cerca de 2 KB.
+
+Casos não confirmados:
+- grande português: Portugal não está nas 20 ligas do mundo;
+- distribuição das transferências feitas por temporada (FIFA): na
+  simulação de 5 temporadas (Entrega 3);
+- valores do Brasil medidos no modo exemplo (elencos fictícios);
+- custos fixos de antes em R$ (obras do estádio, prêmios da liga, recompensas
+  da loja) ficam pequenos para clubes grandes. Fica para a Entrega 3.
+
+Próximo: Entrega 3 (interface "Paga agora / Custo mensal / Caixa após",
+motivos na tela, Finanças com espaço de folha e parcelas, simulação de 5
+temporadas, desempenho e save, compatibilidade de saves).
 
 ⸻
 

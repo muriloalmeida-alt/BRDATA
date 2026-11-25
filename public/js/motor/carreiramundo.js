@@ -38,6 +38,7 @@ import * as tabela from "./tabela.js";
 import * as texto from "./texto.js";
 import * as financas from "./financas.js";
 import * as mercado from "./mercado.js";
+import * as E from "./economia.js";
 import * as Copas from "./copasmundo.js";
 import * as CopasUefa from "./copasuefa.js";
 
@@ -222,6 +223,9 @@ export async function criarCarreiraNoMundo(o) {
     const wageCap = Math.round(financas.wageBill(sq) * 1.35 / 1000) * 1000;
     CAREER.caixaCpu[id] = Math.round(mercado.caixaNormal(wageCap) * porteDoClube(indice, id) / 1000) * 1000;
   }
+  // ECON-001b: economia v2 na carreira nova (e na troca de país de quem já
+  // estava nela): substitui o caixa pelo porte logo acima.
+  if (!Pleve || o.economiaV2) ativarEconomiaV2(CAREER, indice);
 
   if (Pleve) {
     // Troca de país (M8b): o mesmo mundo; o país novo sai do mundo leve.
@@ -813,6 +817,7 @@ export async function abrirClubeDoMundo(CAREER, clubId, buscar) {
     CAREER.exterior.clubes[id] = time;
     CAREER.exterior.catalogo[id] = [];
     CAREER.leagueSquads[id] = gerado;
+    escalaDoClubeDeFora(CAREER, indice, id, null);
     return { ok: true, clube: { id, nome: time.name, liga: null, pais: onde.pais }, jogadores: gerado.length };
   }
   const porTime = await elencosDaLigaDoMundo(onde.liga, buscar);
@@ -827,6 +832,7 @@ export async function abrirClubeDoMundo(CAREER, clubId, buscar) {
   CAREER.exterior.clubes[id] = time;
   CAREER.exterior.catalogo[id] = raw.map((p) => String(p.id));
   CAREER.leagueSquads[id] = elenco;
+  escalaDoClubeDeFora(CAREER, indice, id, onde.liga);
   return { ok: true, clube: { id, nome: time.name, liga: onde.liga, pais: onde.pais }, jogadores: elenco.length };
 }
 
@@ -939,7 +945,7 @@ export async function trocarDePais(CAREER, proposta, buscar) {
     BR.k += CAREER.seasonYear - BR.ano; BR.ano = CAREER.seasonYear;
   }
   const elencosDaLiga = (l) => elencosDaLigaDoMundo(l, buscar);
-  await criarCarreiraNoMundo({ indice, liga: proposta.mundo.liga, clubId: proposta.clubId, elencosDaLiga, mundoLeve });
+  await criarCarreiraNoMundo({ indice, liga: proposta.mundo.liga, clubId: proposta.clubId, elencosDaLiga, mundoLeve, economiaV2: E.economiaV2(CAREER) });
   return { ok: true };
 }
 ganchosMundo.trocarDePais = (CAREER, proposta, buscar) => trocarDePais(CAREER, proposta, buscar);
@@ -976,3 +982,126 @@ ganchosMundo.continental = {
   preparar: (CAREER, buscar) => prepararJogoContinental(CAREER, buscar),
   registrar: (CAREER, jogoId, placar) => registrarJogoContinental(CAREER, jogoId, placar),
 };
+
+/* ---------- economia v2 (ECON-001b) ----------
+   Só em carreira nova (CAREER.economia gravado na criação; save sem o campo
+   segue a regra de antes). Na criação: a escala de salário de cada clube e a
+   de valor de cada divisão do país (economia.escalasDaDivisao), os contratos
+   de todos os elencos escalados uma vez, e as finanças do técnico e dos
+   clubes da CPU pela base financeira (caixa inicial; teto 35% acima da
+   folha, a regra de sempre). Receitas e despesas do clube do técnico pela
+   base: TV e despesas por mês (semana.applyCalendarMonthlyFinances),
+   patrocínio e bilheteria pela escala comercial e de dia de jogo. */
+const LEGADO_PATROCINIO = (5e6 + 2e6) * (0.6 + 0.4 * 1.2); // nível 40, a média das propostas de antes
+const JOGOS_EM_CASA = 19;
+function elencoDoClube(CAREER, id) {
+  return String(id) === String(CAREER.clubId) ? CAREER.squad : (CAREER.leagueSquads && CAREER.leagueSquads[String(id)]) || [];
+}
+// Clubes de uma divisão do save na ordem financeira: porte do pacote quando
+// há (receita anual); sem ele (Brasil, quem subiu do catálogo), a força.
+export function clubesParaEconomia(CAREER, indice, liga) {
+  const times = (CAREER.divisionTeams && CAREER.divisionTeams[liga]) || (liga === CAREER.competitionId ? estado.ligaAtual() : []);
+  const S = String;
+  return times.map((t) => {
+    const c = indice && indice.clubes.find((x) => S(x.id) === S(t.id));
+    const receita = c && c.financas && c.financas.annualRevenue;
+    return { id: S(t.id), nome: t.name, receita: receita || 0, forca: (t.atk || 1) / (t.def || 1), folhaLegada: financas.wageBill(elencoDoClube(CAREER, t.id)) };
+  }).sort((a, b) => b.receita - a.receita || b.forca - a.forca || a.id.localeCompare(b.id));
+}
+export function ativarEconomiaV2(CAREER, indice) {
+  if (!CAREER || CAREER.economia || !E.ECONOMIA_V2.ativa) return false;
+  const escalas = {}, ligas = {};
+  let base = null;
+  const caixas = {};
+  for (const liga of estado.divisoesDoPais(CAREER)) {
+    const r = E.escalasDaDivisao(liga, clubesParaEconomia(CAREER, indice, liga));
+    if (!r) continue;
+    Object.assign(escalas, r.escalas);
+    ligas[liga] = r.valor;
+    for (const [id, b] of r.economia) caixas[id] = b.caixaInicial;
+    if (r.economia.has(String(CAREER.clubId))) base = r.economia.get(String(CAREER.clubId));
+  }
+  if (!base) return false;
+  // Caixa de referência dos clubes da CPU (a volta ao normal na virada).
+  for (const id of Object.keys(escalas)) escalas[id] = [...escalas[id], caixas[id] || 0];
+  CAREER.economia = { versao: E.VERSAO_ECONOMIA, escalas, ligas, clube: null };
+  // Contratos: todos os elencos do save, uma vez.
+  for (const id of Object.keys(escalas)) {
+    const e = E.escalaDe(CAREER, id);
+    elencoDoClube(CAREER, id).forEach((p) => E.aplicarEscalaNoAtleta(p, e));
+    ((CAREER.basesCpu && CAREER.basesCpu[id]) || []).forEach((p) => E.aplicarEscalaNoAtleta(p, e));
+  }
+  const daLiga = ligas[CAREER.competitionId] || 1;
+  (CAREER.agentesLivres || []).forEach((p) => E.aplicarEscalaNoAtleta(p, { salario: daLiga, valor: daLiga }));
+  // Finanças do técnico e da CPU.
+  const folha = financas.wageBill(CAREER.squad);
+  CAREER.finances.wageCap = Math.round((folha * 1.35) / 1000) * 1000;
+  CAREER.finances.cash = base.caixaInicial;
+  CAREER.caixaCpu = {};
+  for (const id of Object.keys(escalas)) if (id !== String(CAREER.clubId) && caixas[id]) CAREER.caixaCpu[id] = caixas[id];
+  // Fluxos, patrocínio e bilheteria na escala do clube.
+  fluxosDoTecnico(CAREER, indice, base, 0);
+  for (const k of ["master", "material"]) {
+    const c = CAREER.sponsorship && CAREER.sponsorship[k];
+    if (c && c.valorTemporada) c.valorTemporada = Math.round((c.valorTemporada * CAREER.economia.patrocinio) / 50000) * 50000;
+    if (CAREER.sponsorProposals && CAREER.sponsorProposals[k]) CAREER.sponsorProposals[k].forEach((x) => { x.valorTemporada = Math.round((x.valorTemporada * CAREER.economia.patrocinio) / 50000) * 50000; });
+  }
+  return true;
+}
+// Clube que entra no save depois da criação (aberto no mercado do mundo):
+// a escala dele pela liga (salário e valor iguais; sem perfil, a da liga do técnico).
+export function escalaDoClubeDeFora(CAREER, indice, id, liga) {
+  if (!E.economiaV2(CAREER) || CAREER.economia.escalas[String(id)]) return;
+  const sq = elencoDoClube(CAREER, id);
+  let s = CAREER.economia.ligas[CAREER.competitionId] || 1;
+  const eco = liga && E.PERFIS[liga] ? E.economiaDaLiga(indice, liga) : null;
+  const b = eco && eco.get(String(id));
+  const legado = financas.wageBill(sq);
+  if (b && legado > 0) s = Math.max(E.ESCALA_LIMITES.min, Math.min(E.ESCALA_LIMITES.max, b.folhaBaseMensal / legado));
+  s = Math.round(s * 1000) / 1000;
+  CAREER.economia.escalas[String(id)] = [s, s, b ? b.caixaInicial : 0];
+  sq.forEach((p) => E.aplicarEscalaNoAtleta(p, { salario: s, valor: s }));
+}
+// Fluxos do clube do técnico (TV, despesas, escala de patrocínio e de
+// bilheteria) pela base dele; `ano` = temporadas desde a queda (transição).
+function fluxosDoTecnico(CAREER, indice, b, ano = 0) {
+  const transicao = ano >= 1 && ano <= 3 && E.PERFIS[b.liga] && E.PERFIS[b.liga].transicao;
+  const base = transicao ? E.economiaNaVirada(indice, b, { para: b.liga, status: "rebaixado", anoAposQueda: ano }) : b;
+  CAREER.economia.clube = { ...E.fluxosDoClube(base, financas.wageBill(CAREER.squad)), anoAposQueda: transicao ? ano : 0 };
+  CAREER.economia.patrocinio = Math.round((base.receitas.comercialAnual / LEGADO_PATROCINIO) * 1000) / 1000;
+  const clube = estado.timePorId(CAREER.clubId) || { id: CAREER.clubId };
+  const jogo = financas.ticketRevenue(clube, ambiente.rngDaChave(`stadium:${clube.id}`), 0, []).revenue * JOGOS_EM_CASA;
+  CAREER.economia.bilheteria = jogo > 0 ? Math.round((base.receitas.jogoAnual / jogo) * 1000) / 1000 : 1;
+}
+// Na virada (e na troca de clube): quem entrou nas divisões do país sem
+// escala (subiu do catálogo, da Série D) ganha a dele, e os fluxos do clube
+// do técnico seguem a divisão e a posição financeira da temporada nova
+// (caixa e contratos ficam). troca = o técnico mudou de clube (sem queda).
+export function economiaDaTemporada(CAREER, { troca = false } = {}) {
+  if (!E.economiaV2(CAREER)) return;
+  const indice = indiceAtual;
+  const divs = estado.divisoesDoPais(CAREER);
+  for (const liga of divs) {
+    const clubes = clubesParaEconomia(CAREER, indice, liga);
+    if (!clubes.length || !E.PERFIS[liga]) continue;
+    // A folha "de antes" de quem já está escalado: a folha ÷ a escala dele.
+    const comLegado = clubes.map((c) => { const e = CAREER.economia.escalas[c.id]; return e ? { ...c, folhaLegada: c.folhaLegada / e[0] } : c; });
+    const r = E.escalasDaDivisao(liga, comLegado);
+    if (!r) continue;
+    for (const c of clubes) {
+      if (CAREER.economia.escalas[c.id]) continue;
+      const [sal, val] = r.escalas[c.id];
+      const b = r.economia.get(c.id);
+      CAREER.economia.escalas[c.id] = [sal, val, b ? b.caixaInicial : 0];
+      elencoDoClube(CAREER, c.id).forEach((p) => E.aplicarEscalaNoAtleta(p, { salario: sal, valor: val }));
+    }
+    const b = r.economia.get(String(CAREER.clubId));
+    if (!b) continue;
+    const antes = CAREER.economia.clube;
+    const caiu = !troca && antes && antes.liga !== liga && divs.indexOf(antes.liga) >= 0 && divs.indexOf(antes.liga) < divs.indexOf(liga);
+    const ano = caiu ? 1 : !troca && antes && antes.liga === liga && antes.anoAposQueda ? antes.anoAposQueda + 1 : 0;
+    fluxosDoTecnico(CAREER, indice, b, ano);
+  }
+}
+ganchosMundo.economiaDaTemporada = (CAREER, o) => economiaDaTemporada(CAREER, o);
+ganchosMundo.economiaNova = (CAREER) => ativarEconomiaV2(CAREER, indiceAtual);

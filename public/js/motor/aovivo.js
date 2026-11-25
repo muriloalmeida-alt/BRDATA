@@ -156,7 +156,10 @@ export function pushRecentForm(pts) {
 
 export function computeTicketRevenue(club) {
   const CAREER = carreiraAtual();
-  return financas.ticketRevenue(club, ambiente.rngDaChave(`stadium:${club.id}`), stadiumUpgradeBonusFor(club), CAREER.recentForm);
+  const r = financas.ticketRevenue(club, ambiente.rngDaChave(`stadium:${club.id}`), stadiumUpgradeBonusFor(club), CAREER.recentForm);
+  // ECON-001b: na economia v2, o tíquete na escala do dia de jogo do clube.
+  const f = CAREER.economia && CAREER.economia.versao >= 2 && CAREER.economia.bilheteria;
+  return f ? { ...r, price: Math.round(r.price * f), revenue: Math.round(r.revenue * f / 1000) * 1000 } : r;
 }
 
 export const MAX_MATCH_LOG = 200;

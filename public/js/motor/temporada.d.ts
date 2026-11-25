@@ -19,9 +19,10 @@ export interface SeasonAward {
 }
 export interface Row { id: string | number; [k: string]: unknown }
 export function clamp(v: number, min: number, max: number): number;
-export function computeContractFields(overall: number, age: number, potential: number | null, rng: Rng, liveSeason: number): { wage: number; value: number; contractUntil: number };
-export function fairWageFor(p: { overall: number; age: number; potential?: number | null }): number;
-export function seasonMorale(p: SeasonPlayer): number;
+export interface EscalaEconomica { salario: number; valor: number }
+export function computeContractFields(overall: number, age: number, potential: number | null, rng: Rng, liveSeason: number, escala?: EscalaEconomica | null): { wage: number; value: number; contractUntil: number; escalaEco?: 1 };
+export function fairWageFor(p: { overall: number; age: number; potential?: number | null }, escala?: EscalaEconomica | null): number;
+export function seasonMorale(p: SeasonPlayer, escala?: EscalaEconomica | null): number;
 export function derivePotentialForAdult(overall: number, age: number, rng: Rng): number;
 export function potentialDeclineFor(age: number, group: Group): number;
 export function youthPotentialRoll(rng: Rng, bonus: number): number;

@@ -28,14 +28,16 @@ const { carreiraV2, signup, ensureDailyClaimed, globaisDoMotor, noMotor, base } 
   const vazio = await page.evaluate(() => (document.querySelector(".wk-note") || {}).textContent || "");
   check("1) O histórico abre vazio, sem nenhuma negociação ainda:", /Ainda não há compras, vendas ou empréstimos/.test(vazio), vazio);
 
-  // 2) Uma compra (proposta pelo valor de mercado, aceita) e uma venda
+  // 2) Uma compra (proposta acima do valor de mercado, aceita) e uma venda
   // (anúncio do mais barato do elenco, com proposta e aceite).
   await globaisDoMotor(page);
   const compra = await noMotor(page, async ({ CAREER, ponte, semana }) => {
     CAREER.finances.wageCap = 999999999; CAREER.finances.cash = 999999999;
     const l = semana.allMarketPlayers().filter((e) => !e.mine && e.p.value > 0).sort((a, b) => a.p.value - b.p.value);
     const e = l[Math.floor(l.length / 2)];
-    const r = await ponte.fazerProposta(String(e.club.id), e.p.id, e.p.value, 1);
+    // ECON-001b: com a demanda, quem compra de mercado mais barato paga acima do
+    // valor; aqui importa o histórico, então a proposta cobre a reserva.
+    const r = await ponte.fazerProposta(String(e.club.id), e.p.id, e.p.value * 4, 1);
     // FASE1-MER (13/11/2026): a resposta vem do sorteio com chave da oferta
     // (não de Math.random); o clube pode contrapor e o atleta pedir mais
     // salário. O técnico aceita o que vier, como em Minhas propostas.

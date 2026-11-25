@@ -28,6 +28,7 @@ import * as financas from "./financas.js";
 import * as mercado from "./mercado.js";
 import * as treino from "./treino.js";
 import * as temporada from "./temporada.js";
+import * as economia from "./economia.js";
 
 const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
 
@@ -52,7 +53,8 @@ const teamById = (id) => timePorId(id);
 const squadAvgOverallOf = (clubId) => forcaMediaDoElenco(clubId);
 const sortedStandings = () => sortRows(carreiraAtual().standings);
 const wageBillOf = (squad) => financas.wageBill(squad);
-const computeContractFields = (overall, age, potential, rng) => temporada.computeContractFields(overall, age, potential, rng, ambiente.temporadaReal());
+// ECON-001b: o prospecto do olheiro nasce na escala do seu clube (economia v2).
+const computeContractFields = (overall, age, potential, rng) => temporada.computeContractFields(overall, age, potential, rng, ambiente.temporadaReal(), economia.escalaDe(carreiraAtual(), carreiraAtual() && carreiraAtual().clubId));
 const youthPotentialRoll = (rng, bonus) => temporada.youthPotentialRoll(rng, bonus);
 
 export const SUBPOS_LABEL = { GOL: "Goleiro", DEF: "Defensor", MEI: "Meio-campo", ATA: "Atacante" };
@@ -90,7 +92,9 @@ export function viradaDoCaixaCpu() {
   Object.keys(CAREER.caixaCpu).forEach((id) => {
     const sq = leagueSquadFor(id);
     if (!sq.length) { delete CAREER.caixaCpu[id]; return; } // saiu das divisões com elenco (caiu para a D)
-    const normal = mercado.clubBudget({ squad: sq }).cash;
+    // ECON-001b: na economia v2, o normal é o caixa da base financeira do clube.
+    const eco = economia.economiaV2(CAREER) && CAREER.economia.escalas[id];
+    const normal = eco && eco[2] ? eco[2] : mercado.clubBudget({ squad: sq }).cash;
     CAREER.caixaCpu[id] = Math.round(CAREER.caixaCpu[id] + CAIXA_CPU_REVERSAO * (normal - CAREER.caixaCpu[id]));
   });
 }
@@ -242,7 +246,10 @@ export function applyCalendarMonthlyFinances(monthIdx) {
   const CAREER = carreiraAtual();
   const m = financas.monthEntries({
     squad: CAREER.squad, staffHired: !!(CAREER.technicalStaff && CAREER.technicalStaff.hired), scouts: CAREER.scouts,
-    sponsorship: CAREER.sponsorship, tvMonthly: CAREER.calendar.tvMonthly, month: MONTH_LONG[monthIdx],
+    sponsorship: CAREER.sponsorship, month: MONTH_LONG[monthIdx],
+    // ECON-001b: na economia v2, a TV e as despesas vêm da base do clube.
+    tvMonthly: economia.economiaV2(CAREER) ? CAREER.economia.clube.tvMensal : CAREER.calendar.tvMonthly,
+    despesasMensais: economia.economiaV2(CAREER) ? CAREER.economia.clube.despesasMensais : 0,
   });
   applyFinanceEntries(m.entries, CAREER.currentRound);
   return { wagePaid: m.wagePaid, sponsorIncome: m.income };
@@ -628,6 +635,24 @@ export function pendingOfferOutFor(playerId) {
   return (CAREER.pendingOffersOut || []).find((o) => String(o.playerId) === String(playerId));
 }
 
+// ECON-001b: a capacidade de compra do técnico pela regra da CPU (economia
+// v2): pagamento inicial com 1 mês de folha de reserva, espaço de folha e as
+// parcelas (as já assumidas e as novas) sem deixar o caixa negativo. Sem
+// economia v2: null (vale a regra de antes).
+export const MOTIVO_CAPACIDADE = {
+  orcamento: "O valor passa do orçamento de transferências.",
+  caixa: "O caixa não cobre o pagamento inicial e ainda guardar 1 mês de folha.",
+  folha: "O salário estouraria o teto salarial.",
+  parcelas: "Com as parcelas, o caixa ficaria negativo nas próximas semanas.",
+};
+export function capacidadeDoTecnico(taxa, parcelas, salario) {
+  const CAREER = carreiraAtual();
+  const parcelasPorRodada = [];
+  for (const i of CAREER.pendingInstallments || []) for (let r = 1; r <= i.roundsLeft; r++) parcelasPorRodada.push({ mes: r, valor: i.perRoundAmount });
+  const cap = economia.capacidadeNoJogo(CAREER, { caixa: CAREER.finances.cash, folha: financas.wageBill(CAREER.squad), teto: CAREER.finances.wageCap, parcelasPorRodada, fluxos: CAREER.economia && CAREER.economia.clube }, { taxa, parcelas, salarioMensal: salario });
+  return cap && { ...cap, mensagem: cap.motivo ? MOTIVO_CAPACIDADE[cap.motivo] : null };
+}
+
 export function finalizeIncomingPurchase(o) {
   const CAREER = carreiraAtual();
   const squad = leagueSquadFor(o.clubId);
@@ -649,6 +674,11 @@ export function finalizeIncomingPurchase(o) {
   }
   const perInstallment = Math.round(o.offerValue / o.installments / 1000) * 1000;
   const firstPayment = o.installments === 1 ? o.offerValue : perInstallment;
+  const cap = capacidadeDoTecnico(o.offerValue, o.installments, salario);
+  if (cap && !cap.ok && cap.motivo !== "folha") {
+    avisar(`${o.clubName} aceitou, mas ${cap.mensagem.charAt(0).toLowerCase()}${cap.mensagem.slice(1, -1)} — negociação cancelada.`, { type: "warn" });
+    return { ok: false, texto: `${cap.mensagem.slice(0, -1)} — negociação cancelada.`, motivo: cap.motivo };
+  }
   if (CAREER.finances.cash < firstPayment) {
     avisar(`${o.clubName} aceitou, mas seu caixa não cobre nem a 1ª parcela agora — negociação cancelada.`, { type: "warn" });
     return { ok: false, texto: "Seu caixa não cobre nem a 1ª parcela agora — negociação cancelada." };

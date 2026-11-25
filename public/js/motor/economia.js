@@ -286,9 +286,14 @@ export function ordemFinanceira(indice, liga, ids = null) {
 // ---------- a liga ----------
 // Base financeira de todos os clubes da liga: Map id -> economia (R$).
 export function economiaDaLiga(indice, liga, opts = {}) {
+  if (!PERFIS[liga]) return null;
+  return economiaDosClubes(liga, ordemFinanceira(indice, liga, opts.ids || null));
+}
+// O mesmo modelo para uma lista de clubes já ordenada pela posição
+// financeira (a do save: [{ id, nome }], maior primeiro).
+export function economiaDosClubes(liga, clubes) {
   const perfil = PERFIS[liga];
-  if (!perfil) return null;
-  const clubes = ordemFinanceira(indice, liga, opts.ids || null);
+  if (!perfil || !clubes.length) return null;
   const n = clubes.length;
   const k = expoenteDaLiga(perfil, n);
   const pesos = clubes.map((_, i) => (i + 1) ** -k);
@@ -416,4 +421,133 @@ export function quadro(indice, pedidos) {
     linhas.push({ rotulo: rotulo || base.nome, ...linha });
   }
   return linhas;
+}
+
+/* ---------- Entrega 2: a escala dos contratos (ECON-001b) ----------
+   O salário e o valor de cada atleta continuam saindo da regra de sempre
+   (overall, idade, potencial: temporada.computeContractFields) e passam por
+   uma escala:
+   - salário: a do clube (folha-base alvo ÷ folha do elenco pela regra de
+     sempre), para a mesma qualidade ganhar diferente em clubes diferentes;
+   - valor: a da liga com o porte do clube (escalaDeValor), para o preço
+     seguir o mercado em que o atleta está.
+   Fica no save (CAREER.economia, só em carreira nova): { versao, escalas:
+   { id: [salario, valor] }, ligas: { liga: valor }, clube }. Clube sem
+   escala (fora do save na criação) recebe a dele quando entra
+   (completarEscalas). Sem economia v2, tudo como antes. */
+// Chave da economia v2 nas carreiras novas (os testes de equivalência com a
+// cópia congelada da carreira antiga a desligam: a cópia não tem a economia).
+export const ECONOMIA_V2 = { ativa: true };
+export const ESCALA_LIMITES = { min: 0.25, max: 150 };
+const limitar = (x) => Math.max(ESCALA_LIMITES.min, Math.min(ESCALA_LIMITES.max, x));
+const mediana = (xs) => { const v = xs.slice().sort((a, b) => a - b); return v.length ? v[Math.floor(v.length / 2)] : 1; };
+
+export function economiaV2(CAREER) {
+  return !!(CAREER && CAREER.economia && CAREER.economia.versao >= 2);
+}
+// { salario, valor } do clube, ou null (sem economia v2 ou clube sem escala).
+export function escalaDe(CAREER, clubId) {
+  if (!economiaV2(CAREER)) return null;
+  const x = CAREER.economia.escalas[String(clubId)];
+  return x ? { salario: x[0], valor: x[1] } : null;
+}
+// Escala de valor: média geométrica entre a escala de salário do clube e a
+// da liga (o preço segue o mercado da liga, com o porte de quem vende), com
+// expoente 0,9 (a razão taxa ÷ salário anual cai nos mercados mais caros:
+// calibração pelos negócios de referência, docs/economia/03_Mercado_E2.md).
+export const EXPOENTE_VALOR = 1.0;
+export function escalaDeValor(doClube, daLiga) {
+  return limitar(Math.sqrt(doClube * daLiga) ** EXPOENTE_VALOR);
+}
+// Escalas de uma divisão: clubes = [{ id, nome, folhaLegada }] na ordem
+// financeira. A escala de salário da liga leva a soma das folhas do elenco
+// (pela regra de sempre) à soma das folhas-base da liga; a do clube é a da
+// liga pelo porte dele (receita ÷ mediana da liga)^PORTE_SALARIAL: o clube
+// mais rico paga mais pela mesma qualidade, e a folha real de cada clube sai
+// dos contratos (quem tem elenco melhor paga mais). Devolve { escalas: { id:
+// [salario, valor] }, salario, valor, economia: Map }.
+export const PORTE_SALARIAL = 0.4;
+export function escalasDaDivisao(liga, clubes) {
+  const eco = economiaDosClubes(liga, clubes);
+  if (!eco) return null;
+  const comElenco = clubes.filter((c) => c.folhaLegada > 0);
+  const alvo = comElenco.reduce((t, c) => t + eco.get(String(c.id)).folhaBaseMensal, 0);
+  const legado = comElenco.reduce((t, c) => t + c.folhaLegada, 0);
+  const daLiga = limitar(legado > 0 ? alvo / legado : 1);
+  const med = mediana([...eco.values()].map((e) => e.receitaAnual));
+  const r3 = (x) => Math.round(x * 1000) / 1000;
+  const escalas = {};
+  for (const c of clubes) {
+    const e = eco.get(String(c.id));
+    const sal = limitar(daLiga * (e.receitaAnual / med) ** PORTE_SALARIAL);
+    escalas[String(c.id)] = [r3(sal), r3(escalaDeValor(sal, daLiga))];
+  }
+  return { escalas, salario: r3(daLiga), valor: r3(escalaDeValor(daLiga, daLiga)), economia: eco };
+}
+// Demanda (Entrega 2): numa compra entre países (um dos clubes é de fora do
+// país do save, CAREER.exterior), quem compra de um mercado mais caro paga
+// parte da diferença de preço ao vendedor: o valor-base da reserva × (escala
+// de valor do comprador ÷ a do vendedor)^0,5, entre 1 e 3. No mercado
+// doméstico, o preço é o valor exibido (a escala do clube já tem o porte).
+// Comprador de mercado mais barato não ganha desconto. Sem v2: 1.
+export const DEMANDA = { expoente: 0.5, teto: 3 };
+export function fatorDeDemanda(CAREER, compradorId, vendedorId) {
+  if (!economiaV2(CAREER)) return 1;
+  const fora = (id) => !!(CAREER.exterior && CAREER.exterior.clubes && CAREER.exterior.clubes[String(id)]);
+  if (fora(compradorId) === fora(vendedorId)) return 1;
+  const c = CAREER.economia.escalas[String(compradorId)], v = CAREER.economia.escalas[String(vendedorId)];
+  if (!c || !v || !(v[1] > 0)) return 1;
+  return Math.max(1, Math.min(DEMANDA.teto, (c[1] / v[1]) ** DEMANDA.expoente));
+}
+// Aplica a escala no contrato de um atleta (uma vez: anota em p.escalaEco).
+export function aplicarEscalaNoAtleta(p, escala) {
+  if (!p || !escala || p.escalaEco) return p;
+  if (p.wage != null) p.wage = Math.max(100, Math.round((p.wage * escala.salario) / 100) * 100);
+  if (p.loanOriginalWage != null) p.loanOriginalWage = Math.max(100, Math.round((p.loanOriginalWage * escala.salario) / 100) * 100);
+  if (p.value != null) p.value = Math.max(1000, Math.round((p.value * escala.valor) / 1000) * 1000);
+  p.escalaEco = 1;
+  return p;
+}
+// Contrato novo já na escala (o p.escalaEco evita escalar de novo).
+export function contratoNaEscala(c, escala) {
+  if (!escala) return c;
+  return { ...c, wage: Math.max(100, Math.round((c.wage * escala.salario) / 100) * 100), value: Math.max(1000, Math.round((c.value * escala.valor) / 1000) * 1000), escalaEco: 1 };
+}
+
+// Fluxos do clube do técnico na economia v2 (mensais, R$), da base financeira.
+// folhaReal (mensal): a folha dos contratos; as despesas fecham a margem do
+// clube com ela (receita − folha real − despesas = resultado da base), para
+// não sobrar nem faltar dinheiro só porque a folha real difere da folha-base.
+export function fluxosDoClube(base, folhaReal = null) {
+  const despesasAnual = folhaReal == null ? base.despesasOperacionaisAnual
+    : Math.max(base.receitaAnual * REGRAS.despesasMinimas, base.receitaAnual - base.resultadoOperacionalAnual - folhaReal * 12);
+  return {
+    id: base.id, liga: base.liga, status: base.status,
+    receitaAnual: base.receitaAnual, tvMensal: arred((base.receitas.tvAnual + base.receitas.transicaoAnual) / 12),
+    comercialAnual: base.receitas.comercialAnual, jogoAnual: base.receitas.jogoAnual,
+    despesasMensais: arred(despesasAnual / 12), folhaBaseMensal: base.folhaBaseMensal,
+    orcamentoTransferencias: base.orcamentoTransferencias,
+  };
+}
+
+// Distribuição de preços (FIFA 2025, com taxa, em US$): fração até US$ 500
+// mil, até US$ 1 mi e acima de US$ 20 mi.
+export function distribuicaoDePrecos(precos) {
+  const usd = precos.filter((v) => v > 0).map((v) => v / CAMBIO.USD);
+  const n = usd.length || 1;
+  return { n: usd.length, ate500mil: usd.filter((v) => v <= 500e3).length / n, ate1mi: usd.filter((v) => v <= 1e6).length / n, acima20mi: usd.filter((v) => v > 20e6).length / n };
+}
+
+// Capacidade de compra no estado do jogo (técnico ou CPU), pela mesma regra:
+// caixa, folha (com o teto) e parcelas por rodada; receita e despesa da
+// rodada pela base mensal (÷ 4). Sem economia v2: null (regra de antes).
+export function capacidadeNoJogo(CAREER, { caixa, folha, teto, parcelasPorRodada = [], fluxos = null }, op) {
+  if (!economiaV2(CAREER)) return null;
+  const porRodada = (v) => (v || 0) / 4;
+  return capacidadeDeCompra({
+    caixa, folhaMensal: porRodada(folha), tetoMensal: porRodada(teto),
+    receitaMensal: fluxos ? porRodada(fluxos.receitaAnual / 12) : porRodada(folha) * 1.05,
+    despesaMensal: fluxos ? porRodada(fluxos.despesasMensais) : 0,
+    parcelasAPagar: parcelasPorRodada, recebiveis: [],
+  }, { taxa: op.taxa, parcelas: op.parcelas || 1, salarioMensal: porRodada(op.salarioMensal) });
 }
