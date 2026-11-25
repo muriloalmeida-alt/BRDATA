@@ -20,7 +20,97 @@ Status: M1 a M7 APROVADAS (Murilo, 24/11/2026: #154 mesclado por ele; #155 a
   (suíte completa 192/192).
 - M7, moeda e porte: PR #157, empilhado sobre o #156 (suíte completa
   192/192).
-Próximo: M8 (mercado e carreira do técnico no mundo).
+- M8, mercado e carreira do técnico no mundo: branch `claude/mundo-m8`,
+  empilhada sobre o #157.
+
+Relatório da M8a, mercado do mundo (24/11/2026)
+
+O que foi feito (`carreiramundo.js`):
+- `clubesDoMundo(CAREER, filtro)`: os clubes dos outros países (as 20 ligas
+  e o Brasil), sem os do país do técnico e sem o catálogo de 3ª. Filtros
+  por país, liga e nome.
+- `abrirClubeDoMundo(CAREER, id)`: o clube entra no save quando o técnico o
+  abre no mercado. O time vai para `CAREER.exterior.clubes` e o elenco para
+  `CAREER.leagueSquads`, montado do pacote pelo construtor de sempre
+  (`virada.buildLeagueSquad`), com o ajuste de nível da liga em que o clube
+  está agora e a idade avançada pelos anos do save.
+  - A partir daí, proposta, negociação, venda, empréstimo e a CPU do país
+    usam as regras de hoje, sem regra nova.
+  - O estado (`timePorId`) e o mercado (`marketTeamsPool`) passam a
+    enxergar os clubes de fora. Isso também libera a CPU do país a comprar
+    deles e a vender para eles (MUN-10).
+- `podarExterior` na virada: sai do save o clube de fora sem vínculo com o
+  técnico (atleta que veio do save, proposta, parcela ou empréstimo). Os
+  atletas do pacote que saíram dele ficam anotados em
+  `CAREER.exterior.saidas` e não reaparecem quando ele é aberto de novo.
+- Servidor: a rota `/api/career/mundo/elencos/<liga>` também serve as 3
+  divisões do Brasil.
+- Defeito achado na medição e corrigido: os jovens da base da CPU
+  (`basecpu_`) contavam como vínculo, e nenhum clube de fora saía do save.
+
+Testes:
+- `test_motor_mundo_carreira` 13/13. Caso novo: no Arsenal, a lista do
+  mundo (300+ clubes, sem ingleses, com o Brasil); o Real Madrid no save;
+  contratação de um atleta dele pelas regras de hoje; poda na virada; o
+  atleta não reaparece.
+- Fora da suíte: 2 temporadas na Premier League com 7 clubes de fora
+  abertos (Barcelona, Lyon, Talleres, Bragantino...). A CPU inglesa negociou
+  com eles. Ficaram no save só os 3 que receberam atletas do país do
+  técnico; o save foi a 840 KB de JSON.
+- Testes do motor: 39/39. Rota rápida: 54/54. Testes da v2: 47/47.
+
+Limites desta etapa:
+- os clubes de fora entram com o limite de elenco de "outra divisão" (16
+  atletas), como as outras divisões no Brasil;
+- a CPU de países no mundo leve não negocia entre si (não tem elencos);
+- a tela do mercado do mundo vem com as telas (M10).
+
+Relatório da M8b, propostas de emprego de outros países (24/11/2026)
+
+O que foi feito (`carreiramundo.js`):
+- `propostaDeFora`, chamada no fim da virada quando não há proposta da
+  própria liga (gancho `ganchosMundo.propostaDeFora`). Um clube de outro
+  país pode chamar o técnico:
+  - prestígio exigido pelo nível da liga do clube e pela força dele nela,
+    contra a reputação do técnico;
+  - sorteio entre os 5 mais exigentes que ele alcança.
+  - Só países com o mesmo tipo de calendário (Europa com Europa; América
+    do Sul e Brasil com América do Sul) e cuja temporada nova ainda não
+    começou: a troca cai entre temporadas dos dois lados.
+  - O Brasil, que tem caminho próprio na carreira, não entra como destino
+    nesta etapa.
+- Aceitar (`ponte.aceitarPropostaClube`, por `trocarDePais`):
+  - a carreira continua no clube novo, no mesmo mundo, com reputação e
+    histórico herdados;
+  - o país novo sai do mundo leve com a composição de agora (inclusive
+    clubes que subiram do catálogo, com a força guardada);
+  - o país antigo volta ao mundo leve com a composição da virada;
+  - saindo do Brasil, a entrada do Brasil no mundo leve recebe a
+    composição e a temporada da carreira.
+- `criarCarreiraNoMundo` aceita a composição do mundo leve (`mundoLeve`)
+  além da do pacote. Nova função `timeDoMundo`.
+
+Defeito achado e corrigido (vinha da M6b): na Argentina, da 2ª temporada
+em diante, o calendário do técnico lia as zonas no lugar errado
+(`CAREER.mundo.zonas` em vez da entrada do país no mundo leve), e clubes
+recém-promovidos podiam ficar sem jogo. Agora a Liga Profesional tem 30
+clubes com 32 jogos e a Primera Nacional 36 com 36, conferido no teste.
+
+Testes:
+- `test_motor_mundo_carreira` 14/14. Caso novo: o técnico do Arsenal
+  aceita um clube de outro país europeu e joga 8 rodadas lá; a Inglaterra
+  segue jogando no mundo leve.
+- O caso da Argentina passou a checar a temporada nova. A 1ª versão da
+  checagem supunha a Liga Profesional e falhou quando o clube caiu para a
+  Primera Nacional; corrigido.
+- Fora da suíte: saída do Brasil para o Equador.
+- Testes do motor: 39/39. Testes da v2: 47/47.
+
+Limites (propostas para o Murilo):
+1. Troca entre hemisférios (Europa ↔ América do Sul/Brasil): cairia no
+   meio da temporada do destino. Ideia para depois: a proposta vale "a
+   partir da próxima temporada" do destino, com o técnico terminando a sua.
+2. O Brasil como destino de um técnico que está fora dele.
 
 Relatório da M7, moeda e finanças por país (24/11/2026)
 

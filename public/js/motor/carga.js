@@ -1248,6 +1248,23 @@ export const comandosCarga = {
       let CAREER = carreiraAtual();
       const p = CAREER && (CAREER.clubProposals || [])[0];
       if (!p) return { ok: false, motivo: "sem-proposta" };
+      // MUNDO-001 (M8b): proposta de um clube de outro país do mundo.
+      if (p.mundo && estado.ganchosMundo.trocarDePais) {
+        if (ponte.criando) return { ok: false, motivo: "em-andamento" };
+        ponte.criando = true;
+        try {
+          endCurrentClubStint("accepted_proposal");
+          const r = await estado.ganchosMundo.trocarDePais(CAREER, p, fetchJSON);
+          estado.definirHerancaDoTecnico(null);
+          if (!r.ok) return r;
+          CAREER = carreiraAtual();
+          if (!CAREER || String(CAREER.clubId) !== String(p.clubId)) return { ok: false, motivo: "falha" };
+          const salvo = await persistCareer();
+          return salvo ? { ok: true } : { ok: false, motivo: ponte.erroGravacao || "falha" };
+        } finally {
+          ponte.criando = false;
+        }
+      }
       if (!ligaAtual().some((t) => String(t.id) === String(p.clubId))) return { ok: false, motivo: "clube-invalido" };
       if (ponte.criando) return { ok: false, motivo: "em-andamento" };
       ponte.criando = true;

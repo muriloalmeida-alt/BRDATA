@@ -132,7 +132,8 @@ check("servidor: índice com versão, elencos por liga, liga desconhecida e chav
   eq(JSON.stringify(srv.indice(mundo.versao)), JSON.stringify({ versao: mundo.versao, atual: true }), "cliente já atualizado");
   const e = srv.elencos("arg_liga_profesional");
   eq(Object.keys(e.playersByTeamId).length, 30, "elencos da Liga Profesional");
-  eq(srv.elencos("brasileirao"), null, "liga fora do mundo");
+  eq(Object.keys(srv.elencos("brasileirao").playersByTeamId).length, 20, "elencos do Brasil (mercado do mundo, M8)");
+  eq(srv.elencos("serie_d"), null, "liga fora do mundo");
   eq(srv.elencos("__proto__"), null, "nome reservado");
   eq(mundoAtivo({}), false, "sem a variável");
   eq(mundoAtivo({ MUNDO_ATIVO: "true" }), true, "com a variável");

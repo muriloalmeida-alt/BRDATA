@@ -40,7 +40,18 @@
 //  12) M7, moeda e porte: carreira no Arsenal em libras (texto.fmtBRL pelo
 //      câmbio fixo), caixa e caixa da CPU pelo porte relativo do pacote, TV
 //      mensal > 0, bilheteria pela capacidade real do estádio; Argentina em
-//      dólar; carreira no Brasil volta a R$.
+//      dólar; carreira no Brasil volta a R$;
+//  13) M8a, mercado do mundo: no Arsenal, a lista de clubes do mundo (sem os
+//      ingleses e sem o catálogo de 3ª); o Real Madrid entra no save com o
+//      elenco do pacote (time, elenco, mercado e CPU o enxergam); o técnico
+//      contrata um atleta dele pelas regras de hoje; na virada o clube sai do
+//      save e o atleta não reaparece quando ele é aberto de novo;
+//  14) M8b, proposta de outro país: o técnico do Arsenal (reputação alta)
+//      termina a temporada, recebe a proposta de um clube de outro país
+//      europeu e aceita pela ponte: a carreira segue no clube novo (país,
+//      divisões, calendário na semana do mundo, reputação e histórico
+//      herdados), a Inglaterra vai para o mundo leve (com a composição da
+//      virada) e segue jogando; 2 rodadas no clube novo.
 // Uso: node tests/unit/test_motor_mundo_carreira.js
 const assert = require("assert");
 const path = require("path");
@@ -393,6 +404,14 @@ const imp = (m) => import(pathToFileURL(path.join(ROOT, "public/js/motor", m)).h
     assert.ok(Object.values(C().mundoLeve.paises.AR.historico.arg_liga_profesional).some((h) => h.some((x) => x.ano === 2026)), "histórico do promedio sem 2026");
     assert.deepStrictEqual(C().mundo.planos, {}, "planos da temporada anterior ficaram no save");
     assert.strictEqual(C().seasonYear, 2027);
+    // Temporada 2027 com as zonas novas: todo clube da liga joga os 32 jogos.
+    const porClube = {};
+    for (const js of Object.values(C().schedule)) for (const m of js) for (const x of [m.home, m.away]) porClube[x] = (porClube[x] || 0) + 1;
+    // A liga do técnico na temporada nova (ele pode ter caído para a Primera Nacional).
+    const tamanho = C().divisionTeams[C().competitionId].length;
+    const jogos = C().competitionId === "arg_liga_profesional" ? 32 : 36;
+    assert.strictEqual(Object.keys(porClube).length, tamanho, "clube sem jogo na temporada nova");
+    assert.ok(Object.values(porClube).every((q) => q === jogos), "jogos por clube na temporada nova");
     // Segunda uruguaia: rodadas de folga no Competencia.
     const uru = indice.clubes.filter((c) => c.liga === "uru_segunda")[0];
     await CMu.criarCarreiraNoMundo({ indice, liga: "uru_segunda", clubId: uru.id, elencosDaLiga });
@@ -491,6 +510,110 @@ const imp = (m) => import(pathToFileURL(path.join(ROOT, "public/js/motor", m)).h
     assert.ok(/US\$/.test(texto.fmtBRL(5500000)), texto.fmtBRL(5500000));
     texto.definirMoeda(null);
     assert.ok(/R\$/.test(texto.fmtBRL(1000)), "Brasil em reais");
+  });
+
+  await check("M8a: mercado do mundo (clube de fora no save, contratação e poda)", async () => {
+    const v2 = await imp("v2.js");
+    const semana = await imp("semana.js");
+    const CMu = await imp("carreiramundo.js");
+    const clube = await imp("clube.js");
+    const negociacao = await imp("negociacao.js");
+    const elencosDaLiga = async (liga) => JSON.parse(fs.readFileSync(path.join(ROOT, `server/frozen-catalog/snapshot-${liga}.json`), "utf8")).playersByTeamId;
+    semana.definirAmbiente({ ...v2.ambienteSemPagina(), buscarJogadores: async () => [], indiceDoMundo: null, elencosDoMundo: elencosDaLiga, armazem: { pedir: async () => ({ ok: true }) } });
+    const ars = indice.clubes.find((c) => c.liga === "premier_league" && /Arsenal/.test(c.nome));
+    const C = await CMu.criarCarreiraNoMundo({ indice, liga: "premier_league", clubId: ars.id, elencosDaLiga });
+    const lista = CMu.clubesDoMundo(C);
+    assert.ok(lista.length >= 300, `clubes do mundo: ${lista.length}`);
+    assert.ok(lista.every((x) => x.pais !== "GB-ENG"), "clube inglês na lista do mundo");
+    assert.ok(lista.some((x) => x.pais === "BR"), "sem o Brasil na lista");
+    const real = indice.clubes.find((c) => /Real Madrid/.test(c.nome) && c.liga === "la_liga");
+    assert.ok(CMu.clubesDoMundo(C, { pais: "ES", texto: "real madrid" }).some((x) => x.id === String(real.id)));
+    const r = await CMu.abrirClubeDoMundo(C, real.id);
+    assert.ok(r.ok && r.jogadores >= 12, `abrir: ${JSON.stringify(r)}`);
+    const id = String(real.id);
+    assert.ok(C.leagueSquads[id] && C.exterior.clubes[id]);
+    assert.strictEqual(estado.timePorId(id).name, real.nome);
+    assert.ok(semana.marketTeamsPool().some((t) => String(t.id) === id), "o mercado não enxerga o clube de fora");
+    const mediaReal = C.leagueSquads[id].reduce((s, p) => s + p.overall, 0) / C.leagueSquads[id].length;
+    assert.ok(mediaReal > 65, `overall do Real Madrid ${mediaReal.toFixed(1)}`);
+    // Contratação pelas regras de hoje: proposta aceita (valor alto, à vista)
+    // e a compra fechada como numa proposta aceita.
+    const alvo = C.leagueSquads[id].slice().sort((a, b) => a.overall - b.overall)[0];
+    C.finances.cash = 1e12; C.finances.wageCap = 1e9;
+    const sub = clube.submitOfferOut(id, alvo.id, alvo.value * 3, 1);
+    assert.ok(sub.ok, `proposta: ${JSON.stringify(sub).slice(0, 120)}`);
+    const fim = semana.finalizeIncomingPurchase(sub.offer);
+    assert.ok(fim.ok !== false, "compra não fechou");
+    assert.ok(C.squad.some((p) => p.id === alvo.id), "o atleta não chegou");
+    assert.ok(!C.leagueSquads[id].some((p) => p.id === alvo.id));
+    // Na virada, o clube sai do save; o atleta fica anotado.
+    C.pendingOffersOut = (C.pendingOffersOut || []).filter((o) => String(o.clubId) !== id);
+    C.pendingInstallments = []; C.pendingReceivables = [];
+    assert.strictEqual(CMu.podarExterior(C), 1);
+    assert.ok(!C.leagueSquads[id] && !C.exterior.clubes[id]);
+    assert.ok(C.exterior.saidas[id].some((x) => `real_${x}` === alvo.id), "saída não anotada");
+    await CMu.abrirClubeDoMundo(C, real.id);
+    assert.ok(!C.leagueSquads[id].some((p) => p.id === alvo.id), "o atleta reapareceu no clube antigo");
+    void negociacao;
+  });
+
+  await check("M8b: proposta de clube de outro país e troca de país", async () => {
+    const v2 = await imp("v2.js");
+    const semana = await imp("semana.js");
+    const CMu = await imp("carreiramundo.js");
+    const ponteMod = await imp("ponte.js");
+    const elencosDaLiga = async (liga) => JSON.parse(fs.readFileSync(path.join(ROOT, `server/frozen-catalog/snapshot-${liga}.json`), "utf8")).playersByTeamId;
+    semana.definirAmbiente({ ...v2.ambienteSemPagina(), buscarJogadores: async () => [], indiceDoMundo: null, elencosDoMundo: elencosDaLiga, armazem: { pedir: async () => ({ ok: true }) } });
+    const ars = indice.clubes.find((c) => c.liga === "premier_league" && /Arsenal/.test(c.nome));
+    await CMu.criarCarreiraNoMundo({ indice, liga: "premier_league", clubId: ars.id, elencosDaLiga });
+    const P = v2.criarPonte();
+    ponteMod.ponte.pronta = true;
+    const C = () => estado.carreiraAtual();
+    const ate = async (f, ms) => { const t = Date.now(); while (Date.now() - t < ms) { const v = f(); if (v) return v; await new Promise((r) => setTimeout(r, 5)); } return null; };
+    const rodada = async () => {
+      await P.avancarSemana(true);
+      let i = P.iniciar();
+      if (i && i.motivo === "escalacao") { await P.escalarAutomaticamente(true); i = P.iniciar(); }
+      assert.ok(i && i.ok, `rodada ${C().currentRound}: ${i && i.motivo}`);
+      if (!i.aoVivo) return;
+      P.pularParaFim();
+      await ate(() => { const e = P.estado(); return e.fase === "encerrada" && e.gravada != null ? e : null; }, 30000);
+      let etapa = P.iniciarPosJogo();
+      for (let k = 0; etapa && etapa.ok !== false && etapa.etapa !== "fim" && k < 12; k++) {
+        if (etapa.etapa === "coletiva") etapa = await P.responderColetiva(etapa.respostas[0].letra);
+        else if (etapa.etapa === "noticias" || etapa.etapa === "resultados") etapa = P.concluirEtapa(etapa.etapa);
+        else if (etapa.etapa === "proposta") etapa = await P.responderProposta("recusar");
+        else break;
+      }
+      P.encerrarPosJogo();
+    };
+    while (C().currentRound <= C().rodadasLiga) await rodada();
+    C().reputation = 95;
+    C().clubProposals = [];
+    const r = await P.proximaTemporada();
+    assert.ok(r.ok && !r.demitido, "virada");
+    // Se veio proposta da própria liga, troca pela de fora para o teste.
+    if (!(C().clubProposals[0] && C().clubProposals[0].mundo)) { C().clubProposals = []; CMu.propostaDeFora(C()); }
+    const prop = C().clubProposals[0];
+    assert.ok(prop && prop.mundo, "sem proposta de outro país");
+    assert.ok(["ES", "IT", "DE", "FR"].includes(prop.mundo.pais), `país da proposta: ${prop.mundo.pais}`);
+    const historicoAntes = (C().clubHistory || []).length;
+    const reputacaoAntes = C().reputation;
+    const ac = await P.aceitarPropostaClube();
+    assert.ok(ac.ok, `aceitar: ${JSON.stringify(ac)}`);
+    assert.strictEqual(C().clubId, prop.clubId);
+    assert.strictEqual(C().mundo.pais, prop.mundo.pais);
+    assert.strictEqual(C().competitionId, prop.mundo.liga);
+    assert.deepStrictEqual(C().mundoLeve.ativos, [prop.mundo.pais]);
+    assert.strictEqual(C().reputation, reputacaoAntes, "reputação herdada");
+    assert.strictEqual((C().clubHistory || []).length, historicoAntes + 1, "passagem pelo Arsenal no histórico");
+    assert.ok(C().mundoLeve.paises["GB-ENG"].ligas.premier_league.clubes.some((x) => String(x) === String(ars.id)), "a Inglaterra não está no mundo leve com a composição nova");
+    const w = C().calendar.weeks[C().calendar.idx];
+    assert.ok(`${w.a}-${w.d}` >= C().mundoLeve.semana, "o calendário voltou no tempo");
+    await rodada(); await rodada();
+    const ingl = C().mundoLeve.paises["GB-ENG"].ligas.premier_league.placares.replace(/\.\./g, "").length;
+    for (let k = 0; k < 6; k++) await rodada();
+    assert.ok(C().mundoLeve.paises["GB-ENG"].ligas.premier_league.placares.replace(/\.\./g, "").length > ingl, "a Inglaterra parou no mundo leve");
   });
 
   console.log(`\n${n - failed}/${n} ok`);
