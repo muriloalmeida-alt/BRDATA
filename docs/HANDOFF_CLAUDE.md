@@ -11,10 +11,10 @@ Demandas vigentes
 
 MUNDO-001 — Ligas da Europa e da América do Sul, em paralelo, com continentais
 
-Status: M1 a M8 APROVADAS e mescladas (Murilo: #154 mesclado por ele;
+Status: M1 a M9 APROVADAS e mescladas (Murilo: #154 mesclado por ele;
 #155 a #157 com "Vamos fazer os merges pendentes?", 24/11/2026; #158 com
-"158 aprovado", 25/11/2026). M9 feita (M9a, M9b e M9c), em revisão no PR
-da branch `claude/mundo-m9`.
+"158 aprovado" e #159 com "Aprovado", 25/11/2026). M10 em implementação
+(branch `claude/mundo-m10`).
 - Etapas M1 a M6a: PR #154 (suíte completa 191/191), mesclado.
 - M6b, passos 1 a 4: PR #155, empilhado sobre o #154 (suíte completa
   191/192; a falha, instável e sem relação com o mundo, está no PR).
@@ -113,6 +113,58 @@ Limites (propostas para o Murilo):
    meio da temporada do destino. Ideia para depois: a proposta vale "a
    partir da próxima temporada" do destino, com o técnico terminando a sua.
 2. O Brasil como destino de um técnico que está fora dele.
+
+Relatório da M10a, motor das copas da UEFA (25/11/2026)
+
+A M10 foi dividida em quatro partes:
+- M10a: o motor das copas da UEFA;
+- M10b: classificados, clubes do 5º pacote e das outras associações,
+  coeficiente, relógio, prêmios e o jogo do técnico;
+- M10c: telas da v2 (seletor do novo save, calendário, tabelas por fase,
+  ligas do mundo, grupos e chaves, mercado com filtros);
+- M10d: liberação (mundo ligado, índice offline, escudos andinos).
+
+O que foi feito: `public/js/motor/uefa.js` (+ `.d.ts`), módulo puro e
+serializável. Champions, Europa League e Conference de uma edição andam
+juntas, pelo regulamento do pacote:
+- Qualificação (Q1, Q2, Q3, PO): cabeças de chave pelo coeficiente, sem a
+  mesma associação, mando da ida sorteado; o derrotado desce pelos fluxos
+  do pacote (Champions Q1 → Conference Q2, Q2 → Europa League Q3, Q3 → EL
+  PO, PO → fase de liga da EL; EL Q1/Q2/Q3/PO → Conference).
+- Fase de liga de 36:
+  - Champions e Europa League: 4 potes de 9, 2 adversários de cada pote
+    (1 em casa e 1 fora), 8 rodadas;
+  - Conference: 6 potes de 6, 1 adversário de cada pote, casa e fora por
+    par de potes, 6 rodadas;
+  - sem clube da mesma associação, no máximo 2 de outra associação, sem
+    confronto repetido;
+  - sorteio por busca com volta; rodadas por emparelhamentos perfeitos;
+  - tabela pelos critérios do pacote (saldo, gols, gols fora, vitórias,
+    vitórias fora, pontos/saldo/gols dos adversários, coeficiente).
+- Mata-mata: playoff 9º–24º pelos blocos (volta do 9º–16º em casa);
+  oitavas pelos blocos (volta do 1º–8º); ida e volta por saldo, prorrogação
+  e pênaltis; final neutra em jogo único.
+- Regras de jogo (faltam no pacote o Anexo A, o Anexo B e a circular de
+  premiação 2026/27):
+  - qualificação num caminho só, sem separar campeões e liga;
+  - árvore depois das oitavas pela posição: quartas 1×8, 4×5, 2×7, 3×6;
+    semis (1×8)×(4×5) e (2×7)×(3×6); a volta é de quem herdou a melhor
+    posição;
+  - premiação por fase em EUR (`PREMIACAO_UEFA`), próxima à de 2024/25:
+    participação, vitória e empate na fase de liga, cada fase do mata-mata
+    e o título; chave única por crédito.
+- Desempenho: ~25 ms para montar e jogar uma edição inteira (~470 jogos).
+
+Testes: `test_motor_uefa` 7/7:
+- fases de liga com 144/144/108 jogos, mandos, adversários por pote e uma
+  partida por rodada;
+- restrições do sorteio;
+- fluxos da qualificação;
+- blocos e mandos do mata-mata, final neutra;
+- critérios da tabela;
+- premiação sem duplicar;
+- determinismo, plano relido no meio, edição de 2027/28 e 30 edições
+  aleatórias.
 
 Relatório da M9a, motor das copas da CONMEBOL (25/11/2026)
 
