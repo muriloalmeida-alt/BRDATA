@@ -12,14 +12,14 @@
 // - /carreira/mercado/historico: Histórico (CAP05-T07, 37 col. 2 e 3);
 // - /carreira/mercado/oferta: proposta pendente por um jogador seu (CAP05-T05, 18).
 import { useCallback, useEffect, useState } from "react";
-import { MarketGateway, newOpId, type LoanPrep, type OfferPreview, type Preview } from "../adapters/market.ts";
+import { MarketGateway, newOpId, type LoanPrep, type OfferPreview, type Preview, type WorldMarket } from "../adapters/market.ts";
 import { DIVISION, NO_MARKET_FILTERS, ROLE, ROLES, YEARS, buildHistory, buildNegotiation, buildSales, buildTarget, findTarget, initialOffer, installmentsLabel, loanWage, marketFiltersActive, marketList, saleOf, wageHint, yearsLabel,
   type FreeAgent, type HistoryTab, type LoanClause, type LoanDuration, type MarketFilters, type MarketInfo, type Range } from "../domain/market.ts";
 import { POSITION } from "../domain/squadplus.ts";
 import { moneyShort } from "../domain/home.ts";
 import { shortName } from "../domain/lineup.ts";
 import type { Career, OfferRole, Player } from "../domain/types.ts";
-import { Jersey } from "../ui/components.tsx";
+import { Crest, Jersey } from "../ui/components.tsx";
 import { Sheet } from "../ui/dialog.tsx";
 import { IconCheck, IconChevron } from "../ui/icons.tsx";
 import { BASE, Link, goBackTo, navigate } from "../ui/router.tsx";
@@ -31,6 +31,7 @@ import "./week.css";
 import "./prep.css";
 import "./squadplus.css";
 import "./market.css";
+import "./access.css"; // ac-chip (país e liga)
 
 const M = `${BASE}/mercado`;
 type Row = { label: string; value: string; tone?: "pos" | "neg" };
@@ -175,6 +176,7 @@ export function Market({ career }: { career: Career }) {
             <NavRow to={`${M}/vendas`} title="Minhas vendas" value={sales ? String(sales) : null} />
             <NavRow to={`${M}/emprestimos`} title="Meus jogadores para empréstimo" value={loanOffers ? `${loanOffers} proposta${loanOffers === 1 ? "" : "s"}` : null} />
             <NavRow to={`${M}/historico`} title="Histórico de negociações" />
+            {career.mundoLeve ? <NavRow to={`${M}/mundo`} title="Clubes de outros países" sub="Filtros de país e liga" /> : null}
             <NavRow to={`${M}/agentes-livres`} title="Agentes livres" sub="Sem taxa de transferência, só o salário" value={(i.agentesLivres || []).length ? String((i.agentesLivres || []).length) : null} />
           </nav>
           <div className="sq-tools mk-tools">
@@ -1017,6 +1019,75 @@ export function FreeAgents({ onChanged }: { onChanged: () => Promise<void> | voi
         <Status msg={msg} err={err} />
         <button type="button" className="link-back" onClick={() => goBackTo(M)}>Voltar ao mercado</button>
       </div>
+    </div>
+  );
+}
+
+// ---------- Clubes de outros países (MUNDO-001, M10c-3, MUN-15) ----------
+// /carreira/mercado/mundo (?pais=&liga=): os clubes do mundo por país e liga;
+// abrir um clube traz o elenco dele ao save (os jogadores entram no mercado,
+// com as regras de sempre) e mostra o elenco.
+export function WorldMarketScreen({ pais, liga, onChanged }: { pais: string | null; liga: string | null; onChanged: () => Promise<void> }) {
+  const [q, setQ] = useState("");
+  const [st, setSt] = useState<{ kind: "loading" } | { kind: "ok"; v: WorldMarket | null } | { kind: "error" }>({ kind: "loading" });
+  const [opening, setOpening] = useState<string | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+  useEffect(() => {
+    let alive = true;
+    setSt({ kind: "loading" });
+    MarketGateway.worldClubs({ pais: pais || undefined, liga: liga || undefined }).then((v) => { if (alive) setSt({ kind: "ok", v }); }, () => { if (alive) setSt({ kind: "error" }); });
+    return () => { alive = false; };
+  }, [pais, liga]);
+  const back = M;
+  if (st.kind === "loading") return <div className="state" role="status" aria-live="polite"><div className="state-line" />Carregando os clubes…</div>;
+  if (st.kind === "error" || !st.v) return <div className="state" role="alert">{st.kind === "error" ? "Não foi possível carregar os clubes." : "O mundo não está ligado neste save."}<button className="state-btn" onClick={() => navigate(M, { replace: true })}>Voltar ao mercado</button></div>;
+  const v = st.v;
+  const pc = v.paises.find((x) => x.codigo === pais) || null;
+  const go = (p: string | null, l: string | null) => navigate(`${M}/mundo${p ? `?pais=${encodeURIComponent(p)}${l ? `&liga=${encodeURIComponent(l)}` : ""}` : ""}`, { replace: true });
+  const lista = v.clubes.filter((c) => !q.trim() || c.nome.toLowerCase().includes(q.trim().toLowerCase()));
+  const abrir = async (id: string) => {
+    if (opening) return;
+    setOpening(id); setErr(null);
+    const r = await MarketGateway.openWorldClub(id);
+    if (!r.ok) { setOpening(null); setErr(r.motivo === "fora-do-mundo" ? "Esse clube não está no mundo deste save." : errText(r)); return; }
+    await onChanged();
+    navigate(`${BASE}/clube-elenco?id=${encodeURIComponent(id)}`);
+  };
+  return (
+    <div className="wk pr">
+      <Head ctx="Mercado" back={back} />
+      <h1 className="screen-title">Clubes de outros países.</h1>
+      <span className="tb-bar" aria-hidden="true" />
+      <p className="screen-sub">Abra um clube para ver o elenco e negociar pelas regras de sempre.</p>
+      <div className="mk-world-chips" role="radiogroup" aria-label="País">
+        <button type="button" role="radio" aria-checked={!pc} className={`ac-chip${!pc ? " is-on" : ""}`} onClick={() => go(null, null)}>Todos</button>
+        {v.paises.map((p) => <button key={p.codigo} type="button" role="radio" aria-checked={pc?.codigo === p.codigo} className={`ac-chip${pc?.codigo === p.codigo ? " is-on" : ""}`} onClick={() => go(p.codigo, null)}>{p.nome}</button>)}
+      </div>
+      {pc && (
+        <div className="mk-world-chips" role="radiogroup" aria-label="Liga">
+          <button type="button" role="radio" aria-checked={!liga} className={`ac-chip${!liga ? " is-on" : ""}`} onClick={() => go(pc.codigo, null)}>Todas</button>
+          {pc.ligas.map((l) => <button key={l.id} type="button" role="radio" aria-checked={liga === l.id} className={`ac-chip${liga === l.id ? " is-on" : ""}`} onClick={() => go(pc.codigo, l.id)}>{l.nome}</button>)}
+        </div>
+      )}
+      <div className="sq-tools mk-tools">
+        <label className="sr-only" htmlFor="mkw-q">Buscar clube</label>
+        <input id="mkw-q" className="pr-input sq-search" type="search" placeholder="Buscar clube" value={q} onChange={(e) => setQ(e.target.value)} />
+      </div>
+      {err && <p className="inline-error" role="alert">{err}</p>}
+      <section className="sq-sec" aria-label="Clubes">
+        <p className="sq-count">{lista.length ? `${lista.length} clube${lista.length === 1 ? "" : "s"}.` : "Nenhum clube encontrado."}</p>
+        <ul className="mk-list">
+          {lista.slice(0, 120).map((c) => (
+            <li key={c.id}>
+              <button type="button" className="row sp-player mk-world-row" disabled={!!opening} onClick={() => abrir(c.id)}>
+                <Crest team={{ id: c.id, name: c.nome, short: c.sigla || undefined, logo: c.escudo || undefined }} size={36} />
+                <span className="row-body"><span className="row-title">{c.nome}</span><span className="row-sub">{c.ligaNome}{c.noSave ? " · elenco no save" : ""}{opening === c.id ? " · carregando o elenco…" : ""}</span></span>
+                <IconChevron className="row-chevron" />
+              </button>
+            </li>
+          ))}
+        </ul>
+      </section>
     </div>
   );
 }

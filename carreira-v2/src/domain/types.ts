@@ -127,6 +127,7 @@ export interface Career {
   rodadasLiga?: number;
   nomesDasLigas?: Record<string, string>;
   divisoes?: string[];
+  mundoLeve?: unknown;
   // MUNDO-001: clubes de fora no save (M8) e copas continentais (M9).
   exterior?: { clubes: Record<string, Team> };
   copas?: { conmebol?: { pendente?: ContinentalPending | null; edicao?: unknown; historico?: unknown[] }; uefa?: { pendente?: ContinentalPending | null; edicao?: unknown; historico?: unknown[] } };

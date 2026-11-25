@@ -7,7 +7,7 @@ import { useEffect, useState } from "react";
 import { buildAwards, buildCupDetail, buildCupEditions, buildH2H, buildStats, type CupSide, type StatsPeriod, type StatsScope } from "../domain/games.ts";
 import type { Career, Team } from "../domain/types.ts";
 import { ContinentalGateway } from "../adapters/continental.ts";
-import { defaultCup, defaultPhase, duelOutcome, duelScore, type CClub, type CDuel, type CRow, type ContinentalView } from "../domain/continental.ts";
+import { defaultCup, defaultPhase, duelOutcome, duelScore, type CClub, type CDuel, type CRow, type ContinentalView, type WorldView } from "../domain/continental.ts";
 import { Crest } from "../ui/components.tsx";
 import { Sheet } from "../ui/dialog.tsx";
 import { IconCheck, IconChevron } from "../ui/icons.tsx";
@@ -261,6 +261,62 @@ export function ContinentalScreen({ copa, fase }: { copa: string | null; fase: s
             const x = h.campeoes.find((c) => c.copa === cur.id);
             return x ? <Rows key={h.ano} rows={[{ label: h.ano, value: `${x.campeao.nome}${x.campeao.meu ? " ★" : ""} (vice: ${x.vice.nome})` }]} /> : null;
           })}
+        </section>
+      )}
+    </div>
+  );
+}
+
+// ---------- Ligas do mundo (MUNDO-001, M10c-3, MUN-15) ----------
+// /carreira/mundo (?pais=&liga=): a tabela da fase em andamento (por zona,
+// quando há), os últimos resultados e os campeões de cada liga dos outros
+// países. Dados do motor (ligasDoMundoNoSave).
+export function WorldScreen({ pais, liga }: { pais: string | null; liga: string | null }) {
+  const [st, setSt] = useState<{ kind: "loading" } | { kind: "ok"; v: WorldView | null } | { kind: "error" }>({ kind: "loading" });
+  const [n, setN] = useState(0);
+  useEffect(() => {
+    let alive = true;
+    setSt({ kind: "loading" });
+    ContinentalGateway.world().then((v) => { if (alive) setSt({ kind: "ok", v }); }, () => { if (alive) setSt({ kind: "error" }); });
+    return () => { alive = false; };
+  }, [n]);
+  const back = `${BASE}/jogos`;
+  if (st.kind === "loading") return <div className="state" role="status" aria-live="polite"><div className="state-line" />Carregando as ligas…</div>;
+  if (st.kind === "error") return <div className="state" role="alert">Não foi possível carregar as ligas.<button className="state-btn" onClick={() => setN((x) => x + 1)}>Tentar novamente</button></div>;
+  const v = st.v;
+  if (!v || !v.paises.length) return (
+    <div className="wk pr"><Head ctx="Jogos" back={back} /><h1 className="screen-title">Ligas do mundo.</h1><span className="tb-bar" aria-hidden="true" />
+      <p className="screen-sub">O mundo não está ligado neste save.</p></div>
+  );
+  const p = v.paises.find((x) => x.codigo === pais) || v.paises[0];
+  const l = p.ligas.find((x) => x.id === liga) || p.ligas[0];
+  const go = (c: string, lg?: string) => navigate(`${BASE}/mundo?pais=${encodeURIComponent(c)}${lg ? `&liga=${encodeURIComponent(lg)}` : ""}`, { replace: true });
+  return (
+    <div className="wk pr">
+      <Head ctx="Jogos" back={back} />
+      <h1 className="screen-title">{l.nome}.</h1>
+      <span className="tb-bar" aria-hidden="true" />
+      <p className="screen-sub">{p.nome} · {l.fase ? `${l.fase} · ` : ""}{l.jogados} jogos disputados</p>
+      <section className="wk-sec pr-pad">
+        <Picker id="wd-p" label="País" value={p.codigo} options={v.paises.map((x) => ({ id: x.codigo, label: x.nome }))} onPick={(id) => go(id)} />
+        <Picker id="wd-l" label="Liga" value={l.id} options={p.ligas.map((x) => ({ id: x.id, label: x.nome }))} onPick={(id) => go(p.codigo, id)} />
+      </section>
+      {l.final ? (
+        <section className="wk-sec" aria-labelledby="wd-f"><h2 className="kicker-caps" id="wd-f">Classificação final {l.final.ano}</h2>
+          <p className="wk-note">A temporada nova ainda não começou.</p>
+          <ol className="wd-final">{l.final.linhas.map((r) => <li key={r.id} className={r.meu ? "is-mine" : undefined}><span className="ct-pos">{r.pos}</span><Crest team={asClubTeam(r)} size={22} /><span>{r.nome}</span></li>)}</ol>
+        </section>
+      ) : l.tabelas.map((t, i) => (
+        <section key={i} className="wk-sec" aria-labelledby={`wd-t${i}`}><h2 className="kicker-caps" id={`wd-t${i}`}>{t.titulo || "Classificação"}</h2><CTable rows={t.linhas} label={t.titulo || l.nome} /></section>
+      ))}
+      {l.ultimos.length > 0 && (
+        <section className="wk-sec" aria-labelledby="wd-r"><h2 className="kicker-caps" id="wd-r">Últimos resultados</h2>
+          <Rows rows={l.ultimos.map((r) => ({ label: `${r.casa.nome} × ${r.fora.nome}`, value: `${r.gh} × ${r.ga}` }))} />
+        </section>
+      )}
+      {l.campeoes.length > 0 && (
+        <section className="wk-sec" aria-labelledby="wd-c"><h2 className="kicker-caps" id="wd-c">Campeões</h2>
+          <Rows rows={l.campeoes.map((c) => ({ label: c.ano, value: c.campeao.nome }))} />
         </section>
       )}
     </div>

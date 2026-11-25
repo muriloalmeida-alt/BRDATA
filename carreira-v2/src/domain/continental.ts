@@ -50,3 +50,18 @@ export function continentalSummary(career: { copas?: { conmebol?: { pendente?: C
   if (p) return `${p.nomeCopa}: jogo nesta semana contra ${p.adversario.nome}`;
   return "Grupos, chaves e campeões";
 }
+
+// ---------- Ligas do mundo (M10c-3) ----------
+export interface WLeague {
+  id: string; nome: string; fase: string | null; jogados: number;
+  tabelas: { titulo: string | null; linhas: CRow[] }[];
+  ultimos: { casa: CClub; fora: CClub; gh: number; ga: number }[];
+  campeoes: { ano: string; campeao: CClub }[];
+  final: { ano: string; linhas: (CClub & { pos: number })[] } | null;
+}
+export interface WCountry { codigo: string; nome: string; ano: number; ligas: WLeague[] }
+export interface WorldView { semana: string; paises: WCountry[] }
+// Resumo na aba Jogos: há ligas do mundo no save?
+export function worldSummary(career: { mundoLeve?: unknown }): string | null {
+  return career.mundoLeve ? "Tabelas, resultados e campeões dos outros países" : null;
+}

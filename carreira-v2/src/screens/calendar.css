@@ -25,3 +25,4 @@
 .cal-empty { margin: 24px var(--bd-gutter) 0; font-size: 16px; color: var(--bd-muted); }
 
 .cal-foot { position: sticky; bottom: 0; margin-top: auto; padding: 16px var(--bd-gutter) calc(10px + var(--bd-safe-bottom)); background: linear-gradient(180deg, rgba(8, 14, 24, 0) 0%, var(--bd-bg) 26%); }
+.cal-comp--continental { color: var(--bd-gold); }

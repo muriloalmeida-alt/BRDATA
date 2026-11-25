@@ -20,3 +20,8 @@
 .mk-log dd { text-align: left; color: var(--bd-text); }
 .pr .cal-foot a.cta { display: flex; align-items: center; justify-content: center; text-decoration: none; }
 .mk-impact { margin-left: 0; margin-right: 0; }
+/* MUNDO-001 (M10c-3): clubes de outros países. */
+.mk-world-chips { display: flex; gap: 8px; overflow-x: auto; margin: 12px 0 0; padding: 0 var(--bd-gutter) 4px; scrollbar-width: none; }
+.mk-world-chips::-webkit-scrollbar { display: none; }
+.mk-world-row { width: 100%; border: 0; background: none; color: inherit; text-align: left; font: inherit; cursor: pointer; }
+.mk-world-row:disabled { opacity: .6; cursor: default; }

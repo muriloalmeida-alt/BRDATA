@@ -14,8 +14,9 @@ MUNDO-001 — Ligas da Europa e da América do Sul, em paralelo, com continentai
 Status: M1 a M9 APROVADAS e mescladas (Murilo: #154 mesclado por ele;
 #155 a #157 com "Vamos fazer os merges pendentes?", 24/11/2026; #158 com
 "158 aprovado" e #159 com "Aprovado", 25/11/2026). M10a e M10b
-aprovadas e mescladas (#160 e #161, "Aprovado", 25/11/2026). M10c em
-implementação (branch `claude/mundo-m10c`).
+aprovadas e mescladas (#160 e #161, "Aprovado", 25/11/2026). M10c partes 1
+e 2 aprovadas e mescladas (#162). M10c parte 3 em revisão (branch
+`claude/mundo-m10c3`).
 - Etapas M1 a M6a: PR #154 (suíte completa 191/191), mesclado.
 - M6b, passos 1 a 4: PR #155, empilhado sobre o #154 (suíte completa
   191/192; a falha, instável e sem relação com o mundo, está no PR).
@@ -114,6 +115,37 @@ Limites (propostas para o Murilo):
    meio da temporada do destino. Ideia para depois: a proposta vale "a
    partir da próxima temporada" do destino, com o técnico terminando a sua.
 2. O Brasil como destino de um técnico que está fora dele.
+
+Relatório da M10c (parte 3), ligas do mundo, calendário e mercado (25/11/2026)
+
+O que foi feito (MUN-15):
+- Ligas do mundo:
+  - motor: `ligasDoMundoNoSave` (em `copasvista.js`) dá, para cada liga do
+    mundo leve, a tabela da fase em andamento (por zona quando há), os
+    últimos resultados e os campeões; numa temporada nova sem jogo, a
+    classificação final da anterior;
+  - v2: `/carreira/mundo` (aba Jogos → "Ligas do mundo"), com seletor de
+    país e liga.
+- Calendário com mais de um compromisso por semana: os jogos do técnico
+  nas copas continentais entram no calendário da v2, com data, dia, fase
+  (grupo, rodada da fase de liga, ida/volta) e placar; o ano de cada
+  semana vem do save do mundo.
+- Mercado do mundo:
+  - motor: `clubesDoMundo` (filtros de país e liga) e `abrirClubeDoMundo`
+    (traz o clube ao save, grava), ligando a M8a às telas;
+  - v2: `/carreira/mercado/mundo` (Mercado → "Clubes de outros países"),
+    com chips de país e liga e busca; abrir um clube leva ao elenco dele,
+    de onde sai a proposta pelo fluxo de sempre;
+  - os clubes de fora que entram no save passam a ter nome e escudo nas
+    telas (o catálogo de times é refeito ao recarregar a carreira).
+
+Testes:
+- `test_motor_novo_save_mundo` 3/3, com as ligas do mundo e o mercado do
+  mundo pela ponte (Real Madrid trazido ao save e gravado);
+- v2 148/148 (novo: jogos continentais no calendário); typecheck.
+
+Limite: o clube de fora continua com 16 atletas (limite de "outra
+divisão", da M8).
 
 Relatório da M10c (partes 1 e 2), novo save no mundo e tela das copas (25/11/2026)
 

@@ -1180,6 +1180,26 @@ export const comandosCarga = {
       const g = estado.ganchosMundo.vistaCopas;
       return g ? g(carreiraAtual()) : null;
     },
+    // MUNDO-001 (M10c-3): as ligas do mundo leve (tabela, resultados, campeões).
+    ligasDoMundoNoSave() {
+      const g = estado.ganchosMundo.vistaLigas;
+      return g ? g(carreiraAtual()) : null;
+    },
+    // MUNDO-001 (M10c-3): mercado do mundo (clubes de outros países por país e
+    // liga; abrir um clube traz o elenco dele ao save e ao mercado).
+    clubesDoMundo(filtro) {
+      const g = estado.ganchosMundo.mercadoMundo;
+      return g ? g.clubes(carreiraAtual(), filtro || {}) : null;
+    },
+    async abrirClubeDoMundo(id) {
+      const g = estado.ganchosMundo.mercadoMundo;
+      const CAREER = carreiraAtual();
+      if (!g || !CAREER) return { ok: false, motivo: "sem-mundo" };
+      const r = await g.abrir(CAREER, id, fetchJSON);
+      if (!r.ok || r.ja) return r;
+      const salvo = await persistCareer();
+      return salvo ? r : { ok: false, motivo: ponte.erroGravacao || "falha" };
+    },
     async competicoesDoMundo() {
       const g = estado.ganchosMundo.novoSave;
       return g ? await g.ligas() : null;
