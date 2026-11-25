@@ -9,6 +9,17 @@ divergências, aprovação) — elas não são repetidas aqui.
 
 Demandas vigentes
 
+ECON-001 — Recalibração da economia do Modo Carreira (Touchline)
+
+Status: EM IMPLEMENTAÇÃO — Entrega 1 (base financeira), branch
+`claude/economia-e1`. Pedido do Murilo (25/11/2026): "execute esse md"
+(proposta em `docs/economia/00_Proposta.md`), com o merge na main
+autorizado depois do commit. Especificação e decisões de PM em
+`docs/economia/01_Especificacao.md`: escala real em R$, só carreiras novas
+(versão da regra no save), ativação junto com os preços na Entrega 2.
+
+⸻
+
 MUNDO-001 — Ligas da Europa e da América do Sul, em paralelo, com continentais
 
 Status: M1 a M9 APROVADAS e mescladas (Murilo: #154 mesclado por ele;
