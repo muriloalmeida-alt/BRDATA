@@ -111,10 +111,12 @@ export function buildMatch(s: MatchSnapshot, competitionId?: string): MatchModel
 export const CONTINENTAL_PHASE_LABEL: Record<string, string> = {
   fase_1: "Fase 1", fase_2: "Fase 2", fase_3: "Fase 3", primeira_fase: "1ª fase", grupos: "Fase de grupos", playoff: "Playoff",
   oitavas: "Oitavas de final", quartas: "Quartas de final", semifinal: "Semifinal", final: "Final",
+  // UEFA (M10b)
+  Q3: "3ª pré-eliminatória", PO: "Playoff de qualificação", liga: "Fase de liga", playoff_mata_mata: "Playoff",
 };
 export function continentalKicker(c: NonNullable<MatchSnapshot["continental"]>): string {
   const fase = CONTINENTAL_PHASE_LABEL[c.fase] || c.fase;
-  const extra = c.fase === "grupos" && c.grupo ? `Grupo ${c.grupo}` : c.pernas === 2 && c.perna ? (c.perna === 2 ? "Volta" : "Ida") : c.neutro ? "Jogo único" : null;
+  const extra = c.fase === "grupos" && c.grupo ? `Grupo ${c.grupo}` : c.fase === "liga" && c.rodadaLiga ? `Rodada ${c.rodadaLiga}` : c.pernas === 2 && c.perna ? (c.perna === 2 ? "Volta" : "Ida") : c.neutro ? "Jogo único" : null;
   return [c.nomeCopa, fase, extra].filter(Boolean).join(" · ");
 }
 function continentalLine(c: NonNullable<MatchSnapshot["continental"]>, me: string, opp: string, my: number, their: number) {

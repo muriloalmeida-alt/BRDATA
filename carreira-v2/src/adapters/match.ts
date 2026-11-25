@@ -41,7 +41,8 @@ export interface MatchSnapshot {
 // Fase 4 (P5/P6): perna de Copa — placar da ida do seu ponto de vista (só na
 // volta) e, decidida a volta, pênaltis e quem passou.
 export interface ContinentalInfo {
-  copa: "LIB" | "SUD"; nomeCopa: string; fase: string; perna: number | null; pernas: number; grupo: string | null; neutro: boolean;
+  copa: "LIB" | "SUD" | "UCL" | "UEL" | "UECL"; nomeCopa: string; fase: string; perna: number | null; pernas: number; grupo: string | null; neutro: boolean;
+  rodadaLiga?: number | null; // fase de liga das copas da UEFA
   ida: { meus: number; deles: number } | null; decidido: boolean; classificadoSouEu: boolean | null; como: string | null;
 }
 export interface CupLegInfo { fase: string; perna: number; ida?: { meus: number; deles: number } | null; penaltis?: boolean; classificado?: string | null; classificadoSouEu?: boolean | null }

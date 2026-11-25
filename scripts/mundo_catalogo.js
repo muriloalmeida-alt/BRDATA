@@ -25,7 +25,11 @@
 //    divisão mais alta (MUN-03).
 //
 // Uso:
-//   node scripts/mundo_catalogo.js --europa DIR --sul-america DIR --continentais DIR --andino DIR [--gravar]
+//   node scripts/mundo_catalogo.js --europa DIR --sul-america DIR --continentais DIR --andino DIR --uefa-extra DIR [--gravar]
+//
+// --uefa-extra (M10b, 25/11/2026): o 5º pacote (Portugal, Países Baixos,
+// Bélgica, Turquia e Escócia), só nas copas da UEFA, em `copas.uefa`, com o
+// acesso de jogo e as outras associações de scripts/dados/uefa_acesso.json.
 //
 // --andino (M9b, 25/11/2026): o 4º pacote (Bolívia, Paraguai, Peru e
 // Venezuela). Decisão do Murilo (DEP-1, 24/11): só nas copas da CONMEBOL,
@@ -107,7 +111,7 @@ function escudoLocal(pacoteDir, localLogoPath, copias) {
 }
 
 function montar(opts) {
-  const P = { eu: opts.europa, sa: opts["sul-america"], cont: opts.continentais, andino: opts.andino || null };
+  const P = { eu: opts.europa, sa: opts["sul-america"], cont: opts.continentais, andino: opts.andino || null, uefaExtra: opts["uefa-extra"] || null };
   const eu = {
     ligas: lerJSON(path.join(P.eu, "dados/ligas.json")),
     clubes: lerJSON(path.join(P.eu, "dados/clubes.json")),
@@ -372,7 +376,7 @@ function montar(opts) {
     for (const l of Object.values(promedioInicial)) for (const lst of Object.values(l)) lst.sort((x, y) => x.ano - y.ano);
   }
 
-  const copas = opts.andino ? copasConmebol(opts.andino, snapshots) : null;
+  const copas = opts.andino ? { ...copasConmebol(opts.andino, snapshots), ...copasUefa(opts["uefa-extra"] || null, snapshots) } : null;
   // Regras das copas continentais (M9b): as tabelas do pacote, sem alteração.
   const continentais = Object.fromEntries([["competicoes", "competicoes"], ["calendarios", "calendarios"], ["premiacao", "premiacao"], ["acesso", "acesso-e-transferencias"]]
     .map(([k, f]) => [k, lerJSON(path.join(P.cont, `config/${f}.json`))]));
@@ -448,6 +452,54 @@ function copasConmebol(dir, snapshots) {
   };
 }
 
+// ---------- copas da UEFA (M10b) ----------
+// 5º pacote (Portugal, Países Baixos, Bélgica, Turquia e Escócia): só nas
+// copas, como CPU, com elencos reais (decisão do Murilo, DEP-1). As outras
+// associações: nome real e elenco fictício (scripts/dados/uefa_acesso.json).
+// Força estimada pela ordem na tabela (a do pacote é a da temporada
+// consultada, no começo do campeonato: faixa mais estreita que a dos andinos).
+const ASSOC_UEFA_EXTRA = { PT: "POR", NL: "NED", BE: "BEL", TR: "TUR", SCO: "SCO", "GB-SCT": "SCO" };
+const ID_UEFA_EXTRA = 880000000, ID_UEFA_OUTRAS = 885000000;
+function forcaPelaOrdem(pos, n, amplitude) {
+  const q = n > 1 ? 1 - (2 * pos) / (n - 1) : 0;
+  return { atk: Math.round((1 + amplitude * q) * 1000) / 1000, def: Math.round((1 - (amplitude * 4 / 7) * q) * 1000) / 1000 };
+}
+function copasUefa(dir, snapshots) {
+  const tabela = lerJSON(path.join(ROOT, "scripts/dados/uefa_acesso.json"));
+  const clubes = [];
+  const snap = { competitionId: "uefa_extra", name: "Clubes do 5º pacote (copas da UEFA)", season: "2026/27", teams: [], standings: [], playersByTeamId: {} };
+  if (dir) {
+    const lista = lerJSON(path.join(dir, "clubes.json"));
+    const elencos = lerJSON(path.join(dir, "elencos.json"));
+    const porLiga = new Map();
+    for (const c of lista) (porLiga.get(c.competitionId) || porLiga.set(c.competitionId, []).get(c.competitionId)).push(c);
+    const ids = new Map(lista.map((c) => c.id).sort().map((c, i) => [c, ID_UEFA_EXTRA + i + 1]));
+    for (const [liga, cs] of porLiga) {
+      cs.forEach((c, pos) => {
+        const assoc = ASSOC_UEFA_EXTRA[c.countryCode];
+        if (!assoc) throw new Error(`associação desconhecida: ${c.countryCode}`);
+        const id = ids.get(c.id), f = forcaPelaOrdem(pos, cs.length, 0.25);
+        clubes.push({ id, catalogo: c.id, nome: c.name, curto: c.name, sigla: siglaDe(c.name), siglaDerivada: true, assoc, liga, ordemPacote: pos + 1, escudo: null, logoOrigem: c.logo || null, ...f, forcaEstimada: true });
+        snap.teams.push({ id, catalogClubId: c.id, name: c.name, short: c.name, logo: c.logo || null, localLogo: null, venue: null, atk: f.atk, def: f.def });
+        const ps = elencos.filter((p) => p.clubId === c.id).map((p) => ({ id: p.id, name: p.name, photo: null, position: p.position, age: p.age ?? null, rating: null, games: null, goals: 0, assists: 0 }));
+        if (ps.length < 22 || ps.filter((p) => /goal/i.test(p.position)).length < 2) throw new Error(`${c.name}: elenco incompleto`);
+        snap.playersByTeamId[String(id)] = ps;
+      });
+    }
+    snapshots.uefa_extra = snap;
+  }
+  // Outras associações: nome real, elenco gerado pelo jogo.
+  let k = 0;
+  for (const [assoc, a] of Object.entries(tabela.associacoes)) {
+    (a.clubes || []).forEach((nome, pos) => {
+      const f = forcaPelaOrdem(pos, a.clubes.length, 0.2);
+      clubes.push({ id: ID_UEFA_OUTRAS + ++k, nome, curto: nome, sigla: siglaDe(nome), siglaDerivada: true, assoc, ordemPacote: pos + 1, escudo: null, logoOrigem: null, ...f, forcaEstimada: true, elencoFicticio: true });
+    });
+  }
+  const associacoes = Object.fromEntries(Object.entries(tabela.associacoes).map(([k2, a]) => [k2, { nome: a.nome, pais: a.pais || null, nivel: a.nivel ?? null, vagas: a.vagas }]));
+  return { uefa: { titulares: tabela.titulares, eps: tabela.eps, associacoes, clubes: clubes.sort((x, y) => x.id - y.id) } };
+}
+
 function gravar({ mundo, snapshots, copias, P }) {
   fs.mkdirSync(ESCUDOS_DIR, { recursive: true });
   for (const [nome, origem] of copias) fs.copyFileSync(origem, path.join(ESCUDOS_DIR, nome));
@@ -461,6 +513,7 @@ function gravar({ mundo, snapshots, copias, P }) {
     ["europa", P.eu, ["dados/ligas.json", "dados/clubes.json", "dados/catalogo-terceira-divisao.json", "dados/partidas-2026-27.json", "dados/benchmarks-financeiros.json", "dados/referencias.json", "documentacao/04_Validacao.json", "integracao/ids-motor.json"]],
     ["sul-america", P.sa, ["dados/ligas.json", "dados/clubes.json", "dados/catalogo-terceira-divisao.json", "dados/partidas-2026.json", "dados/benchmarks-financeiros.json", "dados/referencias.json", "dados/historico-tabelas.json", "dados/tabelas-referencia.json", "dados/grupos-referencia.json", "dados/vinculos-a-conferir.json", "documentacao/04_Validacao.json", "integracao/ids-motor.json"]],
     ["continentais", P.cont, ["config/competicoes.json", "config/acesso-e-transferencias.json", "config/calendarios.json", "config/premiacao.json", "fontes.json"]],
+    ...(P.uefaExtra ? [["europa-extra", P.uefaExtra, ["clubes.json"]]] : []),
     ...(P.andino ? [["bol-par-per-ven", P.andino, ["dados/ligas.json", "dados/clubes.json", "dados/referencias.json", "integracao/clubes-por-competicao.json", "documentacao/validacao.json"]]] : []),
   ];
   for (const [nome, dir, arquivos] of fontes) {
@@ -510,7 +563,7 @@ async function main() {
   console.log(`${Object.values(m.partidas).reduce((s, l) => s + l.length, 0)} jogos de fase fixa; fases geradas pelo motor (fora do índice): ${JSON.stringify(r.ignoradas)}`);
   console.log(`${r.copias.size} escudos; ${m.clubes.filter((c) => !c.escudo).length} clubes jogáveis sem escudo local`);
   console.log(`vínculos duplicados resolvidos: ${m.vinculosResolvidos.length}`);
-  if (m.copas) console.log(`copas da CONMEBOL: ${m.copas.conmebol.clubes.length} clubes andinos`);
+  if (m.copas) console.log(`copas da CONMEBOL: ${m.copas.conmebol.clubes.length} clubes andinos; UEFA: ${m.copas.uefa.clubes.filter((c) => !c.elencoFicticio).length} do 5º pacote e ${m.copas.uefa.clubes.filter((c) => c.elencoFicticio).length} de outras associações`);
   console.log(`Brasil: ${Object.values(m.brasil.ligas).map((l) => l.clubes.length).join("/")} clubes e ${m.brasil.serieD.length} na Série D`);
   if (opts.gravar) { gravar(r); console.log("gravado."); } else console.log("(só conferência; use --gravar para escrever)");
 }

@@ -98,10 +98,10 @@ export function buildHome(career: Career, teamById: (id: string | number) => Tea
   }
 
   let continental: HomeModel["continental"] = null;
-  const pend = career.copas?.conmebol?.pendente;
+  const pend = career.copas?.conmebol?.pendente || career.copas?.uefa?.pendente;
   if (pend && state !== "ended") {
     const [, m, d] = pend.data.split("-").map(Number);
-    const fase = pend.fase === "grupos" && pend.grupo ? `Grupo ${pend.grupo}` : pend.nomeFase;
+    const fase = pend.fase === "grupos" && pend.grupo ? `Grupo ${pend.grupo}` : pend.fase === "liga" && pend.rodada ? `${pend.nomeFase} · rodada ${pend.rodada}` : pend.nomeFase;
     continental = { line: `${String(d).padStart(2, "0")} ${MONTH[m - 1]} · ${pend.nomeCopa.toUpperCase()} · ${fase.toUpperCase()}`, opponent: pend.adversario.nome, home: pend.souMandante };
     cta = { label: `Jogar a ${pend.nomeCopa}`, action: "continental" };
   }

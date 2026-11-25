@@ -329,6 +329,9 @@ function semanaEuropa(m, cod, semana, eventos) {
     });
     P.pos.quedaD2 = tab[l2].ordem.slice().reverse();
     P.pos.ordemD1 = tab[l1].ordem.slice();
+    // A tabela da 1ª divisão é final no fim da fase regular: a classificação
+    // para as copas (M10b) não espera os playoffs da 2ª (virada).
+    P.classificacao = classificacaoDaTemporada(P.ano, tab[l1].ordem[0], tab[l1].ordem);
     P.pos.fimRegular = fimRegular;
   }
   // Pernas desta semana (semanaRel 1 = a semana depois do fim da fase regular).

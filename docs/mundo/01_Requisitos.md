@@ -228,8 +228,9 @@ Série D hoje.
   - Vagas por posição na liga:
     - Inglaterra, Espanha, Itália e Alemanha: 1º ao 4º na fase de liga da
       Champions, 5º e 6º na Europa League, 7º no playoff da Conference;
-    - a 5ª associação do ranking (suposta a França; conferir na fonte
-      antes de implementar): 1º ao 3º na fase de liga da Champions, 4º no
+    - a 5ª associação do ranking (a França; conferido em 25/11/2026 no
+      ranking de 5 temporadas 2020/21–2024/25 da UEFA: Inglaterra, Itália,
+      Espanha, Alemanha e França, com 3 vagas diretas da França em 2026/27): 1º ao 3º na fase de liga da Champions, 4º no
       qualificatório, 5º e 6º na Europa League, 7º no playoff da
       Conference.
     - Sem copas nacionais, a vaga do campeão da copa vai para o 6º.
@@ -242,6 +243,16 @@ Série D hoje.
     pacote; depois, os resultados europeus). Sorteio pelas regras do pacote
     continental.
   - As vagas das outras associações dependem da DEP-1.
+  - **Tabela completa de jogo (M10b, 25/11/2026):** em
+    `scripts/dados/uefa_acesso.json`.
+    - O 5º pacote (Portugal, Países Baixos, Bélgica, Turquia, Escócia) e 20
+      outras associações, com nome real e elenco fictício.
+    - Fecha 29 vagas diretas na fase de liga da Champions (com 2 titulares
+      e 2 vagas extras), 8 no playoff e 12 na 3ª pré-eliminatória.
+    - Europa League: 21 vagas diretas na fase de liga e 10 no playoff.
+      Conference: 18 e 20.
+    - As vagas extras de desempenho (EPS) ficam entre as 5 ligas
+      jogáveis. Na 1ª edição, Inglaterra e Espanha, como em 2026/27.
 - **DEP-3. Promedios da 2ª uruguaia (2025).**
   - O pacote avisa que falta a tabela oficial consolidada.
   - Proposta: começar sem histórico, como estado próprio e não como zero

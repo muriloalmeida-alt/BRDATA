@@ -1065,14 +1065,14 @@ export function ponteCopa(lm) {
 }
 
 // MUNDO-001 (M9c): o jogo da copa continental (Libertadores ou Sul-Americana).
-const NOMES_COPA = { LIB: "Libertadores", SUD: "Sul-Americana" };
+const NOMES_COPA = { LIB: "Libertadores", SUD: "Sul-Americana", UCL: "Champions League", UEL: "Europa League", UECL: "Conference League" };
 export function ponteContinental(lm) {
   const CAREER = carreiraAtual();
   const c = lm.continentalContext;
   const r = lm.continentalResultado;
   const decidido = !!(lm.finished && r && r.confronto && r.confronto.vencedor != null);
   return {
-    copa: c.copa, nomeCopa: NOMES_COPA[c.copa] || c.copa, fase: c.fase, perna: c.perna, pernas: c.pernas, grupo: c.grupo, neutro: c.neutro,
+    copa: c.copa, nomeCopa: NOMES_COPA[c.copa] || c.copa, fase: c.fase, perna: c.perna, pernas: c.pernas, grupo: c.grupo, neutro: c.neutro, rodadaLiga: c.rodadaLiga || null,
     ida: c.ida ? (String(c.ida.casa) === String(CAREER.clubId) ? { meus: c.ida.gh, deles: c.ida.ga } : { meus: c.ida.ga, deles: c.ida.gh }) : null,
     decidido, classificadoSouEu: decidido ? String(r.confronto.vencedor) === String(CAREER.clubId) : null,
     como: decidido ? r.confronto.como : null,

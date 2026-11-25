@@ -139,6 +139,31 @@ check("copas da CONMEBOL: 60 clubes andinos (16+12+18+14), ids próprios, força
   for (const k of ["BRA", "PAR", "PER", "BOL", "VEN"]) if (!(c.niveis[k] > 0)) throw new Error(`sem nível para ${k}`);
 });
 
+check("copas da UEFA: 84 clubes do 5º pacote com elenco real, outras associações com elenco fictício, vagas que fecham as fases", () => {
+  const u = mundo.copas.uefa;
+  const reais = u.clubes.filter((x) => !x.elencoFicticio), fict = u.clubes.filter((x) => x.elencoFicticio);
+  const por = {};
+  for (const x of reais) por[x.assoc] = (por[x.assoc] || 0) + 1;
+  eq(JSON.stringify(Object.keys(por).sort().map((k) => [k, por[k]])), JSON.stringify([["BEL", 18], ["NED", 18], ["POR", 18], ["SCO", 12], ["TUR", 18]]), "clubes do 5º pacote");
+  const todos = new Set([...mundo.clubes, ...mundo.terceira, ...mundo.copas.conmebol.clubes].map((x) => x.id));
+  for (const x of u.clubes) if (todos.has(x.id) || !(x.id > 880000000 && x.id < 890000000)) throw new Error(`id inválido: ${x.id}`);
+  eq(new Set(u.clubes.map((x) => x.id)).size, u.clubes.length, "ids repetidos");
+  // Cada associação de fora das 5 ligas tem clubes para as suas vagas.
+  for (const [k, a] of Object.entries(u.associacoes)) {
+    if (a.pais) continue;
+    const n = u.clubes.filter((x) => x.assoc === k).length;
+    if (n < a.vagas.length + 1) throw new Error(`${k}: ${n} clubes para ${a.vagas.length} vagas`);
+    if (!(a.nivel > 0)) throw new Error(`${k} sem nível`);
+  }
+  // Vagas por fase (com os 2 titulares e as 2 vagas extras de desempenho).
+  const c = {};
+  for (const a of Object.values(u.associacoes)) for (const v of a.vagas) c[v] = (c[v] || 0) + 1;
+  c["UCL:liga"] += u.titulares.length + u.eps.vagas;
+  eq(JSON.stringify(Object.keys(c).sort().map((k) => [k, c[k]])), JSON.stringify([["UCL:PO", 8], ["UCL:Q3", 12], ["UCL:liga", 29], ["UECL:PO", 20], ["UECL:liga", 18], ["UEL:PO", 10], ["UEL:liga", 21]]), "vagas por fase");
+  const s = JSON.parse(fs.readFileSync(path.join(SNAP, "snapshot-uefa_extra.json"), "utf8"));
+  for (const x of reais) if ((s.playersByTeamId[String(x.id)] || []).length < 22) throw new Error(`${x.nome}: elenco incompleto`);
+});
+
 check("o índice guarda a versão do próprio conteúdo", () => {
   const { versao, ...resto } = mundo;
   eq(crypto.createHash("sha256").update(JSON.stringify(resto)).digest("hex").slice(0, 16), versao, "versão");
@@ -153,6 +178,7 @@ check("servidor: índice com versão, elencos por liga, liga desconhecida e chav
   eq(Object.keys(e.playersByTeamId).length, 30, "elencos da Liga Profesional");
   eq(Object.keys(srv.elencos("brasileirao").playersByTeamId).length, 20, "elencos do Brasil (mercado do mundo, M8)");
   eq(Object.keys(srv.elencos("conmebol_andinos").playersByTeamId).length, 60, "elencos andinos (copas, M9b)");
+  eq(Object.keys(srv.elencos("uefa_extra").playersByTeamId).length, 84, "elencos do 5º pacote (copas da UEFA, M10b)");
   eq(srv.elencos("serie_d"), null, "liga fora do mundo");
   eq(srv.elencos("__proto__"), null, "nome reservado");
   eq(mundoAtivo({}), false, "sem a variável");

@@ -61,7 +61,7 @@ export interface Lineup {
 
 // MUNDO-001 (M9c): o jogo do clube na copa continental da semana.
 export interface ContinentalPending {
-  id: string; copa: "LIB" | "SUD"; nomeCopa: string; fase: string; nomeFase: string; grupo: string | null;
+  id: string; confed?: "UEFA"; copa: "LIB" | "SUD" | "UCL" | "UEL" | "UECL"; nomeCopa: string; rodada?: number | null; fase: string; nomeFase: string; grupo: string | null;
   perna: number | null; pernas: number; data: string; souMandante: boolean; neutro: boolean;
   adversario: { id: string; nome: string; escudo: string | null }; ida: { meus: number; deles: number } | null;
 }
@@ -125,7 +125,7 @@ export interface Career {
   serieDPool?: Team[];
   // MUNDO-001: clubes de fora no save (M8) e copas continentais (M9).
   exterior?: { clubes: Record<string, Team> };
-  copas?: { conmebol?: { pendente?: ContinentalPending | null } };
+  copas?: { conmebol?: { pendente?: ContinentalPending | null }; uefa?: { pendente?: ContinentalPending | null } };
   notifications?: import("./week.ts").Notice[];
 }
 

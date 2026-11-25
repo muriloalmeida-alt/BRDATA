@@ -390,7 +390,12 @@ export async function finishCupLegLive() {
 // MUNDO-001 (M9c): o jogo do técnico na Libertadores ou na Sul-Americana, ao
 // vivo, com o mesmo motor da Copa do Brasil. O placar vai para o plano da
 // copa (copasmundo.registrarJogoDoHumano, pelo gancho do mundo).
-const NOME_COPA_CONTINENTAL = { LIB: "Libertadores", SUD: "Sul-Americana" };
+const NOME_COPA_CONTINENTAL = { LIB: "Libertadores", SUD: "Sul-Americana", UCL: "Champions League", UEL: "Europa League", UECL: "Conference League" };
+// O jogo pendente do técnico nas copas da CONMEBOL ou da UEFA (M10b).
+export function pendenteContinental(CAREER) {
+  const c = CAREER && CAREER.copas;
+  return (c && ((c.conmebol && c.conmebol.pendente) || (c.uefa && c.uefa.pendente))) || null;
+}
 export function startContinentalLive(jogo) {
   const CAREER = carreiraAtual();
   const lm = posjogo.iniciarJogoContinental(jogo, CAREER.currentRound);
@@ -779,7 +784,7 @@ export const comandosJogo = {
       const fr = friendlySlotThisWeek();
       if (!ateJogo && fr && (!fr.optional || fr.opp)) return { ok: false, motivo: "amistoso" };
       // MUNDO-001 (M9c): o jogo da copa continental da semana vem antes.
-      const continental = () => !!(CAREER.copas && CAREER.copas.conmebol && CAREER.copas.conmebol.pendente);
+      const continental = () => !!pendenteContinental(CAREER);
       if (continental()) return { ok: false, motivo: "continental" };
       if (ponte.avancando) return { ok: false, motivo: "em-andamento" };
       ponte.avancando = true;
@@ -806,14 +811,14 @@ export const comandosJogo = {
     jogoContinental() {
       const CAREER = carreiraAtual();
       const g = estado.ganchosMundo.continental;
-      return CAREER && g ? ((CAREER.copas && CAREER.copas.conmebol && CAREER.copas.conmebol.pendente) || null) : null;
+      return CAREER && g ? pendenteContinental(CAREER) : null;
     },
     async iniciarJogoContinental() {
       const CAREER = carreiraAtual();
       const g = estado.ganchosMundo.continental;
       if (!ponte.pronta || !CAREER) return { ok: false, motivo: "carregando" };
       if (partidaAtual()) return { ok: false, motivo: "em-andamento" };
-      if (!g || !(CAREER.copas && CAREER.copas.conmebol && CAREER.copas.conmebol.pendente)) return { ok: false, motivo: "sem-jogo" };
+      if (!g || !pendenteContinental(CAREER)) return { ok: false, motivo: "sem-jogo" };
       const bloq = bloqueioEscalacao();
       if (bloq) return bloq;
       // Elencos do adversário de fora: ambiente.elencosDoMundo (testes) ou a rota do servidor.
@@ -821,7 +826,7 @@ export const comandosJogo = {
       const prep = await g.preparar(CAREER, buscar);
       if (!prep.ok) return { ok: false, motivo: prep.motivo || "sem-jogo" };
       ponte.ultimo = null; ponte.fim = null; ponte.resumo = null; ponte.posJogo = false; ponte.erroGravacao = null;
-      startContinentalLive({ ...prep.jogo, nomeFase: CAREER.copas.conmebol.pendente.nomeFase });
+      startContinentalLive({ ...prep.jogo, nomeFase: pendenteContinental(CAREER).nomeFase });
       return { ok: true, aoVivo: !!partidaAtual() };
     },
     async escolherAmistoso(clubId) {

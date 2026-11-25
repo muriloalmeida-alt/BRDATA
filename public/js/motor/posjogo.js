@@ -136,7 +136,7 @@ export function iniciarJogoContinental(jogo, round) {
   const cpuBanco = cpuPostura ? { cpuBench: cpuEsc.bench.slice(), cpuSubs: 0 } : {};
   return definirPartida({
     round, humanFx: { home: hostId, away: guestId }, isHome, home, away, cpuXI: cpuEsc.starters, ...(cpuPostura ? { cpuPostura } : {}), ...cpuBanco, otherResults: [], standingsBefore: null,
-    continentalContext: { jogoId: jogo.id, copa: jogo.copa, fase: jogo.fase, perna: jogo.perna || null, pernas: jogo.pernas || 1, ida: jogo.ida || null, grupo: jogo.grupo || null, neutro: !!jogo.neutro },
+    continentalContext: { jogoId: jogo.id, copa: jogo.copa, fase: jogo.fase, perna: jogo.perna || null, pernas: jogo.pernas || 1, ida: jogo.ida || null, grupo: jogo.grupo || null, neutro: !!jogo.neutro, rodadaLiga: jogo.fase === "liga" ? jogo.rodada : null },
     chunkIndex: 0, gh: 0, ga: 0, events: [], appeared: new Set(),
     subsUsed: 0, subsBonus: 0, formationPenaltyChunksLeft: 0,
     lastHsStarters: [], lastAsStarters: [],

@@ -179,7 +179,8 @@ const imp = (m) => import(pathToFileURL(path.join(ROOT, "public/js/motor", m)).h
     await CMu.criarCarreiraNoMundo({ indice, liga: "premier_league", clubId: ars.id, elencosDaLiga });
     const C = estado.carreiraAtual();
     const total = C.calendar.weeks.length - 1;
-    const ev = andar(C, 0, total);
+    // Só os eventos da CONMEBOL (as copas da UEFA, M10b, andam no mesmo relógio).
+    const ev = andar(C, 0, total).filter((e) => e.confed !== "UEFA");
     const cc = C.copas.conmebol;
     assert.ok(!ev.some((e) => e.tipo === "edicao" && e.ano === 2026), "edição de 2026 montada depois da fase 1");
     assert.ok(ev.some((e) => e.tipo === "edicao" && e.ano === 2027), "edição de 2027 não montada");
