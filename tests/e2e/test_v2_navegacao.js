@@ -1,7 +1,7 @@
 // Carreira 2.0 — P7 (mapa de navegação): telas de entrada Jogos, Clube e
 // Mais, pela UI real.
 //  1) As 4 abas da barra são telas da v2 (nenhuma abre /carreira-old).
-//  2) Jogos: Calendário, Tabela, Copa do Brasil e Estatísticas, todas na
+//  2) Jogos: Calendário, Tabela, Copa do Brasil, Ligas do mundo (M10d) e Estatísticas, todas na
 //     v2 (fase 10).
 //  3) Clube: aberta pela linha "Clube" e pelo escudo do Início; seções
 //     Gestão / Elenco e mercado / Estrutura; "Voltar ao clube" da Diretoria
@@ -48,7 +48,9 @@ const { newCareer } = require("./_v2_carreira");
   await v2.locator(".hb-row", { hasText: "Calendário" }).click();
   await v2.waitForURL(/\/calendario$/);
   check("2) Jogos: Calendário, Tabela, Copa do Brasil e Estatísticas na v2 (fase 10); aba Jogos ativa; Calendário abre:",
-    jogos.h1 === "Seus jogos." && jogos.current === "Jogos" && JSON.stringify(jogos.rows) === JSON.stringify([["Calendário", "/calendario"], ["Tabela", "/tabela"], ["Copa do Brasil", "/copa"], ["Estatísticas", "/estatisticas"]]),
+    // MUNDO-001 (M10d): com o mundo ligado, o save novo do Brasil também tem
+    // "Ligas do mundo" e, quando já há edição, "Copas continentais".
+    jogos.h1 === "Seus jogos." && jogos.current === "Jogos" && JSON.stringify(jogos.rows.filter((r) => r[0] !== "Copas continentais")) === JSON.stringify([["Calendário", "/calendario"], ["Tabela", "/tabela"], ["Copa do Brasil", "/copa"], ["Ligas do mundo", "/mundo"], ["Estatísticas", "/estatisticas"]]),
     JSON.stringify(jogos));
 
   // 3) Clube.
