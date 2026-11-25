@@ -238,7 +238,8 @@ function loadDemoCatalog(): Promise<Team[]> {
 export const ClubCatalogGateway = {
   async forCareer(career: Career): Promise<(id: string | number) => Team> {
     // SERIED-001: os clubes da Série D (serieDPool) jogam a Copa do Brasil.
-    const fromSave = [...Object.values(career.divisionTeams || {}).flat(), ...(career.serieDPool || [])];
+    // MUNDO-001: clubes de fora que entraram no save (mercado e copas continentais).
+    const fromSave = [...Object.values(career.divisionTeams || {}).flat(), ...(career.serieDPool || []), ...Object.values(career.exterior?.clubes || {})];
     const pool = fromSave.length ? fromSave : await loadDemoCatalog();
     const map = new Map(pool.map((t) => [String(t.id), t]));
     return (id) => {

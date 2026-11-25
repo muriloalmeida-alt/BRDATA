@@ -66,6 +66,7 @@ export function buildMatch(s: MatchSnapshot, competitionId?: string): MatchModel
   const opp = s.souMandante ? s.visitante : s.mandante;
   const kicker = s.contexto === "copa" && s.copa
     ? `Copa do Brasil · ${CUP_PHASE_LABEL[s.copa.fase] || s.copa.fase} · ${s.copa.perna === 2 ? "Volta" : "Ida"}`
+    : s.contexto === "continental" && s.continental ? continentalKicker(s.continental)
     : s.contexto === "amistoso" ? "Amistoso"
     : `${COMPETITION_NAME[competitionId || "brasileirao"] || "Competição"} · Rodada ${s.rodada}`;
   const events = s.eventos || [];
@@ -101,8 +102,26 @@ export function buildMatch(s: MatchSnapshot, competitionId?: string): MatchModel
     speed: s.velocidade === 2 ? 2 : 1,
     subs: { used: s.substituicoes?.usadas || 0, total: s.substituicoes?.total || 5 },
     stoppage: stoppageOf(s),
-    cup: s.contexto === "copa" && s.copa ? cupLine(s.copa, mine.nome, opp.nome, s.souMandante ? s.gh || 0 : s.ga || 0, s.souMandante ? s.ga || 0 : s.gh || 0) : null,
+    cup: s.contexto === "copa" && s.copa ? cupLine(s.copa, mine.nome, opp.nome, s.souMandante ? s.gh || 0 : s.ga || 0, s.souMandante ? s.ga || 0 : s.gh || 0)
+      : s.contexto === "continental" && s.continental ? continentalLine(s.continental, mine.nome, opp.nome, s.souMandante ? s.gh || 0 : s.ga || 0, s.souMandante ? s.ga || 0 : s.gh || 0) : null,
   };
+}
+
+// MUNDO-001 (M9c): Libertadores / Sul-Americana.
+export const CONTINENTAL_PHASE_LABEL: Record<string, string> = {
+  fase_1: "Fase 1", fase_2: "Fase 2", fase_3: "Fase 3", primeira_fase: "1ª fase", grupos: "Fase de grupos", playoff: "Playoff",
+  oitavas: "Oitavas de final", quartas: "Quartas de final", semifinal: "Semifinal", final: "Final",
+};
+export function continentalKicker(c: NonNullable<MatchSnapshot["continental"]>): string {
+  const fase = CONTINENTAL_PHASE_LABEL[c.fase] || c.fase;
+  const extra = c.fase === "grupos" && c.grupo ? `Grupo ${c.grupo}` : c.pernas === 2 && c.perna ? (c.perna === 2 ? "Volta" : "Ida") : c.neutro ? "Jogo único" : null;
+  return [c.nomeCopa, fase, extra].filter(Boolean).join(" · ");
+}
+function continentalLine(c: NonNullable<MatchSnapshot["continental"]>, me: string, opp: string, my: number, their: number) {
+  const aggregate = c.perna === 2 && c.ida ? `Agregado: ${me} ${c.ida.meus + my} × ${c.ida.deles + their} ${opp}` : null;
+  const como = c.como === "penaltis" ? "Decidido nos pênaltis · " : c.como === "prorrogacao" ? "Decidido na prorrogação · " : "";
+  const outcome = c.decidido ? `${como}${c.classificadoSouEu ? (c.fase === "final" ? `Campeão da ${c.nomeCopa}!` : "Classificado") : "Eliminado"}` : null;
+  return aggregate || outcome ? { aggregate, outcome } : null;
 }
 
 // Agregado = ida + o placar atual da volta (do seu ponto de vista).

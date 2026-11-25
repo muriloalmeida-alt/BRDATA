@@ -291,12 +291,45 @@ export function semanaDasCopas(CAREER, indice, semana) {
   const sim = simulador(CAREER, indice, plano);
   const humano = S(CAREER.clubId);
   const antes = situacaoDoHumano(plano, humano);
+  // O jogo do técnico nesta semana fica para ele jogar ao vivo (M9c:
+  // jogoDoHumanoPendente / registrarJogoDoHumano); o de semana passada que
+  // ficou sem jogar é simulado, como os da CPU.
+  const adiado = (j) => (S(j.casa) === humano || S(j.fora) === humano) && j.data >= semana;
   for (let g = 0; g < 400 && !CT.concluida(plano); g++) {
-    const [j] = CT.jogosPendentes(plano, fim);
+    const j = CT.jogosPendentes(plano, fim).find((x) => !adiado(x));
     if (!j) break;
     CT.registrarJogo(plano, j.id, sim.jogar(j), sim);
     if (S(j.casa) === humano || S(j.fora) === humano) eventos.push({ tipo: "jogo", jogo: { ...j } });
   }
+  eventos.push(...fecharRodada(CAREER, indice, plano, antes));
+  atualizarPendente(CAREER, indice, semana);
+  return eventos;
+}
+
+// O jogo do técnico na semana, guardado no save para as telas (Início):
+// copa, fase, perna, data, adversário (nome e escudo) e a ida (meus x deles).
+export function atualizarPendente(CAREER, indice, semana) {
+  const C = CAREER.copas && CAREER.copas.conmebol;
+  if (!C) return null;
+  const j = jogoDoHumanoPendente(CAREER, indice, semana);
+  if (!j) { C.pendente = null; return null; }
+  const info = clubeNoIndice(indice).get(S(j.adversario));
+  const t = todosTimes().find((x) => S(x.id) === S(j.adversario));
+  const ida = j.ida ? (S(j.ida.casa) === S(CAREER.clubId) ? { meus: j.ida.gh, deles: j.ida.ga } : { meus: j.ida.ga, deles: j.ida.gh }) : null;
+  C.pendente = {
+    id: j.id, copa: j.copa, nomeCopa: NOME_COPA[j.copa], fase: j.fase, nomeFase: ETAPA[j.fase] || j.fase, grupo: j.grupo || null,
+    perna: j.perna || null, pernas: j.pernas, data: j.data, casa: j.casa, fora: j.fora, souMandante: j.souMandante, neutro: !!j.neutro,
+    adversario: { id: S(j.adversario), nome: t ? t.name : info ? info.c.nome : S(j.adversario), escudo: t ? t.logo || null : info ? info.c.escudo || info.c.logoOrigem || null : null },
+    ida,
+  };
+  return C.pendente;
+}
+
+// Depois de jogos registrados: prêmios, avisos do técnico e, se a edição
+// acabou, o histórico; grava a edição compacta.
+function fecharRodada(CAREER, indice, plano, antes) {
+  const C = CAREER.copas.conmebol;
+  const humano = S(CAREER.clubId);
   pagarPremios(CAREER, plano);
   avisarHumano(CAREER, plano, antes, situacaoDoHumano(plano, humano));
   if (CT.concluida(plano)) {
@@ -307,11 +340,40 @@ export function semanaDasCopas(CAREER, indice, semana) {
     C.titulares = [r.campeoes.LIB, r.campeoes.SUD];
     C.edicao = null;
     noticiaDosCampeoes(CAREER, indice, resumo);
-    eventos.push({ tipo: "fim", ...resumo });
-  } else {
-    C.edicao = compactar(plano, CAREER.clubId);
+    return [{ tipo: "fim", ...resumo }];
   }
-  return eventos;
+  C.edicao = compactar(plano, CAREER.clubId);
+  return [];
+}
+
+// ---------- o jogo do técnico (M9c) ----------
+// O jogo dele nas copas que está para ser jogado na semana do save (ou null).
+export function jogoDoHumanoPendente(CAREER, indice, semana) {
+  const plano = edicaoAtual(CAREER, indice);
+  if (!plano || !semana) return null;
+  const humano = S(CAREER.clubId);
+  const j = CT.jogosPendentes(plano, domingo(semana)).find((x) => S(x.casa) === humano || S(x.fora) === humano);
+  if (!j) return null;
+  const c = j.conf ? plano.confrontos.find((x) => x.id === j.conf) : null;
+  const ida = c && j.perna === 2 && c.placares[0] ? c.placares[0] : null;
+  return { ...j, adversario: S(j.casa) === humano ? j.fora : j.casa, souMandante: S(j.casa) === humano, ida, pernas: c ? c.pernas : 1, plano };
+}
+
+// Registra o placar do jogo do técnico (jogado ao vivo). Prorrogação e
+// pênaltis, quando o confronto pede, pelo simulador. Devolve o jogo, o
+// confronto (com vencedor, se decidido) e a situação do técnico.
+export function registrarJogoDoHumano(CAREER, indice, jogoId, placar, semana = null) {
+  const plano = edicaoAtual(CAREER, indice);
+  if (!plano) throw new Error("copas: sem edição em andamento");
+  const humano = S(CAREER.clubId);
+  const antes = situacaoDoHumano(plano, humano);
+  const j = CT.registrarJogo(plano, jogoId, placar, simulador(CAREER, indice, plano));
+  const c = j.conf ? plano.confrontos.find((x) => x.id === j.conf) : null;
+  const sit = situacaoDoHumano(plano, humano);
+  const eventos = fecharRodada(CAREER, indice, plano, antes);
+  if (semana) atualizarPendente(CAREER, indice, semana);
+  else if (CAREER.copas.conmebol) CAREER.copas.conmebol.pendente = null;
+  return { jogo: { ...j }, confronto: c ? { ...c } : null, situacao: sit, eventos };
 }
 
 // ---------- prêmios ----------

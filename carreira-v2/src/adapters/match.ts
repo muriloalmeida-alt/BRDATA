@@ -22,8 +22,10 @@ export interface MatchSnapshot {
   semanaPronta?: boolean; // fase 3: amistoso encerrado, resumo da semana pronto
   posJogo?: "em-andamento" | "concluido";
   minuto?: number; segundoTempo?: boolean;
-  contexto?: "liga" | "copa" | "amistoso";
+  contexto?: "liga" | "copa" | "amistoso" | "continental";
   rodada?: number; copa?: CupLegInfo | null;
+  // MUNDO-001 (M9c): jogo da Libertadores ou da Sul-Americana.
+  continental?: ContinentalInfo | null;
   mandante?: { id: string; nome: string }; visitante?: { id: string; nome: string };
   souMandante?: boolean; gh?: number; ga?: number; velocidade?: 1 | 2;
   substituicoes?: { usadas: number; total: number };
@@ -38,6 +40,10 @@ export interface MatchSnapshot {
 }
 // Fase 4 (P5/P6): perna de Copa — placar da ida do seu ponto de vista (só na
 // volta) e, decidida a volta, pênaltis e quem passou.
+export interface ContinentalInfo {
+  copa: "LIB" | "SUD"; nomeCopa: string; fase: string; perna: number | null; pernas: number; grupo: string | null; neutro: boolean;
+  ida: { meus: number; deles: number } | null; decidido: boolean; classificadoSouEu: boolean | null; como: string | null;
+}
 export interface CupLegInfo { fase: string; perna: number; ida?: { meus: number; deles: number } | null; penaltis?: boolean; classificado?: string | null; classificadoSouEu?: boolean | null }
 // Motivo da falha ao gravar o resultado (AUD-02): sessão expirada, outra
 // conta logada neste navegador, ou qualquer outra falha (rede, servidor).

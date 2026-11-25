@@ -194,6 +194,60 @@ const imp = (m) => import(pathToFileURL(path.join(ROOT, "public/js/motor", m)).h
     assert.ok(!plano.participantes.LIB.grupos.some((x) => String(x) === String(C.clubId)), "o Arsenal numa copa sul-americana");
   });
 
+  await check("M9c: o jogo do técnico ao vivo pela ponte da v2 (parada na semana, adversário de fora no save, placar no plano, prêmio)", async () => {
+    const ponteMod = await imp("ponte.js");
+    semana.definirAmbiente({ ...v2.ambienteSemPagina(), buscarJogadores: async () => [], indiceDoMundo: null, elencosDoMundo: async (liga) => JSON.parse(fs.readFileSync(path.join(ROOT, `server/frozen-catalog/snapshot-${liga}.json`), "utf8")), armazem: { pedir: async () => ({ ok: true }) } });
+    const C = await novaNaArgentina(0);
+    const P = v2.criarPonte();
+    ponteMod.ponte.pronta = true;
+    const ate = async (f, ms) => { const t = Date.now(); while (Date.now() - t < ms) { const v = f(); if (v) return v; await new Promise((r) => setTimeout(r, 5)); } return null; };
+    const fimDePartida = () => ate(() => { const e = P.estado(); return e.fase === "encerrada" && e.gravada != null ? e : null; }, 30000);
+    const ao = [];
+    for (let g = 0; g < 80 && ao.length < 4 && C.currentRound <= C.rodadasLiga; g++) {
+      const pend = P.jogoContinental();
+      if (pend) {
+        let r = await P.iniciarJogoContinental();
+        if (r.motivo === "escalacao") { await P.escalarAutomaticamente(true); r = await P.iniciarJogoContinental(); }
+        assert.ok(r.ok && r.aoVivo, `jogo continental não começou (${r.motivo})`);
+        const durante = P.estado();
+        assert.strictEqual(durante.contexto, "continental");
+        assert.strictEqual(durante.continental.nomeCopa, pend.nomeCopa);
+        P.pularParaFim();
+        const e = await fimDePartida();
+        assert.ok(e && e.gravada, "jogo continental não gravou");
+        const plano = Copas.edicaoAtual(C, indice) || null;
+        const j = plano ? plano.jogos.find((x) => x.id === pend.id) : null;
+        if (j) assert.deepStrictEqual([j.gh, j.ga], [e.gh, e.ga], "placar ao vivo fora do plano");
+        assert.ok(!C.copas.conmebol.pendente || C.copas.conmebol.pendente.id !== pend.id, "o jogo continua pendente");
+        ao.push({ ...pend, gh: e.gh, ga: e.ga });
+        continue;
+      }
+      const w = await P.avancarSemana(true);
+      if (w.motivo === "continental") continue;
+      let i = P.iniciar();
+      if (i && i.motivo === "escalacao") { await P.escalarAutomaticamente(true); i = P.iniciar(); }
+      if (!i || !i.ok) continue;
+      if (!i.aoVivo) continue;
+      P.pularParaFim();
+      await fimDePartida();
+      let etapa = P.iniciarPosJogo();
+      for (let k = 0; etapa && etapa.ok !== false && etapa.etapa !== "fim" && k < 12; k++) {
+        if (etapa.etapa === "coletiva") etapa = await P.responderColetiva(etapa.respostas[0].letra);
+        else if (etapa.etapa === "noticias" || etapa.etapa === "resultados") etapa = P.concluirEtapa(etapa.etapa);
+        else if (etapa.etapa === "proposta") etapa = await P.responderProposta("recusar");
+        else break;
+      }
+      P.encerrarPosJogo();
+    }
+    assert.ok(ao.length >= 2, `só ${ao.length} jogos continentais ao vivo`);
+    const fora = ao.find((x) => !x.souMandante);
+    assert.ok(fora, "sem jogo fora de casa");
+    assert.ok(C.exterior && C.exterior.clubes[String(fora.adversario.id)] || C.leagueSquads[String(fora.adversario.id)], "adversário sem elenco no save");
+    const casa = ao.find((x) => x.souMandante && x.fase === "grupos");
+    if (casa) assert.ok(C.financeLedger.some((l) => l.type === "premiacao" && /cota de mando/.test(l.label)), "sem a cota de mando do jogo em casa");
+    console.log(`   ${ao.map((x) => `${x.nomeCopa} ${x.nomeFase}: ${x.souMandante ? "casa" : "fora"} x ${x.adversario.nome} ${x.gh}-${x.ga}`).join("; ")}`);
+  });
+
   console.log(`\n${n - failed}/${n} ok`);
   process.exit(failed ? 1 : 0);
 })();

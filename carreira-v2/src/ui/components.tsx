@@ -65,6 +65,7 @@ export function CtaLink({ cta, className }: { cta: HomeModel["cta"]; className: 
   const to = cta.action === "preparar" ? `${BASE}/pre-jogo`
     : cta.action === "avancar-semana" ? `${BASE}/semana?avancar=semana`
     : cta.action === "amistoso" ? `${BASE}/amistoso`
+    : cta.action === "continental" ? `${BASE}/partida?iniciar=continental`
     : `${BASE}/temporada`;
   return <Link className={className} to={to}>{inner}</Link>;
 }

@@ -702,13 +702,17 @@ export async function abrirClubeDoMundo(CAREER, clubId, buscar) {
   const id = String(clubId);
   if (!indice || !CAREER || !CAREER.mundoLeve) return { ok: false, motivo: "sem-mundo" };
   if (CAREER.exterior && CAREER.exterior.clubes[id]) return { ok: true, ja: true };
-  const onde = ligaNoMundo(CAREER, id);
-  const c = clubeDoIndiceMundo(indice, id);
+  let onde = ligaNoMundo(CAREER, id);
+  let c = clubeDoIndiceMundo(indice, id);
+  // Clube andino (só nas copas da CONMEBOL, M9c): elenco do snapshot das copas.
+  const andino = !onde && indice.copas && indice.copas.conmebol && indice.copas.conmebol.clubes.find((x) => String(x.id) === id);
+  if (andino) { onde = { pais: andino.assoc, liga: "conmebol_andinos" }; c = andino; }
   if (!onde || !c) return { ok: false, motivo: "fora-do-mundo" };
   const P = CAREER.mundoLeve.paises[onde.pais];
-  const f = P.forcas[id];
+  const f = P && P.forcas[id];
   const comp = indice.competicoes[onde.liga];
-  const ajusteNivel = comp && comp.nivel ? Math.round((comp.nivel - 1) * OVERALL_POR_NIVEL * 10) / 10 : 0;
+  const nivel = andino ? indice.copas.conmebol.niveis[andino.assoc] : comp && comp.nivel;
+  const ajusteNivel = nivel ? Math.round((nivel - 1) * OVERALL_POR_NIVEL * 10) / 10 : 0;
   const time = {
     id: c.id, name: c.nome, short: c.sigla, logo: c.escudo || c.logoOrigem || null, c1: c.c1 || "#5B6B7F", c2: c.c2 || "#1F2933",
     venue: c.estadio ? { name: c.estadio.nome, city: c.estadio.cidade, capacity: c.estadio.capacidade } : null,
@@ -842,3 +846,34 @@ export async function trocarDePais(CAREER, proposta, buscar) {
   return { ok: true };
 }
 ganchosMundo.trocarDePais = (CAREER, proposta, buscar) => trocarDePais(CAREER, proposta, buscar);
+
+// ---------- o jogo do técnico nas copas, ao vivo (M9c) ----------
+// O jogo pendente na semana do save, com o nome do adversário e da fase.
+export function jogoContinentalPendente(CAREER) {
+  const j = Copas.jogoDoHumanoPendente(CAREER, indiceAtual, semanaDaCarreira(CAREER));
+  if (!j) return null;
+  const { plano, ...jogo } = j;
+  const grupo = jogo.grupo ? (plano.grupos[jogo.copa] || {})[jogo.grupo] : null;
+  return { ...jogo, grupo: jogo.grupo || null, grupoClubes: grupo || null };
+}
+// Prepara o jogo: o adversário de fora entra no save com o elenco (como no
+// mercado do mundo, M8), para a escalação da CPU e a partida ao vivo.
+export async function prepararJogoContinental(CAREER, buscar) {
+  const j = jogoContinentalPendente(CAREER);
+  if (!j) return { ok: false, motivo: "sem-jogo" };
+  const S = String(j.adversario);
+  const temElenco = CAREER.leagueSquads && CAREER.leagueSquads[S] && CAREER.leagueSquads[S].length;
+  if (!temElenco) {
+    const r = await abrirClubeDoMundo(CAREER, S, buscar);
+    if (!r.ok) return { ok: false, motivo: r.motivo };
+  }
+  return { ok: true, jogo: j };
+}
+export function registrarJogoContinental(CAREER, jogoId, placar) {
+  return Copas.registrarJogoDoHumano(CAREER, indiceAtual, jogoId, placar, semanaDaCarreira(CAREER));
+}
+ganchosMundo.continental = {
+  pendente: (CAREER) => jogoContinentalPendente(CAREER),
+  preparar: (CAREER, buscar) => prepararJogoContinental(CAREER, buscar),
+  registrar: (CAREER, jogoId, placar) => registrarJogoContinental(CAREER, jogoId, placar),
+};

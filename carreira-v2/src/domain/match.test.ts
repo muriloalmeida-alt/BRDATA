@@ -157,3 +157,20 @@ test("PARIDADE-CPU E1b: mudança tática do adversário nos lances (D3)", () => 
   assert.equal(t.sub, "Palmeiras parte para o ataque (postura ofensiva)");
   assert.equal(t.minute, 45);
 });
+
+// MUNDO-001 (M9c): Libertadores e Sul-Americana.
+test("jogo continental: cabeçalho da copa, agregado da volta e desfecho", () => {
+  const s = snap();
+  s.contexto = "continental";
+  s.continental = { copa: "LIB", nomeCopa: "Libertadores", fase: "grupos", perna: null, pernas: 1, grupo: "C", neutro: false, ida: null, decidido: false, classificadoSouEu: null, como: null };
+  assert.equal(buildMatch(s)!.kicker, "Libertadores · Fase de grupos · Grupo C");
+  assert.equal(buildMatch(s)!.cup, null);
+  s.continental = { copa: "SUD", nomeCopa: "Sul-Americana", fase: "oitavas", perna: 2, pernas: 2, grupo: null, neutro: false, ida: { meus: 0, deles: 1 }, decidido: true, classificadoSouEu: true, como: "penaltis" };
+  const m = buildMatch(s)!;
+  assert.equal(m.kicker, "Sul-Americana · Oitavas de final · Volta");
+  assert.deepEqual(m.cup, { aggregate: "Agregado: Flamengo 1 × 1 Palmeiras", outcome: "Decidido nos pênaltis · Classificado" });
+  s.continental = { ...s.continental, fase: "final", perna: 1, pernas: 1, neutro: true, ida: null, como: "prorrogacao" };
+  assert.equal(buildMatch(s)!.kicker, "Sul-Americana · Final · Jogo único");
+  assert.equal(buildMatch(s)!.cup!.outcome, "Decidido na prorrogação · Campeão da Sul-Americana!");
+  assert.equal(buildResult(s, "x")!.line, "O Flamengo venceu o Palmeiras.");
+});

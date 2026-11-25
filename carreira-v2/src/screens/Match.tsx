@@ -39,12 +39,12 @@ type Leave = { kind: "live" } | { kind: "result"; to: string | null; club?: stri
 // Estado da gravação do resultado (AUD-02).
 type SaveStatus = "saving" | "saved" | "failed" | "session" | "other-account";
 type View = { kind: "loading" } | { kind: "error"; message: string } | { kind: "none"; message: string }
-  | { kind: "blocked"; start: "jogo" | "amistoso" | "copa"; issues: string[]; error: string | null } | { kind: "live"; m: MatchModel; snap: MatchSnapshot };
+  | { kind: "blocked"; start: "jogo" | "amistoso" | "copa" | "continental"; issues: string[]; error: string | null } | { kind: "live"; m: MatchModel; snap: MatchSnapshot };
 export type MatchSub = "pausa" | "time" | "sai" | "entra" | "tatica" | "lances" | "tabela" | null;
 const PARTIDA = `${BASE}/partida`;
 
 export function Match({ start, sub, outId, competitionId, competitionName, teamById, onFinished, renderTable }: {
-  start: null | "jogo" | "amistoso" | "copa"; sub: MatchSub; outId?: string | null; competitionId?: string; competitionName: string; teamById: (id: string | number) => Team;
+  start: null | "jogo" | "amistoso" | "copa" | "continental"; sub: MatchSub; outId?: string | null; competitionId?: string; competitionName: string; teamById: (id: string | number) => Team;
   onFinished: () => void; renderTable: (ctx: TableMatchContext) => JSX.Element;
 }) {
   // Só a 1ª montagem decide se começa: trocar de vista (?tela=) não reinicia.
@@ -69,7 +69,7 @@ export function Match({ start, sub, outId, competitionId, competitionName, teamB
   const finishedOnce = useRef(false);
   const [attempt, setAttempt] = useState(0);
   const completing = useRef(false);
-  const beginRef = useRef<((kind: "jogo" | "amistoso" | "copa") => void) | null>(null);
+  const beginRef = useRef<((kind: "jogo" | "amistoso" | "copa" | "continental") => void) | null>(null);
 
   useEffect(() => {
     let alive = true;
@@ -120,9 +120,13 @@ export function Match({ start, sub, outId, competitionId, competitionName, teamB
         navigate(PARTIDA, { replace: true });
         // Fase 3: o amistoso usa o mesmo motor ao vivo (iniciarAmistoso).
         // Fase 4: a perna da Copa do pós-jogo também (iniciarPernaCopa).
-        beginRef.current = (kind) => {
+        beginRef.current = async (kind) => {
+          // MUNDO-001 (M9c): o jogo da Libertadores/Sul-Americana (iniciarJogoContinental,
+          // assíncrono: o adversário de fora entra no save com o elenco).
           const r = kind === "amistoso" ? s.run<{ ok: boolean; motivo?: string }>("iniciarAmistoso")
-            : kind === "copa" ? s.run<{ ok: boolean; motivo?: string }>("iniciarPernaCopa") : s.start();
+            : kind === "copa" ? s.run<{ ok: boolean; motivo?: string }>("iniciarPernaCopa")
+            : kind === "continental" ? await s.run<Promise<{ ok: boolean; motivo?: string }>>("iniciarJogoContinental") : s.start();
+          if (!alive) return;
           // Escalação com pendência (decisão de 12/11): a partida não começa.
           // "Completar automaticamente" tenta de novo por aqui, na mesma
           // sessão (remontar reiniciaria o motor e perderia o pós-jogo da Copa).
@@ -289,7 +293,8 @@ export function Match({ start, sub, outId, competitionId, competitionName, teamB
     const status = saveStatus(m.saved, snap.erroGravacao ?? null, !!snap.salvando || retrying);
     const friendly = snap.contexto === "amistoso";
     const cupLeg = snap.contexto === "copa";
-    const ready = (friendly ? !!snap.semanaPronta : cupLeg ? true : !!snap.resultadoPronto) && status === "saved";
+    const continental = snap.contexto === "continental";
+    const ready = (friendly ? !!snap.semanaPronta : cupLeg || continental ? true : !!snap.resultadoPronto) && status === "saved";
     const cont = () => {
       if (!ready || postMatchRef.current) return;
       if (friendly) {
@@ -311,13 +316,21 @@ export function Match({ start, sub, outId, competitionId, competitionName, teamB
         navigate(`${BASE}/pos-jogo`, { replace: true });
         return;
       }
+      // MUNDO-001 (M9c): o jogo da copa continental não tem pós-jogo de
+      // rodada; volta ao Início (a semana segue de lá).
+      if (continental) {
+        postMatchRef.current = true; guardRef.current = false;
+        s.discard(); onFinished();
+        navigate(`${BASE}/`, { replace: true });
+        return;
+      }
       const r = s.run<{ ok: boolean }>("iniciarPosJogo");
       if (r.ok) {
         postMatchRef.current = true; guardRef.current = false;
         navigate(`${BASE}/pos-jogo`, { replace: true });
       }
     };
-    return <ResultView m={m} res={res} teamById={teamById} status={status} ready={ready} friendly={friendly} cupLeg={cupLeg} onContinue={cont} onRetry={retry} onLogin={() => setLogin(true)} />;
+    return <ResultView m={m} res={res} teamById={teamById} status={status} ready={ready} friendly={friendly} cupLeg={cupLeg || continental} onContinue={cont} onRetry={retry} onLogin={() => setLogin(true)} />;
   }
 
   return (

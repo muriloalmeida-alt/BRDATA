@@ -21,7 +21,7 @@ junto). Até lá, ficam atrás de uma chave de desenvolvimento
 | **M6** | (M6a, feita: mundo leve `mundoleve.js`; M6b: ligação com o save e a carreira) Simulação híbrida (completa no país ativo, leve no resto), save enxuto (catálogo fora do save, delta por atleta), força comparável entre ligas; liga o relógio ao avanço de semana do save do mundo | M2 | `fechamento.js`, `carga.js`, `estado.js`, `leve.js` |
 | **M7** | Moeda de jogo e finanças por país (seeds, folha normalizada, TV mensal, bilheteria pela capacidade) | M6 | `financas.js`, `moeda.js` |
 | **M8** | Mercado e carreira do técnico no mundo (índice global, CPU entre países, propostas de emprego de fora, troca de país ativo) | M6, M7 | `mercado.js`, `negociacao.js`, `clube.js` |
-| **M9** | Libertadores e Sul-Americana (M9a, feita: motor `continental.js`; M9b, feita: classificados, andinos, relógio, prêmios e notícias em `copasmundo.js`; M9c: partidas do técnico ao vivo) | M5, M8, **DEP-1** | `continental.js`, `copasmundo.js` |
+| **M9** | Libertadores e Sul-Americana (M9a, feita: motor `continental.js`; M9b, feita: classificados, andinos, relógio, prêmios e notícias em `copasmundo.js`; M9c, feita: partidas do técnico ao vivo, na ponte e na v2) | M5, M8, **DEP-1** | `continental.js`, `copasmundo.js` |
 | **M10** | Champions, Europa League e Conference; telas da v2 (seletor, calendário, fases, ligas do mundo, chaves); liberação | M9, **DEP-1/2** | `carreira-v2/src/...` |
 | **M11** | Validação final: smoke por país, temporada inteira do mundo, desempenho e save no pior caso, `test:full` | todas | `tests/` |
 

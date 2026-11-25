@@ -11,3 +11,6 @@ export function criarCarreiraNoMundo(o: { indice: any; liga: string; clubId: str
 export function agendaDaLiga(indice: any, liga: string, k: number, clubes?: (string | number)[] | null, zonas?: Record<string, (string | number)[]> | null): Map<string, unknown[]>;
 export function aplicarCalendario(career: any, indice: any, k: number): unknown;
 export function fimDaTemporadaNoBrasil(CAREER: any): void;
+export function jogoContinentalPendente(CAREER: any): any;
+export function prepararJogoContinental(CAREER: any, buscar: (url: string) => Promise<any>): Promise<{ ok: boolean; motivo?: string; jogo?: any }>;
+export function registrarJogoContinental(CAREER: any, jogoId: string, placar: { gh: number; ga: number }): any;

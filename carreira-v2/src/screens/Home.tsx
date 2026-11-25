@@ -74,6 +74,13 @@ export function Home({ m, reward, skip, notices, onNoticesOpened }: {
             // Fase 5: a proposta de outro clube ao treinador é tela da v2.
             return <Link key={a.id} className="row" to={a.id === "escalacao" ? `${BASE}/escalacao` : `${BASE}/proposta-clube`}>{body}</Link>;
           })}
+          {m.continental && (
+            <Link className="row" to={`${BASE}/partida?iniciar=continental`}>
+              <IconPitch className="row-icon" />
+              <span className="row-body"><span className="row-title">{m.continental.home ? "Em casa" : "Fora"} contra {m.continental.opponent}</span><span className="row-sub">{m.continental.line}</span></span>
+              <IconChevron className="row-chevron" />
+            </Link>
+          )}
           <Link className="row" to={`${BASE}/escalacao`}>
             <IconPitch className="row-icon" />
             <span className="row-body"><span className="row-title">Ajustar escalação</span><span className="row-sub">Escolha quem entra em campo</span></span>

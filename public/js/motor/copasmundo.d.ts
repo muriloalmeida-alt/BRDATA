@@ -24,3 +24,11 @@ export function semanaDasCopas(CAREER: any, indice: any, semana: string | null):
 export function emReais(usd: number): number;
 export function situacaoDoHumano(plano: PlanoContinental, humano: string): { copa: string; fase: string; eliminado: boolean; campeao: boolean } | null;
 export function edicaoAtual(CAREER: any, indice: any): PlanoContinental | null;
+// M9c: o jogo do técnico ao vivo.
+export interface PendenteContinental {
+  id: string; copa: "LIB" | "SUD"; nomeCopa: string; fase: string; nomeFase: string; grupo: string | null; perna: number | null; pernas: number;
+  data: string; casa: Id; fora: Id; souMandante: boolean; neutro: boolean; adversario: { id: string; nome: string; escudo: string | null }; ida: { meus: number; deles: number } | null;
+}
+export function atualizarPendente(CAREER: any, indice: any, semana: string): PendenteContinental | null;
+export function jogoDoHumanoPendente(CAREER: any, indice: any, semana: string | null): any;
+export function registrarJogoDoHumano(CAREER: any, indice: any, jogoId: string, placar: { gh: number; ga: number }, semana?: string | null): { jogo: any; confronto: any; situacao: ReturnType<typeof situacaoDoHumano>; eventos: any[] };

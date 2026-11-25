@@ -13,7 +13,7 @@ MUNDO-001 — Ligas da Europa e da América do Sul, em paralelo, com continentai
 
 Status: M1 a M7 APROVADAS e mescladas (Murilo, 24/11/2026: #154 mesclado por
 ele; #155 a #157 com "Vamos fazer os merges pendentes?"). M8 em revisão (PR
-#158). M9a e M9b feitas, M9c em seguida (branch `claude/mundo-m9`, empilhada sobre o #158).
+#158). M9 feita (M9a, M9b e M9c; branch `claude/mundo-m9`, empilhada sobre o #158), aguardando PR e aprovação.
 - Etapas M1 a M6a: PR #154 (suíte completa 191/191), mesclado.
 - M6b, passos 1 a 4: PR #155, empilhado sobre o #154 (suíte completa
   191/192; a falha, instável e sem relação com o mundo, está no PR).
@@ -221,6 +221,48 @@ Limites e decisões para o Murilo:
    rede desta sessão. Ficam para o pacote offline da M10.
 3. As partidas do técnico nas copas são simuladas, como as da CPU (M9c as
    leva para o ao vivo). Sem colisão de agenda com a liga ainda.
+
+Relatório da M9c, o jogo do técnico nas copas ao vivo (25/11/2026)
+
+O que foi feito:
+- Motor:
+  - o jogo do técnico na semana não é simulado com os da CPU: fica pendente
+    (`CAREER.copas.conmebol.pendente`, com copa, fase, data, adversário e
+    ida) para ele jogar ao vivo;
+  - se a semana passa sem ele jogar, o jogo é simulado como os da CPU (a
+    copa nunca trava);
+  - a partida usa o mesmo motor ao vivo da Copa do Brasil (blocos,
+    substituições, tática, intervalo), com o contexto `continental`
+    (`posjogo.iniciarJogoContinental`/`encerrarJogoContinental`,
+    `jogo.startContinentalLive`/`finishContinentalLive`);
+  - no fim, o placar vai para o plano da copa
+    (`copasmundo.registrarJogoDoHumano`); prorrogação e pênaltis, quando o
+    confronto pede, pelo simulador; recuperação, renda em casa (final
+    neutra sem renda), evolução, prêmios e avisos como antes;
+  - o adversário de fora (outro país ou andino) entra no save com o elenco
+    do pacote, como no mercado do mundo (M8), e sai na virada;
+  - ponte: `jogoContinental()` e `iniciarJogoContinental()`;
+    `avancarSemana` para com o motivo `continental` enquanto há jogo
+    pendente; o estado da partida traz `contexto: "continental"` e
+    `continental` (copa, fase, perna, ida, desfecho).
+- v2:
+  - Início: o CTA vira "Jogar a Libertadores" (ou Sul-Americana) e uma linha
+    mostra data, copa, fase e adversário;
+  - Partida: `?iniciar=continental`, cabeçalho "Libertadores · Fase de
+    grupos · Grupo C", agregado na volta e desfecho (pênaltis,
+    prorrogação, classificado, eliminado, campeão);
+  - fim do jogo volta ao Início (sem pós-jogo de rodada);
+  - a semana que para no jogo continental volta ao Início;
+  - os clubes de fora no save aparecem com nome e escudo.
+
+Testes: `test_motor_copas_mundo` 7/7 (novo: o jogo ao vivo pela ponte, com
+adversário andino e brasileiro carregados, placar no plano e cota de
+mando); v2 142/142 (Início e Partida com o jogo continental); typecheck.
+
+Limites:
+1. Jogo da copa e da liga na mesma semana: o técnico joga os dois (a
+   condição física cai pelo motor de sempre), sem rodízio automático.
+2. Sem tela de chaves e grupos continentais (M10).
 
 Relatório da M7, moeda e finanças por país (24/11/2026)
 

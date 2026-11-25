@@ -94,3 +94,19 @@ test("save antigo sem calendário: confronto sem data, rodada mantida", () => {
   assert.equal(buildHome(c, byId).next?.line, "RODADA 12");
   assert.equal(matchDay(c, 12), null);
 });
+
+// MUNDO-001 (M9c): o jogo da Libertadores/Sul-Americana na semana vem antes.
+test("jogo continental pendente: CTA Jogar a Libertadores e a linha do jogo", () => {
+  const c = base();
+  c.copas = { conmebol: { pendente: {
+    id: "LIB:40", copa: "LIB", nomeCopa: "Libertadores", fase: "grupos", nomeFase: "fase de grupos", grupo: "C",
+    perna: null, pernas: 1, data: "2026-04-08", souMandante: false, neutro: false,
+    adversario: { id: "870000001", nome: "Bolívar", escudo: null }, ida: null,
+  } } };
+  const h = buildHome(c, byId);
+  assert.deepEqual(h.cta, { label: "Jogar a Libertadores", action: "continental" });
+  assert.deepEqual(h.continental, { line: "08 ABR · LIBERTADORES · GRUPO C", opponent: "Bolívar", home: false });
+  c.copas = { conmebol: { pendente: null } };
+  assert.equal(buildHome(c, byId).continental, null);
+  assert.equal(buildHome(c, byId).cta.action, "preparar");
+});
