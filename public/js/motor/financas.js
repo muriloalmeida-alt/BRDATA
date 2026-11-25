@@ -87,8 +87,9 @@ export function sponsorshipTier(lastSeason, cupChampion) {
   return clamp(score, 10, 100);
 }
 // 3 propostas: empresa, valor por temporada e duração (2 ou 3 temporadas).
-export function sponsorProposals(kind, tier, rng) {
-  const base = SPONSOR_BASE_VALUE[kind];
+// fator (ECON-001b): a escala comercial do clube na economia v2 (1 = antes).
+export function sponsorProposals(kind, tier, rng, fator = 1) {
+  const base = SPONSOR_BASE_VALUE[kind] * fator;
   const mult = 0.6 + (tier / 100) * 1.2;
   const names = kind === "master" ? SPONSOR_MASTER_NAMES : SPONSOR_MATERIAL_NAMES;
   const pool = [...names].sort(() => rng() - 0.5).slice(0, 3);
@@ -137,7 +138,9 @@ export function ticketRevenue(club, rng, upgradeBonus, recentForm) {
 // patrocínio (total da temporada / 12) e cota de TV. Só entram os
 // lançamentos diferentes de zero (os de valor zero não mexiam no caixa
 // nem no extrato). wagePaid e income: totais para o resumo da semana.
-export function monthEntries({ squad, staffHired, scouts, sponsorship, tvMonthly, month }) {
+// despesasMensais (ECON-001b, economia v2): despesas operacionais do clube
+// (estrutura, staff, viagens etc., fora a folha-base), da base financeira.
+export function monthEntries({ squad, staffHired, scouts, sponsorship, tvMonthly, month, despesasMensais = 0 }) {
   const entries = [];
   const wagePaid = wageBill(squad);
   if (wagePaid) entries.push({ type: "salario", label: `Folha salarial de ${month}`, amount: -wagePaid });
@@ -151,6 +154,7 @@ export function monthEntries({ squad, staffHired, scouts, sponsorship, tvMonthly
   if (sponsorIncome) entries.push({ type: "patrocinio", label: `Patrocínio de ${month}`, amount: sponsorIncome });
   const tv = tvMonthly || 0;
   if (tv) entries.push({ type: "tv", label: `Cota de TV de ${month}`, amount: tv });
+  if (despesasMensais) entries.push({ type: "despesa", label: `Despesas operacionais de ${month}`, amount: -despesasMensais });
   return { entries, wagePaid, income: sponsorIncome + tv };
 }
 // Rodada no modelo sem calendário (carreira antiga): 1/4 do mês de folha,

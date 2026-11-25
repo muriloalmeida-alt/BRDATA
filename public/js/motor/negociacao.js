@@ -21,6 +21,7 @@
 import { carreiraAtual, competicaoAtual, timePorId, forcaMediaDoElenco, divisoesDoPais } from "./estado.js";
 import * as mercado from "./mercado.js";
 import { fairWageFor } from "./temporada.js";
+import * as economia from "./economia.js";
 import { fmtBRL, abbreviateName } from "./texto.js";
 import { pushNotification } from "./registro.js";
 import { ambiente, avisar, leagueSquadFor, marketClub, pushTransferLog, finalizeIncomingPurchase, maybeSpawnRivalOffer, calendarOn, CALENDAR_WINDOW_PHASES, ganchos, pickRandomOtherClub, temVagaCpu, entrarNoElencoCpu, moverCaixaCpu, transferScore, financeiroScore, pickWeightedByScore, minSquadSizeFor, SUBPOS_LABEL, subPositionOf } from "./semana.js";
@@ -45,7 +46,7 @@ export function motivosAVendaNoClube(p, clubId) {
     rodadas: Math.max(0, (CAREER.currentRound || 1) - 1),
     contaJogos: divisaoDoClube(clubId) === divisaoDoClube(CAREER.clubId),
     temporada: CAREER.seasonYear,
-    salarioJusto: fairWageFor(p),
+    salarioJusto: fairWageFor(p, economia.escalaDe(CAREER, clubId)),
   });
 }
 
@@ -117,7 +118,9 @@ export function resolverProposta(o, round) {
       return false;
     }
     const aVenda = motivosAVendaNoClube(p, o.clubId).length > 0;
-    const r = mercado.reservaParaProposta(p, marketClub(o.clubId), { baseValue: o.marketValue, fimDeJanela: fimDeJanela(), aVenda });
+    // ECON-001b: demanda (comprador de mercado mais caro paga parte da diferença).
+    const demanda = economia.fatorDeDemanda(CAREER, CAREER.clubId, o.clubId);
+    const r = mercado.reservaParaProposta(p, marketClub(o.clubId), { baseValue: Math.round(o.marketValue * demanda / 1000) * 1000, fimDeJanela: fimDeJanela(), aVenda });
     const usadas = o.counterRounds || 0;
     // VENDA-DISPONIVEL: à venda, a partir da reserva (90%) o clube aceita.
     let d = aVenda && o.offerValue >= r.reserva ? { action: "accept", value: o.offerValue } : mercado.sellerNegotiationDecision(o.offerValue, r.reserva, rng);
@@ -294,15 +297,21 @@ export function negociacaoCpu(p, deId, paraId) {
   if (vendedorSq.length <= minSquadSizeFor(deId)) return { ok: false, motivo: "vendedor sem peças" };
   if (!temVagaCpu(paraId)) return { ok: false, motivo: "sem vaga" };
   const aVenda = motivosAVendaNoClube(p, deId).length > 0;
-  const r = mercado.reservaParaProposta(p, marketClub(deId), { aVenda });
-  const teto = mercado.buyerHardCap(p, comprador);
+  // ECON-001b: demanda (comprador de mercado mais caro paga parte da diferença).
+  const baseValue = Math.round(p.value * economia.fatorDeDemanda(carreiraAtual(), paraId, deId) / 1000) * 1000;
+  const r = mercado.reservaParaProposta(p, marketClub(deId), { aVenda, baseValue });
+  const teto = mercado.buyerHardCap(p, comprador, { baseValue });
   if (r.reserva > teto) return { ok: false, motivo: "acima do teto do comprador", reserva: r.reserva, teto };
   const papel = mercado.papelNoElenco(p, leagueSquadFor(paraId));
   const a = mercado.avaliacaoAtleta(p, { salario: p.wage, papel, anos: 3 }, contextoDoAtletaEntreClubes(p, deId, paraId));
   if (a.decisao === "recusa") return { ok: false, motivo: "atleta recusou", atleta: a.motivo };
   const salario = a.decisao === "pede" ? a.salarioPedido : p.wage;
-  const { wageCap } = mercado.clubBudget(comprador);
+  const { wageCap, cash } = mercado.clubBudget(comprador);
   if (wageBill(leagueSquadFor(paraId)) + salario > wageCap) return { ok: false, motivo: "folha do comprador" };
+  // ECON-001b: a mesma capacidade de compra do técnico (caixa com 1 mês de
+  // folha de reserva e espaço de folha), na economia v2.
+  const cap = economia.capacidadeNoJogo(carreiraAtual(), { caixa: cash, folha: wageBill(leagueSquadFor(paraId)), teto: wageCap }, { taxa: r.reserva, parcelas: 1, salarioMensal: salario });
+  if (cap && !cap.ok) return { ok: false, motivo: `capacidade: ${cap.motivo}` };
   return { ok: true, preco: r.reserva, salario, papel, aVenda };
 }
 export function mercadoCpuDaRodada(round) {

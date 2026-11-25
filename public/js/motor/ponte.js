@@ -24,7 +24,7 @@ import { stadiumUpgradeBonusFor } from "./aovivo.js";
 import { BOARD_REQUEST_COOLDOWN, OFFER_WAIT_ROUNDS, SCOUT_GROUP_LABEL, SCOUT_MARKET, STADIUM_UPGRADES, acceptCounterOffer, acceptListingOffer, acceptLoanOfferIn, acceptOffer, applyTalkEffect, boardRequest, canTalkTo, cancelListing, computeLeaderboardScore, createListing, declineOffer, finalizeLoanIn, finalizeLoanOut, findInterestedBuyer, fireTechnicalStaff, hireScout, hireTechnicalStaff, increaseOffer, isContractExpiring, isLoanOutRefused, listingFor, markLineupDirty, recruitProspectToBase, rejectListingOffer, rejectLoanOfferIn, releaseScout, renewalVerdict, scoutAllowedRegions, scoutingAvailableRegions, setLoanListed, signSponsorProposal, startScoutMission, startStadiumUpgrade, submitOfferOut, withdrawOffer, contratarAgenteLivre, salarioDoAgenteLivre } from "./clube.js";
 import { FORMATIONS, SECTOR_IDS, SECTOR_INSTRUCTIONS, TACTIC_AXES, computeHumanStrength } from "./fechamento.js";
 import { firePressConference } from "./posjogo.js";
-import { MAX_PRINCIPAL, revendaLiberadaDe, REGION_LABEL, SCOUT_MISSION_DURATIONS, SCOUT_MISSION_TYPES, SUBPOS_LABEL, ambiente, applyWeeklyTraining, avisar, calendarTurnKey, leagueSquadFor, marketTeamsPool, pendingOfferOutFor, pushLedger, subPositionOf, transferWindowStatus } from "./semana.js";
+import { MAX_PRINCIPAL, revendaLiberadaDe, REGION_LABEL, SCOUT_MISSION_DURATIONS, SCOUT_MISSION_TYPES, SUBPOS_LABEL, ambiente, applyWeeklyTraining, avisar, calendarTurnKey, leagueSquadFor, marketTeamsPool, pendingOfferOutFor, capacidadeDoTecnico, pushLedger, subPositionOf, transferWindowStatus } from "./semana.js";
 import { abbreviateName, fmtBRL } from "./texto.js";
 import { autoLineup, defaultSectorTactics, evaluateAlwaysCheckableAchievements, generateSponsorProposals, goleirosDeEmergencia, initialStadium } from "./virada.js";
 import * as financas from "./financas.js";
@@ -508,6 +508,9 @@ export const comandosGestao = {
         const t = negociacao.termosDaProposta(termos || {}, p);
         if (termos && (!negociacao.PAPEIS.includes(termos.papel) || !negociacao.ANOS.includes(Number(termos.anos)) || !(Number(termos.salario) > 0))) return { ok: false, motivo: "opcao-invalida" };
         if (wageBillOf(CAREER.squad) + t.salario > CAREER.finances.wageCap) return { ok: false, motivo: "teto", mensagem: `Esse salário estouraria o teto salarial (${fmtBRL(CAREER.finances.wageCap)}).` };
+        // ECON-001b: a capacidade de compra (economia v2), com o motivo.
+        const cap = capacidadeDoTecnico(Math.max(1000, Math.round(Number(valor) || 0)), Number(parcelas), t.salario);
+        if (cap && !cap.ok) return { ok: false, motivo: cap.motivo === "folha" ? "teto" : cap.motivo, mensagem: cap.mensagem, limites: cap.limites };
         const r = submitOfferOut(String(clubId), playerId, valor, parcelas);
         if (!r.ok) return { ok: false, motivo: r.motivo, mensagem: r.texto };
         // Uma nova proposta substitui a recusada pelo mesmo jogador.
@@ -532,7 +535,8 @@ export const comandosGestao = {
       const sugerido = Object.fromEntries(negociacao.PAPEIS.map((papel) => [papel, mercado.salarioSugerido(p, papel, ctx)]));
       return { ok: true, valor: v, parcelas: n, porParcela, primeira, salarioAtual: p.wage, salario: sal, papelAtual: ctx.papelAtual, sugerido,
         caixaAntes: CAREER.finances.cash, caixaDepois: CAREER.finances.cash - primeira,
-        folhaAntes: wageBillOf(CAREER.squad), folhaDepois: wageBillOf(CAREER.squad) + sal, teto: CAREER.finances.wageCap };
+        folhaAntes: wageBillOf(CAREER.squad), folhaDepois: wageBillOf(CAREER.squad) + sal, teto: CAREER.finances.wageCap,
+        capacidade: capacidadeDoTecnico(v, n, sal) };
     },
     async aumentarProposta(offerId, valor) {
       const CAREER = carreiraAtual();

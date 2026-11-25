@@ -141,6 +141,8 @@ const ROTEIRO = (seed) => `(async () => {
     // PARIDADE-CPU · E4, PR2: a cópia congelada monta uma carreira nova ao
     // aceitar outro clube (a troca sem recomeçar tem teste próprio).
     rodar("window.BRDATA_MOTOR.estado.PARIDADE_CPU.troca = false;", "troca");
+    // ECON-001b: a cópia congelada não tem a economia v2 (teste próprio: test_economia_mercado).
+    rodar("window.BRDATA_MOTOR.economia.ECONOMIA_V2.ativa = false;", "economia");
     rodar(dataSrc, "data.js");
     rodar(pagina, "carreira.js");
     if (antes) rodar(ref, "ref_carga_antes.js");

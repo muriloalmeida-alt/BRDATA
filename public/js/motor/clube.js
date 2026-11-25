@@ -30,6 +30,7 @@ import * as financas from "./financas.js";
 import * as mercado from "./mercado.js";
 import * as tabela from "./tabela.js";
 import * as temporada from "./temporada.js";
+import * as economia from "./economia.js";
 import * as registro from "./registro.js";
 
 const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
@@ -705,7 +706,8 @@ export function declineOffer() {
 // pede (o salário justo pelo nível e pela idade, temporada.fairWageFor), por 2
 // temporadas, a qualquer momento. Cabe no teto salarial e no tamanho do elenco.
 export function salarioDoAgenteLivre(p) {
-  return Math.max(Math.round((temporada.fairWageFor(p) || p.wage || 0) / 100) * 100, 100);
+  const CAREER = carreiraAtual();
+  return Math.max(Math.round((temporada.fairWageFor(p, economia.escalaDe(CAREER, CAREER && CAREER.clubId)) || p.wage || 0) / 100) * 100, 100);
 }
 export function contratarAgenteLivre(id) {
   const CAREER = carreiraAtual();

@@ -33,7 +33,9 @@ const average = (list) => (list.length ? list.reduce((s, p) => s + p.overall, 0)
 
 // ---------- Jogador: contrato, potencial, moral ----------
 // Salário, valor e contrato (1 a 4 temporadas a partir de liveSeason).
-export function computeContractFields(overall, age, potential, rng, liveSeason) {
+// ECON-001b: `escala` ({ salario, valor }, da economia v2 do clube) leva o
+// contrato à escala do clube e da liga; sem ela, a regra de sempre.
+export function computeContractFields(overall, age, potential, rng, liveSeason, escala = null) {
   let ageMult = 1;
   if (age <= 20) ageMult = 0.8;
   else if (age <= 23) ageMult = 1.0;
@@ -45,18 +47,19 @@ export function computeContractFields(overall, age, potential, rng, liveSeason) 
   const wage = Math.round(Math.pow(1.145, overall - 50) * 2500 * ageMult / 100) * 100;
   const value = Math.round(Math.pow(1.16, overall - 50) * 120000 * ageMult * potBoost / 1000) * 1000;
   const contractUntil = liveSeason + 1 + Math.floor(rng() * 4);
+  if (escala) return { wage: Math.max(100, Math.round((wage * escala.salario) / 100) * 100), value: Math.max(1000, Math.round((value * escala.valor) / 1000) * 1000), contractUntil, escalaEco: 1 };
   return { wage, value, contractUntil };
 }
 // Salário "de mercado" para o overall e a idade atuais.
-export function fairWageFor(p) {
-  return computeContractFields(p.overall, p.age, p.potential || null, () => 0.5, 0).wage;
+export function fairWageFor(p, escala = null) {
+  return computeContractFields(p.overall, p.age, p.potential || null, () => 0.5, 0, escala).wage;
 }
 // Moral na virada: volta 30% rumo a 70; salário injusto pesa no principal.
-export function seasonMorale(p) {
+export function seasonMorale(p, escala = null) {
   const base = p.morale == null ? 70 : p.morale;
   let m = Math.round(base + (70 - base) * 0.3);
   if (p.origin === "principal") {
-    const fair = fairWageFor(p);
+    const fair = fairWageFor(p, escala);
     const ratio = fair ? p.wage / fair : 1;
     if (ratio < 0.85) m -= 6;
     else if (ratio > 1.15) m += 4;
@@ -127,7 +130,7 @@ export function buildBasePlayer(club, idx, rng, env) {
     benchStreak: 0, moraleReason: "Neutro no clube", moraleTrend: "estavel",
     wantsTransfer: false, lastTalkRound: null,
     goalsCareer: 0, assistsCareer: 0, apps: 0,
-    ...computeContractFields(overall, age, potential, rng, env.liveSeason),
+    ...computeContractFields(overall, age, potential, rng, env.liveSeason, env.escala ? env.escala(club.id) : null),
   };
 }
 export const FILLER_COMPOSITION = ["G", "D", "D", "D", "D", "D", "M", "M", "M", "M", "M", "M", "F", "F", "F", "F"];
@@ -150,7 +153,7 @@ export function buildGeneratedProPlayer(club, idx, rng, env) {
     benchStreak: 0, moraleReason: "Neutro no clube", moraleTrend: "estavel",
     wantsTransfer: false, lastTalkRound: null,
     goalsCareer: 0, assistsCareer: 0, apps: 0,
-    ...computeContractFields(overall, age, potential, rng, env.liveSeason),
+    ...computeContractFields(overall, age, potential, rng, env.liveSeason, env.escala ? env.escala(club.id) : null),
   };
 }
 export const MIN_PRINCIPAL = 18;
@@ -205,14 +208,14 @@ export function renovacoesDaCpu(players, seasonYear) {
 
 // A14: o gerado assume a posição e o nível (overall −3 a +2) de quem saiu;
 // atributos, potencial, salário, valor e contrato recalculados como no gerador.
-function reporNoNivel(p, ref, rng, env) {
+function reporNoNivel(p, ref, rng, env, escala = null) {
   const overall = clamp(Math.round(ref.overall + (rng() * 5 - 3)), 40, 90);
   const g = ref.group;
   p.group = g; p.overall = overall;
   p.atk = clamp(overall + (g === "F" ? 6 : g === "M" ? 2 : -10) + Math.round(rng() * 6 - 3), 28, 92);
   p.def = clamp(overall + (g === "D" || g === "G" ? 6 : -10) + Math.round(rng() * 6 - 3), 28, 92);
   p.potential = derivePotentialForAdult(overall, p.age, rng);
-  Object.assign(p, computeContractFields(overall, p.age, p.potential, rng, env.liveSeason));
+  Object.assign(p, computeContractFields(overall, p.age, p.potential, rng, env.liveSeason, escala));
 }
 
 // Elenco CPU: evolução anual, idade, queda do potencial, saída por fim
@@ -232,7 +235,7 @@ export function renewLeagueSquad({ club, squad, seasonYear, minSize, evoRng, rng
   players.forEach((p) => {
     if (!renova.has(p.id)) return;
     // Contrato novo de 1 a 4 temporadas e o salário de mercado de agora.
-    const c = computeContractFields(p.overall, p.age, p.potential || null, rng, seasonYear - 1);
+    const c = computeContractFields(p.overall, p.age, p.potential || null, rng, seasonYear - 1, env && env.escala ? env.escala(club.id) : null);
     p.contractUntil = c.contractUntil; p.wage = c.wage;
   });
   const kept = players.filter((p) => p.contractUntil >= seasonYear);
@@ -248,7 +251,7 @@ export function renewLeagueSquad({ club, squad, seasonYear, minSize, evoRng, rng
   const fresh = Array.from({ length: missing }, (_, i) => {
     const p = buildGeneratedProPlayer(club, i, rng, env);
     const ref = sairam[i];
-    if (ref) reporNoNivel(p, ref, rng, env);
+    if (ref) reporNoNivel(p, ref, rng, env, env && env.escala ? env.escala(club.id) : null);
     // Id único no elenco (um gerado de outra virada pode ter ficado).
     if (RENOVACAO_CPU.ativa && ids.has(p.id)) p.id = `gen_${club.id}_${seasonYear}_${i}`;
     ids.add(p.id);
@@ -276,7 +279,7 @@ export function renewHumanSquad({ club, clubName, squad, lineup, seasonYear, rng
   const remainingIds = new Set(staying.map((p) => p.id));
   const starters = lineup.starters.map((id) => (id && remainingIds.has(id) ? id : null));
   const bench = lineup.bench.filter((id) => remainingIds.has(id));
-  staying.forEach((p) => { p.morale = seasonMorale(p); });
+  staying.forEach((p) => { p.morale = seasonMorale(p, env && env.escala ? env.escala(club.id) : null); });
   const baseCount = staying.filter((p) => p.origin === "base").length;
   const newBase = Array.from({ length: Math.max(0, 16 - baseCount) }, (_, i) => buildBasePlayer(club, i, rng, env));
   const principalCount = staying.filter((p) => p.origin === "principal").length;

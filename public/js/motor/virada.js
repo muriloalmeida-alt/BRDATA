@@ -27,6 +27,7 @@ import { freshTeamStats } from "./aovivo.js";
 import { boardGoalMet, derivePotentialForAdult, promotionRelegation, seasonAwards } from "./temporada.js";
 import { defaultTrainingPlan } from "./treino.js";
 import * as financas from "./financas.js";
+import * as economia from "./economia.js";
 import * as tabela from "./tabela.js";
 import * as temporada from "./temporada.js";
 import * as treino from "./treino.js";
@@ -45,10 +46,12 @@ const initialFinances = (squad) => financas.initialFinances(squad);
 const technicalStaffMonthlyCost = () => financas.staffMonthlyCost(carreiraAtual().squad);
 const scoutsMonthlyCost = () => financas.scoutsMonthlyCost(carreiraAtual().scouts);
 const applySeasonReputationDelta = (goalWasMet, award) => { const c = carreiraAtual(); c.reputation = temporada.seasonReputation(c.reputation, goalWasMet, award, c.clubId); };
-const envJogador = () => ({ firstNames: ambiente.primeirosNomes, lastNames: ambiente.sobrenomes, liveSeason: ambiente.temporadaReal() });
+// ECON-001b: contrato gerado na escala do clube (economia v2; sem ela, null).
+const escalaDoClube = (id) => economia.escalaDe(carreiraAtual(), id);
+const envJogador = () => ({ firstNames: ambiente.primeirosNomes, lastNames: ambiente.sobrenomes, liveSeason: ambiente.temporadaReal(), escala: escalaDoClube });
 const buildBasePlayer = (club, idx, rng) => temporada.buildBasePlayer(club, idx, rng, envJogador());
 const buildGeneratedProPlayer = (club, idx, rng) => temporada.buildGeneratedProPlayer(club, idx, rng, envJogador());
-const computeContractFields = (overall, age, potential, rng) => temporada.computeContractFields(overall, age, potential, rng, ambiente.temporadaReal());
+const computeContractFields = (overall, age, potential, rng, clubId = null) => temporada.computeContractFields(overall, age, potential, rng, ambiente.temporadaReal(), clubId == null ? null : escalaDoClube(clubId));
 
 export function defaultSectorTactics() {
   const out = {};
@@ -115,7 +118,7 @@ export function buildRealPlayer(raw, club, rng) {
     benchStreak: 0, moraleReason: "Neutro no clube", moraleTrend: "estavel",
     wantsTransfer: false, lastTalkRound: null,
     goalsCareer: 0, assistsCareer: 0, apps: 0,
-    ...computeContractFields(overall, age, potential, rng),
+    ...computeContractFields(overall, age, potential, rng, club && club.id),
   };
 }
 
@@ -135,7 +138,8 @@ export function sponsorshipTier() {
 }
 
 export function generateSponsorProposals(kind) {
-  return financas.sponsorProposals(kind, sponsorshipTier(), Math.random);
+  const e = carreiraAtual() && carreiraAtual().economia;
+  return financas.sponsorProposals(kind, sponsorshipTier(), Math.random, (e && e.versao >= 2 && e.patrocinio) || 1);
 }
 
 export function initSponsorship() {
@@ -523,7 +527,7 @@ export function promoverBaseDaCpu(club, elenco) {
     j.overall = Math.max(j.overall, Math.round((j.potential || 60) * BASE_CPU.fatorOverall));
     j.atk = Math.max(j.atk, j.overall + (j.group === "F" ? 4 : j.group === "M" ? 1 : -8));
     j.def = Math.max(j.def, j.overall + (j.group === "D" || j.group === "G" ? 4 : -8));
-    Object.assign(j, temporada.computeContractFields(j.overall, j.age, j.potential, rng, CAREER.seasonYear - 1));
+    Object.assign(j, temporada.computeContractFields(j.overall, j.age, j.potential, rng, CAREER.seasonYear - 1, escalaDoClube(club.id)));
     // Sempre no lugar do mais velho da posição (o elenco não cresce).
     {
       const velho = lista.filter((p) => p.onLoanFromClubId == null && p.group === j.group && !voltaramNaVirada.has(String(p.id))).sort((a, b) => (b.age || 0) - (a.age || 0) || a.overall - b.overall)[0];
@@ -748,6 +752,8 @@ export async function advanceSeason() {
   // que abre a notificação depois do resumo da virada de temporada.
   maybeGenerateClubProposals();
 
+  // ECON-001b: escalas de quem entrou e fluxos do clube na temporada nova.
+  if (estado.ganchosMundo.economiaDaTemporada) estado.ganchosMundo.economiaDaTemporada(CAREER);
   // GE-CALENDAR-001 — toda temporada nova (inclusive a 1ª de uma carreira
   // de antes do calendário) começa em janeiro, nas férias, com a folha
   // de janeiro já cobrada (12 meses por ano, ver applyCalendarMonthlyFinances).
@@ -1280,7 +1286,7 @@ export function montarCarreira(club, squad, leagueSquads, liveModeByCompetition,
 export const MUNDO_NA_TROCA = ["schemaVersion", "competitionId", "liveMode", "liveModeByCompetition", "marketScope", "createdAt",
   "schedule", "currentRound", "standings", "resultsByRound", "leagueChampions", "transferLog", "seasonYear", "teamWinlessStreak",
   "calendar", "divisionTeams", "serieDPool", "otherDivisions", "cup", "nivelGols", "agentesLivres", "caixaCpu", "perfisCpu",
-  "elencosSerieD", "newsFeed", "notifications", "notificationSettings", "purchaseHistory", "achievements", "objectives",
+  "elencosSerieD", "economia", "newsFeed", "notifications", "notificationSettings", "purchaseHistory", "achievements", "objectives",
   "titlesWonNacional", "titlesWonCopa", "seasonAwards", "trainingAppliedForRound", "baseRevealedCount", "pressLog", "basesCpu"];
 // O que as parcelas pendentes ainda valem: a receber menos a pagar.
 export function saldoDasParcelas(c) {
@@ -1342,6 +1348,8 @@ export function trocarDeClube(clubId) {
   const CAREER = carreiraAtual();
   MUNDO_NA_TROCA.forEach((k) => { if (k in prev) CAREER[k] = prev[k]; });
   if (caixaNovo != null) CAREER.finances.cash = caixaNovo;
+  // ECON-001b: os fluxos do clube novo (economia v2).
+  if (estado.ganchosMundo.economiaDaTemporada) estado.ganchosMundo.economiaDaTemporada(CAREER, { troca: true });
   CAREER.clubProposals = [];
   pushTransferLog(`Você deixou o ${prev.clubName} e assumiu o ${club.name}.`, CAREER.currentRound);
   return true;

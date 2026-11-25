@@ -428,6 +428,8 @@ export async function startCareer(clubId) {
     // os outros países jogam em paralelo (carreiramundo.anexarMundoAoBrasil);
     // sem ele, nada muda (nem um pedido a mais ao servidor).
     if (estado.ganchosMundo.anexarMundo) await estado.ganchosMundo.anexarMundo(carreiraAtual());
+    // ECON-001b: economia v2 na carreira nova.
+    if (estado.ganchosMundo.economiaNova) estado.ganchosMundo.economiaNova(carreiraAtual());
     if (estado.ganchosMundo.moeda) estado.ganchosMundo.moeda(null); // carreira no Brasil: R$ (M7)
     await persistCareer();
     tela("openFirstEntry");
