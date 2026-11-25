@@ -1,8 +1,8 @@
 {
   "id": "/carreira.html",
-  "name": "BR Treinador",
-  "short_name": "BR Treinador",
-  "description": "Modo Técnico do BR Data — assuma o comando de um clube do Brasileirão: escalação, mercado, coletivas de imprensa e temporadas inteiras.",
+  "name": "Touchline — Modo Carreira",
+  "short_name": "Touchline",
+  "description": "Touchline, modo carreira de futebol: assuma o comando de um clube no Brasil, na Europa ou na América do Sul — escalação, mercado, copas continentais e temporadas inteiras.",
   "start_url": "/?source=pwa",
   "scope": "/",
   "display": "standalone",
@@ -13,11 +13,11 @@
   "theme_color": "#060D1A",
   "categories": ["sports", "games"],
   "icons": [
-    { "src": "img/icons/favicon-16.png", "sizes": "16x16", "type": "image/png" },
-    { "src": "img/icons/favicon-32.png", "sizes": "32x32", "type": "image/png" },
-    { "src": "img/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
-    { "src": "img/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
-    { "src": "img/icons/icon-maskable-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
-    { "src": "img/icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+    { "src": "img/touchline/favicon-16.png", "sizes": "16x16", "type": "image/png" },
+    { "src": "img/touchline/favicon-32.png", "sizes": "32x32", "type": "image/png" },
+    { "src": "img/touchline/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "img/touchline/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "img/touchline/icon-maskable-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "img/touchline/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
   ]
 }

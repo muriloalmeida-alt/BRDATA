@@ -103,7 +103,7 @@ export function RankingScreen({ tab }: { tab: "all" | "friends" }) {
     if (!me?.friendCode) return;
     const url = `${location.origin}/?convite=${encodeURIComponent(me.friendCode)}`;
     const text = "Entra no Modo Técnico comigo! Usa meu link pra a gente virar amigo no Ranking:";
-    try { if (navigator.share) { await navigator.share({ title: "BR Treinador — Modo Técnico", text, url }); return; } } catch (e) { if ((e as Error).name === "AbortError") return; }
+    try { if (navigator.share) { await navigator.share({ title: "Touchline — Modo Carreira", text, url }); return; } } catch (e) { if ((e as Error).name === "AbortError") return; }
     try { await navigator.clipboard.writeText(url); setMsg("Link de convite copiado."); } catch { setErr("Não deu pra copiar o link agora."); }
   };
   const add = async () => {
@@ -399,7 +399,7 @@ export function HelpScreen() {
 // ---------- Saves ----------
 // OFFLINE-001, etapa 3: exportar, importar e trazer a cópia da conta.
 const SAVE_ERR: Record<string, string> = {
-  formato: "Este arquivo não é uma carreira do BRDATA.",
+  formato: "Este arquivo não é uma carreira do Touchline.",
   versao: "Este arquivo é de uma versão mais nova do jogo. Atualize o app e tente de novo.",
   integridade: "O arquivo está incompleto ou foi alterado. Nada foi substituído.",
   conteudo: "O arquivo não tem uma carreira completa. Nada foi substituído.",

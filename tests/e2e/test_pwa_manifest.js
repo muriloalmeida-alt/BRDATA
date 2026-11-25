@@ -31,7 +31,8 @@ const { check } = require("./_check");
     return { ok: res.ok, contentType: res.headers.get("content-type"), body: await res.json() };
   }, manifestUrl);
   check("2) manifest-treinador.json responde 200:", manifestRes.ok);
-  console.log("   name/short_name = 'BR Treinador':", manifestRes.body.name === "BR Treinador" && manifestRes.body.short_name === "BR Treinador");
+  // Touchline (25/11/2026): o novo nome do jogo; ícones próprios (os do site seguem os de sempre).
+  check("2a) name/short_name = Touchline e ícones da marca do jogo:", manifestRes.body.name === "Touchline — Modo Carreira" && manifestRes.body.short_name === "Touchline" && manifestRes.body.icons.every((i) => i.src.startsWith("img/touchline/")), JSON.stringify({ name: manifestRes.body.name, short: manifestRes.body.short_name }));
   // Fase 11: o app instalado abre a v2 (raiz); o id continua o mesmo para
   // quem já instalou não ganhar um 2º ícone.
   check("2b) start_url abre a v2 na raiz e o id continua /carreira.html:", manifestRes.body.start_url === "/?source=pwa" && manifestRes.body.id === "/carreira.html", JSON.stringify({ start_url: manifestRes.body.start_url, id: manifestRes.body.id }));

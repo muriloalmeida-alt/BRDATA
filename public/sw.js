@@ -142,6 +142,17 @@ const APP_SHELL = [
   "/img/icons/favicon-32.png",
   "/img/icons/icon-maskable-192.png",
   "/img/icons/icon-maskable-512.png",
+  // Touchline (25/11/2026): a marca do jogo (logo, "T" do cabeçalho e ícones do app).
+  "/img/touchline/logo-completa.webp",
+  "/img/touchline/marca-t.webp",
+  "/img/touchline/apple-touch-icon.png",
+  "/img/touchline/favicon-16.png",
+  "/img/touchline/favicon-32.png",
+  "/img/touchline/favicon-48.png",
+  "/img/touchline/icon-192.png",
+  "/img/touchline/icon-512.png",
+  "/img/touchline/icon-maskable-192.png",
+  "/img/touchline/icon-maskable-512.png",
   // BRDATA 2048 (GAME-2048-001) — página standalone para WebView; entra no
   // app shell para funcionar offline desde a instalação. css/m3-tokens.css
   // também é usado por carreira.html.
