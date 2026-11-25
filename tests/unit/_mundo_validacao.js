@@ -13,7 +13,9 @@ const zlib = require("zlib");
 const { pathToFileURL } = require("url");
 const ROOT = path.resolve(__dirname, "../..");
 
-const LIMITES = { semanaMs: 60, jsonKB: 2000, gzKB: 400 };
+// semanaMs: freio de regressão grave, não medida fina (no CI, com 10 testes em
+// paralelo, a semana leva 2–3x o que leva sozinha: 20–30 ms).
+const LIMITES = { semanaMs: 200, jsonKB: 2000, gzKB: 400 };
 
 async function validarRegiao(regiao) {
   globalThis.window = globalThis;
