@@ -25,7 +25,13 @@
 //    divisão mais alta (MUN-03).
 //
 // Uso:
-//   node scripts/mundo_catalogo.js --europa DIR --sul-america DIR --continentais DIR [--gravar]
+//   node scripts/mundo_catalogo.js --europa DIR --sul-america DIR --continentais DIR --andino DIR [--gravar]
+//
+// --andino (M9b, 25/11/2026): o 4º pacote (Bolívia, Paraguai, Peru e
+// Venezuela). Decisão do Murilo (DEP-1, 24/11): só nas copas da CONMEBOL,
+// como clubes da CPU. Entram as 1ªs divisões (60 clubes, elencos reais) em
+// `copas.conmebol` do índice e no snapshot `snapshot-conmebol_andinos.json`.
+// O pacote não traz força: ela é estimada (ver forcaAndina).
 // Sem --gravar, só confere e mostra o resumo.
 "use strict";
 const fs = require("fs");
@@ -101,7 +107,7 @@ function escudoLocal(pacoteDir, localLogoPath, copias) {
 }
 
 function montar(opts) {
-  const P = { eu: opts.europa, sa: opts["sul-america"], cont: opts.continentais };
+  const P = { eu: opts.europa, sa: opts["sul-america"], cont: opts.continentais, andino: opts.andino || null };
   const eu = {
     ligas: lerJSON(path.join(P.eu, "dados/ligas.json")),
     clubes: lerJSON(path.join(P.eu, "dados/clubes.json")),
@@ -366,8 +372,14 @@ function montar(opts) {
     for (const l of Object.values(promedioInicial)) for (const lst of Object.values(l)) lst.sort((x, y) => x.ano - y.ano);
   }
 
+  const copas = opts.andino ? copasConmebol(opts.andino, snapshots) : null;
+  // Regras das copas continentais (M9b): as tabelas do pacote, sem alteração.
+  const continentais = Object.fromEntries([["competicoes", "competicoes"], ["calendarios", "calendarios"], ["premiacao", "premiacao"], ["acesso", "acesso-e-transferencias"]]
+    .map(([k, f]) => [k, lerJSON(path.join(P.cont, `config/${f}.json`))]));
   const mundo = {
     brasil: opts.brasil || null,
+    ...(copas ? { copas } : {}),
+    continentais,
     formato: 1,
     fontes: { europa: eu.ligas.preparedOn || null, americaSul: sa.ligas.preparedOn || null },
     paises, competicoes,
@@ -383,6 +395,59 @@ function montar(opts) {
   return { mundo, snapshots, copias, ignoradas, P };
 }
 
+// ---------- copas da CONMEBOL: clubes andinos (M9b) ----------
+// Nível de jogo por associação nas copas (parâmetro de jogo, na escala do
+// gameplayLevel das ligas do pacote: Argentina 1,16, Colômbia 1,06...). As
+// associações com liga jogável usam o nível da própria 1ª divisão; o Brasil
+// não tem gameplayLevel no catálogo.
+const NIVEL_CONMEBOL = { BRA: 1.2, PAR: 0.98, PER: 0.95, BOL: 0.9, VEN: 0.88 };
+const ASSOC_ANDINA = { BO: "BOL", PY: "PAR", PE: "PER", VE: "VEN" };
+const NOME_ASSOC = { BOL: "Bolívia", PAR: "Paraguai", PER: "Peru", VEN: "Venezuela" };
+// Força estimada: o pacote não traz força nem nota de atleta (só nome,
+// posição, idade e nacionalidade). A ordem dos clubes na competição é a da
+// tabela de 2026 consultada (fonte "tabla de posiciones"); ela dá a força
+// relativa na liga, na faixa dos clubes do pacote sul-americano (o 1º perto
+// de 1,35/0,80; o último perto de 0,65/1,20).
+function forcaAndina(pos, n) {
+  const q = n > 1 ? 1 - (2 * pos) / (n - 1) : 0;
+  return { atk: Math.round((1 + 0.35 * q) * 1000) / 1000, def: Math.round((1 - 0.2 * q) * 1000) / 1000 };
+}
+const ID_ANDINO_BASE = 870000000;
+function copasConmebol(dir, snapshots) {
+  const ligas = lerJSON(path.join(dir, "dados/ligas.json")).competitions.filter((l) => l.division === 1);
+  const clubes = new Map(lerJSON(path.join(dir, "dados/clubes.json")).map((c) => [c.id, c]));
+  const porComp = lerJSON(path.join(dir, "integracao/clubes-por-competicao.json"));
+  const elencos = lerJSON(path.join(dir, "dados/elencos.json"));
+  const catalogos = ligas.flatMap((l) => porComp[l.id]).filter((id) => clubes.get(id).participationStatus === "participant").sort();
+  const idDe = new Map(catalogos.map((c, i) => [c, ID_ANDINO_BASE + i + 1]));
+  const lista = [];
+  const snap = { competitionId: "conmebol_andinos", name: "Clubes andinos (copas da CONMEBOL)", season: "2026", teams: [], standings: [], playersByTeamId: {} };
+  for (const l of ligas) {
+    const ids = porComp[l.id].filter((id) => idDe.has(id));
+    ids.forEach((cat, pos) => {
+      const c = clubes.get(cat);
+      const assoc = ASSOC_ANDINA[c.countryCode];
+      const id = idDe.get(cat);
+      const f = forcaAndina(pos, ids.length);
+      const sigla = siglaDe(c.shortName || c.name);
+      lista.push({ id, catalogo: cat, nome: c.name, curto: c.shortName || c.name, sigla, siglaDerivada: true, assoc, pais: c.countryCode, liga: l.id, ordemPacote: pos + 1, escudo: null, logoOrigem: c.logo || null, ...f, forcaEstimada: true });
+      snap.teams.push({ id, catalogClubId: cat, name: c.name, short: c.shortName || c.name, logo: c.logo || null, localLogo: null, venue: null, atk: f.atk, def: f.def });
+      snap.playersByTeamId[String(id)] = elencos.filter((p) => p.clubId === cat).map((p) => ({ id: p.id, name: p.name, photo: null, position: p.position, age: p.age ?? null, rating: null, games: null, goals: 0, assists: 0 }));
+    });
+  }
+  for (const [id, ps] of Object.entries(snap.playersByTeamId)) {
+    if (ps.length < 22 || ps.filter((p) => /goal/i.test(p.position)).length < 2) throw new Error(`clube andino ${id} sem 22 atletas e 2 goleiros`);
+  }
+  snapshots.conmebol_andinos = snap;
+  return {
+    conmebol: {
+      niveis: NIVEL_CONMEBOL,
+      associacoes: Object.fromEntries(Object.entries(NOME_ASSOC).map(([k, nome]) => [k, { nome, liga: ligas.find((l) => ASSOC_ANDINA[l.countryCode] === k).id }])),
+      clubes: lista.sort((a, b) => a.id - b.id),
+    },
+  };
+}
+
 function gravar({ mundo, snapshots, copias, P }) {
   fs.mkdirSync(ESCUDOS_DIR, { recursive: true });
   for (const [nome, origem] of copias) fs.copyFileSync(origem, path.join(ESCUDOS_DIR, nome));
@@ -396,6 +461,7 @@ function gravar({ mundo, snapshots, copias, P }) {
     ["europa", P.eu, ["dados/ligas.json", "dados/clubes.json", "dados/catalogo-terceira-divisao.json", "dados/partidas-2026-27.json", "dados/benchmarks-financeiros.json", "dados/referencias.json", "documentacao/04_Validacao.json", "integracao/ids-motor.json"]],
     ["sul-america", P.sa, ["dados/ligas.json", "dados/clubes.json", "dados/catalogo-terceira-divisao.json", "dados/partidas-2026.json", "dados/benchmarks-financeiros.json", "dados/referencias.json", "dados/historico-tabelas.json", "dados/tabelas-referencia.json", "dados/grupos-referencia.json", "dados/vinculos-a-conferir.json", "documentacao/04_Validacao.json", "integracao/ids-motor.json"]],
     ["continentais", P.cont, ["config/competicoes.json", "config/acesso-e-transferencias.json", "config/calendarios.json", "config/premiacao.json", "fontes.json"]],
+    ...(P.andino ? [["bol-par-per-ven", P.andino, ["dados/ligas.json", "dados/clubes.json", "dados/referencias.json", "integracao/clubes-por-competicao.json", "documentacao/validacao.json"]]] : []),
   ];
   for (const [nome, dir, arquivos] of fontes) {
     for (const a of arquivos) {
@@ -444,6 +510,7 @@ async function main() {
   console.log(`${Object.values(m.partidas).reduce((s, l) => s + l.length, 0)} jogos de fase fixa; fases geradas pelo motor (fora do índice): ${JSON.stringify(r.ignoradas)}`);
   console.log(`${r.copias.size} escudos; ${m.clubes.filter((c) => !c.escudo).length} clubes jogáveis sem escudo local`);
   console.log(`vínculos duplicados resolvidos: ${m.vinculosResolvidos.length}`);
+  if (m.copas) console.log(`copas da CONMEBOL: ${m.copas.conmebol.clubes.length} clubes andinos`);
   console.log(`Brasil: ${Object.values(m.brasil.ligas).map((l) => l.clubes.length).join("/")} clubes e ${m.brasil.serieD.length} na Série D`);
   if (opts.gravar) { gravar(r); console.log("gravado."); } else console.log("(só conferência; use --gravar para escrever)");
 }

@@ -15,7 +15,7 @@ const PHASE: Record<CalendarWeek["p"], string> = { ferias: "Férias", pre: "Pré
 export const ROUNDS = 38;
 
 export type FormResult = "V" | "E" | "D";
-export type CtaAction = "preparar" | "avancar-semana" | "amistoso" | "proxima-temporada";
+export type CtaAction = "preparar" | "avancar-semana" | "amistoso" | "proxima-temporada" | "continental";
 
 export interface HomeModel {
   club: { name: string; short: string; crest: Team; season: number };
@@ -32,6 +32,9 @@ export interface HomeModel {
   // Fase 3: amistoso opcional (julho) ainda sem convite aceito — linha no
   // Início que abre o Pré-jogo de amistoso para escolher.
   optionalFriendly: null | { invites: number };
+  // MUNDO-001 (M9c): o jogo do clube na Libertadores ou na Sul-Americana na
+  // semana (vem antes do resto da semana).
+  continental: null | { line: string; opponent: string; home: boolean };
 }
 
 // Critério da tabela (pontos → vitórias → saldo → gols pró): o mesmo do
@@ -94,6 +97,15 @@ export function buildHome(career: Career, teamById: (id: string | number) => Tea
     }
   }
 
+  let continental: HomeModel["continental"] = null;
+  const pend = career.copas?.conmebol?.pendente;
+  if (pend && state !== "ended") {
+    const [, m, d] = pend.data.split("-").map(Number);
+    const fase = pend.fase === "grupos" && pend.grupo ? `Grupo ${pend.grupo}` : pend.nomeFase;
+    continental = { line: `${String(d).padStart(2, "0")} ${MONTH[m - 1]} · ${pend.nomeCopa.toUpperCase()} · ${fase.toUpperCase()}`, opponent: pend.adversario.nome, home: pend.souMandante };
+    cta = { label: `Jogar a ${pend.nomeCopa}`, action: "continental" };
+  }
+
   const alerts: HomeModel["alerts"] = [];
   const filled = (career.lineup?.starters || []).filter(Boolean).length;
   if (state !== "ended" && career.lineup && filled < 11) alerts.push({ id: "escalacao", title: "Escalação incompleta", sub: `${filled}/11 titulares definidos` });
@@ -112,5 +124,6 @@ export function buildHome(career: Career, teamById: (id: string | number) => Tea
     cash: career.finances ? moneyShort(career.finances.cash) : null,
     news,
     optionalFriendly,
+    continental,
   };
 }

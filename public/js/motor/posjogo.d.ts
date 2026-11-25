@@ -11,3 +11,5 @@ export function encerrarPernaCopa(...args: any[]): any;
 export function firePressConference(...args: any[]): any;
 export function iniciarAmistoso(...args: any[]): any;
 export function iniciarPernaCopa(...args: any[]): any;
+export function iniciarJogoContinental(...args: any[]): any;
+export function encerrarJogoContinental(...args: any[]): any;

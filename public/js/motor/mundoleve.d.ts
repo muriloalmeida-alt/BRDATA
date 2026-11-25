@@ -21,3 +21,4 @@ export function salvarMundo(m: Mundo): EstadoDoMundo;
 export function tabelaDaLiga(m: Mundo, liga: string): unknown;
 export function avancarSemana(m: Mundo): { tipo: string; pais: string; [k: string]: unknown }[];
 export function prepararInicio(m: Mundo): { tipo: string; pais: string; [k: string]: unknown }[];
+export function classificacaoDaTemporada(ano: number, campeoes: unknown, ordem: (string | number)[] | null): { ano: number; campeoes: (string | number)[]; ordem: (string | number)[] };

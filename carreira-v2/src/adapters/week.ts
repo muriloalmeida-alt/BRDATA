@@ -18,7 +18,7 @@ async function run<T>(name: string, ...args: unknown[]): Promise<T> {
 async function guarded<T extends Plain>(name: string, ...args: unknown[]): Promise<T> {
   try {
     const r = await run<T>(name, ...args);
-    if (!r.ok && r.motivo !== "amistoso" && r.motivo !== "sem-semana" && r.motivo !== "em-andamento") engine.reset();
+    if (!r.ok && r.motivo !== "amistoso" && r.motivo !== "continental" && r.motivo !== "sem-semana" && r.motivo !== "em-andamento") engine.reset();
     return r;
   } catch {
     engine.reset();

@@ -62,6 +62,8 @@ export function WeekDone({ clubName, mode, onAdvanced, onExpired }: {
       inflight.current = false;
       if (r.ok) { weekStore.set(r.resumo); setSummary(r.resumo); onAdvanced(); return; }
       if (r.motivo === "amistoso") { navigate(`${BASE}/amistoso`, { replace: true }); return; }
+      // MUNDO-001 (M9c): o jogo da copa continental da semana vem antes.
+      if (r.motivo === "continental") { navigate(`${BASE}/`, { replace: true }); return; }
       if (r.motivo === "sem-semana") { navigate(`${BASE}/`, { replace: true }); return; }
       if (r.motivo === "sessao") onExpired();
       setError(SAVE_MSG[r.motivo || ""] || "Não foi possível avançar a semana. Nada foi alterado.");

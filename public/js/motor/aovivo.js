@@ -631,7 +631,7 @@ export function resolverBloco() {
   // — só Brasileirão, de propósito (CAREER.currentUnbeatenStreak não é
   // somado nem lido pela Copa, ver GE-COPA-001/finishCupLegLive).
   const cpuSide = lm.isHome ? as : hs;
-  const motivationMod = lm.cupContext || lm.friendlyContext ? 1 : opponentMotivationMod();
+  const motivationMod = lm.cupContext || lm.friendlyContext || lm.continentalContext ? 1 : opponentMotivationMod();
   // GE-BALANCE-003 (issue #30) — mesmo motivo do formationPenalty acima:
   // "adversário mais ligado" precisa de um def MENOR (defesa melhor),
   // por isso def usa /= em vez de *= (atk continua *=, maior=melhor).

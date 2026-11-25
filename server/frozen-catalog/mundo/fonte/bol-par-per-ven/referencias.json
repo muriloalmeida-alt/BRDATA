@@ -1,0 +1,709 @@
+{
+  "consultedOn": "2026-11-24",
+  "competitions": [
+    {
+      "id": "bol_division_profesional",
+      "sourceUrl": "https://www.bolivia.com/futbol/liga-boliviana/torneo/tabla-de-posiciones",
+      "regulationSourceUrl": "https://fbf.com.bo/temporada-2026-de-la-division-profesional/"
+    },
+    {
+      "id": "par_copa_de_primera",
+      "sourceUrl": "https://www.golazoscore.com.py/primera-paraguay",
+      "regulationSourceUrl": "https://www.apf.org.py/noticias/listo-calendario-para-la-temporada-2026"
+    },
+    {
+      "id": "per_liga1",
+      "sourceUrl": "https://www.futbolperuano.com/liga-1/tabla-acumulada/tabla-de-posiciones",
+      "regulationSourceUrl": "https://liga1.pe/wp-content/uploads/2026/03/Reglamento-Liga1-Te-Apuesto-2026.pdf"
+    },
+    {
+      "id": "ven_liga_futve",
+      "sourceUrl": "https://ligafutve.org/clasificacion-liga-futve/",
+      "regulationSourceUrl": "https://es.scribd.com/document/1008057423/Normas-Reguladoras-LIGA-FUTVE-2026-Primera-y-Segunda-Divisio-n-APROBADAS"
+    },
+    {
+      "id": "bol_copa_simon_bolivar",
+      "sourceUrl": "https://www.erbol.com.bo/deporte/la-sim%C3%B3n-bol%C3%ADvar-arranca-la-fase-de-grupos",
+      "regulationSourceUrl": "https://fbf.com.bo/arranca-la-copa-simon-bolivar-2026/"
+    },
+    {
+      "id": "par_division_intermedia",
+      "sourceUrl": "https://football-mania.com/es/fixtures/ParaguayDivisionIntermedia/table",
+      "regulationSourceUrl": "https://www.apf.org.py/noticias/la-division-intermedia-tiene-su-camino-a-seguir"
+    },
+    {
+      "id": "per_liga2",
+      "sourceUrl": "https://www.futbolperuano.com/liga-2/torneo/tabla-de-posiciones",
+      "regulationSourceUrl": "https://fpf.org.pe/wp-content/uploads/2026/06/Reglamento-Liga2-2026-3.pdf"
+    },
+    {
+      "id": "ven_liga_futve_2",
+      "sourceUrl": "https://scoreslive.com.ve/futbol/venezuela/segunda-division/clasificacion",
+      "regulationSourceUrl": "https://ligafutve.org/arranca-la-temporada-2026-de-la-liga-futve-2-apuestas-royal/"
+    }
+  ],
+  "rosters": [
+    {
+      "clubId": "sa_bol_fm_805913",
+      "url": "https://www.fotmob.com/teams/805913/squad/always-ready",
+      "readOn": "2026-11-24",
+      "kind": "roster_snapshot"
+    },
+    {
+      "clubId": "sa_bol_fm_5983",
+      "url": "https://www.fotmob.com/teams/5983/squad/bolivar",
+      "readOn": "2026-11-24",
+      "kind": "roster_snapshot"
+    },
+    {
+      "clubId": "sa_bol_fm_2527",
+      "url": "https://www.fotmob.com/en-GB/teams/2527/squad/strongest/players",
+      "readOn": "2026-11-24",
+      "kind": "roster_snapshot"
+    },
+    {
+      "clubId": "sa_bol_fm_1846",
+      "url": "https://www.365scores.com/es/football/team/real-potosi-1285/squad",
+      "readOn": "2026-11-24",
+      "kind": "roster_snapshot"
+    },
+    {
+      "clubId": "sa_bol_fm_1844",
+      "url": "https://es.besoccer.com/equipo/plantilla/oriente-petrolero",
+      "readOn": "2026-11-24",
+      "kind": "roster_snapshot"
+    },
+    {
+      "clubId": "sa_bol_fm_49720",
+      "url": "https://www.fotmob.com/teams/49720/squad/aurora",
+      "readOn": "2026-11-24",
+      "kind": "roster_snapshot"
+    },
+    {
+      "clubId": "sa_bol_fm_164353",
+      "url": "https://es.besoccer.com/equipo/plantilla/nacional-potosi",
+      "readOn": "2026-11-24",
+      "kind": "roster_snapshot"
+    },
+    {
+      "clubId": "sa_bol_fm_114830",
+      "url": "https://www.fotmob.com/teams/114830/squad/guabira",
+      "readOn": "2026-11-24",
+      "kind": "roster_snapshot"
+    },
+    {
+      "clubId": "sa_bol_fm_49678",
+      "url": "https://www.fotmob.com/teams/49678/squad/blooming",
+      "readOn": "2026-11-24",
+      "kind": "roster_snapshot"
+    },
+    {
+      "clubId": "sa_bol_fm_958325",
+      "url": "https://www.fotmob.com/teams/958325/squad/independiente-petrolero",
+      "readOn": "2026-11-24",
+      "kind": "roster_snapshot"
+    },
+    {
+      "clubId": "sa_bol_fm_1504766",
+      "url": "https://www.fotmob.com/es-419/teams/1504766/squad/cdt-real-oruro/players",
+      "readOn": "2026-11-24",
+      "kind": "roster_snapshot"
+    },
+    {
+      "clubId": "sa_bol_fm_1297060",
+      "url": "https://www.fotmob.com/teams/1297060/squad/san-antonio-bulo-bulo%2Cteams",
+      "readOn": "2026-11-24",
+      "kind": "roster_snapshot"
+    },
+    {
+      "clubId": "sa_bol_fm_879029",
+      "url": "https://www.fotmob.com/teams/879029/squad/universitario-de-vinto/players",
+      "readOn": "2026-11-24",
+      "kind": "roster_snapshot"
+    },
+    {
+      "clubId": "sa_bol_fm_1074622",
+      "url": "https://www.fotmob.com/teams/1074622/squad/real-tomayapo",
+      "readOn": "2026-11-24",
+      "kind": "roster_snapshot"
+    },
+    {
+      "clubId": "sa_bol_fm_1504770",
+      "url": "https://www.fotmob.com/teams/1504770/squad/gv-san-jose",
+      "readOn": "2026-11-24",
+      "kind": "roster_snapshot"
+    },
+    {
+      "clubId": "sa_bol_fm_1297346",
+      "url": "https://www.fotmob.com/teams/1297346/squad/abb",
+      "readOn": "2026-11-24",
+      "kind": "roster_snapshot"
+    },
+    {
+      "clubId": "sa_par_fm_6619",
+      "url": "https://www.fotmob.com/teams/6619/squad/olimpia",
+      "readOn": "2026-11-24",
+      "kind": "roster_snapshot"
+    },
+    {
+      "clubId": "sa_par_fm_49689",
+      "url": "https://www.fotmob.com/teams/49689/squad/nacional",
+      "readOn": "2026-11-24",
+      "kind": "roster_snapshot"
+    },
+    {
+      "clubId": "sa_par_fm_6620",
+      "url": "https://www.fotmob.com/teams/6620/squad/libertad",
+      "readOn": "2026-11-24",
+      "kind": "roster_snapshot"
+    },
+    {
+      "clubId": "sa_par_fm_59844",
+      "url": "https://www.fotmob.com/teams/59844/squad/sportivo-trinidense",
+      "readOn": "2026-11-24",
+      "kind": "roster_snapshot"
+    },
+    {
+      "clubId": "sa_par_fm_6295",
+      "url": "https://www.fotmob.com/teams/6295/squad/cerro-porteno",
+      "readOn": "2026-11-24",
+      "kind": "roster_snapshot"
+    },
+    {
+      "clubId": "sa_par_fm_1893",
+      "url": "https://www.fotmob.com/teams/1893/squad/guarani",
+      "readOn": "2026-11-24",
+      "kind": "roster_snapshot"
+    },
+    {
+      "clubId": "sa_par_fm_1242560",
+      "url": "https://www.fotmob.com/teams/1242560/squad/sportivo-ameliano%2Cteams",
+      "readOn": "2026-11-24",
+      "kind": "roster_snapshot"
+    },
+    {
+      "clubId": "sa_par_fm_49688",
+      "url": "https://www.fotmob.com/teams/49688/squad/2-de-mayo",
+      "readOn": "2026-11-24",
+      "kind": "roster_snapshot"
+    },
+    {
+      "clubId": "sa_par_fm_1427854",
+      "url": "https://www.fotmob.com/teams/1427854/squad/recoleta",
+      "readOn": "2026-11-24",
+      "kind": "roster_snapshot"
+    },
+    {
+      "clubId": "sa_par_fm_49687",
+      "url": "https://www.fotmob.com/teams/49687/squad/luqueno",
+      "readOn": "2026-11-24",
+      "kind": "roster_snapshot"
+    },
+    {
+      "clubId": "sa_par_fm_162557",
+      "url": "https://www.fotmob.com/teams/162557/squad/rubio-nu",
+      "readOn": "2026-11-24",
+      "kind": "roster_snapshot"
+    },
+    {
+      "clubId": "sa_par_fm_198186",
+      "url": "https://www.fotmob.com/teams/198186/squad/sportivo-san-lorenzo/teams",
+      "readOn": "2026-11-24",
+      "kind": "roster_snapshot"
+    },
+    {
+      "clubId": "sa_per_fm_6398",
+      "url": "https://www.fotmob.com/teams/6398/squad/alianza-lima",
+      "readOn": "2026-11-24",
+      "kind": "roster_snapshot"
+    },
+    {
+      "clubId": "sa_per_fm_4409",
+      "url": "https://es.besoccer.com/equipo/plantilla/universitario-lima",
+      "readOn": "2026-11-24",
+      "kind": "roster_snapshot"
+    },
+    {
+      "clubId": "sa_per_fm_4417",
+      "url": "https://www.fotmob.com/teams/4417/squad/melgar",
+      "readOn": "2026-11-24",
+      "kind": "roster_snapshot"
+    },
+    {
+      "clubId": "sa_per_fm_920788",
+      "url": "https://www.fotmob.com/teams/920788/squad/deportivo-garcilaso",
+      "readOn": "2026-11-24",
+      "kind": "roster_snapshot"
+    },
+    {
+      "clubId": "sa_per_fm_1848",
+      "url": "https://www.fotmob.com/teams/1848/squad/sporting-cristal",
+      "readOn": "2026-11-24",
+      "kind": "roster_snapshot"
+    },
+    {
+      "clubId": "sa_per_fm_165148",
+      "url": "https://www.fotmob.com/teams/165148/squad",
+      "readOn": "2026-11-24",
+      "kind": "roster_snapshot"
+    },
+    {
+      "clubId": "sa_per_fm_305171",
+      "url": "https://www.fotmob.com/teams/305171/squad/cusco-fc/teams",
+      "readOn": "2026-11-24",
+      "kind": "roster_snapshot"
+    },
+    {
+      "clubId": "sa_per_fm_1845",
+      "url": "https://www.fotmob.com/teams/1845/squad/cienciano",
+      "readOn": "2026-11-24",
+      "kind": "roster_snapshot"
+    },
+    {
+      "clubId": "sa_per_fm_4410",
+      "url": "https://es.besoccer.com/equipo/plantilla/alianza-atletico-sullana",
+      "readOn": "2026-11-24",
+      "kind": "roster_snapshot"
+    },
+    {
+      "clubId": "sa_per_fm_741328",
+      "url": "https://www.fotmob.com/teams/741328/squad/los-chankas",
+      "readOn": "2026-11-24",
+      "kind": "roster_snapshot"
+    },
+    {
+      "clubId": "sa_per_fm_4412",
+      "url": "https://www.fotmob.com/teams/4412/squad/sport-boys",
+      "readOn": "2026-11-24",
+      "kind": "roster_snapshot"
+    },
+    {
+      "clubId": "sa_per_fm_1573153",
+      "url": "https://www.fotmob.com/teams/1573153/squad/teams",
+      "readOn": "2026-11-24",
+      "kind": "roster_snapshot"
+    },
+    {
+      "clubId": "sa_per_fm_536945",
+      "url": "https://www.fotmob.com/teams/536945/squad/comerciantes-unidos",
+      "readOn": "2026-11-24",
+      "kind": "roster_snapshot"
+    },
+    {
+      "clubId": "sa_per_fm_920789",
+      "url": "https://www.fotmob.com/teams/920789/squad/atletico-grau",
+      "readOn": "2026-11-24",
+      "kind": "roster_snapshot"
+    },
+    {
+      "clubId": "sa_per_fm_1573140",
+      "url": "https://www.fotmob.com/teams/1573140/squad/club-deportivo-moquegua",
+      "readOn": "2026-11-24",
+      "kind": "roster_snapshot"
+    },
+    {
+      "clubId": "sa_per_fm_1104719",
+      "url": "https://www.fotmob.com/teams/1104719/squad/asociacion-deportiva-tarma",
+      "readOn": "2026-11-24",
+      "kind": "roster_snapshot"
+    },
+    {
+      "clubId": "sa_per_fm_1696744",
+      "url": "https://www.fotmob.com/teams/1696744/squad/fc-cajamarca",
+      "readOn": "2026-11-24",
+      "kind": "roster_snapshot"
+    },
+    {
+      "clubId": "sa_per_fm_425692",
+      "url": "https://www.365scores.com/es-mx/football/team/utc-10367/squad",
+      "readOn": "2026-11-24",
+      "kind": "roster_snapshot"
+    },
+    {
+      "clubId": "sa_ven_fm_365280",
+      "url": "https://www.fotmob.com/teams/365280/squad/metropolitanos-fc",
+      "readOn": "2026-11-24",
+      "kind": "roster_snapshot"
+    },
+    {
+      "clubId": "sa_ven_fm_1896",
+      "url": "https://www.fotmob.com/teams/1896/squad/deportivo-tachira",
+      "readOn": "2026-11-24",
+      "kind": "roster_snapshot"
+    },
+    {
+      "clubId": "sa_ven_fm_176496",
+      "url": "https://www.fotmob.com/teams/176496/squad/deportivo-la-guaira",
+      "readOn": "2026-11-24",
+      "kind": "roster_snapshot"
+    },
+    {
+      "clubId": "sa_ven_fm_49681",
+      "url": "https://www.fotmob.com/teams/49681/squad/carabobo-fc",
+      "readOn": "2026-11-24",
+      "kind": "roster_snapshot"
+    },
+    {
+      "clubId": "sa_ven_fm_657277",
+      "url": "https://www.fotmob.com/teams/657277/squad/academia-puerto-cabello",
+      "readOn": "2026-11-24",
+      "kind": "roster_snapshot"
+    },
+    {
+      "clubId": "sa_ven_fm_49682",
+      "url": "https://www.fotmob.com/teams/49682/squad/portuguesa-fc/teams",
+      "readOn": "2026-11-24",
+      "kind": "roster_snapshot"
+    },
+    {
+      "clubId": "sa_ven_fm_188213",
+      "url": "https://www.fotmob.com/teams/188213/squad",
+      "readOn": "2026-11-24",
+      "kind": "roster_snapshot"
+    },
+    {
+      "clubId": "sa_ven_fm_93061",
+      "url": "https://www.fotmob.com/teams/93061/squad/estudiantes-de-merida-fc",
+      "readOn": "2026-11-24",
+      "kind": "roster_snapshot"
+    },
+    {
+      "clubId": "sa_ven_fm_7850",
+      "url": "https://www.fotmob.com/teams/7850/squad/caracas",
+      "readOn": "2026-11-24",
+      "kind": "roster_snapshot"
+    },
+    {
+      "clubId": "sa_ven_fm_49683",
+      "url": "https://es.besoccer.com/equipo/plantilla/monagas-sc",
+      "readOn": "2026-11-24",
+      "kind": "roster_snapshot"
+    },
+    {
+      "clubId": "sa_ven_fm_49686",
+      "url": "https://www.fotmob.com/teams/49686/squad/zamora-fc",
+      "readOn": "2026-11-24",
+      "kind": "roster_snapshot"
+    },
+    {
+      "clubId": "sa_ven_fm_1267963",
+      "url": "https://es.besoccer.com/equipo/plantilla/deportivo-rayo-zuliano",
+      "readOn": "2026-11-24",
+      "kind": "roster_snapshot"
+    },
+    {
+      "clubId": "sa_ven_fm_49685",
+      "url": "https://es.besoccer.com/equipo/plantilla/trujillanos-fc",
+      "readOn": "2026-11-24",
+      "kind": "roster_snapshot"
+    },
+    {
+      "clubId": "sa_ven_fm_1349498",
+      "url": "https://www.365scores.com/es/football/team/anzoategui-futbol-club-69523/squad",
+      "readOn": "2026-11-24",
+      "kind": "roster_snapshot"
+    },
+    {
+      "clubId": "sa_bol_10-de-noviembre-wilstermann-cooperativas",
+      "url": "https://es.besoccer.com/equipo/plantilla/wilstermann-cooperativa",
+      "readOn": "2026-11-24",
+      "kind": "roster_snapshot"
+    },
+    {
+      "clubId": "sa_bol_universitario-de-sucre",
+      "url": "https://www.365scores.com/football/team/club-universitario-7646/squad",
+      "readOn": "2026-11-24",
+      "kind": "roster_snapshot"
+    },
+    {
+      "clubId": "sa_bol_san-juan-fc-santa-cruz",
+      "url": "https://www.365scores.com/en-us/football/team/i.n.-san-juan-fc-88240/squad",
+      "readOn": "2026-11-24",
+      "kind": "roster_snapshot"
+    },
+    {
+      "clubId": "sa_par_general-caballero-jlm",
+      "url": "https://www.365scores.com/es/football/team/general-caballero-jlm-8777/squad",
+      "readOn": "2026-11-24",
+      "kind": "roster_snapshot"
+    },
+    {
+      "clubId": "sa_par_deportivo-santani",
+      "url": "https://es.besoccer.com/equipo/plantilla/santani-deportivo/2026",
+      "readOn": "2026-11-24",
+      "kind": "roster_snapshot"
+    },
+    {
+      "clubId": "sa_par_12-de-junio",
+      "url": "https://www.besoccer.es/equipo/plantilla/club-12-de-junio",
+      "readOn": "2026-11-24",
+      "kind": "roster_snapshot"
+    },
+    {
+      "clubId": "sa_par_independiente-fbc",
+      "url": "https://www.golazo.com.py/equipo/independiente-f-b-c",
+      "readOn": "2026-11-24",
+      "kind": "roster_snapshot"
+    },
+    {
+      "clubId": "sa_par_benjamin-aceval",
+      "url": "https://es.besoccer.com/equipo/plantilla/benjamin-aceval",
+      "readOn": "2026-11-24",
+      "kind": "roster_snapshot"
+    },
+    {
+      "clubId": "sa_par_sportivo-carapegua",
+      "url": "https://www.golazo.com.py/equipo/sportivo-carapegua",
+      "readOn": "2026-11-24",
+      "kind": "roster_snapshot"
+    },
+    {
+      "clubId": "sa_par_sol-de-america",
+      "url": "https://es.besoccer.com/equipo/plantilla/sol-america",
+      "readOn": "2026-11-24",
+      "kind": "roster_snapshot"
+    },
+    {
+      "clubId": "sa_par_paraguari-ac",
+      "url": "https://es.besoccer.com/equipo/plantilla/paraguari-atletico-club",
+      "readOn": "2026-11-24",
+      "kind": "roster_snapshot"
+    },
+    {
+      "clubId": "sa_par_resistencia",
+      "url": "https://www.golazo.com.py/equipo/resistencia",
+      "readOn": "2026-11-24",
+      "kind": "roster_snapshot"
+    },
+    {
+      "clubId": "sa_par_atletico-tembetary",
+      "url": "https://www.365scores.com/es-mx/football/team/atletico-tembetary-56592/squad",
+      "readOn": "2026-11-24",
+      "kind": "roster_snapshot"
+    },
+    {
+      "clubId": "sa_par_fernando-de-la-mora",
+      "url": "https://www.365scores.com/es/football/team/fernando-de-la-mora-14636/squad",
+      "readOn": "2026-11-24",
+      "kind": "roster_snapshot"
+    },
+    {
+      "clubId": "sa_par_deportivo-capiata",
+      "url": "https://es.besoccer.com/equipo/plantilla/deportivo-capiata",
+      "readOn": "2026-11-24",
+      "kind": "roster_snapshot"
+    },
+    {
+      "clubId": "sa_par_guairena",
+      "url": "https://es.besoccer.com/equipo/plantilla/guairena",
+      "readOn": "2026-11-24",
+      "kind": "roster_snapshot"
+    },
+    {
+      "clubId": "sa_par_tacuary",
+      "url": "https://es.besoccer.com/equipo/plantilla/tacuary-asuncion",
+      "readOn": "2026-11-24",
+      "kind": "roster_snapshot"
+    },
+    {
+      "clubId": "sa_par_encarnacion-fc",
+      "url": "https://es.besoccer.com/equipo/plantilla/encarnacion",
+      "readOn": "2026-11-24",
+      "kind": "roster_snapshot"
+    },
+    {
+      "clubId": "sa_per_union-comercio",
+      "url": "https://liga2.pe/club/union-comercio/",
+      "readOn": "2026-11-24",
+      "kind": "roster_snapshot"
+    },
+    {
+      "clubId": "sa_per_carlos-mannucci",
+      "url": "https://liga2.pe/club/carlos-a-manucci/",
+      "readOn": "2026-11-24",
+      "kind": "roster_snapshot"
+    },
+    {
+      "clubId": "sa_per_deportivo-llacuabamba",
+      "url": "https://liga2.pe/club/deportivo-llacuabamba/",
+      "readOn": "2026-11-24",
+      "kind": "roster_snapshot"
+    },
+    {
+      "clubId": "sa_per_pirata-fc",
+      "url": "https://liga2.pe/club/pirata-f-c/",
+      "readOn": "2026-11-24",
+      "kind": "roster_snapshot"
+    },
+    {
+      "clubId": "sa_per_universidad-san-martin",
+      "url": "https://es.besoccer.com/equipo/plantilla/universidad-san-martin-de-porres",
+      "readOn": "2026-11-24",
+      "kind": "roster_snapshot"
+    },
+    {
+      "clubId": "sa_per_ada-jaen",
+      "url": "https://liga2.pe/club/ada-jaen/",
+      "readOn": "2026-11-24",
+      "kind": "roster_snapshot"
+    },
+    {
+      "clubId": "sa_per_universidad-cesar-vallejo",
+      "url": "https://liga2.pe/club/ucv/",
+      "readOn": "2026-11-24",
+      "kind": "roster_snapshot"
+    },
+    {
+      "clubId": "sa_per_academia-cantolao",
+      "url": "https://liga2.pe/club/academia-cantolao/",
+      "readOn": "2026-11-24",
+      "kind": "roster_snapshot"
+    },
+    {
+      "clubId": "sa_per_fc-san-marcos",
+      "url": "https://es.besoccer.com/equipo/plantilla/futbol-club-san-marcos",
+      "readOn": "2026-11-24",
+      "kind": "roster_snapshot"
+    },
+    {
+      "clubId": "sa_per_comerciantes-fc",
+      "url": "https://liga2.pe/club/comerciantes-fc/",
+      "readOn": "2026-11-24",
+      "kind": "roster_snapshot"
+    },
+    {
+      "clubId": "sa_per_bentin-tacna",
+      "url": "https://liga2.pe/club/bentin-tacna-heroica/",
+      "readOn": "2026-11-24",
+      "kind": "roster_snapshot"
+    },
+    {
+      "clubId": "sa_per_union-minas",
+      "url": "https://liga2.pe/club/union-minas/",
+      "readOn": "2026-11-24",
+      "kind": "roster_snapshot"
+    },
+    {
+      "clubId": "sa_per_sport-huancayo-ii",
+      "url": "https://liga2.pe/club/sport-huancayo/",
+      "readOn": "2026-11-24",
+      "kind": "roster_snapshot"
+    },
+    {
+      "clubId": "sa_per_alianza-universidad",
+      "url": "https://liga2.pe/club/alianza-universidad/",
+      "readOn": "2026-11-24",
+      "kind": "roster_snapshot"
+    },
+    {
+      "clubId": "sa_per_ayacucho-fc",
+      "url": "https://liga2.pe/club/ayacucho-fc/",
+      "readOn": "2026-11-24",
+      "kind": "roster_snapshot"
+    },
+    {
+      "clubId": "sa_per_santos-fc-nasca",
+      "url": "https://liga2.pe/club/santos-fc/",
+      "readOn": "2026-11-24",
+      "kind": "roster_snapshot"
+    },
+    {
+      "clubId": "sa_per_estudiantil-cni",
+      "url": "https://liga2.pe/club/estudiantil-cni/",
+      "readOn": "2026-11-24",
+      "kind": "roster_snapshot"
+    },
+    {
+      "clubId": "sa_per_deportivo-binacional",
+      "url": "https://liga2.pe/club/deportivo-binacional/",
+      "readOn": "2026-11-24",
+      "kind": "roster_snapshot"
+    },
+    {
+      "clubId": "sa_ven_deportivo-lara",
+      "url": "https://es.besoccer.com/equipo/plantilla/deportivo-lara",
+      "readOn": "2026-11-24",
+      "kind": "roster_snapshot"
+    },
+    {
+      "clubId": "sa_ven_monagas-b",
+      "url": "https://www.365scores.com/football/team/monagas-u20-82410/squad",
+      "readOn": "2026-11-24",
+      "kind": "roster_snapshot"
+    },
+    {
+      "clubId": "sa_ven_barquisimeto-sc",
+      "url": "https://www.365scores.com/es/football/team/academia-rey-68891/squad",
+      "readOn": "2026-11-24",
+      "kind": "roster_snapshot"
+    },
+    {
+      "clubId": "sa_ven_aragua-fc",
+      "url": "https://www.365scores.com/es/football/team/aragua-fc-8700/squad",
+      "readOn": "2026-11-24",
+      "kind": "roster_snapshot"
+    },
+    {
+      "clubId": "sa_ven_miranda-fc",
+      "url": "https://www.sofascore.com/es/football/team/deportivo-miranda/476925",
+      "readOn": "2026-11-24",
+      "kind": "roster_snapshot"
+    },
+    {
+      "clubId": "sa_ven_yaracuyanos",
+      "url": "https://www.365scores.com/es/football/team/yaracuyanos-8544/squad",
+      "readOn": "2026-11-24",
+      "kind": "roster_snapshot"
+    },
+    {
+      "clubId": "sa_ven_bolivar-sc",
+      "url": "https://www.365scores.com/football/team/bolivar-sc-68622/squad",
+      "readOn": "2026-11-24",
+      "kind": "roster_snapshot"
+    },
+    {
+      "clubId": "sa_ven_urena-sc",
+      "url": "https://www.365scores.com/es-mx/football/team/urena-sc-13835/squad",
+      "readOn": "2026-11-24",
+      "kind": "roster_snapshot"
+    },
+    {
+      "clubId": "sa_ven_dynamo-puerto",
+      "url": "https://dynamopuertofc.com/equipo",
+      "readOn": "2026-11-24",
+      "kind": "roster_snapshot"
+    },
+    {
+      "clubId": "sa_ven_el-vigia",
+      "url": "https://www.365scores.com/es/football/team/atletico-el-vigia-8698/squad",
+      "readOn": "2026-11-24",
+      "kind": "roster_snapshot"
+    },
+    {
+      "clubId": "sa_ven_mineros-de-guayana",
+      "url": "https://www.365scores.com/pt-br/football/team/mineros-de-guayana-8699/squad",
+      "readOn": "2026-11-24",
+      "kind": "roster_snapshot"
+    },
+    {
+      "clubId": "sa_ven_maritimo-la-guaira",
+      "url": "https://www.365scores.com/football/team/maritimo-73931/squad",
+      "readOn": "2026-11-24",
+      "kind": "roster_snapshot"
+    },
+    {
+      "clubId": "sa_ven_real-frontera",
+      "url": "https://www.365scores.com/football/team/real-frontera-28999/squad",
+      "readOn": "2026-11-24",
+      "kind": "roster_snapshot"
+    }
+  ],
+  "supplementary": {
+    "promediosAPF": "https://statics-maker.llt-services.com/apf/documents/2026/01/19/f5ea4654-754e-4099-937c-ed08947f2c0c-510.pdf",
+    "paraguaiContinental": "https://tanteador.com/futbol/liga/primera-paraguay/tabla-anual",
+    "boliviaIndirecto": "https://www.erbol.com.bo/deporte/arranca-la-fase-nacional-de-la-copa-simon-bolivar",
+    "boliviaIndirectoConfirmacao": "https://diez.bo/futbol/san-juan-y-mineros-definiran-al-campeon-de-la-simon-bolivar_1794778937",
+    "peruLicencas": "https://lfpp.pe/normativa/",
+    "venezuelaFormato": "https://es.wikipedia.org/wiki/Primera_Divisi%C3%B3n_de_Venezuela_2026"
+  }
+}

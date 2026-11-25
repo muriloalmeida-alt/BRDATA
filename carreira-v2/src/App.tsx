@@ -286,7 +286,7 @@ export function App() {
     // (?tela=tabela&divisao=…), para a sessão da ponte — que guarda o
     // pós-jogo — continuar montada ao trocar de divisão.
     const ini = q.get("iniciar");
-    const start = ini === "1" ? "jogo" : ini === "amistoso" ? "amistoso" : ini === "copa" ? "copa" : null;
+    const start = ini === "1" ? "jogo" : ini === "amistoso" ? "amistoso" : ini === "copa" ? "copa" : ini === "continental" ? "continental" : null;
     return <Match start={start} sub={sub} outId={q.get("sai")} competitionId={data.career.competitionId} competitionName={home.competition}
       teamById={data.teamById} onFinished={reloadCareer}
       renderTable={(ctx) => <Table m={buildTable(data.career, data.teamById, q.get("divisao"))} cup={buildCup(data.career, data.teamById)} match={ctx} />} />;

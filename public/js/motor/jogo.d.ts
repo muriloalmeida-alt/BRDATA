@@ -32,3 +32,5 @@ export function startLiveMatch(...args: any[]): any;
 export function desenharTudo(): void;
 export function desenharPartida(): void;
 export function lerTaticaDaTela(): void;
+export function startContinentalLive(...args: any[]): any;
+export function finishContinentalLive(...args: any[]): any;

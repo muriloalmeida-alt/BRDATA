@@ -1,0 +1,306 @@
+{
+  "season": "2026",
+  "preparedOn": "2026-11-24",
+  "competitions": [
+    {
+      "id": "bol_division_profesional",
+      "name": "División Profesional",
+      "season": "2026",
+      "countryCode": "BO",
+      "division": 1,
+      "clubs": 16,
+      "calendarYearSeason": true,
+      "timezone": "America/La_Paz",
+      "localCurrency": "BOB",
+      "points": {
+        "win": 3,
+        "draw": 1,
+        "loss": 0
+      },
+      "rules": {
+        "regular": {
+          "rounds": 30,
+          "legs": 2
+        },
+        "relegation": {
+          "direct": 1,
+          "playoff": 1,
+          "opponent": "bol_copa_simon_bolivar_runner_up",
+          "legs": 2
+        }
+      },
+      "sourceUrl": "https://www.bolivia.com/futbol/liga-boliviana/torneo/tabla-de-posiciones",
+      "regulationSourceUrl": "https://fbf.com.bo/temporada-2026-de-la-division-profesional/",
+      "scope": "season_participants"
+    },
+    {
+      "id": "par_copa_de_primera",
+      "name": "Copa de Primera",
+      "season": "2026",
+      "countryCode": "PY",
+      "division": 1,
+      "clubs": 12,
+      "calendarYearSeason": true,
+      "timezone": "America/Asuncion",
+      "localCurrency": "PYG",
+      "points": {
+        "win": 3,
+        "draw": 1,
+        "loss": 0
+      },
+      "rules": {
+        "regular": {
+          "tournaments": [
+            "Apertura",
+            "Clausura"
+          ],
+          "legsPerTournament": 2,
+          "roundsPerTournament": 22
+        },
+        "relegation": {
+          "total": 2,
+          "method": "points_average",
+          "seasonWindow": 3
+        }
+      },
+      "sourceUrl": "https://www.golazoscore.com.py/primera-paraguay",
+      "regulationSourceUrl": "https://www.apf.org.py/noticias/listo-calendario-para-la-temporada-2026",
+      "scope": "season_participants"
+    },
+    {
+      "id": "per_liga1",
+      "name": "Liga 1",
+      "season": "2026",
+      "countryCode": "PE",
+      "division": 1,
+      "clubs": 18,
+      "calendarYearSeason": true,
+      "timezone": "America/Lima",
+      "localCurrency": "PEN",
+      "points": {
+        "win": 3,
+        "draw": 1,
+        "loss": 0
+      },
+      "rules": {
+        "regular": {
+          "tournaments": [
+            "Apertura",
+            "Clausura"
+          ],
+          "roundsPerTournament": 17,
+          "reverseHomeFixtures": true
+        },
+        "finals": {
+          "article": "7.3",
+          "legsPerTie": 2,
+          "shortTournamentWinnerAnnualThreshold": 8
+        },
+        "relegation": {
+          "total": 2,
+          "method": "annual_table"
+        }
+      },
+      "sourceUrl": "https://www.futbolperuano.com/liga-1/tabla-acumulada/tabla-de-posiciones",
+      "regulationSourceUrl": "https://liga1.pe/wp-content/uploads/2026/03/Reglamento-Liga1-Te-Apuesto-2026.pdf",
+      "scope": "season_participants"
+    },
+    {
+      "id": "ven_liga_futve",
+      "name": "Liga FUTVE",
+      "season": "2026",
+      "countryCode": "VE",
+      "division": 1,
+      "clubs": 14,
+      "calendarYearSeason": true,
+      "timezone": "America/Caracas",
+      "localCurrency": "VES",
+      "points": {
+        "win": 3,
+        "draw": 1,
+        "loss": 0
+      },
+      "rules": {
+        "regular": {
+          "tournaments": [
+            "Apertura",
+            "Clausura"
+          ],
+          "roundsPerTournament": 13,
+          "topQualifiersPerTournament": 8
+        },
+        "finals": {
+          "quadrangularGroups": 2,
+          "clubsPerGroup": 4,
+          "groupLegs": 2,
+          "shortFinalLegs": 1,
+          "absoluteFinalLegs": 1,
+          "skipAbsoluteFinalIfSameWinner": true
+        },
+        "relegation": {
+          "total": 1,
+          "method": "annual_table"
+        }
+      },
+      "sourceUrl": "https://ligafutve.org/clasificacion-liga-futve/",
+      "regulationSourceUrl": "https://es.scribd.com/document/1008057423/Normas-Reguladoras-LIGA-FUTVE-2026-Primera-y-Segunda-Divisio-n-APROBADAS",
+      "scope": "season_participants"
+    },
+    {
+      "id": "bol_copa_simon_bolivar",
+      "name": "Copa Simón Bolívar",
+      "season": "2026",
+      "countryCode": "BO",
+      "division": 2,
+      "clubs": 24,
+      "calendarYearSeason": true,
+      "timezone": "America/La_Paz",
+      "localCurrency": "BOB",
+      "points": {
+        "win": 3,
+        "draw": 1,
+        "loss": 0
+      },
+      "rules": {
+        "regional": {
+          "clubs": 69,
+          "includedInDataset": false
+        },
+        "nationalGroups": {
+          "groups": 6,
+          "clubsPerGroup": 4,
+          "topPerGroup": 2,
+          "bestThirds": 4
+        },
+        "knockout": [
+          "round_of_16",
+          "quarter_finals",
+          "semi_finals",
+          "final"
+        ],
+        "promotion": {
+          "champion": "direct",
+          "runnerUp": "playoff"
+        }
+      },
+      "sourceUrl": "https://www.erbol.com.bo/deporte/la-sim%C3%B3n-bol%C3%ADvar-arranca-la-fase-de-grupos",
+      "regulationSourceUrl": "https://fbf.com.bo/arranca-la-copa-simon-bolivar-2026/",
+      "scope": "national_phase"
+    },
+    {
+      "id": "par_division_intermedia",
+      "name": "División Intermedia",
+      "season": "2026",
+      "countryCode": "PY",
+      "division": 2,
+      "clubs": 16,
+      "calendarYearSeason": true,
+      "timezone": "America/Asuncion",
+      "localCurrency": "PYG",
+      "points": {
+        "win": 3,
+        "draw": 1,
+        "loss": 0
+      },
+      "rules": {
+        "regular": {
+          "rounds": 30,
+          "legs": 2
+        },
+        "promotion": {
+          "total": 2
+        },
+        "relegation": {
+          "method": "points_average",
+          "seasonWindow": 3
+        }
+      },
+      "sourceUrl": "https://football-mania.com/es/fixtures/ParaguayDivisionIntermedia/table",
+      "regulationSourceUrl": "https://www.apf.org.py/noticias/la-division-intermedia-tiene-su-camino-a-seguir",
+      "scope": "season_participants"
+    },
+    {
+      "id": "per_liga2",
+      "name": "Liga 2",
+      "season": "2026",
+      "countryCode": "PE",
+      "division": 2,
+      "clubs": 18,
+      "calendarYearSeason": true,
+      "timezone": "America/Lima",
+      "localCurrency": "PEN",
+      "points": {
+        "win": 3,
+        "draw": 1,
+        "loss": 0
+      },
+      "rules": {
+        "regional": {
+          "groups": 2,
+          "clubsPerGroup": 9,
+          "rounds": 18,
+          "topPerGroup": 6
+        },
+        "finalGroups": {
+          "championshipGroups": 3,
+          "clubsPerChampionshipGroup": 4,
+          "relegationGroups": 2,
+          "clubsPerRelegationGroup": 3,
+          "legs": 2,
+          "playoffQualifiers": 4
+        },
+        "promotion": {
+          "total": 2,
+          "places": [
+            "champion",
+            "runner_up"
+          ],
+          "eligibilityArticle": "9"
+        },
+        "relegation": {
+          "total": 2,
+          "method": "bottom_each_relegation_group"
+        }
+      },
+      "sourceUrl": "https://www.futbolperuano.com/liga-2/torneo/tabla-de-posiciones",
+      "regulationSourceUrl": "https://fpf.org.pe/wp-content/uploads/2026/06/Reglamento-Liga2-2026-3.pdf",
+      "scope": "season_participants"
+    },
+    {
+      "id": "ven_liga_futve_2",
+      "name": "Liga FUTVE 2",
+      "season": "2026",
+      "countryCode": "VE",
+      "division": 2,
+      "clubs": 17,
+      "calendarYearSeason": true,
+      "timezone": "America/Caracas",
+      "localCurrency": "VES",
+      "points": {
+        "win": 3,
+        "draw": 1,
+        "loss": 0
+      },
+      "rules": {
+        "regular": {
+          "groups": 2,
+          "groupSizes": [
+            9,
+            8
+          ],
+          "legs": 4
+        },
+        "promotion": {
+          "total": 1,
+          "places": [
+            "champion"
+          ],
+          "conditionalOnLicensing": true
+        }
+      },
+      "sourceUrl": "https://scoreslive.com.ve/futbol/venezuela/segunda-division/clasificacion",
+      "regulationSourceUrl": "https://ligafutve.org/arranca-la-temporada-2026-de-la-liga-futve-2-apuestas-royal/",
+      "scope": "season_participants"
+    }
+  ]
+}

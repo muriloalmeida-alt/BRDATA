@@ -1010,9 +1010,10 @@ export function ponteEstado() {
     // PAUSA-EVENTO (15/11): por que o jogo parou sozinho (lesão ou expulsão
     // de um jogador seu), enquanto estiver parado.
     paradaPor: !encerrada && (lm.paused || lm.halftime) && lm.pausaMotivo ? lm.pausaMotivo : null,
-    contexto: lm.cupContext ? "copa" : lm.friendlyContext ? "amistoso" : "liga",
+    contexto: lm.cupContext ? "copa" : lm.friendlyContext ? "amistoso" : lm.continentalContext ? "continental" : "liga",
     rodada: lm.round,
     copa: lm.cupContext ? ponteCopa(lm) : null,
+    continental: lm.continentalContext ? ponteContinental(lm) : null,
     mandante: { id: String(lm.home.id), nome: lm.home.name }, visitante: { id: String(lm.away.id), nome: lm.away.name },
     souMandante: !!lm.isHome, gh: lm.gh, ga: lm.ga, velocidade: lm.speed === 2 ? 2 : 1,
     substituicoes: { usadas: lm.subsUsed, total: MAX_SUBS_PER_MATCH + lm.subsBonus },
@@ -1060,6 +1061,21 @@ export function ponteCopa(lm) {
     penaltis: decidida ? !!tie.penalties : false,
     classificado: decidida ? (teamById(tie.winner) || {}).name || null : null,
     classificadoSouEu: decidida ? String(tie.winner) === String(CAREER.clubId) : null,
+  };
+}
+
+// MUNDO-001 (M9c): o jogo da copa continental (Libertadores ou Sul-Americana).
+const NOMES_COPA = { LIB: "Libertadores", SUD: "Sul-Americana" };
+export function ponteContinental(lm) {
+  const CAREER = carreiraAtual();
+  const c = lm.continentalContext;
+  const r = lm.continentalResultado;
+  const decidido = !!(lm.finished && r && r.confronto && r.confronto.vencedor != null);
+  return {
+    copa: c.copa, nomeCopa: NOMES_COPA[c.copa] || c.copa, fase: c.fase, perna: c.perna, pernas: c.pernas, grupo: c.grupo, neutro: c.neutro,
+    ida: c.ida ? (String(c.ida.casa) === String(CAREER.clubId) ? { meus: c.ida.gh, deles: c.ida.ga } : { meus: c.ida.ga, deles: c.ida.gh }) : null,
+    decidido, classificadoSouEu: decidido ? String(r.confronto.vencedor) === String(CAREER.clubId) : null,
+    como: decidido ? r.confronto.como : null,
   };
 }
 

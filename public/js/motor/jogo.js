@@ -225,7 +225,7 @@ export function resolveLiveChunk() {
 // O clone é feito aqui, na hora (o próximo bloco não pode mudar a cópia).
 export function checkpointPartida() {
   const lm = partidaAtual();
-  if (!lm || lm.finished || lm.skipping || lm.cupContext || lm.friendlyContext || typeof ambiente.checkpoint !== "function") return;
+  if (!lm || lm.finished || lm.skipping || lm.cupContext || lm.friendlyContext || lm.continentalContext || typeof ambiente.checkpoint !== "function") return;
   try {
     // eslint-disable-next-line no-unused-vars
     const { timerId, goalHighlightOnDone, goalHighlightTimer, goalHighlightQueue, ...resto } = lm;
@@ -308,6 +308,7 @@ export async function finishLiveMatch() {
   // pontos corridos) — ver finishCupLegLive.
   if (lm.cupContext) return finishCupLegLive();
   if (lm.friendlyContext) return finishFriendlyLive(); // GE-CALENDAR-001 (B2)
+  if (lm.continentalContext) return finishContinentalLive(); // MUNDO-001 (M9c)
   tela("playWhistle", 3);
   tela("stopCrowdAmbience");
   // Placar na tabela, estatísticas, renda, histórico, forma, moral,
@@ -384,6 +385,46 @@ export async function finishCupLegLive() {
   if (ambiente.modoPonte() && ponte.seq) return;
   if (CAREER.pendingOffer) tela("openPlayerOfferModal");
   else tela("openTabelaModal");
+}
+
+// MUNDO-001 (M9c): o jogo do técnico na Libertadores ou na Sul-Americana, ao
+// vivo, com o mesmo motor da Copa do Brasil. O placar vai para o plano da
+// copa (copasmundo.registrarJogoDoHumano, pelo gancho do mundo).
+const NOME_COPA_CONTINENTAL = { LIB: "Libertadores", SUD: "Sul-Americana" };
+export function startContinentalLive(jogo) {
+  const CAREER = carreiraAtual();
+  const lm = posjogo.iniciarJogoContinental(jogo, CAREER.currentRound);
+  desenharPartida();
+  tela("abrirOverlay", "liveMatchOverlay");
+  tela("playWhistle", 1);
+  tela("startCrowdAmbience");
+  avisar({ title: `${NOME_COPA_CONTINENTAL[jogo.copa]} — ${jogo.nomeFase || jogo.fase}`, detail: `${lm.home.name} x ${lm.away.name}.` }, { type: "info" });
+  scheduleNextChunk();
+}
+
+export async function finishContinentalLive() {
+  const CAREER = carreiraAtual();
+  const lm = partidaAtual();
+  const ctx = lm.continentalContext;
+  tela("playWhistle", 3);
+  tela("stopCrowdAmbience");
+  const { placar } = posjogo.encerrarJogoContinental();
+  const r = estado.ganchosMundo.continental.registrar(CAREER, ctx.jogoId, placar);
+  lm.continentalResultado = { confronto: r.confronto, situacao: r.situacao };
+  tela("fecharOverlay", "liveMatchOverlay");
+  definirPartida(null);
+  ponteFim(await ambiente.persistir());
+  desenharTudo();
+  const meus = lm.isHome ? placar.gh : placar.ga, deles = lm.isHome ? placar.ga : placar.gh;
+  const c = r.confronto;
+  let detail = `${meus} x ${deles}.`;
+  if (c && c.vencedor != null) {
+    const passou = String(c.vencedor) === String(CAREER.clubId);
+    const extra = c.como === "penaltis" ? " (pênaltis)" : c.como === "prorrogacao" ? " (prorrogação)" : "";
+    detail = `${meus} x ${deles}${extra} — ${passou ? (ctx.fase === "final" ? `campeão da ${NOME_COPA_CONTINENTAL[ctx.copa]}! 🏆` : "classificado") : "eliminado"}.`;
+  }
+  avisar({ title: `${NOME_COPA_CONTINENTAL[ctx.copa]} — fim de jogo`, detail }, { type: c && c.vencedor != null && String(c.vencedor) !== String(CAREER.clubId) ? "warn" : "pos" });
+  if (ambiente.modoPonte()) ponteAvisar();
 }
 
 export function maybeStartPendingCupLegLive() {
@@ -737,6 +778,9 @@ export const comandosJogo = {
       if (!w || w.r || CAREER.currentRound > estado.rodadasDaTemporada(CAREER)) return { ok: false, motivo: "sem-semana" };
       const fr = friendlySlotThisWeek();
       if (!ateJogo && fr && (!fr.optional || fr.opp)) return { ok: false, motivo: "amistoso" };
+      // MUNDO-001 (M9c): o jogo da copa continental da semana vem antes.
+      const continental = () => !!(CAREER.copas && CAREER.copas.conmebol && CAREER.copas.conmebol.pendente);
+      if (continental()) return { ok: false, motivo: "continental" };
       if (ponte.avancando) return { ok: false, motivo: "em-andamento" };
       ponte.avancando = true;
       try {
@@ -749,7 +793,7 @@ export const comandosJogo = {
           const r = runCalendarOffWeek();
           if (!r) break;
           giros.push(r);
-        } while (ateJogo && !(calendarWeek() || {}).r && giros.length < 60);
+        } while (ateJogo && !(calendarWeek() || {}).r && !continental() && giros.length < 60);
         const resumo = ponteResumoSemana(antes, giros, { amistososPerdidos: perdidos, amistoso: null });
         const salvo = await ambiente.persistir();
         if (salvo) desenharTudo();
@@ -757,6 +801,28 @@ export const comandosJogo = {
       } finally {
         ponte.avancando = false;
       }
+    },
+    // MUNDO-001 (M9c): o jogo do técnico nas copas continentais na semana.
+    jogoContinental() {
+      const CAREER = carreiraAtual();
+      const g = estado.ganchosMundo.continental;
+      return CAREER && g ? ((CAREER.copas && CAREER.copas.conmebol && CAREER.copas.conmebol.pendente) || null) : null;
+    },
+    async iniciarJogoContinental() {
+      const CAREER = carreiraAtual();
+      const g = estado.ganchosMundo.continental;
+      if (!ponte.pronta || !CAREER) return { ok: false, motivo: "carregando" };
+      if (partidaAtual()) return { ok: false, motivo: "em-andamento" };
+      if (!g || !(CAREER.copas && CAREER.copas.conmebol && CAREER.copas.conmebol.pendente)) return { ok: false, motivo: "sem-jogo" };
+      const bloq = bloqueioEscalacao();
+      if (bloq) return bloq;
+      // Elencos do adversário de fora: ambiente.elencosDoMundo (testes) ou a rota do servidor.
+      const buscar = async (url) => { const r = await fetch(url, { credentials: "same-origin" }); if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); };
+      const prep = await g.preparar(CAREER, buscar);
+      if (!prep.ok) return { ok: false, motivo: prep.motivo || "sem-jogo" };
+      ponte.ultimo = null; ponte.fim = null; ponte.resumo = null; ponte.posJogo = false; ponte.erroGravacao = null;
+      startContinentalLive({ ...prep.jogo, nomeFase: CAREER.copas.conmebol.pendente.nomeFase });
+      return { ok: true, aoVivo: !!partidaAtual() };
     },
     async escolherAmistoso(clubId) {
       const slot = friendlySlotThisWeek();

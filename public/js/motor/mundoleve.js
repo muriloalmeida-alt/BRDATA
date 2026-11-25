@@ -328,6 +328,7 @@ function semanaEuropa(m, cod, semana, eventos) {
       representanteTerceira: rep, chave: `${m.estado.chave}:${cod}:${P.ano}`,
     });
     P.pos.quedaD2 = tab[l2].ordem.slice().reverse();
+    P.pos.ordemD1 = tab[l1].ordem.slice();
     P.pos.fimRegular = fimRegular;
   }
   // Pernas desta semana (semanaRel 1 = a semana depois do fim da fase regular).
@@ -343,7 +344,7 @@ function semanaEuropa(m, cod, semana, eventos) {
   const res = Fa.resultado(P.pos);
   virada(m, cod, {
     sobemD2: res.sobem[l2], descemD1: res.descem[l1], descemD2: res.descem[l2], sobemTerceira: res.sobem.terceira,
-    quedaD2: P.pos.quedaD2, campeoes: res.campeao,
+    quedaD2: P.pos.quedaD2, campeoes: res.campeao, ordemD1: P.pos.ordemD1,
   }, semana, eventos);
 }
 
@@ -374,7 +375,7 @@ function semanaAmericaDoSul(m, cod, semana, eventos) {
     : (r2.anual || r2.reclassificacao || [...(r2.zonas ? [...r2.zonas.A, ...r2.zonas.B] : []), ...(r2.grupos ? Object.values(r2.grupos).flat() : [])]).slice().reverse();
   virada(m, cod, {
     sobemD2: r2.sobem.map((x) => x.id), descemD1: r1.descem.map((x) => x.id), descemD2: r2.descem.map((x) => x.id), sobemTerceira: [],
-    quedaD2, campeoes: { [l1]: r1.campeoes, [l2]: r2.campeoes },
+    quedaD2, campeoes: { [l1]: r1.campeoes, [l2]: r2.campeoes }, ordemD1: r1.anual || r1.reclassificacao || null,
   }, semana, eventos);
 }
 
@@ -417,6 +418,8 @@ function virada(m, cod, mov, semana, eventos) {
   };
   P.viradas = [...P.viradas, resumo].slice(-3);
   P.campeoes = [...P.campeoes, { ano: P.ano, [l1]: mov.campeoes[l1], [l2]: mov.campeoes[l2] }].slice(-20);
+  // Classificação da 1ª divisão para as copas continentais (M9b).
+  if (mov.ordemD1) P.classificacao = classificacaoDaTemporada(P.ano, mov.campeoes[l1], mov.ordemD1);
   // Composição e catálogo novos.
   P.ligas[l1] = { clubes: v[l1], placares: "" };
   P.ligas[l2] = { clubes: v[l2], placares: "" };
@@ -434,6 +437,21 @@ function virada(m, cod, mov, semana, eventos) {
   P.ano += 1;
   prepararPais(m, cod);
   eventos.push({ tipo: "virada", pais: cod, ...resumo });
+}
+
+// Classificação final da 1ª divisão de um país (M9b, copas continentais):
+// { ano, campeoes: [ids na ordem dos títulos], ordem: [ids] }. Os campeões
+// vêm do formato de cada liga (número, ou objeto por título).
+const PRIORIDADE_TITULO = ["campeonato", "uruguaio", "Apertura", "Clausura", "Intermedio", "anual"];
+export function classificacaoDaTemporada(ano, campeoes, ordem) {
+  let lista = [];
+  if (campeoes != null && typeof campeoes === "object") {
+    const chaves = Object.keys(campeoes).sort((a, b) => (PRIORIDADE_TITULO.indexOf(a) + 1 || 99) - (PRIORIDADE_TITULO.indexOf(b) + 1 || 99));
+    lista = chaves.map((k) => campeoes[k]);
+  } else if (campeoes != null) lista = [campeoes];
+  const vistos = new Set();
+  const camp = lista.filter((id) => id != null && !vistos.has(S(id)) && vistos.add(S(id))).map(N);
+  return { ano, campeoes: camp, ordem: (ordem || []).map(N) };
 }
 
 // Pré-simulação do início do save: joga todas as semanas até a do início.
@@ -491,6 +509,7 @@ function semanaBrasil(m, semana, eventos) {
   };
   P.viradas = [...P.viradas, resumo].slice(-3);
   P.campeoes = [...P.campeoes, { ano: P.ano, ...resumo.campeoes }].slice(-20);
+  P.classificacao = classificacaoDaTemporada(P.ano, rows.A[0].id, ids(rows.A));
   P.ligas.brasileirao = { clubes: ids(novo.newA), placares: "" };
   P.ligas.serie_b = { clubes: ids(novo.newB), placares: "" };
   P.ligas.serie_c = { clubes: ids(novo.newC), placares: "" };

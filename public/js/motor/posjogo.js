@@ -121,6 +121,52 @@ export function encerrarPernaCopa() {
   return { legScore, summaryEvents, finalResult };
 }
 
+// ---------- Jogo das copas continentais ao vivo (MUNDO-001, M9c) ----------
+// Como a perna da Copa do Brasil: o mesmo motor de partida, com o contexto
+// do jogo da copa (jogo = o de copasmundo.jogoDoHumanoPendente). O placar vai
+// para o plano da copa no fim (gancho do mundo), não para a tabela da liga.
+export function iniciarJogoContinental(jogo, round) {
+  const CAREER = carreiraAtual();
+  const hostId = jogo.casa, guestId = jogo.fora;
+  const isHome = String(hostId) === String(CAREER.clubId);
+  const home = teamById(hostId), away = teamById(guestId);
+  const cpuTeamId = isHome ? guestId : hostId;
+  const cpuPostura = posturaDaCpu(cpuTeamId, CAREER.clubId, !isHome);
+  const cpuEsc = escalacaoDaCpu(cpuTeamId, round, cpuPostura ? cpuPostura.formation : undefined);
+  const cpuBanco = cpuPostura ? { cpuBench: cpuEsc.bench.slice(), cpuSubs: 0 } : {};
+  return definirPartida({
+    round, humanFx: { home: hostId, away: guestId }, isHome, home, away, cpuXI: cpuEsc.starters, ...(cpuPostura ? { cpuPostura } : {}), ...cpuBanco, otherResults: [], standingsBefore: null,
+    continentalContext: { jogoId: jogo.id, copa: jogo.copa, fase: jogo.fase, perna: jogo.perna || null, pernas: jogo.pernas || 1, ida: jogo.ida || null, grupo: jogo.grupo || null, neutro: !!jogo.neutro },
+    chunkIndex: 0, gh: 0, ga: 0, events: [], appeared: new Set(),
+    subsUsed: 0, subsBonus: 0, formationPenaltyChunksLeft: 0,
+    lastHsStarters: [], lastAsStarters: [],
+    timerId: null, paused: false, finished: false,
+    speed: 1,
+    stats: { possWeightHome: 0, shots: { home: 0, away: 0 }, shotsOnTarget: { home: 0, away: 0 }, fouls: { home: 0, away: 0 } },
+    goalHighlightQueue: [], goalHighlightOnDone: null, goalHighlightTimer: null,
+    injuredBeforeIds: new Set(CAREER.squad.filter((p) => p.status === "contundido").map((p) => p.id)),
+  });
+}
+// Fecha o jogo: recuperação, renda em casa (final neutra sem renda) e
+// evolução, como na Copa do Brasil. Devolve o placar (mandante x visitante
+// do jogo) e os lances do resumo.
+export function encerrarJogoContinental() {
+  const CAREER = carreiraAtual();
+  const lm = partidaAtual();
+  lm.finished = true;
+  const summaryEvents = lm.events.filter((e) => e.type === "gol" || e.type === "amarelo" || e.type === "vermelho");
+  applyConditionRecovery(Array.from(lm.appeared));
+  recuperarCpu(lm.isHome ? lm.humanFx.away : lm.humanFx.home, Array.from(lm.appeared));
+  fecharSuspensoesCpu(lm.isHome ? lm.humanFx.away : lm.humanFx.home, lm.round);
+  let ticketRevenue = null;
+  if (lm.isHome && !lm.continentalContext.neutro) {
+    ticketRevenue = computeTicketRevenue(lm.home);
+    CAREER.finances.cash += ticketRevenue.revenue;
+  }
+  applyNaturalAgingEvolution(lm.isHome ? lm.lastHsStarters : lm.lastAsStarters);
+  return { placar: { gh: lm.gh, ga: lm.ga }, summaryEvents, ticketRevenue };
+}
+
 // ---------- Amistoso ao vivo (GE-CALENDAR-001, B2): as partes de regra de
 // startFriendlyLive e finishFriendlyLive (carreira.js) ----------
 export function iniciarAmistoso(slot) {

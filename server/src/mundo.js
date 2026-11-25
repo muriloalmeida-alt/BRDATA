@@ -40,9 +40,11 @@ function criarMundo({ dir = DIR } = {}) {
     // Corpo da rota de elencos, ou null para liga fora do mundo (404).
     elencos(liga) {
       const m = obterIndice();
-      // As 20 ligas do índice e, para o mercado do mundo (M8), as 3 do Brasil.
+      // As 20 ligas do índice; para o mercado do mundo (M8), as 3 do Brasil;
+      // e os clubes andinos das copas da CONMEBOL (M9b).
       const doBrasil = !!(m.brasil && Object.prototype.hasOwnProperty.call(m.brasil.ligas, liga));
-      if (!Object.prototype.hasOwnProperty.call(m.competicoes, liga) && !doBrasil) return null;
+      const dasCopas = liga === "conmebol_andinos" && !!(m.copas && m.copas.conmebol);
+      if (!Object.prototype.hasOwnProperty.call(m.competicoes, liga) && !doBrasil && !dasCopas) return null;
       if (!elencos.has(liga)) {
         const s = JSON.parse(fs.readFileSync(path.join(dir, `snapshot-${liga}.json`), "utf8"));
         elencos.set(liga, { versao: m.versao, liga, playersByTeamId: s.playersByTeamId || {} });

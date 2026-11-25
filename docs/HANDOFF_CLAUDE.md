@@ -11,8 +11,10 @@ Demandas vigentes
 
 MUNDO-001 — Ligas da Europa e da América do Sul, em paralelo, com continentais
 
-Status: M1 a M7 APROVADAS (Murilo, 24/11/2026: #154 mesclado por ele; #155 a
-#157 com "Vamos fazer os merges pendentes?"). M8 em revisão.
+Status: M1 a M8 APROVADAS e mescladas (Murilo: #154 mesclado por ele;
+#155 a #157 com "Vamos fazer os merges pendentes?", 24/11/2026; #158 com
+"158 aprovado", 25/11/2026). M9 feita (M9a, M9b e M9c), em revisão no PR
+da branch `claude/mundo-m9`.
 - Etapas M1 a M6a: PR #154 (suíte completa 191/191), mesclado.
 - M6b, passos 1 a 4: PR #155, empilhado sobre o #154 (suíte completa
   191/192; a falha, instável e sem relação com o mundo, está no PR).
@@ -111,6 +113,157 @@ Limites (propostas para o Murilo):
    meio da temporada do destino. Ideia para depois: a proposta vale "a
    partir da próxima temporada" do destino, com o técnico terminando a sua.
 2. O Brasil como destino de um técnico que está fora dele.
+
+Relatório da M9a, motor das copas da CONMEBOL (25/11/2026)
+
+A M9 foi dividida em três partes:
+- M9a: o motor das copas;
+- M9b: os classificados pelas ligas do save e a ligação com o mundo, as
+  finanças e as notícias;
+- M9c: as partidas do técnico ao vivo.
+
+O que foi feito: `public/js/motor/continental.js` (+ `.d.ts`), módulo puro
+e serializável. A Libertadores e a Sul-Americana de uma edição andam juntas,
+pelo regulamento do pacote continental:
+- Libertadores:
+  - fase 1 (pote 1 decide em casa);
+  - fase 2, sem cruzar clubes da mesma associação (só o vindo da fase 1
+    pode);
+  - fase 3, C1×C8 pelo ranking, volta na casa do melhor;
+  - 8 grupos de 4 pelos potes do ranking, sem dois clubes da mesma
+    associação (exceto quem vem da fase 3), com o padrão de mandos das
+    rodadas do pacote;
+  - 1º e 2º às oitavas.
+- Sul-Americana:
+  - 1ª fase com dois duelos nacionais por associação, jogo único e pênaltis
+    no empate;
+  - grupos com os 12 diretos, os 16 vencedores e os 4 derrotados da fase 3
+    da Libertadores, sem a mesma associação no grupo;
+  - playoff 2º da Sul-Americana × 3º da Libertadores pelos pares do pacote
+    (9×24, 10×23...), com a ida na casa do 3º da Libertadores.
+- Mata-mata das duas copas:
+  - oitavas por potes (o líder decide em casa), rotuladas A–H;
+  - quartas e semis pela chave do pacote (S1 = A×H...), volta na casa do
+    melhor na ordem de performance;
+  - ida e volta por pontos, saldo e pênaltis;
+  - final neutra em jogo único, com prorrogação e pênaltis.
+- Sorteios com seed (a chave da edição), resolvidos por busca com volta
+  para as últimas vagas não travarem.
+- Datas: as janelas do pacote no ano da edição (mesma semana, k anos
+  depois).
+- Premiação em USD do pacote: mando por fase, vitória nos grupos, campeão e
+  vice. Cada crédito tem chave única (jogo, clube e tipo).
+
+Testes: `test_motor_continental` 7/7, com os critérios de aceite do pacote:
+- 155 jogos na Libertadores e 157 na Sul-Americana, 96 de grupos em cada,
+  3 em casa e 3 fora;
+- as transferências e os pares do playoff;
+- grupos sem a mesma associação;
+- oitavas com volta na casa do líder, pênaltis e final;
+- premiação de mando e vitória sem duplicar;
+- determinismo, plano relido no meio e edição de 2027;
+- 80 edições aleatórias terminam (fora da suíte: 200).
+
+Relatório da M9b, as copas da CONMEBOL no save (25/11/2026)
+
+O que foi feito (`public/js/motor/copasmundo.js` + `.d.ts`):
+- Catálogo (`scripts/mundo_catalogo.js --andino DIR`):
+  - os 60 clubes das 1ªs divisões de Bolívia, Paraguai, Peru e Venezuela
+    em `copas.conmebol` do índice, com ids próprios (870000001+);
+  - elencos reais em `snapshot-conmebol_andinos.json`, servidos pela rota
+    de elencos;
+  - as regras do pacote continental no índice (`continentais`);
+  - fontes do 4º pacote em `mundo/fonte/bol-par-per-ven/`.
+- Classificação: a virada de cada país grava a classificação da 1ª
+  divisão (campeões da temporada e tabela anual) no mundo leve, no país do
+  técnico e no Brasil com o mundo anexado (Série A e campeão da Copa do
+  Brasil, gancho `fimDaTemporada`).
+- Vagas (regra de jogo, o pacote não traz as regras nacionais de acesso):
+  - cada associação preenche a tabela de vagas do pacote na ordem grupos da
+    Libertadores, fase 2, fase 1, grupos da Sul-Americana e 1ª fase;
+  - a ordem é campeões da temporada e depois a tabela;
+  - os 2 campeões da edição anterior entram nos grupos; se já estavam
+    classificados, a vaga passa ao próximo;
+  - 1ª edição do save, sem temporada anterior: clubes pela força, e as 2
+    vagas de titulares para Brasil e Argentina.
+- Andinos: tabela anual simplificada (força com uma variação sorteada por
+  ano, determinística).
+- Força entre ligas: força na liga × nível da liga (gameplayLevel do
+  pacote; Brasil 1,20, Paraguai 0,98, Peru 0,95, Bolívia 0,90, Venezuela
+  0,88), no nível de gols de 1,25 por time. Ranking da edição (potes) pela
+  mesma força.
+- Relógio: a edição do ano é montada na semana do save antes da fase 1 (se
+  o save começa depois, como na Europa em julho, a edição do ano é pulada)
+  e os jogos de cada semana são jogados junto com o mundo leve.
+- Premiação: USD do pacote × R$ 5,50 × 0,2. A Copa do Brasil do jogo paga
+  ~1/5 da premiação real; sem a escala, uma semifinal da Sul-Americana
+  triplicava o caixa de um clube argentino médio. Vai para o caixa e o
+  ledger do técnico e para o caixa da CPU dos clubes do país dele. Sem
+  crédito em dobro.
+- Avisos e notícias: classificação do técnico, mudança de copa,
+  eliminação, título e os campeões no feed.
+- Save: só a edição em andamento, sem as regras do pacote, com jogos em
+  lista e confrontos sem o que se refaz (até 47 KB durante a edição; 0,2 KB
+  fora dela), o histórico e os titulares.
+
+Medição (40 edições, força do índice): títulos da Libertadores Brasil 18,
+Argentina 12, Paraguai 3, Uruguai 3, Equador 2, Colômbia 1, Peru 1; 2,49
+gols por jogo; mandante vence 42%.
+
+Testes: `test_motor_copas_mundo` 6/6, `test_mundo_catalogo` 9/9; motor e
+mundo 42/42; fast 56/56.
+
+Limites e decisões para o Murilo:
+1. Força dos andinos: o pacote não traz nota de atleta nem força (só nome,
+   posição, idade e nacionalidade). Usei a ordem dos clubes no pacote, que
+   é a tabela de 2026 consultada, para a força relativa dentro da liga, e
+   o nível da associação. "Estimada pelo elenco" no sentido estrito não dá.
+2. Escudos andinos: só a URL remota (fotmob); o download está bloqueado na
+   rede desta sessão. Ficam para o pacote offline da M10.
+3. As partidas do técnico nas copas são simuladas, como as da CPU (M9c as
+   leva para o ao vivo). Sem colisão de agenda com a liga ainda.
+
+Relatório da M9c, o jogo do técnico nas copas ao vivo (25/11/2026)
+
+O que foi feito:
+- Motor:
+  - o jogo do técnico na semana não é simulado com os da CPU: fica pendente
+    (`CAREER.copas.conmebol.pendente`, com copa, fase, data, adversário e
+    ida) para ele jogar ao vivo;
+  - se a semana passa sem ele jogar, o jogo é simulado como os da CPU (a
+    copa nunca trava);
+  - a partida usa o mesmo motor ao vivo da Copa do Brasil (blocos,
+    substituições, tática, intervalo), com o contexto `continental`
+    (`posjogo.iniciarJogoContinental`/`encerrarJogoContinental`,
+    `jogo.startContinentalLive`/`finishContinentalLive`);
+  - no fim, o placar vai para o plano da copa
+    (`copasmundo.registrarJogoDoHumano`); prorrogação e pênaltis, quando o
+    confronto pede, pelo simulador; recuperação, renda em casa (final
+    neutra sem renda), evolução, prêmios e avisos como antes;
+  - o adversário de fora (outro país ou andino) entra no save com o elenco
+    do pacote, como no mercado do mundo (M8), e sai na virada;
+  - ponte: `jogoContinental()` e `iniciarJogoContinental()`;
+    `avancarSemana` para com o motivo `continental` enquanto há jogo
+    pendente; o estado da partida traz `contexto: "continental"` e
+    `continental` (copa, fase, perna, ida, desfecho).
+- v2:
+  - Início: o CTA vira "Jogar a Libertadores" (ou Sul-Americana) e uma linha
+    mostra data, copa, fase e adversário;
+  - Partida: `?iniciar=continental`, cabeçalho "Libertadores · Fase de
+    grupos · Grupo C", agregado na volta e desfecho (pênaltis,
+    prorrogação, classificado, eliminado, campeão);
+  - fim do jogo volta ao Início (sem pós-jogo de rodada);
+  - a semana que para no jogo continental volta ao Início;
+  - os clubes de fora no save aparecem com nome e escudo.
+
+Testes: `test_motor_copas_mundo` 7/7 (novo: o jogo ao vivo pela ponte, com
+adversário andino e brasileiro carregados, placar no plano e cota de
+mando); v2 142/142 (Início e Partida com o jogo continental); typecheck.
+
+Limites:
+1. Jogo da copa e da liga na mesma semana: o técnico joga os dois (a
+   condição física cai pelo motor de sempre), sem rodízio automático.
+2. Sem tela de chaves e grupos continentais (M10).
 
 Relatório da M7, moeda e finanças por país (24/11/2026)
 
