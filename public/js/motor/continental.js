@@ -168,9 +168,17 @@ const prontos = (plano, copa, fase) => { const d = duelos(plano, copa, fase); re
 const criada = (plano, copa, fase) => plano.jogos.some((j) => j.copa === copa && j.fase === fase);
 
 // ---------- jogar ----------
+// Mesma ordem de localeCompare numérico em "<copa>:<n>" (copa e depois o
+// número), sem o custo dele (a suíte estourava o tempo no CI).
+function ordemDoId(x, y) {
+  const i = x.indexOf(":"), k = y.indexOf(":");
+  const cx = x.slice(0, i), cy = y.slice(0, k);
+  if (cx !== cy) return cx < cy ? -1 : 1;
+  return Number(x.slice(i + 1)) - Number(y.slice(k + 1));
+}
 export function jogosPendentes(plano, ate) {
   return plano.jogos.filter((j) => j.gh == null && (ate == null || j.data <= ate))
-    .sort((a, b) => (a.data < b.data ? -1 : a.data > b.data ? 1 : 0) || a.id.localeCompare(b.id, "en", { numeric: true }));
+    .sort((a, b) => (a.data < b.data ? -1 : a.data > b.data ? 1 : 0) || ordemDoId(a.id, b.id));
 }
 
 // sim = { prorrogacao({ casa, fora, neutro }) -> { gh, ga }, penaltis({ casa, fora }) -> id }
