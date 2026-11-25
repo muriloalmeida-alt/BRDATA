@@ -181,8 +181,9 @@ check("servidor: índice com versão, elencos por liga, liga desconhecida e chav
   eq(Object.keys(srv.elencos("uefa_extra").playersByTeamId).length, 84, "elencos do 5º pacote (copas da UEFA, M10b)");
   eq(srv.elencos("serie_d"), null, "liga fora do mundo");
   eq(srv.elencos("__proto__"), null, "nome reservado");
-  eq(mundoAtivo({}), false, "sem a variável");
+  eq(mundoAtivo({}), true, "sem a variável (ligado desde a liberação, M10d)");
   eq(mundoAtivo({ MUNDO_ATIVO: "true" }), true, "com a variável");
+  eq(mundoAtivo({ MUNDO_ATIVO: "false" }), false, "chave de emergência");
 });
 
 console.log(`\n${n - failed}/${n} ok`);

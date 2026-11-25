@@ -8,17 +8,18 @@
    - GET /api/career/mundo/elencos/<liga>: os elencos crus da liga
      ({ versao, liga, playersByTeamId }), no formato de getTeamPlayers.
 
-   Desligado por padrão: as rotas só respondem com MUNDO_ATIVO=true no host.
-   As ligas novas só chegam ao seletor de novo save na etapa M10 (plano em
-   docs/mundo/02_Plano_de_execucao.md). Os arquivos são lidos uma vez por
+   Ligado por padrão desde a liberação (M10d); MUNDO_ATIVO=false no host
+   desliga as rotas (plano em docs/mundo/02_Plano_de_execucao.md). Os arquivos são lidos uma vez por
    processo: são commitados e não mudam com o servidor de pé. */
 const fs = require("fs");
 const path = require("path");
 
 const DIR = path.join(__dirname, "..", "frozen-catalog");
 
+// Liberação (M10d, 25/11/2026): ligado por padrão; MUNDO_ATIVO=false desliga
+// as rotas (chave de emergência). O cliente sem o mundo segue como antes.
 function mundoAtivo(env = process.env) {
-  return String(env.MUNDO_ATIVO || "").trim().toLowerCase() === "true";
+  return String(env.MUNDO_ATIVO ?? "").trim().toLowerCase() !== "false";
 }
 
 function criarMundo({ dir = DIR } = {}) {

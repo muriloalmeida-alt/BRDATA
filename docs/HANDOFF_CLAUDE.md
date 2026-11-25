@@ -116,6 +116,33 @@ Limites (propostas para o Murilo):
    partir da próxima temporada" do destino, com o técnico terminando a sua.
 2. O Brasil como destino de um técnico que está fora dele.
 
+Relatório da M10d, liberação (25/11/2026)
+
+O que foi feito:
+- Servidor: o mundo fica ligado por padrão (`server/src/mundo.js`).
+  `MUNDO_ATIVO=false` no `server/.env` desliga as rotas (chave de
+  emergência).
+- Índice offline (`public/js/motor/repositorio.js`):
+  - o aparelho guarda o índice do mundo (versionado: a rota responde
+    "atual" quando não mudou);
+  - guarda os elencos de cada liga na 1ª vez que o jogo pede, na versão do
+    índice;
+  - um save do mundo abre sem rede.
+- v2 (`public/js/motor/v2.js`):
+  - o motor recebe `indiceDoMundo` e `elencosDoMundo` (com IndexedDB, pela
+    cópia do aparelho; sem ele, direto do servidor);
+  - servidor desligado e sem cópia: sem mundo, como antes.
+- O que muda para o jogador quando o PR for mesclado e implantado:
+  - o novo save oferece os 10 países;
+  - todo save novo do Brasil nasce com o mundo em paralelo (Libertadores,
+    Sul-Americana, mercado e propostas de fora);
+  - saves que já existem continuam como estão (D4).
+
+Pendente (bloqueado nesta sessão): escudos locais dos 60 clubes andinos e
+dos 84 do 5º pacote. Os pacotes trazem só o link da fotmob, e o download
+está bloqueado na rede desta sessão. As telas mostram o escudo remoto e,
+sem rede, o monograma do clube.
+
 Relatório da M10c (parte 3), ligas do mundo, calendário e mercado (25/11/2026)
 
 O que foi feito (MUN-15):
