@@ -15,7 +15,13 @@
 //   4) plausibilidade dos preços pelos negócios de referência (com margem);
 //   5) virada: o clube do técnico rebaixado à Championship recebe a
 //      transição e as escalas de quem entra no save são completadas;
-//   6) save sem economia (carreiras de antes): tudo como antes.
+//   6) divisões de baixo: o atleta mediano cabe no caixa do clube mediano em
+//      todas as divisões, e o clube mais pobre da divisão mais pobre consegue
+//      contratar parte relevante dela (relato da Série C, 25/11);
+//   7) nivelamento mundial: o Brasil (modo exemplo, overall até 92) abaixo da
+//      Premier League no topo e na mediana do valor e no maior salário; no
+//      país, o clube mais rico nunca paga menos pela mesma qualidade;
+//   8) save sem economia (carreiras de antes): tudo como antes.
 // Uso: node tests/unit/test_economia_mercado.js
 const assert = require("assert");
 const path = require("path");
@@ -67,7 +73,13 @@ const imp = (m) => import(pathToFileURL(path.join(ROOT, "public/js/motor", m)).h
     const ch = E.economiaDaLiga(indice, "efl_championship");
     const [idCh, bCh] = [...ch.entries()][0];
     assert.strictEqual(C.caixaCpu[idCh], bCh.caixaInicial);
-    assert.ok(Math.abs(fin.wageBill(C.leagueSquads[idCh]) - bCh.folhaBaseMensal) / bCh.folhaBaseMensal < 0.5, "folha da CPU");
+    // Folha dos contratos ÷ folha-base: a mediana de cada divisão perto de 1
+    // (o clube a clube varia: a folha real sai da qualidade do elenco).
+    for (const l of C.divisoes) {
+      const r = [...E.economiaDaLiga(indice, l)].filter(([id]) => C.leagueSquads[id] || id === String(C.clubId)).map(([id, b]) => fin.wageBill(id === String(C.clubId) ? C.squad : C.leagueSquads[id]) / b.folhaBaseMensal).sort((x, y) => x - y);
+      const m = r[r.length >> 1];
+      assert.ok(m > 0.7 && m < 1.3, `${l}: folha real ÷ base mediana ${m.toFixed(2)}`);
+    }
     // A mesma qualidade ganha mais no clube mais rico (Arsenal x o maior da Championship).
     const a = temporada.computeContractFields(75, 25, 80, () => 0.5, 2026, E.escalaDe(C, C.clubId));
     const b = temporada.computeContractFields(75, 25, 80, () => 0.5, 2026, E.escalaDe(C, idCh));
@@ -141,6 +153,11 @@ const imp = (m) => import(pathToFileURL(path.join(ROOT, "public/js/motor", m)).h
     assert.ok(E.fatorDeDemanda(C, pl, alvoClube) > 1, "Premier League comprando de um clube de fora mais barato");
     assert.strictEqual(E.fatorDeDemanda(C, alvoClube, pl), 1);
     delete C.exterior;
+    // A CPU só propõe o que consegue pagar (proposta pelos seus atletas,
+    // concorrente e anúncio): o caixa dela com 1 mês de folha de reserva.
+    const cx = C.caixaCpu[alvoClube];
+    assert.strictEqual(semana.cpuPodePagar(alvoClube, cx * 2, 1, 0), false);
+    assert.strictEqual(semana.cpuPodePagar(alvoClube, Math.round(cx * 0.2), 1, 0), true);
     // CPU sem caixa não compra pela mesma regra.
     const comprador = Object.keys(C.leagueSquads).find((id) => id !== alvoClube && id !== String(C.clubId));
     C.caixaCpu[comprador] = 1000;
@@ -158,10 +175,13 @@ const imp = (m) => import(pathToFileURL(path.join(ROOT, "public/js/motor", m)).h
     const meio = pl.find((x) => /Crystal Palace/.test(x.nome));
     const topoPl = Math.max(...Object.values(P.leagueSquads).flat().map((p) => p.overall));
     dentro(valor(P, newc.id, topoPl - 1, 25, topoPl + 2), gbp(50e6), gbp(220e6), "topo da Premier League (Isak)");
-    dentro(valor(P, meio.id, topoPl - 6, 28, topoPl - 5), eur(15e6), eur(90e6), "titular de meio da Premier League (Paquetá)");
-    // Argentina: talento do River (Mastantuono, €45 mi) e titular (Almada).
+    dentro(valor(P, meio.id, topoPl - 6, 28, topoPl - 5), eur(10e6), eur(90e6), "titular de meio da Premier League (Paquetá)");
+    // Argentina: talento do River vendido à Europa (Mastantuono, €45 mi). No
+    // mercado argentino o preço segue a receita local; o comprador europeu
+    // paga a demanda (preço mediano da liga dele ÷ o da Argentina)^0,5, até 3×.
     const A = await nova("arg_liga_profesional", /^River/);
-    dentro(valor(A, A.clubId, 74, 18, 86), usd(4e6), usd(60e6), "talento do River");
+    const demanda = Math.max(1, Math.min(E.DEMANDA.teto, (P.economia.ligas.premier_league.v[2] / A.economia.ligas.arg_liga_profesional.v[2]) ** E.DEMANDA.expoente));
+    dentro(valor(A, A.clubId, 74, 18, 86) * demanda, usd(4e6), usd(60e6), "talento do River vendido à Premier League");
     // Uruguai: Peñarol (Leo Fernández, US$ 7 mi por 80%).
     const U = await nova("uru_primera", /Peñarol/);
     dentro(valor(U, U.clubId, 74, 25, 77), usd(1e6), usd(12e6), "titular do Peñarol");
@@ -196,6 +216,79 @@ const imp = (m) => import(pathToFileURL(path.join(ROOT, "public/js/motor", m)).h
     CMu.economiaDaTemporada(C);
     assert.strictEqual(C.economia.clube.anoAposQueda, 2);
     assert.ok(C.economia.clube.tvMensal < um);
+  });
+
+  await check("divisões de baixo: o atleta mediano cabe no caixa e o clube mais pobre consegue contratar", async () => {
+    // Relato do Murilo (25/11): na Série C o clube não conseguia contratar
+    // ninguém (o atleta mediano valia mais que o caixa inteiro do clube).
+    const med = (a) => { const v = a.slice().sort((x, y) => x - y); return v[v.length >> 1]; };
+    for (const [liga, re] of [["premier_league", /^Arsenal/], ["uru_primera", /Peñarol/], ["arg_liga_profesional", /^River/]]) {
+      const C = await nova(liga, re);
+      for (const l of C.divisoes) {
+        const ids = C.divisionTeams[l].map((t) => String(t.id));
+        const valores = ids.flatMap((id) => (id === String(C.clubId) ? C.squad.filter((p) => p.origin !== "base") : C.leagueSquads[id] || []).map((p) => p.value));
+        const caixas = ids.map((id) => C.economia.escalas[id][2]);
+        const r = med(valores) / med(caixas);
+        assert.ok(r < 1, `${l}: atleta mediano ${(med(valores) / 1e6).toFixed(2)} mi x caixa mediano ${(med(caixas) / 1e6).toFixed(2)} mi`);
+      }
+    }
+    // O clube mais pobre da Segunda uruguaia (a divisão mais pobre do mundo).
+    const U = await nova("uru_primera", /Peñarol/);
+    const seg = U.divisoes[1];
+    const pobre = U.divisionTeams[seg].map((t) => String(t.id)).sort((a, b) => U.economia.escalas[a][2] - U.economia.escalas[b][2])[0];
+    const C = await nova(seg, new RegExp(`^${indice.clubes.find((c) => String(c.id) === pobre).nome.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`));
+    const mesma = C.divisionTeams[seg].map((t) => String(t.id)).filter((id) => id !== String(C.clubId)).flatMap((id) => C.leagueSquads[id] || []);
+    const cabe = mesma.filter((p) => { const r = semana.capacidadeDoTecnico(p.value, 4, p.wage); return r && r.ok; }).length;
+    assert.ok(cabe / mesma.length > 0.25, `o mais pobre da ${seg} compra ${cabe} de ${mesma.length}`);
+  });
+
+  await check("nivelamento mundial: Brasil abaixo da Premier League; no país, o mais rico paga mais pela mesma qualidade", async () => {
+    // Relato do Murilo (25/11): os atletas da Série A do Brasil saíam mais caros
+    // que os da Premier League (os overalls do Brasil vêm de outra fonte, mais
+    // larga, e a curva de sempre é exponencial no overall).
+    const med = (a) => { const v = a.slice().sort((x, y) => x - y); return v[v.length >> 1]; };
+    const da1a = (C) => { const ids = C.divisionTeams[C.divisoes ? C.divisoes[0] : "brasileirao"].map((t) => String(t.id)); return ids.flatMap((id) => (id === String(C.clubId) ? C.squad.filter((p) => p.origin !== "base") : C.leagueSquads[id] || [])); };
+    const PL = await nova("premier_league", /^Arsenal/);
+    const pl = da1a(PL);
+    // Ordem no país: na mesma divisão, o salário de um mesmo atleta não cai
+    // com a receita; entre divisões, o clube de baixo não paga mais que um de
+    // cima com receita maior (no atleta mediano da divisão de baixo).
+    const rec = (id, liga) => E.economiaDaLiga(indice, liga).get(id).receitaAnual;
+    for (const liga of ["premier_league", "efl_championship"]) {
+      const w = Math.exp(PL.economia.ligas[liga].s[0]);
+      const cl = Object.entries(PL.economia.escalas).filter(([, x]) => x[1] === liga).map(([id]) => ({ id, receita: rec(id, liga), pago: E.escalaDe(PL, id).salario(w) })).sort((a, b) => a.receita - b.receita);
+      for (let i = 1; i < cl.length; i++) assert.ok(cl[i].pago >= cl[i - 1].pago * 0.999, `${liga}: inversão ${cl[i].id} x ${cl[i - 1].id}`);
+    }
+    const wCh = Math.exp(PL.economia.ligas.efl_championship.s[0]);
+    const daPremier = Object.keys(PL.economia.escalas).filter((u) => PL.economia.escalas[u][1] === "premier_league").sort((a, b) => rec(a, "premier_league") - rec(b, "premier_league"));
+    for (const id of Object.keys(PL.economia.escalas).filter((x) => PL.economia.escalas[x][1] === "efl_championship")) {
+      const vizinho = daPremier.find((u) => rec(u, "premier_league") >= rec(id, "efl_championship"));
+      if (vizinho) assert.ok(E.escalaDe(PL, id).salario(wCh) <= E.escalaDe(PL, vizinho).salario(wCh) * 1.001, `Championship ${id} paga mais que ${vizinho}, da Premier League e mais rico`);
+    }
+    // E o mais rico da Premier League paga mais que o mais rico da Championship.
+    const [ars] = [String(PL.clubId)], maiorCh = [...E.economiaDaLiga(indice, "efl_championship").keys()][0];
+    assert.ok(E.escalaDe(PL, ars).salario(wCh) > E.escalaDe(PL, maiorCh).salario(wCh));
+    // Brasil no modo exemplo (sem rede; overall até 92, o caso mais largo).
+    const ponteMod = await imp("ponte.js");
+    const fetchAntes = globalThis.fetch;
+    globalThis.fetch = async () => { throw new Error("sem rede"); };
+    let br;
+    try {
+      estado.definirCarreira(null); CMu.definirIndiceDoMundo(null);
+      semana.definirAmbiente({ ...v2.ambienteSemPagina(), indiceDoMundo: async () => indice, armazem: { pedir: async (u, o) => (o && o.body ? { ok: true } : {}) } });
+      const P = v2.criarPonte(); ponteMod.ponte.pronta = true;
+      const comp = await P.escolherCompeticao("brasileirao");
+      await P.criarCarreira(comp.clubes.find((c) => /Flamengo/.test(c.nome)).id);
+      br = estado.carreiraAtual();
+    } finally { globalThis.fetch = fetchAntes; }
+    const bra = da1a(br);
+    const M = (v) => `${(v / 1e6).toFixed(1)} mi`;
+    assert.ok(Math.max(...bra.map((p) => p.value)) < Math.max(...pl.map((p) => p.value)), `topo: Brasil ${M(Math.max(...bra.map((p) => p.value)))} x Premier League ${M(Math.max(...pl.map((p) => p.value)))}`);
+    assert.ok(med(bra.map((p) => p.value)) < med(pl.map((p) => p.value)) / 2, `mediana: Brasil ${M(med(bra.map((p) => p.value)))} x Premier League ${M(med(pl.map((p) => p.value)))}`);
+    assert.ok(Math.max(...br.squad.map((p) => p.wage)) < Math.max(...PL.squad.map((p) => p.wage)), "maior salário do Flamengo abaixo do do Arsenal");
+    // A folha real do Flamengo perto da folha-base (R$ 37,5 mi), ±35%.
+    assert.ok(Math.abs(fin.wageBill(br.squad) / 37.5e6 - 1) < 0.35, `folha do Flamengo ${M(fin.wageBill(br.squad))}`);
+    texto.definirMoeda(null);
   });
 
   await check("save sem economia (carreiras de antes): tudo como antes", async () => {

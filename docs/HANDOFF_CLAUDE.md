@@ -126,6 +126,74 @@ Casos não confirmados:
 - custos fixos de antes em R$ (obras do estádio, prêmios da liga, recompensas
   da loja) ficam pequenos para clubes grandes. Fica para a Entrega 3.
 
+Ajuste das divisões de baixo (25/11/2026)
+
+Relato do Murilo: "A parte financeira ficou inviável para os times da Série
+C. Com esse orçamento o clube não consegue contratar nenhum jogador".
+
+Medição: em todas as ligas, o atleta mediano valia de 1 a 3,4 vezes o caixa
+inicial inteiro do clube mediano. Duas causas:
+- preço fora da escala da receita nas divisões de baixo: a curva de sempre
+  dava 17% a 27% da receita anual do clube mediano, contra ~9% nas de topo;
+- caixa inicial de 8% da receita (~1 mês), quase todo tomado pela reserva de
+  1 mês de folha.
+
+Correção:
+- escala de valor por liga, com o atleta mediano em 9% da receita do clube
+  mediano (`PRECO_SOBRE_RECEITA`) e o porte do vendedor pela raiz;
+- caixa inicial de 15% da receita (~2 meses).
+
+Resultado:
+- em todas as 23 ligas, atleta mediano ≈ 60% do caixa do clube mediano;
+- Série C (modo exemplo, compra em 4 parcelas):
+  - mais pobre: 241 de 456 atletas da divisão ao alcance;
+  - mediano: 327;
+  - mais rico: 451.
+
+Teste novo: caso 6 de `test_economia_mercado`.
+
+Revisão de todos os orçamentos: nivelamento mundial (25/11/2026)
+
+Relato do Murilo: "Os jogadores da Série A do Brasil estão mais caros que os
+da Premier League. Esse nivelamento de orçamentos em todo o mundo precisa de
+uma regra bem feita".
+
+Medição com o catálogo real (perfil congelado, como em produção):
+- a receita e a folha-base dos clubes estavam certas (Flamengo R$ 2,09 bi,
+  Arsenal R$ 4,44 bi). O defeito estava no preço e no salário dos atletas;
+- craque do Flamengo (overall 84): R$ 848 mi. Maior salário do Flamengo:
+  R$ 9,9 mi/mês;
+- os overalls do Brasil vêm de outra fonte, mais larga (mediana 67, topo 84;
+  Premier League do mundo: 71 e 78), e a curva de sempre é exponencial no
+  overall. O fator linear por liga mantinha esse formato.
+
+Regra nova (economia versão 3, carreiras novas; a versão 2 segue lida):
+- o nível vem do dinheiro e o formato da posição relativa na liga
+  (log-normal comum);
+- o valor estica ou comprime; o salário só comprime;
+- a ordem é garantida:
+  - na liga, o clube mais rico nunca paga menos pela mesma qualidade;
+  - entre divisões, o clube de baixo não paga mais que o vizinho de cima
+    em receita;
+- o preço mediano é 3% da receita média dos clubes da liga.
+Detalhe em `docs/economia/03_Mercado_E2.md`.
+
+Resultado (catálogo real, R$):
+
+| | Brasil | Premier League | LaLiga |
+|---|---:|---:|---:|
+| Atleta mediano | 16,5 mi | 71 mi | 37 mi |
+| Topo | 274 mi | 487 mi | 303 mi |
+| Overall 75 | 59 mi | 205 mi | 124 mi |
+
+- maior salário do Flamengo: R$ 5,4 mi/mês;
+- folha do Flamengo: R$ 41,6 mi/mês (base R$ 37,5 mi);
+- Série C: o clube mais pobre alcança 399 de 456 atletas da divisão.
+
+Testes: `test_economia_mercado` 8/8 (caso 7 novo: Brasil, no modo exemplo,
+abaixo da Premier League no topo, na mediana e no maior salário; ordem no
+país).
+
 Próximo: Entrega 3 (interface "Paga agora / Custo mensal / Caixa após",
 motivos na tela, Finanças com espaço de folha e parcelas, simulação de 5
 temporadas, desempenho e save, compatibilidade de saves).
