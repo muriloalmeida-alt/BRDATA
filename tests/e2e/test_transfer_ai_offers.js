@@ -51,7 +51,10 @@ const { newCareer, globaisDoMotor } = require("./_v2_carreira");
       p.overall = 99;
       // ECON-001b: o contrato na escala do seu clube (economia v2 nas carreiras novas).
       const cf = motorTemporada().computeContractFields(99, 27, null, () => 0.5, 2026, window.__escalaDoTecnico());
-      p.wage = cf.wage; p.value = cf.value;
+      // Valor acima do caixa de qualquer clube (a tabela de valor do mercado
+      // limita a qualidade a 10×: o overall 99 não é mais impagável por si).
+      const maiorCaixa = Math.max(...Object.keys(CAREER.leagueSquads).map((id) => clubBudgetProxy(id).cash));
+      p.wage = cf.wage; p.value = Math.max(cf.value, maiorCaixa * 10);
     });
     let offers = 0;
     for (let i = 0; i < 60; i++) {
