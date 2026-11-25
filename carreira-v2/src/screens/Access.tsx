@@ -29,7 +29,7 @@ export function Splash({ label = "Carregando…" }: { label?: string }) {
     <div className="ac-splash" role="status" aria-live="polite">
       <div className="ac-splash-bg" aria-hidden="true" />
       <div className="ac-splash-body">
-        <img className="ac-logo ac-splash-mark" src="/img/touchline/logo-completa.webp" alt="Touchline — Modo Carreira" width="1200" height="664" />
+        <img className="ac-mark ac-splash-mark" src="/img/touchline/marca-t.webp" alt="Touchline" width="198" height="160" />
         <span className="ac-bar" aria-hidden="true" />
         <span className="ac-splash-label">{label}</span>
       </div>
@@ -119,7 +119,7 @@ export function CompetitionScreen() {
   const chosen = list.find((c) => c.id === sel) || null;
   return (
     <div className="ac ac--stadium">
-      <header className="ac-head ac-head--center"><img className="ac-logo" src="/img/touchline/logo-completa.webp" alt="Touchline — Modo Carreira" width="1200" height="664" /></header>
+      <header className="ac-head ac-head--center"><img className="ac-mark" src="/img/touchline/marca-t.webp" alt="Touchline" width="198" height="160" /></header>
       <h1 className="ac-title ac-title--center">Onde começa sua história?</h1>
       {countries.length > 1 && (
         <div className="ac-countries" role="radiogroup" aria-label="País">
