@@ -13,9 +13,9 @@ MUNDO-001 — Ligas da Europa e da América do Sul, em paralelo, com continentai
 
 Status: M1 a M9 APROVADAS e mescladas (Murilo: #154 mesclado por ele;
 #155 a #157 com "Vamos fazer os merges pendentes?", 24/11/2026; #158 com
-"158 aprovado" e #159 com "Aprovado", 25/11/2026). M10a aprovada e
-mesclada (#160, "Aprovado", 25/11/2026). M10b feita, em revisão (branch
-`claude/mundo-m10`).
+"158 aprovado" e #159 com "Aprovado", 25/11/2026). M10a e M10b
+aprovadas e mescladas (#160 e #161, "Aprovado", 25/11/2026). M10c em
+implementação (branch `claude/mundo-m10c`).
 - Etapas M1 a M6a: PR #154 (suíte completa 191/191), mesclado.
 - M6b, passos 1 a 4: PR #155, empilhado sobre o #154 (suíte completa
   191/192; a falha, instável e sem relação com o mundo, está no PR).
