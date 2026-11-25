@@ -39,3 +39,4 @@ export function nomeDe(CAREER: any, indice: any, id: Id): string;
 export function noticia(CAREER: any, txt: string, mine: boolean): void;
 export function compactarPlano(plano: any, humano: Id, fora: string[]): any;
 export function expandirPlano(salvo: any, tabelas: Record<string, unknown>, semente: (plano: any, id: Id, c: any) => number): any;
+export function limiteParaMontar(indice: any, ano: number): string;

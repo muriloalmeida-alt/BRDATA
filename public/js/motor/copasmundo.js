@@ -276,6 +276,13 @@ export function inicioDaEdicao(indice, ano) {
   return CT.dataNaEdicao(R.calendario.LIB.fase_1[0], ano, Number(R.regras.LIB.edicao) || 2026);
 }
 
+// Última semana em que a edição ainda pode ser montada: a da 1ª rodada dos
+// grupos da Libertadores.
+export function limiteParaMontar(indice, ano) {
+  const R = regrasDoIndice(indice);
+  return CT.dataNaEdicao(R.calendario.LIB.grupos[0], ano, Number(R.regras.LIB.edicao) || 2026);
+}
+
 // ---------- a semana ----------
 // Chamado depois que o mundo leve chegou à semana do save. Monta a edição do
 // ano (se ainda dá tempo: antes da fase 1), joga os jogos até o domingo,
@@ -289,7 +296,10 @@ export function semanaDasCopas(CAREER, indice, semana) {
   const ano = Number(fim.slice(0, 4));
   if (!C.edicao && (C.ultimoAno == null || C.ultimoAno < ano)) {
     C.ultimoAno = ano;
-    if (semana <= inicioDaEdicao(indice, ano)) {
+    // Dá para montar até o começo da fase de grupos: as fases de qualificação
+    // que já passaram (save que começa em fevereiro, depois da fase 1) são
+    // jogadas na hora, como os jogos da CPU.
+    if (semana <= limiteParaMontar(indice, ano)) {
       const plano = montarEdicaoDoSave(CAREER, indice, ano);
       C.edicao = compactar(plano, CAREER.clubId);
       C.pagos = [];
