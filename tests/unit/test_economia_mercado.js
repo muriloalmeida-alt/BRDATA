@@ -9,7 +9,8 @@
 //   2) contratos gerados depois (base, prospecto, reposição) já na escala
 //      do clube, e escalar duas vezes não muda nada;
 //   3) mesma capacidade de compra: técnico e CPU com o mesmo estado têm a
-//      mesma resposta; a demanda (comprador de mercado mais caro paga mais); a proposta do técnico sem caixa é recusada com o
+//      mesma resposta; a demanda entre países (comprador de mercado mais
+//      caro paga mais; no doméstico, não); a proposta do técnico sem caixa é recusada com o
 //      motivo; a CPU sem caixa não compra;
 //   4) plausibilidade dos preços pelos negócios de referência (com margem);
 //   5) virada: o clube do técnico rebaixado à Championship recebe a
@@ -131,11 +132,15 @@ const imp = (m) => import(pathToFileURL(path.join(ROOT, "public/js/motor", m)).h
     const pv = P.previaProposta(alvoClube, alvo.id, alvo.value, 1, alvo.wage);
     assert.ok(pv.capacidade && pv.capacidade.ok === false);
     C.finances.cash = original;
-    // Demanda: o comprador de mercado mais caro paga parte da diferença; o
-    // de mercado mais barato não ganha desconto.
+    // Demanda: só entre países (um clube de fora do save); o comprador de
+    // mercado mais caro paga parte da diferença; o mais barato não ganha
+    // desconto; no mercado doméstico, nada.
     const pl = C.divisionTeams.premier_league.map((t) => String(t.id)).find((id) => C.economia.escalas[id]);
-    assert.ok(E.fatorDeDemanda(C, pl, alvoClube) > 1, "Premier League comprando da Championship");
+    assert.strictEqual(E.fatorDeDemanda(C, pl, alvoClube), 1, "doméstico");
+    C.exterior = { clubes: { [alvoClube]: {} }, saidas: {}, catalogo: {} };
+    assert.ok(E.fatorDeDemanda(C, pl, alvoClube) > 1, "Premier League comprando de um clube de fora mais barato");
     assert.strictEqual(E.fatorDeDemanda(C, alvoClube, pl), 1);
+    delete C.exterior;
     // CPU sem caixa não compra pela mesma regra.
     const comprador = Object.keys(C.leagueSquads).find((id) => id !== alvoClube && id !== String(C.clubId));
     C.caixaCpu[comprador] = 1000;

@@ -26,7 +26,12 @@ const { carreiraV2, signup, ensureDailyClaimed, globaisDoMotor, saveNoServidor, 
   // era o mais valioso; aqui um de valor médio, para o caixa e o teto).
   const alvo = () => page.evaluate(() => {
     const pend = new Set((CAREER.pendingOffersOut || []).map((o) => String(o.playerId)));
-    const l = allMarketPlayers().filter((e) => !e.mine && !pend.has(String(e.p.id)) && e.p.value > 0).sort((a, b) => a.p.value - b.p.value);
+    // Só quem o clube libera pelo valor (reserva até o valor de mercado: sem
+    // prêmio de titular, de cobertura ou de reposição), porque os casos abaixo
+    // contam com a faixa de aceite do valor. Antes isso valia por acaso para
+    // o mediano; com a economia v2 (ECON-001b) a ordem dos valores muda.
+    const liberaPeloValor = (e) => !window.motorMercado || motorMercado().reservaParaProposta(e.p, marketClub(e.club.id), {}).reserva <= e.p.value;
+    const l = allMarketPlayers().filter((e) => !e.mine && !pend.has(String(e.p.id)) && e.p.value > 0 && liberaPeloValor(e)).sort((a, b) => a.p.value - b.p.value);
     const e = l[Math.floor(l.length / 2)];
     return { clubId: String(e.club.id), playerId: e.p.id, name: e.p.name };
   });

@@ -79,8 +79,9 @@ O que foi feito:
   - todos os contratos do save escalados uma vez; contratos gerados depois
     (base, prospecto, reposição e renovação da CPU) já na escala do clube;
   - salário justo (moral, agente livre, "à venda") na escala do clube;
-- demanda: comprador de mercado mais caro paga parte da diferença de preço
-  na reserva do vendedor (técnico e CPU);
+- demanda entre países: comprador de mercado mais caro paga parte da
+  diferença de preço na reserva do vendedor (técnico e CPU). No mercado
+  doméstico, o preço parte do valor exibido;
 - mesma capacidade de compra para o técnico e a CPU
   (`economia.capacidadeNoJogo`): pagamento inicial com 1 mês de folha de
   reserva, teto, e parcelas sem caixa negativo. O técnico recebe o motivo

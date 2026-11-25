@@ -484,13 +484,17 @@ export function escalasDaDivisao(liga, clubes) {
   }
   return { escalas, salario: r3(daLiga), valor: r3(escalaDeValor(daLiga, daLiga)), economia: eco };
 }
-// Demanda (Entrega 2): quem compra de um mercado mais caro paga parte da
-// diferença de preço ao vendedor: o valor-base da reserva × (escala de valor
-// do comprador ÷ a do vendedor)^0,5, entre 1 e 3. Comprador de mercado mais
-// barato não ganha desconto (ele só não consegue pagar). Sem v2: 1.
+// Demanda (Entrega 2): numa compra entre países (um dos clubes é de fora do
+// país do save, CAREER.exterior), quem compra de um mercado mais caro paga
+// parte da diferença de preço ao vendedor: o valor-base da reserva × (escala
+// de valor do comprador ÷ a do vendedor)^0,5, entre 1 e 3. No mercado
+// doméstico, o preço é o valor exibido (a escala do clube já tem o porte).
+// Comprador de mercado mais barato não ganha desconto. Sem v2: 1.
 export const DEMANDA = { expoente: 0.5, teto: 3 };
 export function fatorDeDemanda(CAREER, compradorId, vendedorId) {
   if (!economiaV2(CAREER)) return 1;
+  const fora = (id) => !!(CAREER.exterior && CAREER.exterior.clubes && CAREER.exterior.clubes[String(id)]);
+  if (fora(compradorId) === fora(vendedorId)) return 1;
   const c = CAREER.economia.escalas[String(compradorId)], v = CAREER.economia.escalas[String(vendedorId)];
   if (!c || !v || !(v[1] > 0)) return 1;
   return Math.max(1, Math.min(DEMANDA.teto, (c[1] / v[1]) ** DEMANDA.expoente));

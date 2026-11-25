@@ -20,6 +20,9 @@ const { abrirPagina } = require("./_sem_tela");
   const pg = await abrirPagina();
   if (!pg.pronta) throw new Error("ponte não ficou pronta");
   const comp = await pg.P.escolherCompeticao("brasileirao");
+  // ECON-001b: estes casos conferem a regra da CPU de antes (a dos saves sem a
+  // economia v2); a v2 tem teste próprio (tests/unit/test_economia_mercado.js).
+  pg.rodar("window.BRDATA_MOTOR.economia.ECONOMIA_V2.ativa = false;", "economia");
   await pg.P.criarCarreira(comp.clubes[5].id);
   const ler = (codigo) => JSON.parse(pg.rodar(`JSON.stringify((() => { const M = window.BRDATA_MOTOR, E = M.estado, S = M.semana, N = M.negociacao, MC = M.mercado, C = E.carreiraAtual();
     const ids = Object.keys(C.leagueSquads);

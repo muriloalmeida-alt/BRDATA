@@ -287,7 +287,9 @@ const { newCareer, globaisDoMotor } = require("./_v2_carreira");
     const cf = computeContractFields(60, 25, null, () => 0.5);
     const player = { group: "M", overall: 60, wage: cf.wage, value: cf.value };
     const before = financeiroScore(player, squad, clubId);
-    const squadPlus = squad.concat(Array.from({ length: 5 }, (_, i) => ({ id: `n16_${i}`, group: "M", overall: 85, wage: 500000, origin: "principal" })));
+    // Folha extra do tamanho do teto do clube (vale na escala de qualquer economia).
+    const extra = Math.round(clubBudgetProxy(clubId).wageCap / 5);
+    const squadPlus = squad.concat(Array.from({ length: 5 }, (_, i) => ({ id: `n16_${i}`, group: "M", overall: 85, wage: extra, origin: "principal" })));
     const after = financeiroScore(player, squadPlus, clubId);
     return { before, after, changed: before !== after };
   });

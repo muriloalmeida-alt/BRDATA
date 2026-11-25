@@ -119,7 +119,7 @@ export function resolverProposta(o, round) {
     }
     const aVenda = motivosAVendaNoClube(p, o.clubId).length > 0;
     // ECON-001b: demanda (comprador de mercado mais caro paga parte da diferença).
-    const demanda = economia.fatorDeDemanda(CAREER, CAREER.clubId, o.clubId);
+    const demanda = economia.fatorDeDemanda(carreiraAtual(), carreiraAtual().clubId, o.clubId);
     const r = mercado.reservaParaProposta(p, marketClub(o.clubId), { baseValue: Math.round(o.marketValue * demanda / 1000) * 1000, fimDeJanela: fimDeJanela(), aVenda });
     const usadas = o.counterRounds || 0;
     // VENDA-DISPONIVEL: à venda, a partir da reserva (90%) o clube aceita.
