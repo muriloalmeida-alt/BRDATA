@@ -43,7 +43,7 @@ function criarMundo({ dir = DIR } = {}) {
       // As 20 ligas do índice; para o mercado do mundo (M8), as 3 do Brasil;
       // e os clubes andinos das copas da CONMEBOL (M9b).
       const doBrasil = !!(m.brasil && Object.prototype.hasOwnProperty.call(m.brasil.ligas, liga));
-      const dasCopas = liga === "conmebol_andinos" && !!(m.copas && m.copas.conmebol);
+      const dasCopas = (liga === "conmebol_andinos" && !!(m.copas && m.copas.conmebol)) || (liga === "uefa_extra" && !!(m.copas && m.copas.uefa));
       if (!Object.prototype.hasOwnProperty.call(m.competicoes, liga) && !doBrasil && !dasCopas) return null;
       if (!elencos.has(liga)) {
         const s = JSON.parse(fs.readFileSync(path.join(dir, `snapshot-${liga}.json`), "utf8"));
