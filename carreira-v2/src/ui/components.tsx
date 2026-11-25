@@ -6,7 +6,8 @@ import type { HomeModel } from "../domain/home.ts";
 import { BASE, Link } from "./router.tsx";
 
 export function Wordmark() {
-  return <span className="wordmark" role="img" aria-label="BRDATA">BR<b>DATA</b></span>;
+  // Marca do jogo: Touchline (o "T" da logo e o nome), desde 25/11/2026.
+  return <span className="wordmark" role="img" aria-label="Touchline"><img className="wordmark-t" src="/img/touchline/marca-t.webp" alt="" aria-hidden="true" />TOUCHLINE</span>;
 }
 
 // Escudo oficial (public/img/teams/ ou URL externa) ou monograma nas cores

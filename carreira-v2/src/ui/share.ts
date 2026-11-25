@@ -26,7 +26,7 @@ export async function shareAchievement(a: { id: string; titulo: string; descrica
   ctx.fillStyle = glow; ctx.fillRect(0, 0, w, h);
   ctx.strokeStyle = "rgba(212,175,55,.4)"; ctx.lineWidth = 4; ctx.strokeRect(22, 22, w - 44, h - 44);
   ctx.fillStyle = "rgba(232,222,196,.6)"; ctx.font = "600 26px Inter, sans-serif"; ctx.textAlign = "center";
-  ctx.fillText("BR TREINADOR · MODO TÉCNICO", w / 2, h - 58);
+  ctx.fillText("TOUCHLINE · MODO CARREIRA", w / 2, h - 58);
   ctx.fillStyle = "#d4af37"; ctx.font = "700 34px Inter, sans-serif";
   ctx.fillText("CONQUISTA DESBLOQUEADA", w / 2, 200);
   ctx.font = "160px serif"; ctx.fillText(a.icone || "🏆", w / 2, 480);
@@ -40,7 +40,7 @@ export async function shareAchievement(a: { id: string; titulo: string; descrica
   try {
     const file = new File([blob], filename, { type: "image/png" });
     if (navigator.canShare && navigator.canShare({ files: [file] })) {
-      await navigator.share({ files: [file], title: "Conquista desbloqueada!", text: `Desbloqueei a conquista "${a.titulo}" no BR Treinador! 🏆` });
+      await navigator.share({ files: [file], title: "Conquista desbloqueada!", text: `Desbloqueei a conquista "${a.titulo}" no Touchline! 🏆` });
       return "shared";
     }
   } catch (e) {
@@ -115,7 +115,7 @@ export async function shareTitle(o: { head: string; text: string; year: number; 
   ctx.fillStyle = glow; ctx.fillRect(0, 0, w, h);
   ctx.strokeStyle = "rgba(212,175,55,.4)"; ctx.lineWidth = 4; ctx.strokeRect(22, 22, w - 44, h - 44);
   ctx.fillStyle = "rgba(232,222,196,.6)"; ctx.font = "600 26px Inter, sans-serif"; ctx.textAlign = "center";
-  ctx.fillText("BR TREINADOR · MODO TÉCNICO", w / 2, h - 58);
+  ctx.fillText("TOUCHLINE · MODO CARREIRA", w / 2, h - 58);
   ctx.fillStyle = "#d4af37"; ctx.font = "700 40px Inter, sans-serif";
   ctx.fillText(o.head, w / 2, 200);
   await drawCrest(ctx, o.team, w / 2, 480, 220);
