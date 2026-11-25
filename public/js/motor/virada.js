@@ -682,6 +682,8 @@ export async function advanceSeason() {
   // clube subiu ou caiu de divisão, ligaAtual() já reflete a divisão
   // nova a partir daqui (sem efeito nenhum em carreira sem o sistema
   // ativado, ver migrateCareerDefaults).
+  // MUNDO-001 (M9b): Brasil com o mundo anexado guarda a classificação para as copas.
+  if (!CAREER.mundo && CAREER.mundoLeve && estado.ganchosMundo.fimDaTemporada) estado.ganchosMundo.fimDaTemporada(CAREER);
   // MUNDO-001 (M6b-4): no save do mundo, a virada do país (carreiramundo.js).
   const promotionRelegation = CAREER.mundo && estado.ganchosMundo.viradaDoPais ? await estado.ganchosMundo.viradaDoPais(CAREER) : await applyPromotionRelegation();
 

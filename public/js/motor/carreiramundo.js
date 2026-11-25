@@ -38,6 +38,7 @@ import * as tabela from "./tabela.js";
 import * as texto from "./texto.js";
 import * as financas from "./financas.js";
 import * as mercado from "./mercado.js";
+import * as Copas from "./copasmundo.js";
 
 // Pontos de overall por unidade de nível da liga (gameplayLevel) acima de 1
 // (parâmetro de balanceamento; a Premier League, 1,22, ganha ~5,5).
@@ -71,7 +72,26 @@ export function avancarMundoLeve(CAREER) {
   leve.estado = CAREER.mundoLeve;
   return eventos;
 }
-ganchosMundo.semanaDoMundo = (CAREER) => { const ev = avancarMundoLeve(CAREER); semanaDasFasesGeradas(CAREER); return ev; };
+ganchosMundo.semanaDoMundo = (CAREER) => {
+  const ev = avancarMundoLeve(CAREER);
+  semanaDasFasesGeradas(CAREER);
+  // Copas da CONMEBOL (M9b): os jogos da semana, com o mundo já nela.
+  return ev.concat(Copas.semanaDasCopas(CAREER, indiceAtual, semanaDaCarreira(CAREER)));
+};
+
+// Fim da temporada no Brasil com o mundo anexado (M9b): a classificação da
+// Série A (e o campeão da Copa do Brasil) para as copas continentais, antes
+// de a virada zerar as tabelas.
+export function fimDaTemporadaNoBrasil(CAREER) {
+  const P = CAREER.mundoLeve && CAREER.mundoLeve.paises.BR;
+  if (!P) return;
+  const st = CAREER.competitionId === "brasileirao" ? CAREER.standings : CAREER.otherDivisions && CAREER.otherDivisions.brasileirao && CAREER.otherDivisions.brasileirao.standings;
+  if (!st) return;
+  const ordem = tabela.sortRows(st).map((r) => r.id);
+  const copa = CAREER.cup && CAREER.cup.champion != null ? CAREER.cup.champion : null;
+  P.classificacao = ML.classificacaoDaTemporada(CAREER.seasonYear - 1, { campeonato: ordem[0], Copa: copa }, ordem);
+}
+ganchosMundo.fimDaTemporada = (CAREER) => fimDaTemporadaNoBrasil(CAREER);
 
 // ---------- moeda e porte (M7) ----------
 // Decisões do Murilo (24/11): economia única pelo overall (salário, valor e
@@ -458,7 +478,7 @@ export async function viradaDoPaisAtivo(CAREER) {
     const quedaD2 = r2.promedio
       ? Object.keys(r2.promedio).map(N).sort((a, b) => r2.promedio[a].pts * r2.promedio[b].j - r2.promedio[b].pts * r2.promedio[a].j)
       : (r2.anual || r2.reclassificacao || [...(r2.zonas ? [...r2.zonas.A, ...r2.zonas.B] : []), ...(r2.grupos ? Object.values(r2.grupos).flat() : [])]).slice().reverse();
-    mov = { sobemD2: r2.sobem.map((x) => x.id), descemD1: r[l1].descem.map((x) => x.id), descemD2: r2.descem.map((x) => x.id), sobemTerceira: [], quedaD2, campeoes: { [l1]: r[l1].campeoes, [l2]: r2.campeoes } };
+    mov = { sobemD2: r2.sobem.map((x) => x.id), descemD1: r[l1].descem.map((x) => x.id), descemD2: r2.descem.map((x) => x.id), sobemTerceira: [], quedaD2, campeoes: { [l1]: r[l1].campeoes, [l2]: r2.campeoes }, anualD1: r[l1].anual || r[l1].reclassificacao || null };
   }
   const res = { campeao: mov.campeoes, sobem: { [l2]: mov.sobemD2 }, descem: { [l1]: mov.descemD1 } };
   const zonasArg = Object.fromEntries(Object.entries(P.zonas || {}).filter(([l]) => l.startsWith("arg_")));
@@ -509,6 +529,9 @@ export async function viradaDoPaisAtivo(CAREER) {
   P.ligas[l1] = { clubes: v[l1], placares: "" };
   P.ligas[l2] = { clubes: v[l2], placares: "" };
   P.campeoes = [...P.campeoes, { ano: CAREER.mundo.ano, [l1]: res.campeao[l1], [l2]: res.campeao[l2] }].slice(-20);
+  // Classificação da 1ª divisão para as copas continentais (M9b).
+  const ordemD1 = pais.regiao === "europa" ? ordem[l1] : (mov.anualD1 || ordem[l1]);
+  P.classificacao = ML.classificacaoDaTemporada(CAREER.mundo.ano, res.campeao[l1], ordemD1);
   P.viradas = [...P.viradas, { ano: CAREER.mundo.ano, sobem: res.sobem[l2], descem: res.descem[l1], entraram: v.entraramDoCatalogo, sairam: v.foramParaOCatalogo, excecoes: v.excecoes }].slice(-3);
   P.k += 1; P.ano += 1;
   CAREER.mundo.k += 1; CAREER.mundo.ano += 1;

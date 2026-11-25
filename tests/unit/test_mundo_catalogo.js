@@ -120,6 +120,25 @@ check("clube B aponta para um clube pai existente", () => {
   for (const c of mundo.clubes.filter((x) => x.clubePaiCatalogo)) if (!c.reserva) throw new Error(`${c.nome}: clube B sem marca de reserva`);
 });
 
+check("copas da CONMEBOL: 60 clubes andinos (16+12+18+14), ids próprios, força estimada e elenco de 22+ com 2 goleiros", () => {
+  const c = mundo.copas.conmebol;
+  const por = {};
+  for (const x of c.clubes) por[x.assoc] = (por[x.assoc] || 0) + 1;
+  eq(JSON.stringify(por), JSON.stringify({ BOL: 16, PAR: 12, PER: 18, VEN: 14 }), "clubes por associação");
+  const todos = new Set([...mundo.clubes, ...mundo.terceira].map((x) => x.id));
+  for (const x of c.clubes) {
+    if (!(x.id > 870000000 && x.id < 880000000) || todos.has(x.id)) throw new Error(`id andino inválido: ${x.id}`);
+    if (!(x.atk > 0 && x.def > 0) || !x.forcaEstimada) throw new Error(`${x.nome} sem força estimada`);
+  }
+  eq(new Set(c.clubes.map((x) => x.id)).size, 60, "ids repetidos");
+  const s = JSON.parse(fs.readFileSync(path.join(SNAP, "snapshot-conmebol_andinos.json"), "utf8"));
+  for (const x of c.clubes) {
+    const ps = s.playersByTeamId[String(x.id)] || [];
+    if (ps.length < 22 || ps.filter((p) => /goal/i.test(p.position)).length < 2) throw new Error(`${x.nome}: elenco incompleto`);
+  }
+  for (const k of ["BRA", "PAR", "PER", "BOL", "VEN"]) if (!(c.niveis[k] > 0)) throw new Error(`sem nível para ${k}`);
+});
+
 check("o índice guarda a versão do próprio conteúdo", () => {
   const { versao, ...resto } = mundo;
   eq(crypto.createHash("sha256").update(JSON.stringify(resto)).digest("hex").slice(0, 16), versao, "versão");
@@ -133,6 +152,7 @@ check("servidor: índice com versão, elencos por liga, liga desconhecida e chav
   const e = srv.elencos("arg_liga_profesional");
   eq(Object.keys(e.playersByTeamId).length, 30, "elencos da Liga Profesional");
   eq(Object.keys(srv.elencos("brasileirao").playersByTeamId).length, 20, "elencos do Brasil (mercado do mundo, M8)");
+  eq(Object.keys(srv.elencos("conmebol_andinos").playersByTeamId).length, 60, "elencos andinos (copas, M9b)");
   eq(srv.elencos("serie_d"), null, "liga fora do mundo");
   eq(srv.elencos("__proto__"), null, "nome reservado");
   eq(mundoAtivo({}), false, "sem a variável");

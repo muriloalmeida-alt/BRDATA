@@ -1,0 +1,64 @@
+{
+  "season": "2026",
+  "competitions": {
+    "bol_division_profesional": {
+      "clubes": 16,
+      "22_ou_mais_com_2_goleiros": 16,
+      "jogadores": 595
+    },
+    "par_copa_de_primera": {
+      "clubes": 12,
+      "22_ou_mais_com_2_goleiros": 12,
+      "jogadores": 427
+    },
+    "per_liga1": {
+      "clubes": 18,
+      "22_ou_mais_com_2_goleiros": 18,
+      "jogadores": 512
+    },
+    "ven_liga_futve": {
+      "clubes": 14,
+      "22_ou_mais_com_2_goleiros": 14,
+      "jogadores": 451
+    },
+    "bol_copa_simon_bolivar": {
+      "clubes": 24,
+      "sem_fonte_nominal": 21,
+      "jogadores": 64,
+      "22_ou_mais_com_2_goleiros": 2,
+      "parcial": 1
+    },
+    "par_division_intermedia": {
+      "clubes": 16,
+      "parcial": 2,
+      "jogadores": 523,
+      "22_ou_mais_com_2_goleiros": 13,
+      "sem_fonte_nominal": 1
+    },
+    "per_liga2": {
+      "clubes": 18,
+      "22_ou_mais_com_2_goleiros": 17,
+      "jogadores": 522,
+      "parcial": 1
+    },
+    "ven_liga_futve_2": {
+      "clubes": 17,
+      "22_ou_mais_com_2_goleiros": 6,
+      "jogadores": 318,
+      "parcial": 7,
+      "sem_fonte_nominal": 4
+    }
+  },
+  "clubes": 135,
+  "jogadores": 3412,
+  "clubesComRegistros": 109,
+  "jogaveisCom22e2GKs": 98,
+  "networkAssets": "urls_only",
+  "checks": [
+    "ids únicos",
+    "chaves estrangeiras",
+    "participantes por liga",
+    "conferência de contagens de elenco",
+    "fontes por atleta"
+  ]
+}

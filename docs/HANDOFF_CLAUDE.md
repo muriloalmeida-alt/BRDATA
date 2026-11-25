@@ -13,7 +13,7 @@ MUNDO-001 — Ligas da Europa e da América do Sul, em paralelo, com continentai
 
 Status: M1 a M7 APROVADAS e mescladas (Murilo, 24/11/2026: #154 mesclado por
 ele; #155 a #157 com "Vamos fazer os merges pendentes?"). M8 em revisão (PR
-#158). M9 em implementação (branch `claude/mundo-m9`, empilhada sobre o #158).
+#158). M9a e M9b feitas, M9c em seguida (branch `claude/mundo-m9`, empilhada sobre o #158).
 - Etapas M1 a M6a: PR #154 (suíte completa 191/191), mesclado.
 - M6b, passos 1 a 4: PR #155, empilhado sobre o #154 (suíte completa
   191/192; a falha, instável e sem relação com o mundo, está no PR).
@@ -162,6 +162,65 @@ Testes: `test_motor_continental` 7/7, com os critérios de aceite do pacote:
 - premiação de mando e vitória sem duplicar;
 - determinismo, plano relido no meio e edição de 2027;
 - 80 edições aleatórias terminam (fora da suíte: 200).
+
+Relatório da M9b, as copas da CONMEBOL no save (25/11/2026)
+
+O que foi feito (`public/js/motor/copasmundo.js` + `.d.ts`):
+- Catálogo (`scripts/mundo_catalogo.js --andino DIR`):
+  - os 60 clubes das 1ªs divisões de Bolívia, Paraguai, Peru e Venezuela
+    em `copas.conmebol` do índice, com ids próprios (870000001+);
+  - elencos reais em `snapshot-conmebol_andinos.json`, servidos pela rota
+    de elencos;
+  - as regras do pacote continental no índice (`continentais`);
+  - fontes do 4º pacote em `mundo/fonte/bol-par-per-ven/`.
+- Classificação: a virada de cada país grava a classificação da 1ª
+  divisão (campeões da temporada e tabela anual) no mundo leve, no país do
+  técnico e no Brasil com o mundo anexado (Série A e campeão da Copa do
+  Brasil, gancho `fimDaTemporada`).
+- Vagas (regra de jogo, o pacote não traz as regras nacionais de acesso):
+  - cada associação preenche a tabela de vagas do pacote na ordem grupos da
+    Libertadores, fase 2, fase 1, grupos da Sul-Americana e 1ª fase;
+  - a ordem é campeões da temporada e depois a tabela;
+  - os 2 campeões da edição anterior entram nos grupos; se já estavam
+    classificados, a vaga passa ao próximo;
+  - 1ª edição do save, sem temporada anterior: clubes pela força, e as 2
+    vagas de titulares para Brasil e Argentina.
+- Andinos: tabela anual simplificada (força com uma variação sorteada por
+  ano, determinística).
+- Força entre ligas: força na liga × nível da liga (gameplayLevel do
+  pacote; Brasil 1,20, Paraguai 0,98, Peru 0,95, Bolívia 0,90, Venezuela
+  0,88), no nível de gols de 1,25 por time. Ranking da edição (potes) pela
+  mesma força.
+- Relógio: a edição do ano é montada na semana do save antes da fase 1 (se
+  o save começa depois, como na Europa em julho, a edição do ano é pulada)
+  e os jogos de cada semana são jogados junto com o mundo leve.
+- Premiação: USD do pacote × R$ 5,50 × 0,2. A Copa do Brasil do jogo paga
+  ~1/5 da premiação real; sem a escala, uma semifinal da Sul-Americana
+  triplicava o caixa de um clube argentino médio. Vai para o caixa e o
+  ledger do técnico e para o caixa da CPU dos clubes do país dele. Sem
+  crédito em dobro.
+- Avisos e notícias: classificação do técnico, mudança de copa,
+  eliminação, título e os campeões no feed.
+- Save: só a edição em andamento, sem as regras do pacote, com jogos em
+  lista e confrontos sem o que se refaz (até 47 KB durante a edição; 0,2 KB
+  fora dela), o histórico e os titulares.
+
+Medição (40 edições, força do índice): títulos da Libertadores Brasil 18,
+Argentina 12, Paraguai 3, Uruguai 3, Equador 2, Colômbia 1, Peru 1; 2,49
+gols por jogo; mandante vence 42%.
+
+Testes: `test_motor_copas_mundo` 6/6, `test_mundo_catalogo` 9/9; motor e
+mundo 42/42; fast 56/56.
+
+Limites e decisões para o Murilo:
+1. Força dos andinos: o pacote não traz nota de atleta nem força (só nome,
+   posição, idade e nacionalidade). Usei a ordem dos clubes no pacote, que
+   é a tabela de 2026 consultada, para a força relativa dentro da liga, e
+   o nível da associação. "Estimada pelo elenco" no sentido estrito não dá.
+2. Escudos andinos: só a URL remota (fotmob); o download está bloqueado na
+   rede desta sessão. Ficam para o pacote offline da M10.
+3. As partidas do técnico nas copas são simuladas, como as da CPU (M9c as
+   leva para o ao vivo). Sem colisão de agenda com a liga ainda.
 
 Relatório da M7, moeda e finanças por país (24/11/2026)
 
