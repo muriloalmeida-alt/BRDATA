@@ -9,6 +9,34 @@ divergências, aprovação) — elas não são repetidas aqui.
 
 Demandas vigentes
 
+TOUCHLINE-001 — Nova marca do jogo (25/11/2026)
+
+Pedido do Murilo: "Substitua a marca BRData por Touchline. Esse é o novo
+nome do jogo. Aplique em todos os lugares que requerem logomarca", com o
+ícone do app e a logo completa ("Touchline — Modo Carreira").
+
+Escopo aplicado: o jogo (Modo Carreira, v2). O site do Brasileirão (BR
+Data: `index.html`, `manifest.json` e os ícones dele) não muda; o teste
+do PWA confere isso. A tela antiga da carreira está congelada (CLAUDE.md,
+seção 0).
+
+O que mudou:
+- `public/img/touchline/`: ícones do app (16, 32, 48, 180, 192, 512 e os
+  maskable), a logo completa (`logo-completa.webp`) e o "T" com fundo
+  transparente (`marca-t.webp`), feitos a partir das imagens enviadas;
+- v2:
+  - cabeçalho com o "T" e o nome TOUCHLINE (`Wordmark`);
+  - logo completa na abertura, no login e na escolha do novo save;
+  - título "Touchline · Modo Carreira" e ícones da página;
+  - textos de compartilhar e do arquivo exportado;
+- manifesto do app (`manifest-treinador.json`): nome "Touchline — Modo
+  Carreira", nome curto "Touchline", descrição e ícones. O `id` fica o
+  mesmo, para quem já instalou não ganhar um 2º ícone;
+- service worker com os arquivos da marca; histórico de atualizações.
+
+Não mudou: nomes internos do código (BRDATA_*, pastas, repositório), as
+cores do DS e o site do Brasileirão.
+
 MUNDO-001 — Ligas da Europa e da América do Sul, em paralelo, com continentais
 
 Status: M1 a M9 APROVADAS e mescladas (Murilo: #154 mesclado por ele;

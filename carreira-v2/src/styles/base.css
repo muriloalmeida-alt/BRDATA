@@ -12,6 +12,9 @@ a { color: inherit; }
    wordmark horizontal — pendência MAR-01). */
 .wordmark { font-family: var(--bd-font-display); font-style: italic; font-weight: 800; font-size: 29px; letter-spacing: .01em; line-height: 1; color: #fff; text-decoration: none; }
 .wordmark b { color: var(--bd-accent); font-weight: inherit; }
+/* Touchline (25/11/2026): o "T" da logo antes do nome, na altura da letra. */
+.wordmark { display: inline-flex; align-items: center; gap: .18em; }
+.wordmark-t { height: .9em; width: auto; flex: none; }
 
 /* Crest: escudo oficial ou monograma */
 .crest { display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }

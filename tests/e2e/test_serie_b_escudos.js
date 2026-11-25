@@ -12,7 +12,8 @@ const { check } = require("./_check");
 const { contaNova, carreiraV2, ateOInicio, pularPreTemporada, base } = require("./_v2_carreira");
 
 const escudos = (page, sel) => page.evaluate(async (sel) => {
-  const imgs = [...document.querySelectorAll(`${sel} img`)];
+  // Só escudos: a marca do jogo no cabeçalho (Touchline, .wordmark) não conta.
+  const imgs = [...document.querySelectorAll(`${sel} img`)].filter((i) => !i.closest(".wordmark"));
   await Promise.all(imgs.map((i) => (i.complete ? null : new Promise((r) => { i.onload = i.onerror = r; }))));
   return imgs.map((i) => ({ src: i.getAttribute("src"), ok: i.naturalWidth > 0, chapinha: !!i.closest(".crest-plate") }));
 }, sel);

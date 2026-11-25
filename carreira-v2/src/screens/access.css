@@ -6,6 +6,9 @@
 .ac-head > :first-child { justify-self: start; }
 .ac-head--center { display: flex; justify-content: center; padding-top: calc(var(--bd-safe-top) + 36px); }
 .ac-head--center .wordmark { font-size: 34px; }
+/* Touchline: a logo completa na abertura e no login. */
+.ac-logo { display: block; width: min(220px, 60vw); height: auto; margin: 0 auto; }
+.ac-splash-body .ac-logo { width: min(260px, 70vw); }
 .ac-title { margin: 28px var(--bd-gutter) 0; font-family: var(--bd-font-display); font-weight: 700; font-size: 40px; line-height: 1.02; }
 .ac-title--center { text-align: center; margin-top: 56px; }
 .ac-title--caps { text-transform: uppercase; font-size: 42px; line-height: .98; letter-spacing: .005em; }
