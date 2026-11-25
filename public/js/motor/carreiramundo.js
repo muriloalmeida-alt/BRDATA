@@ -78,8 +78,24 @@ ganchosMundo.semanaDoMundo = (CAREER) => {
   semanaDasFasesGeradas(CAREER);
   // Copas da CONMEBOL (M9b): os jogos da semana, com o mundo já nela.
   const semana = semanaDaCarreira(CAREER);
-  // Copas da UEFA (M10b): idem.
-  return ev.concat(Copas.semanaDasCopas(CAREER, indiceAtual, semana), CopasUefa.semanaDasCopasUefa(CAREER, indiceAtual, semana));
+  // Copas da UEFA (M10b): idem. Um erro nas copas nunca trava a carreira (a
+  // semana, a partida e a gravação seguem): a edição com erro é encerrada.
+  return ev.concat(semanaDasCopasSegura(CAREER, "conmebol", () => Copas.semanaDasCopas(CAREER, indiceAtual, semana)),
+    semanaDasCopasSegura(CAREER, "uefa", () => CopasUefa.semanaDasCopasUefa(CAREER, indiceAtual, semana)));
+};
+function semanaDasCopasSegura(CAREER, confed, fn) {
+  try {
+    return fn();
+  } catch (e) {
+    const C = CAREER.copas && CAREER.copas[confed];
+    if (C) {
+      const ano = C.edicao && C.edicao.ano;
+      C.edicao = null; C.pendente = null;
+      C.erros = [...(C.erros || []), { ano: ano ?? null, motivo: String((e && e.message) || e).slice(0, 200) }].slice(-5);
+    }
+    if (typeof console !== "undefined" && console.warn) console.warn(`mundo: copas ${confed} com erro, edição encerrada:`, e);
+    return [{ tipo: "erro", confed, motivo: String((e && e.message) || e) }];
+  }
 };
 
 // Fim da temporada no Brasil com o mundo anexado (M9b): a classificação da

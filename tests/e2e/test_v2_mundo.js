@@ -47,7 +47,7 @@ const { base, contaNova, ateOInicio, saveNoServidor } = require("./_v2_carreira"
   const save = await saveNoServidor(page);
   const sub = await page.locator(".home-sub").textContent().catch(() => "");
   check("2) A carreira nasce na Argentina (divisões do país, 32 rodadas) e o Início mostra a liga:",
-    divisoes.length === 2 && save && save.mundo === true && save.divisoes && save.divisoes[0] === "arg_liga_profesional" && save.rodadasLiga === 32 && /Liga Profesional/i.test(sub || ""),
+    divisoes.length === 2 && save && !!save.mundo && save.divisoes && save.divisoes[0] === "arg_liga_profesional" && save.rodadasLiga === 32 && /Liga Profesional/i.test(sub || ""),
     JSON.stringify({ divisoes, divs: save && save.divisoes, rod: save && save.rodadasLiga, sub }));
 
   const idb = await page.evaluate(async () => {

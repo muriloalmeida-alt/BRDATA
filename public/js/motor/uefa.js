@@ -100,9 +100,15 @@ const coef = (plano, id) => plano.coeficiente[S(id)] ?? 0;
 // adversarios_por_pote, max_por_outra_associacao).
 export function sortearAdversarios(potes, regra, associacao, rng) {
   const k = regra.adversarios_por_pote;
-  const maxOutra = regra.max_por_outra_associacao ?? 2;
   const assoc = (x) => associacao[S(x)] || null;
-  for (let tentativa = 0; tentativa < 400; tentativa++) {
+  // O limite de adversários de outra associação é afrouxado (+1, depois sem
+  // limite) só se o sorteio não achar solução com ele: uma edição com muitos
+  // clubes de uma associação (vagas extras e titulares) não pode travar o save.
+  const limites = [regra.max_por_outra_associacao ?? 2, (regra.max_por_outra_associacao ?? 2) + 1, Infinity];
+  for (let tentativa = 0; tentativa < 3 * 120; tentativa++) {
+    const maxOutra = limites[Math.floor(tentativa / 120)];
+    let orcamento = 200000; // passos de busca por tentativa
+    const registro = []; // arestas ligadas no par de potes em curso
     const arestas = new Set(); // "a|b" com a<b
     const viz = new Map(); // id -> Set
     const porAssoc = new Map(); // id -> { assoc: n }
@@ -116,6 +122,7 @@ export function sortearAdversarios(potes, regra, associacao, rng) {
       return true;
     };
     const ligar = (a, b, d) => {
+      if (d > 0) registro.push([a, b]);
       const c = chave(a, b);
       if (d > 0) arestas.add(c); else arestas.delete(c);
       for (const [x, y] of [[a, b], [b, a]]) {
@@ -134,6 +141,7 @@ export function sortearAdversarios(potes, regra, associacao, rng) {
         const idQ = new Map(q.map((x) => [S(x), x]));
         const passo = (i) => {
           if (i === a.length) return true;
+          if (--orcamento < 0) return false;
           for (const y of embaralhar([...livres], rng)) {
             const b = idQ.get(y);
             if (!pode(a[i], b)) continue;
@@ -150,6 +158,7 @@ export function sortearAdversarios(potes, regra, associacao, rng) {
       const passo = () => {
         const x = ordem.find((z) => livres.has(S(z)));
         if (x == null) return true;
+        if (--orcamento < 0) return false;
         livres.delete(S(x));
         for (const y of embaralhar([...livres], rng)) {
           const b = idP.get(y);
@@ -168,6 +177,7 @@ export function sortearAdversarios(potes, regra, associacao, rng) {
       const ord = embaralhar(p, rng);
       const caminho = [ord[0]], usado = new Set([S(ord[0])]);
       function passo() {
+        if (--orcamento < 0) return false;
         if (caminho.length === p.length) {
           if (!pode(caminho[caminho.length - 1], caminho[0])) return false;
           ligar(caminho[caminho.length - 1], caminho[0], 1);
@@ -189,8 +199,16 @@ export function sortearAdversarios(potes, regra, associacao, rng) {
     const pares = [];
     for (let p = 0; p < nP; p++) for (let q = p; q < nP; q++) pares.push([p, q]);
     for (const [p, q] of embaralhar(pares, rng)) {
-      if (p === q) ok = k === 2 ? cicloNoPote(potes[p]) : emparelhar(potes[p], null);
-      else ok = emparelhar(potes[p], potes[q]) && (k === 1 || emparelhar(potes[p], potes[q]));
+      // Cada par de potes tenta algumas vezes (desfazendo o que ligou) antes
+      // de recomeçar o sorteio inteiro.
+      for (let r = 0; r < 8; r++) {
+        registro.length = 0;
+        if (p === q) ok = k === 2 ? cicloNoPote(potes[p]) : emparelhar(potes[p], null);
+        else ok = emparelhar(potes[p], potes[q]) && (k === 1 || emparelhar(potes[p], potes[q]));
+        if (ok) break;
+        for (const [x, y] of registro.splice(0)) if (arestas.has(chave(x, y))) ligar(x, y, -1);
+        if (orcamento < 0) break;
+      }
       if (!ok) break;
     }
     if (!ok) continue;
