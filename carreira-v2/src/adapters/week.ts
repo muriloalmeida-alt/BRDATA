@@ -27,7 +27,8 @@ async function guarded<T extends Plain>(name: string, ...args: unknown[]): Promi
 }
 
 export const WeekGateway = {
-  advance: (untilMatch: boolean) => guarded<WeekResult>("avancarSemana", untilMatch),
+  // MUNDO-001 (M10d): "até o jogo" para também no jogo das copas continentais.
+  advance: (untilMatch: boolean) => guarded<WeekResult>("avancarSemana", untilMatch, { copas: true }),
   chooseFriendly: (clubId: string) => guarded<Plain>("escolherAmistoso", clubId),
   markNoticesRead: () => guarded<Plain>("marcarAvisosLidos"),
   // Resumo deixado pelo fim do amistoso (o amistoso fecha a semana).
