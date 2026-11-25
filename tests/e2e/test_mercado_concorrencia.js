@@ -25,7 +25,11 @@ const { carreiraV2, signup, ensureDailyClaimed, globaisDoMotor, saveNoServidor, 
   await globaisDoMotor(page);
   const alvo = () => page.evaluate(() => {
     const pend = new Set((CAREER.pendingOffersOut || []).map((o) => String(o.playerId)));
-    const l = allMarketPlayers().filter((e) => !e.mine && !pend.has(String(e.p.id)) && e.p.value > 0).sort((a, b) => a.p.value - b.p.value);
+    // Só quem aceitaria vir (a disputa com o rival é o que se testa aqui, não
+    // a decisão do atleta): antes valia por acaso para o mediano; com a
+    // economia v2 a ordem dos valores muda.
+    const aceita = (e) => !window.motorMercado || typeof contextoDoAtleta !== "function" || motorMercado().avaliacaoAtleta(e.p, termosDaProposta({}, e.p), contextoDoAtleta(e.p, e.club.id)).decisao === "aceita";
+    const l = allMarketPlayers().filter((e) => !e.mine && !pend.has(String(e.p.id)) && e.p.value > 0 && aceita(e)).sort((a, b) => a.p.value - b.p.value);
     const e = l[Math.floor(l.length / 2)];
     return { clubId: String(e.club.id), playerId: e.p.id };
   });
