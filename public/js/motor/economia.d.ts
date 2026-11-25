@@ -62,3 +62,29 @@ export function fluxosDoClube(base: EconomiaDoClube, folhaReal?: number | null):
 export function distribuicaoDePrecos(precos: number[]): { n: number; ate500mil: number; ate1mi: number; acima20mi: number };
 export function capacidadeNoJogo(CAREER: unknown, s: { caixa: number; folha: number; teto: number; parcelasPorRodada?: { mes: number; valor: number }[]; fluxos?: FluxosDoClube | null }, op: { taxa: number; parcelas?: number; salarioMensal?: number }): ReturnType<typeof capacidadeDeCompra> | null;
 export function quadro(indice: unknown, pedidos: { liga: string; nome: RegExp | string; rotulo?: string; status?: "promovido" | "rebaixado"; para?: string }[]): (EconomiaDoClube & { rotulo: string })[];
+// Mercado, etapas 1 e 2 (economia v4 e v5).
+export interface Atleta { overall: number; age?: number; potential?: number | null; group?: string | null }
+export const REFERENCIA_OV75: Record<string, Numero>;
+export const QUALIDADE: [number, number][];
+export function multQualidade(ov: number): number;
+export function multIdade(age: number, potential: number | null | undefined, overall: number, group?: string | null): number;
+export function fatorIndividual(a: Atleta): number;
+export function valorDeMercadoEur(liga: string, a: Atleta): number;
+export function valorDeMercado(liga: string, a: Atleta): number;
+export function atualizarValoresDaJanela(CAREER: unknown, chave: string): number;
+export function escalaDeValorDoCatalogo(liga: string): { valor: (legado: number, a?: Atleta) => number; fatorValor: (a: Atleta) => number };
+export function jaEscalado(p: { escalaEco?: number; fatorValor?: number }): boolean;
+export const ALVO_FOLHA: Record<string, number>;
+export const PARCELAS_MINIMO: number;
+export const MESES_MAXIMO: number;
+export const ENTRADA_FAIXA: [number, number];
+export const FOLGA_ABERTURA: number;
+export const FOLHA_BASE_DO_CUSTO: number;
+export function alvoDaFolha(liga: string): number;
+export function tetoDaFolha(liga: string, receitaAnual: number, folhaAtual: number): number;
+export function custoDoElenco(folha: number, liga: string): number;
+export interface EstadoDoClube { caixa: number; folha: number; teto: number; receitaMensal: number; despesasMensais: number; margem?: number; parcelasMensais?: { valor: number; meses: number }[]; recebiveis?: { mes: number; valor: number }[]; entradasPrometidas?: number; folhaPrometida?: number; orcamentoRestante?: number | null; mesesNaTemporada?: number }
+export interface Envelopes { reserva: number; entrada: number; parcelas: number; folha: number; orcamento: number }
+export function envelopes(e: EstadoDoClube): Envelopes;
+export function avaliarOperacao(e: EstadoDoClube, op: { taxa: number; entrada?: number; meses?: number; salario?: number }): { ok: boolean; motivo: null | "orcamento" | "caixa" | "parcelas" | "folha" | "fluxo"; faltam: number; paga: { agora: number; porMes: number; meses: number; total: number; salario: number }; antes: Envelopes; depois: Envelopes; piorCaixa: number };
+export function economiaV5(CAREER: unknown): boolean;

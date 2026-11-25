@@ -252,7 +252,36 @@ export function applyCalendarMonthlyFinances(monthIdx) {
     despesasMensais: economia.economiaV2(CAREER) ? CAREER.economia.clube.despesasMensais : 0,
   });
   applyFinanceEntries(m.entries, CAREER.currentRound);
+  pagarParcelasMensais(CAREER, MONTH_LONG[monthIdx]);
   return { wagePaid: m.wagePaid, sponsorIncome: m.income };
+}
+// Mercado, etapa 2 (v5): as parcelas mensais das compras (uma por mês, no
+// fechamento do mês; o vendedor da CPU recebe a dele) e as a receber.
+export function pagarParcelasMensais(CAREER, mes) {
+  const restam = [];
+  for (const p of CAREER.parcelasMensais || []) {
+    CAREER.finances.cash -= p.valor;
+    if (p.clubId) moverCaixaCpu(p.clubId, p.valor);
+    pushLedger("transferencia", `${p.label} (${mes})`, -p.valor, CAREER.currentRound);
+    if (p.meses - 1 > 0) restam.push({ ...p, meses: p.meses - 1 });
+  }
+  if (CAREER.parcelasMensais) CAREER.parcelasMensais = restam;
+  const aReceber = [];
+  for (const r of CAREER.recebiveisMensais || []) {
+    CAREER.finances.cash += r.valor;
+    if (r.clubId) moverCaixaCpu(r.clubId, -r.valor);
+    pushLedger("transferencia", `${r.label} (${mes})`, r.valor, CAREER.currentRound);
+    if (r.meses - 1 > 0) aReceber.push({ ...r, meses: r.meses - 1 });
+  }
+  if (CAREER.recebiveisMensais) CAREER.recebiveisMensais = aReceber;
+}
+// O orçamento de transferências usado na temporada (v5); `campo` "vendas":
+// o que entrou de vendas na temporada repõe o orçamento.
+export function registrarGastoNaTemporada(CAREER, valor, campo = "gasto") {
+  if (!economia.economiaV5(CAREER)) return;
+  const o = CAREER.economia.orcamento && CAREER.economia.orcamento.temporada === CAREER.seasonYear ? CAREER.economia.orcamento : { temporada: CAREER.seasonYear, gasto: 0 };
+  o[campo] = Math.round((o[campo] || 0) + valor);
+  CAREER.economia.orcamento = o;
 }
 
 export function advanceCalendarWeek() {
@@ -488,7 +517,8 @@ export function cpuPodePagar(clubId, valor, parcelas = 1, salario = 0) {
   if (!economia.economiaV2(CAREER)) return true;
   const sq = leagueSquadFor(clubId);
   const b = mercado.clubBudget(marketClub(clubId));
-  const cap = economia.capacidadeNoJogo(CAREER, { caixa: b.cash, folha: financas.wageBill(sq), teto: b.wageCap }, { taxa: valor, parcelas, salarioMensal: salario });
+  const estado = economia.economiaV5(CAREER) ? estadoFinanceiroDaCpu(clubId, CAREER) : null;
+  const cap = economia.capacidadeNoJogo(CAREER, { caixa: b.cash, folha: financas.wageBill(sq), teto: b.wageCap, estado }, { taxa: valor, parcelas, salarioMensal: salario });
   return !cap || cap.ok;
 }
 
@@ -659,9 +689,67 @@ export const MOTIVO_CAPACIDADE = {
   caixa: "O caixa não cobre o pagamento inicial e ainda guardar 1 mês de folha.",
   folha: "O salário estouraria o teto salarial.",
   parcelas: "Com as parcelas, o caixa ficaria negativo nas próximas semanas.",
+  fluxo: "O caixa ficaria negativo ao longo do compromisso.",
 };
-export function capacidadeDoTecnico(taxa, parcelas, salario) {
+// v5 (Mercado, etapa 2): as mensagens com o espaço que falta.
+const MOTIVO_V5 = {
+  orcamento: (f) => `Passa do orçamento de transferências da temporada em ${fmtBRL(f)}.`,
+  caixa: (f) => `O pagamento inicial passa do caixa livre (guardando 1 mês de despesas) em ${fmtBRL(f)}.`,
+  parcelas: (f) => `A parcela mensal passa do espaço para parcelas em ${fmtBRL(f)}.`,
+  folha: (f) => `O salário passa do espaço na folha em ${fmtBRL(f)} por mês. Libere espaço (venda ou empréstimo) para contratar.`,
+  fluxo: (f) => `O caixa ficaria negativo em ${fmtBRL(f)} ao longo do compromisso.`,
+};
+// Meses que faltam na temporada (pelo calendário).
+function mesesNaTemporada(CAREER) {
+  const cal = CAREER.calendar;
+  if (!cal || !cal.weeks) return 12;
+  const meses = new Set();
+  for (let i = cal.idx; i < cal.weeks.length; i++) meses.add(cal.weeks[i].d.slice(0, 2));
+  return Math.max(1, meses.size);
+}
+// O estado financeiro do técnico para a avaliação da etapa 2 (economia v5).
+export function estadoFinanceiroDoTecnico(CAREER = carreiraAtual()) {
+  const clube = CAREER.economia.clube || {};
+  const mes = (rodadas) => Math.max(1, Math.ceil(rodadas / 4));
+  const parcelasMensais = (CAREER.parcelasMensais || []).map((p) => ({ valor: p.valor, meses: p.meses }));
+  // Parcelas por rodada de antes (2 a 4): vencem no mês seguinte.
+  for (const i of CAREER.pendingInstallments || []) parcelasMensais.push({ valor: i.perRoundAmount * i.roundsLeft, meses: 1 });
+  const recebiveis = [];
+  for (const r of CAREER.pendingReceivables || []) recebiveis.push({ mes: mes(r.roundsLeft || 1), valor: (r.perRoundAmount || 0) * (r.roundsLeft || 0) });
+  for (const r of CAREER.recebiveisMensais || []) for (let m = 1; m <= r.meses; m++) recebiveis.push({ mes: m, valor: r.valor });
+  const pendentes = (CAREER.pendingOffersOut || []).filter((o) => o.status === "pending" || o.status === "countered" || o.status === "pede-salario");
+  const orc = CAREER.economia.orcamento || {};
+  return {
+    caixa: CAREER.finances.cash, folha: financas.wageBill(CAREER.squad), teto: CAREER.finances.wageCap,
+    receitaMensal: (clube.receitaAnual || 0) / 12, despesasMensais: clube.despesasMensais || 0, margem: clube.margem || 0,
+    parcelasMensais, recebiveis,
+    entradasPrometidas: pendentes.reduce((t, o) => t + (o.meses ? o.entrada || 0 : o.counterValue || o.offerValue || 0), 0),
+    folhaPrometida: pendentes.reduce((t, o) => t + (o.salarioPedido || o.salario || 0), 0),
+    // O orçamento da temporada: o da base − o gasto + as vendas recebidas na temporada.
+    orcamentoRestante: clube.orcamentoTransferencias != null ? clube.orcamentoTransferencias - (orc.temporada === CAREER.seasonYear ? (orc.gasto || 0) - (orc.vendas || 0) : 0) : null,
+    mesesNaTemporada: mesesNaTemporada(CAREER),
+  };
+}
+// O estado da CPU (economia v5): caixa guardado, folha, teto pela faixa e a
+// receita/resultado do clube no save.
+export function estadoFinanceiroDaCpu(clubId, CAREER = carreiraAtual()) {
+  const id = String(clubId), sq = leagueSquadFor(id);
+  const x = CAREER.economia.escalas[id], r = CAREER.economia.receitas && CAREER.economia.receitas[id];
+  const folha = financas.wageBill(sq);
+  const b = mercado.clubBudget(marketClub(id));
+  if (!x || !r) return { caixa: b.cash, folha, teto: b.wageCap, receitaMensal: 0, despesasMensais: 0 };
+  const teto = economia.tetoDaFolha(x[1], r[0], folha);
+  return { caixa: b.cash, folha, teto, receitaMensal: r[0] / 12, despesasMensais: Math.max(r[0] * economia.REGRAS.despesasMinimas, r[0] - r[1] - teto * 12) / 12 };
+}
+// termos (v5): { entrada, meses } da oferta parcelada; sem eles, a regra de antes.
+export function capacidadeDoTecnico(taxa, parcelas, salario, termos = null) {
   const CAREER = carreiraAtual();
+  if (economia.economiaV5(CAREER)) {
+    const estado = estadoFinanceiroDoTecnico(CAREER);
+    const meses = termos && termos.meses ? termos.meses : 0;
+    const cap = economia.capacidadeNoJogo(CAREER, { estado }, { taxa, entrada: termos && termos.entrada, meses, salarioMensal: salario });
+    return cap && { ...cap, mensagem: cap.motivo ? MOTIVO_V5[cap.motivo](cap.faltam) : null };
+  }
   const parcelasPorRodada = [];
   for (const i of CAREER.pendingInstallments || []) for (let r = 1; r <= i.roundsLeft; r++) parcelasPorRodada.push({ mes: r, valor: i.perRoundAmount });
   const cap = economia.capacidadeNoJogo(CAREER, { caixa: CAREER.finances.cash, folha: financas.wageBill(CAREER.squad), teto: CAREER.finances.wageCap, parcelasPorRodada, fluxos: CAREER.economia && CAREER.economia.clube }, { taxa, parcelas, salarioMensal: salario });
@@ -688,8 +776,10 @@ export function finalizeIncomingPurchase(o) {
     return { ok: false, texto: "Seu elenco está grande demais agora — negociação cancelada." };
   }
   const perInstallment = Math.round(o.offerValue / o.installments / 1000) * 1000;
-  const firstPayment = o.installments === 1 ? o.offerValue : perInstallment;
-  const cap = capacidadeDoTecnico(o.offerValue, o.installments, salario);
+  // v5: a oferta parcelada por mês (entrada + saldo em até 24 meses).
+  const mensal = o.meses > 0 && economia.economiaV5(CAREER);
+  const firstPayment = mensal ? Math.min(o.offerValue, o.entrada || 0) : o.installments === 1 ? o.offerValue : perInstallment;
+  const cap = capacidadeDoTecnico(o.offerValue, o.installments, salario, mensal ? { entrada: o.entrada, meses: o.meses } : null);
   if (cap && !cap.ok && cap.motivo !== "folha") {
     avisar(`${o.clubName} aceitou, mas ${cap.mensagem.charAt(0).toLowerCase()}${cap.mensagem.slice(1, -1)} — negociação cancelada.`, { type: "warn" });
     return { ok: false, texto: `${cap.mensagem.slice(0, -1)} — negociação cancelada.`, motivo: cap.motivo };
@@ -700,9 +790,18 @@ export function finalizeIncomingPurchase(o) {
   }
   squad.splice(idx, 1);
   CAREER.finances.cash -= firstPayment;
-  // PARIDADE-CPU · E3 (D2): o clube vendedor recebe o valor da venda.
-  moverCaixaCpu(o.clubId, o.offerValue);
-  if (o.installments > 1) {
+  if (mensal) {
+    // O vendedor recebe a entrada agora e cada parcela no mês em que você paga.
+    moverCaixaCpu(o.clubId, firstPayment);
+    const porMes = Math.round((o.offerValue - firstPayment) / o.meses);
+    if (porMes > 0) (CAREER.parcelasMensais = CAREER.parcelasMensais || []).push({ valor: porMes, meses: o.meses, label: `Parcela de ${p.name}`, clubId: String(o.clubId), op: o.id });
+    registrarGastoNaTemporada(CAREER, firstPayment + porMes * Math.min(o.meses, mesesNaTemporada(CAREER)));
+  } else {
+    // PARIDADE-CPU · E3 (D2): o clube vendedor recebe o valor da venda.
+    moverCaixaCpu(o.clubId, o.offerValue);
+    if (economia.economiaV5(CAREER)) registrarGastoNaTemporada(CAREER, o.offerValue);
+  }
+  if (!mensal && o.installments > 1) {
     CAREER.pendingInstallments = CAREER.pendingInstallments || [];
     CAREER.pendingInstallments.push({ roundsLeft: o.installments - 1, perRoundAmount: perInstallment, label: `Parcela de ${p.name}` });
   }
@@ -715,7 +814,7 @@ export function finalizeIncomingPurchase(o) {
   if (o.papel) p.promessa = { papel: o.papel, temporada: CAREER.seasonYear };
   CAREER.squad.push(p);
   pushTransferLog(`Você contratou ${p.name} do ${o.clubName} por ${fmtBRL(o.offerValue)}${o.installments > 1 ? ` (${o.installments}x)` : ""}.`, CAREER.currentRound);
-  pushLedger("transferencia", `Contratação — ${p.name} (${o.clubName})${o.installments > 1 ? ` — 1ª de ${o.installments} parcelas` : ""}`, -firstPayment, CAREER.currentRound);
+  pushLedger("transferencia", `Contratação — ${p.name} (${o.clubName})${mensal ? ` — entrada (saldo em ${o.meses} meses)` : o.installments > 1 ? ` — 1ª de ${o.installments} parcelas` : ""}`, -firstPayment, CAREER.currentRound);
   avisar(`${abbreviateName(p.name)} contratado! O ${o.clubName} aceitou sua proposta.`, { type: "pos" });
   ensureObjectivesFresh(); bumpObjective("daily", "obj_market_1_move", 1);
   if (p.overall >= 82) emitir("coletiva", { id: "15", rodada: CAREER.currentRound });

@@ -428,8 +428,38 @@ export function jeitoDoAtleta(id) {
 // Clube vendedor: quanto custa perder o jogador, com importância,
 // cobertura da posição, reposição e janela (MER-04). ctx: { baseValue,
 // fimDeJanela }. Devolve { reserva, papel, faltam, semReposicao }.
+// Mercado, etapa 2 (economia v5): a pedida pelas faixas do handoff (seção 3).
+export const PEDIDA_V5 = {
+  jovem: { reserva: 0.8, rotacao: 1.05, titular: 1.3 }, jovemIdade: 23, jovemMargem: 4,
+  titularLongo: 1.3, semReposicao: 0.25, semCobertura: 0.25, teto: 1.8,
+  titularCurto: 1.0, titularCurtoSemReposicao: 0.15,
+  rotacao: 1.0, rotacaoSemCobertura: 0.1, reserva: 0.9, reservaFimDeContrato: 0.8,
+  fimDeJanela: 1.05, caixaApertado: 0.9,
+};
+export function pedidaV5(player, roster, ctx = {}, P = MER_PARAMETROS, V = PEDIDA_V5) {
+  const base = ctx.baseValue != null ? ctx.baseValue : player.value;
+  const papel = papelNoElenco(player, roster, P);
+  const grupo = roster.filter((p) => p.group === player.group && String(p.id) !== String(player.id));
+  const faltam = Math.max(0, (P.coberturaMinima[player.group] || 1) - grupo.length);
+  const semReposicao = papel !== "reserva" && !grupo.some((p) => (p.overall || 0) >= (player.overall || 0) - P.reposicaoMargem);
+  const anos = player.contractUntil != null && ctx.seasonYear != null ? player.contractUntil - ctx.seasonYear : 2;
+  const jovem = (player.age || 30) <= V.jovemIdade && (player.potential || 0) - (player.overall || 0) >= V.jovemMargem;
+  let fator, recusa = false;
+  if (jovem) fator = V.jovem[papel];
+  else if (papel === "titular" && anos >= 2) {
+    fator = Math.min(V.teto, V.titularLongo + (semReposicao ? V.semReposicao : 0) + (faltam > 0 ? V.semCobertura : 0));
+    recusa = semReposicao && faltam > 0;
+  } else if (papel === "titular") fator = V.titularCurto + (semReposicao ? V.titularCurtoSemReposicao : 0);
+  else if (papel === "rotacao") fator = V.rotacao + (faltam > 0 ? V.rotacaoSemCobertura : 0);
+  else fator = anos < 1 ? V.reservaFimDeContrato : V.reserva;
+  if (ctx.fimDeJanela) fator *= V.fimDeJanela;
+  if (ctx.caixaApertado) fator *= V.caixaApertado;
+  return { reserva: Math.round((base * fator) / 1000) * 1000, papel, faltam, semReposicao, recusa, fator: Math.round(fator * 1000) / 1000, jovem, anos };
+}
+
 export function reservaParaProposta(player, seller, ctx = {}, P = MER_PARAMETROS) {
   const base = ctx.baseValue != null ? ctx.baseValue : player.value;
+  if (ctx.pedidaV5 && !ctx.aVenda) return pedidaV5(player, seller.roster || seller.squad || [], ctx, P);
   const roster = seller.roster || seller.squad || [];
   const papel = papelNoElenco(player, roster, P);
   // VENDA-DISPONIVEL: à venda, o clube aceita a partir de 90% do valor, sem
@@ -446,6 +476,7 @@ export function reservaParaProposta(player, seller, ctx = {}, P = MER_PARAMETROS
 
 // Motivo do clube vendedor ao recusar ou contrapor (para a tela).
 export function motivoDoVendedor(r, nomeClube) {
+  if (r.recusa) return `O ${nomeClube} não negocia: é titular, sem reposição no elenco e sem peças suficientes na posição.`;
   if (r.semReposicao && r.papel === "titular") return `O ${nomeClube} não quer perder um titular sem ter quem o substitua.`;
   if (r.faltam > 0) return `O ${nomeClube} ficaria sem peças suficientes nessa posição.`;
   if (r.papel === "titular") return `É titular do ${nomeClube}: o clube só libera por um valor mais alto.`;

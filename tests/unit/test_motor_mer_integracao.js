@@ -57,6 +57,8 @@ const ROTEIRO = (seed) => String.raw`(async () => {
   await P.criarCarreira(pick(e.clubes).id);
   const C = () => M.estado.carreiraAtual();
   C().finances.cash = 900000000; C().finances.wageCap = 900000000;
+  // MERCADO-001 (v5): o orçamento de transferências da temporada junto com o caixa.
+  if (C().economia && C().economia.clube) C().economia.clube.orcamentoTransferencias = 900000000;
   const out = { janela: M.semana.transferWindowStatus(C().currentRound).open };
   const alvos = () => Object.entries(C().leagueSquads).flatMap(([c, sq]) => sq.map((p) => [c, p]));
   const papel = (c, p) => M.mercado.papelNoElenco(p, M.semana.leagueSquadFor(c));

@@ -509,19 +509,23 @@ export const comandosGestao = {
         if (termos && (!negociacao.PAPEIS.includes(termos.papel) || !negociacao.ANOS.includes(Number(termos.anos)) || !(Number(termos.salario) > 0))) return { ok: false, motivo: "opcao-invalida" };
         if (wageBillOf(CAREER.squad) + t.salario > CAREER.finances.wageCap) return { ok: false, motivo: "teto", mensagem: `Esse salário estouraria o teto salarial (${fmtBRL(CAREER.finances.wageCap)}).` };
         // ECON-001b: a capacidade de compra (economia v2), com o motivo.
-        const cap = capacidadeDoTecnico(Math.max(1000, Math.round(Number(valor) || 0)), Number(parcelas), t.salario);
+        // v5: a oferta parcelada por mês (termos.entrada, termos.meses).
+        const mensal = termos && Number(termos.meses) > 0 ? { entrada: Math.max(0, Math.round(Number(termos.entrada) || 0)), meses: Math.min(24, Math.round(Number(termos.meses))) } : null;
+        const cap = capacidadeDoTecnico(Math.max(1000, Math.round(Number(valor) || 0)), Number(parcelas), t.salario, mensal);
         if (cap && !cap.ok) return { ok: false, motivo: cap.motivo === "folha" ? "teto" : cap.motivo, mensagem: cap.mensagem, limites: cap.limites };
         const r = submitOfferOut(String(clubId), playerId, valor, parcelas);
         if (!r.ok) return { ok: false, motivo: r.motivo, mensagem: r.texto };
         // Uma nova proposta substitui a recusada pelo mesmo jogador.
         if (anterior) CAREER.pendingOffersOut = CAREER.pendingOffersOut.filter((x) => x !== anterior);
         Object.assign(r.offer, t);
+        if (mensal) Object.assign(r.offer, mensal);
         return { ok: true, id: r.offer.id, valor: r.value };
       });
     },
     // Antes de enviar (MER-03): custo inicial, salário, caixa e folha antes
     // e depois, teto e o salário que o atleta aceitaria em cada papel.
-    previaProposta(clubId, playerId, valor, parcelas, salario) {
+    // termos (v5, opcional): { entrada, meses } da oferta parcelada por mês.
+    previaProposta(clubId, playerId, valor, parcelas, salario, termos) {
       const CAREER = carreiraAtual();
       if (!CAREER) return { ok: false, motivo: "sem-carreira" };
       const p = leagueSquadFor(String(clubId)).find((x) => x.id === playerId);
@@ -536,7 +540,7 @@ export const comandosGestao = {
       return { ok: true, valor: v, parcelas: n, porParcela, primeira, salarioAtual: p.wage, salario: sal, papelAtual: ctx.papelAtual, sugerido,
         caixaAntes: CAREER.finances.cash, caixaDepois: CAREER.finances.cash - primeira,
         folhaAntes: wageBillOf(CAREER.squad), folhaDepois: wageBillOf(CAREER.squad) + sal, teto: CAREER.finances.wageCap,
-        capacidade: capacidadeDoTecnico(v, n, sal) };
+        capacidade: capacidadeDoTecnico(v, n, sal, termos && Number(termos.meses) > 0 ? { entrada: Math.max(0, Math.round(Number(termos.entrada) || 0)), meses: Math.min(24, Math.round(Number(termos.meses))) } : null) };
     },
     async aumentarProposta(offerId, valor) {
       const CAREER = carreiraAtual();

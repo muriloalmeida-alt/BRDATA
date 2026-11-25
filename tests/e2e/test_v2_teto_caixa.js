@@ -12,7 +12,8 @@
 //  4) Devolver R$ 40 mil volta R$ 480 mil; devolver mais que o reservado é
 //     recusado.
 //  5) O teto novo libera a promoção que antes estourava o teto.
-//  6) Virada: o teto é recalculado (folha × 1,35) e o reservado zera, sem
+//  6) Virada: o teto é recalculado (folha × 1,35; na economia v5, pela faixa
+//     da folha) e o reservado zera, sem
 //     dinheiro de volta.
 //  7) Save antigo sem o campo abre com reservado 0.
 //  8) 360 px sem rolagem horizontal.
@@ -113,7 +114,12 @@ const { carreiraV2, noMotor, saveNoServidor, globaisDoMotor, base } = require(".
     CAREER.negativeSeasonsStreak = -99;
     await advanceSeason();
     const folha = CAREER.squad.filter((p) => p.origin === "principal" || p.origin === "loan").reduce((s, p) => s + (p.wage || 0), 0);
-    return { teto: CAREER.finances.wageCap, esperado: Math.round(folha * 1.35 / 1000) * 1000, reservado: CAREER.finances.wageCapBought,
+    // MERCADO-001 (economia v5, carreiras novas): o teto da virada é o da faixa
+    // da folha (ou a folga de abertura); sem a v5, folha × 1,35 como antes.
+    const E = await import("/js/motor/economia.js");
+    const v5 = E.economiaV5(CAREER), cl = CAREER.economia && CAREER.economia.clube;
+    const esperado = v5 ? E.tetoDaFolha(cl.liga, cl.receitaAnual, folha) : Math.round(folha * 1.35 / 1000) * 1000;
+    return { teto: CAREER.finances.wageCap, esperado, reservado: CAREER.finances.wageCapBought,
       devolvido: (CAREER.financeLedger || []).some((l) => /devolvida/.test(l.label || "") && l.round === 39), caixaAntes };
   });
   check("6) Virada: teto recalculado (folha × 1,35) e reservado zerado, sem dinheiro de volta:",

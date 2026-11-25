@@ -23,7 +23,7 @@ import { carreiraAtual, ligaAtual, todosTimes, timePorId, forcaMediaDoElenco, co
 import { emitir } from "./eventos.js";
 import { pushNotification, ensureObjectivesFresh, bumpObjective } from "./registro.js";
 import { fmtBRL, abbreviateName } from "./texto.js";
-import { ambiente, avisar, finalizeIncomingPurchase, financeiroScore, leagueSquadFor, marketTeamsPool, MAX_PRINCIPAL, maxSquadSizeFor, moverCaixaCpu, pickWeightedByScore, pruneRecentDeclines, pushLedger, pushTransferLog, REGION_LABEL, SCOUT_MISSION_DURATIONS, SCOUT_MISSION_TYPES, transferScore, transferWindowStatus, UF_TO_REGION, temVagaCpu, entrarNoElencoCpu } from "./semana.js";
+import { ambiente, avisar, finalizeIncomingPurchase, financeiroScore, leagueSquadFor, marketTeamsPool, MAX_PRINCIPAL, maxSquadSizeFor, moverCaixaCpu, pickWeightedByScore, pruneRecentDeclines, pushLedger, pushTransferLog, REGION_LABEL, SCOUT_MISSION_DURATIONS, SCOUT_MISSION_TYPES, transferScore, transferWindowStatus, UF_TO_REGION, temVagaCpu, entrarNoElencoCpu, registrarGastoNaTemporada } from "./semana.js";
 import { TALK_BENCH_STREAK_THRESHOLD, WANTS_TRANSFER_BENCH_STREAK, WANTS_TRANSFER_MORALE_MAX, playerComplaintFactor } from "./aovivo.js";
 import { firePressConference } from "./posjogo.js";
 import * as financas from "./financas.js";
@@ -555,6 +555,7 @@ export function acceptListingOffer(listingId, offerId) {
   CAREER.lineup.starters = CAREER.lineup.starters.map((x) => (x === p.id ? null : x));
   CAREER.lineup.bench = CAREER.lineup.bench.filter((x) => x !== p.id);
   CAREER.finances.cash += firstPayment;
+  registrarGastoNaTemporada(CAREER, offer.value, "vendas"); // MERCADO-001 (v5): a venda repõe o orçamento
   moverCaixaCpu(offer.clubId, -offer.value); // PARIDADE-CPU · E3 (D2)
   if (offer.installments > 1) {
     CAREER.pendingReceivables = CAREER.pendingReceivables || [];
@@ -673,6 +674,7 @@ export function acceptOffer() {
   const p = CAREER.squad.find((x) => x.id === offer.playerId);
   if (!p) { CAREER.pendingOffer = null; tela("renderMercado"); return; } // jogador já saiu do elenco por outro motivo
   CAREER.finances.cash += offer.fee;
+  registrarGastoNaTemporada(CAREER, offer.fee, "vendas"); // MERCADO-001 (v5): a venda repõe o orçamento
   moverCaixaCpu(offer.clubId, -offer.fee); // PARIDADE-CPU · E3 (D2)
   CAREER.squad = CAREER.squad.filter((x) => x.id !== p.id);
   CAREER.lineup.starters = CAREER.lineup.starters.map((x) => (x === p.id ? null : x));

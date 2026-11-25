@@ -70,7 +70,8 @@ const imp = (m) => import(pathToFileURL(path.join(ROOT, "public/js/motor", m)).h
     const folha = fin.wageBill(C.squad);
     assert.ok(Math.abs(folha - base.folhaBaseMensal) / base.folhaBaseMensal < 0.35, `folha ${folha} x ${base.folhaBaseMensal}`);
     assert.strictEqual(C.finances.cash, base.caixaInicial);
-    assert.strictEqual(C.finances.wageCap, Math.round((folha * 1.35) / 1000) * 1000);
+    // Teto pela faixa-alvo (60% da receita) ou a folga de abertura (+10% da folha).
+    assert.strictEqual(C.finances.wageCap, E.tetoDaFolha("premier_league", base.receitaAnual, folha));
     // CPU: o caixa da base de cada clube; a folha dele também na escala.
     const ch = E.economiaDaLiga(indice, "efl_championship");
     const [idCh, bCh] = [...ch.entries()][0];
@@ -90,7 +91,7 @@ const imp = (m) => import(pathToFileURL(path.join(ROOT, "public/js/motor", m)).h
     const m2 = temporada.computeContractFields(75, 25, 80, () => 0.5, 2026, E.escalaDe(C, idMed));
     assert.ok(a.wage > 1.5 * m2.wage, `salário ${a.wage} x mediano da Championship ${m2.wage}`);
     // Todo contrato do save escalado uma vez.
-    assert.ok(C.squad.every((p) => p.escalaEco === 1) && Object.values(C.leagueSquads).flat().every((p) => p.escalaEco === 1));
+    assert.ok(C.squad.every((p) => E.jaEscalado(p)) && Object.values(C.leagueSquads).flat().every((p) => E.jaEscalado(p)));
     // O mês: TV e despesas operacionais da base no extrato.
     const caixa = C.finances.cash;
     const m = semana.applyCalendarMonthlyFinances(8);
@@ -98,8 +99,9 @@ const imp = (m) => import(pathToFileURL(path.join(ROOT, "public/js/motor", m)).h
     assert.strictEqual(tv.amount, C.economia.clube.tvMensal);
     assert.strictEqual(desp.amount, -C.economia.clube.despesasMensais);
     assert.ok(m.wagePaid === folha && C.finances.cash !== caixa);
-    // Margem do clube com a folha real: receita − folha − despesas = resultado da base.
-    const res = base.receitaAnual - folha * 12 - C.economia.clube.despesasMensais * 12;
+    // Margem do clube com a folha no teto: receita − teto − despesas = resultado
+    // da base (quem usa menos do orçamento de folha poupa a diferença).
+    const res = base.receitaAnual - C.finances.wageCap * 12 - C.economia.clube.despesasMensais * 12;
     assert.ok(Math.abs(res - base.resultadoOperacionalAnual) < base.receitaAnual * 0.01, `resultado ${res} x ${base.resultadoOperacionalAnual}`);
     // Patrocínio na escala comercial: a soma da temporada perto da receita comercial.
     const pat = fin.sponsorshipSeasonTotal(C.sponsorship);
@@ -111,7 +113,7 @@ const imp = (m) => import(pathToFileURL(path.join(ROOT, "public/js/motor", m)).h
     const esc = E.escalaDe(C, C.clubId);
     const p = temporada.buildBasePlayer({ id: C.clubId }, 0, () => 0.5, { firstNames: ["A"], lastNames: ["B"], liveSeason: 2026, escala: (id) => E.escalaDe(C, id) });
     const ref = temporada.buildBasePlayer({ id: C.clubId }, 0, () => 0.5, { firstNames: ["A"], lastNames: ["B"], liveSeason: 2026 });
-    assert.strictEqual(p.escalaEco, 1);
+    assert.ok(E.jaEscalado(p));
     assert.strictEqual(p.wage, Math.max(100, Math.round((ref.wage * esc.salario) / 100) * 100));
     const copia = { ...p };
     E.aplicarEscalaNoAtleta(copia, esc);
@@ -140,8 +142,8 @@ const imp = (m) => import(pathToFileURL(path.join(ROOT, "public/js/motor", m)).h
     C.finances.cash = Math.round(alvo.value / 2);
     const r = await P.fazerProposta(alvoClube, alvo.id, alvo.value, 1, null, "op-econ-1");
     assert.strictEqual(r.ok, false);
-    assert.ok(["caixa", "parcelas", "janela-fechada"].includes(r.motivo), JSON.stringify(r));
-    if (r.motivo !== "janela-fechada") assert.ok(r.mensagem && /caixa/i.test(r.mensagem), r.mensagem);
+    assert.ok(["caixa", "parcelas", "fluxo", "teto", "janela-fechada"].includes(r.motivo), JSON.stringify(r));
+    if (r.motivo === "caixa") assert.ok(r.mensagem && /caixa/i.test(r.mensagem), r.mensagem);
     // A prévia traz a capacidade.
     const pv = P.previaProposta(alvoClube, alvo.id, alvo.value, 1, alvo.wage);
     assert.ok(pv.capacidade && pv.capacidade.ok === false);
@@ -227,7 +229,7 @@ const imp = (m) => import(pathToFileURL(path.join(ROOT, "public/js/motor", m)).h
     C.divisionTeams.efl_championship = [...ch.filter((t) => t !== sobe), ars];
     const novo = { id: 999001, name: "Clube Novo", atk: 1, def: 1 };
     C.divisionTeams.efl_championship.push(novo);
-    C.leagueSquads["999001"] = Object.values(C.leagueSquads)[3].map((p) => { const c = { ...p, id: `n_${p.id}` }; delete c.escalaEco; return c; });
+    C.leagueSquads["999001"] = Object.values(C.leagueSquads)[3].map((p) => { const c = { ...p, id: `n_${p.id}` }; delete c.escalaEco; delete c.fatorValor; delete c.valorInicial; return c; });
     CMu.economiaDaTemporada(C);
     assert.strictEqual(C.economia.clube.liga, "efl_championship");
     assert.strictEqual(C.economia.clube.anoAposQueda, 1);
@@ -235,7 +237,7 @@ const imp = (m) => import(pathToFileURL(path.join(ROOT, "public/js/motor", m)).h
     const tr = E.PERFIS.efl_championship.transicao[0];
     assert.ok(C.economia.clube.tvMensal * 12 > tr.valor * texto.CAMBIO[tr.moeda], "com a transição");
     assert.ok(C.economia.escalas["999001"], "clube novo com escala");
-    assert.ok(C.leagueSquads["999001"].every((p) => p.escalaEco === 1));
+    assert.ok(C.leagueSquads["999001"].every((p) => E.jaEscalado(p)));
     // 2ª temporada na Championship: ano 2 (transição menor).
     const um = C.economia.clube.tvMensal;
     CMu.economiaDaTemporada(C);
@@ -326,7 +328,7 @@ const imp = (m) => import(pathToFileURL(path.join(ROOT, "public/js/motor", m)).h
       assert.strictEqual(semana.capacidadeDoTecnico(1e12, 1, 0), null);
       semana.applyCalendarMonthlyFinances(8);
       assert.ok(!C.financeLedger.some((x) => x.type === "despesa"));
-      assert.ok(C.squad.every((p) => !p.escalaEco));
+      assert.ok(C.squad.every((p) => !E.jaEscalado(p)));
       CMu.economiaDaTemporada(C); // não faz nada
       assert.strictEqual(C.economia, undefined);
     } finally {
