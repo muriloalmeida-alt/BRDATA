@@ -40,15 +40,22 @@ export function capacidadeDeCompra(estado: EstadoFinanceiro, op: { taxa: number;
 export function economiaDosClubes(liga: string, clubes: { id: string | number; nome: string }[]): Map<string, EconomiaDoClube> | null;
 export const ECONOMIA_V2: { ativa: boolean };
 export const ESCALA_LIMITES: { min: number; max: number };
-export const EXPOENTE_VALOR: number;
 export const PORTE_SALARIAL: number;
-export interface Escala { salario: number; valor: number }
-export interface EconomiaDoSave { versao: number; escalas: Record<string, [number, number, number?]>; ligas: Record<string, number>; clube: FluxosDoClube | null; patrocinio?: number; bilheteria?: number }
+export interface Escala { salario: number | ((legado: number) => number); valor: number | ((legado: number) => number) }
+export interface ParametrosDaLiga { s: [number, number, number]; v: [number, number, number]; receitaMediana: number; aproximada?: boolean }
+export const DISPERSAO: { valor: number; salario: number };
+export const PRECO_SOBRE_RECEITA: number;
+export const AJUSTE_CLUBE: number;
+export const DEMANDA: { expoente: number; teto: number };
+export function expoenteDaForma(sigma: number, dispersao: number, maximo?: number): number;
+export function escalaDosParametros(nivelSalario: number, L: ParametrosDaLiga): Escala;
+export function ordemNoPais(divisoes: string[], escalas: Record<string, [number, string, number]>, ligas: Record<string, ParametrosDaLiga>, receitas: Record<string, number>): Record<string, [number, string, number]>;
+export function fatorDeDemanda(CAREER: unknown, compradorId: string | number, vendedorId: string | number): number;
+export interface EconomiaDoSave { versao: number; escalas: Record<string, [number, number | string, number?]>; ligas: Record<string, number | ParametrosDaLiga>; clube: FluxosDoClube | null; patrocinio?: number; bilheteria?: number }
 export interface FluxosDoClube { id: string; liga: string; status: string; receitaAnual: number; tvMensal: number; comercialAnual: number; jogoAnual: number; despesasMensais: number; folhaBaseMensal: number; orcamentoTransferencias: number; anoAposQueda?: number }
 export function economiaV2(CAREER: unknown): boolean;
 export function escalaDe(CAREER: unknown, clubId: string | number): Escala | null;
-export function escalaDeValor(doClube: number, daLiga: number): number;
-export function escalasDaDivisao(liga: string, clubes: { id: string | number; nome: string; folhaLegada: number }[]): { escalas: Record<string, [number, number]>; salario: number; valor: number; economia: Map<string, EconomiaDoClube> } | null;
+export function escalasDaDivisao(liga: string, clubes: { id: string | number; nome: string; salarios?: number[]; valores?: number[] }[]): { escalas: Record<string, number>; liga: ParametrosDaLiga; economia: Map<string, EconomiaDoClube> } | null;
 export function aplicarEscalaNoAtleta<T extends { wage?: number; value?: number }>(p: T, escala: Escala | null): T;
 export function contratoNaEscala<T extends { wage: number; value: number }>(c: T, escala: Escala | null): T & { escalaEco?: 1 };
 export function fluxosDoClube(base: EconomiaDoClube, folhaReal?: number | null): FluxosDoClube;

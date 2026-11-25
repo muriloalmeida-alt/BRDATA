@@ -75,7 +75,7 @@ const imp = (m) => import(pathToFileURL(path.join(ROOT, "public/js/motor", m)).h
   const rivEco = riv.economia;
   // Comprador de fora do save do River: a escala de valor do Real Madrid (a do save da LaLiga).
   const rm = await criar(perfis[2]);
-  const escRm = rm.economia.escalas[String(rm.clubId)][1], escRiv = rivEco.escalas[String(riv.clubId)][1];
+  const escRm = rm.economia.ligas[rm.economia.escalas[String(rm.clubId)][1]].v[2], escRiv = rivEco.ligas[rivEco.escalas[String(riv.clubId)][1]].v[2];
   const demRm = Math.max(1, Math.min(E.DEMANDA.teto, (escRm / escRiv) ** E.DEMANDA.expoente));
   ref.push(["Mastantuono (River → Real Madrid)", "€ 45 mi (cláusula)", valor(riv, riv.clubId, 74, 18, 86) * demRm / 6, "€", `River, overall 74, 18 anos, potencial 86; demanda do Real Madrid ×${demRm.toFixed(2)}`]);
   const pen = await criar(perfis[4]);

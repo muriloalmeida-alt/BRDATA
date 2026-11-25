@@ -47,7 +47,9 @@ export function computeContractFields(overall, age, potential, rng, liveSeason, 
   const wage = Math.round(Math.pow(1.145, overall - 50) * 2500 * ageMult / 100) * 100;
   const value = Math.round(Math.pow(1.16, overall - 50) * 120000 * ageMult * potBoost / 1000) * 1000;
   const contractUntil = liveSeason + 1 + Math.floor(rng() * 4);
-  if (escala) return { wage: Math.max(100, Math.round((wage * escala.salario) / 100) * 100), value: Math.max(1000, Math.round((value * escala.valor) / 1000) * 1000), contractUntil, escalaEco: 1 };
+  // escala.salario/valor: função (economia v3) ou fator (v2).
+  const ap = (x, f) => (typeof f === "function" ? f(x) : x * f);
+  if (escala) return { wage: Math.max(100, Math.round(ap(wage, escala.salario) / 100) * 100), value: Math.max(1000, Math.round(ap(value, escala.valor) / 1000) * 1000), contractUntil, escalaEco: 1 };
   return { wage, value, contractUntil };
 }
 // Salário "de mercado" para o overall e a idade atuais.

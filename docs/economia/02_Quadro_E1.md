@@ -1,6 +1,6 @@
 # ECON-001 · Entrega 1 · Quadro por perfil
 
-Gerado por `tests/sim/economia_quadro.js` a partir do catálogo em `public/js/motor/economia.js` (versão 2 da regra econômica, período de referência 2024/25–2025/26). Valores anuais em R$ milhões (câmbio fixo do jogo: £ 1 = R$ 7,00; € 1 = R$ 6,00; US$ 1 = R$ 5,50), folha-base em R$ milhões por mês. Âncora = número de clube da proposta (publicado ou estimado).
+Gerado por `tests/sim/economia_quadro.js` a partir do catálogo em `public/js/motor/economia.js` (versão 3 da regra econômica, período de referência 2024/25–2025/26). Valores anuais em R$ milhões (câmbio fixo do jogo: £ 1 = R$ 7,00; € 1 = R$ 6,00; US$ 1 = R$ 5,50), folha-base em R$ milhões por mês. Âncora = número de clube da proposta (publicado ou estimado).
 
 A Entrega 1 não muda o jogo: o modelo entra nas carreiras novas com a recalibração dos preços (Entrega 2).
 

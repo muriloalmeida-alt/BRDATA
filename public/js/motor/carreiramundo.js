@@ -1006,25 +1006,27 @@ export function clubesParaEconomia(CAREER, indice, liga) {
     const c = indice && indice.clubes.find((x) => S(x.id) === S(t.id));
     const receita = c && c.financas && c.financas.annualRevenue;
     const sq = elencoDoClube(CAREER, t.id);
-    return { id: S(t.id), nome: t.name, receita: receita || 0, forca: (t.atk || 1) / (t.def || 1), folhaLegada: financas.wageBill(sq), valores: sq.filter((p) => p.origin !== "base").map((p) => p.value || 0) };
+    const prof = sq.filter((p) => p.origin !== "base");
+    return { id: S(t.id), nome: t.name, receita: receita || 0, forca: (t.atk || 1) / (t.def || 1), salarios: prof.map((p) => p.wage || 0), valores: prof.map((p) => p.value || 0) };
   }).sort((a, b) => b.receita - a.receita || b.forca - a.forca || a.id.localeCompare(b.id));
 }
 export function ativarEconomiaV2(CAREER, indice) {
   if (!CAREER || CAREER.economia || !E.ECONOMIA_V2.ativa) return false;
   const escalas = {}, ligas = {};
   let base = null;
-  const caixas = {};
+  const caixas = {}, receitas = {};
   for (const liga of estado.divisoesDoPais(CAREER)) {
     const r = E.escalasDaDivisao(liga, clubesParaEconomia(CAREER, indice, liga));
     if (!r) continue;
-    Object.assign(escalas, r.escalas);
-    ligas[liga] = r.valor;
-    for (const [id, b] of r.economia) caixas[id] = b.caixaInicial;
+    for (const [id, nivel] of Object.entries(r.escalas)) escalas[id] = [nivel, liga, r.economia.get(id) ? r.economia.get(id).caixaInicial : 0];
+    ligas[liga] = r.liga;
+    for (const [id, b] of r.economia) { caixas[id] = b.caixaInicial; receitas[id] = b.receitaAnual; }
     if (r.economia.has(String(CAREER.clubId))) base = r.economia.get(String(CAREER.clubId));
   }
   if (!base) return false;
-  // Caixa de referência dos clubes da CPU (a volta ao normal na virada).
-  for (const id of Object.keys(escalas)) escalas[id] = [...escalas[id], caixas[id] || 0];
+  // A ordem no país: o clube mais rico não paga menos pela mesma qualidade,
+  // também entre as divisões (atleta de referência: o mediano da 1ª).
+  E.ordemNoPais(estado.divisoesDoPais(CAREER), escalas, ligas, receitas);
   CAREER.economia = { versao: E.VERSAO_ECONOMIA, escalas, ligas, clube: null };
   // Contratos: todos os elencos do save, uma vez.
   for (const id of Object.keys(escalas)) {
@@ -1032,8 +1034,9 @@ export function ativarEconomiaV2(CAREER, indice) {
     elencoDoClube(CAREER, id).forEach((p) => E.aplicarEscalaNoAtleta(p, e));
     ((CAREER.basesCpu && CAREER.basesCpu[id]) || []).forEach((p) => E.aplicarEscalaNoAtleta(p, e));
   }
-  const daLiga = ligas[CAREER.competitionId] || 1;
-  (CAREER.agentesLivres || []).forEach((p) => E.aplicarEscalaNoAtleta(p, { salario: daLiga, valor: daLiga }));
+  // Agentes livres: o nível e o formato da liga do técnico.
+  const Lt = ligas[CAREER.competitionId];
+  if (Lt) (CAREER.agentesLivres || []).forEach((p) => E.aplicarEscalaNoAtleta(p, E.escalaDosParametros(Lt.s[2], Lt)));
   // Finanças do técnico e da CPU.
   const folha = financas.wageBill(CAREER.squad);
   CAREER.finances.wageCap = Math.round((folha * 1.35) / 1000) * 1000;
@@ -1049,19 +1052,39 @@ export function ativarEconomiaV2(CAREER, indice) {
   }
   return true;
 }
-// Clube que entra no save depois da criação (aberto no mercado do mundo):
-// a escala dele pela liga (salário e valor iguais; sem perfil, a da liga do técnico).
+// Clube que entra no save depois da criação (aberto no mercado do mundo).
+// Economia v3: a liga dele com o preço mediano e a folha-base do próprio
+// pacote; o formato (mediana e dispersão) é o da 1ª divisão do técnico
+// (aproximação: a liga de fora não tem os elencos no save). Sem perfil (clube
+// só das copas), tudo como na liga do técnico. v2: o fator da liga do técnico.
 export function escalaDoClubeDeFora(CAREER, indice, id, liga) {
   if (!E.economiaV2(CAREER) || CAREER.economia.escalas[String(id)]) return;
   const sq = elencoDoClube(CAREER, id);
-  let s = CAREER.economia.ligas[CAREER.competitionId] || 1;
   const eco = liga && E.PERFIS[liga] ? E.economiaDaLiga(indice, liga) : null;
   const b = eco && eco.get(String(id));
-  const legado = financas.wageBill(sq);
-  if (b && legado > 0) s = Math.max(E.ESCALA_LIMITES.min, Math.min(E.ESCALA_LIMITES.max, b.folhaBaseMensal / legado));
-  s = Math.round(s * 1000) / 1000;
-  CAREER.economia.escalas[String(id)] = [s, s, b ? b.caixaInicial : 0];
-  sq.forEach((p) => E.aplicarEscalaNoAtleta(p, { salario: s, valor: s }));
+  if (CAREER.economia.versao < 3) {
+    const f = CAREER.economia.ligas[CAREER.competitionId] || 1;
+    CAREER.economia.escalas[String(id)] = [f, f, b ? b.caixaInicial : 0];
+    sq.forEach((p) => E.aplicarEscalaNoAtleta(p, { salario: f, valor: f }));
+    return;
+  }
+  const ref = CAREER.economia.ligas[estado.divisoesDoPais(CAREER)[0]] || CAREER.economia.ligas[CAREER.competitionId];
+  let chave = CAREER.competitionId, nivel = ref.s[2];
+  if (eco && b) {
+    chave = liga;
+    if (!CAREER.economia.ligas[liga]) {
+      const rs = [...eco.values()].map((e) => e.receitaAnual).sort((x, y) => x - y);
+      const rm = rs[rs.length >> 1], media = rs.reduce((t, x) => t + x, 0) / rs.length;
+      CAREER.economia.ligas[liga] = { s: [ref.s[0], ref.s[1], ref.s[2]], v: [ref.v[0], ref.v[1], Math.round(E.PRECO_SOBRE_RECEITA * media)], receitaMediana: rm, aproximada: true };
+    }
+    const ks = E.expoenteDaForma(E.DISPERSAO.salario, ref.s[1]);
+    const forma = (w) => Math.exp(ks * (Math.log(Math.max(1, w)) - ref.s[0]));
+    const pesos = sq.filter((p) => p.origin !== "base").reduce((t, p) => t + forma(p.wage || 1), 0);
+    if (pesos > 0) nivel = Math.round(b.folhaBaseMensal / pesos);
+  }
+  CAREER.economia.escalas[String(id)] = [nivel, chave, b ? b.caixaInicial : 0];
+  const e = E.escalaDe(CAREER, id);
+  sq.forEach((p) => E.aplicarEscalaNoAtleta(p, e));
 }
 // Fluxos do clube do técnico (TV, despesas, escala de patrocínio e de
 // bilheteria) pela base dele; `ano` = temporadas desde a queda (transição).
@@ -1085,18 +1108,19 @@ export function economiaDaTemporada(CAREER, { troca = false } = {}) {
   for (const liga of divs) {
     const clubes = clubesParaEconomia(CAREER, indice, liga);
     if (!clubes.length || !E.PERFIS[liga]) continue;
-    // A folha "de antes" de quem já está escalado: a folha ÷ a escala dele.
-    const comLegado = clubes.map((c) => { const e = CAREER.economia.escalas[c.id]; return e ? { ...c, folhaLegada: c.folhaLegada / e[0], valores: c.valores.map((v) => v / e[1]) } : c; });
-    const r = E.escalasDaDivisao(liga, comLegado);
-    if (!r) continue;
+    const eco = E.economiaDosClubes(liga, clubes);
+    if (!eco) continue;
+    const L = CAREER.economia.ligas[liga];
     for (const c of clubes) {
       if (CAREER.economia.escalas[c.id]) continue;
-      const [sal, val] = r.escalas[c.id];
-      const b = r.economia.get(c.id);
-      CAREER.economia.escalas[c.id] = [sal, val, b ? b.caixaInicial : 0];
-      elencoDoClube(CAREER, c.id).forEach((p) => E.aplicarEscalaNoAtleta(p, { salario: sal, valor: val }));
+      const b = eco.get(c.id);
+      // v3: o nível de salário da liga pelo porte do clube; v2: o fator da liga.
+      if (CAREER.economia.versao >= 3 && L) CAREER.economia.escalas[c.id] = [Math.round(L.s[2] * (b.receitaAnual / L.receitaMediana) ** E.PORTE_SALARIAL), liga, b.caixaInicial];
+      else { const f = typeof L === "number" ? L : 1; CAREER.economia.escalas[c.id] = [f, f, b.caixaInicial]; }
+      const e = E.escalaDe(CAREER, c.id);
+      elencoDoClube(CAREER, c.id).forEach((p) => E.aplicarEscalaNoAtleta(p, e));
     }
-    const b = r.economia.get(String(CAREER.clubId));
+    const b = eco.get(String(CAREER.clubId));
     if (!b) continue;
     const antes = CAREER.economia.clube;
     const caiu = !troca && antes && antes.liga !== liga && divs.indexOf(antes.liga) >= 0 && divs.indexOf(antes.liga) < divs.indexOf(liga);
