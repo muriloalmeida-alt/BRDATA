@@ -18,6 +18,48 @@ autorizado depois do commit. Especificação e decisões de PM em
 `docs/economia/01_Especificacao.md`: escala real em R$, só carreiras novas
 (versão da regra no save), ativação junto com os preços na Entrega 2.
 
+Relatório da Entrega 1, base financeira (25/11/2026)
+
+Base: `main` em c86ae26. O jogo não muda nesta entrega: o módulo ainda não
+é chamado pela carreira. Ele entra nas carreiras novas junto com os preços
+(Entrega 2), com a versão da regra no save.
+
+O que foi feito:
+- `public/js/motor/economia.js` (+ `.d.ts`), módulo puro:
+  - catálogo versionado (`VERSAO_ECONOMIA = 2`, período 2024/25–2025/26)
+    com perfil para as 23 ligas jogáveis; todo número tem item, valor,
+    moeda, período, tipo (publicado, estimado ou imputado), confiança e
+    fonte;
+  - `economiaDaLiga`: receita recorrente (TV, comercial, jogo), folha-base,
+    despesas, resultado, caixa inicial e orçamento de transferências de
+    cada clube. Distribuição por lei de potência na posição financeira,
+    ajustada à concentração da liga. As âncoras da proposta (Flamengo,
+    Palmeiras, Bahia, Mirassol, Arsenal, River, Peñarol) entram exatas e o
+    resto é reescalado para manter o total da liga;
+  - `economiaNaVirada`: subir e cair (rebaixado da Premier League com a
+    transição de 3 anos; caixa e obrigações seguem com o clube);
+  - `capacidadeDeCompra`: o mínimo entre orçamento, caixa para o pagamento
+    imediato (com 1 mês de folha de reserva), parcelas futuras (caixa
+    projetado mês a mês, recebível só no mês em que entra) e espaço de
+    folha, com o motivo do bloqueio.
+- Quadro por perfil e tabela de fontes: `docs/economia/02_Quadro_E1.md`
+  (gerado por `node tests/sim/economia_quadro.js`).
+
+Decisões:
+- resultado operacional limitado por margem por região (Europa 3%, Brasil
+  5%, América do Sul 0%; Championship −10% no jogo, porque os −46% da
+  Deloitte são cobertos por aportes de donos);
+- receita anual e caixa inicial são grandezas separadas (caixa = 8% da
+  receita);
+- no Brasil a folha segue uma curva de potência calibrada nas âncoras de
+  folha (Flamengo 37,5 mi/mês, Mirassol 6 mi/mês).
+
+Testes: `tests/unit/test_economia_base.js` 6/6 (catálogo, liga, ordens de
+grandeza, virada, capacidade, pureza).
+
+Próximo: Entrega 2 (valor, reserva e salário dos atletas na mesma escala;
+CPU e técnico pela mesma regra; ativação para carreiras novas).
+
 ⸻
 
 MUNDO-001 — Ligas da Europa e da América do Sul, em paralelo, com continentais
