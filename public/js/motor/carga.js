@@ -1187,7 +1187,8 @@ export const comandosCarga = {
     async escolherCompeticao(id) {
       const CAREER = carreiraAtual();
       if (CAREER) return { ok: false, motivo: "ja-tem-carreira" };
-      ponte.ligaDoMundo = null;
+      // (removido, não zerado: o estado da ponte do Brasil fica igual ao de antes)
+      if ("ligaDoMundo" in ponte) delete ponte.ligaDoMundo;
       // Liga do mundo (M10c): os clubes vêm do índice.
       if (!CAREER_COMPETITIONS.some((c) => c.id === id) && estado.ganchosMundo.novoSave) {
         const clubes = await estado.ganchosMundo.novoSave.clubes(id);
@@ -1216,7 +1217,7 @@ export const comandosCarga = {
           CAREER = carreiraAtual();
           if (!CAREER) return { ok: false, motivo: "falha" };
           const salvo = await persistCareer();
-          if (salvo) ponte.ligaDoMundo = null;
+          if (salvo) delete ponte.ligaDoMundo;
           return salvo ? { ok: true } : { ok: false, motivo: ponte.erroGravacao || "falha" };
         } finally {
           ponte.criando = false;
