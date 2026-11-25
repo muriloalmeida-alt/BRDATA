@@ -116,6 +116,7 @@ const APP_SHELL = [
   "/js/motor/viradapais.js",
   "/js/motor/mundoleve.js",
   "/js/motor/continental.js",
+  "/js/motor/uefa.js",
   "/js/motor/copasmundo.js",
   "/js/motor/calendariomundo.js",
   "/js/motor/carreiramundo.js",
