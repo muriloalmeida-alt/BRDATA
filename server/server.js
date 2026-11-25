@@ -1999,7 +1999,7 @@ const server = http.createServer(async (req, res) => {
     }
 
     // MUNDO-001 (etapa M1): índice e elencos das 20 ligas da Europa e da
-    // América do Sul (ver server/src/mundo.js). Só com MUNDO_ATIVO=true.
+    // América do Sul (ver server/src/mundo.js). MUNDO_ATIVO=false desliga.
     if (pathname === "/api/career/mundo" || pathname.startsWith("/api/career/mundo/")) {
       if (!mundoAtivo()) return sendJSON(res, 404, { error: "mundo desligado" });
       if (pathname === "/api/career/mundo") return sendJSONMaybeGzip(req, res, 200, mundo.indice(searchParams.get("versao")));

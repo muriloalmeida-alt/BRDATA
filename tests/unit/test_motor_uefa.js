@@ -195,6 +195,23 @@ async function check(name, fn) {
     console.log(`   30 edições em ${Date.now() - t0} ms`);
   });
 
+  await check("sorteio concentrado (7 ingleses, 6 espanhóis, 5 italianos e alemães, 4 franceses): resolve sem travar, sem a mesma associação", () => {
+    const regra = c.competicoes.UCL.liga;
+    for (let k = 0; k < 20; k++) {
+      const assoc = {};
+      const ids = [];
+      for (const [a, q] of [["ENG", 7], ["ESP", 6], ["ITA", 5], ["GER", 5], ["FRA", 4], ["POR", 2], ["NED", 2], ["BEL", 1], ["TUR", 1], ["SCO", 1], ["CZE", 1], ["GRE", 1]]) for (let i = 0; i < q; i++) { const id = `${a}${i}`; assoc[id] = a; ids.push(id); }
+      const rng = rngDaChave(`conc${k}`);
+      const ord = ids.slice().sort(() => rng() - 0.5);
+      const potes = [0, 1, 2, 3].map((p) => ord.slice(p * 9, p * 9 + 9));
+      const jogos = U.sortearAdversarios(potes, regra, assoc, rng);
+      assert.strictEqual(jogos.length, 144);
+      assert.ok(jogos.every(([x, y]) => assoc[x] !== assoc[y]), "mesma associação");
+      const rod = U.distribuirRodadas(jogos, 8, rng);
+      assert.strictEqual(rod.length, 8);
+    }
+  });
+
   console.log(`\n${n - failed}/${n} ok`);
   process.exit(failed ? 1 : 0);
 })();

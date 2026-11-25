@@ -476,6 +476,42 @@ export function criarRepositorio(opts = {}) {
       return "novo";
     },
 
+    // ---------- Mundo offline (MUNDO-001, M10d) ----------
+    // O índice do mundo (países, ligas, clubes, calendário e regras das
+    // copas), versionado: a rota devolve { atual: true } quando o aparelho já
+    // tem a versão. Os elencos de cada liga, guardados na 1ª vez que o jogo
+    // pede (novo save, mercado, copas), da mesma versão do índice.
+    async indiceDoMundo() {
+      const r = await lerLoja(LOJA_PERFIL, "mundo:indice").catch(() => null);
+      return r ? r.dados : null;
+    },
+    // "atual" | "novo" | "desligado" (rota 404) | "offline" | "falha".
+    async atualizarIndiceDoMundo() {
+      const atual = await repo.indiceDoMundo();
+      const q = atual && atual.versao ? `?versao=${encodeURIComponent(atual.versao)}` : "";
+      const r = await servidor(`/api/career/mundo${q}`);
+      if (!r.rede) return "offline";
+      if (r.status === 404) return "desligado";
+      if (!r.ok || !r.corpo || !r.corpo.versao) return "falha";
+      if (r.corpo.atual) return "atual";
+      await escreverLoja(LOJA_PERFIL, { chave: "mundo:indice", dados: r.corpo, quando: Date.now() });
+      return "novo";
+    },
+    async elencosDoMundo(liga) {
+      const indice = await repo.indiceDoMundo();
+      const versao = indice && indice.versao;
+      const chave = `mundo:elencos:${liga}`;
+      const guardado = await lerLoja(LOJA_PERFIL, chave).catch(() => null);
+      if (guardado && guardado.versao === versao) return guardado.dados;
+      const r = await servidor(`/api/career/mundo/elencos/${encodeURIComponent(liga)}`);
+      if (r.ok && r.corpo && r.corpo.playersByTeamId) {
+        await escreverLoja(LOJA_PERFIL, { chave, versao: r.corpo.versao || versao, dados: r.corpo, quando: Date.now() }).catch(() => {});
+        return r.corpo;
+      }
+      if (guardado) return guardado.dados; // sem rede: a cópia que houver
+      throw new Error(`mundo: elencos de ${liga} indisponíveis`);
+    },
+
     // Adaptador no formato de fetchJSON (o motor usa estado.carregarSave /
     // gravarSave com `pedir`): só as rotas da carreira passam por aqui.
     pedirDaConta(contaFn) {

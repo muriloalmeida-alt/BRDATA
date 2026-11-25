@@ -775,7 +775,7 @@ export const comandosJogo = {
       ponteAvisar();
       return { ok: true };
     },
-    async avancarSemana(ateJogo) {
+    async avancarSemana(ateJogo, opcoes) {
       const CAREER = carreiraAtual();
       if (!ponte.pronta || !CAREER) return { ok: false, motivo: "carregando" };
       if (partidaAtual()) return { ok: false, motivo: "em-andamento" };
@@ -783,9 +783,11 @@ export const comandosJogo = {
       if (!w || w.r || CAREER.currentRound > estado.rodadasDaTemporada(CAREER)) return { ok: false, motivo: "sem-semana" };
       const fr = friendlySlotThisWeek();
       if (!ateJogo && fr && (!fr.optional || fr.opp)) return { ok: false, motivo: "amistoso" };
-      // MUNDO-001 (M9c): o jogo da copa continental da semana vem antes.
-      const continental = () => !!pendenteContinental(CAREER);
-      if (continental()) return { ok: false, motivo: "continental" };
+      // MUNDO-001 (M9c/M10d): o jogo da copa continental da semana não trava a
+      // semana: a v2 o oferece antes (CTA do Início); avançando sem jogar, ele
+      // é simulado como os da CPU. Com opcoes.copas (a v2), "até o jogo" para
+      // também na semana do jogo continental.
+      const continental = () => !!(opcoes && opcoes.copas) && !!pendenteContinental(CAREER);
       if (ponte.avancando) return { ok: false, motivo: "em-andamento" };
       ponte.avancando = true;
       try {

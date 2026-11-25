@@ -99,6 +99,19 @@ export async function abrirMotor() {
     semana.definirAmbiente({ armazem: { pedir: repo.pedirDaConta(() => (estado.conta() || {}).id), repo } });
     // Catálogo offline (clubes e elencos do servidor) em dia, em segundo plano.
     if (c.online) repo.atualizarCatalogo().catch(() => {});
+    // MUNDO-001 (M10d): o índice do mundo e os elencos das ligas, guardados no
+    // aparelho (abrem um save do mundo sem rede). Servidor com o mundo
+    // desligado e sem cópia no aparelho: sem mundo, como antes.
+    let atualizacao = null;
+    semana.definirAmbiente({
+      indiceDoMundo: async () => {
+        if (c.online && !atualizacao) atualizacao = repo.atualizarIndiceDoMundo().catch(() => "falha");
+        const st = c.online ? await atualizacao : "offline";
+        const guardado = await repo.indiceDoMundo();
+        return st === "desligado" && !guardado ? null : guardado;
+      },
+      elencosDoMundo: (liga) => repo.elencosDoMundo(liga),
+    });
     // Checkpoint da partida em andamento (jogo.js, checkpointPartida).
     const contaId = () => (estado.conta() || {}).id;
     semana.definirAmbiente({ checkpoint: (dados) => { repo.guardarPartida(contaId(), dados).catch(() => {}); } });
@@ -130,6 +143,15 @@ export async function abrirMotor() {
   const me = await fetchJSON("/api/auth/me").catch(() => ({ authenticated: false }));
   if (!me || !me.authenticated) return { semConta: true };
   estado.definirConta(me.user);
+  // Sem IndexedDB: o mundo direto do servidor (sem cópia no aparelho).
+  let indice;
+  semana.definirAmbiente({
+    indiceDoMundo: async () => {
+      if (indice === undefined) indice = await fetchJSON("/api/career/mundo").catch(() => null);
+      return indice && indice.competicoes ? indice : null;
+    },
+    elencosDoMundo: (liga) => fetchJSON(`/api/career/mundo/elencos/${encodeURIComponent(liga)}`),
+  });
   const ponte = criarPonte();
   await enterAfterAuth();
   return { ponte };
