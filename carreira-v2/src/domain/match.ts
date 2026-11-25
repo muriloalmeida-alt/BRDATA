@@ -60,7 +60,7 @@ function describe(e: MatchEvent, team: string): { title: string; sub: string } {
   }
 }
 
-export function buildMatch(s: MatchSnapshot, competitionId?: string): MatchModel | null {
+export function buildMatch(s: MatchSnapshot, competitionId?: string, competitionLabel?: string): MatchModel | null {
   if (!s.mandante || !s.visitante) return null;
   const mine = s.souMandante ? s.mandante : s.visitante;
   const opp = s.souMandante ? s.visitante : s.mandante;
@@ -68,7 +68,7 @@ export function buildMatch(s: MatchSnapshot, competitionId?: string): MatchModel
     ? `Copa do Brasil · ${CUP_PHASE_LABEL[s.copa.fase] || s.copa.fase} · ${s.copa.perna === 2 ? "Volta" : "Ida"}`
     : s.contexto === "continental" && s.continental ? continentalKicker(s.continental)
     : s.contexto === "amistoso" ? "Amistoso"
-    : `${COMPETITION_NAME[competitionId || "brasileirao"] || "Competição"} · Rodada ${s.rodada}`;
+    : `${competitionLabel || COMPETITION_NAME[competitionId || "brasileirao"] || "Competição"} · Rodada ${s.rodada}`;
   const events = s.eventos || [];
   const teamOf = (e: MatchEvent) => (e.meu ? mine.nome : opp.nome);
   // Mais recente primeiro; no mesmo minuto, o mais importante primeiro.

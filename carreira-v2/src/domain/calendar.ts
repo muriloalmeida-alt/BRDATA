@@ -4,7 +4,7 @@
 // calendário atual (legado: calendarWeekRowHTML, CUP_ROUNDS*, matchLog,
 // calendar.friendlies). Só leitura.
 import type { Career, CalendarWeek, Team } from "./types.ts";
-import { MONTH } from "./home.ts";
+import { MONTH, roundsOf } from "./home.ts";
 import type { CupTie } from "./table.ts";
 import { CUP_PHASE_LABEL } from "./table.ts";
 
@@ -45,7 +45,7 @@ export function buildCalendar(career: Career, teamById: (id: string | number) =>
 
   // Brasileirão: domingo da semana da rodada (legado: "Dom" = semana + 6).
   const log = (career.matchLog || []).filter((m) => m.seasonYear === career.seasonYear);
-  for (let r = 1; r <= 38; r++) {
+  for (let r = 1; r <= roundsOf(career); r++) {
     const fx = (career.schedule[r] || []).find((m) => String(m.home) === me || String(m.away) === me);
     if (!fx) continue;
     const wi = weekOfRound(r);

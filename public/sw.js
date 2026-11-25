@@ -121,6 +121,7 @@ const APP_SHELL = [
   "/js/motor/copasuefa.js",
   "/js/motor/calendariomundo.js",
   "/js/motor/carreiramundo.js",
+  "/js/motor/copasvista.js",
   // OFFLINE-001: fontes da Carreira (Barlow), sem Google Fonts.
   "/fonts/barlow.css",
   "/fonts/barlow-latin-400-normal.woff2",

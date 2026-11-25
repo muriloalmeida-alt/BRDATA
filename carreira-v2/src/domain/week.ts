@@ -9,7 +9,7 @@
 // maiores mudanças; prazos só quando aconteceram; convites para escolher;
 // notícias sem seta e com a situação do elenco; sino no topo do Início.
 import type { Career, Team } from "./types.ts";
-import { COMPETITION_NAME, moneyShort } from "./home.ts";
+import { competitionName, moneyShort, roundsOf } from "./home.ts";
 import { buildLineup, shortName } from "./lineup.ts";
 
 // ---------- Semana concluída ----------
@@ -113,12 +113,12 @@ const DIVISION_SHORT: Record<string, string> = { brasileirao: "Série A", serie_
 export function buildFriendly(career: Career, teamById: (id: string | number) => Team): FriendlyModel | null {
   const cal = career.calendar;
   const week = cal?.weeks?.[cal.idx];
-  if (!cal || !week || week.r || career.currentRound > 38) return null;
+  if (!cal || !week || week.r || career.currentRound > roundsOf(career)) return null;
   const fr = (cal.friendlies || []).find((f) => f.wi === cal.idx && !f.played);
   if (!fr || !fr.invites?.length) return null;
   const divOf = (id: string) => {
     for (const [comp, teams] of Object.entries(career.divisionTeams || {})) {
-      if (teams.some((t) => String(t.id) === id)) return DIVISION_SHORT[comp] || COMPETITION_NAME[comp] || null;
+      if (teams.some((t) => String(t.id) === id)) return DIVISION_SHORT[comp] || competitionName(career, comp) || null;
     }
     return null;
   };
@@ -140,7 +140,7 @@ export interface SkipInfo { weeks: number; friendlies: number }
 // os que aconteceriam (pré-temporada, ou de julho com convite aceito).
 export function skipInfo(career: Career): SkipInfo | null {
   const cal = career.calendar;
-  if (!cal || career.currentRound > 38) return null;
+  if (!cal || career.currentRound > roundsOf(career)) return null;
   const w0 = cal.weeks[cal.idx];
   if (!w0 || w0.r) return null;
   let weeks = 0, friendlies = 0;
@@ -168,7 +168,7 @@ export function buildNews(career: Career): NewsModel {
     key: `n${i}`, title: n.texto, mine: !!n.mine,
     meta: [NEWS_TAG[n.type || "generico"] || "Rodada", n.round != null ? `Rodada ${n.round}` : null, n.seasonYear != null ? `Temporada ${n.seasonYear}` : null].filter(Boolean).join(" · "),
   }));
-  const ended = career.currentRound > 38;
+  const ended = career.currentRound > roundsOf(career);
   return { sub: `${career.seasonYear} · ${career.clubName} · ${ended ? "Temporada encerrada" : "Temporada em andamento"}`, squad, items };
 }
 

@@ -16,7 +16,7 @@ export interface Team {
 export interface Fixture { home: string | number; away: string | number }
 export interface StandingRow { id: string | number; j: number; v: number; e: number; d: number; gp: number; gc: number; sg: number; pts: number }
 
-export interface CalendarWeek { d: string; p: "ferias" | "pre" | "temporada" | "pausa"; r: number | null; c?: number }
+export interface CalendarWeek { d: string; p: "ferias" | "pre" | "temporada" | "pausa"; r: number | null; c?: number; a?: number; j?: 0 | 1 } // a, j: ano e janela (save do mundo)
 export interface Friendly { wi: number; invites?: (string | number)[]; optional?: boolean; opp?: string | number | null; played?: boolean; result?: { gh: number; ga: number } | null }
 
 export interface NewsItem { type?: string; mine?: boolean; texto: string; round?: number; seasonYear?: number }
@@ -123,9 +123,13 @@ export interface Career {
   calendar?: { year: number; idx: number; weeks: CalendarWeek[]; friendlies?: Friendly[] };
   divisionTeams?: Record<string, Team[]>;
   serieDPool?: Team[];
+  // MUNDO-001 (M10c): save do mundo (rodadas da liga, nomes e divisões do país).
+  rodadasLiga?: number;
+  nomesDasLigas?: Record<string, string>;
+  divisoes?: string[];
   // MUNDO-001: clubes de fora no save (M8) e copas continentais (M9).
   exterior?: { clubes: Record<string, Team> };
-  copas?: { conmebol?: { pendente?: ContinentalPending | null }; uefa?: { pendente?: ContinentalPending | null } };
+  copas?: { conmebol?: { pendente?: ContinentalPending | null; edicao?: unknown; historico?: unknown[] }; uefa?: { pendente?: ContinentalPending | null; edicao?: unknown; historico?: unknown[] } };
   notifications?: import("./week.ts").Notice[];
 }
 

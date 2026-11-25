@@ -15,3 +15,6 @@ export function jogoContinentalPendente(CAREER: any): any;
 export function prepararJogoContinental(CAREER: any, buscar: (url: string) => Promise<any>): Promise<{ ok: boolean; motivo?: string; jogo?: any }>;
 export function registrarJogoContinental(CAREER: any, jogoId: string, placar: { gh: number; ga: number }): any;
 export const AJUSTE_FICTICIO: number;
+export function ligasDoMundo(): Promise<{ paises: any[] } | null>;
+export function clubesDaLigaDoMundo(liga: string): Promise<{ id: string; nome: string; sigla: string | null; escudo: string | null; cidade: string | null }[] | null>;
+export function novaCarreiraNoMundo(liga: string, clubId: string, buscar: (url: string) => Promise<any>): Promise<{ ok: boolean; motivo?: string }>;

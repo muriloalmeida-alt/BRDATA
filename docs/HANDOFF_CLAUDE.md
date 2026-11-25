@@ -13,9 +13,9 @@ MUNDO-001 — Ligas da Europa e da América do Sul, em paralelo, com continentai
 
 Status: M1 a M9 APROVADAS e mescladas (Murilo: #154 mesclado por ele;
 #155 a #157 com "Vamos fazer os merges pendentes?", 24/11/2026; #158 com
-"158 aprovado" e #159 com "Aprovado", 25/11/2026). M10a aprovada e
-mesclada (#160, "Aprovado", 25/11/2026). M10b feita, em revisão (branch
-`claude/mundo-m10`).
+"158 aprovado" e #159 com "Aprovado", 25/11/2026). M10a e M10b
+aprovadas e mescladas (#160 e #161, "Aprovado", 25/11/2026). M10c em
+implementação (branch `claude/mundo-m10c`).
 - Etapas M1 a M6a: PR #154 (suíte completa 191/191), mesclado.
 - M6b, passos 1 a 4: PR #155, empilhado sobre o #154 (suíte completa
   191/192; a falha, instável e sem relação com o mundo, está no PR).
@@ -114,6 +114,53 @@ Limites (propostas para o Murilo):
    meio da temporada do destino. Ideia para depois: a proposta vale "a
    partir da próxima temporada" do destino, com o técnico terminando a sua.
 2. O Brasil como destino de um técnico que está fora dele.
+
+Relatório da M10c (partes 1 e 2), novo save no mundo e tela das copas (25/11/2026)
+
+A M10c ficou em três partes:
+- 1: o novo save no mundo e a v2 sem supor o Brasil;
+- 2: a tela das copas continentais;
+- 3: ligas do mundo, calendário com mais de um compromisso por semana e
+  filtros do mercado.
+
+Parte 1, novo save no mundo (MUN-14):
+- Motor:
+  - `competicoesDoMundo` devolve os 10 países com as 2 divisões (null sem
+    o mundo);
+  - `escolherCompeticao` de uma liga do mundo devolve os clubes do índice
+    (carrega o índice se a página foi recarregada);
+  - `criarCarreira` cria a carreira no país e grava;
+  - o save guarda os nomes das ligas (`nomesDasLigas`).
+- v2, seletor do novo save:
+  - com o mundo ligado, o país vem antes (Brasil primeiro, em chips com
+    rolagem horizontal), depois a divisão e o clube;
+  - sem o mundo, só o Brasil, como sempre.
+- v2 sem supor o Brasil:
+  - rodadas da liga (`rodadasLiga`: 32 na Argentina, 46 na Championship) no
+    Início, Temporada, Tabela, Semana, Calendário e Mais;
+  - nome das ligas do save;
+  - seletor de divisão da tabela com as 2 divisões do país;
+  - ano de cada semana no dia do jogo;
+  - sem a Copa do Brasil na aba Jogos do save do mundo.
+
+Parte 2, tela das copas continentais (MUN-15):
+- Motor (`copasvista.js`, comando `copasContinentais`): a edição em
+  andamento de cada confederação e os campeões anteriores. Por copa, as
+  fases criadas:
+  - grupos: tabela por grupo;
+  - fase de liga: tabela com as faixas de oitavas, playoff e eliminados;
+  - mata-mata: confrontos com ida, volta, agregado e quem passou;
+  - o clube do técnico marcado.
+- v2, `/carreira/continental` (aba Jogos → "Copas continentais"):
+  - seletor de copa (★ onde o técnico joga) e de fase;
+  - tabelas, confrontos e edições anteriores, pelo DS.
+
+Testes:
+- `test_motor_novo_save_mundo` 3/3: sem o mundo; Argentina pela ponte
+  (32 rodadas, nomes, moeda, gravação); mundo e depois Brasil;
+- `test_motor_copas_uefa` 6/6 (novo: a visão das copas);
+- v2 147/147 (novos: domínio das copas continentais, Início e Partida);
+  typecheck.
 
 Relatório da M10b, as copas da UEFA no save (25/11/2026)
 

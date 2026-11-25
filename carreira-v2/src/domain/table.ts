@@ -3,7 +3,7 @@
 // divisionStandingsFor, wireTabelaDivisionSwitch, renderCopa). Só leitura.
 import type { Career, StandingRow, Team } from "./types.ts";
 import { sortRows as motorSortRows } from "../../../public/js/motor/tabela.js";
-import { COMPETITION_NAME, matchDay } from "./home.ts";
+import { competitionName, matchDay, roundsOf } from "./home.ts";
 import { RELEGATION_N } from "../../../public/js/motor/temporada.js";
 
 // Tamanho das zonas de acesso e rebaixamento: o mesmo do motor
@@ -14,6 +14,12 @@ export const DIVISIONS = [
   { id: "serie_b", short: "Série B" },
   { id: "serie_c", short: "Série C" },
 ] as const;
+
+// As divisões do save: as do Brasil ou, no save do mundo (M10c), as 2 do país.
+export function divisionsOf(career: Career): { id: string; short: string }[] {
+  if (career.divisoes && career.divisoes.length) return career.divisoes.map((id) => ({ id, short: career.nomesDasLigas?.[id] || id }));
+  return DIVISIONS.map((d) => ({ id: d.id, short: d.short }));
+}
 
 export type Zone = "top" | "mid" | "reb" | null;
 export interface TableRow { pos: number; team: Team; pts: number; j: number; zone: Zone; mine: boolean }
@@ -59,7 +65,8 @@ export function standingsFor(career: Career, compId: string): Record<string, Sta
 
 export function buildTable(career: Career, teamById: (id: string | number) => Team, division?: string | null): TableModel {
   const own = career.competitionId || "brasileirao";
-  const compId = career.otherDivisions && division && DIVISIONS.some((d) => d.id === division) ? division : own;
+  const divs = divisionsOf(career);
+  const compId = career.otherDivisions && division && divs.some((d) => d.id === division) ? division : own;
   const me = String(career.clubId);
   const sorted = sortRows(Object.values(standingsFor(career, compId)));
   const rows: TableRow[] = sorted.map((r, i) => ({
@@ -69,7 +76,7 @@ export function buildTable(career: Career, teamById: (id: string | number) => Te
   const myIdx = rows.findIndex((r) => r.mine);
   const anchor = myIdx >= 0 ? myIdx : 0;
   const start = Math.max(0, Math.min(anchor - 3, rows.length - 6));
-  const lastRound = Math.max(0, Math.min(career.currentRound - 1, 38));
+  const lastRound = Math.max(0, Math.min(career.currentRound - 1, roundsOf(career)));
   const results = compId === own && lastRound > 0
     ? (career.resultsByRound?.[lastRound] || []).map((r) => ({
       home: teamById(r.home), away: teamById(r.away), gh: r.gh, ga: r.ga,
@@ -77,7 +84,7 @@ export function buildTable(career: Career, teamById: (id: string | number) => Te
     })).sort((a, b) => Number(b.mine) - Number(a.mine))
     : [];
   const round = career.currentRound;
-  const fixtures = compId === own && round >= 1 && round <= 38 ? career.schedule?.[round] || [] : [];
+  const fixtures = compId === own && round >= 1 && round <= roundsOf(career) ? career.schedule?.[round] || [] : [];
   const upcoming = fixtures.length
     ? {
       round, date: matchDay(career, round),
@@ -87,10 +94,10 @@ export function buildTable(career: Career, teamById: (id: string | number) => Te
     : null;
   return {
     division: compId,
-    divisionName: COMPETITION_NAME[compId] || "Competição",
+    divisionName: competitionName(career, compId),
     isOwnDivision: compId === own,
     ownDivision: own,
-    switcher: career.otherDivisions ? DIVISIONS.map((d) => ({ id: d.id, label: d.short })) : null,
+    switcher: career.otherDivisions ? divs.map((d) => ({ id: d.id, label: d.short })) : null,
     lastRound,
     rows,
     excerpt: rows.slice(start, start + 6),

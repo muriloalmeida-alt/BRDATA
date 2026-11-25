@@ -1,3 +1,4 @@
+import { continentalSummary } from "./domain/continental.ts";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { CareerGateway, ClubCatalogGateway, HttpError, SessionGateway, type SessionUser } from "./adapters/gateways.ts";
 import { consumeInvite } from "./adapters/invite.ts";
@@ -46,7 +47,7 @@ import { TacticsAxes, TacticsHub, TacticsMarking, TacticsSchemes, TacticsSectors
 import { Evolution, TrainingCondition, TrainingWeek } from "./screens/Training.tsx";
 import { PrepGateway } from "./adapters/prep.ts";
 import { ClubRoster, Compare, Contracts, Ficha, PressStandalone, Talk } from "./screens/SquadPlus.tsx";
-import { AwardsScreen, CupScreen, H2HScreen, StatsScreen } from "./screens/Games.tsx";
+import { AwardsScreen, CupScreen, ContinentalScreen, H2HScreen, StatsScreen } from "./screens/Games.tsx";
 import { AchievementsScreen, BudgetScreen, WageCapScreen, EditProfileScreen, HelpScreen, PurchaseHistoryScreen, RankingScreen, SavesScreen, SettingsScreen, ShopScreen } from "./screens/More.tsx";
 import { BaseScreen, HireScoutScreen, LedgerScreen, MissionScreen, ProspectsScreen, ScoutsScreen, SponsorsScreen, StadiumScreen, StaffScreen, SuggestionsScreen } from "./screens/Club.tsx";
 import { FreeAgents, LoanListings, History as MarketHistory, Loan, Market, MyOffers, MySales, Negotiation, PendingOffer, Propose, SaleOffers, Target } from "./screens/Market.tsx";
@@ -261,7 +262,7 @@ export function App() {
   if (loc.path === `${BASE}/recompensa`) return <DailyReward onClaimed={refreshAfterReward} />;
   if (loc.path === `${BASE}/boas-vindas`) return <Tutorial onDone={() => continueAuto({ user: { onboardingSeen: true } })} />;
   // P7 — telas de entrada.
-  if (loc.path === `${BASE}/jogos`) return <GamesHub home={home} cup={buildCup(data.career, data.teamById)} />;
+  if (loc.path === `${BASE}/jogos`) return <GamesHub home={home} cup={buildCup(data.career, data.teamById)} continental={continentalSummary(data.career)} worldSave={!!(data.career.divisoes && data.career.divisoes.length)} />;
   if (loc.path === `${BASE}/clube`) return <ClubHub home={home} board={buildBoard(data.career)} finance={buildFinance(data.career)} />;
   if (loc.path === `${BASE}/mais`) return <MoreMenu onLogout={async () => { await SessionGateway.logout(); engine.reset(); navigate(`${BASE}/`, { replace: true }); load(); }} />;
   // Assistente de início: a tela do passo + a barra "Passo N de 4".
@@ -296,6 +297,7 @@ export function App() {
     const q = new URLSearchParams(loc.search);
     const c = data.career, tb = data.teamById;
     if (loc.path === `${BASE}/copa`) return <CupScreen career={c} teamById={tb} phase={q.get("fase")} />;
+    if (loc.path === `${BASE}/continental`) return <ContinentalScreen copa={q.get("copa")} fase={q.get("fase")} />;
     if (loc.path === `${BASE}/estatisticas`) return <StatsScreen career={c} teamById={tb} scope={q.get("escopo") === "campeonato" ? "campeonato" : "time"} period={q.get("periodo") === "historico" ? "historico" : "temporada"} />;
     if (loc.path === `${BASE}/retrospecto`) return <H2HScreen key={q.get("id") || ""} career={c} teamById={tb} oppId={q.get("id") || ""} back={q.get("volta") || `${BASE}/pre-jogo`} />;
     if (loc.path === `${BASE}/premiacoes`) return <AwardsScreen career={c} teamById={tb} year={q.get("ano") ? Number(q.get("ano")) : null} />;

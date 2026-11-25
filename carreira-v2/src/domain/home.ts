@@ -13,6 +13,14 @@ export const COMPETITION_NAME: Record<string, string> = {
 export const MONTH = ["JAN", "FEV", "MAR", "ABR", "MAI", "JUN", "JUL", "AGO", "SET", "OUT", "NOV", "DEZ"];
 const PHASE: Record<CalendarWeek["p"], string> = { ferias: "Férias", pre: "Pré-temporada", temporada: "Temporada", pausa: "Pausa de julho" };
 export const ROUNDS = 38;
+// MUNDO-001 (M10c): saves do mundo têm o número de rodadas da liga
+// (rodadasLiga: 32 na Argentina, 46 na Championship...) e o nome das ligas
+// no save (nomesDasLigas); o Brasil continua com 38 e os nomes acima.
+export function roundsOf(career: Career): number { return career.rodadasLiga || ROUNDS; }
+export function competitionName(career: Career, id?: string | null): string {
+  const c = id || career.competitionId || "brasileirao";
+  return COMPETITION_NAME[c] || career.nomesDasLigas?.[c] || "Competição";
+}
 
 export type FormResult = "V" | "E" | "D";
 export type CtaAction = "preparar" | "avancar-semana" | "amistoso" | "proxima-temporada" | "continental";
@@ -57,7 +65,7 @@ export function matchDay(career: Career, round: number): string | null {
   const w = cal?.weeks?.find((x) => x.r === round);
   if (!cal || !w) return null;
   const [m, d] = w.d.split("-").map(Number);
-  const dt = new Date(Date.UTC(cal.year, m - 1, d + 6));
+  const dt = new Date(Date.UTC(w.a || cal.year, m - 1, d + 6));
   return `${String(dt.getUTCDate()).padStart(2, "0")} ${MONTH[dt.getUTCMonth()]}`;
 }
 
@@ -65,7 +73,7 @@ export function buildHome(career: Career, teamById: (id: string | number) => Tea
   const me = String(career.clubId);
   const crest = teamById(me);
   const club = { name: career.clubName, short: career.clubShort || career.clubName, crest, season: career.seasonYear };
-  const competition = COMPETITION_NAME[career.competitionId || "brasileirao"] || "Competição";
+  const competition = competitionName(career);
   const round = career.currentRound;
   const cal = career.calendar;
   const week = cal ? cal.weeks[cal.idx] : null;
@@ -74,7 +82,7 @@ export function buildHome(career: Career, teamById: (id: string | number) => Tea
   let next: HomeModel["next"] = null;
   let cta: HomeModel["cta"] = { label: "Preparar partida", action: "preparar" };
   let optionalFriendly: HomeModel["optionalFriendly"] = null;
-  if (round > ROUNDS) {
+  if (round > roundsOf(career)) {
     state = "ended";
     cta = { label: "Próxima temporada", action: "proxima-temporada" };
   } else {

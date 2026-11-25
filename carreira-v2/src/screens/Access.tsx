@@ -104,19 +104,32 @@ function LoadError({ retry }: { retry: () => void }) {
   return <div className="state" role="alert">Não foi possível carregar.<button className="state-btn" onClick={retry}>Tentar novamente</button></div>;
 }
 
-// Competição (CAP01-T03).
+// Competição (CAP01-T03). MUNDO-001 (M10c, MUN-14): com o mundo ligado, o
+// país vem antes (Brasil primeiro), depois a divisão; sem ele, só o Brasil,
+// como sempre.
 export function CompetitionScreen() {
-  const [st, retry] = useLoad(() => AccessGateway.competitions(), []);
+  const [st, retry] = useLoad(() => AccessGateway.countries(), []);
   const [sel, setSel] = useState<string | null>(null);
+  const [country, setCountry] = useState("BR");
   if (st.kind === "loading") return <Splash />;
   if (st.kind === "error") return <LoadError retry={retry} />;
-  const list = st.v;
+  const countries = st.v;
+  const current = countries.find((c) => c.codigo === country) || countries[0];
+  const list = current.competicoes;
   const chosen = list.find((c) => c.id === sel) || null;
   return (
     <div className="ac ac--stadium">
       <header className="ac-head ac-head--center"><Wordmark /></header>
       <h1 className="ac-title ac-title--center">Onde começa sua história?</h1>
-      <p className="ac-sub ac-sub--center">Escolha a competição.</p>
+      {countries.length > 1 && (
+        <div className="ac-countries" role="radiogroup" aria-label="País">
+          {countries.map((c) => (
+            <button key={c.codigo} type="button" role="radio" aria-checked={c.codigo === current.codigo} className={`ac-chip${c.codigo === current.codigo ? " is-on" : ""}`}
+              onClick={() => { setCountry(c.codigo); setSel(null); }}>{c.nome}</button>
+          ))}
+        </div>
+      )}
+      <p className="ac-sub ac-sub--center">{countries.length > 1 ? `Escolha a divisão (${current.nome}).` : "Escolha a competição."}</p>
       <div className="ac-list" role="radiogroup" aria-label="Competição">
         {list.map((c) => (
           <button key={c.id} type="button" role="radio" aria-checked={c.id === sel} className={`ac-opt${c.id === sel ? " is-on" : ""}`} onClick={() => setSel(c.id)}>
@@ -140,7 +153,7 @@ const asTeam = (c: ClubOption): Team => ({ id: c.id, name: c.nome, short: c.sigl
 // Clube (CAP01-T04).
 export function ClubScreen({ competitionId }: { competitionId: string }) {
   const [st, retry] = useLoad(async () => {
-    const [comps, r] = await Promise.all([AccessGateway.competitions(), AccessGateway.chooseCompetition(competitionId)]);
+    const [comps, r] = await Promise.all([AccessGateway.allCompetitions(), AccessGateway.chooseCompetition(competitionId)]);
     if (!r.ok) throw new Error(r.motivo || "falha");
     return { comp: comps.find((c) => c.id === competitionId)!, clubes: r.clubes };
   }, [competitionId]);
@@ -181,7 +194,7 @@ export function ClubScreen({ competitionId }: { competitionId: string }) {
 export function SetupScreen({ competitionId, clubId, coachName, onCreated }: { competitionId: string; clubId: string; coachName: string; onCreated: () => Promise<void> }) {
   const [st, retry] = useLoad(async () => {
     if (picked && picked.competition.id === competitionId && picked.club.id === clubId) return picked;
-    const [comps, r] = await Promise.all([AccessGateway.competitions(), AccessGateway.chooseCompetition(competitionId)]);
+    const [comps, r] = await Promise.all([AccessGateway.allCompetitions(), AccessGateway.chooseCompetition(competitionId)]);
     const club = r.ok ? r.clubes.find((c) => c.id === clubId) : null;
     const competition = comps.find((c) => c.id === competitionId);
     if (!club || !competition) throw new Error("clube");

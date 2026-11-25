@@ -54,3 +54,10 @@
 /* SERIED-001: edições anteriores da Copa */
 .cp-ed + .cp-ed { margin-top: 16px; }
 .cp-ed .row-title { margin: 0 0 4px; }
+/* MUNDO-001 (M10c): copas continentais. */
+.ct-club { display: inline-flex; align-items: center; gap: 8px; min-width: 0; }
+.ct-club span:last-child { overflow-wrap: anywhere; }
+.ct-pos { min-width: 20px; color: var(--bd-muted); font-variant-numeric: tabular-nums; }
+.ct-band { font-size: 13px; color: var(--bd-muted); }
+.ct-band--oitavas { color: var(--bd-accent); }
+.ct-duel + .ct-duel { margin-top: 4px; }

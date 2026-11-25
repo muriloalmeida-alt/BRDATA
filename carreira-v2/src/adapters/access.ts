@@ -15,8 +15,25 @@ async function run<T>(name: string, ...args: unknown[]): Promise<T> {
   return await s.run<T | Promise<T>>(name, ...args);
 }
 
+// MUNDO-001 (M10c, MUN-14): países e divisões do mundo (null: mundo desligado).
+export interface WorldLeague { id: string; nome: string; divisao: number; clubes: number; nivel: number | null; temporada: number | null }
+export interface WorldCountry { codigo: string; nome: string; regiao: string; moeda: string; ligas: WorldLeague[] }
+// Competição no seletor, com o país (o Brasil primeiro).
+export interface CountryOption { codigo: string; nome: string; competicoes: CompetitionOption[] }
+
 export const AccessGateway = {
   competitions: () => run<CompetitionOption[]>("competicoes"),
+  worldCompetitions: () => run<{ paises: WorldCountry[] } | null>("competicoesDoMundo").catch(() => null),
+  // Brasil + os países do mundo, cada um com as suas divisões.
+  async countries(): Promise<CountryOption[]> {
+    const [br, mundo] = await Promise.all([AccessGateway.competitions(), AccessGateway.worldCompetitions()]);
+    const out: CountryOption[] = [{ codigo: "BR", nome: "Brasil", competicoes: br }];
+    for (const p of mundo?.paises || []) {
+      out.push({ codigo: p.codigo, nome: p.nome, competicoes: p.ligas.map((l) => ({ id: l.id, nome: l.nome, sub: `${l.divisao}ª divisão · ${l.clubes} clubes` })) });
+    }
+    return out;
+  },
+  async allCompetitions(): Promise<CompetitionOption[]> { return (await AccessGateway.countries()).flatMap((c) => c.competicoes); },
   chooseCompetition: (id: string) => run<Result<{ competicao: string; clubes: ClubOption[] }>>("escolherCompeticao", id),
   createCareer: (clubId: string) => run<Result>("criarCarreira", clubId),
   dailyReward: () => run<DailyRewardState>("recompensa"),

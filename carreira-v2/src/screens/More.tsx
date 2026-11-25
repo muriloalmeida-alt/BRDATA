@@ -8,7 +8,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { MoreGateway, PushGateway, pushSupported, type Account, type Achievement, type BoostItem, type Package, type PurchaseTx, type RankEntry } from "../adapters/more.ts";
 import type { Res } from "../adapters/prep.ts";
-import { moneyShort } from "../domain/home.ts";
+import { moneyShort, roundsOf } from "../domain/home.ts";
 import type { Career } from "../domain/types.ts";
 import { wageCapPreview, type WageCapInfo, type WageCapMode } from "../domain/wagecap.ts";
 import { Sheet } from "../ui/dialog.tsx";
@@ -475,8 +475,8 @@ function BackupSection({ career, local }: { career: Career; local: boolean }) {
       <Sheet alert labelledBy="sv-rt" describedBy="sv-rd" onDismiss={busy ? undefined : () => setRep(null)}>
         <h2 id="sv-rt" className="sheet-title">{rep.from === "aparelho" ? "Substituir a cópia da conta?" : "Substituir a carreira deste aparelho?"}</h2>
         {rep.from === "aparelho"
-          ? <p id="sv-rd" className="wk-sheet-text">A cópia da conta, que avançou em outro aparelho, passa a ser a deste ({career.clubName}, rodada {Math.min(career.currentRound, 38)}). O progresso feito no outro aparelho deixa de estar na conta.</p>
-          : <p id="sv-rd" className="wk-sheet-text">{rep.from === "arquivo" ? "Do arquivo" : "Da sua conta"}: {rep.clube || "carreira"}{rep.temporada ? `, temporada ${rep.temporada}` : ""}{rep.rodada ? `, rodada ${Math.min(rep.rodada, 38)}` : ""}. A carreira atual ({career.clubName}, rodada {Math.min(career.currentRound, 38)}) deixa de valer neste aparelho. Exporte antes se quiser guardá-la.</p>}
+          ? <p id="sv-rd" className="wk-sheet-text">A cópia da conta, que avançou em outro aparelho, passa a ser a deste ({career.clubName}, rodada {Math.min(career.currentRound, roundsOf(career))}). O progresso feito no outro aparelho deixa de estar na conta.</p>
+          : <p id="sv-rd" className="wk-sheet-text">{rep.from === "arquivo" ? "Do arquivo" : "Da sua conta"}: {rep.clube || "carreira"}{rep.temporada ? `, temporada ${rep.temporada}` : ""}{rep.rodada ? `, rodada ${Math.min(rep.rodada, 38)}` : ""}. A carreira atual ({career.clubName}, rodada {Math.min(career.currentRound, roundsOf(career))}) deixa de valer neste aparelho. Exporte antes se quiser guardá-la.</p>}
         <button type="button" className="cta" data-autofocus disabled={busy} onClick={() => setRep(null)}>Manter a atual</button>
         <button type="button" className="text-btn pr-danger-text" disabled={busy} onClick={confirmar}>{busy ? "…" : "Substituir"}</button>
       </Sheet>
@@ -504,7 +504,7 @@ export function SavesScreen({ career, local = false }: { career: Career; local?:
       <span className="tb-bar" aria-hidden="true" />
       <p className="screen-sub">Uma carreira por conta, salva a cada ação neste aparelho.</p>
       <section className="wk-sec" aria-labelledby="sv-c"><h2 className="kicker-caps" id="sv-c">Carreira atual</h2>
-        <Rows rows={[{ label: "Clube", value: career.clubName }, { label: "Temporada", value: String(career.seasonYear) }, { label: "Rodada", value: String(Math.min(career.currentRound, 38)) },
+        <Rows rows={[{ label: "Clube", value: career.clubName }, { label: "Temporada", value: String(career.seasonYear) }, { label: "Rodada", value: String(Math.min(career.currentRound, roundsOf(career))) },
           { label: "Caixa", value: moneyShort(career.finances?.cash || 0) }, ...(last ? [{ label: "Última gravação", value: `${last.toLocaleDateString("pt-BR")} ${last.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}` }] : [])]} />
       </section>
       <BackupSection career={career} local={local} />

@@ -95,7 +95,7 @@ export function Match({ start, sub, outId, competitionId, competitionName, teamB
           if (doneReads.current >= 2) { s.discard(); onFinished(); navigate(`${BASE}/`, { replace: true }); }
           return;
         }
-        const m = buildMatch(snap, competitionId);
+        const m = buildMatch(snap, competitionId, competitionName);
         liveRef.current = !!m && (m.phase === "jogando" || m.phase === "pausada" || m.phase === "intervalo");
         guardRef.current = liveRef.current || (!!m && m.phase === "encerrada" && !postMatchRef.current);
         savedRef.current = m ? m.saved : null;
