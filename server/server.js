@@ -428,13 +428,13 @@ function resolveCompetition(req, searchParams, opts = {}) {
 // Lê o corpo de um POST (JSON ou form-urlencoded, o Mercado Pago pode
 // mandar qualquer um dos dois no webhook dependendo da configuração).
 // Limite de 1MB — esses endpoints só recebem payloads pequenos.
-function readBody(req) {
+function readBody(req, max = 1024 * 1024) {
   return new Promise((resolve, reject) => {
     let size = 0;
     const chunks = [];
     req.on("data", (chunk) => {
       size += chunk.length;
-      if (size > 1024 * 1024) { reject(new Error("corpo da requisição grande demais")); req.destroy(); return; }
+      if (size > max) { reject(new Error("corpo da requisição grande demais")); req.destroy(); return; }
       chunks.push(chunk);
     });
     req.on("end", () => {
@@ -460,14 +460,20 @@ function readBody(req) {
 // D6 (decisão do Murilo 20/11, "Comprimir o envio"): o corpo do PUT
 // /api/career pode vir em gzip (Content-Encoding: gzip), ~10x menor. Limites:
 // 1 MB no fio (como sempre) e 8 MB depois de abrir (contra "zip bomb"; o
-// careerStore ainda limita o comprimido em 768 KB). Sem gzip, o mesmo de
-// sempre (readBody). Erro de tamanho vira 413; gzip ou JSON quebrado, 400.
+// careerStore ainda limita o comprimido em 768 KB). Sem gzip, readBody com o
+// limite do save cru (CAREER_BODY_RAW_MAX). Erro de tamanho vira 413; gzip ou JSON quebrado, 400.
 const CAREER_BODY_WIRE_MAX = 1024 * 1024;
 const CAREER_BODY_OPEN_MAX = 8 * 1024 * 1024;
+// MUNDO-001 (M11, 25/11/2026): o save do mundo em JSON cru (navegador sem
+// CompressionStream: Safari < 16.4, Firefox < 113) passa de 1 MB (pior caso
+// medido: ~1,2 MB, Primera Nacional argentina, 66 elencos no save). Sem gzip,
+// o PUT da carreira aceita até 3 MB; o careerStore continua limitando o
+// comprimido em 768 KB.
+const CAREER_BODY_RAW_MAX = 3 * 1024 * 1024;
 function readCareerBody(req) {
   const gz = /\bgzip\b/i.test(req.headers["content-encoding"] || "");
   if (!gz) {
-    return readBody(req).catch((err) => { err.status = 413; throw err; });
+    return readBody(req, CAREER_BODY_RAW_MAX).catch((err) => { err.status = 413; throw err; });
   }
   return new Promise((resolve, reject) => {
     let size = 0;

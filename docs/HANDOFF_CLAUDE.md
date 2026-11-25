@@ -15,8 +15,9 @@ Status: M1 a M9 APROVADAS e mescladas (Murilo: #154 mesclado por ele;
 #155 a #157 com "Vamos fazer os merges pendentes?", 24/11/2026; #158 com
 "158 aprovado" e #159 com "Aprovado", 25/11/2026). M10a e M10b
 aprovadas e mescladas (#160 e #161, "Aprovado", 25/11/2026). M10c aprovada e
-mesclada (#162 e #163). M10d (liberação) em implementação (branch
-`claude/mundo-m10d`).
+mesclada (#162 e #163). M10d (liberação) aprovada e mesclada (#164, "Faça o merge completo com
+a main", 25/11/2026). M11 (validação final) feita, mesclada pelo mesmo
+pedido.
 - Etapas M1 a M6a: PR #154 (suíte completa 191/191), mesclado.
 - M6b, passos 1 a 4: PR #155, empilhado sobre o #154 (suíte completa
   191/192; a falha, instável e sem relação com o mundo, está no PR).
@@ -115,6 +116,46 @@ Limites (propostas para o Murilo):
    meio da temporada do destino. Ideia para depois: a proposta vale "a
    partir da próxima temporada" do destino, com o técnico terminando a sua.
 2. O Brasil como destino de um técnico que está fora dele.
+
+Relatório da M11, validação final (25/11/2026)
+
+O que foi validado:
+1. Teste rápido das 20 ligas (`test_mundo_validacao_europa` e
+   `_america`, 10/10 cada, ~7 s por região).
+   - Para cada liga: carreira nova no clube mais forte e a temporada
+     inteira pelo relógio (mundo leve, CONMEBOL e UEFA).
+   - Resultado:
+
+     | Medida | Faixa |
+     |---|---|
+     | Semana do mundo | 8–15 ms |
+     | Criação da carreira | 26–208 ms |
+     | Save (JSON) | 475–953 KB |
+     | Save (gzip) | 57–95 KB |
+     | Erros nas copas | nenhum |
+
+2. Pior caso jogado de verdade (`test_mundo_validacao_temporadas`, 3/3):
+   - Primera Nacional argentina (66 elencos no save, o maior país), duas
+     temporadas inteiras pela ponte e duas viradas;
+   - 159 gravações; maior save 1.199 KB de JSON e 142 KB comprimido;
+   - depois das viradas: 1.046 KB e depois 1.048 KB (estável).
+3. Limite do envio sem compressão:
+   - o navegador sem CompressionStream (Safari < 16.4, Firefox < 113)
+     manda o save em JSON cru, e o pior caso passava de 1 MB. O jogador não
+     conseguiria salvar;
+   - o PUT da carreira sem gzip agora aceita até 3 MB (`server/server.js`,
+     `CAREER_BODY_RAW_MAX`);
+   - o careerStore continua com o limite de 768 KB comprimido; as outras
+     rotas seguem com 1 MB;
+   - teste e2e `test_save_mundo_cru` (3/3).
+4. Suíte completa com o mundo ligado (na M10d): 198/198.
+
+Resumo: o mundo cabe nos limites com folga no comprimido (142 de 768 KB) e
+roda em ~10 ms por semana no Node. O ponto de atenção é o JSON cru (1,2
+MB), que pesa no armazenamento do aparelho e no envio sem gzip: hoje 79%
+dele são os elencos da CPU (`leagueSquads`). Se algum dia for preciso
+reduzir, o caminho é guardar os elencos do pacote como diferença (planejado
+na M6, "delta por atleta").
 
 Relatório da M10d, liberação (25/11/2026)
 
