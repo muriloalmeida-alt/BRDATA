@@ -54,8 +54,9 @@ export function computeContractFields(overall, age, potential, rng, liveSeason, 
   if (escala) {
     const atleta = { overall, age, potential, group: grupo };
     const v = Math.max(1000, Math.round((typeof escala.valor === "function" ? escala.valor(value, atleta) : value * escala.valor) / 1000) * 1000);
-    const c = { wage: Math.max(100, Math.round(ap(wage, escala.salario) / 100) * 100), value: v, contractUntil, escalaEco: 1 };
-    if (escala.fatorValor) { c.fatorValor = Math.round(escala.fatorValor(atleta) * 1e6) / 1e6; c.valorInicial = v; }
+    const c = { wage: Math.max(100, Math.round(ap(wage, escala.salario) / 100) * 100), value: v, contractUntil };
+    // v4+: o fator individual marca o contrato na escala (sem o escalaEco).
+    if (escala.fatorValor) { c.fatorValor = Math.round(escala.fatorValor(atleta) * 1e4) / 1e4; c.valorInicial = v; } else c.escalaEco = 1;
     return c;
   }
   return { wage, value, contractUntil };

@@ -24,7 +24,7 @@ import { fairWageFor } from "./temporada.js";
 import * as economia from "./economia.js";
 import { fmtBRL, abbreviateName } from "./texto.js";
 import { pushNotification } from "./registro.js";
-import { ambiente, avisar, leagueSquadFor, marketClub, pushTransferLog, finalizeIncomingPurchase, maybeSpawnRivalOffer, calendarOn, CALENDAR_WINDOW_PHASES, ganchos, pickRandomOtherClub, temVagaCpu, entrarNoElencoCpu, moverCaixaCpu, transferScore, financeiroScore, pickWeightedByScore, minSquadSizeFor, SUBPOS_LABEL, subPositionOf } from "./semana.js";
+import { ambiente, avisar, leagueSquadFor, marketClub, pushTransferLog, finalizeIncomingPurchase, maybeSpawnRivalOffer, calendarOn, CALENDAR_WINDOW_PHASES, ganchos, pickRandomOtherClub, temVagaCpu, entrarNoElencoCpu, moverCaixaCpu, transferScore, financeiroScore, pickWeightedByScore, minSquadSizeFor, SUBPOS_LABEL, subPositionOf, estadoFinanceiroDaCpu } from "./semana.js";
 import { wageBill } from "./financas.js";
 
 export const PAPEIS = ["titular", "rotacao", "reserva"];
@@ -120,7 +120,11 @@ export function resolverProposta(o, round) {
     const aVenda = motivosAVendaNoClube(p, o.clubId).length > 0;
     // ECON-001b: demanda (comprador de mercado mais caro paga parte da diferença).
     const demanda = economia.fatorDeDemanda(carreiraAtual(), carreiraAtual().clubId, o.clubId);
-    const r = mercado.reservaParaProposta(p, marketClub(o.clubId), { baseValue: Math.round(o.marketValue * demanda / 1000) * 1000, fimDeJanela: fimDeJanela(), aVenda });
+    const CAREER = carreiraAtual();
+    // v5 (Mercado, etapa 2): a pedida pelas faixas do handoff; titular sem
+    // reposição e sem cobertura não é negociado.
+    const r = mercado.reservaParaProposta(p, marketClub(o.clubId), { baseValue: Math.round(o.marketValue * demanda / 1000) * 1000, fimDeJanela: fimDeJanela(), aVenda, pedidaV5: economia.economiaV5(CAREER), seasonYear: CAREER.seasonYear, caixaApertado: caixaApertado(o.clubId) });
+    if (r.recusa) { recusar(o, mercado.motivoDoVendedor(r, o.clubName), "clube", round); return true; }
     const usadas = o.counterRounds || 0;
     // VENDA-DISPONIVEL: à venda, a partir da reserva (90%) o clube aceita.
     let d = aVenda && o.offerValue >= r.reserva ? { action: "accept", value: o.offerValue } : mercado.sellerNegotiationDecision(o.offerValue, r.reserva, rng);
@@ -292,6 +296,13 @@ export function contextoDoAtletaEntreClubes(p, deId, paraId) {
     aVenda: motivosAVendaNoClube(p, deId).length > 0,
   };
 }
+// O vendedor da CPU com o caixa abaixo de 1 mês de folha aceita pedir menos.
+function caixaApertado(clubId) {
+  const CAREER = carreiraAtual();
+  if (!economia.economiaV5(CAREER)) return false;
+  const e = estadoFinanceiroDaCpu(clubId);
+  return e.caixa < e.folha;
+}
 export function negociacaoCpu(p, deId, paraId) {
   const comprador = marketClub(paraId), vendedorSq = leagueSquadFor(deId);
   if (vendedorSq.length <= minSquadSizeFor(deId)) return { ok: false, motivo: "vendedor sem peças" };
@@ -299,7 +310,8 @@ export function negociacaoCpu(p, deId, paraId) {
   const aVenda = motivosAVendaNoClube(p, deId).length > 0;
   // ECON-001b: demanda (comprador de mercado mais caro paga parte da diferença).
   const baseValue = Math.round(p.value * economia.fatorDeDemanda(carreiraAtual(), paraId, deId) / 1000) * 1000;
-  const r = mercado.reservaParaProposta(p, marketClub(deId), { aVenda, baseValue });
+  const r = mercado.reservaParaProposta(p, marketClub(deId), { aVenda, baseValue, pedidaV5: economia.economiaV5(carreiraAtual()), seasonYear: carreiraAtual().seasonYear, caixaApertado: caixaApertado(deId) });
+  if (r.recusa) return { ok: false, motivo: "titular sem reposição" };
   const teto = mercado.buyerHardCap(p, comprador, { baseValue });
   if (r.reserva > teto) return { ok: false, motivo: "acima do teto do comprador", reserva: r.reserva, teto };
   const papel = mercado.papelNoElenco(p, leagueSquadFor(paraId));
@@ -310,7 +322,8 @@ export function negociacaoCpu(p, deId, paraId) {
   if (wageBill(leagueSquadFor(paraId)) + salario > wageCap) return { ok: false, motivo: "folha do comprador" };
   // ECON-001b: a mesma capacidade de compra do técnico (caixa com 1 mês de
   // folha de reserva e espaço de folha), na economia v2.
-  const cap = economia.capacidadeNoJogo(carreiraAtual(), { caixa: cash, folha: wageBill(leagueSquadFor(paraId)), teto: wageCap }, { taxa: r.reserva, parcelas: 1, salarioMensal: salario });
+  const estado = economia.economiaV5(carreiraAtual()) ? estadoFinanceiroDaCpu(paraId) : null;
+  const cap = economia.capacidadeNoJogo(carreiraAtual(), { caixa: cash, folha: wageBill(leagueSquadFor(paraId)), teto: wageCap, estado }, { taxa: r.reserva, parcelas: 1, salarioMensal: salario });
   if (cap && !cap.ok) return { ok: false, motivo: `capacidade: ${cap.motivo}` };
   return { ok: true, preco: r.reserva, salario, papel, aVenda };
 }

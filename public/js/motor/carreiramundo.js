@@ -1014,13 +1014,13 @@ export function ativarEconomiaV2(CAREER, indice) {
   if (!CAREER || CAREER.economia || !E.ECONOMIA_V2.ativa) return false;
   const escalas = {}, ligas = {};
   let base = null;
-  const caixas = {}, receitas = {};
+  const caixas = {}, receitas = {}, resultados = {};
   for (const liga of estado.divisoesDoPais(CAREER)) {
     const r = E.escalasDaDivisao(liga, clubesParaEconomia(CAREER, indice, liga));
     if (!r) continue;
     for (const [id, nivel] of Object.entries(r.escalas)) escalas[id] = [nivel, liga, r.economia.get(id) ? r.economia.get(id).caixaInicial : 0];
     ligas[liga] = r.liga;
-    for (const [id, b] of r.economia) { caixas[id] = b.caixaInicial; receitas[id] = b.receitaAnual; }
+    for (const [id, b] of r.economia) { caixas[id] = b.caixaInicial; receitas[id] = b.receitaAnual; resultados[id] = b.resultadoOperacionalAnual; }
     if (r.economia.has(String(CAREER.clubId))) base = r.economia.get(String(CAREER.clubId));
   }
   if (!base) return false;
@@ -1028,6 +1028,8 @@ export function ativarEconomiaV2(CAREER, indice) {
   // também entre as divisões (atleta de referência: o mediano da 1ª).
   E.ordemNoPais(estado.divisoesDoPais(CAREER), escalas, ligas, receitas);
   CAREER.economia = { versao: E.VERSAO_ECONOMIA, escalas, ligas, clube: null };
+  // v5: receita e resultado anuais de cada clube (a avaliação da CPU).
+  CAREER.economia.receitas = Object.fromEntries(Object.keys(receitas).map((id) => [id, [receitas[id], resultados[id]]]));
   // Contratos: todos os elencos do save, uma vez.
   for (const id of Object.keys(escalas)) {
     const e = E.escalaDe(CAREER, id);
@@ -1098,7 +1100,15 @@ export function escalaDoClubeDeFora(CAREER, indice, id, liga) {
 function fluxosDoTecnico(CAREER, indice, b, ano = 0) {
   const transicao = ano >= 1 && ano <= 3 && E.PERFIS[b.liga] && E.PERFIS[b.liga].transicao;
   const base = transicao ? E.economiaNaVirada(indice, b, { para: b.liga, status: "rebaixado", anoAposQueda: ano }) : b;
-  CAREER.economia.clube = { ...E.fluxosDoClube(base, financas.wageBill(CAREER.squad)), anoAposQueda: transicao ? ano : 0 };
+  const folha = financas.wageBill(CAREER.squad);
+  if (E.economiaV5(CAREER)) {
+    // v5 (Mercado, etapa 2): o teto pela faixa-alvo da folha (60% da receita;
+    // quem já está acima fica no limite) e as despesas com a folha no teto.
+    const teto = E.tetoDaFolha(base.liga, base.receitaAnual, folha);
+    CAREER.finances.wageCap = teto;
+    CAREER.finances.wageCapBought = 0;
+    CAREER.economia.clube = { ...E.fluxosDoClube(base, folha, teto), anoAposQueda: transicao ? ano : 0 };
+  } else CAREER.economia.clube = { ...E.fluxosDoClube(base, folha), anoAposQueda: transicao ? ano : 0 };
   CAREER.economia.patrocinio = Math.round((base.receitas.comercialAnual / LEGADO_PATROCINIO) * 1000) / 1000;
   const clube = estado.timePorId(CAREER.clubId) || { id: CAREER.clubId };
   const jogo = financas.ticketRevenue(clube, ambiente.rngDaChave(`stadium:${clube.id}`), 0, []).revenue * JOGOS_EM_CASA;
@@ -1118,6 +1128,8 @@ export function economiaDaTemporada(CAREER, { troca = false } = {}) {
     const eco = E.economiaDosClubes(liga, clubes);
     if (!eco) continue;
     const L = CAREER.economia.ligas[liga];
+    // v5: a receita e o resultado de cada clube na divisão da temporada nova.
+    if (CAREER.economia.receitas) for (const c of clubes) { const b = eco.get(c.id); if (b) CAREER.economia.receitas[c.id] = [b.receitaAnual, b.resultadoOperacionalAnual]; }
     for (const c of clubes) {
       if (CAREER.economia.escalas[c.id]) continue;
       const b = eco.get(c.id);

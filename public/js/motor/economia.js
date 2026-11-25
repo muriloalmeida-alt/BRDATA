@@ -31,7 +31,7 @@
 =================================================================== */
 import { CAMBIO } from "./texto.js";
 
-export const VERSAO_ECONOMIA = 4;
+export const VERSAO_ECONOMIA = 5;
 export const PERIODO_REFERENCIA = "2024/25–2025/26";
 
 // Fonte de um número: { valor, moeda, periodo, item, tipo, fonte, confianca }.
@@ -308,8 +308,8 @@ export function atualizarValoresDaJanela(CAREER, chave) {
   const todos = [CAREER.squad || [], ...Object.values(CAREER.leagueSquads || {}), CAREER.agentesLivres || [], ...Object.values(CAREER.basesCpu || {})];
   for (const lista of todos) for (const p of lista) {
     if (!(p.fatorValor > 0) || p.value == null) continue;
-    const f = Math.round(fatorIndividual(p) * 1e6) / 1e6;
-    if (!(f > 0) || Math.abs(f - p.fatorValor) < 1e-6) continue;
+    const f = Math.round(fatorIndividual(p) * 1e4) / 1e4;
+    if (!(f > 0) || Math.abs(f - p.fatorValor) < 1e-4) continue;
     p.value = Math.max(1000, Math.round((p.value * f) / p.fatorValor / 1000) * 1000);
     p.fatorValor = f;
     n++;
@@ -716,14 +716,16 @@ export function fatorDeDemanda(CAREER, compradorId, vendedorId) {
   if (!c || !(v > 0)) return 1;
   return Math.max(1, Math.min(DEMANDA.teto, (c / v) ** DEMANDA.expoente));
 }
-// Aplica a escala no contrato de um atleta (uma vez: anota em p.escalaEco).
+// Aplica a escala no contrato de um atleta (uma vez: anota em p.escalaEco; na
+// v4+, o p.fatorValor marca, sem o campo a mais por atleta no save).
+export const jaEscalado = (p) => !!(p.escalaEco || p.fatorValor != null);
 export function aplicarEscalaNoAtleta(p, escala) {
-  if (!p || !escala || p.escalaEco) return p;
+  if (!p || !escala || jaEscalado(p)) return p;
   if (p.wage != null) p.wage = Math.max(100, Math.round(aplicar(p.wage, escala.salario) / 100) * 100);
   if (p.loanOriginalWage != null) p.loanOriginalWage = Math.max(100, Math.round(aplicar(p.loanOriginalWage, escala.salario) / 100) * 100);
   if (p.value != null) p.value = Math.max(1000, Math.round((typeof escala.valor === "function" ? escala.valor(p.value, p) : p.value * escala.valor) / 1000) * 1000);
-  if (escala.fatorValor && p.overall != null) { p.fatorValor = Math.round(escala.fatorValor(p) * 1e6) / 1e6; p.valorInicial = p.value; }
-  p.escalaEco = 1;
+  if (escala.fatorValor && p.overall != null) { p.fatorValor = Math.round(escala.fatorValor(p) * 1e4) / 1e4; p.valorInicial = p.value; }
+  else p.escalaEco = 1;
   return p;
 }
 // Contrato novo já na escala (o p.escalaEco evita escalar de novo).
@@ -736,17 +738,107 @@ export function contratoNaEscala(c, escala) {
 // folhaReal (mensal): a folha dos contratos; as despesas fecham a margem do
 // clube com ela (receita − folha real − despesas = resultado da base), para
 // não sobrar nem faltar dinheiro só porque a folha real difere da folha-base.
-export function fluxosDoClube(base, folhaReal = null) {
-  const despesasAnual = folhaReal == null ? base.despesasOperacionaisAnual
-    : Math.max(base.receitaAnual * REGRAS.despesasMinimas, base.receitaAnual - base.resultadoOperacionalAnual - folhaReal * 12);
+// v5 (Mercado, etapa 2): com `teto` (mensal), as despesas fecham a margem com
+// a folha no teto: o resultado da base vale quando o clube usa todo o
+// orçamento de folha, e quem usa menos poupa a diferença.
+export function fluxosDoClube(base, folhaReal = null, teto = null) {
+  const folhaDaConta = teto != null ? teto : folhaReal;
+  const despesasAnual = folhaDaConta == null ? base.despesasOperacionaisAnual
+    : Math.max(base.receitaAnual * REGRAS.despesasMinimas, base.receitaAnual - base.resultadoOperacionalAnual - folhaDaConta * 12);
   return {
     id: base.id, liga: base.liga, status: base.status,
     receitaAnual: base.receitaAnual, tvMensal: arred((base.receitas.tvAnual + base.receitas.transicaoAnual) / 12),
     comercialAnual: base.receitas.comercialAnual, jogoAnual: base.receitas.jogoAnual,
     despesasMensais: arred(despesasAnual / 12), folhaBaseMensal: base.folhaBaseMensal,
     orcamentoTransferencias: base.orcamentoTransferencias,
+    margem: base.receitaAnual > 0 ? Math.round((base.resultadoOperacionalAnual / base.receitaAnual) * 1e4) / 1e4 : 0,
   };
 }
+
+/* ---------- Mercado, etapa 2: orçamento e avaliação de operação (economia v5) ----------
+   Handoff do mercado, seção 2. Três espaços (os da tela: "Paga agora" e
+   "Custo mensal"), mais o orçamento da temporada e a projeção do caixa:
+   - entrada livre = caixa − reserva de 1 mês de despesas essenciais (folha +
+     despesas operacionais) − entradas já prometidas (propostas vinculantes);
+   - parcelas por mês = o resultado mensal com a folha no teto (nunca abaixo
+     de PARCELAS_MINIMO da receita) − parcelas mensais já assumidas;
+   - folha = teto − folha (com os compromissos: propostas vinculantes e a
+     parte do salário nos empréstimos);
+   - orçamento de transferências da temporada: entrada + parcelas que vencem
+     na temporada;
+   - projeção: o caixa mês a mês ao longo do compromisso (receita − despesas −
+     folha nova − parcelas + recebíveis firmes no mês) não fica negativo.
+   Mesma função para o técnico e para a CPU (avaliarOperacao). */
+export const ALVO_FOLHA = { padrao: 0.6 }; // custo do elenco ÷ receita: o topo da faixa 45%–60%
+export const PARCELAS_MINIMO = 0.04;       // espaço mínimo para parcelas: 4% da receita mensal (imputado)
+export const MESES_MAXIMO = 24;            // saldo parcelado em até 24 meses
+export const ENTRADA_FAIXA = [0.2, 0.4];   // entrada sugerida de uma oferta parcelada
+export const alvoDaFolha = (liga) => ALVO_FOLHA[liga] || ALVO_FOLHA.padrao;
+// Teto de folha (mensal) pela faixa-alvo: alvo × receita mensal. O clube que
+// abre a temporada acima dela ganha a folga de abertura (FOLGA_ABERTURA sobre a
+// folha): sem ela, quem nasce acima de 60% (14 de 24 clubes da Championship,
+// o mais pobre da Segunda uruguaia) não contratava ninguém; acima disso,
+// precisa liberar espaço (venda, empréstimo) para contratar.
+export const FOLGA_ABERTURA = 0.1;
+// A faixa do handoff é do CUSTO DO ELENCO (com encargos, bônus e imagem); a
+// folha do jogo é a folha-base dos atletas, 65% do custo salarial
+// (razaoFolhaBase do catálogo, Entrega 1). Teto da folha-base = alvo × 0,65 ×
+// receita (~39% da receita: a mediana da Premier League). Sem a conversão, o
+// espaço não usado virava lucro (R$ 1,3 bi/ano no Arsenal).
+export const FOLHA_BASE_DO_CUSTO = 0.65;
+export function tetoDaFolha(liga, receitaAnual, folhaAtual) {
+  const perfil = PERFIS[liga];
+  const razao = perfil && perfil.razaoFolhaBase ? perfil.razaoFolhaBase.valor : FOLHA_BASE_DO_CUSTO;
+  return Math.max(Math.round((alvoDaFolha(liga) * razao * receitaAnual) / 12 / 1000) * 1000, Math.round(((folhaAtual || 0) * (1 + FOLGA_ABERTURA)) / 1000) * 1000);
+}
+// O custo do elenco (o que a faixa mede) a partir da folha-base.
+export const custoDoElenco = (folha, liga) => folha / ((PERFIS[liga] && PERFIS[liga].razaoFolhaBase && PERFIS[liga].razaoFolhaBase.valor) || FOLHA_BASE_DO_CUSTO);
+// estado = { caixa, folha, teto, receitaMensal, despesasMensais, margem,
+//   parcelasMensais: [{ valor, meses }], recebiveis: [{ mes, valor }],
+//   entradasPrometidas, folhaPrometida, orcamentoRestante, mesesNaTemporada }
+export function envelopes(e) {
+  const reserva = (e.folha || 0) + (e.despesasMensais || 0);
+  const parcelasAtuais = (e.parcelasMensais || []).reduce((t, p) => t + (p.meses > 0 ? p.valor : 0), 0);
+  const resultadoNoTeto = (e.receitaMensal || 0) - (e.despesasMensais || 0) - (e.teto || 0);
+  return {
+    reserva,
+    entrada: Math.max(0, (e.caixa || 0) - reserva - (e.entradasPrometidas || 0)),
+    parcelas: Math.max(0, Math.max(resultadoNoTeto, PARCELAS_MINIMO * (e.receitaMensal || 0)) - parcelasAtuais),
+    folha: Math.max(0, (e.teto || 0) - (e.folha || 0) - (e.folhaPrometida || 0)),
+    orcamento: e.orcamentoRestante == null ? Infinity : Math.max(0, e.orcamentoRestante),
+  };
+}
+// op = { taxa, entrada, meses, salario } (meses 0: à vista; a entrada é a
+// taxa). Devolve { ok, motivo, faltam, paga: { agora, porMes, total }, antes,
+// depois, piorCaixa }. motivo: "orcamento" | "caixa" | "parcelas" | "folha" | "fluxo".
+export function avaliarOperacao(e, op) {
+  const meses = Math.max(0, Math.min(MESES_MAXIMO, Math.round(op.meses || 0)));
+  const taxa = Math.max(0, Math.round(op.taxa || 0));
+  const entrada = meses ? Math.min(taxa, Math.max(0, Math.round(op.entrada != null ? op.entrada : taxa))) : taxa;
+  const porMes = meses ? Math.round((taxa - entrada) / meses) : 0;
+  const salario = Math.max(0, Math.round(op.salario || 0));
+  const antes = envelopes(e);
+  const naTemporada = entrada + porMes * Math.min(meses, e.mesesNaTemporada == null ? meses : e.mesesNaTemporada);
+  // Projeção do caixa ao longo do compromisso (pelo menos 12 meses).
+  const horizonte = Math.max(12, meses, ...(e.parcelasMensais || []).map((p) => p.meses || 0));
+  let caixa = (e.caixa || 0) - entrada, pior = caixa;
+  for (let m = 1; m <= horizonte; m++) {
+    caixa += (e.receitaMensal || 0) - (e.despesasMensais || 0) - (e.folha || 0) - salario;
+    for (const p of e.parcelasMensais || []) if (m <= (p.meses || 0)) caixa -= p.valor;
+    if (m <= meses) caixa -= porMes;
+    for (const r of e.recebiveis || []) if (r.mes === m) caixa += r.valor;
+    pior = Math.min(pior, caixa);
+  }
+  let motivo = null, faltam = 0;
+  if (naTemporada > antes.orcamento) { motivo = "orcamento"; faltam = naTemporada - antes.orcamento; }
+  else if (entrada > antes.entrada) { motivo = "caixa"; faltam = entrada - antes.entrada; }
+  else if (porMes > antes.parcelas) { motivo = "parcelas"; faltam = porMes - antes.parcelas; }
+  else if (salario > antes.folha) { motivo = "folha"; faltam = salario - antes.folha; }
+  else if (pior < 0) { motivo = "fluxo"; faltam = -pior; }
+  const depois = { ...antes, entrada: antes.entrada - entrada, parcelas: antes.parcelas - porMes, folha: antes.folha - salario, orcamento: antes.orcamento - naTemporada };
+  return { ok: !motivo, motivo, faltam: Math.round(faltam), paga: { agora: entrada, porMes, meses, total: taxa, salario }, antes, depois, piorCaixa: Math.round(pior) };
+}
+export function economiaV5(CAREER) { return !!(CAREER && CAREER.economia && CAREER.economia.versao >= 5); }
 
 // Distribuição de preços (FIFA 2025, com taxa, em US$): fração até US$ 500
 // mil, até US$ 1 mi e acima de US$ 20 mi.
@@ -759,8 +851,17 @@ export function distribuicaoDePrecos(precos) {
 // Capacidade de compra no estado do jogo (técnico ou CPU), pela mesma regra:
 // caixa, folha (com o teto) e parcelas por rodada; receita e despesa da
 // rodada pela base mensal (÷ 4). Sem economia v2: null (regra de antes).
-export function capacidadeNoJogo(CAREER, { caixa, folha, teto, parcelasPorRodada = [], fluxos = null }, op) {
+export function capacidadeNoJogo(CAREER, { caixa, folha, teto, parcelasPorRodada = [], fluxos = null, estado = null }, op) {
   if (!economiaV2(CAREER)) return null;
+  // v5: a avaliação da etapa 2, com o estado completo quando há (técnico) ou
+  // o mínimo (CPU: caixa, folha, teto; receita e despesas do clube quando o
+  // save as tem). As parcelas por rodada de antes (2 a 4) vencem no mês:
+  // contam como entrada.
+  if (economiaV5(CAREER)) {
+    const e = estado || { caixa, folha, teto, receitaMensal: fluxos ? fluxos.receitaAnual / 12 : 0, despesasMensais: fluxos ? fluxos.despesasMensais : 0 };
+    const r = avaliarOperacao(e, { taxa: op.taxa, entrada: op.entrada, meses: op.meses || 0, salario: op.salarioMensal });
+    return { ...r, limites: r.antes, primeiraParcela: r.paga.agora };
+  }
   const porRodada = (v) => (v || 0) / 4;
   return capacidadeDeCompra({
     caixa, folhaMensal: porRodada(folha), tetoMensal: porRodada(teto),

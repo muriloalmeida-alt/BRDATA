@@ -50,8 +50,69 @@ ajuste para a próxima etapa: deslocamento do overall do mundo ou faixas.
 Testes: `test_economia_mercado` 8/8 (caso 4 novo: os 4 valores da tabela,
 interpolação, goleiro, livre, fictício e a janela uma vez).
 
-Próximo: etapa 2 (caixa, folha, parcelas, pedidas e avaliação de oferta,
-iguais para a CPU).
+Etapa 1 mesclada (#171).
+
+Relatório da etapa 2, caixa, folha, parcelas, pedidas e avaliação (25/11/2026)
+
+Branch `claude/mercado-e2-financas`, base 37dae8d (#171). Economia versão 5
+(carreiras novas; as anteriores seguem lidas como eram).
+
+O que foi feito:
+- teto de folha pela faixa do handoff:
+  - 60% do custo do elenco, convertido à folha-base pela razão do catálogo
+    (folha-base ÷ custo salarial ≈ 0,62–0,65), cerca de 39% da receita;
+  - folga de abertura de 10% sobre a folha de quem abre a temporada acima
+    (14 de 24 clubes da Championship);
+  - sem a conversão, o espaço não usado virava lucro (R$ 1,3 bi/ano no
+    Arsenal);
+- despesas operacionais calculadas com a folha no teto: o resultado da base
+  vale quando o clube usa todo o orçamento de folha;
+- `avaliarOperacao`, a mesma para o técnico e para a CPU:
+  - espaço de entrada: caixa − 1 mês de despesas essenciais − entradas
+    prometidas;
+  - espaço para parcelas por mês: o resultado com a folha no teto, no
+    mínimo 4% da receita, menos as parcelas assumidas;
+  - espaço de folha: teto − folha − salários prometidos;
+  - orçamento da temporada: o da base − o gasto + as vendas da temporada;
+  - projeção do caixa mês a mês, com os recebíveis firmes no mês;
+  - motivo e valor que falta;
+- a CPU usa o próprio estado: caixa guardado, folha, teto pela faixa e a
+  receita/resultado do clube gravados no save;
+- compra parcelada por mês (entrada + saldo em até 24 meses):
+  - proposta e prévia com `termos.entrada` e `termos.meses`;
+  - uma parcela por mês no fechamento do mês, e o vendedor da CPU recebe
+    cada uma;
+  - extrato e orçamento registrados;
+- pedidas do vendedor pelas faixas do handoff (`mercado.pedidaV5`):
+  - jovem: 80% a 130%;
+  - titular com contrato longo: 130% a 180%;
+  - titular sem reposição e sem cobertura: não é negociado;
+  - titular em fim de contrato: 100% a 130%;
+  - rotação: 100% a 110%;
+  - reserva: 80% a 90%;
+  - fim de janela e caixa apertado do vendedor.
+
+Testes:
+- `tests/unit/test_mercado_etapa2.js` 5/5. Inclui o aceite "janela de um
+  clube pequeno" com os valores exatos (R$ 1,2 mi / 70 mil / 130 mil ->
+  R$ 300 mil / 7,5 mil / 25 mil);
+- `test_economia_mercado` 8/8; `test_motor_mer_integracao` 10/10 (o
+  orçamento da temporada junto com o caixa do teste);
+- `test_motor_serie_d` 9/9;
+- rota rápida 65/65.
+
+Riscos e pendências:
+- save da Série D em 10 temporadas: 753 KB (limite 768 KB). Os campos por
+  atleta foram enxugados: o `fatorValor` marca o atleta escalado, sem o
+  `escalaEco`;
+- a oferta parcelada por mês ainda não está na tela (etapa 4). A tela de
+  hoje continua com as parcelas por rodada (1 a 4), que contam como
+  entrada;
+- catálogo salarial por divisão e papel, agente livre, empréstimos e
+  percentual de revenda: etapa 3.
+
+Próximo: etapa 3 (compra definitiva, agente livre e empréstimos;
+persistência e idempotência).
 
 ⸻
 
