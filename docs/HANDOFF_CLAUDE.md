@@ -11,9 +11,10 @@ Demandas vigentes
 
 MUNDO-001 — Ligas da Europa e da América do Sul, em paralelo, com continentais
 
-Status: M1 a M7 APROVADAS e mescladas (Murilo, 24/11/2026: #154 mesclado por
-ele; #155 a #157 com "Vamos fazer os merges pendentes?"). M8 em revisão (PR
-#158). M9 feita (M9a, M9b e M9c; branch `claude/mundo-m9`, empilhada sobre o #158), aguardando PR e aprovação.
+Status: M1 a M8 APROVADAS e mescladas (Murilo: #154 mesclado por ele;
+#155 a #157 com "Vamos fazer os merges pendentes?", 24/11/2026; #158 com
+"158 aprovado", 25/11/2026). M9 feita (M9a, M9b e M9c), em revisão no PR
+da branch `claude/mundo-m9`.
 - Etapas M1 a M6a: PR #154 (suíte completa 191/191), mesclado.
 - M6b, passos 1 a 4: PR #155, empilhado sobre o #154 (suíte completa
   191/192; a falha, instável e sem relação com o mundo, está no PR).
