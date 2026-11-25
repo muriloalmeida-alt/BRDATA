@@ -174,3 +174,13 @@ test("jogo continental: cabeçalho da copa, agregado da volta e desfecho", () =>
   assert.equal(buildMatch(s)!.cup!.outcome, "Decidido na prorrogação · Campeão da Sul-Americana!");
   assert.equal(buildResult(s, "x")!.line, "O Flamengo venceu o Palmeiras.");
 });
+
+// MUNDO-001 (M10b): copas da UEFA.
+test("jogo da Champions: fase de liga com a rodada e playoff de qualificação", () => {
+  const s = snap();
+  s.contexto = "continental";
+  s.continental = { copa: "UCL", nomeCopa: "Champions League", fase: "liga", perna: null, pernas: 1, grupo: null, neutro: false, ida: null, decidido: false, classificadoSouEu: null, como: null, rodadaLiga: 3 };
+  assert.equal(buildMatch(s)!.kicker, "Champions League · Fase de liga · Rodada 3");
+  s.continental = { ...s.continental, copa: "UEL", nomeCopa: "Europa League", fase: "PO", perna: 1, pernas: 2, rodadaLiga: null };
+  assert.equal(buildMatch(s)!.kicker, "Europa League · Playoff de qualificação · Ida");
+});

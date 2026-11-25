@@ -122,7 +122,7 @@ export function tabelaAndina(clubes, chave) {
 
 // ---------- força entre ligas ----------
 // Por clube: { atk, def, nivel } (força na liga e nível da liga).
-function clubeNoIndice(indice) {
+export function clubeNoIndice(indice) {
   if (indice.__copasMapa) return indice.__copasMapa;
   const mapa = new Map();
   for (const c of indice.clubes) mapa.set(S(c.id), { c, pais: c.pais, liga: c.liga });
@@ -132,6 +132,9 @@ function clubeNoIndice(indice) {
   if (indice.brasil && indice.brasil.serieD) for (const c of indice.brasil.serieD) if (!mapa.has(S(c.id))) mapa.set(S(c.id), { c, pais: "BR", liga: null });
   const cop = indice.copas && indice.copas.conmebol;
   if (cop) for (const c of cop.clubes) mapa.set(S(c.id), { c, assoc: c.assoc, liga: c.liga });
+  // Copas da UEFA (M10b): 5º pacote e outras associações.
+  const uefa = indice.copas && indice.copas.uefa;
+  if (uefa) for (const c of uefa.clubes) mapa.set(S(c.id), { c, assoc: c.assoc, liga: c.liga || null, ficticio: !!c.elencoFicticio });
   Object.defineProperty(indice, "__copasMapa", { value: mapa, enumerable: false });
   return mapa;
 }
@@ -147,7 +150,7 @@ export function nivelDaAssociacao(indice, assoc) {
 // A força do clube na liga agora: o time do país do técnico (o motor tem a
 // força do momento), a guardada no mundo leve (quem mudou de divisão) ou a
 // do índice.
-function forcaNaLiga(CAREER, indice, id) {
+export function forcaNaLiga(CAREER, indice, id) {
   const t = todosTimes().find((x) => S(x.id) === S(id));
   if (t && t.atk != null) return { atk: t.atk, def: t.def };
   const info = clubeNoIndice(indice).get(S(id));
@@ -211,8 +214,12 @@ function rankingDaEdicao(CAREER, indice, associacao) {
 // copas) e semana relativa (0). Prêmios: só os do técnico (os da CPU já
 // foram pagos na semana).
 const CAMPOS_JOGO = ["copa", "fase", "rodada", "data", "casa", "fora", "gh", "ga", "conf", "perna", "neutro", "grupo", "extra"];
-export function compactar(plano, humano) {
-  const { regras, calendario, premiacao, jogos, confrontos, ...resto } = plano;
+// Genérico (CONMEBOL e UEFA): tira do plano as tabelas que voltam do índice
+// (`fora`) e o que se refaz; `semente(plano, id)` refaz as sementes.
+export function compactarPlano(plano, humano, fora) {
+  const resto = { ...plano };
+  for (const k of fora) delete resto[k];
+  const { jogos, confrontos } = plano;
   resto.premios = plano.premios.filter((p) => S(p.clube) === S(humano));
   resto.jogos = jogos.map((j) => {
     const t = CAMPOS_JOGO.map((k) => (j[k] === undefined ? null : j[k]));
@@ -222,7 +229,7 @@ export function compactar(plano, humano) {
   resto.confrontos = confrontos.map(({ sementes, pontosRegulares, semanaRel, placares, ...c }) => c);
   return JSON.parse(JSON.stringify(resto));
 }
-export function expandir(salvo, R) {
+export function expandirPlano(salvo, tabelas, semente) {
   const p = JSON.parse(JSON.stringify(salvo));
   p.jogos = p.jogos.map((t, i) => {
     const j = { id: `${t[0]}:${i + 1}` };
@@ -231,13 +238,17 @@ export function expandir(salvo, R) {
   });
   p.confrontos = p.confrontos.map((c) => ({
     ...c,
-    sementes: { [c.a]: p.ranking[S(c.a)] ?? 999, [c.b]: p.ranking[S(c.b)] ?? 999 }, pontosRegulares: { [c.a]: 0, [c.b]: 0 }, semanaRel: 0,
+    sementes: { [c.a]: semente(p, c.a, c), [c.b]: semente(p, c.b, c) }, pontosRegulares: { [c.a]: 0, [c.b]: 0 }, semanaRel: 0,
     placares: p.jogos.filter((j) => j.conf === c.id && j.gh != null).map((j) => ({ casa: j.casa, fora: j.fora, gh: j.gh, ga: j.ga })),
   }));
-  return {
-    ...p,
+  return { ...p, ...tabelas };
+}
+// CONMEBOL: as tabelas do pacote e as sementes pelo ranking da edição.
+export function compactar(plano, humano) { return compactarPlano(plano, humano, ["regras", "calendario", "premiacao"]); }
+export function expandir(salvo, R) {
+  return expandirPlano(salvo, {
     regras: { LIB: R.regras.LIB, SUD: R.regras.SUD }, calendario: { LIB: R.calendario.LIB, SUD: R.calendario.SUD }, premiacao: R.premiacao,
-  };
+  }, (p, id) => p.ranking[S(id)] ?? 999);
 }
 
 export function montarEdicaoDoSave(CAREER, indice, ano) {
@@ -408,7 +419,7 @@ function pagarPremios(CAREER, plano) {
 }
 
 // ---------- avisos e notícias ----------
-function nomeDe(CAREER, indice, id) {
+export function nomeDe(CAREER, indice, id) {
   const t = todosTimes().find((x) => S(x.id) === S(id));
   if (t) return t.name;
   const info = clubeNoIndice(indice).get(S(id));
@@ -473,7 +484,7 @@ function noticiaDosCampeoes(CAREER, indice, r) {
   noticia(CAREER, `${nomeDe(CAREER, indice, r.SUD.campeao)} é campeão da Sul-Americana ${r.ano}`, S(r.SUD.campeao) === S(CAREER.clubId));
 }
 
-function noticia(CAREER, txt, mine) {
+export function noticia(CAREER, txt, mine) {
   CAREER.newsFeed = [{ type: "continental", mine: !!mine, texto: txt, round: CAREER.currentRound, seasonYear: CAREER.seasonYear }, ...(CAREER.newsFeed || [])];
   if (CAREER.newsFeed.length > NEWS_FEED_MAX) CAREER.newsFeed.length = NEWS_FEED_MAX;
 }

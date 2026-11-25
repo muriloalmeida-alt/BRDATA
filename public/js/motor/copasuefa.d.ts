@@ -1,0 +1,23 @@
+// Tipos de public/js/motor/copasuefa.js (MUNDO-001, M10b).
+import type { Id, PlanoUefa } from "./uefa.js";
+import type { PendenteContinental } from "./copasmundo.js";
+export const ALCANCE_NIVEL_UEFA: number;
+export const MEDIA_GOLS_UEFA: number;
+export const PONTOS_COEF: { vitoria: number; empate: number; liga: Record<string, number>; fase: number };
+export const TEMPORADAS_COEF: number;
+export const NOME_COPA_UEFA: Record<string, string>;
+export const ETAPA_UEFA: Record<string, string>;
+export function associacaoUefa(indice: any, id: Id): string | null;
+export function nivelUefa(indice: any, assoc: string): number;
+export function forcaNaCopaUefa(CAREER: any, indice: any, plano: { associacao: Record<string, string> }, id: Id): { atk: number; def: number };
+export function ordensUefa(CAREER: any, indice: any, ano: number, chave: string): Record<string, Id[]>;
+export function vagasUefa(o: { associacoes: Record<string, { vagas: string[] }>; ordens: Record<string, Id[]>; titulares?: Id[]; eps?: string[] }): { participantes: Record<string, Record<string, Id[]>>; associacao: Record<string, string> };
+export function pontosDaEdicao(plano: PlanoUefa): Record<string, number>;
+export function inicioDaEdicaoUefa(indice: any, ano: number): string;
+export function montarEdicaoUefa(CAREER: any, indice: any, ano: number): PlanoUefa;
+export function edicaoUefaAtual(CAREER: any, indice: any): PlanoUefa | null;
+export function semanaDasCopasUefa(CAREER: any, indice: any, semana: string | null): { tipo: string; confed: "UEFA"; [k: string]: any }[];
+export function jogoDoHumanoPendenteUefa(CAREER: any, indice: any, semana: string | null): any;
+export function atualizarPendente(CAREER: any, indice: any, semana: string): PendenteContinental | null;
+export function registrarJogoDoHumanoUefa(CAREER: any, indice: any, jogoId: string, placar: { gh: number; ga: number }, semana?: string | null): any;
+export function emReaisEUR(eur: number): number;

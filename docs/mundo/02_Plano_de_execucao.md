@@ -22,7 +22,7 @@ junto). Até lá, ficam atrás de uma chave de desenvolvimento
 | **M7** | Moeda de jogo e finanças por país (seeds, folha normalizada, TV mensal, bilheteria pela capacidade) | M6 | `financas.js`, `moeda.js` |
 | **M8** | Mercado e carreira do técnico no mundo (índice global, CPU entre países, propostas de emprego de fora, troca de país ativo) | M6, M7 | `mercado.js`, `negociacao.js`, `clube.js` |
 | **M9** | Libertadores e Sul-Americana (M9a, feita: motor `continental.js`; M9b, feita: classificados, andinos, relógio, prêmios e notícias em `copasmundo.js`; M9c, feita: partidas do técnico ao vivo, na ponte e na v2) | M5, M8, **DEP-1** | `continental.js`, `copasmundo.js` |
-| **M10** | (M10a, feita: motor `uefa.js`; M10b: classificados e clubes; M10c: telas da v2; M10d: liberação) Champions, Europa League e Conference; telas da v2 (seletor, calendário, fases, ligas do mundo, chaves); liberação | M9, **DEP-1/2** | `carreira-v2/src/...` |
+| **M10** | (M10a, feita: motor `uefa.js`; M10b, feita: classificados, clubes, coeficiente e jogo ao vivo em `copasuefa.js`; M10c: telas da v2; M10d: liberação) Champions, Europa League e Conference; telas da v2 (seletor, calendário, fases, ligas do mundo, chaves); liberação | M9, **DEP-1/2** | `carreira-v2/src/...` |
 | **M11** | Validação final: smoke por país, temporada inteira do mundo, desempenho e save no pior caso, `test:full` | todas | `tests/` |
 
 ## M1 — Catálogo do mundo (detalhe)

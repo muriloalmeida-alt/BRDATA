@@ -34,3 +34,4 @@ export function desenharPartida(): void;
 export function lerTaticaDaTela(): void;
 export function startContinentalLive(...args: any[]): any;
 export function finishContinentalLive(...args: any[]): any;
+export function pendenteContinental(CAREER: any): any;

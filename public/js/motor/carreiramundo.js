@@ -39,6 +39,7 @@ import * as texto from "./texto.js";
 import * as financas from "./financas.js";
 import * as mercado from "./mercado.js";
 import * as Copas from "./copasmundo.js";
+import * as CopasUefa from "./copasuefa.js";
 
 // Pontos de overall por unidade de nível da liga (gameplayLevel) acima de 1
 // (parâmetro de balanceamento; a Premier League, 1,22, ganha ~5,5).
@@ -76,7 +77,9 @@ ganchosMundo.semanaDoMundo = (CAREER) => {
   const ev = avancarMundoLeve(CAREER);
   semanaDasFasesGeradas(CAREER);
   // Copas da CONMEBOL (M9b): os jogos da semana, com o mundo já nela.
-  return ev.concat(Copas.semanaDasCopas(CAREER, indiceAtual, semanaDaCarreira(CAREER)));
+  const semana = semanaDaCarreira(CAREER);
+  // Copas da UEFA (M10b): idem.
+  return ev.concat(Copas.semanaDasCopas(CAREER, indiceAtual, semana), CopasUefa.semanaDasCopasUefa(CAREER, indiceAtual, semana));
 };
 
 // Fim da temporada no Brasil com o mundo anexado (M9b): a classificação da
@@ -697,6 +700,9 @@ async function elencosDaLigaDoMundo(liga, buscar) {
   return porTime;
 }
 
+// Overall a mais nos elencos fictícios das copas da UEFA, para ficarem na
+// mesma escala dos elencos reais dos pacotes (medido em test_motor_copas_uefa).
+export const AJUSTE_FICTICIO = 14;
 export async function abrirClubeDoMundo(CAREER, clubId, buscar) {
   const indice = indiceAtual;
   const id = String(clubId);
@@ -707,17 +713,32 @@ export async function abrirClubeDoMundo(CAREER, clubId, buscar) {
   // Clube andino (só nas copas da CONMEBOL, M9c): elenco do snapshot das copas.
   const andino = !onde && indice.copas && indice.copas.conmebol && indice.copas.conmebol.clubes.find((x) => String(x.id) === id);
   if (andino) { onde = { pais: andino.assoc, liga: "conmebol_andinos" }; c = andino; }
+  // Clube das copas da UEFA (M10b): 5º pacote (elenco real) ou outra
+  // associação (elenco fictício, gerado como o da Série D).
+  const daUefa = !onde && !andino && indice.copas && indice.copas.uefa && indice.copas.uefa.clubes.find((x) => String(x.id) === id);
+  if (daUefa) { onde = { pais: daUefa.assoc, liga: daUefa.elencoFicticio ? null : "uefa_extra", ficticio: !!daUefa.elencoFicticio }; c = daUefa; }
   if (!onde || !c) return { ok: false, motivo: "fora-do-mundo" };
   const P = CAREER.mundoLeve.paises[onde.pais];
   const f = P && P.forcas[id];
   const comp = indice.competicoes[onde.liga];
-  const nivel = andino ? indice.copas.conmebol.niveis[andino.assoc] : comp && comp.nivel;
+  const nivel = andino ? indice.copas.conmebol.niveis[andino.assoc] : daUefa ? CopasUefa.nivelUefa(indice, daUefa.assoc) : comp && comp.nivel;
   const ajusteNivel = nivel ? Math.round((nivel - 1) * OVERALL_POR_NIVEL * 10) / 10 : 0;
   const time = {
     id: c.id, name: c.nome, short: c.sigla, logo: c.escudo || c.logoOrigem || null, c1: c.c1 || "#5B6B7F", c2: c.c2 || "#1F2933",
     venue: c.estadio ? { name: c.estadio.nome, city: c.estadio.cidade, capacity: c.estadio.capacidade } : null,
     atk: f ? f[0] : c.atk, def: f ? f[1] : c.def, competitionId: onde.liga, ajusteNivel, exterior: true, pais: onde.pais,
   };
+  if (onde.ficticio) {
+    // Elenco fictício (nome real do clube): o gerador da Série D, na força do
+    // clube com o nível da associação, e o ajuste de overall pelo nível.
+    const gerado = estado.ganchosMundo.elencoGerado({ ...time, atk: time.atk * Math.pow(nivel || 1, 1), def: time.def / Math.pow(nivel || 1, 1) })
+      .map((p) => ({ ...p, overall: Math.round(Math.max(40, Math.min(90, p.overall + AJUSTE_FICTICIO + ajusteNivel))) }));
+    CAREER.exterior = CAREER.exterior || { clubes: {}, saidas: {}, catalogo: {} };
+    CAREER.exterior.clubes[id] = time;
+    CAREER.exterior.catalogo[id] = [];
+    CAREER.leagueSquads[id] = gerado;
+    return { ok: true, clube: { id, nome: time.name, liga: null, pais: onde.pais }, jogadores: gerado.length };
+  }
   const porTime = await elencosDaLigaDoMundo(onde.liga, buscar);
   CAREER.exterior = CAREER.exterior || { clubes: {}, saidas: {}, catalogo: {} };
   const saiu = new Set((CAREER.exterior.saidas[id] || []).map(String));
@@ -850,10 +871,11 @@ ganchosMundo.trocarDePais = (CAREER, proposta, buscar) => trocarDePais(CAREER, p
 // ---------- o jogo do técnico nas copas, ao vivo (M9c) ----------
 // O jogo pendente na semana do save, com o nome do adversário e da fase.
 export function jogoContinentalPendente(CAREER) {
-  const j = Copas.jogoDoHumanoPendente(CAREER, indiceAtual, semanaDaCarreira(CAREER));
+  const sem = semanaDaCarreira(CAREER);
+  const j = Copas.jogoDoHumanoPendente(CAREER, indiceAtual, sem) || CopasUefa.jogoDoHumanoPendenteUefa(CAREER, indiceAtual, sem);
   if (!j) return null;
   const { plano, ...jogo } = j;
-  const grupo = jogo.grupo ? (plano.grupos[jogo.copa] || {})[jogo.grupo] : null;
+  const grupo = jogo.grupo && plano.grupos ? (plano.grupos[jogo.copa] || {})[jogo.grupo] : null;
   return { ...jogo, grupo: jogo.grupo || null, grupoClubes: grupo || null };
 }
 // Prepara o jogo: o adversário de fora entra no save com o elenco (como no
@@ -870,7 +892,8 @@ export async function prepararJogoContinental(CAREER, buscar) {
   return { ok: true, jogo: j };
 }
 export function registrarJogoContinental(CAREER, jogoId, placar) {
-  return Copas.registrarJogoDoHumano(CAREER, indiceAtual, jogoId, placar, semanaDaCarreira(CAREER));
+  const uefa = /^(UCL|UEL|UECL):/.test(jogoId);
+  return (uefa ? CopasUefa.registrarJogoDoHumanoUefa : Copas.registrarJogoDoHumano)(CAREER, indiceAtual, jogoId, placar, semanaDaCarreira(CAREER));
 }
 ganchosMundo.continental = {
   pendente: (CAREER) => jogoContinentalPendente(CAREER),

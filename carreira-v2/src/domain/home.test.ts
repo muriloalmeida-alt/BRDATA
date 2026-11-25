@@ -110,3 +110,15 @@ test("jogo continental pendente: CTA Jogar a Libertadores e a linha do jogo", ()
   assert.equal(buildHome(c, byId).continental, null);
   assert.equal(buildHome(c, byId).cta.action, "preparar");
 });
+
+test("jogo da Champions pendente: CTA e a linha com a rodada da fase de liga", () => {
+  const c = base();
+  c.copas = { uefa: { pendente: {
+    id: "UCL:200", confed: "UEFA", copa: "UCL", nomeCopa: "Champions League", fase: "liga", nomeFase: "fase de liga", grupo: null, rodada: 2,
+    perna: null, pernas: 1, data: "2026-10-14", souMandante: true, neutro: false,
+    adversario: { id: "885000001", nome: "Slavia Praha", escudo: null }, ida: null,
+  } } };
+  const h = buildHome(c, byId);
+  assert.deepEqual(h.cta, { label: "Jogar a Champions League", action: "continental" });
+  assert.deepEqual(h.continental, { line: "14 OUT · CHAMPIONS LEAGUE · FASE DE LIGA · RODADA 2", opponent: "Slavia Praha", home: true });
+});

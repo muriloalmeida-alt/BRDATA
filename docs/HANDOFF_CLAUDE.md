@@ -14,7 +14,7 @@ MUNDO-001 — Ligas da Europa e da América do Sul, em paralelo, com continentai
 Status: M1 a M9 APROVADAS e mescladas (Murilo: #154 mesclado por ele;
 #155 a #157 com "Vamos fazer os merges pendentes?", 24/11/2026; #158 com
 "158 aprovado" e #159 com "Aprovado", 25/11/2026). M10a aprovada e
-mesclada (#160, "Aprovado", 25/11/2026). M10b em implementação (branch
+mesclada (#160, "Aprovado", 25/11/2026). M10b feita, em revisão (branch
 `claude/mundo-m10`).
 - Etapas M1 a M6a: PR #154 (suíte completa 191/191), mesclado.
 - M6b, passos 1 a 4: PR #155, empilhado sobre o #154 (suíte completa
@@ -114,6 +114,65 @@ Limites (propostas para o Murilo):
    meio da temporada do destino. Ideia para depois: a proposta vale "a
    partir da próxima temporada" do destino, com o técnico terminando a sua.
 2. O Brasil como destino de um técnico que está fora dele.
+
+Relatório da M10b, as copas da UEFA no save (25/11/2026)
+
+O que foi feito:
+- DEP-2 conferida na fonte: a França é a 5ª associação (ranking de 5
+  temporadas 2020/21–2024/25), com 3 vagas diretas em 2026/27; as vagas
+  extras de desempenho de 2026/27 foram de Inglaterra e Espanha.
+- Catálogo (`scripts/mundo_catalogo.js --uefa-extra DIR`):
+  - os 84 clubes do 5º pacote, com elencos reais, em `copas.uefa` e
+    `snapshot-uefa_extra.json`;
+  - 70 clubes de 20 outras associações, com nome real e elenco fictício
+    (DEP-1);
+  - a tabela de acesso de jogo (`scripts/dados/uefa_acesso.json`).
+- `public/js/motor/copasuefa.js` (+ `.d.ts`), como `copasmundo.js` na
+  CONMEBOL:
+  - classificados: as 5 ligas pela classificação da temporada anterior.
+    A 1ª divisão agora grava a classificação no fim da fase regular, sem
+    esperar os playoffs da 2ª (a Itália terminava em julho). O 5º pacote e
+    as outras associações saem de uma tabela anual simplificada;
+  - vagas pela tabela de jogo. O titular já classificado passa a vaga.
+    Na 1ª edição, os titulares são os 2 clubes mais fortes das 5 ligas;
+  - coeficiente de jogo: por clube (2 por vitória, 1 por empate, bônus
+    pela fase de liga e por fase do mata-mata, nas últimas 5 edições, para
+    os potes e os cabeças de chave; na 1ª edição, a força) e por
+    associação (média dos clubes; as 2 melhores das 5 ligas ganham a vaga
+    extra da edição seguinte);
+  - relógio: a edição da temporada é montada na 1ª semana de julho, se
+    ainda dá tempo, e fecha em junho (a final pode cair na 1ª semana da
+    temporada seguinte);
+  - prêmios: EUR × R$ 6,00 × 0,2 (escala da Copa do Brasil), no caixa e
+    no ledger do técnico e no caixa da CPU do país dele;
+  - avisos e notícias.
+- O jogo do técnico ao vivo, como na M9c: o adversário de fora entra no
+  save. Os clubes fictícios ganham elenco gerado (o da Série D), na escala
+  dos reais: +14 de overall pelo `AJUSTE_FICTICIO` (Slavia/Olympiacos
+  64,6 × Celtic 65,8).
+- v2: o Início e a Partida também com a Champions, a Europa League e a
+  Conference ("Champions League · Fase de liga · Rodada 3").
+- Desempenho: uma temporada inteira do Arsenal (mundo leve, CONMEBOL e
+  UEFA) em ~0,6 s; as copas da UEFA no save até 74 KB durante a edição.
+
+Medição (40 edições, força do índice):
+- títulos da Champions: Inglaterra 10, Espanha 9, Itália 7, Alemanha 7,
+  França 5, Turquia 1, Bélgica 1;
+- Europa League e Conference mais espalhadas;
+- 2,97 gols por jogo; o mandante vence 42%.
+
+Testes:
+- `test_motor_copas_uefa` 5/5: vagas, temporada inteira do Arsenal, a
+  edição seguinte pelas classificações, escala dos elencos fictícios e o
+  jogo da Champions ao vivo;
+- `test_mundo_catalogo` 10/10;
+- v2 144/144.
+
+Decisões de jogo para o Murilo (podem mudar):
+1. A tabela de acesso das associações fora das 5 ligas e a lista dos
+   clubes delas (nomes reais, 4 por associação, 2 nas menores).
+2. A força dos clubes do 5º pacote pela tabela da temporada consultada
+   (início de campeonato: faixa mais estreita).
 
 Relatório da M10a, motor das copas da UEFA (25/11/2026)
 

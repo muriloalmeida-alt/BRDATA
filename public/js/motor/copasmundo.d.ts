@@ -32,3 +32,10 @@ export interface PendenteContinental {
 export function atualizarPendente(CAREER: any, indice: any, semana: string): PendenteContinental | null;
 export function jogoDoHumanoPendente(CAREER: any, indice: any, semana: string | null): any;
 export function registrarJogoDoHumano(CAREER: any, indice: any, jogoId: string, placar: { gh: number; ga: number }, semana?: string | null): { jogo: any; confronto: any; situacao: ReturnType<typeof situacaoDoHumano>; eventos: any[] };
+// M10b: peças comuns com as copas da UEFA.
+export function clubeNoIndice(indice: any): Map<string, { c: any; pais?: string; assoc?: string; liga: string | null; ficticio?: boolean }>;
+export function forcaNaLiga(CAREER: any, indice: any, id: Id): { atk: number; def: number };
+export function nomeDe(CAREER: any, indice: any, id: Id): string;
+export function noticia(CAREER: any, txt: string, mine: boolean): void;
+export function compactarPlano(plano: any, humano: Id, fora: string[]): any;
+export function expandirPlano(salvo: any, tabelas: Record<string, unknown>, semente: (plano: any, id: Id, c: any) => number): any;
