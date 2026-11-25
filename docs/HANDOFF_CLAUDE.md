@@ -9,6 +9,52 @@ divergências, aprovação) — elas não são repetidas aqui.
 
 Demandas vigentes
 
+MERCADO-001 — Implementação do mercado e da economia (Touchline)
+
+Status: EM IMPLEMENTAÇÃO — etapa 1 (valor de mercado inicial por atleta),
+branch `claude/mercado-e1-valor`. Pedido do Murilo (25/11/2026): "Faça o
+merge e a seguir execute o md" (handoff em `docs/economia/04_Handoff_Mercado.md`).
+Base: `main` em ba1a580 (#170).
+
+Relatório da etapa 1, valor de mercado (25/11/2026)
+
+O que foi feito (economia versão 4, só carreiras novas; as versões 2 e 3
+seguem lidas como eram):
+- catálogo `REFERENCIA_OV75` (EUR, overall 75, 24–28 anos) para as 23
+  ligas jogáveis:
+  - os 11 valores da tabela do handoff como "estimado";
+  - os demais "imputados" por mercado comparável;
+  - perfis de fallback explícitos: Série D, clube fictício das copas,
+    andinos e 5º pacote da UEFA;
+- `valorDeMercado` = referência da liga × qualidade(overall, interpolada) ×
+  idade e potencial (goleiro com as faixas 2 anos depois), em R$ pelo câmbio
+  fixo e arredondado uma vez;
+- o valor nasce no save com `valorInicial` e o fator individual, na criação
+  da carreira e em todo atleta gerado depois (base, olheiro, reposição e
+  promoção da CPU). Liga do clube detentor; o livre, pela liga do último
+  clube; o fictício, pelo fallback;
+- na abertura de cada janela, o valor corrente segue a evolução e a idade
+  (valor anterior × fator atual ÷ anterior), uma vez por janela. Minutos e
+  desempenho ficam neutros até a calibração em simulação;
+- demanda entre países pela razão das referências.
+
+Sem avaliação individual nos catálogos: os pacotes do mundo só têm o valor
+do elenco inteiro (`squadMarketValueEur`), usado aqui como conferência.
+
+Calibração: com a tabela do handoff, os elencos ficam entre 0,42× e 0,68×
+do valor do Transfermarkt (Premier League 0,42; LaLiga 0,68). A fonte do
+mundo comprime os overalls no topo (máximo 78 na Premier League), então os
+craques ficam baratos (topo da Premier League: € 26,8 mi). Proposta de
+ajuste para a próxima etapa: deslocamento do overall do mundo ou faixas.
+
+Testes: `test_economia_mercado` 8/8 (caso 4 novo: os 4 valores da tabela,
+interpolação, goleiro, livre, fictício e a janela uma vez).
+
+Próximo: etapa 2 (caixa, folha, parcelas, pedidas e avaliação de oferta,
+iguais para a CPU).
+
+⸻
+
 ECON-001 — Recalibração da economia do Modo Carreira (Touchline)
 
 Status: Entrega 1 mesclada (#167, 25/11/2026). EM IMPLEMENTAÇÃO — Entrega 2

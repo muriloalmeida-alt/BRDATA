@@ -54,7 +54,7 @@ const squadAvgOverallOf = (clubId) => forcaMediaDoElenco(clubId);
 const sortedStandings = () => sortRows(carreiraAtual().standings);
 const wageBillOf = (squad) => financas.wageBill(squad);
 // ECON-001b: o prospecto do olheiro nasce na escala do seu clube (economia v2).
-const computeContractFields = (overall, age, potential, rng) => temporada.computeContractFields(overall, age, potential, rng, ambiente.temporadaReal(), economia.escalaDe(carreiraAtual(), carreiraAtual() && carreiraAtual().clubId));
+const computeContractFields = (overall, age, potential, rng, grupo = null) => temporada.computeContractFields(overall, age, potential, rng, ambiente.temporadaReal(), economia.escalaDe(carreiraAtual(), carreiraAtual() && carreiraAtual().clubId), grupo);
 const youthPotentialRoll = (rng, bonus) => temporada.youthPotentialRoll(rng, bonus);
 
 export const SUBPOS_LABEL = { GOL: "Goleiro", DEF: "Defensor", MEI: "Meio-campo", ATA: "Atacante" };
@@ -267,6 +267,9 @@ export function advanceCalendarWeek() {
   if (calendarWeekMonth(cur) !== calendarWeekMonth(prev)) money = applyCalendarMonthlyFinances(calendarWeekMonth(cur));
   if (cur.p !== prev.p) {
     const win = CALENDAR_WINDOW_PHASES.has(cur.p);
+    // Mercado, etapa 1 (economia v4): na abertura da janela, o valor corrente
+    // de cada atleta segue a evolução e a idade (uma vez por janela).
+    if (win) economia.atualizarValoresDaJanela(CAREER, `${cal.year}-${cur.d}`);
     pushNotification("calendario", `${CALENDAR_PHASE_LABEL[cur.p]} — ${win ? "janela de transferências aberta" : "janela de transferências fechada (vender continua liberado)"}.`);
   }
   return money;
@@ -970,7 +973,7 @@ export function generateScoutProspect(scout, region, round, idx, { ages = [15, 2
   const prospect = {
     id: `prospect_${scout.id}_${round}_${idx}`, name: `${first} ${last}`,
     group, age, overall, atk, def, phys, potential,
-    ...computeContractFields(overall, age, potential, rng),
+    ...computeContractFields(overall, age, potential, rng, group),
     foundRegion: region, scoutName: scout.name, scoutNote: note, potRange,
   };
   prospect.report = scoutReport(prospect, potRange, "base");

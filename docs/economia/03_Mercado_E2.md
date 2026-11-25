@@ -1,34 +1,34 @@
 # ECON-001 · Entrega 2 · Mercado: antes e depois
 
-Gerado por `tests/sim/economia_mercado.js` (criação da carreira, sem jogar). "Antes" = a regra de sempre (economia v1, carreiras de hoje); "depois" = economia v3 (carreiras novas). R$ milhões; folha, teto, TV e despesas por mês; patrocínio por temporada. No Brasil, o modo exemplo (sem rede) usa elencos fictícios.
+Gerado por `tests/sim/economia_mercado.js` (criação da carreira, sem jogar). "Antes" = a regra de sempre (economia v1, carreiras de hoje); "depois" = economia v4 (carreiras novas). R$ milhões; folha, teto, TV e despesas por mês; patrocínio por temporada. No Brasil, o modo exemplo (sem rede) usa elencos fictícios.
 
 | Perfil | | Folha | Teto | Caixa | TV/mês | Despesas/mês | Patrocínio | Maior salário | Maior valor | Elencos ≤ US$ 1 mi | > US$ 20 mi |
 |---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| Arsenal (Premier League) | antes | 1,5 | 2,1 | 13,7 | 0,4 | 0,0 | 8,7 | 0,1 | 8,7 | 95% | 0% |
-|  | depois | 122,4 | 165,2 | 666,2 | 185,0 | 236,6 | 1.500,9 | 9,7 | 487,1 | 14% | 17% |
-| Southampton (Championship) | antes | 0,8 | 1,0 | 6,3 | 0,2 | 0,0 | 7,4 | 0,1 | 3,6 | 96% | 0% |
-|  | depois | 30,1 | 40,6 | 68,0 | 18,9 | 11,5 | 140,7 | 2,1 | 52,6 | 22% | 11% |
-| Real Madrid (LaLiga) | antes | 1,7 | 2,3 | 17,7 | 0,5 | 0,0 | 7,2 | 0,1 | 10,0 | 96% | 0% |
-|  | depois | 185,9 | 251,0 | 1.348,8 | 374,7 | 540,9 | 3.351,2 | 15,0 | 287,9 | 30% | 6% |
-| River Plate (Argentina) | antes | 1,3 | 1,8 | 11,9 | 0,3 | 0,0 | 7,5 | 0,1 | 6,5 | 99% | 0% |
-|  | depois | 18,9 | 25,5 | 99,0 | 16,5 | 36,1 | 176,8 | 1,3 | 27,7 | 76% | 0% |
-| Peñarol (Uruguai) | antes | 0,8 | 1,1 | 7,8 | 0,2 | 0,0 | 7,7 | 0,1 | 3,6 | 100% | 0% |
-|  | depois | 4,4 | 5,9 | 20,6 | 3,4 | 7,1 | 37,4 | 0,3 | 4,8 | 100% | 0% |
-| Barcelona SC (Equador) | antes | 1,1 | 1,5 | 10,4 | 0,3 | 0,0 | 7,3 | 0,1 | 4,8 | 100% | 0% |
-|  | depois | 6,8 | 9,2 | 29,8 | 5,0 | 9,7 | 61,5 | 0,4 | 10,6 | 95% | 0% |
-| Flamengo (Brasil, modo exemplo) | antes | 4,7 | 6,4 | 38,1 | 1,0 | 0,0 | 6,9 | 0,7 | 61,2 | 56% | 0% |
-|  | depois | 30,2 | 40,8 | 313,5 | 69,7 | 135,3 | 667,6 | 3,9 | 132,3 | 60% | 0% |
-| Mirassol (Brasil, modo exemplo) | antes | 1,7 | 2,2 | 13,5 | 0,3 | 0,0 | 7,3 | 0,2 | 15,9 | 55% | 0% |
-|  | depois | 5,9 | 8,0 | 27,0 | 6,0 | 8,3 | 58,9 | 0,6 | 40,8 | 60% | 0% |
+| Arsenal (Premier League) | antes | 1,5 | 2,1 | 13,7 | 0,4 | 0,0 | 7,4 | 0,1 | 8,7 | 95% | 0% |
+|  | depois | 122,4 | 165,2 | 666,2 | 185,0 | 236,6 | 1.531,8 | 9,7 | 161,6 | 21% | 2% |
+| Southampton (Championship) | antes | 0,8 | 1,0 | 6,3 | 0,2 | 0,0 | 8,3 | 0,1 | 3,6 | 96% | 0% |
+|  | depois | 30,1 | 40,6 | 68,0 | 18,9 | 11,5 | 147,0 | 2,1 | 17,4 | 31% | 2% |
+| Real Madrid (LaLiga) | antes | 1,7 | 2,3 | 17,7 | 0,5 | 0,0 | 8,0 | 0,1 | 10,0 | 96% | 0% |
+|  | depois | 185,9 | 251,0 | 1.348,8 | 374,7 | 540,9 | 3.434,4 | 15,0 | 94,6 | 41% | 0% |
+| River Plate (Argentina) | antes | 1,3 | 1,8 | 11,9 | 0,3 | 0,0 | 8,6 | 0,1 | 6,5 | 99% | 0% |
+|  | depois | 18,9 | 25,5 | 99,0 | 16,5 | 36,1 | 191,2 | 1,3 | 13,4 | 75% | 0% |
+| Peñarol (Uruguai) | antes | 0,8 | 1,1 | 7,8 | 0,2 | 0,0 | 7,4 | 0,1 | 3,6 | 100% | 0% |
+|  | depois | 4,4 | 5,9 | 20,6 | 3,4 | 7,1 | 38,5 | 0,3 | 4,8 | 100% | 0% |
+| Barcelona SC (Equador) | antes | 1,1 | 1,5 | 10,4 | 0,3 | 0,0 | 8,1 | 0,1 | 4,8 | 100% | 0% |
+|  | depois | 6,8 | 9,2 | 29,8 | 5,0 | 9,7 | 58,0 | 0,4 | 6,7 | 99% | 0% |
+| Flamengo (Brasil, modo exemplo) | antes | 4,7 | 6,4 | 38,1 | 1,0 | 0,0 | 7,9 | 0,7 | 61,2 | 56% | 0% |
+|  | depois | 30,2 | 40,8 | 313,5 | 69,7 | 135,3 | 688,4 | 3,9 | 94,8 | 48% | 0% |
+| Mirassol (Brasil, modo exemplo) | antes | 1,7 | 2,2 | 13,5 | 0,3 | 0,0 | 8,4 | 0,2 | 15,9 | 55% | 0% |
+|  | depois | 5,9 | 8,0 | 27,0 | 6,0 | 8,3 | 51,8 | 0,6 | 51,3 | 48% | 0% |
 
 ## Negócios de referência (plausibilidade)
 
 | Negócio | Valor real | Motor | Perfil usado |
 |---|---:|---:|---|
-| Isak (Newcastle → Liverpool) | £ 125 mi | £ 68,2 mi | Newcastle, overall 77, 25 anos |
-| Paquetá (West Ham → Flamengo) | € 42 mi | € 14,8 mi | clube de meio da Premier League, overall 72, 28 anos |
+| Isak (Newcastle → Liverpool) | £ 125 mi | £ 17,5 mi | Newcastle, overall 77, 25 anos |
+| Paquetá (West Ham → Flamengo) | € 42 mi | € 11 mi | clube de meio da Premier League, overall 72, 28 anos |
 | Mastantuono (River → Real Madrid) | € 45 mi (cláusula) | € 6,1 mi | River, overall 74, 18 anos, potencial 86; demanda do Real Madrid ×2.90 |
-| Leo Fernández (Peñarol, 80%) | US$ 7 mi | US$ 1,5 mi | Peñarol, overall 74, 25 anos |
+| Leo Fernández (Peñarol, 80%) | US$ 7 mi | US$ 0,7 mi | Peñarol, overall 74, 25 anos |
 
 ## Como funciona (economia v2)
 
@@ -49,6 +49,8 @@ Gerado por `tests/sim/economia_mercado.js` (criação da carreira, sem jogar). "
 - **Clubes que entram depois:** recebem o nível da liga pelo porte (subiu do catálogo ou da Série D). O clube aberto no mercado do mundo recebe o nível que fecha a folha-base dele e o preço mediano da liga dele, com o formato da 1ª divisão do técnico (aproximação: a liga de fora não tem os elencos no save).
 - **Saves da versão 2** (escala linear, carreiras criadas entre o #168 e esta regra): continuam lidos como eram.
 - **Demanda (só entre países):** quando um dos clubes é de fora do país do save, quem compra de um mercado mais caro paga parte da diferença. A reserva do vendedor parte do valor × (preço mediano da liga do comprador ÷ o da do vendedor)^0,5, entre 1 e 3 (`fatorDeDemanda`). Vale igual para a proposta do técnico e para a compra da CPU. No mercado doméstico, o preço parte do valor exibido.
+
+**Valor de mercado pelo catálogo (economia versão 4, handoff do mercado, etapa 1).** Desde a v4, o **valor** não usa mais a forma comum acima. Ele sai do catálogo `REFERENCIA_OV75`: referência da liga do clube detentor (overall 75, em EUR) × qualidade(overall) × idade e potencial (goleiro: faixas 2 anos depois). Ele é atualizado na abertura de cada janela pela evolução e pela idade. O salário segue a regra da v3 até a etapa 2. Detalhe em `docs/HANDOFF_CLAUDE.md` (MERCADO-001).
 
 **Reserva do vendedor e pedido do atleta.** As regras de hoje (`mercado.reservaParaProposta`, `avaliacaoAtleta`) não mudam: elas partem do valor (com a demanda) e do salário do atleta, que agora estão na escala. Ex.: um atleta de um clube menor pede mais para ir a um clube maior. Um do clube maior recusa um salário de clube menor, com o motivo "O salário oferecido está abaixo do que ele ganha".
 

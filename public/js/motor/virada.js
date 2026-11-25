@@ -51,7 +51,7 @@ const escalaDoClube = (id) => economia.escalaDe(carreiraAtual(), id);
 const envJogador = () => ({ firstNames: ambiente.primeirosNomes, lastNames: ambiente.sobrenomes, liveSeason: ambiente.temporadaReal(), escala: escalaDoClube });
 const buildBasePlayer = (club, idx, rng) => temporada.buildBasePlayer(club, idx, rng, envJogador());
 const buildGeneratedProPlayer = (club, idx, rng) => temporada.buildGeneratedProPlayer(club, idx, rng, envJogador());
-const computeContractFields = (overall, age, potential, rng, clubId = null) => temporada.computeContractFields(overall, age, potential, rng, ambiente.temporadaReal(), clubId == null ? null : escalaDoClube(clubId));
+const computeContractFields = (overall, age, potential, rng, clubId = null, grupo = null) => temporada.computeContractFields(overall, age, potential, rng, ambiente.temporadaReal(), clubId == null ? null : escalaDoClube(clubId), grupo);
 
 export function defaultSectorTactics() {
   const out = {};
@@ -118,7 +118,7 @@ export function buildRealPlayer(raw, club, rng) {
     benchStreak: 0, moraleReason: "Neutro no clube", moraleTrend: "estavel",
     wantsTransfer: false, lastTalkRound: null,
     goalsCareer: 0, assistsCareer: 0, apps: 0,
-    ...computeContractFields(overall, age, potential, rng, club && club.id),
+    ...computeContractFields(overall, age, potential, rng, club && club.id, group),
   };
 }
 
@@ -527,7 +527,7 @@ export function promoverBaseDaCpu(club, elenco) {
     j.overall = Math.max(j.overall, Math.round((j.potential || 60) * BASE_CPU.fatorOverall));
     j.atk = Math.max(j.atk, j.overall + (j.group === "F" ? 4 : j.group === "M" ? 1 : -8));
     j.def = Math.max(j.def, j.overall + (j.group === "D" || j.group === "G" ? 4 : -8));
-    Object.assign(j, temporada.computeContractFields(j.overall, j.age, j.potential, rng, CAREER.seasonYear - 1, escalaDoClube(club.id)));
+    Object.assign(j, temporada.computeContractFields(j.overall, j.age, j.potential, rng, CAREER.seasonYear - 1, escalaDoClube(club.id), j.group));
     // Sempre no lugar do mais velho da posição (o elenco não cresce).
     {
       const velho = lista.filter((p) => p.onLoanFromClubId == null && p.group === j.group && !voltaramNaVirada.has(String(p.id))).sort((a, b) => (b.age || 0) - (a.age || 0) || a.overall - b.overall)[0];
