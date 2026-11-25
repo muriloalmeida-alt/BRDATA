@@ -15,8 +15,9 @@ Status: M1 a M9 APROVADAS e mescladas (Murilo: #154 mesclado por ele;
 #155 a #157 com "Vamos fazer os merges pendentes?", 24/11/2026; #158 com
 "158 aprovado" e #159 com "Aprovado", 25/11/2026). M10a e M10b
 aprovadas e mescladas (#160 e #161, "Aprovado", 25/11/2026). M10c aprovada e
-mesclada (#162 e #163). M10d (liberação) em revisão (PR #164). M11 (validação final) feita, em
-revisão (branch `claude/mundo-m11`, empilhada sobre o #164).
+mesclada (#162 e #163). M10d (liberação) aprovada e mesclada (#164, "Faça o merge completo com
+a main", 25/11/2026). M11 (validação final) feita, mesclada pelo mesmo
+pedido.
 - Etapas M1 a M6a: PR #154 (suíte completa 191/191), mesclado.
 - M6b, passos 1 a 4: PR #155, empilhado sobre o #154 (suíte completa
   191/192; a falha, instável e sem relação com o mundo, está no PR).
