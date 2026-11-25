@@ -109,6 +109,11 @@ Testes:
 - testes de equivalência com a cópia congelada (`test_motor_carga`,
   `test_motor_virada`) com a v2 desligada, como as outras chaves de
   paridade.
+- testes da regra da CPU de antes (`test_paridade_financas`,
+  `test_paridade_mercado`) com a v2 desligada (a regra dos saves de hoje);
+  testes do mercado (`test_transfer_ai_*`, `test_mercado_negociacao`,
+  `test_historico_negociacoes`) com alvos e valores na escala nova;
+- suíte completa local: 204/204.
 
 Save: carreira nova no Arsenal com 547 KB de JSON e 61 KB em gzip (sem a
 v2: 530 KB e 57 KB). O campo `economia` tem cerca de 2 KB.
