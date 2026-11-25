@@ -31,7 +31,7 @@
 =================================================================== */
 import { CAMBIO } from "./texto.js";
 
-export const VERSAO_ECONOMIA = 3;
+export const VERSAO_ECONOMIA = 4;
 export const PERIODO_REFERENCIA = "2024/25–2025/26";
 
 // Fonte de um número: { valor, moeda, periodo, item, tipo, fonte, confianca }.
@@ -234,6 +234,89 @@ export const PERFIS = {
 
 // Referências de plausibilidade (proposta): clubes fora das ligas jogáveis e
 // negócios. Não entram no catálogo de clubes; servem aos testes e ao quadro.
+/* ---------- Valor de mercado por atleta (Mercado, etapa 1; economia v4) ----------
+   Handoff "Touchline — Implementação do mercado" (25/11/2026), seção 1. Sem
+   avaliação individual nos catálogos (os pacotes do mundo só têm o valor do
+   elenco inteiro, `squadMarketValueEur`), todo atleta usa:
+     valor = referência da liga (overall 75, em EUR) × qualidade(overall) × idade
+   convertido a R$ pelo câmbio fixo e arredondado uma vez (R$ 1 mil). */
+const H = "Handoff Touchline — Implementação do mercado (25/11/2026), tabela da seção 1";
+const I = (valor, item) => F(valor, "EUR", "2025/26", item || "valor de mercado de referência, overall 75, 24–28 anos", "imputado", null, "baixa");
+export const REFERENCIA_OV75 = {
+  premier_league: F(15e6, "EUR", "2025/26", "valor de mercado de referência, overall 75, 24–28 anos", "estimado", H, "media"),
+  la_liga: F(8e6, "EUR", "2025/26", "valor de mercado de referência, overall 75, 24–28 anos", "estimado", H, "media"),
+  bundesliga: F(8e6, "EUR", "2025/26", "valor de mercado de referência, overall 75, 24–28 anos", "estimado", H, "media"),
+  serie_a_italia: F(8e6, "EUR", "2025/26", "valor de mercado de referência, overall 75, 24–28 anos", "estimado", H, "media"),
+  ligue_1: F(8e6, "EUR", "2025/26", "valor de mercado de referência, overall 75, 24–28 anos", "estimado", H, "media"),
+  efl_championship: F(4e6, "EUR", "2025/26", "valor de mercado de referência, overall 75, 24–28 anos", "estimado", H, "media"),
+  brasileirao: F(2.5e6, "EUR", "2025/26", "valor de mercado de referência, overall 75, 24–28 anos", "estimado", H, "media"),
+  arg_liga_profesional: F(1.8e6, "EUR", "2025/26", "valor de mercado de referência, overall 75, 24–28 anos", "estimado", H, "media"),
+  serie_b: F(0.9e6, "EUR", "2025/26", "valor de mercado de referência, overall 75, 24–28 anos", "estimado", H, "media"),
+  uru_primera: F(0.7e6, "EUR", "2025/26", "valor de mercado de referência, overall 75, 24–28 anos", "estimado", H, "media"),
+  serie_c: F(0.35e6, "EUR", "2025/26", "valor de mercado de referência, overall 75, 24–28 anos", "estimado", H, "media"),
+  // Imputados por mercado comparável (25/11): segundas divisões das 4 grandes
+  // fora a Inglaterra ~ 40% da Championship; Chile, Colômbia e Equador entre o
+  // Uruguai e a Argentina; segundas da América do Sul ~ 1/3 da primeira (como
+  // Série B ÷ Série A no Brasil).
+  laliga_hypermotion: I(1.6e6), serie_b_italia: I(1.6e6), bundesliga_2: I(1.6e6), ligue_2: I(1.2e6),
+  col_primera_a: I(1.2e6), chi_liga_primera: I(1.0e6), ecu_ligapro_a: I(1.0e6),
+  arg_primera_nacional: I(0.6e6), col_primera_b: I(0.35e6), chi_liga_ascenso: I(0.3e6), ecu_ligapro_b: I(0.3e6), uru_segunda: I(0.2e6),
+  // Perfis de fallback explícitos (sem divisão no catálogo): Série D, clube
+  // fictício das copas (elenco gerado) e clube andino das copas.
+  serie_d: I(0.12e6, "fallback: Série D (elenco gerado), overall 75"),
+  fora_do_catalogo: I(0.5e6, "fallback: clube fictício das copas, overall 75"),
+  conmebol_andinos: I(0.9e6, "fallback: clube andino das copas (Bolívia, Paraguai, Peru, Venezuela), overall 75"),
+  uefa_extra: I(3e6, "fallback: 5º pacote da UEFA (Portugal, Holanda, Bélgica...), overall 75; Portugal na tabela do handoff: 4 mi"),
+};
+// Multiplicador de qualidade pelo overall (interpolação linear; fora da
+// tabela, os das extremidades).
+export const QUALIDADE = [[50, 0.02], [55, 0.05], [60, 0.12], [65, 0.25], [70, 0.55], [75, 1], [80, 1.9], [85, 3.8], [90, 6.5], [95, 10]];
+export function multQualidade(ov) {
+  const t = QUALIDADE;
+  if (!(ov > t[0][0])) return t[0][1];
+  if (ov >= t[t.length - 1][0]) return t[t.length - 1][1];
+  for (let i = 1; i < t.length; i++) if (ov <= t[i][0]) { const [a, va] = t[i - 1], [b, vb] = t[i]; return va + ((vb - va) * (ov - a)) / (b - a); }
+  return 1;
+}
+// Multiplicador de idade e potencial (goleiro: faixas 2 anos depois). Sem
+// potencial conhecido, a diferença para o overall é zero.
+export function multIdade(age, potential, overall, group) {
+  const a = (age || 25) - (group === "G" ? 2 : 0);
+  if (a <= 23) return Math.min(1.6, 0.8 + 0.04 * Math.max(0, (potential != null ? potential : overall) - overall));
+  if (a <= 28) return 1;
+  if (a <= 31) return 0.8;
+  if (a <= 34) return 0.55;
+  return 0.3;
+}
+export const fatorIndividual = (a) => multQualidade(a.overall) * multIdade(a.age, a.potential, a.overall, a.group);
+// Valor de mercado em EUR (moeda da referência) e em R$ (unidade interna).
+export function valorDeMercadoEur(liga, a) {
+  const r = REFERENCIA_OV75[liga] || REFERENCIA_OV75.fora_do_catalogo;
+  return r.valor * fatorIndividual(a);
+}
+export function valorDeMercado(liga, a) {
+  return Math.max(1000, Math.round((valorDeMercadoEur(liga, a) * CAMBIO.EUR) / 1000) * 1000);
+}
+// Virada de janela (seção 1): valor anterior × (fator individual de agora ÷ o
+// da janela anterior); minutos e desempenho neutros até a calibração em
+// simulação. Cada janela uma vez (CAREER.economia.janelaValores). Devolve o
+// número de atletas atualizados.
+export function atualizarValoresDaJanela(CAREER, chave) {
+  if (!CAREER || !CAREER.economia || CAREER.economia.versao < 4 || CAREER.economia.janelaValores === chave) return 0;
+  CAREER.economia.janelaValores = chave;
+  let n = 0;
+  const todos = [CAREER.squad || [], ...Object.values(CAREER.leagueSquads || {}), CAREER.agentesLivres || [], ...Object.values(CAREER.basesCpu || {})];
+  for (const lista of todos) for (const p of lista) {
+    if (!(p.fatorValor > 0) || p.value == null) continue;
+    const f = Math.round(fatorIndividual(p) * 1e6) / 1e6;
+    if (!(f > 0) || Math.abs(f - p.fatorValor) < 1e-6) continue;
+    p.value = Math.max(1000, Math.round((p.value * f) / p.fatorValor / 1000) * 1000);
+    p.fatorValor = f;
+    n++;
+  }
+  return n;
+}
+
 export const REFERENCIAS = {
   benfica: { receitaSemAtletas: F(230.6e6, "EUR", "2024/25", "rendimentos sem direitos de atletas", "publicado", "Benfica SAD, Relatório e Contas 2024/25", "alta"),
     salarioPavlidis: F(2.88e6, "EUR", "2026/27", "salário fixo bruto anual", "estimado", "Capology", "media") },
@@ -488,10 +571,32 @@ export function economiaV2(CAREER) {
 export function escalaDe(CAREER, clubId) {
   if (!economiaV2(CAREER)) return null;
   const x = CAREER.economia.escalas[String(clubId)];
-  if (!x) return null;
+  if (!x) {
+    // v4: clube da Série D (elenco gerado quando cruza com o técnico na Copa):
+    // o perfil de fallback explícito (valor) e metade do nível da Série C.
+    const C3 = CAREER.economia.ligas && CAREER.economia.ligas.serie_c;
+    if (CAREER.economia.versao >= 4 && C3 && (CAREER.serieDPool || []).some((t) => String(t.id) === String(clubId))) {
+      return { salario: escalaDosParametros(C3.s[2] * 0.5, C3).salario, ...escalaDeValorDoCatalogo("serie_d") };
+    }
+    return null;
+  }
   if (CAREER.economia.versao < 3) return { salario: x[0], valor: x[1] };
   const L = CAREER.economia.ligas[x[1]];
-  return L ? escalaDosParametros(x[0], L) : null;
+  if (!L) return null;
+  const e = escalaDosParametros(x[0], L);
+  // v4 (Mercado, etapa 1): o valor pelo catálogo (referência da liga do clube
+  // detentor × qualidade × idade e potencial); x[3]: a referência de valor
+  // quando difere da liga (clube fictício de fora: o perfil de fallback).
+  if (CAREER.economia.versao >= 4) return { salario: e.salario, ...escalaDeValorDoCatalogo(x[3] || x[1]) };
+  return e;
+}
+// Valor de mercado pelo catálogo da liga `liga`: valor(legado, atleta) e o
+// fator individual (qualidade × idade), guardado para a virada de janela.
+export function escalaDeValorDoCatalogo(liga) {
+  return {
+    valor: (legado, a) => (a && a.overall != null ? valorDeMercado(liga, a) : legado),
+    fatorValor: (a) => fatorIndividual(a),
+  };
 }
 // Expoente sobre a curva de sempre (a forma comum ÷ a dispersão da liga):
 // - valor: σv ÷ dispersão, esticando ou comprimindo (a fonte do mundo
@@ -598,6 +703,8 @@ function nivelDePreco(CAREER, id) {
   const x = CAREER.economia.escalas[String(id)];
   if (!x) return null;
   if (CAREER.economia.versao < 3) return x[1];
+  // v4: a referência de valor do catálogo (overall 75) da liga do clube.
+  if (CAREER.economia.versao >= 4) { const r = REFERENCIA_OV75[x[3] || x[1]]; return r ? r.valor : null; }
   const L = CAREER.economia.ligas[x[1]];
   return L ? L.v[2] : null;
 }
@@ -614,7 +721,8 @@ export function aplicarEscalaNoAtleta(p, escala) {
   if (!p || !escala || p.escalaEco) return p;
   if (p.wage != null) p.wage = Math.max(100, Math.round(aplicar(p.wage, escala.salario) / 100) * 100);
   if (p.loanOriginalWage != null) p.loanOriginalWage = Math.max(100, Math.round(aplicar(p.loanOriginalWage, escala.salario) / 100) * 100);
-  if (p.value != null) p.value = Math.max(1000, Math.round(aplicar(p.value, escala.valor) / 1000) * 1000);
+  if (p.value != null) p.value = Math.max(1000, Math.round((typeof escala.valor === "function" ? escala.valor(p.value, p) : p.value * escala.valor) / 1000) * 1000);
+  if (escala.fatorValor && p.overall != null) { p.fatorValor = Math.round(escala.fatorValor(p) * 1e6) / 1e6; p.valorInicial = p.value; }
   p.escalaEco = 1;
   return p;
 }

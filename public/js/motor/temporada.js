@@ -35,7 +35,9 @@ const average = (list) => (list.length ? list.reduce((s, p) => s + p.overall, 0)
 // Salário, valor e contrato (1 a 4 temporadas a partir de liveSeason).
 // ECON-001b: `escala` ({ salario, valor }, da economia v2 do clube) leva o
 // contrato à escala do clube e da liga; sem ela, a regra de sempre.
-export function computeContractFields(overall, age, potential, rng, liveSeason, escala = null) {
+// grupo (Mercado, etapa 1): a posição (goleiro desloca as faixas de idade
+// do valor de mercado do catálogo, economia v4).
+export function computeContractFields(overall, age, potential, rng, liveSeason, escala = null, grupo = null) {
   let ageMult = 1;
   if (age <= 20) ageMult = 0.8;
   else if (age <= 23) ageMult = 1.0;
@@ -49,7 +51,13 @@ export function computeContractFields(overall, age, potential, rng, liveSeason, 
   const contractUntil = liveSeason + 1 + Math.floor(rng() * 4);
   // escala.salario/valor: função (economia v3) ou fator (v2).
   const ap = (x, f) => (typeof f === "function" ? f(x) : x * f);
-  if (escala) return { wage: Math.max(100, Math.round(ap(wage, escala.salario) / 100) * 100), value: Math.max(1000, Math.round(ap(value, escala.valor) / 1000) * 1000), contractUntil, escalaEco: 1 };
+  if (escala) {
+    const atleta = { overall, age, potential, group: grupo };
+    const v = Math.max(1000, Math.round((typeof escala.valor === "function" ? escala.valor(value, atleta) : value * escala.valor) / 1000) * 1000);
+    const c = { wage: Math.max(100, Math.round(ap(wage, escala.salario) / 100) * 100), value: v, contractUntil, escalaEco: 1 };
+    if (escala.fatorValor) { c.fatorValor = Math.round(escala.fatorValor(atleta) * 1e6) / 1e6; c.valorInicial = v; }
+    return c;
+  }
   return { wage, value, contractUntil };
 }
 // Salário "de mercado" para o overall e a idade atuais.
@@ -132,7 +140,7 @@ export function buildBasePlayer(club, idx, rng, env) {
     benchStreak: 0, moraleReason: "Neutro no clube", moraleTrend: "estavel",
     wantsTransfer: false, lastTalkRound: null,
     goalsCareer: 0, assistsCareer: 0, apps: 0,
-    ...computeContractFields(overall, age, potential, rng, env.liveSeason, env.escala ? env.escala(club.id) : null),
+    ...computeContractFields(overall, age, potential, rng, env.liveSeason, env.escala ? env.escala(club.id) : null, group),
   };
 }
 export const FILLER_COMPOSITION = ["G", "D", "D", "D", "D", "D", "M", "M", "M", "M", "M", "M", "F", "F", "F", "F"];
@@ -155,7 +163,7 @@ export function buildGeneratedProPlayer(club, idx, rng, env) {
     benchStreak: 0, moraleReason: "Neutro no clube", moraleTrend: "estavel",
     wantsTransfer: false, lastTalkRound: null,
     goalsCareer: 0, assistsCareer: 0, apps: 0,
-    ...computeContractFields(overall, age, potential, rng, env.liveSeason, env.escala ? env.escala(club.id) : null),
+    ...computeContractFields(overall, age, potential, rng, env.liveSeason, env.escala ? env.escala(club.id) : null, group),
   };
 }
 export const MIN_PRINCIPAL = 18;
@@ -217,7 +225,7 @@ function reporNoNivel(p, ref, rng, env, escala = null) {
   p.atk = clamp(overall + (g === "F" ? 6 : g === "M" ? 2 : -10) + Math.round(rng() * 6 - 3), 28, 92);
   p.def = clamp(overall + (g === "D" || g === "G" ? 6 : -10) + Math.round(rng() * 6 - 3), 28, 92);
   p.potential = derivePotentialForAdult(overall, p.age, rng);
-  Object.assign(p, computeContractFields(overall, p.age, p.potential, rng, env.liveSeason, escala));
+  Object.assign(p, computeContractFields(overall, p.age, p.potential, rng, env.liveSeason, escala, g));
 }
 
 // Elenco CPU: evolução anual, idade, queda do potencial, saída por fim
@@ -237,7 +245,7 @@ export function renewLeagueSquad({ club, squad, seasonYear, minSize, evoRng, rng
   players.forEach((p) => {
     if (!renova.has(p.id)) return;
     // Contrato novo de 1 a 4 temporadas e o salário de mercado de agora.
-    const c = computeContractFields(p.overall, p.age, p.potential || null, rng, seasonYear - 1, env && env.escala ? env.escala(club.id) : null);
+    const c = computeContractFields(p.overall, p.age, p.potential || null, rng, seasonYear - 1, env && env.escala ? env.escala(club.id) : null, p.group);
     p.contractUntil = c.contractUntil; p.wage = c.wage;
   });
   const kept = players.filter((p) => p.contractUntil >= seasonYear);

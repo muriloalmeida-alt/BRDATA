@@ -12,7 +12,9 @@
 //      mesma resposta; a demanda entre países (comprador de mercado mais
 //      caro paga mais; no doméstico, não); a proposta do técnico sem caixa é recusada com o
 //      motivo; a CPU sem caixa não compra;
-//   4) plausibilidade dos preços pelos negócios de referência (com margem);
+//   4) valor de mercado pelo catálogo do handoff do mercado: os 4 casos da
+//      tabela, interpolação, goleiro, livre, fictício (fallback) e a virada de
+//      janela (uma vez);
 //   5) virada: o clube do técnico rebaixado à Championship recebe a
 //      transição e as escalas de quem entra no save são completadas;
 //   6) divisões de baixo: o atleta mediano cabe no caixa do clube mediano em
@@ -165,30 +167,53 @@ const imp = (m) => import(pathToFileURL(path.join(ROOT, "public/js/motor", m)).h
     assert.strictEqual(nCpu.ok, false);
   });
 
-  await check("plausibilidade dos preços pelos negócios de referência (com margem)", async () => {
-    const usd = (v) => v * texto.CAMBIO.USD, gbp = (v) => v * texto.CAMBIO.GBP, eur = (v) => v * texto.CAMBIO.EUR;
-    const valor = (C, id, ov, idade, pot) => temporada.computeContractFields(ov, idade, pot, () => 0.5, 2026, E.escalaDe(C, id)).value;
-    // Premier League: o topo do Newcastle (Isak, £125 mi) e o meio (Paquetá, €42 mi pelo Flamengo).
-    const P = await nova("premier_league", /^Arsenal/);
-    const pl = [...E.economiaDaLiga(indice, "premier_league").values()];
-    const newc = pl.find((x) => /Newcastle/.test(x.nome));
-    const meio = pl.find((x) => /Crystal Palace/.test(x.nome));
-    const topoPl = Math.max(...Object.values(P.leagueSquads).flat().map((p) => p.overall));
-    dentro(valor(P, newc.id, topoPl - 1, 25, topoPl + 2), gbp(50e6), gbp(220e6), "topo da Premier League (Isak)");
-    dentro(valor(P, meio.id, topoPl - 6, 28, topoPl - 5), eur(10e6), eur(90e6), "titular de meio da Premier League (Paquetá)");
-    // Argentina: talento do River vendido à Europa (Mastantuono, €45 mi). No
-    // mercado argentino o preço segue a receita local; o comprador europeu
-    // paga a demanda (preço mediano da liga dele ÷ o da Argentina)^0,5, até 3×.
-    const A = await nova("arg_liga_profesional", /^River/);
-    const demanda = Math.max(1, Math.min(E.DEMANDA.teto, (P.economia.ligas.premier_league.v[2] / A.economia.ligas.arg_liga_profesional.v[2]) ** E.DEMANDA.expoente));
-    dentro(valor(A, A.clubId, 74, 18, 86) * demanda, usd(4e6), usd(60e6), "talento do River vendido à Premier League");
-    // Uruguai: Peñarol (Leo Fernández, US$ 7 mi por 80%).
-    const U = await nova("uru_primera", /Peñarol/);
-    dentro(valor(U, U.clubId, 74, 25, 77), usd(1e6), usd(12e6), "titular do Peñarol");
-    // A cauda: na 2ª divisão a maioria dos elencos fica até US$ 1 mi.
-    const seg = U.divisoes[1];
-    const vals = Object.entries(U.leagueSquads).filter(([id]) => (U.divisionTeams[seg] || []).some((t) => String(t.id) === id)).flatMap(([, sq]) => sq.map((p) => p.value));
-    assert.ok(E.distribuicaoDePrecos(vals).ate1mi > 0.5, JSON.stringify(E.distribuicaoDePrecos(vals)));
+  await check("valor de mercado pelo catálogo (handoff do mercado): os 4 casos, interpolação, goleiro, livre, fictício e a janela", async () => {
+    // Os quatro casos da tabela, em EUR (moeda da referência).
+    const eur = (l, a) => Math.round(E.valorDeMercadoEur(l, a));
+    assert.strictEqual(eur("premier_league", { overall: 85, age: 26 }), 57e6);
+    assert.strictEqual(eur("brasileirao", { overall: 80, age: 26 }), 4.75e6);
+    assert.strictEqual(eur("serie_b", { overall: 70, age: 20, potential: 85 }), 693e3);
+    assert.strictEqual(eur("brasileirao", { overall: 75, age: 33, group: "D" }), 1.375e6);
+    // Interpolação linear, extremidades e sem potencial (diferença zero).
+    assert.strictEqual(E.multQualidade(72.5), 0.775);
+    assert.strictEqual(E.multQualidade(40), 0.02);
+    assert.strictEqual(E.multQualidade(99), 10);
+    assert.strictEqual(E.multIdade(20, null, 70), 0.8);
+    assert.strictEqual(E.multIdade(19, 99, 60), 1.6);
+    // Goleiro: faixas 2 anos depois (33 anos = 31 de linha).
+    assert.strictEqual(eur("brasileirao", { overall: 75, age: 33, group: "G" }), 2e6);
+    assert.strictEqual(E.multIdade(25, 90, 70, "G"), 1.6);
+    // Em R$, arredondado uma vez (R$ 1 mil), pelo câmbio fixo.
+    assert.strictEqual(E.valorDeMercado("premier_league", { overall: 85, age: 26 }), 57e6 * texto.CAMBIO.EUR);
+    // Toda liga jogável tem referência; os perfis de fallback são explícitos.
+    for (const l of [...Object.keys(indice.competicoes), "brasileirao", "serie_b", "serie_c"]) assert.ok(E.REFERENCIA_OV75[l], `sem referência: ${l}`);
+    for (const k of ["serie_d", "fora_do_catalogo", "conmebol_andinos", "uefa_extra"]) assert.strictEqual(E.REFERENCIA_OV75[k].tipo, "imputado");
+    // Na carreira nova: o valor de cada atleta é o do catálogo da liga do clube.
+    const C = await nova("premier_league", /^Arsenal/);
+    const p = C.squad.find((x) => x.origin === "principal");
+    assert.strictEqual(p.value, E.valorDeMercado("premier_league", p));
+    assert.strictEqual(p.valorInicial, p.value);
+    const idCh = C.divisionTeams.efl_championship[0].id;
+    const q = C.leagueSquads[String(idCh)][0];
+    assert.strictEqual(q.value, E.valorDeMercado("efl_championship", q));
+    // Livre: pela liga do último clube; fictício da Série D: o fallback.
+    const livre = { overall: 75, age: 26, group: "M", wage: 1000, value: 1000, ultimoClube: idCh };
+    E.aplicarEscalaNoAtleta(livre, E.escalaDe(C, livre.ultimoClube));
+    assert.strictEqual(livre.value, E.valorDeMercado("efl_championship", livre));
+    const C4 = { economia: { versao: 4, escalas: {}, ligas: { serie_c: C.economia.ligas.efl_championship } }, serieDPool: [{ id: 777 }] };
+    const ficticio = { overall: 75, age: 26, group: "M", wage: 1000, value: 1000 };
+    E.aplicarEscalaNoAtleta(ficticio, E.escalaDe(C4, 777));
+    assert.strictEqual(ficticio.value, E.valorDeMercado("serie_d", ficticio));
+    // Janela: o valor segue a evolução (fator novo ÷ anterior), uma vez por janela.
+    const antes = p.value;
+    p.overall += 3;
+    assert.ok(E.atualizarValoresDaJanela(C, "2026-07-01") > 0);
+    const depois = p.value;
+    assert.ok(depois > antes, "evoluiu e valorizou");
+    assert.strictEqual(E.atualizarValoresDaJanela(C, "2026-07-01"), 0, "a mesma janela não processa de novo");
+    assert.strictEqual(p.value, depois);
+    // Transferência/promoção não mudam o valor por si: sem mudar o atleta, nada muda.
+    assert.strictEqual(E.atualizarValoresDaJanela(C, "2027-01-01"), 0);
   });
 
   await check("virada: rebaixado à Championship com a transição; quem entra ganha escala", async () => {

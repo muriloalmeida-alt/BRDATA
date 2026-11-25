@@ -18,6 +18,8 @@
 - **Saves da versão 2** (escala linear, carreiras criadas entre o #168 e esta regra): continuam lidos como eram.
 - **Demanda (só entre países):** quando um dos clubes é de fora do país do save, quem compra de um mercado mais caro paga parte da diferença. A reserva do vendedor parte do valor × (preço mediano da liga do comprador ÷ o da do vendedor)^0,5, entre 1 e 3 (`fatorDeDemanda`). Vale igual para a proposta do técnico e para a compra da CPU. No mercado doméstico, o preço parte do valor exibido.
 
+**Valor de mercado pelo catálogo (economia versão 4, handoff do mercado, etapa 1).** Desde a v4, o **valor** não usa mais a forma comum acima. Ele sai do catálogo `REFERENCIA_OV75`: referência da liga do clube detentor (overall 75, em EUR) × qualidade(overall) × idade e potencial (goleiro: faixas 2 anos depois). Ele é atualizado na abertura de cada janela pela evolução e pela idade. O salário segue a regra da v3 até a etapa 2. Detalhe em `docs/HANDOFF_CLAUDE.md` (MERCADO-001).
+
 **Reserva do vendedor e pedido do atleta.** As regras de hoje (`mercado.reservaParaProposta`, `avaliacaoAtleta`) não mudam: elas partem do valor (com a demanda) e do salário do atleta, que agora estão na escala. Ex.: um atleta de um clube menor pede mais para ir a um clube maior. Um do clube maior recusa um salário de clube menor, com o motivo "O salário oferecido está abaixo do que ele ganha".
 
 **Finanças do clube do técnico.**

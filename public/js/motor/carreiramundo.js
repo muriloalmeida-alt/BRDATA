@@ -1036,7 +1036,11 @@ export function ativarEconomiaV2(CAREER, indice) {
   }
   // Agentes livres: o nível e o formato da liga do técnico.
   const Lt = ligas[CAREER.competitionId];
-  if (Lt) (CAREER.agentesLivres || []).forEach((p) => E.aplicarEscalaNoAtleta(p, E.escalaDosParametros(Lt.s[2], Lt)));
+  // v4: o valor pela última liga conhecida (o último clube); sem ela, a do técnico.
+  if (Lt) (CAREER.agentesLivres || []).forEach((p) => {
+    const doClube = p.ultimoClube != null ? E.escalaDe(CAREER, p.ultimoClube) : null;
+    E.aplicarEscalaNoAtleta(p, doClube || { ...E.escalaDosParametros(Lt.s[2], Lt), ...E.escalaDeValorDoCatalogo(CAREER.competitionId) });
+  });
   // Finanças do técnico e da CPU.
   const folha = financas.wageBill(CAREER.squad);
   CAREER.finances.wageCap = Math.round((folha * 1.35) / 1000) * 1000;
@@ -1082,7 +1086,10 @@ export function escalaDoClubeDeFora(CAREER, indice, id, liga) {
     const pesos = sq.filter((p) => p.origin !== "base").reduce((t, p) => t + forma(p.wage || 1), 0);
     if (pesos > 0) nivel = Math.round(b.folhaBaseMensal / pesos);
   }
-  CAREER.economia.escalas[String(id)] = [nivel, chave, b ? b.caixaInicial : 0];
+  // v4: a referência de valor de quem não tem divisão no catálogo (fictício,
+  // andino, 5º pacote da UEFA) é o perfil de fallback explícito.
+  const refValor = eco && b ? null : liga && E.REFERENCIA_OV75[liga] ? liga : "fora_do_catalogo";
+  CAREER.economia.escalas[String(id)] = refValor ? [nivel, chave, b ? b.caixaInicial : 0, refValor] : [nivel, chave, b ? b.caixaInicial : 0];
   const e = E.escalaDe(CAREER, id);
   sq.forEach((p) => E.aplicarEscalaNoAtleta(p, e));
 }
