@@ -126,6 +126,32 @@ Casos não confirmados:
 - custos fixos de antes em R$ (obras do estádio, prêmios da liga, recompensas
   da loja) ficam pequenos para clubes grandes. Fica para a Entrega 3.
 
+Ajuste das divisões de baixo (25/11/2026)
+
+Relato do Murilo: "A parte financeira ficou inviável para os times da Série
+C. Com esse orçamento o clube não consegue contratar nenhum jogador".
+
+Medição: em todas as ligas, o atleta mediano valia de 1 a 3,4 vezes o caixa
+inicial inteiro do clube mediano. Duas causas:
+- preço fora da escala da receita nas divisões de baixo: a curva de sempre
+  dava 17% a 27% da receita anual do clube mediano, contra ~9% nas de topo;
+- caixa inicial de 8% da receita (~1 mês), quase todo tomado pela reserva de
+  1 mês de folha.
+
+Correção:
+- escala de valor por liga, com o atleta mediano em 9% da receita do clube
+  mediano (`PRECO_SOBRE_RECEITA`) e o porte do vendedor pela raiz;
+- caixa inicial de 15% da receita (~2 meses).
+
+Resultado:
+- em todas as 23 ligas, atleta mediano ≈ 60% do caixa do clube mediano;
+- Série C (modo exemplo, compra em 4 parcelas):
+  - mais pobre: 241 de 456 atletas da divisão ao alcance;
+  - mediano: 327;
+  - mais rico: 451.
+
+Teste novo: caso 6 de `test_economia_mercado`.
+
 Próximo: Entrega 3 (interface "Paga agora / Custo mensal / Caixa após",
 motivos na tela, Finanças com espaço de folha e parcelas, simulação de 5
 temporadas, desempenho e save, compatibilidade de saves).

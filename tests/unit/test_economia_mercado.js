@@ -15,7 +15,10 @@
 //   4) plausibilidade dos preços pelos negócios de referência (com margem);
 //   5) virada: o clube do técnico rebaixado à Championship recebe a
 //      transição e as escalas de quem entra no save são completadas;
-//   6) save sem economia (carreiras de antes): tudo como antes.
+//   6) divisões de baixo: o atleta mediano cabe no caixa do clube mediano em
+//      todas as divisões, e o clube mais pobre da divisão mais pobre consegue
+//      contratar parte relevante dela (relato da Série C, 25/11);
+//   7) save sem economia (carreiras de antes): tudo como antes.
 // Uso: node tests/unit/test_economia_mercado.js
 const assert = require("assert");
 const path = require("path");
@@ -196,6 +199,30 @@ const imp = (m) => import(pathToFileURL(path.join(ROOT, "public/js/motor", m)).h
     CMu.economiaDaTemporada(C);
     assert.strictEqual(C.economia.clube.anoAposQueda, 2);
     assert.ok(C.economia.clube.tvMensal < um);
+  });
+
+  await check("divisões de baixo: o atleta mediano cabe no caixa e o clube mais pobre consegue contratar", async () => {
+    // Relato do Murilo (25/11): na Série C o clube não conseguia contratar
+    // ninguém (o atleta mediano valia mais que o caixa inteiro do clube).
+    const med = (a) => { const v = a.slice().sort((x, y) => x - y); return v[v.length >> 1]; };
+    for (const [liga, re] of [["premier_league", /^Arsenal/], ["uru_primera", /Peñarol/], ["arg_liga_profesional", /^River/]]) {
+      const C = await nova(liga, re);
+      for (const l of C.divisoes) {
+        const ids = C.divisionTeams[l].map((t) => String(t.id));
+        const valores = ids.flatMap((id) => (id === String(C.clubId) ? C.squad.filter((p) => p.origin !== "base") : C.leagueSquads[id] || []).map((p) => p.value));
+        const caixas = ids.map((id) => C.economia.escalas[id][2]);
+        const r = med(valores) / med(caixas);
+        assert.ok(r < 1, `${l}: atleta mediano ${(med(valores) / 1e6).toFixed(2)} mi x caixa mediano ${(med(caixas) / 1e6).toFixed(2)} mi`);
+      }
+    }
+    // O clube mais pobre da Segunda uruguaia (a divisão mais pobre do mundo).
+    const U = await nova("uru_primera", /Peñarol/);
+    const seg = U.divisoes[1];
+    const pobre = U.divisionTeams[seg].map((t) => String(t.id)).sort((a, b) => U.economia.escalas[a][2] - U.economia.escalas[b][2])[0];
+    const C = await nova(seg, new RegExp(`^${indice.clubes.find((c) => String(c.id) === pobre).nome.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`));
+    const mesma = C.divisionTeams[seg].map((t) => String(t.id)).filter((id) => id !== String(C.clubId)).flatMap((id) => C.leagueSquads[id] || []);
+    const cabe = mesma.filter((p) => { const r = semana.capacidadeDoTecnico(p.value, 4, p.wage); return r && r.ok; }).length;
+    assert.ok(cabe / mesma.length > 0.25, `o mais pobre da ${seg} compra ${cabe} de ${mesma.length}`);
   });
 
   await check("save sem economia (carreiras de antes): tudo como antes", async () => {

@@ -54,7 +54,10 @@ export const REGRAS = {
   // Championship publica −46%; no jogo, −10%: ver PERFIS.efl_championship).
   margem: { europa: 0.03, brasil: 0.05, america_sul: 0.0 },
   despesasMinimas: 0.12, // despesas não ficam abaixo de 12% da receita
-  caixaInicial: 0.08, // saldo de abertura (grandeza distinta da receita)
+  // Saldo de abertura (grandeza distinta da receita): ~2 meses de receita.
+  // Era 8% (~1 mês); nas divisões de baixo, a reserva de 1 mês de folha
+  // levava quase todo o caixa e o clube não conseguia contratar (25/11).
+  caixaInicial: 0.15,
   orcamentoMinimo: 0.06, // orçamento de transferências mínimo
   sobraParaOrcamento: 0.6, // parte da sobra anual (receita - folha - despesas) que vira orçamento
   caixaParaOrcamento: 0.25, // parte do caixa inicial que vira orçamento
@@ -440,6 +443,8 @@ export function quadro(indice, pedidos) {
 export const ECONOMIA_V2 = { ativa: true };
 export const ESCALA_LIMITES = { min: 0.25, max: 150 };
 const limitar = (x) => Math.max(ESCALA_LIMITES.min, Math.min(ESCALA_LIMITES.max, x));
+// A escala de valor pode ficar abaixo da mínima do salário (divisões pobres).
+const limitarValor = (x) => Math.max(0.05, Math.min(ESCALA_LIMITES.max, x));
 const mediana = (xs) => { const v = xs.slice().sort((a, b) => a - b); return v.length ? v[Math.floor(v.length / 2)] : 1; };
 
 export function economiaV2(CAREER) {
@@ -467,6 +472,15 @@ export function escalaDeValor(doClube, daLiga) {
 // dos contratos (quem tem elenco melhor paga mais). Devolve { escalas: { id:
 // [salario, valor] }, salario, valor, economia: Map }.
 export const PORTE_SALARIAL = 0.4;
+// Preço do atleta mediano da liga ÷ receita anual do clube mediano (25/11):
+// nas ligas de topo a curva de sempre já dava ~9% (Premier League 9,6%,
+// Bundesliga 9,1%, Brasileirão 8,1%); nas divisões de baixo dava 17% a 27%,
+// e o atleta mediano custava mais que o caixa inteiro do clube. Todas as
+// ligas passam a 9%: o preço acompanha o dinheiro da divisão.
+export const PRECO_SOBRE_RECEITA = 0.09;
+// clubes[].valores (opcional): os valores dos atletas pela regra de sempre;
+// com eles, a escala de valor da liga leva o mediano a PRECO_SOBRE_RECEITA da
+// receita do clube mediano, e o porte do clube vendedor entra pela raiz.
 export function escalasDaDivisao(liga, clubes) {
   const eco = economiaDosClubes(liga, clubes);
   if (!eco) return null;
@@ -476,13 +490,15 @@ export function escalasDaDivisao(liga, clubes) {
   const daLiga = limitar(legado > 0 ? alvo / legado : 1);
   const med = mediana([...eco.values()].map((e) => e.receitaAnual));
   const r3 = (x) => Math.round(x * 1000) / 1000;
+  const valores = clubes.flatMap((c) => c.valores || []).filter((v) => v > 0);
+  const valorDaLiga = valores.length ? limitarValor((PRECO_SOBRE_RECEITA * med) / mediana(valores)) : escalaDeValor(daLiga, daLiga);
   const escalas = {};
   for (const c of clubes) {
     const e = eco.get(String(c.id));
     const sal = limitar(daLiga * (e.receitaAnual / med) ** PORTE_SALARIAL);
-    escalas[String(c.id)] = [r3(sal), r3(escalaDeValor(sal, daLiga))];
+    escalas[String(c.id)] = [r3(sal), r3(limitarValor(valorDaLiga * Math.sqrt(sal / daLiga)))];
   }
-  return { escalas, salario: r3(daLiga), valor: r3(escalaDeValor(daLiga, daLiga)), economia: eco };
+  return { escalas, salario: r3(daLiga), valor: r3(valorDaLiga), economia: eco };
 }
 // Demanda (Entrega 2): numa compra entre países (um dos clubes é de fora do
 // país do save, CAREER.exterior), quem compra de um mercado mais caro paga

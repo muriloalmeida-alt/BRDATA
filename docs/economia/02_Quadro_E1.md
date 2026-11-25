@@ -8,30 +8,30 @@ A Entrega 1 não muda o jogo: o modelo entra nas carreiras novas com a recalibra
 
 | Perfil | Receita recorrente/ano | Folha-base/mês | Despesas/ano | Resultado/ano | Caixa inicial | Orçamento de transferências | Origem |
 |---|---:|---:|---:|---:|---:|---:|---|
-| Flamengo (elite) | 2.090,0 | 37,5 | 1.535,5 | 104,5 | 167,2 | 125,4 | âncora |
-| Palmeiras | 1.416,7 | 30,0 | 985,8 | 70,8 | 113,3 | 85,0 | âncora |
-| Bahia (meio) | 803,5 | 14,0 | 595,3 | 40,2 | 64,3 | 48,2 | âncora |
-| Mirassol (menor folha) | 180,0 | 6,0 | 99,0 | 9,0 | 14,4 | 10,8 | âncora |
-| Maior da Série B | 217,5 | 9,1 | 97,9 | 10,9 | 17,4 | 13,1 | modelo |
-| Promovido à Série A (1º ano) | 236,0 | 7,3 | 136,2 | 11,8 | 17,4 | 14,2 | modelo |
+| Flamengo (elite) | 2.090,0 | 37,5 | 1.535,5 | 104,5 | 313,5 | 141,1 | âncora |
+| Palmeiras | 1.416,7 | 30,0 | 985,8 | 70,8 | 212,5 | 95,6 | âncora |
+| Bahia (meio) | 803,5 | 14,0 | 595,3 | 40,2 | 120,5 | 54,2 | âncora |
+| Mirassol (menor folha) | 180,0 | 6,0 | 99,0 | 9,0 | 27,0 | 12,2 | âncora |
+| Maior da Série B | 217,5 | 9,1 | 97,9 | 10,9 | 32,6 | 14,7 | modelo |
+| Promovido à Série A (1º ano) | 236,0 | 7,3 | 136,2 | 11,8 | 32,6 | 15,9 | modelo |
 
 ## Europa
 
 | Perfil | Receita recorrente/ano | Folha-base/mês | Despesas/ano | Resultado/ano | Caixa inicial | Orçamento de transferências | Origem |
 |---|---:|---:|---:|---:|---:|---:|---|
-| Arsenal (topo da Premier League) | 4.441,0 | 110,4 | 2.982,7 | 133,2 | 355,3 | 266,5 | âncora |
-| Recém-rebaixado à Championship (1º ano) (transição R$ 343,0 mi) | 899,7 | 34,7 | 573,5 | -90,0 | 129,2 | 54,0 | modelo |
-| Southampton (Championship) | 453,3 | 28,2 | 159,8 | -45,3 | 36,3 | 27,2 | modelo |
-| Real Madrid | 8.991,8 | 267,9 | 5.507,5 | 269,8 | 719,3 | 539,5 | modelo |
-| Bayern | 5.084,9 | 147,3 | 3.164,5 | 152,5 | 406,8 | 305,1 | modelo |
+| Arsenal (topo da Premier League) | 4.441,0 | 110,4 | 2.982,7 | 133,2 | 666,2 | 266,5 | âncora |
+| Recém-rebaixado à Championship (1º ano) (transição R$ 343,0 mi) | 899,7 | 34,7 | 573,5 | -90,0 | 242,2 | 54,0 | modelo |
+| Southampton (Championship) | 453,3 | 28,2 | 159,8 | -45,3 | 68,0 | 27,2 | modelo |
+| Real Madrid | 8.991,8 | 267,9 | 5.507,5 | 269,8 | 1.348,8 | 539,5 | modelo |
+| Bayern | 5.084,9 | 147,3 | 3.164,5 | 152,5 | 762,7 | 305,1 | modelo |
 
 ## América do Sul
 
 | Perfil | Receita recorrente/ano | Folha-base/mês | Despesas/ano | Resultado/ano | Caixa inicial | Orçamento de transferências | Origem |
 |---|---:|---:|---:|---:|---:|---:|---|
-| River Plate (grande argentino) | 660,0 | 24,8 | 363,0 | 0,0 | 52,8 | 39,6 | âncora |
-| Peñarol (grande uruguaio) | 137,5 | 5,7 | 68,8 | 0,0 | 11,0 | 8,3 | âncora |
-| Barcelona SC (liga com dados escassos) | 198,6 | 8,3 | 99,3 | 0,0 | 15,9 | 11,9 | modelo |
+| River Plate (grande argentino) | 660,0 | 24,8 | 363,0 | 0,0 | 99,0 | 39,6 | âncora |
+| Peñarol (grande uruguaio) | 137,5 | 5,7 | 68,8 | 0,0 | 20,6 | 8,3 | âncora |
+| Barcelona SC (liga com dados escassos) | 198,6 | 8,3 | 99,3 | 0,0 | 29,8 | 11,9 | modelo |
 
 ## Fontes do catálogo
 
@@ -132,6 +132,6 @@ A Entrega 1 não muda o jogo: o modelo entra nas carreiras novas com a recalibra
 ## Regras imputadas
 
 - Resultado operacional ÷ receita: {"europa":0.03,"brasil":0.05,"america_sul":0} (Championship: −10% no jogo; a Deloitte publica −46%, coberto por aportes, fora da base).
-- Despesas mínimas: 12% da receita; caixa inicial: 8% da receita; orçamento: 6% da receita + 25% do caixa + 60% da sobra anual.
+- Despesas mínimas: 12% da receita; caixa inicial: 15% da receita; orçamento: 6% da receita + 25% do caixa + 60% da sobra anual.
 - Composição da receita (TV, comercial, jogo): {"europa":{"tv":0.5,"comercial":0.35,"jogo":0.15},"brasil":{"tv":0.4,"comercial":0.3,"jogo":0.3},"america_sul":{"tv":0.3,"comercial":0.3,"jogo":0.4}}.
 - Distribuição na liga: lei de potência na posição financeira (ordem pelo porte do pacote; no Brasil, pela força), ajustada à concentração da liga; âncoras substituem e o resto é reescalado para manter o total.

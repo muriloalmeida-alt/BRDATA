@@ -1005,7 +1005,8 @@ export function clubesParaEconomia(CAREER, indice, liga) {
   return times.map((t) => {
     const c = indice && indice.clubes.find((x) => S(x.id) === S(t.id));
     const receita = c && c.financas && c.financas.annualRevenue;
-    return { id: S(t.id), nome: t.name, receita: receita || 0, forca: (t.atk || 1) / (t.def || 1), folhaLegada: financas.wageBill(elencoDoClube(CAREER, t.id)) };
+    const sq = elencoDoClube(CAREER, t.id);
+    return { id: S(t.id), nome: t.name, receita: receita || 0, forca: (t.atk || 1) / (t.def || 1), folhaLegada: financas.wageBill(sq), valores: sq.filter((p) => p.origin !== "base").map((p) => p.value || 0) };
   }).sort((a, b) => b.receita - a.receita || b.forca - a.forca || a.id.localeCompare(b.id));
 }
 export function ativarEconomiaV2(CAREER, indice) {
@@ -1085,7 +1086,7 @@ export function economiaDaTemporada(CAREER, { troca = false } = {}) {
     const clubes = clubesParaEconomia(CAREER, indice, liga);
     if (!clubes.length || !E.PERFIS[liga]) continue;
     // A folha "de antes" de quem já está escalado: a folha ÷ a escala dele.
-    const comLegado = clubes.map((c) => { const e = CAREER.economia.escalas[c.id]; return e ? { ...c, folhaLegada: c.folhaLegada / e[0] } : c; });
+    const comLegado = clubes.map((c) => { const e = CAREER.economia.escalas[c.id]; return e ? { ...c, folhaLegada: c.folhaLegada / e[0], valores: c.valores.map((v) => v / e[1]) } : c; });
     const r = E.escalasDaDivisao(liga, comLegado);
     if (!r) continue;
     for (const c of clubes) {

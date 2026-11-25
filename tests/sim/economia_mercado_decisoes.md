@@ -6,7 +6,7 @@
 
 - **Escala de salário da liga:** leva a soma das folhas dos elencos (pela regra de sempre) à soma das folhas-base da liga (Entrega 1).
 - **Escala do clube:** a da liga × (receita do clube ÷ mediana da liga)^0,4. O clube mais rico paga mais pela mesma qualidade. A folha real de cada clube sai dos contratos (quem tem elenco melhor paga mais) e fica a ±30% da folha-base nos perfis medidos.
-- **Escala de valor:** média geométrica entre a escala do clube e a da liga (expoente 1,0, `EXPOENTE_VALOR`). O preço segue o mercado da liga, com o porte de quem vende.
+- **Escala de valor:** por liga, para o atleta mediano custar 9% da receita anual do clube mediano (`PRECO_SOBRE_RECEITA`). O porte do clube vendedor entra pela raiz da escala de salário dele. A curva de sempre dava ~9% nas ligas de topo e 17% a 27% nas divisões de baixo, onde o atleta mediano custava mais que o caixa inteiro do clube (relato da Série C, 25/11).
 - **Demanda (só entre países):** quando um dos clubes é de fora do país do save, quem compra de um mercado mais caro paga parte da diferença de preço. A reserva do vendedor parte do valor × (escala de valor do comprador ÷ a do vendedor)^0,5, entre 1 e 3 (`fatorDeDemanda`). Vale igual para a proposta do técnico e para a compra da CPU. Ex.: o Real Madrid comprando do River paga cerca de 2,6× o valor. No mercado doméstico, o preço parte do valor exibido: a escala do clube já tem o porte, e uma demanda escondida faria o clube recusar o valor que a tela mostra.
 - **Aplicação:** todos os contratos do save são escalados uma vez na criação (`p.escalaEco` evita escalar de novo). Contratos gerados depois (base, prospecto do olheiro, reposição da CPU, promoção da base da CPU, renovação da CPU) já nascem na escala do clube. O salário justo (moral da virada, agente livre, "à venda") usa a escala do clube.
 - **Clubes que entram depois:** quem entra no save (subiu do catálogo ou da Série D, ou foi aberto no mercado do mundo) recebe a escala da liga dele na entrada ou na virada.
@@ -15,7 +15,7 @@
 
 **Finanças do clube do técnico.**
 
-- **Caixa inicial:** o da base financeira.
+- **Caixa inicial:** o da base financeira (15% da receita anual, ~2 meses; era 8% até o ajuste das divisões de baixo, 25/11).
 - **Teto salarial:** 35% acima da folha (a regra de sempre).
 - **TV e despesas operacionais:** pela base, todo mês. As despesas aparecem no extrato como "Despesas operacionais de <mês>" e fecham a margem do clube com a folha real: receita − folha − despesas = resultado da base.
 - **Patrocínio e bilheteria:** na escala comercial e de dia de jogo do clube. As propostas de patrocínio e o preço do ingresso são multiplicados pelo fator do clube.
@@ -35,8 +35,8 @@ O técnico recebe o motivo na proposta, na prévia (`capacidade`) e na conclusã
 ## Decisões
 
 - Folha real pelos contratos (±30% da base), e não igual à base. Com a escala exata por clube, um clube pequeno pagava mais que o Arsenal pelo mesmo atleta, porque o elenco dele vale pouco na regra antiga. A escala pela liga com o porte do clube preserva a ordem (mesma qualidade, clube mais rico paga mais).
-- O expoente de valor (1,0), o porte salarial (0,4) e a demanda (expoente 0,5, teto 3) são parâmetros imputados, exportados e documentados (`EXPOENTE_VALOR`, `PORTE_SALARIAL`, `DEMANDA`). A calibração usou os negócios de referência: sem a demanda, a venda do River ao Real Madrid saía a € 5 mi.
-- Os negócios de referência ficam entre 0,35× e 0,8× do valor real antes do prêmio da reserva do vendedor (titular, falta de reposição, fim de janela: até +50%). Recordes como Isak e cláusulas como a de Mastantuono continuam acima do que o motor pede.
+- O preço sobre a receita (9%), o porte salarial (0,4) e a demanda (expoente 0,5, teto 3) são parâmetros imputados, exportados e documentados (`PRECO_SOBRE_RECEITA`, `PORTE_SALARIAL`, `DEMANDA`). O preço sobre a receita vem das ligas de topo, onde a curva de sempre já dava ~9%; nas de baixo ele derruba o preço para caber no dinheiro da divisão. A calibração da demanda usou os negócios de referência: sem ela, a venda do River ao Real Madrid saía a € 5 mi.
+- Os negócios de referência ficam entre 0,2× e 0,8× do valor real antes do prêmio da reserva do vendedor (titular, falta de reposição, fim de janela: até +50%). Os da Europa ficam mais perto; os da América do Sul, mais longe, porque o preço acompanha a receita da liga. Recordes como Isak e cláusulas como a de Mastantuono continuam acima do que o motor pede.
 - Receita de venda de atletas, aportes e prêmios continentais seguem fora da base recorrente. Os prêmios das copas continuam creditados pelo motor de competições.
 
 ## Casos não confirmados
