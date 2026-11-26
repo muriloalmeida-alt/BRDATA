@@ -27,6 +27,22 @@ const MIGRACOES: Record<number, Migracao> = {
       } : null,
     };
   },
+  // v2 → v3 (PC-003): relações começam neutras. Vínculos antigos ficam sem
+  // salário ("não mapeado"): não reconstruímos dados que não existiam.
+  2: (s) => {
+    const v = s.vinculo as Record<string, unknown> | null;
+    const t = s.temporada as Record<string, unknown> | null;
+    return {
+      ...s, schema: 3,
+      compromissos: Array.isArray(s.compromissos) ? s.compromissos : [],
+      planos: Array.isArray(s.planos) ? s.planos : [],
+      declaracoes: Array.isArray(s.declaracoes) ? s.declaracoes : [],
+      torcida: s.torcida && typeof s.torcida === "object" ? s.torcida : {},
+      manchetes: Array.isArray(s.manchetes) ? s.manchetes : [],
+      vinculo: v ? { ...v, salario: v.salario ?? null, bonus: v.bonus ?? null } : v,
+      temporada: t ? { ...t, ausencia: t.ausencia ?? null, reforco: t.reforco ?? false } : t,
+    };
+  },
 };
 
 export function migrarSave(bruto: unknown): Carreira | null {

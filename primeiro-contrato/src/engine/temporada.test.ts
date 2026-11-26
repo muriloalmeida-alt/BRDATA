@@ -131,7 +131,8 @@ test("recarregar no meio da temporada não duplica jogos, consequências nem bal
 
 test("treinador e imprensa: plano de pré-temporada, disputa por vaga, entrevista e rumor com limite", () => {
   const tipos = new Map<string, Carreira>();
-  for (let s = 0; s < 80 && tipos.size < 4; s++) {
+  const exigidos = ["planoTreinador", "perdaEspaco", "entrevista", "rumor"];
+  for (let s = 0; s < 120 && !exigidos.every((x) => tipos.has(x)); s++) {
     let c = iniciar("ev" + s, s % 2 ? "MEI" : "CA", s % 3);
     for (let i = 0; i < 600 && c.historico.length < 6; i++) {
       if (c.pendente) {
@@ -178,7 +179,7 @@ test("migração v1 → v2: temporada em andamento continua sem perder pendênci
   for (const h of v1.historico) { delete h.origem; delete h.partidas; delete h.campanha; delete h.titularidades; }
   for (const k of ["participantes", "partidas", "exibidos", "interrupcoes", "origemParcial"]) delete v1.temporada[k];
   const m = migrarSave(v1)!;
-  assert.equal(m.schema, 2);
+  assert.equal(m.schema, 3);
   assert.equal(m.historico[0].origem, "resumo");
   assert.equal(m.temporada!.origemParcial, c.temporada!.jogoAtual);
   assert.ok(m.atleta.reputacao >= 0 && m.atleta.confianca === 0.5);

@@ -11,9 +11,9 @@ Demandas vigentes
 
 PC-003 — Primeiro Contrato: relações (diretoria, técnico, imprensa, torcida) e evolução de carreira
 
-Status: REVISÃO DO PM NECESSÁRIA (26/11/2026), branch `claude/new-session-ygru7q`,
-recriada a partir de `main` em 16663ea (#177). Código ainda não commitado:
-aguarda a aprovação do Murilo.
+Status: APROVADO (Murilo, 26/11/2026, "Aprovado"). Código commitado na
+branch `claude/new-session-ygru7q` (recriada a partir de `main` em 16663ea,
+#177). Os pontos 1 a 5 de revisão foram aprovados junto com a entrega.
 
 Origem: handoff do Murilo (26/11/2026), versionado em
 `docs/primeiro-contrato/v3/LEIA_PRIMEIRO_CLAUDE.md`.

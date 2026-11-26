@@ -5,6 +5,7 @@ import { NACIONALIDADES, NAC } from "../engine/atleta.ts";
 import { buscarClubes, rotuloInscricao, type Catalogo } from "../engine/catalogo.ts";
 import { POS, type Posicao } from "../engine/posicoes.ts";
 import { novaCarreira, propostaInicial, sugestoesIniciais } from "../engine/carreira.ts";
+import { formatarDinheiro } from "../engine/financas.ts";
 import { Abaixo, Camisa, Check, Cta, Direita, Escudo, Folha, Fundo, Header, Lupa, Mais, Menos, Titulo } from "../ui/componentes.tsx";
 import { CampoPosicoes } from "../ui/campo.tsx";
 
@@ -203,6 +204,7 @@ export function TelaContrato({ cat, r, onAssinar }: { cat: Catalogo; r: Rascunho
           <div><dt>Papel previsto</dt><dd>{of.papel}</dd></div>
           <div><dt>Minutos previstos</dt><dd>{of.previsao[0]}–{of.previsao[1]}%</dd></div>
           <div><dt>Vínculo</dt><dd>{of.duracao} temporadas</dd></div>
+          <div><dt>Salário</dt><dd>{formatarDinheiro(of.salario)}</dd></div>
         </dl>
       </div>
       <div className="acoes"><Cta onClick={() => { if (!enviando.current) { enviando.current = true; onAssinar(); } }}>Assinar contrato</Cta></div>

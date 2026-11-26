@@ -6,7 +6,7 @@ import { POS, type Posicao } from "../engine/posicoes.ts";
 import { Escudo } from "./componentes.tsx";
 
 const MARCO: Record<Partida["marcos"][number], string> = {
-  estreia: "Estreia", retorno: "Volta da lesão", golDecisivo: "Gol decisivo", atuacao: "Atuação acima da média",
+  estreia: "Estreia", retorno: "Volta da lesão", golDecisivo: "Gol decisivo", atuacao: "Atuação acima da média", classico: "Gol em clássico",
 };
 
 export function situacaoTexto(p: Partida): string {
@@ -49,7 +49,12 @@ export function CardPartida({ cat, p, clubeId, ligaNome, simplificada, funcao }:
       <p className="partida-adv">{resultado} {p.mandante ? "em casa" : "fora"} contra o {p.adversarioNome}</p>
       <p className={`partida-sit partida-sit--${p.situacao}`}>{situacaoTexto(p)}</p>
       {p.minutos > 0 && <p className="partida-dest">{destaquesTexto(p, funcao)}</p>}
-      {destaque && <p className="partida-marcos">{p.marcos.map((m) => <span key={m} className="chip-marco">{MARCO[m]}</span>)}</p>}
+      {(destaque || p.recepcao) && (
+        <p className="partida-marcos">
+          {p.marcos.map((m) => <span key={m} className="chip-marco">{MARCO[m]}</span>)}
+          {p.recepcao && <span className={`chip-marco${p.recepcao === "aplausos" ? "" : " chip-marco--neutro"}`}>Antigo estádio: {p.recepcao === "aplausos" ? "aplausos" : p.recepcao === "vaias" ? "vaias" : "recepção dividida"}</span>}
+        </p>
+      )}
     </article>
   );
 }

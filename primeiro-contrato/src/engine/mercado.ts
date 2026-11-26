@@ -5,6 +5,8 @@ import { nivelNaFuncao, type Atleta } from "./atleta.ts";
 import { forcaClube, jogosDaTemporada, type Catalogo } from "./catalogo.ts";
 import { gerarConcorrentes, intervaloMinutos, papelPorParticipacao, participacaoEsperada, principalConcorrente } from "./elenco.ts";
 import type { Carreira, Oferta, TipoOferta } from "./estado.ts";
+import { faixaSalarial } from "./financas.ts";
+import { rodadaDaVaga } from "./relacoes.ts";
 import { metricaPrincipal, POS, type Posicao } from "./posicoes.ts";
 import { clamp, rngFrom } from "./rng.ts";
 
@@ -35,13 +37,35 @@ export function projetarPapel(cat: Catalogo, c: Carreira, clubeId: string, ano: 
   return { conc, part, previsao, papel: papelPorParticipacao(part), minutosPrevistos: [mins(previsao[0]), mins(previsao[1])] as [number, number] };
 }
 
+const FRASE_PAPEL: Record<string, string> = { Titular: "ser titular", "Rotação": "a rotação", Reserva: "compor o elenco", Promessa: "o futuro" };
+
+/** Qual vaga existe no clube (a partir do papel projetado). */
+export function textoVaga(clubeNome: string, funcao: Posicao, papel: string): string {
+  return `O ${clubeNome} busca ${POS[funcao].nome.toLowerCase()} para ${FRASE_PAPEL[papel] ?? "o elenco"}.`;
+}
+
+/** Fato verificável da última temporada, do registro do save. */
+export function fatoDaTemporada(c: Carreira): string | null {
+  const ult = c.historico[c.historico.length - 1];
+  if (!ult || ult.jogos === 0) return null;
+  const pct = Math.round(ult.participacao * 100);
+  const vaga = ult.partidas ? rodadaDaVaga(ult.partidas, "ganhou") : null;
+  if (ult.resultado === "ganhou" && vaga) return `Você ganhou a vaga na rodada ${vaga} e disputou ${pct}% dos minutos.`;
+  return `Você disputou ${pct}% dos minutos em ${ult.ano}, com nota média ${ult.media.toLocaleString("pt-BR")}.`;
+}
+
 function montarOferta(cat: Catalogo, c: Carreira, tipo: TipoOferta, clubeId: string, anoNovo: number, duracao: number, motivo: string, taxa: number): Oferta {
   const p = projetarPapel(cat, c, clubeId, anoNovo);
+  const clubeNome = cat.clube(clubeId)?.nome ?? clubeId;
+  const faixa = faixaSalarial(cat, clubeId, p.papel, c.atleta.nivel);
+  const salarioDestino = tipo === "emprestimo" ? (forcaClube(cat, clubeId) >= 65 ? 1 : 0.5) : undefined;
   return {
-    id: `${tipo}:${clubeId}:${anoNovo}`, tipo, clubeId, clubeNome: cat.clube(clubeId)?.nome ?? clubeId,
+    id: `${tipo}:${clubeId}:${anoNovo}`, tipo, clubeId, clubeNome,
     papel: p.papel, previsao: p.previsao, minutosPrevistos: p.minutosPrevistos, duracao, motivo,
     taxa: Math.round(taxa * 100) / 100,
-    ...(tipo === "emprestimo" ? { salarioDestino: forcaClube(cat, clubeId) >= 65 ? 1 : 0.5 } : {}),
+    ...(salarioDestino !== undefined ? { salarioDestino } : {}),
+    salario: faixa.ref, bonus: null, revisaoRodada: null, validaAte: anoNovo - 1,
+    vaga: textoVaga(clubeNome, c.atleta.posicao, p.papel),
   };
 }
 
@@ -49,14 +73,14 @@ function motivoInteresse(cat: Catalogo, c: Carreira, clubeId: string, anoNovo: n
   const a = c.atleta;
   const conc = gerarConcorrentes(cat, c.semente, clubeId, a.posicao, anoNovo);
   const top = principalConcorrente(conc);
-  const ult = c.historico[c.historico.length - 1];
   const idade = idadeEm(a, anoNovo);
-  const m = metricaPrincipal(a.posicao);
-  const temporada = ult && ult.jogos > 0 ? `${ult.jogos} jogos${ult.stats[m.chave] ? `, ${ult.stats[m.chave]} ${m.rotulo.toLowerCase()}` : ""} e nota ${ult.media.toLocaleString("pt-BR")} em ${ult.ano}` : null;
-  if (top && top.nivel < nivelNaFuncao({ ...a, confianca: 0.5 }, a.posicao)) return `Busca ${POS[a.posicao].nome.toLowerCase()}: o titular simulado tem nível ${top.nivel}.${temporada ? ` Viu seus ${temporada}.` : ""}`;
-  if (temporada) return `Acompanhou seus ${temporada}.`;
-  if (idade <= 21 && a.potencial - a.nivel >= 8) return "Aposta no seu potencial.";
-  return "Quer reforçar a posição.";
+  const fato = fatoDaTemporada(c);
+  const p = projetarPapel(cat, c, clubeId, anoNovo);
+  const vaga = textoVaga(cat.clube(clubeId)?.nome ?? clubeId, a.posicao, p.papel);
+  const necessidade = top && top.nivel < nivelNaFuncao({ ...a, confianca: 0.5 }, a.posicao) ? ` O titular simulado tem nível ${top.nivel}.` : "";
+  if (fato) return `${fato} ${vaga}${necessidade}`;
+  if (idade <= 21 && a.potencial - a.nivel >= 8) return `Aposta no seu potencial. ${vaga}`;
+  return `${vaga}${necessidade}`;
 }
 
 /**
@@ -87,7 +111,7 @@ export function gerarOfertas(cat: Catalogo, c: Carreira): Oferta[] {
     const fDest = forcaClube(cat, ult.clubeId);
     const taxa = restante >= 1 ? valor : 0;
     if (taxa <= capacidadeClube(fDest) * 0.8) {
-      ofertas.push(montarOferta(cat, c, "compra", ult.clubeId, anoNovo, 3, "Quer comprar você depois do empréstimo.", taxa));
+      ofertas.push(montarOferta(cat, c, "compra", ult.clubeId, anoNovo, 3, `Quer comprar você depois do empréstimo: ${Math.round(ult.participacao * 100)}% dos minutos em ${ult.ano}.`, taxa));
       usados.add(ult.clubeId);
     }
   }
@@ -97,7 +121,7 @@ export function gerarOfertas(cat: Catalogo, c: Carreira): Oferta[] {
     const f = forcaClube(cat, clubeAtual);
     const quer = ef >= f - 8 || (idade <= 22 && a.potencial >= f) || part >= 0.4;
     if (quer && idade < 40) {
-      ofertas.push(montarOferta(cat, c, "renovacao", clubeAtual, anoNovo, idade >= 32 ? 1 : idade >= 29 ? 2 : 3, "Quer manter você no elenco.", 0));
+      ofertas.push(montarOferta(cat, c, "renovacao", clubeAtual, anoNovo, idade >= 32 ? 1 : idade >= 29 ? 2 : 3, `Quer manter você no elenco. ${fatoDaTemporada(c) ?? ""}`.trim(), 0));
     }
   }
 
@@ -140,21 +164,7 @@ export function gerarOfertas(cat: Catalogo, c: Carreira): Oferta[] {
   // Empréstimo: pedido pelo atleta ou pouco espaço num clube acima do nível.
   const fAtual = forcaClube(cat, clubeAtual);
   const precisaJogar = c.interesseEmprestimo || (part < 0.3 && fAtual > ef + 3);
-  if (vinc && restante >= 1 && precisaJogar && idade <= 30) {
-    const destinos = cat.clubes
-      .filter((cl) => !usados.has(cl.id))
-      .map((cl) => ({ cl, f: forcaClube(cat, cl.id), sorte: r.next() }))
-      .filter((x) => x.f <= ef + 3 && x.f >= ef - 10)
-      .sort((x, y) => x.sorte - y.sorte);
-    for (const { cl, f } of destinos.slice(0, 40)) {
-      const of = montarOferta(cat, c, "emprestimo", cl.id, anoNovo, 1, "Tem vaga na posição e o empréstimo cabe no orçamento.", 0);
-      const custo = valor * 0.1 * (of.salarioDestino ?? 1);
-      if ((of.papel === "Titular" || of.papel === "Rotação") && custo <= capacidadeClube(f)) {
-        ofertas.push(of);
-        break;
-      }
-    }
-  }
+  if (vinc && restante >= 1 && precisaJogar && idade <= 30) ofertas.push(...ofertasDeEmprestimo(cat, c, usados, 1));
 
   // Sem vínculo e sem proposta: um clube de nível compatível oferece contrato
   // (agente livre), para a carreira sempre ter caminho até o limite de idade.
@@ -167,6 +177,33 @@ export function gerarOfertas(cat: Catalogo, c: Carreira): Oferta[] {
     if (alvo) ofertas.push(montarOferta(cat, c, "transferencia", alvo.cl.id, anoNovo, 1, "Oferece contrato a um atleta livre.", 0));
   }
   return ofertas;
+}
+
+/** Destinos de empréstimo elegíveis: vaga (Titular/Rotação) e orçamento.
+ *  Usado na janela e quando a diretoria autoriza a procura (PC-003). */
+export function ofertasDeEmprestimo(cat: Catalogo, c: Carreira, usados: Set<string>, max: number, chave = "janela"): Oferta[] {
+  const ano = c.ano, anoNovo = ano + 1;
+  const a = c.atleta;
+  const r = rngFrom(c.semente, "emprestimo", chave, ano);
+  const ef = nivelNaFuncao(a, a.posicao);
+  const valor = valorMercado(a, idadeEm(a, anoNovo));
+  const out: Oferta[] = [];
+  const destinos = cat.clubes
+    .filter((cl) => !usados.has(cl.id))
+    .map((cl) => ({ cl, f: forcaClube(cat, cl.id), sorte: r.next() }))
+    .filter((x) => x.f <= ef + 3 && x.f >= ef - 10)
+    .sort((x, y) => x.sorte - y.sorte);
+  for (const { cl, f } of destinos.slice(0, 60)) {
+    if (out.length >= max) break;
+    const of = montarOferta(cat, c, "emprestimo", cl.id, anoNovo, 1, "", 0);
+    const custo = valor * 0.1 * (of.salarioDestino ?? 1);
+    if ((of.papel === "Titular" || of.papel === "Rotação") && custo <= capacidadeClube(f)) {
+      of.motivo = `${of.vaga} Tem vaga na posição e o empréstimo cabe no orçamento.`;
+      out.push(of);
+      usados.add(cl.id);
+    }
+  }
+  return out;
 }
 
 export function descricaoTipo(o: Oferta): string {

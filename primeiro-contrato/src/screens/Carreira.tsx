@@ -9,6 +9,7 @@ import type { Carreira, Partida, Pendente } from "../engine/estado.ts";
 import { metricaPrincipal, POS } from "../engine/posicoes.ts";
 import { Consequencia, Cta, Escudo, Foto, Fundo, Header, Opcoes, Titulo, type NomeFundo } from "../ui/componentes.tsx";
 import { CardPartida, LinhaPartida } from "../ui/partida.tsx";
+import { formatarDinheiro } from "../engine/financas.ts";
 
 function Numeros({ itens }: { itens: Array<[string | number, string]> }) {
   return (
@@ -140,15 +141,17 @@ function Decisao({ p, onDecidir, children, rotulo }: { p: Pendente; onDecidir: (
   );
 }
 
+const SUBTITULO_TECNICO: Partial<Record<Pendente["tipo"], string>> = { vagaAberta: "Vaga aberta", boasEntradas: "Oportunidade", reforco: "Reforço na posição" };
+
 export function TelaTreinador({ p, onDecidir }: { p: Pendente; onDecidir: (id: string) => void }) {
-  const plano = !!p.contexto.plano;
+  const plano = !!p.contexto.plano || p.tipo in SUBTITULO_TECNICO;
   return (
     <main className="tela tela--fixa">
       <Fundo nome={plano ? "plano-treinador" : "03_conversa_treinador"} modo="cheio" foco={plano ? "38% 45%" : "50% 40%"} reserva="03_conversa_treinador" />
       <Header />
       <div className="tela-corpo" style={{ paddingTop: 14 }}>
         <Titulo grande>O treinador te chamou</Titulo>
-        {plano && <p className="meta" style={{ margin: "4px 0 0", fontSize: 17 }}>Plano para a temporada {p.ano}</p>}
+        {plano && <p className="meta" style={{ margin: "4px 0 0", fontSize: 17 }}>{SUBTITULO_TECNICO[p.tipo] ?? `Plano para a temporada ${p.ano}`}</p>}
         <div className="espaco-foto" />
         <h2 className="titulo" style={{ fontSize: 30 }}>{String(p.contexto.pergunta)}</h2>
       </div>
@@ -189,18 +192,59 @@ export function TelaPerdaEspaco({ p, onDecidir }: { p: Pendente; onDecidir: (id:
 }
 
 export function TelaEntrevista({ p, onDecidir }: { p: Pendente; onDecidir: (id: string) => void }) {
-  const decisivo = !!p.contexto.decisivo;
+  const decisivo = !!p.contexto.decisivo || p.tipo === "classico";
   return (
     <main className="tela tela--fixa">
       <Header />
       <div className="tela-corpo" style={{ paddingTop: 0 }}>
         <Foto nome={decisivo ? "gol-decisivo" : "entrevista-pos-jogo"} altura={300} />
-        <Titulo>Entrevista pós-jogo</Titulo>
+        <Titulo>{p.tipo === "classico" ? "Gol no clássico" : "Entrevista pós-jogo"}</Titulo>
         <span className="barra" aria-hidden="true" />
         <p className="apoio">{String(p.contexto.fato)}</p>
         <p className="apoio" style={{ fontWeight: 500 }}>O que você diz?</p>
       </div>
       <Decisao p={p} onDecidir={onDecidir} rotulo="O que você diz na entrevista?" />
+    </main>
+  );
+}
+
+/** Revisão de plano (técnico) ou de compromisso (diretoria): a devolutiva
+ *  usa os jogos da janela e explica a decisão de papel. */
+export function TelaRevisao({ p, onDecidir }: { p: Pendente; onDecidir: (id: string) => void }) {
+  const plano = p.tipo === "revisaoPlano";
+  const fmt = (n: number) => n.toLocaleString("pt-BR", { maximumFractionDigits: 2 });
+  const estado = String(p.contexto.estado);
+  const selo = estado === "atingido" || estado === "cumprido" ? "Meta atingida" : estado === "amostraInsuficiente" || estado === "encerrado" ? "Amostra insuficiente" : "Meta não atingida";
+  return (
+    <main className="tela tela--fixa">
+      <Header />
+      <div className="tela-corpo" style={{ paddingTop: 14 }}>
+        <Titulo grande>{plano ? "O treinador te chamou" : "A diretoria te chamou"}</Titulo>
+        <p className="meta" style={{ margin: "4px 0 0", fontSize: 17 }}>{plano ? "Revisão do plano" : "Revisão do compromisso"}</p>
+        <Foto nome={plano ? "plano-treinador" : "02_estadio"} altura={220} reserva="03_conversa_treinador" />
+        {plano && (
+          <Numeros itens={[[Number(p.contexto.jogos), "Jogos"], [Number(p.contexto.minutos), "Minutos"], [fmt(Number(p.contexto.valor90)), `Meta ${fmt(Number(p.contexto.alvo))}`]]} />
+        )}
+        <p className="chip-estado">{selo}</p>
+        <p className="apoio" style={{ fontSize: 16, marginTop: 6 }}>{plano ? String(p.contexto.texto) : `${String(p.contexto.termos)} ${String(p.contexto.evidencia)}`}</p>
+      </div>
+      <Decisao p={p} onDecidir={onDecidir} rotulo={plano ? "Revisão do plano" : "Revisão do compromisso"} />
+    </main>
+  );
+}
+
+export function TelaArquibancada({ p, onDecidir }: { p: Pendente; onDecidir: (id: string) => void }) {
+  return (
+    <main className="tela tela--fixa">
+      <Header />
+      <div className="tela-corpo" style={{ paddingTop: 0 }}>
+        <Foto nome="02_estadio" foco="50% 35%" altura={300} />
+        <Titulo>A arquibancada reagiu</Titulo>
+        <span className="barra" aria-hidden="true" />
+        <p className="apoio">{String(p.contexto.fato)}</p>
+        <p className="apoio" style={{ fontWeight: 500 }}>Como você responde?</p>
+      </div>
+      <Decisao p={p} onDecidir={onDecidir} rotulo="Como você responde à arquibancada?" />
     </main>
   );
 }
@@ -240,6 +284,11 @@ export function TelaBalanco({ cat, c, onAbrirJanela }: { cat: Catalogo; c: Carre
       ? [["Gols e assistências", `${h.stats.gols} e ${h.stats.assistencias}`]]
       : [["Desarmes e interceptações", `${h.stats.desarmes} e ${h.stats.interceptacoes}`]];
   const tabela = aberto === "tabela" && c.temporada && c.temporada.ano === h.ano && !h.simplificada ? tabelaDaTemporada(cat, c, h.jogosTotal) : [];
+  const ESTADO: Record<string, string> = { cumprido: "Cumprido", naoCumprido: "Não cumprido", encerrado: "Encerrado", atingido: "Meta atingida", naoAtingido: "Meta não atingida", amostraInsuficiente: "Amostra insuficiente" };
+  const relacoes = [
+    ...c.compromissos.filter((x) => x.ano === h.ano && x.estado !== "ativo").map((x) => ({ id: x.id, titulo: `Diretoria · ${ESTADO[x.estado] ?? x.estado}.`, texto: `${x.termos}${x.evidencia ? ` ${x.evidencia}` : ""}${x.motivo ? ` ${x.motivo}` : ""}` })),
+    ...c.planos.filter((x) => x.ano === h.ano && (x.estado === "atingido" || x.estado === "naoAtingido") && x.resultado).slice(-2).map((x) => ({ id: x.id, titulo: `Técnico · ${ESTADO[x.estado] ?? x.estado}.`, texto: x.resultado!.texto })),
+  ].slice(0, 3);
   return (
     <main className="tela tela--fixa">
       <Header />
@@ -254,7 +303,16 @@ export function TelaBalanco({ cat, c, onAbrirJanela }: { cat: Catalogo; c: Carre
           <div><dt>Nota média</dt><dd>{h.jogos ? fmt(h.media) : "—"}</dd></div>
           {extra.map(([k, v]) => <div key={k}><dt>{k}</dt><dd>{v}</dd></div>)}
           {h.reputacaoDelta != null && <div><dt>Reputação</dt><dd>{h.reputacaoDelta >= 0 ? "+" : ""}{fmt(h.reputacaoDelta)}</dd></div>}
+          {h.identificacao != null && <div><dt>Torcida (identificação)</dt><dd>{Math.round(h.identificacao)}/100</dd></div>}
+          {h.salario !== undefined && <div><dt>Salário</dt><dd>{formatarDinheiro(h.salario)}</dd></div>}
+          {h.bonusPago && <div><dt>Bônus pago</dt><dd>{formatarDinheiro(h.bonusPago, "")}</dd></div>}
         </dl>
+        {relacoes.length > 0 && (
+          <ul className="lista-relacoes" aria-label="Compromissos e planos da temporada">
+            {relacoes.map((r) => <li key={r.id}><b>{r.titulo}</b> {r.texto}</li>)}
+          </ul>
+        )}
+        {(h.manchetes?.length ?? 0) > 0 && <p className="manchete">“{h.manchetes![h.manchetes!.length - 1]}”</p>}
         {h.campanha && (
           <p className="estimativa">
             {h.posicaoLiga ? `${h.clubeNome} terminou em ${h.posicaoLiga}º na ${h.ligaNome}${h.titulo ? " · campeão" : ""}` : `Campanha simulada do ${h.clubeNome}`}
