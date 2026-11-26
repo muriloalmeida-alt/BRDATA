@@ -9,6 +9,58 @@ divergências, aprovação) — elas não são repetidas aqui.
 
 Demandas vigentes
 
+PC-003 — Primeiro Contrato: relações (diretoria, técnico, imprensa, torcida) e evolução de carreira
+
+Status: EM IMPLEMENTAÇÃO (26/11/2026), branch `claude/new-session-ygru7q`,
+recriada a partir de `main` em 16663ea (#177).
+
+Origem: handoff do Murilo (26/11/2026), versionado em
+`docs/primeiro-contrato/v3/LEIA_PRIMEIRO_CLAUDE.md`.
+
+Especificação (chapéu PM). O handoff é a especificação; a ordem de entrega
+é a dele:
+- **A. Diretoria e técnico:**
+  - negociação com um único pedido por proposta (mais espaço, contrato mais
+    curto, melhores condições, buscar empréstimo);
+  - resposta da diretoria: aceita, recusa, alternativa ou retirada;
+  - termos com salário e bônus;
+  - compromissos com rodada de revisão;
+  - planos do técnico com janela de avaliação de 4 partidas elegíveis e
+    critério por função;
+  - devolutiva com os jogos da janela.
+- **B. Imprensa e torcida:**
+  - declarações com memória;
+  - identificação da torcida por par carreira–clube;
+  - primeiro gol em clássico (rivalidades cadastradas);
+  - reação da arquibancada;
+  - rumor que reaparece no desfecho;
+  - recepção no antigo estádio, só como reação no jogo a jogo.
+- **C. Evolução e mercado:**
+  - as quatro dimensões (nível e familiaridade, forma e confiança,
+    reputação, identificação);
+  - sem ganho automático por prestígio da liga: sai o "ambiente de treino"
+    da PC-002;
+  - a oferta explica por que o clube procurou o atleta e qual vaga existe;
+  - comparação das três rotas.
+- **D. Jornada completa** como teste de ponta a ponta do motor.
+- **E. Validação mobile:**
+  - medição no Chromium em tamanhos de iPhone;
+  - o Safari real fica com o Murilo.
+
+Recortes desta entrega:
+- **Salário:**
+  - estimado por liga e papel, com moeda por país (R$, €, £, US$) e
+    valores mensais;
+  - fallback documentado no código, já que o primeiro-contrato não lê o
+    modelo financeiro do Modo Técnico;
+  - vínculos de saves antigos ficam sem salário ("não mapeado"), em vez de
+    reconstruir dados.
+- **Rivalidades:** cadastro editorial por ID do catálogo, só com clássicos
+  conhecidos; sem cadastro, não há evento de clássico.
+- **Save v3:** migração v2 → v3 com estados novos neutros.
+
+⸻
+
 PC-002 — Primeiro Contrato: temporada visível, treinador e imprensa, evolução coerente
 
 Status: APROVADO (Murilo, 26/11/2026, "Aprovado"). Código commitado na
