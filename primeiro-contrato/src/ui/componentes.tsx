@@ -55,7 +55,7 @@ export function Opcoes({ opcoes, valor, onEscolher, rotulo }: { opcoes: OpcaoUI[
   return (
     <div className="opcoes" role="radiogroup" aria-label={rotulo}>
       {opcoes.map((o) => (
-        <button key={o.id} type="button" role="radio" aria-checked={valor === o.id} className="opcao" onClick={() => onEscolher(o.id)}>
+        <button key={o.id} type="button" role="radio" aria-checked={valor === o.id} className={`opcao${o.detalhe ? "" : " opcao--simples"}`} onClick={() => onEscolher(o.id)}>
           <span className="opcao-titulo">{o.rotulo}</span>
           {o.detalhe && <span className="opcao-detalhe">{o.detalhe}</span>}
           <Seta />
@@ -100,13 +100,14 @@ export function Fundo({ nome, modo, foco, reserva = "02_estadio" }: { nome: Nome
   );
 }
 
-/** Foto no fluxo da tela. Se a cena falhar, usa o fundo original
+/** Foto no fluxo da tela: ocupa o espaço que sobra (até `altura`), para a
+ *  tela caber sem rolar quando possível. Se a cena falhar, usa o fundo original
  *  compatível (`reserva`), como pede o ASSETS.md. */
 export function Foto({ nome, foco, altura, reserva = "02_estadio" }: { nome: NomeFundo; foco?: string; altura?: number; reserva?: NomeFundo }) {
   const [falhou, setFalhou] = useState(false);
   const n = falhou ? reserva : nome;
   return (
-    <div className="foto" aria-hidden="true" style={altura ? { flexBasis: altura } : undefined}>
+    <div className="foto" aria-hidden="true" style={altura ? { maxHeight: altura } : undefined}>
       <img key={n} src={`${BASE}fundos/${n}.webp`} alt="" decoding="async" style={{ objectPosition: falhou ? FOCO[n] : foco ?? FOCO[n] }} onError={() => setFalhou(true)} />
     </div>
   );

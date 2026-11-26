@@ -43,10 +43,10 @@ export function TelaJanela({ cat, c, p, selecionado, onSelecionar, onComparar }:
   return (
     <main className="tela">
       <Header />
-      <div className="tela-corpo" style={{ paddingTop: 40 }}>
+      <div className="tela-corpo" style={{ paddingTop: 30 }}>
         <Titulo grande>Janela aberta</Titulo>
         <span className="barra" aria-hidden="true" />
-        <p className="apoio" style={{ marginTop: 18 }}>{frase(propostas, caminhos.some((x) => x.id === "ficar"))}</p>
+        <p className="apoio" style={{ marginTop: 12 }}>{frase(propostas, caminhos.some((x) => x.id === "ficar"))}</p>
         <div className="propostas" role="radiogroup" aria-label="Propostas e caminhos">
           {caminhos.map((x) => (
             <button key={x.id} type="button" role="radio" aria-checked={selecionado === x.id} className="proposta" onClick={() => onSelecionar(x.id)}>
@@ -78,7 +78,7 @@ export function TelaComparar({ cat, c, p, selecionado, onDecidir }: { cat: Catal
   return (
     <main className="tela">
       <Header />
-      <div className="tela-corpo" style={{ paddingTop: 30 }}>
+      <div className="tela-corpo" style={{ paddingTop: 14 }}>
         <Titulo grande>Qual caminho você escolhe?</Titulo>
         <span className="barra" aria-hidden="true" />
         <table className="tabela-cmp">
@@ -112,7 +112,7 @@ export function TelaAposentadoria({ c, p, onDecidir }: { c: Carreira; p: Pendent
   const texto = p.contexto.contratoTermina ? "Seu contrato termina hoje. O que você quer fazer?" : `Você tem ${idadeAtual(c)} anos. O que você quer fazer?`;
   const confirmar = sel === "encerrar" ? "Confirmar aposentadoria" : "Confirmar";
   return (
-    <main className="tela">
+    <main className="tela tela--fixa">
       <Header />
       <div className="tela-corpo" style={{ paddingTop: 30 }}>
         <Titulo grande>Mais uma temporada?</Titulo>
@@ -120,7 +120,7 @@ export function TelaAposentadoria({ c, p, onDecidir }: { c: Carreira; p: Pendent
         <p className="apoio" style={{ fontWeight: 500 }}>{texto}</p>
         {!p.opcoes.some((o) => o.id === "continuar") && <p className="estimativa">Sem contrato válido nem proposta para a próxima temporada.</p>}
       </div>
-      <div className="acoes" style={{ paddingTop: 0 }}>
+      <div className="acoes acoes--fluxo" style={{ paddingTop: 0 }}>
         <Opcoes opcoes={p.opcoes} valor={sel} onEscolher={setSel} rotulo="Mais uma temporada?" />
         {sel && <Cta onClick={() => onDecidir(sel)}>{confirmar}</Cta>}
       </div>
