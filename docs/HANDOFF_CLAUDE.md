@@ -11,8 +11,9 @@ Demandas vigentes
 
 PC-003 — Primeiro Contrato: relações (diretoria, técnico, imprensa, torcida) e evolução de carreira
 
-Status: EM IMPLEMENTAÇÃO (26/11/2026), branch `claude/new-session-ygru7q`,
-recriada a partir de `main` em 16663ea (#177).
+Status: REVISÃO DO PM NECESSÁRIA (26/11/2026), branch `claude/new-session-ygru7q`,
+recriada a partir de `main` em 16663ea (#177). Código ainda não commitado:
+aguarda a aprovação do Murilo.
 
 Origem: handoff do Murilo (26/11/2026), versionado em
 `docs/primeiro-contrato/v3/LEIA_PRIMEIRO_CLAUDE.md`.
@@ -58,6 +59,145 @@ Recortes desta entrega:
 - **Rivalidades:** cadastro editorial por ID do catálogo, só com clássicos
   conhecidos; sem cadastro, não há evento de clássico.
 - **Save v3:** migração v2 → v3 com estados novos neutros.
+
+Relatório de implementação (26/11/2026)
+
+**A. Diretoria e técnico**
+- **Negociação** (`src/engine/negociacao.ts`):
+  - pedidos: mais espaço, contrato mais curto, melhores condições e buscar
+    empréstimo (este só no clube atual);
+  - um pedido por proposta, sem cadeia de negociação;
+  - resposta determinística, gravada na pendência da janela: reabrir
+    recupera a mesma resposta;
+  - respostas possíveis:
+    - aceita, com os termos atualizados;
+    - alternativa: salário fixo menor, bônus único por jogos ou empréstimo
+      autorizado;
+    - recusa: a original continua válida;
+    - retirada: a proposta expira e não pode mais ser assinada;
+  - o vínculo só muda quando o jogador confirma;
+  - na tela, Comparar ganhou a opção "Negociar com o {clube}", e a tela
+    Negociar mostra os termos, o pedido e a resposta com a razão.
+- **Termos** (`src/engine/financas.ts`):
+  - salário mensal na moeda do país (R$, €, £, US$);
+  - faixa por função calculada pelo nível da liga e pelo papel (fallback
+    documentado no arquivo);
+  - bônus único por jogos na temporada, pago uma vez se a condição for
+    cumprida;
+  - o primeiro contrato e a comparação mostram o salário;
+  - vínculos de saves antigos aparecem como "não mapeado".
+- **Compromissos** (diretoria):
+  - guardam clube, origem (a decisão que os criou), termos, rodada de
+    revisão, estado, evidência e motivo;
+  - na rodada combinada, "A diretoria te chamou" mostra os jogos, os
+    minutos e a nota média reais;
+  - cumprido: o papel é revisto; a escalação continua com o técnico;
+  - não cumprido: a decisão é explicada;
+  - lesão ou mudança de clube encerram o compromisso com o motivo.
+- **Técnico:** planos com janela de 4 partidas elegíveis e meta por função,
+  normalizada por 90 minutos:
+  - volantes e zagueiros: desarmes e interceptações;
+  - meia: criação;
+  - goleiro: defesas;
+  - nunca exige gols de defensores;
+  - devolutiva com os jogos da janela;
+  - amostra insuficiente não penaliza e permite encerrar ou revisar o plano
+    (um plano revisado por temporada);
+  - gatilhos novos: vaga aberta (o concorrente principal fica fora por
+    algumas rodadas), boas entradas (3 seguidas) e reforço na posição;
+  - "Focar no treino" e a adaptação também passam a gerar plano.
+
+**B. Imprensa e torcida**
+- Declarações com memória.
+- Manchetes que refletem o que foi dito.
+- Identificação da torcida por par carreira–clube: regularidade, atuação,
+  jogos marcantes e tempo de casa, além da forma como o atleta saiu.
+- Rivalidades cadastradas por ID (`src/engine/rivalidades.ts`, 46
+  clássicos): o primeiro gol em clássico gera a cena "Gol no clássico".
+- Reação da arquibancada depois de 5 jogos ruins.
+- Declaração de permanência que reaparece se o atleta se transfere na mesma
+  janela, com manchete e saída "ruim".
+- Reencontro no estádio do ex-clube confirmado pelo calendário: aplausos,
+  vaias ou recepção dividida, só como reação no card do jogo a jogo.
+- Prioridade: pendências contratuais e esportivas vêm antes da imprensa, que
+  tem limite de 2 interrupções por temporada.
+
+**C. Evolução e mercado**
+- Sai o "ambiente de treino" da PC-002: a liga não dá ganho por prestígio.
+- A reputação ganha exposição (nível da liga) e cobertura.
+- A oferta explica a temporada e a vaga, com fatos do save. Exemplo: "Você
+  ganhou a vaga na rodada 18 e disputou 64% dos minutos. O Ceará busca meia
+  para a rotação."
+- Três rotas, mesma semente, meia de potencial 80, 30 carreiras, 6
+  temporadas (mediana):
+
+| Rota | Minutos | Nível | Reputação | Salário do 1º contrato | Propostas |
+|---|---|---|---|---|---|
+| Titular em clube menor | 15.159 | 75 | 44,5 | € 2,4 mil | 6 |
+| Com empréstimo | 9.526 | 72 | 26,2 | € 4,0 mil | 7 |
+| Banco em clube maior | 1.561 | 66 | 9,2 | € 4,0 mil | 9 |
+
+  - O titular evolui e ganha reputação.
+  - O banco paga mais e atrai mais propostas, mas trava a evolução.
+  - O empréstimo fica no meio.
+
+**D. Jornada:** teste de ponta a ponta com reserva, empréstimo, ganho de
+espaço, retorno com o histórico intacto e renegociação do papel. Os jogos do
+balanço batem com o registro jogo a jogo.
+
+**E. Mobile (Chromium)**
+- Com a rolagem no topo, o botão principal fica 0 px fora da primeira dobra
+  em todas as telas, inclusive negociação, resposta e revisões, em 430×932,
+  390×844, 390×664, 375×667 e 360×740.
+- Card do jogo sob os controles: 0 de 390×844 a 320×568.
+- Safari no iPhone: com o Murilo.
+
+**Save v3:**
+- migração v2 → v3 com relações vazias e vínculo sem salário;
+- pendência e histórico preservados.
+
+**Tempos:**
+- motor: 8,8 ms por temporada (mediana de 2 ms por avanço; máximo de 83
+  ms);
+- reprodução de 8 a 15 s por trecho, sem mudança;
+- pausado, acelerado e pulado dão o mesmo resultado (teste da PC-002 segue
+  verde).
+
+**Testes:**
+- `primeiro-contrato`: 36/36, dos quais 10 novos em `relacoes.test.ts`;
+- E2E `test_primeiro_contrato.js`: atualizado para o salário no contrato;
+  passou;
+- rota rápida: 65/65;
+- suíte completa: 206/206;
+- `verificar-tela-antiga`: OK;
+- typecheck limpo.
+
+Evidência em `docs/primeiro-contrato/v3/evidencia/`: diretoria e
+negociação, técnico e revisões, imprensa e torcida, balanço e cenas.
+
+**Para a revisão do Murilo:**
+1. **Telas novas sem prancha**, montadas com os mesmos componentes:
+   - Negociar com a diretoria e a resposta da diretoria;
+   - A diretoria te chamou e a revisão do plano;
+   - A arquibancada reagiu;
+   - Gol no clássico.
+2. **Linhas novas:**
+   - "Salário" no primeiro contrato;
+   - "Salário", "Bônus" e "Compromisso" na comparação;
+   - "Torcida", "Salário", "Bônus pago", compromissos e uma manchete no
+     balanço.
+3. **Salário estimado:** fallback por liga e papel, porque o
+   primeiro-contrato não lê o modelo financeiro do Modo Técnico.
+4. **Rivalidades:** cadastro editorial; só clássicos conhecidos geram a cena.
+5. **Reencontro:** recepção só como reação no card; não interrompe a
+   temporada.
+
+**Riscos:**
+- o reencontro com aplausos depende de passagens longas e de saída "boa":
+  nas carreiras automáticas, que trocam de clube quase toda janela,
+  predominam as vaias e a recepção dividida;
+- a retirada de proposta é rara (cerca de 5% dos pedidos de melhores
+  condições).
 
 ⸻
 
