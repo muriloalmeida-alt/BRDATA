@@ -88,3 +88,18 @@ export interface Envelopes { reserva: number; entrada: number; parcelas: number;
 export function envelopes(e: EstadoDoClube): Envelopes;
 export function avaliarOperacao(e: EstadoDoClube, op: { taxa: number; entrada?: number; meses?: number; salario?: number }): { ok: boolean; motivo: null | "orcamento" | "caixa" | "parcelas" | "folha" | "fluxo"; faltam: number; paga: { agora: number; porMes: number; meses: number; total: number; salario: number }; antes: Envelopes; depois: Envelopes; piorCaixa: number };
 export function economiaV5(CAREER: unknown): boolean;
+// Mercado, etapa 3 (economia v6).
+export function economiaV6(CAREER: unknown): boolean;
+export const PAPEIS_SALARIAIS: ("jovem" | "reserva" | "titular" | "destaque")[];
+export function papelSalarial(p: { age?: number }, papelNoElenco: string, percentilOverall: number): "jovem" | "reserva" | "titular" | "destaque";
+export function faixasSalariais(jogadores: { wage: number; papel: string }[]): Record<string, [number, number]>;
+export const VETERANO_REDUCAO: number;
+export function salarioDeReferencia(p: { wage?: number; age?: number }, faixa: [number, number] | null | undefined, livre?: boolean): number;
+export const LIVRE: { luvasMeses: number; comissaoMeses: number };
+export function custosDoLivre(salario: number): { luvas: number; comissao: number };
+export const EMPRESTIMO_V6: { percentuais: number[]; desenvolvimentoMax: number; desenvolvimentoIdade: number; taxa: number };
+export function modalidadeDoEmprestimo(p: { age?: number }, pct: number): "desenvolvimento" | "fora-dos-planos";
+export function taxaDeEmprestimo(p: { value?: number; age?: number }, pct: number): number;
+export const REVENDA: { faixa: [number, number]; desconto: number };
+export function fatorDaRevenda(pct: number): number;
+export function parteDaRevenda(revenda: { pct: number } | null | undefined, recebido: number): number;

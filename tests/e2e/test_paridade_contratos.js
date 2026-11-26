@@ -46,9 +46,9 @@ const { abrirPagina } = require("./_sem_tela");
     const caixa = C.finances.cash, salario = M.clube.salarioDoAgenteLivre(C.agentesLivres[0]);
     const r = M.clube.contratarAgenteLivre("livre_meu");
     const p = C.squad.find((x) => x.id === "livre_meu");
-    return { lista: lista.map((a) => [a.id, a.salario]), ok: r.ok, noElenco: !!p, salario, wage: p && p.wage, contrato: p && p.contractUntil, ano: C.seasonYear, caixa: C.finances.cash - caixa, saiu: C.agentesLivres.length === 0, livreDesde: p && p.livreDesde };`);
-  check("3) Você contrata um agente livre sem taxa (o caixa não muda), com o salário pedido, por 2 temporadas; a ponte lista os agentes livres:",
-    r3.ok && r3.noElenco && r3.lista.length === 1 && r3.lista[0][1] === r3.salario && r3.wage === r3.salario && r3.contrato === r3.ano + 1 && r3.caixa === 0 && r3.saiu && !r3.livreDesde, JSON.stringify(r3));
+    return { lista: lista.map((a) => [a.id, a.salario]), ok: r.ok, noElenco: !!p, salario, wage: p && p.wage, contrato: p && p.contractUntil, ano: C.seasonYear, caixa: C.finances.cash - caixa, custos: (r.luvas || 0) + (r.comissao || 0), saiu: C.agentesLivres.length === 0, livreDesde: p && p.livreDesde };`);
+  check("3) Você contrata um agente livre sem taxa (o caixa só paga luvas e comissão, economia v6), com o salário pedido, por 2 temporadas; a ponte lista os agentes livres:",
+    r3.ok && r3.noElenco && r3.lista.length === 1 && r3.lista[0][1] === r3.salario && r3.wage === r3.salario && r3.contrato === r3.ano + 1 && r3.caixa === -r3.custos && r3.saiu && !r3.livreDesde, JSON.stringify(r3));
 
   // 4) Teto salarial.
   const r4 = ler(`const base = S.leagueSquadFor(ids[3])[2];

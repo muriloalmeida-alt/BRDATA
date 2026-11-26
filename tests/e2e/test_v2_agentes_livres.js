@@ -3,7 +3,8 @@
 // salário que ele pede, por 2 temporadas.
 //  1) Mercado: a entrada "Agentes livres" com a quantidade.
 //  2) A tela lista o jogador com o último clube e o salário pedido.
-//  3) "Contratar sem taxa": ele chega ao seu elenco, o caixa não muda e a
+//  3) "Contratar sem taxa": ele chega ao seu elenco, o caixa só paga luvas e
+//     comissão (economia v6; antes, não mudava) e a
 //     lista fica vazia.
 //  4) 360 px sem rolagem horizontal.
 const { chromium } = require("playwright-core");
@@ -46,10 +47,13 @@ const { carreiraV2, noMotor, base } = require("./_v2_carreira");
   // 3) Contratar.
   await page.getByRole("button", { name: "Contratar sem taxa" }).first().click();
   await page.locator(".pr-ok").waitFor({ timeout: 20000 });
-  const depois = await noMotor(page, (M) => ({ caixa: M.CAREER.finances.cash, n: M.CAREER.squad.length, tem: M.CAREER.squad.some((p) => p.id === "livre_v2"), livres: (M.CAREER.agentesLivres || []).length }));
+  // MERCADO-001 (economia v6, carreiras novas): sem taxa ao clube anterior;
+  // saem do caixa só as luvas e a comissão do agente (lançadas no extrato).
+  const depois = await noMotor(page, (M) => ({ caixa: M.CAREER.finances.cash, n: M.CAREER.squad.length, tem: M.CAREER.squad.some((p) => p.id === "livre_v2"), livres: (M.CAREER.agentesLivres || []).length,
+    custos: (M.CAREER.financeLedger || []).filter((l) => /^(Luvas|Comissão do agente)/.test(l.label || "")).reduce((s, l) => s - l.amount, 0) }));
   const vazia = await page.getByText(/Nenhum jogador livre agora/).waitFor({ timeout: 10000 }).then(() => 1, () => 0);
   check("3) Contratado: chega ao seu elenco, o caixa não muda e a lista fica vazia:",
-    depois.tem && depois.n === alvo.n + 1 && depois.caixa === alvo.caixa && depois.livres === 0 && vazia > 0, JSON.stringify({ alvo, depois, vazia }));
+    depois.tem && depois.n === alvo.n + 1 && depois.caixa === alvo.caixa - depois.custos && depois.livres === 0 && vazia > 0, JSON.stringify({ alvo, depois, vazia }));
   check("4) 360 px sem rolagem horizontal:", !rola);
   check("5) Sem erro na página:", erros.length === 0, erros.slice(0, 3).join(" | "));
 

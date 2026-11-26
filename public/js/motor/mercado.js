@@ -531,9 +531,14 @@ function motivoDoAtleta(t, ctx, oferta) {
 
 // Salário sugerido para a tela: o que o atleta aceitaria com o papel
 // dado (arredondado; nunca abaixo do atual).
+// MERCADO-001 (v6): com `ctx.salarioReferencia` (a faixa do destino para o
+// papel, economia.salarioDeReferencia), a sugestão não fica abaixo dela: a
+// oferta já sai no nível do destino. A decisão do atleta segue contra o
+// salário atual (a faixa entra no que se oferece, não numa recusa).
 export function salarioSugerido(player, papel, ctx = {}, P = MER_PARAMETROS) {
   const r = avaliacaoAtleta(player, { salario: player.wage, papel, anos: 3 }, ctx, P);
-  return r.decisao === "aceita" ? player.wage : r.salarioPedido || Math.round(player.wage * 1.5 / 100) * 100;
+  const s = r.decisao === "aceita" ? player.wage : r.salarioPedido || Math.round(player.wage * 1.5 / 100) * 100;
+  return ctx.salarioReferencia ? Math.max(s, Math.round(ctx.salarioReferencia / 100) * 100) : s;
 }
 
 // Empréstimo (MER-05): o clube de origem (dono) e o jogador avaliam.

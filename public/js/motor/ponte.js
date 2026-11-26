@@ -21,10 +21,10 @@
 =================================================================== */
 import { carreiraAtual, ligaAtual, todosTimes, competicaoAtual, partidaAtual, coletivaPendente } from "./estado.js";
 import { stadiumUpgradeBonusFor } from "./aovivo.js";
-import { BOARD_REQUEST_COOLDOWN, OFFER_WAIT_ROUNDS, SCOUT_GROUP_LABEL, SCOUT_MARKET, STADIUM_UPGRADES, acceptCounterOffer, acceptListingOffer, acceptLoanOfferIn, acceptOffer, applyTalkEffect, boardRequest, canTalkTo, cancelListing, computeLeaderboardScore, createListing, declineOffer, finalizeLoanIn, finalizeLoanOut, findInterestedBuyer, fireTechnicalStaff, hireScout, hireTechnicalStaff, increaseOffer, isContractExpiring, isLoanOutRefused, listingFor, markLineupDirty, recruitProspectToBase, rejectListingOffer, rejectLoanOfferIn, releaseScout, renewalVerdict, scoutAllowedRegions, scoutingAvailableRegions, setLoanListed, signSponsorProposal, startScoutMission, startStadiumUpgrade, submitOfferOut, withdrawOffer, contratarAgenteLivre, salarioDoAgenteLivre } from "./clube.js";
+import { BOARD_REQUEST_COOLDOWN, OFFER_WAIT_ROUNDS, SCOUT_GROUP_LABEL, SCOUT_MARKET, STADIUM_UPGRADES, acceptCounterOffer, acceptListingOffer, acceptLoanOfferIn, acceptOffer, applyTalkEffect, boardRequest, canTalkTo, cancelListing, computeLeaderboardScore, createListing, declineOffer, finalizeLoanIn, finalizeLoanOut, findInterestedBuyer, fireTechnicalStaff, hireScout, hireTechnicalStaff, increaseOffer, isContractExpiring, isLoanOutRefused, listingFor, markLineupDirty, recruitProspectToBase, rejectListingOffer, rejectLoanOfferIn, releaseScout, renewalVerdict, scoutAllowedRegions, scoutingAvailableRegions, setLoanListed, signSponsorProposal, startScoutMission, startStadiumUpgrade, submitOfferOut, withdrawOffer, contratarAgenteLivre, salarioDoAgenteLivre, mesesAteORetorno } from "./clube.js";
 import { FORMATIONS, SECTOR_IDS, SECTOR_INSTRUCTIONS, TACTIC_AXES, computeHumanStrength } from "./fechamento.js";
 import { firePressConference } from "./posjogo.js";
-import { MAX_PRINCIPAL, revendaLiberadaDe, REGION_LABEL, SCOUT_MISSION_DURATIONS, SCOUT_MISSION_TYPES, SUBPOS_LABEL, ambiente, applyWeeklyTraining, avisar, calendarTurnKey, leagueSquadFor, marketTeamsPool, pendingOfferOutFor, capacidadeDoTecnico, pushLedger, subPositionOf, transferWindowStatus } from "./semana.js";
+import { MAX_PRINCIPAL, revendaLiberadaDe, REGION_LABEL, SCOUT_MISSION_DURATIONS, SCOUT_MISSION_TYPES, SUBPOS_LABEL, ambiente, applyWeeklyTraining, avisar, calendarTurnKey, leagueSquadFor, marketTeamsPool, pendingOfferOutFor, capacidadeDoTecnico, estadoFinanceiroDoTecnico, pushLedger, subPositionOf, transferWindowStatus } from "./semana.js";
 import { abbreviateName, fmtBRL } from "./texto.js";
 import { autoLineup, defaultSectorTactics, evaluateAlwaysCheckableAchievements, generateSponsorProposals, goleirosDeEmergencia, initialStadium } from "./virada.js";
 import * as financas from "./financas.js";
@@ -39,6 +39,7 @@ import * as calendario from "./calendario.js";
 import * as rodada from "./rodada.js";
 import * as escalacao from "./escalacao.js";
 import * as negociacao from "./negociacao.js";
+import * as economia from "./economia.js";
 
 function achievementProgressFor(id) {
   return registro.achievementProgressFor(id);
@@ -386,18 +387,34 @@ async function pegarEmprestadoAgora(clubId, playerId, duracao, percentual, claus
       const p = leagueSquadFor(String(clubId)).find((x) => x.id === playerId);
       if (!p) return { ok: false, motivo: "indisponivel", mensagem: "Esse jogador não está mais disponível." };
       const pct = Number(percentual);
-      if (![50, 75, 100].includes(pct)) return { ok: false, motivo: "opcao-invalida" };
+      const v6 = economia.economiaV6(CAREER);
+      // MERCADO-001 (v6): desenvolvimento (20%–50%, jovem que vai jogar) e fora dos planos (50%–100%).
+      if (!(v6 ? economia.EMPRESTIMO_V6.percentuais : [50, 75, 100]).includes(pct)) return { ok: false, motivo: "opcao-invalida" };
       const opts = ponteOpcoesEmprestimo(duracao, clausula, valorClausula);
       if (!opts) return { ok: false, motivo: "opcao-invalida" };
+      if (v6 && pct < economia.EMPRESTIMO_V6.desenvolvimentoMax) {
+        const papelAqui = mercado.papelNoElenco(p, CAREER.squad);
+        if ((p.age || 30) > economia.EMPRESTIMO_V6.desenvolvimentoIdade) return { ok: false, motivo: "recusa", mensagem: `Empréstimo de desenvolvimento (menos de 50% do salário) é para jovem de até ${economia.EMPRESTIMO_V6.desenvolvimentoIdade} anos.` };
+        if (papelAqui === "reserva") return { ok: false, motivo: "recusa", mensagem: "No empréstimo de desenvolvimento o clube de origem quer minutos: ele seria reserva no seu time." };
+      }
       const av = negociacao.avaliarPedidoDeEmprestimo(clubId, p, duracao, pct);
       if (av.decisao === "recusa") return { ok: false, motivo: "recusa", mensagem: `${av.lado === "jogador" ? abbreviateName(p.name) : teamById(clubId).name} recusou: ${av.motivo}` };
       if (av.decisao === "contra") return { ok: false, motivo: "contra", pctPedido: av.pctPedido, mensagem: av.motivo };
       const loanWage = Math.round((p.wage * (pct / 100)) / 100) * 100;
       if (wageBillOf(CAREER.squad) + loanWage > CAREER.finances.wageCap) return { ok: false, motivo: "teto", mensagem: `Pegar esse jogador emprestado estouraria o teto salarial (${fmtBRL(CAREER.finances.wageCap)}).` };
+      if (v6) {
+        // Taxa, a parte do salário e a obrigação de compra (com o salário cheio
+        // depois dela) pela mesma avaliação de caixa, folha e projeção.
+        const taxa = economia.taxaDeEmprestimo(p, pct);
+        const comp = opts.buyOption && opts.buyOption.mandatory ? [{ mes: mesesAteORetorno(CAREER, opts.returnRound), valor: opts.buyOption.value, salarioExtra: Math.max(0, p.wage - loanWage) }] : [];
+        const e = estadoFinanceiroDoTecnico(CAREER);
+        const cap = economia.avaliarOperacao(e, { taxa, salario: loanWage, compromissos: comp });
+        if (!cap.ok) return { ok: false, motivo: cap.motivo, mensagem: `Empréstimo bloqueado: ${cap.motivo === "fluxo" ? "o caixa ficaria negativo com a compra obrigatória" : cap.motivo === "folha" ? "o salário passa do espaço na folha" : cap.motivo === "caixa" ? "a taxa passa do caixa livre" : "passa do orçamento"} (faltam ${fmtBRL(cap.faltam)}).`, faltam: cap.faltam };
+      }
       if (CAREER.squad.length >= MAX_PRINCIPAL + 20) return { ok: false, motivo: "elenco-grande", mensagem: "Elenco já está muito grande — dispense ou negocie alguém antes." };
       const ok = await finalizeLoanIn(String(clubId), playerId, { ...opts, wagePct: pct, avaliado: true });
       if (!ok) return { ok: false, motivo: "recusa", mensagem: "O empréstimo não foi feito." };
-      return { ok: true, salario: loanWage };
+      return { ok: true, salario: loanWage, ...(v6 ? { taxa: economia.taxaDeEmprestimo(p, pct), modalidade: economia.modalidadeDoEmprestimo(p, pct) } : {}) };
 }
 
 // Comandos de gestão da ponte (mesmo texto de window.BRDATA_PONTE).
@@ -519,6 +536,8 @@ export const comandosGestao = {
         if (anterior) CAREER.pendingOffersOut = CAREER.pendingOffersOut.filter((x) => x !== anterior);
         Object.assign(r.offer, t);
         if (mensal) Object.assign(r.offer, mensal);
+        // v6: percentual de revenda (10%–20%) em troca de uma taxa fixa menor.
+        if (economia.economiaV6(CAREER) && termos && Number(termos.revendaPct) >= economia.REVENDA.faixa[0] && Number(termos.revendaPct) <= economia.REVENDA.faixa[1]) r.offer.revendaPct = Math.round(Number(termos.revendaPct));
         return { ok: true, id: r.offer.id, valor: r.value };
       });
     },

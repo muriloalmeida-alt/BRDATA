@@ -111,8 +111,66 @@ Riscos e pendências:
 - catálogo salarial por divisão e papel, agente livre, empréstimos e
   percentual de revenda: etapa 3.
 
-Próximo: etapa 3 (compra definitiva, agente livre e empréstimos;
-persistência e idempotência).
+Etapa 2 mesclada (#172).
+
+Relatório da etapa 3, compra definitiva, agente livre e empréstimos (26/11/2026)
+
+Branch `claude/mercado-e3-operacoes`, base 5060b61 (#172). Economia versão 6
+(carreiras novas). Pedido do Murilo: "siga para as fases 3, 4 e 5 ao mesmo
+tempo" (as etapas 4 e 5 seguem em frentes paralelas, em branches próprias).
+
+O que foi feito:
+- catálogo salarial por divisão e papel (jovem, reserva, titular,
+  destaque): faixas p25–p75 dos contratos de cada divisão, montadas na
+  criação (`CAREER.economia.salarios`). O salário vigente de quem já está
+  contratado não muda;
+- referência salarial do atleta numa oferta: a média geométrica entre o
+  salário atual e o meio da faixa do destino para o papel que ele teria
+  lá. A oferta sugerida na tela e o salário que a CPU oferece não ficam
+  abaixo dela. A decisão do atleta segue contra o salário atual: na 1ª
+  versão a referência entrava na decisão, e quem subia da Série B recusava
+  o salário atual, travando compras comuns (7 testes de mercado no CI). O
+  atleta ainda pode recusar condições com o clube vendedor de acordo
+  (papel, divisão, força);
+- agente livre:
+  - taxa zero ao clube anterior;
+  - salário pela faixa do seu clube (o veterano de 31+ aceita 20% menos);
+  - luvas (2 salários) e comissão do agente (1 salário) pela mesma
+    avaliação, lançadas no extrato (os testes de agente livre passaram a
+    contar esses custos);
+  - pré-contrato não é suportado hoje (fica como pendência);
+- empréstimos:
+  - desenvolvimento: 20% a 50% do salário, sem taxa; só para jovem de até
+    23 anos que não seria reserva no seu time;
+  - fora dos planos: 50% a 100%, com taxa ao clube de origem de 10% do
+    valor com 50%, caindo a zero com 100%;
+  - obrigação de compra: registrada como compromisso futuro na assinatura
+    (o valor e o salário cheio entram na projeção) e baixada uma vez na
+    conclusão;
+  - opção de compra: revalidada na execução (caixa, folha, parcelas e
+    orçamento);
+- percentual de revenda (10% a 20%):
+  - na proposta (`termos.revendaPct`), o vendedor aceita taxa fixa menor
+    (abate metade do percentual);
+  - o percentual fica com o atleta (`p.revenda`) e é pago uma vez, na
+    próxima venda, sobre cada recebimento (à vista e parcelas);
+- persistência e idempotência:
+  - parcelas, compromissos e revenda vão no save;
+  - a repetição da mesma operação (opId) não duplica empréstimo,
+    compromisso nem lançamento.
+
+Testes:
+- `tests/unit/test_mercado_etapa3.js` 5/5;
+- etapas 1 e 2 e integração do mercado seguem passando
+  (`test_economia_mercado` 8/8, `test_mercado_etapa2` 5/5,
+  `test_motor_mer_integracao` 10/10).
+
+Pendências:
+- pré-contrato (não suportado no jogo);
+- revenda para o técnico quando ele vende com percentual (o lado
+  CPU → CPU);
+- a tela dos empréstimos de desenvolvimento e da revenda (a ponte já
+  aceita os percentuais e `termos.revendaPct`).
 
 ⸻
 

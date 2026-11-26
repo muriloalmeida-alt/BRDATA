@@ -23,7 +23,7 @@ import { carreiraAtual, ligaAtual, todosTimes, timePorId, forcaMediaDoElenco, co
 import { emitir } from "./eventos.js";
 import { pushNotification, ensureObjectivesFresh, bumpObjective } from "./registro.js";
 import { fmtBRL, abbreviateName } from "./texto.js";
-import { ambiente, avisar, finalizeIncomingPurchase, financeiroScore, leagueSquadFor, marketTeamsPool, MAX_PRINCIPAL, maxSquadSizeFor, moverCaixaCpu, pickWeightedByScore, pruneRecentDeclines, pushLedger, pushTransferLog, REGION_LABEL, SCOUT_MISSION_DURATIONS, SCOUT_MISSION_TYPES, transferScore, transferWindowStatus, UF_TO_REGION, temVagaCpu, entrarNoElencoCpu, registrarGastoNaTemporada } from "./semana.js";
+import { ambiente, avisar, finalizeIncomingPurchase, financeiroScore, leagueSquadFor, marketTeamsPool, MAX_PRINCIPAL, maxSquadSizeFor, moverCaixaCpu, pickWeightedByScore, pruneRecentDeclines, pushLedger, pushTransferLog, REGION_LABEL, SCOUT_MISSION_DURATIONS, SCOUT_MISSION_TYPES, transferScore, transferWindowStatus, UF_TO_REGION, temVagaCpu, entrarNoElencoCpu, registrarGastoNaTemporada, pagarRevenda, capacidadeDoTecnico, mesesNaTemporada } from "./semana.js";
 import { TALK_BENCH_STREAK_THRESHOLD, WANTS_TRANSFER_BENCH_STREAK, WANTS_TRANSFER_MORALE_MAX, playerComplaintFactor } from "./aovivo.js";
 import { firePressConference } from "./posjogo.js";
 import * as financas from "./financas.js";
@@ -31,6 +31,7 @@ import * as mercado from "./mercado.js";
 import * as tabela from "./tabela.js";
 import * as temporada from "./temporada.js";
 import * as economia from "./economia.js";
+import * as estadoDaCarreira from "./estado.js";
 import * as registro from "./registro.js";
 
 const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
@@ -266,6 +267,13 @@ export async function finalizeLoanIn(clubId, playerId, { returnRound, buyOption,
   }
   if (CAREER.squad.length >= MAX_PRINCIPAL + 20) { avisar("Elenco já está muito grande — dispense ou negocie alguém antes.", { type: "warn" }); return false; }
   squad.splice(idx, 1);
+  // MERCADO-001 (v6): a taxa do empréstimo (fora dos planos) ao clube de
+  // origem e a obrigação de compra registrada como compromisso futuro.
+  if (economia.economiaV6(CAREER)) {
+    const taxa = economia.taxaDeEmprestimo(p, wagePct);
+    if (taxa) { CAREER.finances.cash -= taxa; moverCaixaCpu(clubId, taxa); pushLedger("transferencia", `Taxa de empréstimo — ${p.name} (${teamById(clubId).name})`, -taxa, CAREER.currentRound); p.loanFee = taxa; }
+    if (buyOption && buyOption.mandatory) (CAREER.compromissos = CAREER.compromissos || []).push({ tipo: "obrigacao", playerId: p.id, valor: buyOption.value, mes: mesesAteORetorno(CAREER, returnRound) });
+  }
   p.loanFromClubId = String(clubId);
   p.loanOriginalWage = p.wage;
   p.wage = loanWage;
@@ -279,6 +287,14 @@ export async function finalizeLoanIn(clubId, playerId, { returnRound, buyOption,
   avisar(`${abbreviateName(p.name)} chegou emprestado!`, { type: "pos" });
   ensureObjectivesFresh(); bumpObjective("daily", "obj_market_1_move", 1);
   return true;
+}
+
+// Meses até o fim do empréstimo (meia temporada ou o fim dela).
+export function mesesAteORetorno(CAREER, returnRound) {
+  const total = mesesNaTemporada(CAREER);
+  if (!returnRound) return total;
+  const rodadas = estadoDaCarreira.rodadasDaTemporada ? estadoDaCarreira.rodadasDaTemporada(CAREER) : 38;
+  return Math.max(1, Math.round((total * (returnRound - (CAREER.currentRound || 1))) / Math.max(1, rodadas - (CAREER.currentRound || 1) + 1)));
 }
 
 export function recordDecline(playerId, clubId, round) {
@@ -556,10 +572,13 @@ export function acceptListingOffer(listingId, offerId) {
   CAREER.lineup.bench = CAREER.lineup.bench.filter((x) => x !== p.id);
   CAREER.finances.cash += firstPayment;
   registrarGastoNaTemporada(CAREER, offer.value, "vendas"); // MERCADO-001 (v5): a venda repõe o orçamento
+  // MERCADO-001 (v6): o percentual de revenda sai deste recebimento e de cada parcela.
+  const revenda = p.revenda || null;
+  if (revenda) { pagarRevenda(CAREER, revenda, firstPayment, `venda de ${p.name}`); delete p.revenda; }
   moverCaixaCpu(offer.clubId, -offer.value); // PARIDADE-CPU · E3 (D2)
   if (offer.installments > 1) {
     CAREER.pendingReceivables = CAREER.pendingReceivables || [];
-    CAREER.pendingReceivables.push({ roundsLeft: offer.installments - 1, perRoundAmount: perInstallment, label: `Parcela da venda de ${p.name}` });
+    CAREER.pendingReceivables.push({ roundsLeft: offer.installments - 1, perRoundAmount: perInstallment, label: `Parcela da venda de ${p.name}`, ...(revenda ? { revenda } : {}) });
   }
   entrarNoElencoCpu(offer.clubId, p);
   pushTransferLog(`Você vendeu ${p.name} pro ${offer.clubName} por ${fmtBRL(offer.value)}${offer.installments > 1 ? ` (${offer.installments}x)` : ""}.`, CAREER.currentRound);
@@ -675,6 +694,7 @@ export function acceptOffer() {
   if (!p) { CAREER.pendingOffer = null; tela("renderMercado"); return; } // jogador já saiu do elenco por outro motivo
   CAREER.finances.cash += offer.fee;
   registrarGastoNaTemporada(CAREER, offer.fee, "vendas"); // MERCADO-001 (v5): a venda repõe o orçamento
+  if (p.revenda) { pagarRevenda(CAREER, p.revenda, offer.fee, `venda de ${p.name}`); delete p.revenda; } // MERCADO-001 (v6)
   moverCaixaCpu(offer.clubId, -offer.fee); // PARIDADE-CPU · E3 (D2)
   CAREER.squad = CAREER.squad.filter((x) => x.id !== p.id);
   CAREER.lineup.starters = CAREER.lineup.starters.map((x) => (x === p.id ? null : x));
@@ -709,6 +729,13 @@ export function declineOffer() {
 // temporadas, a qualquer momento. Cabe no teto salarial e no tamanho do elenco.
 export function salarioDoAgenteLivre(p) {
   const CAREER = carreiraAtual();
+  // v6: pela faixa do destino (o seu clube) para o papel que ele teria no
+  // seu elenco; o veterano livre aceita menos pela estabilidade.
+  const faixas = economia.economiaV6(CAREER) && CAREER.economia.salarios && CAREER.economia.salarios[CAREER.competitionId];
+  if (faixas) {
+    const papel = economia.papelSalarial(p, mercado.papelNoElenco(p, CAREER.squad), 0);
+    return economia.salarioDeReferencia(p, faixas[papel] || faixas.reserva, true);
+  }
   return Math.max(Math.round((temporada.fairWageFor(p, economia.escalaDe(CAREER, CAREER && CAREER.clubId)) || p.wage || 0) / 100) * 100, 100);
 }
 export function contratarAgenteLivre(id) {
@@ -720,12 +747,24 @@ export function contratarAgenteLivre(id) {
   const salario = salarioDoAgenteLivre(p);
   if (CAREER.squad.length >= MAX_PRINCIPAL + 20) return { ok: false, motivo: "elenco-cheio", texto: "Seu elenco está grande demais agora." };
   if (wageBillOf(CAREER.squad) + salario > CAREER.finances.wageCap) return { ok: false, motivo: "teto", texto: `O salário dele (${fmtBRL(salario)}) estouraria o teto salarial.` };
+  // v6: taxa zero ao clube anterior; luvas e comissão do agente, pela mesma
+  // avaliação de caixa e folha.
+  const custos = economia.economiaV6(CAREER) ? economia.custosDoLivre(salario) : null;
+  if (custos) {
+    const cap = capacidadeDoTecnico(custos.luvas + custos.comissao, 1, salario);
+    if (cap && !cap.ok) return { ok: false, motivo: cap.motivo, texto: cap.mensagem };
+  }
   lista.splice(i, 1);
   delete p.livreDesde; delete p.ultimoClube;
   Object.assign(p, { wage: salario, contractUntil: CAREER.seasonYear + 1, origin: "principal", status: p.status === "contundido" ? p.status : "ok", appsSeason: 0, goalsSeason: 0, assistsSeason: 0 });
   CAREER.squad.push(p);
+  if (custos) {
+    CAREER.finances.cash -= custos.luvas + custos.comissao;
+    pushLedger("transferencia", `Luvas — ${p.name} (agente livre)`, -custos.luvas, CAREER.currentRound);
+    pushLedger("transferencia", `Comissão do agente — ${p.name}`, -custos.comissao, CAREER.currentRound);
+  }
   pushTransferLog(`Você contratou ${p.name}, que estava livre no mercado (salário de ${fmtBRL(salario)}).`, CAREER.currentRound);
   avisar(`${abbreviateName(p.name)} contratado sem custo de transferência!`, { type: "pos" });
   ensureObjectivesFresh(); bumpObjective("daily", "obj_market_1_move", 1);
-  return { ok: true, player: p, salario };
+  return { ok: true, player: p, salario, ...(custos || {}) };
 }
