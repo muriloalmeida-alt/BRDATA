@@ -5,13 +5,13 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { sugerirNacionalidade } from "./engine/atleta.ts";
 import type { Catalogo } from "./engine/catalogo.ts";
-import { abrirJanela, assinarPrimeiroContrato, avancar, decidir, novaCarreira } from "./engine/carreira.ts";
+import { abrirJanela, assinarPrimeiroContrato, avancar, decidir, marcarExibidos, novaCarreira, reproducaoPendente } from "./engine/carreira.ts";
 import type { Carreira } from "./engine/estado.ts";
 import { novaSemente } from "./engine/rng.ts";
 import { catalogoAtivo, catalogoDoSave } from "./store/catalogo.ts";
 import { apagarSave, carregarSave, gravarSave } from "./store/persistencia.ts";
 import { TelaClube, TelaContrato, TelaInicio, TelaJogador, TelaPosicao, type Rascunho } from "./screens/Entrada.tsx";
-import { TelaBalanco, TelaConvocacao, TelaPerdaEspaco, TelaRecuperacao, TelaTemporada, TelaTreinador } from "./screens/Carreira.tsx";
+import { TelaBalanco, TelaConvocacao, TelaEntrevista, TelaPerdaEspaco, TelaRecuperacao, TelaRumor, TelaTemporada, TelaTreinador } from "./screens/Carreira.tsx";
 import { TelaAposentadoria, TelaComparar, TelaJanela } from "./screens/Mercado.tsx";
 import { TelaLegado, TelaTrajetoria } from "./screens/Legado.tsx";
 import { Dialogo } from "./ui/componentes.tsx";
@@ -136,24 +136,34 @@ export function App() {
     return <TelaTrajetoria cat={cat} c={c} onVoltar={voltar} rotuloVoltar={c.fase === "encerrada" ? "Voltar ao legado" : "Voltar à carreira"} />;
   }
   const decidirEm = async (id: string) => { await atualizar(decidir(cat, c, id)); setJanelaSel(null); raiz("carreira"); };
+  const telaTemporada = (
+    <TelaTemporada key={`${c.temporada?.ano}:${c.temporada?.partidas.length}`} cat={cat} c={c} ocupado={ocupado}
+      onTrajetoria={() => ir("trajetoria")}
+      onExibir={(n) => void atualizar(marcarExibidos(c, n))}
+      onAvancar={async () => {
+        setOcupado(true);
+        try { await atualizar(avancar(cat, c)); } finally { setOcupado(false); }
+      }} />
+  );
+  // Jogos novos ainda não mostrados vêm antes da decisão ou do balanço.
+  if (reproducaoPendente(c) && c.fase !== "encerrada") return telaTemporada;
   const p = c.pendente;
   if (p?.tipo === "janela") {
     if (rota === "comparar") return <TelaComparar cat={cat} c={c} p={p} selecionado={janelaSel} onDecidir={(id) => void decidirEm(id)} />;
     return <TelaJanela cat={cat} c={c} p={p} selecionado={janelaSel} onSelecionar={setJanelaSel} onComparar={() => ir("comparar")} />;
   }
   if (p?.tipo === "aposentadoria") return <TelaAposentadoria c={c} p={p} onDecidir={(id) => void decidirEm(id)} />;
-  if (p?.tipo === "adaptacao") return <TelaTreinador key={p.chave} p={p} onDecidir={(id) => void decidirEm(id)} />;
+  if (p?.tipo === "adaptacao" || p?.tipo === "planoTreinador") return <TelaTreinador key={p.chave} p={p} onDecidir={(id) => void decidirEm(id)} />;
   if (p?.tipo === "recuperacao") return <TelaRecuperacao key={p.chave} p={p} onDecidir={(id) => void decidirEm(id)} />;
   if (p?.tipo === "perdaEspaco") return <TelaPerdaEspaco key={p.chave} p={p} onDecidir={(id) => void decidirEm(id)} />;
+  if (p?.tipo === "entrevista") return <TelaEntrevista key={p.chave} p={p} onDecidir={(id) => void decidirEm(id)} />;
+  if (p?.tipo === "rumor") return <TelaRumor key={p.chave} cat={cat} p={p} onDecidir={(id) => void decidirEm(id)} />;
   if (p?.tipo === "convocacao") return <TelaConvocacao key={p.chave} c={c} p={p} onContinuar={() => void decidirEm("ok")} />;
-  if (c.fase === "balanco") return <TelaBalanco c={c} onAbrirJanela={() => void atualizar(abrirJanela(cat, c))} />;
+  if (c.fase === "balanco") return <TelaBalanco cat={cat} c={c} onAbrirJanela={() => void atualizar(abrirJanela(cat, c))} />;
   if (c.fase === "encerrada") return <TelaLegado cat={cat} c={c} onTrajetoria={() => ir("trajetoria")} onNova={() => setConfirmarNova(true)} />;
   return (
     <>
-      <TelaTemporada c={c} ocupado={ocupado} onTrajetoria={() => ir("trajetoria")} onAvancar={async () => {
-        setOcupado(true);
-        try { await atualizar(avancar(cat, c)); window.scrollTo(0, 0); } finally { setOcupado(false); }
-      }} />
+      {telaTemporada}
       {confirmarNova && <Dialogo titulo="Começar uma nova carreira?" texto="A carreira salva neste aparelho será substituída." confirmar="Começar de novo" onConfirmar={() => void comecarNova()} onCancelar={() => setConfirmarNova(false)} />}
     </>
   );

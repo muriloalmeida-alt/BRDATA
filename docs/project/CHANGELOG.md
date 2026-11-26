@@ -79,6 +79,23 @@ bump.
 
 ## Histórico completo (mais recente primeiro)
 
+### 2026-11-26 (2) — v13.1.0  (PC-002, branch `claude/new-session-ygru7q`)
+
+- **Primeiro Contrato: temporada visível, treinador e imprensa, evolução**
+  (PC-002, aprovado pelo Murilo em 26/11/2026).
+  - **Temporada visível:**
+    - calendário da liga, placares e classificação da mesma fonte;
+    - registro de cada partida do atleta;
+    - reprodução jogo a jogo, com pausar, acelerar e ir à próxima decisão, e
+      ponteiro persistido no save;
+    - balanço com minutos previstos × realizados, motivo verificável, jogos e
+      tabela.
+  - **Eventos novos:** plano do treinador, disputa por vaga, entrevista
+    pós-jogo, rumor de saída e volta ao treino, com 5 fundos novos.
+  - **Evolução:** confiança e reputação; ambiente de treino na evolução.
+  - **Save v2** com migração.
+  - **Testes:** 26 do motor (8 novos) e o E2E atualizado.
+
 ### 2026-11-26 — v13.0.0  (PC-001, branch `claude/new-session-ygru7q`)
 
 - **Touchline · Primeiro Contrato** (PC-001, aprovado pelo Murilo em

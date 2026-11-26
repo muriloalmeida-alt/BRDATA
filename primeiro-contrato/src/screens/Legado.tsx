@@ -41,6 +41,7 @@ export function TelaTrajetoria({ cat, c, onVoltar, rotuloVoltar }: { cat: Catalo
                         <span>{t.jogos} jogos · {t.minutos.toLocaleString("pt-BR")} min · {t.stats[m.chave]} {m.rotulo.toLowerCase()} · média {t.media.toLocaleString("pt-BR")}</span>
                         <span>{t.papel}{t.funcao !== c.atleta.posicao ? ` · jogou como ${POS[t.funcao].nome.toLowerCase()}` : ""}{t.emprestimo && t.origemNome ? ` · emprestado pelo ${t.origemNome}` : ""}</span>
                         {t.posicaoLiga && <span>{t.posicaoLiga}º lugar na liga</span>}
+                        {t.origem === "resumo" && <span className="estimativa" style={{ margin: 0 }}>Resumo de versão anterior (sem jogo a jogo)</span>}
                       </li>
                     ))}
                     {marcos.map((x) => <li key={x.tipo + x.ano} className="marco">{x.ano} · {x.texto}</li>)}

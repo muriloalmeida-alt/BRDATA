@@ -187,7 +187,48 @@ button, input, select { font: inherit; color: inherit; }
 @keyframes pc-indet { from { transform: translateX(-100%); } to { transform: translateX(250%); } }
 .estimativa { margin: 10px 0 0; font-size: 13px; color: var(--bd-muted); }
 
+/* ── PC-002: partida, controles e balanço detalhado ───────────────────── */
+.partida-wrap { position: relative; z-index: 2; margin-top: -84px; }
+.partida-wrap--anim { animation: pc-entra .28s ease-out; }
+@keyframes pc-entra { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+.partida { padding: 14px 16px; border: 1px solid rgba(245,247,250,.35); border-radius: 14px; background: rgba(7,15,24,.9); }
+.partida--marco { border-color: var(--bd-accent); }
+.partida-kicker { margin: 0; font-family: var(--bd-font-text); font-weight: 500; font-size: 13px; color: var(--bd-muted); }
+.placar { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 8px; margin-top: 8px; }
+.placar-time { display: flex; flex-direction: column; align-items: center; gap: 4px; font-family: var(--bd-font-display); font-weight: 600; font-size: 16px; }
+.placar-num { font-family: var(--bd-font-display); font-weight: 700; font-size: 42px; line-height: 1; letter-spacing: .02em; }
+.placar-num small { margin: 0 8px; font-size: 24px; font-weight: 600; color: var(--bd-muted); vertical-align: middle; }
+.partida-adv { margin: 8px 0 0; text-align: center; font-family: var(--bd-font-text); font-size: 15px; color: var(--bd-muted); }
+.partida-sit { margin: 8px 0 0; text-align: center; font-family: var(--bd-font-display); font-weight: 600; font-size: 20px; }
+.partida-sit--titular { color: var(--bd-accent); }
+.partida-sit--banco, .partida-sit--indisponivel { color: var(--bd-muted); }
+.partida-dest { margin: 2px 0 0; text-align: center; font-family: var(--bd-font-text); font-size: 15px; }
+.partida-marcos { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; margin: 10px 0 0; }
+.chip-marco { padding: 3px 10px; border-radius: 12px; background: var(--bd-accent); color: var(--bd-on-accent); font-family: var(--bd-font-display); font-weight: 600; font-size: 15px; }
+.acoes--fluxo { position: relative; background: none; }
+.controles { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.controle { min-height: var(--bd-touch); border: 1.5px solid rgba(245,247,250,.85); border-radius: 10px; background: rgba(7,15,24,.72); color: var(--bd-text); font-family: var(--bd-font-display); font-weight: 600; font-size: 19px; cursor: pointer; }
+.controle[aria-pressed="true"] { background: var(--bd-accent); border-color: var(--bd-accent); color: var(--bd-on-accent); }
+.linhas-dados--compacto { margin-top: 14px; }
+.linhas-dados--compacto div { padding: 10px 2px; }
+.linhas-dados--compacto dt { font-size: 16px; }
+.linhas-dados--compacto dd { font-size: 19px; }
+.disclosures { display: flex; flex-direction: column; align-items: flex-start; margin-top: 6px; }
+.link--esq { align-self: flex-start; padding-left: 0; font-size: 19px; text-decoration: underline; text-underline-offset: 4px; }
+.lista-partidas { list-style: none; margin: 0 0 8px; padding: 0; width: 100%; }
+.linha-partida { display: flex; gap: 12px; align-items: flex-start; padding: 8px 0; border-bottom: 1px solid var(--bd-line); }
+.res { flex: none; width: 26px; height: 26px; border-radius: 6px; display: inline-flex; align-items: center; justify-content: center; font-family: var(--bd-font-display); font-weight: 700; font-size: 15px; background: var(--bd-neutral-chip); }
+.res--V { background: var(--bd-accent); color: var(--bd-on-accent); }
+.res--D { background: #5a2a30; }
+.lp-corpo { display: flex; flex-direction: column; font-size: 14px; }
+.lp-corpo b { font-family: var(--bd-font-display); font-weight: 600; font-size: 17px; }
+.tabela-liga { width: 100%; border-collapse: collapse; margin: 0 0 8px; font-size: 14px; }
+.tabela-liga th, .tabela-liga td { padding: 6px 4px; border-bottom: 1px solid var(--bd-line); text-align: right; }
+.tabela-liga th:nth-child(2), .tabela-liga td:nth-child(2) { text-align: left; }
+.tabela-liga tr[aria-current="true"] td { color: var(--bd-accent); font-weight: 500; }
+
 @media (prefers-reduced-motion: reduce) {
+  .partida-wrap--anim { animation: none; }
   .carregando::after { animation: none; width: 100%; opacity: .5; }
   * { scroll-behavior: auto !important; }
 }

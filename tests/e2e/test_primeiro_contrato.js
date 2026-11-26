@@ -59,13 +59,26 @@ const base = "http://localhost:8787";
   await page.waitForSelector("text=Sua temporada");
   check("5) temporada aberta:", true);
 
+  // PC-002: o primeiro CTA é "Iniciar temporada"; a reprodução jogo a jogo
+  // tem Pausar, Acelerar e Ir à próxima decisão (que só pula a exibição).
+  check("7) CTA inicial:", (await page.getByRole("button", { name: "Iniciar temporada" }).count()) === 1);
   let titulo = "";
-  for (let i = 0; i < 6; i++) {
-    await page.getByRole("button", { name: "Avançar temporada" }).click();
-    await page.waitForFunction(() => document.querySelector("h1")?.textContent !== "Sua temporada" || document.querySelector(".numero b")?.textContent !== "0", null, { timeout: 10000 });
+  let viuReproducao = false;
+  for (let i = 0; i < 12; i++) {
+    const pular = page.getByRole("button", { name: "Ir à próxima decisão" });
+    if (await pular.count()) {
+      viuReproducao = true;
+      const placar = await page.locator(".placar-num").count();
+      check("7) card da partida com placar:", placar === 1);
+      await pular.click();
+    } else {
+      await page.getByRole("button", { name: /^(Iniciar|Continuar) temporada$/ }).click();
+    }
+    await page.waitForTimeout(300);
     titulo = (await page.locator("h1").textContent()).trim();
     if (titulo !== "Sua temporada") break;
   }
+  check("7) reprodução jogo a jogo:", viuReproducao);
   check("6) chegou a uma decisão ou ao balanço:", titulo !== "Sua temporada", titulo);
   await page.reload();
   await page.waitForSelector("h1");

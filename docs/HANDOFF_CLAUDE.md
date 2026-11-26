@@ -11,9 +11,11 @@ Demandas vigentes
 
 PC-002 — Primeiro Contrato: temporada visível, treinador e imprensa, evolução coerente
 
-Status: REVISÃO DO PM NECESSÁRIA (26/11/2026), branch `claude/new-session-ygru7q`,
-recriada a partir de `main` em cd175c2 (#175). Código ainda não commitado:
-aguarda a aprovação do Murilo.
+Status: APROVADO (Murilo, 26/11/2026, "Aprovado"). Código commitado na
+branch `claude/new-session-ygru7q` (recriada a partir de `main` em cd175c2,
+#175). Os pontos de homologação 1 a 6 do relatório foram aprovados junto com
+a entrega; o ritmo dos trechos curtos pode ser ajustado depois de testado no
+iPhone.
 
 Origem: pacote "Temporada" do Murilo (26/11/2026), versionado em
 `docs/primeiro-contrato/v2/` (`LEIA_PRIMEIRO_CLAUDE.md` e `ASSETS.md`). Os 5

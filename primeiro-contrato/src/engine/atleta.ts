@@ -81,6 +81,11 @@ export type Atleta = {
   potencial: number; // teto (simulado)
   forma: number; // -1..1
   familiaridade: Partial<Record<Posicao, number>>; // 0..1
+  // PC-002
+  confianca: number; // 0..1, avaliação esportiva no clube atual
+  reputacao: number; // 0..100, efeito lento de feitos, competição e cobertura
+  cobertura: number; // entrevistas e repercussão acumuladas
+  expectativa: number; // expectativa pública (0..3)
 };
 
 export function nomeExibicao(a: Atleta): string {
@@ -105,6 +110,7 @@ export function criarAtleta(semente: string, p: { apelido?: string | null; nacio
     anoNascimento: p.anoInicio - IDADE_INICIAL,
     nivel, potencial, forma: 0,
     familiaridade: { [p.posicao]: 1 },
+    confianca: 0.5, reputacao: 5, cobertura: 0, expectativa: 0,
   };
 }
 
@@ -140,5 +146,10 @@ export function evoluir(a: Atleta, idade: number, participacao: number, bonusTre
 /** Nível efetivo numa função: penalidade pela falta de familiaridade. */
 export function nivelNaFuncao(a: Atleta, funcao: Posicao): number {
   const fam = a.familiaridade[funcao] ?? 0;
-  return a.nivel - (1 - fam) * 9 + a.forma * 3;
+  return a.nivel - (1 - fam) * 9 + a.forma * 3 + ((a.confianca ?? 0.5) - 0.5) * 6;
+}
+
+/** Confiança de partida num clube novo, pelo papel previsto. */
+export function confiancaInicial(papel: string): number {
+  return papel === "Titular" ? 0.6 : papel === "Rotação" ? 0.5 : papel === "Reserva" ? 0.42 : 0.38;
 }
