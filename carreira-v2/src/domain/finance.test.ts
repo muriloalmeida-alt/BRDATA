@@ -36,3 +36,19 @@ test("extrato na ordem gravada (mais recente primeiro) com sinal", () => {
   assert.deepEqual(buildFinance(c).ledger, []);
   assert.equal(buildFinance(c).wage.cap, null);
 });
+
+// MERCADO-001, etapa 4: orçamento (economia v5).
+test("orçamento: espaço de folha, orçamento da temporada (base − gasto + vendas) e parcelas próximas primeiro", () => {
+  const c = career();
+  c.economia = { versao: 5, clube: { orcamentoTransferencias: 10_000_000 }, orcamento: { temporada: 2026, gasto: 4_000_000, vendas: 1_500_000 } };
+  c.parcelasMensais = [{ valor: 62_500, meses: 20, label: "Parcela de Fulano" }, { valor: 30_000, meses: 3, label: "Parcela de Ciclano" }];
+  const b = buildFinance(c).budget!;
+  assert.equal(b.wageRoom, "R$ 1,9 mi"); // 5 mi − 3,1 mi
+  assert.equal(b.transfer, "R$ 7,5 mi");
+  assert.equal(b.monthly, "R$ 93 mil/mês");
+  assert.deepEqual(b.installments.map((i) => i.label), ["Parcela de Ciclano", "Parcela de Fulano"]);
+  // Orçamento de outra temporada não conta; sem economia v5, sem a seção.
+  c.economia.orcamento = { temporada: 2025, gasto: 9_000_000 };
+  assert.equal(buildFinance(c).budget!.transfer, "R$ 10 mi");
+  assert.equal(buildFinance(career()).budget, null);
+});

@@ -13,6 +13,7 @@
 // - /carreira/mercado/oferta: proposta pendente por um jogador seu (CAP05-T05, 18).
 import { useCallback, useEffect, useState } from "react";
 import { MarketGateway, newOpId, type LoanPrep, type OfferPreview, type Preview, type WorldMarket } from "../adapters/market.ts";
+import { DEFAULT_TERMS, ENTRY_PCTS, MONTHS, engineTerms, offerCost, type PayTerms } from "../domain/market.ts";
 import { DIVISION, NO_MARKET_FILTERS, ROLE, ROLES, YEARS, buildHistory, buildNegotiation, buildSales, buildTarget, findTarget, initialOffer, installmentsLabel, loanWage, marketFiltersActive, marketList, saleOf, wageHint, yearsLabel,
   type FreeAgent, type HistoryTab, type LoanClause, type LoanDuration, type MarketFilters, type MarketInfo, type Range } from "../domain/market.ts";
 import { POSITION } from "../domain/squadplus.ts";
@@ -285,6 +286,11 @@ export function Propose({ career, clubId, id, onChanged }: { career: Career; clu
   const [years, setYears] = useState(3);
   const [pv, setPv] = useState<OfferPreview | null>(null);
   const [opId] = useState(newOpId);
+  // MERCADO-001 (economia v5): as condições de pagamento (à vista ou entrada +
+  // meses), editadas em "Editar condições".
+  const v5 = !!(career.economia && career.economia.versao >= 5);
+  const [terms, setTerms] = useState<PayTerms>(DEFAULT_TERMS);
+  const [editing, setEditing] = useState(false);
   useEffect(() => { if (!p && !sent) navigate(M, { replace: true }); }, [p, sent]);
   const sale = saleOf(info, clubId, id); // VENDA-DISPONIVEL
   useEffect(() => { if (p && value == null && info && info !== "erro") setValue(String(initialOffer(p, info.desconto, saleOf(info, clubId, id)))); }, [p, info, value]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -292,19 +298,23 @@ export function Propose({ career, clubId, id, onChanged }: { career: Career; clu
   useEffect(() => {
     if (!p || sent || !value || !wage) return;
     let live = true;
-    MarketGateway.offerPreview(clubId, id, Number(value) || 0, n, Number(wage) || 0).then((r) => { if (live && r.ok) setPv(r); });
+    MarketGateway.offerPreview(clubId, id, Number(value) || 0, v5 ? 1 : n, Number(wage) || 0, v5 ? engineTerms(terms, Number(value) || 0) : null).then((r) => { if (live && r.ok) setPv(r); });
     return () => { live = false; };
-  }, [clubId, id, value, n, wage, !!p, !!sent]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [clubId, id, value, n, wage, terms, !!p, !!sent]); // eslint-disable-line react-hooks/exhaustive-deps
   if (!p) return null;
   const back = ALVO(clubId, id);
   const send = async () => {
     if (busy) return;
     setBusy(true); setErr(null);
-    const r = await MarketGateway.propose(clubId, id, Number(value) || 0, n, { salario: Number(wage) || 0, papel: role, anos: years }, opId);
+    const mensal = v5 ? engineTerms(terms, Number(value) || 0) : null;
+    const r = await MarketGateway.propose(clubId, id, Number(value) || 0, v5 ? 1 : n, { salario: Number(wage) || 0, papel: role, anos: years, ...(mensal || {}) }, opId);
     setBusy(false);
     if (r.ok) { setSent(r); onChanged(); } else setErr(msgOf(r));
   };
   const hint = pv ? wageHint(Number(wage) || 0, pv.sugerido[role], p.wage) : null;
+  const cost = v5 && pv ? offerCost(pv.capacidade, years) : null;
+  const blocked = !!(cost && cost.bloqueio);
+  const payLabel = terms.parcelado ? `Entrada de ${terms.entradaPct}% + ${terms.meses} meses` : "À vista";
   if (sent) return (
     <div className="wk pr">
       <Head ctx="Mercado" back={M} />
@@ -312,7 +322,7 @@ export function Propose({ career, clubId, id, onChanged }: { career: Career; clu
       <span className="tb-bar" aria-hidden="true" />
       <p className="screen-sub">O clube responde em algumas rodadas.</p>
       <section className="wk-sec"><PlayerRow name={shortName(p.name)} position={POSITION[p.group]} />
-        <Rows rows={[{ label: "Sua proposta", value: moneyShort(sent.valor) }, { label: "Parcelamento", value: installmentsLabel(n) },
+        <Rows rows={[{ label: "Sua proposta", value: moneyShort(sent.valor) }, { label: "Parcelamento", value: v5 ? payLabel : installmentsLabel(n) },
           { label: "Salário oferecido", value: `${moneyShort(Number(wage) || 0)}/mês` }, { label: "Papel prometido", value: ROLE[role] }, { label: "Contrato", value: yearsLabel(years) }]} />
         <p className="wk-note">{info && info !== "erro" ? `A resposta chega em ${info.esperaRodadas} rodadas. ` : ""}O clube decide o valor; o jogador decide o salário, o papel e a duração. Acompanhe em Minhas propostas.</p>
       </section>
@@ -337,7 +347,14 @@ export function Propose({ career, clubId, id, onChanged }: { career: Career; clu
           <MoneyInput id="pp-v" label="Sua proposta (R$)" value={value || ""} onChange={setValue} />
           {(info as MarketInfo).desconto > 0 && <p className="mk-hint">Desconto de contratação de {(info as MarketInfo).desconto}% aplicado ao valor sugerido.</p>}
           {sale && <p className="mk-hint">À venda ({sale.motivo.toLowerCase()}): o clube aceita a partir de {moneyShort(sale.valorMinimo)}; prometendo titular ou rotação, ele aceita o salário atual.</p>}
-          <Installments value={n} options={(info as MarketInfo).parcelas} onChange={setN} />
+          {v5 ? (
+            <div className="pr-field mk-terms">
+              <span className="pr-label">Pagamento da taxa</span>
+              <button type="button" className="row pr-row" onClick={() => setEditing(true)} aria-haspopup="dialog">
+                <span className="row-body"><span className="row-title">{payLabel}</span><span className="row-sub">Editar condições</span></span><IconChevron className="row-chevron" />
+              </button>
+            </div>
+          ) : <Installments value={n} options={(info as MarketInfo).parcelas} onChange={setN} />}
           <p className="wk-note">Propor menos que o valor de mercado é possível, mas o clube pode recusar, pedir mais ou demorar para responder.</p>
         </section>
         <section className="wk-sec pr-pad" aria-labelledby="pp-at"><h2 className="kicker-caps" id="pp-at">Para o jogador</h2>
@@ -347,7 +364,16 @@ export function Propose({ career, clubId, id, onChanged }: { career: Career; clu
           <Seg id="pp-y" label="Duração do contrato" value={years} opts={YEARS.map((y) => [y, `${y}`] as [number, string])} onChange={setYears} />
           <p className="wk-note">{role === "titular" ? "Prometer titularidade convence mais, mas ele cobra: no banco, a moral cai mais rápido nesta temporada." : role === "rotacao" ? "Prometer rotação: fora da lista de jogo, a moral cai mais nesta temporada." : "Sem promessa de jogar: ele tende a pedir mais salário."}</p>
         </section>
-        {pv && (
+        {cost && (
+          <section className="wk-sec mk-impact mk-cost" aria-labelledby="pp-im"><h2 className="kicker-caps" id="pp-im">Antes de enviar</h2>
+            <Rows rows={cost.rows} />
+            <p className="wk-note">{cost.detalheMensal}.</p>
+            <p className="wk-note">{cost.detalheTotal}.</p>
+            {cost.espacos.length > 0 && <Rows rows={cost.espacos.map((e) => ({ label: e.label, value: `${moneyShort(e.antes)} → ${moneyShort(Math.max(0, e.depois))}`, tone: e.depois < 0 ? "neg" as const : undefined }))} />}
+            {cost.bloqueio && <p className="inline-error mk-block" role="alert">{cost.bloqueio.texto}</p>}
+          </section>
+        )}
+        {pv && !cost && (
           <section className="wk-sec mk-impact" aria-labelledby="pp-im"><h2 className="kicker-caps" id="pp-im">Antes de enviar</h2>
             <Rows rows={[
               { label: "Pago no fechamento", value: pv.parcelas > 1 ? `${moneyShort(pv.primeira)} (1ª de ${pv.parcelas})` : moneyShort(pv.primeira) },
@@ -361,10 +387,32 @@ export function Propose({ career, clubId, id, onChanged }: { career: Career; clu
       </>)}</Loading>
       <div className="cal-foot">
         <Status err={err} />
-        <button type="button" className="cta" aria-disabled={busy || !value || !Number(wage) || undefined} onClick={() => { if (value && Number(wage)) send(); }}>{busy ? "Enviando…" : "Enviar proposta"}</button>
+        <button type="button" className="cta" aria-disabled={busy || !value || !Number(wage) || blocked || undefined} onClick={() => { if (value && Number(wage) && !blocked) send(); }}>{busy ? "Enviando…" : "Enviar proposta"}</button>
         <button type="button" className="link-back" disabled={busy} onClick={() => goBackTo(back)}>Cancelar</button>
       </div>
+      {editing && <TermsSheet terms={terms} value={Number(value) || 0} onClose={() => setEditing(false)} onApply={(t) => { setTerms(t); setEditing(false); }} />}
     </div>
+  );
+}
+// "Editar condições" (MERCADO-001): à vista ou entrada (20%–40% sugeridos,
+// até 100%) + saldo em até 24 meses.
+function TermsSheet({ terms, value, onClose, onApply }: { terms: PayTerms; value: number; onClose: () => void; onApply: (t: PayTerms) => void }) {
+  const [t, setT] = useState<PayTerms>(terms);
+  const entrada = Math.round((value * t.entradaPct) / 100 / 1000) * 1000;
+  return (
+    <Sheet labelledBy="ts-t" onDismiss={onClose}>
+      <h2 id="ts-t" className="sheet-title">Condições de pagamento.</h2>
+      <span className="tb-bar pr-sheet-bar" aria-hidden="true" />
+      <p className="wk-sheet-text">À vista, ou uma entrada e o saldo em parcelas mensais. O vendedor recebe cada parcela no mês.</p>
+      <Seg id="ts-m" label="Forma" value={t.parcelado ? "p" : "v"} opts={[["v", "À vista"], ["p", "Parcelado"]]} onChange={(x) => setT({ ...t, parcelado: x === "p" })} />
+      {t.parcelado && (<>
+        <Seg id="ts-e" label="Entrada" value={t.entradaPct} opts={ENTRY_PCTS.filter((x) => x < 100).map((x) => [x, `${x}%`] as [number, string])} onChange={(x) => setT({ ...t, entradaPct: x })} />
+        <Seg id="ts-n" label="Saldo em" value={t.meses} opts={MONTHS.map((x) => [x, `${x}m`] as [number, string])} onChange={(x) => setT({ ...t, meses: x })} />
+        <p className="mk-hint">Entrada de {moneyShort(entrada)} e {t.meses} parcelas de {moneyShort(Math.round((value - entrada) / t.meses))}.</p>
+      </>)}
+      <button type="button" className="cta sp-sheet-cta" onClick={() => onApply(t)}>Aplicar</button>
+      <button type="button" className="text-btn" onClick={onClose}>Cancelar</button>
+    </Sheet>
   );
 }
 

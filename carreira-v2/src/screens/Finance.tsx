@@ -53,6 +53,22 @@ export function Finance({ m }: { m: FinanceModel }) {
         </div>
       </dl>
 
+      {m.budget && (
+        <section className="bd-sec fn-budget" aria-labelledby="fn-orc">
+          <h2 className="kicker-caps" id="fn-orc">Orçamento</h2>
+          <dl className="bd-list">
+            <div className="bd-item"><dt>Espaço na folha</dt><dd className={m.budget.wageRoomNeg ? "is-neg" : undefined}>{m.budget.wageRoom}<span className="fn-wage"><span> por mês</span></span></dd></div>
+            {m.budget.transfer != null && <div className="bd-item"><dt>Orçamento de transferências</dt><dd>{m.budget.transfer}<span className="fn-wage"><span> na temporada</span></span></dd></div>}
+            <div className="bd-item"><dt>Parcelas a pagar</dt><dd>{m.budget.monthly || "Nenhuma"}</dd></div>
+          </dl>
+          {m.budget.installments.length > 0 && (
+            <ul className="fn-inst">
+              {m.budget.installments.map((p, i) => <li key={i} className="fn-tx"><span className="fn-tx-body"><span className="fn-tx-label">{p.label}</span></span><span className="fn-tx-val is-neg">{p.text}</span></li>)}
+            </ul>
+          )}
+        </section>
+      )}
+
       <nav aria-label="Atalhos" className="fn-links">
         <Link className="row bd-link" to={`${BASE}/elenco`}>
           <span className="row-body"><span className="row-title">Ver elenco</span></span>

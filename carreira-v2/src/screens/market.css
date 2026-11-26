@@ -25,3 +25,8 @@
 .mk-world-chips::-webkit-scrollbar { display: none; }
 .mk-world-row { width: 100%; border: 0; background: none; color: inherit; text-align: left; font: inherit; cursor: pointer; }
 .mk-world-row:disabled { opacity: .6; cursor: default; }
+/* MERCADO-001 (etapa 4): custo da oferta e bloqueio com o motivo. */
+.mk-terms .pr-row { width: 100%; border: 0; border-bottom: 1px solid var(--bd-line); background: none; color: inherit; text-align: left; font: inherit; cursor: pointer; }
+.mk-cost { padding-left: var(--bd-gutter); padding-right: var(--bd-gutter); }
+.mk-cost .wk-note { margin-top: 6px; }
+.mk-block { margin: 10px 0 0; color: var(--bd-danger); }

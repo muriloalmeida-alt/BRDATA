@@ -15,3 +15,8 @@
 .fn-tx-val.is-neg { color: var(--bd-danger); }
 .fn-empty { margin: 8px 0 0; font-size: 15px; color: var(--bd-muted); }
 .fn-legacy { margin: 16px var(--bd-gutter) 0; width: auto; border-top: 1px solid var(--bd-line); }
+/* MERCADO-001 (etapa 4): orçamento do clube (espaço de folha, transferências, parcelas). */
+.fn-budget dd.is-neg { color: var(--bd-danger); }
+.fn-inst { margin: 6px 0 0; padding: 0; list-style: none; border-top: 1px solid var(--bd-line); }
+.fn-inst .fn-tx-val.is-neg { color: var(--bd-danger); }
+.fn-budget .bd-list { margin: 10px 0 0; }

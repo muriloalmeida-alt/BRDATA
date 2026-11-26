@@ -3,11 +3,13 @@
 // carreira.js), com as regras de sempre.
 import { engine } from "./engine.ts";
 import type { Res } from "./prep.ts";
-import type { MarketInfo } from "../domain/market.ts";
+import type { Capacity, MarketInfo } from "../domain/market.ts";
 import type { OfferRole } from "../domain/types.ts";
 
 const SAFE = new Set(["janela-fechada", "ja-proposta", "parcelas-invalidas", "indisponivel", "teto", "elenco-grande", "proposta-invalida", "valor-baixo", "contra",
-  "jogador-invalido", "ja-anunciado", "nao-principal", "minimo", "anuncio-invalido", "recusa", "sem-interessado", "sem-emprestimo", "opcao-invalida", "sem-proposta", "decisao-invalida", "elenco-cheio", "sem-mundo", "fora-do-mundo"]);
+  "jogador-invalido", "ja-anunciado", "nao-principal", "minimo", "anuncio-invalido", "recusa", "sem-interessado", "sem-emprestimo", "opcao-invalida", "sem-proposta", "decisao-invalida", "elenco-cheio", "sem-mundo", "fora-do-mundo",
+  // MERCADO-001 (economia v5): recusas da capacidade de compra, com a mensagem.
+  "caixa", "parcelas", "fluxo", "orcamento"]);
 async function write<T = object>(name: string, ...args: unknown[]): Promise<Res<T>> {
   try {
     const s = await engine.get();
@@ -25,8 +27,9 @@ async function read<T = object>(name: string, ...args: unknown[]): Promise<Res<T
 export interface Preview { valor: number; parcelas: number; porParcela: number; primeira: number; caixaAntes: number; caixaDepois: number; folhaAntes: number; folhaDepois: number; teto?: number }
 export interface LoanPrep { clube: { id: string; nome: string }; taxaTemporada: number; taxaMeia: number; valorMercado: number }
 
-export interface OfferTerms { salario: number; papel: OfferRole; anos: number }
-export interface OfferPreview extends Preview { salario: number; salarioAtual: number; papelAtual: OfferRole | null; sugerido: Record<OfferRole, number> }
+// entrada/meses (economia v5): a oferta parcelada por mês (entrada + saldo em até 24 meses).
+export interface OfferTerms { salario: number; papel: OfferRole; anos: number; entrada?: number; meses?: number }
+export interface OfferPreview extends Preview { salario: number; salarioAtual: number; papelAtual: OfferRole | null; sugerido: Record<OfferRole, number>; capacidade?: Capacity | null }
 // FASE1-MER (MER-07): cada confirmação leva um id de operação; repetir o
 // mesmo id (toque duplo, reenvio) não aplica de novo no motor.
 export const newOpId = () => `op_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
@@ -34,7 +37,7 @@ export const newOpId = () => `op_${Date.now().toString(36)}_${Math.random().toSt
 export const MarketGateway = {
   info: () => read<MarketInfo>("mercado"),
   propose: (clubId: string, playerId: string, value: number, installments: number, terms?: OfferTerms, opId?: string) => write<{ id: string; valor: number }>("fazerProposta", clubId, playerId, value, installments, terms, opId),
-  offerPreview: (clubId: string, playerId: string, value: number, installments: number, wage: number) => read<OfferPreview>("previaProposta", clubId, playerId, value, installments, wage),
+  offerPreview: (clubId: string, playerId: string, value: number, installments: number, wage: number, terms?: { entrada: number; meses: number } | null) => read<OfferPreview>("previaProposta", clubId, playerId, value, installments, wage, terms || undefined),
   acceptWage: (offerId: string, opId?: string) => write<{ comprado: boolean; mensagem: string | null; coletiva: boolean }>("aceitarSalarioPedido", offerId, opId),
   dismiss: (offerId: string) => write("dispensarProposta", offerId),
   raise: (offerId: string, value: number) => write("aumentarProposta", offerId, value),
