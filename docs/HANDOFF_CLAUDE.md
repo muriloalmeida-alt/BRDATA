@@ -9,6 +9,68 @@ divergências, aprovação) — elas não são repetidas aqui.
 
 Demandas vigentes
 
+PC-004 — Primeiro Contrato: perfil do atleta, competições e seleção
+
+Status: EM IMPLEMENTAÇÃO (26/11/2026), branch `claude/new-session-ygru7q`,
+recriada a partir de `main` em a3ec9ac (#178).
+
+Origem: handoff do Murilo (26/11/2026), versionado em
+`docs/primeiro-contrato/v4/LEIA_PRIMEIRO_CLAUDE.md`. A ordem de entrega é a
+do handoff: perfil e ofertas; depois competições validadas; por último a
+convocação.
+
+Especificação (chapéu PM):
+1. **Perfil:**
+   - pé dominante (direito ou esquerdo) na criação;
+   - saves antigos definem o pé uma vez, antes da próxima janela, e até lá o
+     encaixe fica neutro;
+   - país de origem: reaproveita a nacionalidade do save;
+   - encaixe de pé, lado e função por clube: ponta aberto ou invertido,
+     zagueiro e lateral pela esquerda. Ele entra no papel previsto, na
+     ordem e na chance das propostas e nas conversas de adaptação, sem
+     bônus geral de nível;
+   - mercado doméstico com mais peso no início; o internacional cresce com
+     reputação, minutos e observação;
+   - até dois motivos concretos por proposta.
+2. **Competições** (regulamentos reaproveitados do catálogo Touchline,
+   `server/frozen-catalog/mundo/mundo.json`, com `sourceUrls` por edição):
+   - **pontos corridos com desempate oficial** nas 10 ligas europeias
+     (Premier League, EFL Championship, LaLiga, LaLiga Hypermotion, Serie A
+     e Serie B italianas, Bundesliga, 2. Bundesliga, Ligue 1 e Ligue 2):
+     - calendário de referência: as partidas da edição 2026-27 do pacote,
+       repetidas nas temporadas seguintes com o mando invertido nos anos
+       ímpares;
+     - perfil de desempate do regulamento: `desempate.js` do Touchline;
+   - **zonas, interzonais e mata-mata** nas 2 ligas argentinas (Liga
+     Profesional, com Apertura e Clausura; Primera Nacional):
+     - formato pelo `formatos.js` do Touchline (módulo puro, sem estado do
+       Modo Técnico);
+     - calendário da edição 2026 do pacote;
+   - **demais ligas, inclusive as quatro séries brasileiras:** temporada
+     simplificada, sem título oficial:
+     - a Série C muda para 24 clubes em 2027 e o regulamento ainda não está
+       disponível;
+     - na Série A, a ordem dos desempates do art. 15 tem interpretação em
+       aberto;
+   - **regras comuns:**
+     - cada edição é derivada da semente (mesmos placares ao assistir,
+       acelerar ou pular), e a atuação do atleta cabe no placar do clube;
+     - Tabela e Chave em Sua temporada e no balanço;
+     - título por ID da edição, com a participação do atleta (minutos
+       oficiais pelo clube campeão, inclusive emprestado), sem duplicar;
+     - títulos antigos preservados como histórico.
+3. **Seleção:**
+   - convocação só para Estrela nacional ou Estrela mundial, por
+     configuração versionada: janela móvel de temporadas, minutos e
+     amostra mínimos, desempenho ajustado à função e à força da liga, e
+     reputação;
+   - a convocação de fato depende da janela da seleção, da disponibilidade
+     e da vaga na função;
+   - eventos legados de convocação passam pelo critério novo.
+4. **Save v4** com migração.
+
+⸻
+
 PC-003 — Primeiro Contrato: relações (diretoria, técnico, imprensa, torcida) e evolução de carreira
 
 Status: APROVADO (Murilo, 26/11/2026, "Aprovado"). Código commitado na
