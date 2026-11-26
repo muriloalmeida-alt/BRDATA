@@ -9,9 +9,107 @@ divergências, aprovação) — elas não são repetidas aqui.
 
 Demandas vigentes
 
+PC-001 — Touchline · Primeiro Contrato (carreira de atleta, app independente)
+
+Status: EM IMPLEMENTAÇÃO (26/11/2026), branch `claude/new-session-ygru7q`.
+Base: `main` em 5060b61 (#172).
+
+Origem: o Murilo enviou o pacote "Primeiro Contrato" (26/11/2026). O pacote
+está versionado em `docs/primeiro-contrato/`:
+- `LEIA_PRIMEIRO_CLAUDE.md` governa a parte visual;
+- `PROJETO.md` traz o produto, as regras e a arquitetura;
+- `CATALOGO.md` define o catálogo;
+- `FUNDOS.md` define os fundos;
+- `pranchas/` traz as 4 pranchas aprovadas.
+
+Decisões do Murilo (26/11/2026, nesta sessão):
+- **Prioridade:** o MERCADO-001 fica PAUSADO na etapa 2 (já mesclada); o
+  PC-001 é a demanda vigente;
+- **Local:** pasta nova `primeiro-contrato/` neste repositório, com Vite,
+  React e TypeScript próprios (o mesmo stack da `carreira-v2`), build em
+  `public/primeiro-contrato/` e rota `/primeiro-contrato`;
+- **Escopo desta entrega:** as etapas 1 e 2 do `PROJETO.md` (fundação e
+  carreira completa), com as 16 telas e o motor, da criação à aposentadoria.
+
+Especificação (chapéu PM):
+
+Objetivo: jogar uma carreira de atleta inteira no celular, numa sessão
+curta. Nela o jogador:
+- escolhe a posição e qualquer clube do snapshot;
+- assina o contrato;
+- simula as temporadas;
+- decide nos momentos-chave (adaptação, lesão, perda de espaço, janela,
+  convocação, aposentadoria);
+- termina com o cartão de legado compartilhável.
+
+Escopo:
+1. **Fundação:**
+   - app separado;
+   - tokens e fontes originais (`touchline/`);
+   - símbolo T original (`/img/touchline/marca-t.webp`, o mesmo da v2);
+   - snapshot do catálogo versionado (795 clubes e 34 ligas);
+   - escudos resolvidos por ID pelo índice `escudos-touchline.json`;
+   - busca sem acentos por nome, sigla, país e liga, com filtros de país e
+     liga;
+   - qualquer clube pode ser escolhido.
+2. **Motor puro** (`primeiro-contrato/src/engine/`, sem DOM e
+   determinístico por semente):
+   - atributos e potencial derivados da semente;
+   - goleiro e linha com perfis próprios;
+   - disputa por minutos contra concorrentes fictícios persistidos e
+     marcados como simulados, calibrados pela força do clube;
+   - previsão em intervalo;
+   - temporada com jogos e minutos limitados ao calendário da liga e
+     métricas por posição;
+   - evolução por idade e minutos, com pico e declínio;
+   - eventos tipados (id, condição, prioridade, chave de repetição, opções,
+     efeitos, texto da consequência);
+   - mercado (transferência, empréstimo, renovação ou ficar);
+   - empréstimo com clube de origem e retorno;
+   - primeira convocação, como marco único;
+   - aposentadoria só depois de confirmada.
+3. **As 16 telas do mapa do `LEIA_PRIMEIRO_CLAUDE.md`**, fiéis às pranchas.
+4. **Save anônimo em IndexedDB:**
+   - versão de esquema e versão de catálogo;
+   - decisão pendente que volta igual depois de recarregar;
+   - efeitos gravados uma vez só.
+5. **Cartão de legado** em imagem exportável: compartilhamento nativo, com
+   download como alternativa.
+
+Fora de escopo nesta entrega:
+- etapa 3 (cobertura mundial e API-Football);
+- etapa 4 (competições continentais, desafios, sincronização);
+- conta e login;
+- métricas de produto (instrumentação).
+
+Critérios de aceite:
+- os do `LEIA_PRIMEIRO_CLAUDE.md` ("Evidência de aceite");
+- os do `PROJETO.md` ("Aceite do MVP"), exceto os testes de usabilidade com
+  pessoas, que ficam com o Murilo;
+- mesma semente e mesmas decisões dão o mesmo resultado;
+- decisões diferentes dão efeitos coerentes.
+
+Riscos e lacunas conhecidos:
+- as pranchas usam fotos que não vieram em `fundos/`:
+  - lesão;
+  - banco de reservas;
+  - camisa 9 de costas;
+  - convocação na escada;
+  - retrato do cartão de legado.
+
+  Nessas telas uso o fundo mais próximo do pacote ou um degradê, e registro
+  como divergência visual para aprovação.
+- 70 dos 795 clubes não têm escudo no índice e caem nas iniciais (fallback
+  previsto). Outros 60 usam URL externa (sportmonks), que também cai nas
+  iniciais se falhar.
+
+⸻
+
 MERCADO-001 — Implementação do mercado e da economia (Touchline)
 
-Status: EM IMPLEMENTAÇÃO — etapa 1 (valor de mercado inicial por atleta),
+Status: PAUSADO (Murilo, 26/11/2026) depois da etapa 2 mesclada (#172), para
+priorizar o PC-001. Próximo ao retomar: etapa 3. Histórico abaixo.
+Status anterior: EM IMPLEMENTAÇÃO — etapa 1 (valor de mercado inicial por atleta),
 branch `claude/mercado-e1-valor`. Pedido do Murilo (25/11/2026): "Faça o
 merge e a seguir execute o md" (handoff em `docs/economia/04_Handoff_Mercado.md`).
 Base: `main` em ba1a580 (#170).
