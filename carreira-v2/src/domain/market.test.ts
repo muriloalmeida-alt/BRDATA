@@ -2,6 +2,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { NO_MARKET_FILTERS, buildHistory, buildNegotiation, buildSales, buildTarget, classifyLog, initialOffer, loanWage, marketFiltersActive, marketList, offerStatus, saleOf, type MarketInfo } from "./market.ts";
+import { DEFAULT_TERMS, engineTerms, offerCost, type Capacity } from "./market.ts";
 import type { Career, OfferOut, Player } from "./types.ts";
 
 const P = (id: string, name: string, group: Player["group"], overall: number, over: Partial<Player> = {}): Player => ({ id, name, group, overall, origin: "principal", age: 25, value: 5_000_000, wage: 100_000, ...over });
@@ -150,4 +151,39 @@ test("Filtro 'Disponível para venda': só os da lista do motor, mais chance pri
   assert.equal(initialOffer(p1, 15, saleOf(i, "pal", "p1")), 17_000_000, "o desconto de contratação vale se for menor");
   assert.equal(initialOffer(p1, 0, saleOf(info(), "pal", "p1")), 20_000_000, "sem a marca: o valor cheio");
   assert.equal(saleOf("erro", "pal", "p1"), null);
+});
+
+// MERCADO-001, etapa 4: custo da oferta (economia v5).
+const cap = (over: Partial<Capacity> = {}): Capacity => ({
+  ok: true, motivo: null, faltam: 0, mensagem: null,
+  paga: { agora: 900_000, porMes: 62_500, meses: 24, total: 2_400_000, salario: 75_000 },
+  antes: { reserva: 800_000, entrada: 1_200_000, parcelas: 70_000, folha: 130_000, orcamento: 5_000_000 },
+  depois: { reserva: 800_000, entrada: 300_000, parcelas: 7_500, folha: 55_000, orcamento: 2_600_000 },
+  ...over,
+});
+test("custo da oferta: Paga agora, Custo mensal total (salário + parcela) e Compromisso total (taxa + salário pelo contrato)", () => {
+  const c = offerCost(cap(), 3)!;
+  assert.deepEqual(c.rows, [
+    { label: "Paga agora", value: "R$ 900 mil" },
+    { label: "Custo mensal total", value: "R$ 138 mil/mês" },
+    { label: "Compromisso total", value: "R$ 5,1 mi" },
+  ]);
+  assert.match(c.detalheMensal, /por 24 meses .*depois R\$ 75 mil\/mês/);
+  assert.match(c.detalheTotal, /R\$ 900 mil agora \+ 24× R\$ 63 mil/);
+  assert.equal(c.bloqueio, null);
+  assert.deepEqual(c.espacos.map((e) => [e.antes, e.depois]), [[1_200_000, 300_000], [70_000, 7_500], [130_000, 55_000]]);
+});
+test("custo da oferta: à vista, só o salário no mês; bloqueio com o motivo do motor", () => {
+  const c = offerCost(cap({ paga: { agora: 2_400_000, porMes: 0, meses: 0, total: 2_400_000, salario: 75_000 }, ok: false, motivo: "caixa", faltam: 1_200_000, mensagem: "O pagamento inicial passa do caixa livre (guardando 1 mês de despesas) em R$ 1,2 mi." }), 2)!;
+  assert.equal(c.rows[1].value, "R$ 75 mil/mês");
+  assert.match(c.detalheMensal, /Só o salário/);
+  assert.deepEqual(c.bloqueio, { motivo: "caixa", texto: "O pagamento inicial passa do caixa livre (guardando 1 mês de despesas) em R$ 1,2 mi.", faltam: 1_200_000 });
+  // Sem economia v5 (sem `paga`), nada muda na tela.
+  assert.equal(offerCost(null, 3), null);
+  assert.equal(offerCost({ ok: true, motivo: null, mensagem: null }, 3), null);
+});
+test("condições: à vista sem termos; parcelado com a entrada em % e os meses (até 24)", () => {
+  assert.equal(engineTerms(DEFAULT_TERMS, 2_400_000), null);
+  assert.deepEqual(engineTerms({ parcelado: true, entradaPct: 30, meses: 12 }, 2_400_000), { entrada: 720_000, meses: 12 });
+  assert.deepEqual(engineTerms({ parcelado: true, entradaPct: 20, meses: 40 }, 1_000_000), { entrada: 200_000, meses: 24 });
 });

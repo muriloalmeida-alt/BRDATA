@@ -16,7 +16,8 @@ export const POSITION: Record<PlayerGroup, string> = { G: "Goleiro", D: "Defenso
 
 // ---------- Extrato (CAP02-N05) ----------
 // Mesmos filtros e rótulos de extratoFilters/LEDGER_LABEL (carreira.js).
-const LEDGER_LABEL: Record<string, string> = { tv: "Cota de TV", salario: "Salários", patrocinio: "Patrocínio", parcela: "Parcelas", bilheteria: "Bilheteria", transferencia: "Transferências", premiacao: "Premiações", estadio: "Estádio", diretoria: "Diretoria" };
+// "despesa": despesas operacionais do mês (economia v2+, MERCADO-001).
+const LEDGER_LABEL: Record<string, string> = { despesa: "Despesas", tv: "Cota de TV", salario: "Salários", patrocinio: "Patrocínio", parcela: "Parcelas", bilheteria: "Bilheteria", transferencia: "Transferências", premiacao: "Premiações", estadio: "Estádio", diretoria: "Diretoria" };
 const FIXED_FILTERS: [string, string][] = [["todos", "Tudo"], ["salario", "Salários"], ["transferencia", "Transferências"], ["patrocinio", "Patrocínio"], ["bilheteria", "Bilheteria"]];
 export function ledgerFilters(career: Career): { id: string; label: string }[] {
   const present = new Set((career.financeLedger || []).map((t) => t.type));

@@ -114,6 +114,61 @@ Riscos e pendências:
 Próximo: etapa 3 (compra definitiva, agente livre e empréstimos;
 persistência e idempotência).
 
+Etapa 2 mesclada (#172). As etapas 3, 4 e 5 seguem em paralelo (pedido do
+Murilo, 26/11/2026: "siga para as fases 3, 4 e 5 ao mesmo tempo").
+
+Relatório da etapa 4, telas de Mercado e Finanças (26/11/2026)
+
+Branch `claude/mercado-e4-telas`, base 5060b61 (#172). Só `carreira-v2/` e
+o build versionado (`public/carreira/`). O motor não mudou.
+
+O que foi feito (economia v5; nas carreiras de antes, as telas seguem como
+eram):
+- oferta (Fazer proposta):
+  - os três números: "Paga agora", "Custo mensal total" (salário + parcela
+    do mês) e "Compromisso total" (taxa + salário pelo contrato);
+  - o detalhe do período ("R$ X/mês por N meses; depois R$ Y/mês") e da taxa;
+  - os espaços antes → depois: caixa livre para entradas, parcelas e folha;
+- "Editar condições" (folha de baixo):
+  - à vista ou parcelado, com entrada de 20%, 30%, 40% ou 60% (30% sugerido)
+    e saldo em 6, 12, 18 ou 24 meses;
+  - a proposta vai com `termos.entrada` e `termos.meses`. As parcelas por
+    rodada saem da tela na v5;
+- bloqueio: o motivo concreto do motor, com o valor que falta, e o botão de
+  enviar desativado. O adaptador trata os motivos novos (caixa, parcelas,
+  fluxo, orçamento) como recusas esperadas, sem reiniciar o motor;
+- Valor de mercado: já estava na lista do mercado, no perfil do alvo, na
+  ficha do jogador e na proposta (pelo formatador comum);
+- Finanças: seção Orçamento com o espaço na folha (teto − folha), o
+  orçamento de transferências da temporada (base − gasto + vendas) e as
+  parcelas a pagar, as mais próximas primeiro;
+- extrato: o filtro "Despesas" (despesas operacionais do mês) aparece
+  quando há lançamento.
+
+Testes:
+- v2: `npm test` 152/152 (novos: custo da oferta, condições, orçamento);
+  `tsc` ok; build ok;
+- e2e novo `test_v2_oferta_custo` 1/1, com 6 verificações: os três números
+  e os espaços; parcelado 30% + 12 meses; bloqueio sem caixa com o valor
+  que falta e sem enviar; proposta parcelada gravada com entrada e meses;
+  Orçamento em Finanças; sem erro na página;
+- rota rápida 65/65.
+
+Evidência mobile (390×844, deviceScaleFactor 2), em `docs/economia/evidencias/`:
+- `oferta_a_vista.png`;
+- `oferta_parcelada.png`;
+- `oferta_bloqueada.png`;
+- `financas_orcamento.png`.
+
+Pendências:
+- a moeda de exibição do país (libra, dólar) não chega às telas da v2: o
+  formatador comum da v2 (`moneyShort`) é só em R$. Já era assim antes desta
+  etapa;
+- empréstimo (compromisso com taxa, salário assumido e obrigação de compra;
+  opção facultativa à parte) depende das modalidades da etapa 3;
+- Negociação e Confirmar compra (contraproposta) ainda mostram as parcelas
+  por rodada.
+
 ⸻
 
 ECON-001 — Recalibração da economia do Modo Carreira (Touchline)

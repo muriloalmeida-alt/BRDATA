@@ -231,3 +231,57 @@ export const loanWage = (wage: number, pct: number) => Math.round((wage * (pct /
 export function mySellable(career: Career): Player[] {
   return (career.squad || []).filter((p) => p.origin === "principal").sort((a, b) => sortKey(a) - sortKey(b));
 }
+
+// ---------- MERCADO-001, etapa 4: custo da oferta (economia v5) ----------
+// A avaliação do motor (ponte.previaProposta com termos { entrada, meses }):
+// o que se paga agora, a parcela mensal e o espaço antes e depois.
+export interface Envelopes { reserva: number; entrada: number; parcelas: number; folha: number; orcamento: number | null }
+export interface Capacity {
+  ok: boolean;
+  motivo: "orcamento" | "caixa" | "parcelas" | "folha" | "fluxo" | null;
+  faltam?: number;
+  mensagem: string | null;
+  paga?: { agora: number; porMes: number; meses: number; total: number; salario: number };
+  antes?: Envelopes;
+  depois?: Envelopes;
+}
+export interface PayTerms { parcelado: boolean; entradaPct: number; meses: number }
+// Condições iniciais (handoff, seção 3): à vista; parcelado abre com 30% de
+// entrada (faixa 20%–40%) e 12 meses (até 24).
+export const ENTRY_PCTS = [20, 30, 40, 60, 100];
+export const MONTHS = [6, 12, 18, 24];
+export const DEFAULT_TERMS: PayTerms = { parcelado: false, entradaPct: 30, meses: 12 };
+// Os termos para o motor: à vista, sem termos (a taxa inteira é a entrada).
+export function engineTerms(t: PayTerms, value: number): { entrada: number; meses: number } | null {
+  if (!t.parcelado) return null;
+  return { entrada: Math.round((value * t.entradaPct) / 100 / 1000) * 1000, meses: Math.max(1, Math.min(24, t.meses)) };
+}
+// Os três números da oferta e o detalhe.
+// - Paga agora: a entrada (ou a taxa à vista).
+// - Custo mensal total: salário + parcela do mês (o mês apresentado é o 1º).
+// - Compromisso total: a taxa inteira + o salário pelo contrato (anos × 12).
+export function offerCost(c: Capacity | undefined | null, years: number) {
+  if (!c || !c.paga) return null;
+  const p = c.paga;
+  const mensal = p.salario + p.porMes;
+  const meses = Math.max(1, years) * 12;
+  const compromisso = p.total + p.salario * meses;
+  const detalheMensal = p.porMes > 0
+    ? `${moneyShort(mensal)}/mês por ${p.meses} ${p.meses === 1 ? "mês" : "meses"} (salário ${moneyShort(p.salario)} + parcela ${moneyShort(p.porMes)}); depois ${moneyShort(p.salario)}/mês`
+    : `Só o salário: ${moneyShort(p.salario)}/mês`;
+  const detalheTotal = `Taxa ${moneyShort(p.total)}${p.porMes > 0 ? ` (${moneyShort(p.agora)} agora + ${p.meses}× ${moneyShort(p.porMes)})` : ""} + salário por ${years} ${years === 1 ? "ano" : "anos"}`;
+  return {
+    rows: [
+      { label: "Paga agora", value: moneyShort(p.agora) },
+      { label: "Custo mensal total", value: `${moneyShort(mensal)}/mês` },
+      { label: "Compromisso total", value: moneyShort(compromisso) },
+    ],
+    detalheMensal, detalheTotal,
+    bloqueio: c.ok ? null : { motivo: c.motivo, texto: c.mensagem || "A operação não cabe nas finanças do clube.", faltam: c.faltam || 0 },
+    espacos: c.antes && c.depois ? [
+      { label: "Caixa livre para entradas", antes: c.antes.entrada, depois: c.depois.entrada },
+      { label: "Espaço para parcelas (mês)", antes: c.antes.parcelas, depois: c.depois.parcelas },
+      { label: "Espaço na folha (mês)", antes: c.antes.folha, depois: c.depois.folha },
+    ] : [],
+  };
+}

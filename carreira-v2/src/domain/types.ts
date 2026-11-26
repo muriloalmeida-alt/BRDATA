@@ -91,6 +91,14 @@ export interface Career {
   seasonHistory?: { year: number; position: number; points?: number; goalLabel: string; goalWasMet: boolean }[];
   finances?: { cash: number; wageCap?: number };
   financeLedger?: { round: number; type: string; label: string; amount: number }[];
+  // MERCADO-001 (economia v5, carreiras novas): a base financeira do clube, o
+  // orçamento de transferências da temporada e as parcelas mensais das compras.
+  economia?: {
+    versao: number;
+    clube?: { receitaAnual?: number; tvMensal?: number; despesasMensais?: number; orcamentoTransferencias?: number; liga?: string } | null;
+    orcamento?: { temporada: number; gasto?: number; vendas?: number };
+  };
+  parcelasMensais?: { valor: number; meses: number; label: string }[];
   newsFeed?: NewsItem[];
   clubProposals?: { clubId?: string; clubName: string; reputationRequired?: number; budgetOffered?: number; seasonYear?: number }[];
   reputation?: number;
