@@ -955,7 +955,7 @@ function serveStatic(req, res) {
       // portal, que o navegador tentaria rodar como módulo (tela em branco).
       // Rotas da v2 SEM extensão já foram atendidas antes (index da SPA).
       const reqPath = decodeURIComponent(req.url.split("?")[0]);
-      if (reqPath.startsWith("/carreira/") && path.extname(reqPath)) {
+      if ((reqPath.startsWith("/carreira/") || reqPath.startsWith("/primeiro-contrato/")) && path.extname(reqPath)) {
         res.writeHead(404, { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-cache" });
         return res.end("Not found");
       }
@@ -1061,6 +1061,17 @@ const server = http.createServer(async (req, res) => {
       if (pathname === "/carreira" || (pathname.startsWith("/carreira/") && !path.extname(pathname))) {
         res.writeHead(301, { Location: (pathname.slice("/carreira".length) || "/") + qs });
         return res.end();
+      }
+      // PC-001 — Touchline · Primeiro Contrato (app independente; fonte em
+      // primeiro-contrato/, build em public/primeiro-contrato/). A navegação
+      // é interna ao app, então só a raiz dele serve o index; arquivo do
+      // bundle que não existe é 404 de verdade (mesmo motivo da v2, AUD-01).
+      if (pathname === "/primeiro-contrato" || (pathname.startsWith("/primeiro-contrato/") && !path.extname(pathname))) {
+        return fs.readFile(path.join(PUBLIC_DIR, "primeiro-contrato", "index.html"), (err, data) => {
+          if (err) { res.writeHead(404); return res.end("Not found"); }
+          res.writeHead(200, { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-cache" });
+          res.end(data);
+        });
       }
       // Carreira 2.0 (React; fonte em carreira-v2/, build em
       // public/carreira/): qualquer caminho SEM extensão fora de /api,

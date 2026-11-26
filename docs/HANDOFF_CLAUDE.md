@@ -9,9 +9,272 @@ divergências, aprovação) — elas não são repetidas aqui.
 
 Demandas vigentes
 
+PC-001 — Touchline · Primeiro Contrato (carreira de atleta, app independente)
+
+Status: APROVADO (Murilo, 26/11/2026, "Aprovado"). Código commitado na
+branch `claude/new-session-ygru7q`. Base: `main` em 5060b61 (#172).
+As divergências visuais 1 a 9 do relatório foram aprovadas junto com a
+entrega. As fotos que faltam podem ser trocadas quando chegarem os ativos.
+
+Origem: o Murilo enviou o pacote "Primeiro Contrato" (26/11/2026). O pacote
+está versionado em `docs/primeiro-contrato/`:
+- `LEIA_PRIMEIRO_CLAUDE.md` governa a parte visual;
+- `PROJETO.md` traz o produto, as regras e a arquitetura;
+- `CATALOGO.md` define o catálogo;
+- `FUNDOS.md` define os fundos;
+- `pranchas/` traz as 4 pranchas aprovadas.
+
+Decisões do Murilo (26/11/2026, nesta sessão):
+- **Prioridade:** o MERCADO-001 fica PAUSADO na etapa 2 (já mesclada); o
+  PC-001 é a demanda vigente;
+- **Local:** pasta nova `primeiro-contrato/` neste repositório, com Vite,
+  React e TypeScript próprios (o mesmo stack da `carreira-v2`), build em
+  `public/primeiro-contrato/` e rota `/primeiro-contrato`;
+- **Escopo desta entrega:** as etapas 1 e 2 do `PROJETO.md` (fundação e
+  carreira completa), com as 16 telas e o motor, da criação à aposentadoria.
+
+Especificação (chapéu PM):
+
+Objetivo: jogar uma carreira de atleta inteira no celular, numa sessão
+curta. Nela o jogador:
+- escolhe a posição e qualquer clube do snapshot;
+- assina o contrato;
+- simula as temporadas;
+- decide nos momentos-chave (adaptação, lesão, perda de espaço, janela,
+  convocação, aposentadoria);
+- termina com o cartão de legado compartilhável.
+
+Escopo:
+1. **Fundação:**
+   - app separado;
+   - tokens e fontes originais (`touchline/`);
+   - símbolo T original (`/img/touchline/marca-t.webp`, o mesmo da v2);
+   - snapshot do catálogo versionado (795 clubes e 34 ligas);
+   - escudos resolvidos por ID pelo índice `escudos-touchline.json`;
+   - busca sem acentos por nome, sigla, país e liga, com filtros de país e
+     liga;
+   - qualquer clube pode ser escolhido.
+2. **Motor puro** (`primeiro-contrato/src/engine/`, sem DOM e
+   determinístico por semente):
+   - atributos e potencial derivados da semente;
+   - goleiro e linha com perfis próprios;
+   - disputa por minutos contra concorrentes fictícios persistidos e
+     marcados como simulados, calibrados pela força do clube;
+   - previsão em intervalo;
+   - temporada com jogos e minutos limitados ao calendário da liga e
+     métricas por posição;
+   - evolução por idade e minutos, com pico e declínio;
+   - eventos tipados (id, condição, prioridade, chave de repetição, opções,
+     efeitos, texto da consequência);
+   - mercado (transferência, empréstimo, renovação ou ficar);
+   - empréstimo com clube de origem e retorno;
+   - primeira convocação, como marco único;
+   - aposentadoria só depois de confirmada.
+3. **As 16 telas do mapa do `LEIA_PRIMEIRO_CLAUDE.md`**, fiéis às pranchas.
+4. **Save anônimo em IndexedDB:**
+   - versão de esquema e versão de catálogo;
+   - decisão pendente que volta igual depois de recarregar;
+   - efeitos gravados uma vez só.
+5. **Cartão de legado** em imagem exportável: compartilhamento nativo, com
+   download como alternativa.
+
+Fora de escopo nesta entrega:
+- etapa 3 (cobertura mundial e API-Football);
+- etapa 4 (competições continentais, desafios, sincronização);
+- conta e login;
+- métricas de produto (instrumentação).
+
+Critérios de aceite:
+- os do `LEIA_PRIMEIRO_CLAUDE.md` ("Evidência de aceite");
+- os do `PROJETO.md` ("Aceite do MVP"), exceto os testes de usabilidade com
+  pessoas, que ficam com o Murilo;
+- mesma semente e mesmas decisões dão o mesmo resultado;
+- decisões diferentes dão efeitos coerentes.
+
+Riscos e lacunas conhecidos:
+- as pranchas usam fotos que não vieram em `fundos/`:
+  - lesão;
+  - banco de reservas;
+  - camisa 9 de costas;
+  - convocação na escada;
+  - retrato do cartão de legado.
+
+  Nessas telas uso o fundo mais próximo do pacote ou um degradê, e registro
+  como divergência visual para aprovação.
+- 70 dos 795 clubes não têm escudo no índice e caem nas iniciais (fallback
+  previsto). Outros 60 usam URL externa (sportmonks), que também cai nas
+  iniciais se falhar.
+
+Relatório de implementação (26/11/2026)
+
+O que foi feito, etapas 1 e 2 completas, nas 16 telas do mapa:
+- **App independente** `primeiro-contrato/`:
+  - Vite, React e TypeScript nas mesmas versões da `carreira-v2`;
+  - build versionado em `public/primeiro-contrato/`;
+  - rota `/primeiro-contrato` no `server.js` (index da raiz do app; asset
+    inexistente é 404, como na v2);
+  - não importa nada do Modo Técnico: nem estado global, nem sessão, nem
+    `public/js/motor`.
+- **Fundação:**
+  - tokens e fontes originais do pacote (WOFF2 locais, OFL);
+  - símbolo T original (`marca-t.webp`, o mesmo da v2) como único elemento do
+    header.
+- **Catálogo:**
+  - importador `scripts/importar-catalogo.mjs`, com validação de duplicata,
+    país, liga e inscrição órfã;
+  - snapshot imutável por versão (`public/primeiro-contrato/catalogo/2026.11-1.json`)
+    e ponteiro `ativo.json`. Uma versão já publicada não é sobrescrita;
+  - escudo por ID: a cópia local do BRDATA (`LOCAL_CREST_BY_ID`, ESCUDOS-001)
+    tem precedência sobre a URL externa do índice. Com isso, 0 escudos externos
+    e 725 locais;
+  - os 70 clubes sem ativo caem nas iniciais;
+  - busca sem acento por nome e sigla, também antes dos filtros;
+  - filtros de país (agrupados por continente) e de liga;
+  - três sugestões com papéis diferentes;
+  - lista paginada de 40 em 40, com volta à posição anterior da lista.
+- **Motor puro** (`src/engine/`, sem DOM, determinístico por semente):
+  - atleta com perfis próprios de goleiro e de linha;
+  - concorrentes fictícios persistidos, marcados como simulados e calibrados
+    pela força do clube (nível da liga ± perfil de ataque e defesa do
+    catálogo);
+  - previsão de minutos em intervalo;
+  - simulação jogo a jogo, limitada às rodadas da liga. Sem formato
+    verificado (14 das 34 ligas), a temporada é "simplificada", identificada
+    na tela, sem classificação nem título;
+  - métricas por posição: gols, assistências, desarmes e jogos sem sofrer gol;
+  - evolução por idade e minutos, com pico e declínio (goleiro mais tarde);
+  - eventos tipados (id, prioridade, chave de repetição, condição, opções,
+    efeitos, texto da consequência): adaptação, volta antes da hora, perda de
+    espaço e primeira convocação;
+  - janela com renovação, transferência (taxa dentro da capacidade do
+    comprador), empréstimo (só com vaga e orçamento no destino), compra
+    depois do empréstimo e agente livre;
+  - empréstimo com origem e destino separados, retorno automático e passagem
+    preservada;
+  - aposentadoria só com confirmação: opcional a partir dos 33 anos,
+    obrigatória aos 40.
+- **Save** em IndexedDB (localStorage e memória como reserva):
+  - versão de esquema, versão do catálogo e migração explícita v0 → v1;
+  - uma única transação por avanço ou decisão;
+  - a decisão pendente volta igual depois de recarregar;
+  - repetir a resposta não aplica o efeito de novo.
+- **Cartão de legado:** PNG de 1080×1350, com compartilhamento nativo quando o
+  aparelho aceita arquivo e download como alternativa.
+
+Testes:
+- motor e importador: `npm test` em `primeiro-contrato/`, 18/18:
+  - determinismo;
+  - decisões divergentes;
+  - pendência após recarregar;
+  - efeito único;
+  - empréstimo com retorno;
+  - aposentadoria;
+  - calendário;
+  - métricas por posição;
+  - convocação única;
+  - migração;
+  - catálogo e escudos;
+- E2E novo `tests/e2e/test_primeiro_contrato.js`, PASS:
+  - rota e catálogo;
+  - 404 de asset;
+  - header só com o T;
+  - famílias e pesos computados;
+  - 11 posições com seleção única;
+  - busca sem acento;
+  - contrato;
+  - decisão;
+  - retomada depois de recarregar;
+- rota rápida 65/65;
+- suíte completa: ver abaixo;
+- `verificar-tela-antiga`: OK;
+- typecheck limpo;
+- balanceamento em 200 carreiras automáticas:
+  - fim mediano aos 35 anos;
+  - cerca de 500 jogos (p25 de 473, p75 de 521);
+  - nível de pico mediano de 76;
+  - 35% de convocados;
+  - 83% com empréstimo, com uma política de decisões que força empréstimos.
+
+Evidência (`docs/primeiro-contrato/evidencia/`):
+- as 4 pranchas com as 4 telas reais a 390 px embaixo
+  (`*_comparacao.jpg`);
+- as 16 telas a 360 px com nome longo (`360/`);
+- os estados selecionados (lima + Confirmar) e o detalhe da convocação
+  (`estado_*.jpg`);
+- o cartão exportado (`cartao_legado.jpg`).
+
+As 16 telas foram alcançadas jogando pela interface (Playwright), sem erro de
+console. Famílias computadas depois de `document.fonts.ready`:
+- título: Barlow Condensed 700;
+- CTA: Barlow Condensed 600;
+- apoio e campos: Barlow 400;
+- rótulos: Barlow 500.
+
+A navegação só por teclado foi exercitada: foco visível e setas no campo de
+posições.
+
+Divergências visuais para aprovação do Murilo:
+1. **Fotos ausentes no pacote** (`fundos/` só tem 4):
+   - lesão, banco, convocação na escada e camisa 9 de costas: usei o
+     02_estadio e o 01_tunel;
+   - retrato do cartão de legado: usei o 04_despedida.
+2. **Camisa de "Seu jogador":** é vetorial, com número dinâmico, no lugar da
+   foto.
+3. **Confirmação:** nas telas de decisão, a resposta escolhida fica lima e
+   surge o CTA "Confirmar", conforme a regra "Decisões" do briefing. As
+   pranchas mostram a ênfase direto na opção.
+4. **Textos dependentes do dado:**
+   - "O clássico é domingo" virou "O próximo jogo é contra {adversário da
+     liga}";
+   - "Tentar jogar o clássico" virou "Tentar jogar o próximo jogo";
+   - "Duas propostas chegaram" conta as propostas reais.
+5. **Elementos de apoio a mais:**
+   - em "Escolha seu clube": os grupos "Sugestões para você" e "Todos os
+     clubes · temporada 2026", e a linha do catálogo (versão e fonte);
+   - linha de jogo/temporada simplificada em "Sua temporada";
+   - fato explicativo e aviso de simulação no balanço (PROJETO.md: "um fato
+     que explique o resultado");
+   - linha "Interesse" na comparação (PROJETO.md: "exibir motivos do
+     interesse");
+   - nota "estimativas" na janela;
+   - consequência da decisão em "Sua temporada".
+6. **Título do balanço** conforme o resultado:
+   - "Você ganhou espaço";
+   - "Temporada de afirmação";
+   - "Temporada de pouco espaço";
+   - "Temporada interrompida".
+7. **Métrica principal** por posição: o meia mostra assistências, enquanto a
+   prancha mostra gols com MEI selecionado. A regra 3 do PROJETO.md prevalece
+   sobre o exemplo.
+8. **Liga com o nome canônico do catálogo** ("Brasileirão Série B"), em vez do
+   curto da prancha ("Série B").
+9. **Trajetória e comparação:** escudos por ID no lugar das letras.
+
+Gaps e riscos:
+- capturas no Chromium (emulação de 390 px), sem Safari iOS real: falta a
+  validação em iPhone (safe areas via `env()`; zoom não bloqueado);
+- "marcar interesse" em clubes durante a carreira está no motor
+  (`clubesDeInteresse` aumenta a chance de proposta), mas ainda sem tela;
+- métricas de produto (início, conclusão, compartilhamento) ficaram fora,
+  conforme o escopo;
+- a primeira convocação depende do nível (exigência de 70 a 79 pela tradição
+  da seleção), e 65% das carreiras não chegam lá.
+
+Commit: o commit do código foi barrado nesta sessão, de acordo com a regra de
+governança "sem commit de código antes da aprovação". Nesta branch estão só o
+handoff, o pacote e a evidência. O código está na área de trabalho do
+container (efêmera) e precisa ser commitado assim que o Murilo autorizar.
+
+Recomendação: aprovar a fundação e o motor, e decidir as divergências 1 a 9
+(principalmente as fotos que faltam).
+
+⸻
+
 MERCADO-001 — Implementação do mercado e da economia (Touchline)
 
-Status: EM IMPLEMENTAÇÃO — etapa 1 (valor de mercado inicial por atleta),
+Status: PAUSADO (Murilo, 26/11/2026) depois da etapa 2 mesclada (#172), para
+priorizar o PC-001. Próximo ao retomar: etapa 3. Histórico abaixo.
+Status anterior: EM IMPLEMENTAÇÃO — etapa 1 (valor de mercado inicial por atleta),
 branch `claude/mercado-e1-valor`. Pedido do Murilo (25/11/2026): "Faça o
 merge e a seguir execute o md" (handoff em `docs/economia/04_Handoff_Mercado.md`).
 Base: `main` em ba1a580 (#170).
