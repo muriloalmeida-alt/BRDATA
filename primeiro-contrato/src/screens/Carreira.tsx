@@ -69,7 +69,12 @@ export function TelaTemporada({ cat, c, onAvancar, onExibir, onTrajetoria, ocupa
   const card = emReproducao ? t.partidas[atual] : undefined;
   const iniciar = t.jogoAtual === 0 && total === 0;
   return (
-    <main className="tela">
+    // Em reprodução a tela segue o fluxo normal da página: a foto é fundo
+    // decorativo e os controles vêm depois do card, sem posição fixa (nada
+    // fica por cima dele, em nenhum navegador). Parada, a tela tem a altura
+    // da janela e a foto ocupa o espaço que sobra.
+    <main className={emReproducao ? "tela" : "tela tela--fixa"}>
+      {emReproducao && <Fundo nome={fundoDaPartida(card)} modo="palco" />}
       <Header />
       <div className="tela-corpo" style={{ paddingTop: 14 }}>
         <Titulo grande>Sua temporada</Titulo>
@@ -77,14 +82,18 @@ export function TelaTemporada({ cat, c, onAvancar, onExibir, onTrajetoria, ocupa
         <p className="situacao">{situacao(c, mostrados)}</p>
         <Numeros itens={[[res.jogos, "Jogos"], [res.minutos.toLocaleString("pt-BR"), "Minutos"], [res.metrica, res.rotulo]]} />
         <p className="estimativa">Temporada {t.ano} · rodada {mostrados} de {t.jogosTotal}{t.simplificada ? " · temporada simplificada (calendário e resultados simulados)" : ""}</p>
-        <Foto nome={fundoDaPartida(card)} altura={card ? 200 : 250} />
-        {card && (
-          <div className={`partida-wrap${reduzido.current ? "" : " partida-wrap--anim"}`} key={card.chave} aria-live={emReproducao && !pausado ? "off" : "polite"}>
-            <CardPartida cat={cat} p={card} clubeId={t.clubeId} ligaNome={ligaNome} simplificada={t.simplificada} funcao={t.funcao} />
-          </div>
+        {card ? (
+          <>
+            <div className="espaco-flex" />
+            <div className={`partida-wrap${reduzido.current ? "" : " partida-wrap--anim"}`} key={card.chave} aria-live={!pausado ? "off" : "polite"}>
+              <CardPartida cat={cat} p={card} clubeId={t.clubeId} ligaNome={ligaNome} simplificada={t.simplificada} funcao={t.funcao} />
+            </div>
+          </>
+        ) : (
+          <Foto nome="02_estadio" />
         )}
       </div>
-      <div className="acoes">
+      <div className={emReproducao ? "acoes acoes--fluxo" : "acoes"}>
         {emReproducao ? (
           <>
             <div className="controles">
@@ -105,16 +114,28 @@ export function TelaTemporada({ cat, c, onAvancar, onExibir, onTrajetoria, ocupa
   );
 }
 
+/** Respostas no conteúdo e "Confirmar" numa barra fixa embaixo: o botão
+ *  principal fica sempre na primeira dobra (a foto encolhe antes). */
+export function BlocoDecisao({ opcoes, sel, setSel, rotulo, onConfirmar, confirmar = "Confirmar" }: {
+  opcoes: Pendente["opcoes"]; sel: string | null; setSel: (id: string) => void; rotulo: string; onConfirmar: () => void; confirmar?: string;
+}) {
+  return (
+    <>
+      <div className={`opcoes-bloco${sel ? "" : " opcoes-bloco--fim"}`}>
+        <Opcoes opcoes={opcoes} valor={sel} onEscolher={setSel} rotulo={rotulo} />
+      </div>
+      {sel && <div className="acoes acoes--confirmar"><Cta onClick={onConfirmar}>{confirmar}</Cta></div>}
+    </>
+  );
+}
+
 /** Decisão tipada com resposta selecionável e confirmação. */
 function Decisao({ p, onDecidir, children, rotulo }: { p: Pendente; onDecidir: (id: string) => void; children?: React.ReactNode; rotulo: string }) {
   const [sel, setSel] = useState<string | null>(null);
   return (
     <>
       {children}
-      <div className="acoes acoes--fluxo" style={{ paddingTop: 0 }}>
-        <Opcoes opcoes={p.opcoes} valor={sel} onEscolher={setSel} rotulo={rotulo} />
-        {sel && <Cta onClick={() => onDecidir(sel)}>Confirmar</Cta>}
-      </div>
+      <BlocoDecisao opcoes={p.opcoes} sel={sel} setSel={setSel} rotulo={rotulo} onConfirmar={() => sel && onDecidir(sel)} />
     </>
   );
 }
@@ -122,13 +143,13 @@ function Decisao({ p, onDecidir, children, rotulo }: { p: Pendente; onDecidir: (
 export function TelaTreinador({ p, onDecidir }: { p: Pendente; onDecidir: (id: string) => void }) {
   const plano = !!p.contexto.plano;
   return (
-    <main className="tela">
+    <main className="tela tela--fixa">
       <Fundo nome={plano ? "plano-treinador" : "03_conversa_treinador"} modo="cheio" foco={plano ? "38% 45%" : "50% 40%"} reserva="03_conversa_treinador" />
       <Header />
       <div className="tela-corpo" style={{ paddingTop: 14 }}>
         <Titulo grande>O treinador te chamou</Titulo>
         {plano && <p className="meta" style={{ margin: "4px 0 0", fontSize: 17 }}>Plano para a temporada {p.ano}</p>}
-        <div style={{ flex: 1, minHeight: 240 }} />
+        <div className="espaco-foto" />
         <h2 className="titulo" style={{ fontSize: 30 }}>{String(p.contexto.pergunta)}</h2>
       </div>
       <Decisao p={p} onDecidir={onDecidir} rotulo={String(p.contexto.pergunta)} />
@@ -138,7 +159,7 @@ export function TelaTreinador({ p, onDecidir }: { p: Pendente; onDecidir: (id: s
 
 export function TelaRecuperacao({ p, onDecidir }: { p: Pendente; onDecidir: (id: string) => void }) {
   return (
-    <main className="tela">
+    <main className="tela tela--fixa">
       <Header />
       <div className="tela-corpo" style={{ paddingTop: 0 }}>
         <Foto nome="volta-ao-treino" altura={300} />
@@ -153,7 +174,7 @@ export function TelaRecuperacao({ p, onDecidir }: { p: Pendente; onDecidir: (id:
 
 export function TelaPerdaEspaco({ p, onDecidir }: { p: Pendente; onDecidir: (id: string) => void }) {
   return (
-    <main className="tela">
+    <main className="tela tela--fixa">
       <Header />
       <div className="tela-corpo" style={{ paddingTop: 0 }}>
         <Foto nome="disputa-por-vaga" altura={300} />
@@ -170,7 +191,7 @@ export function TelaPerdaEspaco({ p, onDecidir }: { p: Pendente; onDecidir: (id:
 export function TelaEntrevista({ p, onDecidir }: { p: Pendente; onDecidir: (id: string) => void }) {
   const decisivo = !!p.contexto.decisivo;
   return (
-    <main className="tela">
+    <main className="tela tela--fixa">
       <Header />
       <div className="tela-corpo" style={{ paddingTop: 0 }}>
         <Foto nome={decisivo ? "gol-decisivo" : "entrevista-pos-jogo"} altura={300} />
@@ -186,7 +207,7 @@ export function TelaEntrevista({ p, onDecidir }: { p: Pendente; onDecidir: (id: 
 
 export function TelaRumor({ cat, p, onDecidir }: { cat: Catalogo; p: Pendente; onDecidir: (id: string) => void }) {
   return (
-    <main className="tela">
+    <main className="tela tela--fixa">
       <Header />
       <div className="tela-corpo" style={{ paddingTop: 0 }}>
         <Foto nome="entrevista-pos-jogo" foco="40% 40%" altura={260} />
@@ -220,14 +241,14 @@ export function TelaBalanco({ cat, c, onAbrirJanela }: { cat: Catalogo; c: Carre
       : [["Desarmes e interceptações", `${h.stats.desarmes} e ${h.stats.interceptacoes}`]];
   const tabela = aberto === "tabela" && c.temporada && c.temporada.ano === h.ano && !h.simplificada ? tabelaDaTemporada(cat, c, h.jogosTotal) : [];
   return (
-    <main className="tela">
+    <main className="tela tela--fixa">
       <Header />
       <div className="tela-corpo" style={{ paddingTop: 14 }}>
         <Titulo>{TITULO_BALANCO[h.resultado]}</Titulo>
         <Foto nome="01_tunel" foco="64% 40%" altura={220} />
         <Numeros itens={[[h.jogos, "Jogos"], [h.stats[m.chave], m.rotulo], [`${delta > 0 ? "+" : ""}${delta}`, "Nível"]]} />
         <p className="apoio" style={{ marginTop: 14, fontSize: 17 }}>{h.fato}</p>
-        <dl className="linhas-dados linhas-dados--compacto">
+        <dl className="grade-dados">
           <div><dt>Minutos previstos × realizados</dt><dd>{h.previsao[0]}–{h.previsao[1]}% · {pct}%</dd></div>
           {h.titularidades != null && <div><dt>Titularidades</dt><dd>{h.titularidades} de {h.jogosTotal}</dd></div>}
           <div><dt>Nota média</dt><dd>{h.jogos ? fmt(h.media) : "—"}</dd></div>
@@ -238,18 +259,20 @@ export function TelaBalanco({ cat, c, onAbrirJanela }: { cat: Catalogo; c: Carre
           <p className="estimativa">
             {h.posicaoLiga ? `${h.clubeNome} terminou em ${h.posicaoLiga}º na ${h.ligaNome}${h.titulo ? " · campeão" : ""}` : `Campanha simulada do ${h.clubeNome}`}
             {` · ${h.campanha.v}V ${h.campanha.e}E ${h.campanha.d}D, ${h.campanha.pts} pontos`}
-            {h.simplificada ? " · temporada simplificada, sem classificação oficial" : ""}.
+            {h.simplificada ? " · temporada simplificada, sem classificação oficial" : ""}. Nível, nota e reputação são simulações.
           </p>
         )}
         {h.origem === "resumo" && <p className="estimativa">Parte desta temporada veio de uma versão anterior do jogo, sem registro jogo a jogo.</p>}
         <div className="disclosures">
+          <div className="disclosures-botoes">
           {h.partidas && h.partidas.length > 0 && (
             <button type="button" className="link link--esq" aria-expanded={aberto === "jogos"} onClick={() => setAberto(aberto === "jogos" ? null : "jogos")}>Jogos da temporada ({h.partidas.length})</button>
           )}
-          {aberto === "jogos" && <ol className="lista-partidas">{h.partidas!.map((p) => <LinhaPartida key={p.chave} p={p} funcao={h.funcao} />)}</ol>}
           {!h.simplificada && c.temporada?.ano === h.ano && (
             <button type="button" className="link link--esq" aria-expanded={aberto === "tabela"} onClick={() => setAberto(aberto === "tabela" ? null : "tabela")}>Classificação</button>
           )}
+          </div>
+          {aberto === "jogos" && <ol className="lista-partidas">{h.partidas!.map((p) => <LinhaPartida key={p.chave} p={p} funcao={h.funcao} />)}</ol>}
           {aberto === "tabela" && (
             <table className="tabela-liga">
               <caption className="sr-only">Classificação final da {h.ligaNome}</caption>
@@ -264,7 +287,6 @@ export function TelaBalanco({ cat, c, onAbrirJanela }: { cat: Catalogo; c: Carre
             </table>
           )}
         </div>
-        <p className="estimativa">Nível, nota e reputação são simulações do jogo.</p>
       </div>
       <div className="acoes"><Cta onClick={onAbrirJanela}>Abrir janela</Cta></div>
     </main>
@@ -275,7 +297,7 @@ export function TelaConvocacao({ c, p, onContinuar }: { c: Carreira; p: Pendente
   const [aberto, setAberto] = useState(false);
   const clube = c.emprestimo?.clubeNome ?? c.vinculo?.clubeNome;
   return (
-    <main className="tela">
+    <main className="tela tela--fixa">
       <Header />
       <div className="tela-corpo" style={{ paddingTop: 14 }}>
         <Titulo grande>Primeira convocação</Titulo>

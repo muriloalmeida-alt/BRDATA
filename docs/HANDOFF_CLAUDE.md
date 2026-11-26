@@ -15,7 +15,41 @@ Status: APROVADO (Murilo, 26/11/2026, "Aprovado"). Código commitado na
 branch `claude/new-session-ygru7q` (recriada a partir de `main` em cd175c2,
 #175). Os pontos de homologação 1 a 6 do relatório foram aprovados junto com
 a entrega; o ritmo dos trechos curtos pode ser ajustado depois de testado no
-iPhone.
+iPhone. Mesclado em `main` pelo #176 (ab0e0cc), na versão sem os ajustes
+abaixo. Os dois ajustes pedidos pelo Murilo depois da aprovação foram
+enviados à branch depois do merge e não entraram no #176 (o registro anterior
+dizia o contrário, por engano). Eles entram no PR seguinte:
+- rolagens desnecessárias: medido em 390×844 e 360×740, 13 estados de tela
+  rolavam; agora só rolam a lista de clubes e as trajetórias longas;
+- o card do jogo não fica mais sob Pausar/Acelerar: sobreposição 0 de
+  390×844 a 320×568;
+- no iPhone (captura do Murilo, 26/11/2026) o card ainda ficava sob os
+  botões, porque o aparelho rodava a versão do #176. Mesmo assim, a
+  reprodução passou a usar o fluxo normal da página:
+  - foto como fundo, card e controles em sequência, sem posição fixa;
+  - sobreposição 0 nos 6 tamanhos medidos;
+- o escudo em branco no card (Araguaína) era o carregamento preguiçoso da
+  imagem dentro de um contêiner com rolagem própria no Safari: o escudo
+  passa a carregar na hora, exceto na lista de clubes.
+- botão cortado na primeira dobra (captura do Murilo na entrevista, versão
+  do #176):
+  - nas decisões, as respostas ficam no conteúdo e o "Confirmar" numa barra
+    fixa embaixo; nas telas com cena, o CTA também fica fixo;
+  - a foto encolhe antes;
+  - medido com a rolagem no topo: o botão principal fica 0 px fora da
+    primeira dobra em todas as telas, em 430×932, 390×844, 390×664,
+    375×667 e 360×740.
+- logo do header achatada e sem respiro:
+  - o `marca-t.webp` (198×160) era um recorte com o topo do T cortado;
+  - o símbolo passa a ser extraído do ícone oficial do pacote
+    (`Touchline_Icone_App.png`), em alta resolução (`simbolo-t.webp`), com a
+    mesma proporção (1,24);
+  - o header ganhou o respiro da prancha: 20 px acima, símbolo de 30 px e
+    26 px até o título;
+  - o botão principal continua 0 px fora da primeira dobra nos tamanhos
+    medidos.
+
+Aprovação final reconfirmada pelo Murilo em 26/11/2026 ("Aprovado").
 
 Origem: pacote "Temporada" do Murilo (26/11/2026), versionado em
 `docs/primeiro-contrato/v2/` (`LEIA_PRIMEIRO_CLAUDE.md` e `ASSETS.md`). Os 5

@@ -23,11 +23,12 @@ export const Direita = () => (
 export const Menos = () => (<svg viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" aria-hidden="true"><path d="M5 12h14" /></svg>);
 export const Mais = () => (<svg viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" aria-hidden="true"><path d="M5 12h14M12 5v14" /></svg>);
 
-/** Header universal: só o símbolo oficial T, à esquerda. */
+/** Header universal: só o símbolo oficial T (extraído do ícone oficial do
+ *  app, em alta resolução e sem corte), à esquerda, com o respiro da prancha. */
 export function Header() {
   return (
     <header className="header">
-      <img src={`${BASE}marca-t.webp`} width="198" height="160" alt="Touchline" />
+      <img src={`${BASE}simbolo-t.webp`} width="298" height="240" alt="Touchline" />
     </header>
   );
 }
@@ -55,7 +56,7 @@ export function Opcoes({ opcoes, valor, onEscolher, rotulo }: { opcoes: OpcaoUI[
   return (
     <div className="opcoes" role="radiogroup" aria-label={rotulo}>
       {opcoes.map((o) => (
-        <button key={o.id} type="button" role="radio" aria-checked={valor === o.id} className="opcao" onClick={() => onEscolher(o.id)}>
+        <button key={o.id} type="button" role="radio" aria-checked={valor === o.id} className={`opcao${o.detalhe ? "" : " opcao--simples"}`} onClick={() => onEscolher(o.id)}>
           <span className="opcao-titulo">{o.rotulo}</span>
           {o.detalhe && <span className="opcao-detalhe">{o.detalhe}</span>}
           <Seta />
@@ -66,7 +67,9 @@ export function Opcoes({ opcoes, valor, onEscolher, rotulo }: { opcoes: OpcaoUI[
 }
 
 /** Escudo original resolvido por ID; iniciais só quando o ativo falta ou falha. */
-export function Escudo({ cat, clubeId, nome, tamanho }: { cat: Catalogo | null; clubeId: string; nome?: string; tamanho: number }) {
+/** `preguicoso` só em listas longas (catálogo): no Safari, imagem preguiçosa
+ *  dentro de contêiner com rolagem própria pode não carregar a tempo. */
+export function Escudo({ cat, clubeId, nome, tamanho, preguicoso }: { cat: Catalogo | null; clubeId: string; nome?: string; tamanho: number; preguicoso?: boolean }) {
   const clube = cat?.clube(clubeId);
   const src = clube?.escudo ?? null;
   const [falhou, setFalhou] = useState<string | null>(null);
@@ -75,7 +78,7 @@ export function Escudo({ cat, clubeId, nome, tamanho }: { cat: Catalogo | null; 
   return (
     <span className="escudo" style={{ width: tamanho, height: tamanho }} aria-hidden="true">
       {src && falhou !== src
-        ? <span className="escudo-placa"><img src={src} alt="" loading="lazy" decoding="async" onError={() => setFalhou(src)} /></span>
+        ? <span className="escudo-placa"><img src={src} alt="" loading={preguicoso ? "lazy" : "eager"} decoding="async" onError={() => setFalhou(src)} /></span>
         : <span className="escudo-iniciais" style={{ fontSize: Math.round(tamanho * (iniciais.length > 2 ? 0.3 : 0.38)) }}>{iniciais}</span>}
     </span>
   );
@@ -90,7 +93,7 @@ const FOCO: Record<NomeFundo, string> = {
 };
 
 /** Fundo de produção como camada independente, fora da árvore acessível. */
-export function Fundo({ nome, modo, foco, reserva = "02_estadio" }: { nome: NomeFundo; modo: "cheio" | "topo"; foco?: string; reserva?: NomeFundo }) {
+export function Fundo({ nome, modo, foco, reserva = "02_estadio" }: { nome: NomeFundo; modo: "cheio" | "topo" | "palco"; foco?: string; reserva?: NomeFundo }) {
   const [falhou, setFalhou] = useState(false);
   const n = falhou ? reserva : nome;
   return (
@@ -100,13 +103,14 @@ export function Fundo({ nome, modo, foco, reserva = "02_estadio" }: { nome: Nome
   );
 }
 
-/** Foto no fluxo da tela. Se a cena falhar, usa o fundo original
+/** Foto no fluxo da tela: ocupa o espaço que sobra (até `altura`), para a
+ *  tela caber sem rolar quando possível. Se a cena falhar, usa o fundo original
  *  compatível (`reserva`), como pede o ASSETS.md. */
 export function Foto({ nome, foco, altura, reserva = "02_estadio" }: { nome: NomeFundo; foco?: string; altura?: number; reserva?: NomeFundo }) {
   const [falhou, setFalhou] = useState(false);
   const n = falhou ? reserva : nome;
   return (
-    <div className="foto" aria-hidden="true" style={altura ? { flexBasis: altura } : undefined}>
+    <div className="foto" aria-hidden="true" style={altura ? { maxHeight: altura } : undefined}>
       <img key={n} src={`${BASE}fundos/${n}.webp`} alt="" decoding="async" style={{ objectPosition: falhou ? FOCO[n] : foco ?? FOCO[n] }} onError={() => setFalhou(true)} />
     </div>
   );
