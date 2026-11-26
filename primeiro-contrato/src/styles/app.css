@@ -211,7 +211,7 @@ button, input, select { font: inherit; color: inherit; }
 .partida-dest { margin: 2px 0 0; text-align: center; font-family: var(--bd-font-text); font-size: 15px; }
 .partida-marcos { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; margin: 10px 0 0; }
 .chip-marco { padding: 3px 10px; border-radius: 12px; background: var(--bd-accent); color: var(--bd-on-accent); font-family: var(--bd-font-display); font-weight: 600; font-size: 15px; }
-.acoes--fluxo { position: relative; background: none; }
+.acoes--fluxo { position: relative; background: none; z-index: 2; }
 .controles { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .controle { min-height: var(--bd-touch); border: 1.5px solid rgba(245,247,250,.85); border-radius: 10px; background: rgba(7,15,24,.72); color: var(--bd-text); font-family: var(--bd-font-display); font-weight: 600; font-size: 19px; cursor: pointer; }
 .controle[aria-pressed="true"] { background: var(--bd-accent); border-color: var(--bd-accent); color: var(--bd-on-accent); }
@@ -241,6 +241,11 @@ button, input, select { font: inherit; color: inherit; }
 .tela--fixa .palco > .foto { min-height: 0; }
 .tela--fixa .acoes { position: relative; }
 .espaco-foto { flex: 1 1 0; min-height: 120px; }
+/* Reprodução: foto como fundo da metade de baixo, card e controles no fluxo. */
+.fundo--palco { top: 34%; bottom: 0; }
+.fundo--palco img { opacity: .85; }
+.fundo--palco::after { background: linear-gradient(180deg, var(--bd-bg) 0%, rgba(8,14,24,.15) 22%, rgba(8,14,24,.25) 60%, var(--bd-bg) 100%); }
+.espaco-flex { flex: 1 1 auto; min-height: 16px; }
 .grade-dados { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 16px; margin: 12px 0 0; padding: 10px 0; border-top: 1px solid var(--bd-line); border-bottom: 1px solid var(--bd-line); }
 .grade-dados div { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
 .grade-dados dt { font-family: var(--bd-font-text); font-weight: 400; font-size: 13px; color: var(--bd-muted); }

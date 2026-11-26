@@ -66,7 +66,9 @@ export function Opcoes({ opcoes, valor, onEscolher, rotulo }: { opcoes: OpcaoUI[
 }
 
 /** Escudo original resolvido por ID; iniciais só quando o ativo falta ou falha. */
-export function Escudo({ cat, clubeId, nome, tamanho }: { cat: Catalogo | null; clubeId: string; nome?: string; tamanho: number }) {
+/** `preguicoso` só em listas longas (catálogo): no Safari, imagem preguiçosa
+ *  dentro de contêiner com rolagem própria pode não carregar a tempo. */
+export function Escudo({ cat, clubeId, nome, tamanho, preguicoso }: { cat: Catalogo | null; clubeId: string; nome?: string; tamanho: number; preguicoso?: boolean }) {
   const clube = cat?.clube(clubeId);
   const src = clube?.escudo ?? null;
   const [falhou, setFalhou] = useState<string | null>(null);
@@ -75,7 +77,7 @@ export function Escudo({ cat, clubeId, nome, tamanho }: { cat: Catalogo | null; 
   return (
     <span className="escudo" style={{ width: tamanho, height: tamanho }} aria-hidden="true">
       {src && falhou !== src
-        ? <span className="escudo-placa"><img src={src} alt="" loading="lazy" decoding="async" onError={() => setFalhou(src)} /></span>
+        ? <span className="escudo-placa"><img src={src} alt="" loading={preguicoso ? "lazy" : "eager"} decoding="async" onError={() => setFalhou(src)} /></span>
         : <span className="escudo-iniciais" style={{ fontSize: Math.round(tamanho * (iniciais.length > 2 ? 0.3 : 0.38)) }}>{iniciais}</span>}
     </span>
   );
@@ -90,7 +92,7 @@ const FOCO: Record<NomeFundo, string> = {
 };
 
 /** Fundo de produção como camada independente, fora da árvore acessível. */
-export function Fundo({ nome, modo, foco, reserva = "02_estadio" }: { nome: NomeFundo; modo: "cheio" | "topo"; foco?: string; reserva?: NomeFundo }) {
+export function Fundo({ nome, modo, foco, reserva = "02_estadio" }: { nome: NomeFundo; modo: "cheio" | "topo" | "palco"; foco?: string; reserva?: NomeFundo }) {
   const [falhou, setFalhou] = useState(false);
   const n = falhou ? reserva : nome;
   return (

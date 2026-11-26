@@ -69,7 +69,12 @@ export function TelaTemporada({ cat, c, onAvancar, onExibir, onTrajetoria, ocupa
   const card = emReproducao ? t.partidas[atual] : undefined;
   const iniciar = t.jogoAtual === 0 && total === 0;
   return (
-    <main className="tela tela--fixa">
+    // Em reprodução a tela segue o fluxo normal da página: a foto é fundo
+    // decorativo e os controles vêm depois do card, sem posição fixa (nada
+    // fica por cima dele, em nenhum navegador). Parada, a tela tem a altura
+    // da janela e a foto ocupa o espaço que sobra.
+    <main className={emReproducao ? "tela" : "tela tela--fixa"}>
+      {emReproducao && <Fundo nome={fundoDaPartida(card)} modo="palco" />}
       <Header />
       <div className="tela-corpo" style={{ paddingTop: 14 }}>
         <Titulo grande>Sua temporada</Titulo>
@@ -77,18 +82,18 @@ export function TelaTemporada({ cat, c, onAvancar, onExibir, onTrajetoria, ocupa
         <p className="situacao">{situacao(c, mostrados)}</p>
         <Numeros itens={[[res.jogos, "Jogos"], [res.minutos.toLocaleString("pt-BR"), "Minutos"], [res.metrica, res.rotulo]]} />
         <p className="estimativa">Temporada {t.ano} · rodada {mostrados} de {t.jogosTotal}{t.simplificada ? " · temporada simplificada (calendário e resultados simulados)" : ""}</p>
-        {/* Palco: a foto é só fundo; o card do jogo fica sempre inteiro na base
-            e é a foto que encolhe quando falta altura (nunca o card). */}
-        <div className={`palco${card ? " palco--jogo" : ""}`}>
-          <Foto nome={fundoDaPartida(card)} />
-          {card && (
-            <div className={`partida-wrap${reduzido.current ? "" : " partida-wrap--anim"}`} key={card.chave} aria-live={emReproducao && !pausado ? "off" : "polite"}>
+        {card ? (
+          <>
+            <div className="espaco-flex" />
+            <div className={`partida-wrap${reduzido.current ? "" : " partida-wrap--anim"}`} key={card.chave} aria-live={!pausado ? "off" : "polite"}>
               <CardPartida cat={cat} p={card} clubeId={t.clubeId} ligaNome={ligaNome} simplificada={t.simplificada} funcao={t.funcao} />
             </div>
-          )}
-        </div>
+          </>
+        ) : (
+          <Foto nome="02_estadio" />
+        )}
       </div>
-      <div className="acoes">
+      <div className={emReproducao ? "acoes acoes--fluxo" : "acoes"}>
         {emReproducao ? (
           <>
             <div className="controles">

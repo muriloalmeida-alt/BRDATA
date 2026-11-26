@@ -15,12 +15,22 @@ Status: APROVADO (Murilo, 26/11/2026, "Aprovado"). Código commitado na
 branch `claude/new-session-ygru7q` (recriada a partir de `main` em cd175c2,
 #175). Os pontos de homologação 1 a 6 do relatório foram aprovados junto com
 a entrega; o ritmo dos trechos curtos pode ser ajustado depois de testado no
-iPhone. Mesclado em `main` (#176, ab0e0cc), com dois ajustes pedidos pelo
-Murilo depois da aprovação:
+iPhone. Mesclado em `main` pelo #176 (ab0e0cc), na versão sem os ajustes
+abaixo. Os dois ajustes pedidos pelo Murilo depois da aprovação foram
+enviados à branch depois do merge e não entraram no #176 (o registro anterior
+dizia o contrário, por engano). Eles entram no PR seguinte:
 - rolagens desnecessárias: medido em 390×844 e 360×740, 13 estados de tela
   rolavam; agora só rolam a lista de clubes e as trajetórias longas;
 - o card do jogo não fica mais sob Pausar/Acelerar: sobreposição 0 de
-  390×844 a 320×568.
+  390×844 a 320×568;
+- no iPhone (captura do Murilo, 26/11/2026) o card ainda ficava sob os
+  botões, porque o aparelho rodava a versão do #176. Mesmo assim, a
+  reprodução passou a usar o fluxo normal da página:
+  - foto como fundo, card e controles em sequência, sem posição fixa;
+  - sobreposição 0 nos 6 tamanhos medidos;
+- o escudo em branco no card (Araguaína) era o carregamento preguiçoso da
+  imagem dentro de um contêiner com rolagem própria no Safari: o escudo
+  passa a carregar na hora, exceto na lista de clubes.
 
 Aprovação final reconfirmada pelo Murilo em 26/11/2026 ("Aprovado").
 

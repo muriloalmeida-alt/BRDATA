@@ -117,7 +117,7 @@ export function TelaClube({ cat, r, lista, onLista, onMudar, onAvancar }: {
     return (
       <li key={id}>
         <button type="button" role="radio" aria-checked={sel} className="clube" onClick={() => onMudar({ clubeId: id })}>
-          <Escudo cat={cat} clubeId={id} tamanho={48} />
+          <Escudo cat={cat} clubeId={id} tamanho={48} preguicoso />
           <span className="clube-corpo"><span className="clube-nome">{c.nome}</span><span className="clube-meta">{rotuloInscricao(cat, id)}</span></span>
           {sel && <Check />}
         </button>
