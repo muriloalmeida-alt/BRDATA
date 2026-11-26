@@ -31,6 +31,14 @@ dizia o contrário, por engano). Eles entram no PR seguinte:
 - o escudo em branco no card (Araguaína) era o carregamento preguiçoso da
   imagem dentro de um contêiner com rolagem própria no Safari: o escudo
   passa a carregar na hora, exceto na lista de clubes.
+- botão cortado na primeira dobra (captura do Murilo na entrevista, versão
+  do #176):
+  - nas decisões, as respostas ficam no conteúdo e o "Confirmar" numa barra
+    fixa embaixo; nas telas com cena, o CTA também fica fixo;
+  - a foto encolhe antes;
+  - medido com a rolagem no topo: o botão principal fica 0 px fora da
+    primeira dobra em todas as telas, em 430×932, 390×844, 390×664,
+    375×667 e 360×740.
 
 Aprovação final reconfirmada pelo Murilo em 26/11/2026 ("Aprovado").
 

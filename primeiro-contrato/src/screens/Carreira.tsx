@@ -114,16 +114,28 @@ export function TelaTemporada({ cat, c, onAvancar, onExibir, onTrajetoria, ocupa
   );
 }
 
+/** Respostas no conteúdo e "Confirmar" numa barra fixa embaixo: o botão
+ *  principal fica sempre na primeira dobra (a foto encolhe antes). */
+export function BlocoDecisao({ opcoes, sel, setSel, rotulo, onConfirmar, confirmar = "Confirmar" }: {
+  opcoes: Pendente["opcoes"]; sel: string | null; setSel: (id: string) => void; rotulo: string; onConfirmar: () => void; confirmar?: string;
+}) {
+  return (
+    <>
+      <div className={`opcoes-bloco${sel ? "" : " opcoes-bloco--fim"}`}>
+        <Opcoes opcoes={opcoes} valor={sel} onEscolher={setSel} rotulo={rotulo} />
+      </div>
+      {sel && <div className="acoes acoes--confirmar"><Cta onClick={onConfirmar}>{confirmar}</Cta></div>}
+    </>
+  );
+}
+
 /** Decisão tipada com resposta selecionável e confirmação. */
 function Decisao({ p, onDecidir, children, rotulo }: { p: Pendente; onDecidir: (id: string) => void; children?: React.ReactNode; rotulo: string }) {
   const [sel, setSel] = useState<string | null>(null);
   return (
     <>
       {children}
-      <div className="acoes acoes--fluxo" style={{ paddingTop: 0 }}>
-        <Opcoes opcoes={p.opcoes} valor={sel} onEscolher={setSel} rotulo={rotulo} />
-        {sel && <Cta onClick={() => onDecidir(sel)}>Confirmar</Cta>}
-      </div>
+      <BlocoDecisao opcoes={p.opcoes} sel={sel} setSel={setSel} rotulo={rotulo} onConfirmar={() => sel && onDecidir(sel)} />
     </>
   );
 }

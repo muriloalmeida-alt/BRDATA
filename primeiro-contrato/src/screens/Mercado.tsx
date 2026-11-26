@@ -5,7 +5,8 @@ import { idadeAtual } from "../engine/carreira.ts";
 import type { Carreira, Oferta, Pendente } from "../engine/estado.ts";
 import { descricaoTipo, vinculoTexto } from "../engine/mercado.ts";
 import { projetarPapel } from "../engine/mercado.ts";
-import { Cta, Direita, Escudo, Foto, Header, Opcoes, Titulo } from "../ui/componentes.tsx";
+import { Cta, Direita, Escudo, Foto, Header, Titulo } from "../ui/componentes.tsx";
+import { BlocoDecisao } from "./Carreira.tsx";
 
 /** Opção da janela já resolvida para exibição (proposta ou ficar). */
 export type Caminho = { id: string; clubeId: string; clubeNome: string; tipo: string; papel: string; minutos: [number, number]; vinculo: string; motivo: string; acao: string };
@@ -99,10 +100,7 @@ export function TelaComparar({ cat, c, p, selecionado, onDecidir }: { cat: Catal
           </tbody>
         </table>
       </div>
-      <div className="acoes">
-        <Opcoes opcoes={cols.map((x) => ({ id: x.id, rotulo: x.acao }))} valor={sel} onEscolher={setSel} rotulo="Qual caminho você escolhe?" />
-        {sel && <Cta onClick={() => onDecidir(sel)}>Confirmar</Cta>}
-      </div>
+      <BlocoDecisao opcoes={cols.map((x) => ({ id: x.id, rotulo: x.acao }))} sel={sel} setSel={setSel} rotulo="Qual caminho você escolhe?" onConfirmar={() => sel && onDecidir(sel)} />
     </main>
   );
 }
@@ -120,10 +118,7 @@ export function TelaAposentadoria({ c, p, onDecidir }: { c: Carreira; p: Pendent
         <p className="apoio" style={{ fontWeight: 500 }}>{texto}</p>
         {!p.opcoes.some((o) => o.id === "continuar") && <p className="estimativa">Sem contrato válido nem proposta para a próxima temporada.</p>}
       </div>
-      <div className="acoes acoes--fluxo" style={{ paddingTop: 0 }}>
-        <Opcoes opcoes={p.opcoes} valor={sel} onEscolher={setSel} rotulo="Mais uma temporada?" />
-        {sel && <Cta onClick={() => onDecidir(sel)}>{confirmar}</Cta>}
-      </div>
+      <BlocoDecisao opcoes={p.opcoes} sel={sel} setSel={setSel} rotulo="Mais uma temporada?" confirmar={confirmar} onConfirmar={() => sel && onDecidir(sel)} />
     </main>
   );
 }

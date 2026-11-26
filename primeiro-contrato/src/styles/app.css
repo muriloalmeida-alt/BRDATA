@@ -239,7 +239,11 @@ button, input, select { font: inherit; color: inherit; }
 .tela--fixa .tela-corpo { flex: 1 0 auto; }
 .tela--fixa .foto { flex: 1 1 0; min-height: 120px; }
 .tela--fixa .palco > .foto { min-height: 0; }
-.tela--fixa .acoes { position: relative; }
+/* Decisões: respostas no conteúdo; "Confirmar" fixo embaixo (primeira dobra). */
+.opcoes-bloco { position: relative; z-index: 1; padding: 0 var(--bd-gutter) 4px; }
+.opcoes-bloco .opcoes { margin-top: 14px; }
+.opcoes-bloco--fim { padding-bottom: calc(var(--bd-safe-bottom) + 18px); }
+.acoes--confirmar { padding-top: 10px; }
 .espaco-foto { flex: 1 1 0; min-height: 120px; }
 /* Reprodução: foto como fundo da metade de baixo, card e controles no fluxo. */
 .fundo--palco { top: 34%; bottom: 0; }
@@ -263,6 +267,9 @@ button, input, select { font: inherit; color: inherit; }
   .proposta { min-height: 66px; padding-top: 8px; padding-bottom: 8px; }
 }
 @media (max-height: 700px) {
+  .tela-corpo .estimativa { font-size: 12px; }
+  .meta { font-size: 15px !important; }
+  .titulo--lg { font-size: 36px; }
   .header { height: calc(var(--bd-safe-top) + 40px); padding-top: calc(var(--bd-safe-top) + 10px); }
   .header img { height: 24px; }
   .situacao { margin-top: 10px; font-size: 36px; }
