@@ -31,7 +31,7 @@ export async function gerarCartao(cat: Catalogo, c: Carreira): Promise<Blob> {
   cv.width = W; cv.height = H;
   const ctx = cv.getContext("2d")!;
   ctx.fillStyle = "#080e18"; ctx.fillRect(0, 0, W, H);
-  const [foto, marca] = await Promise.all([imagem(`${BASE}fundos/04_despedida.webp`), imagem(`${BASE}marca-t.webp`)]);
+  const [foto, marca] = await Promise.all([imagem(`${BASE}fundos/04_despedida.webp`), imagem(`${BASE}simbolo-t.webp`)]);
   // Cartão com borda lima
   const cx = 90, cy = 70, cw = W - 180, ch = 900;
   ctx.save();
@@ -43,7 +43,7 @@ export async function gerarCartao(cat: Catalogo, c: Carreira): Promise<Blob> {
   ctx.restore();
   ctx.lineWidth = 6; ctx.strokeStyle = "#b4e64b";
   ctx.beginPath(); ctx.roundRect(cx, cy, cw, ch, 36); ctx.stroke();
-  ctx.drawImage(marca, cx + 44, cy + 40, 99, 80);
+  ctx.drawImage(marca, cx + 44, cy + 40, 100, 80);
   ctx.fillStyle = "rgba(245,247,250,.92)"; ctx.textAlign = "right";
   ctx.font = "700 110px 'Barlow Condensed'"; ctx.fillText(String(c.atleta.numero), cx + cw - 44, cy + 130);
   // Nome e números

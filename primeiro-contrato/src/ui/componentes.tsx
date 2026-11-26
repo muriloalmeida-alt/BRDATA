@@ -23,11 +23,12 @@ export const Direita = () => (
 export const Menos = () => (<svg viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" aria-hidden="true"><path d="M5 12h14" /></svg>);
 export const Mais = () => (<svg viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" aria-hidden="true"><path d="M5 12h14M12 5v14" /></svg>);
 
-/** Header universal: só o símbolo oficial T, à esquerda. */
+/** Header universal: só o símbolo oficial T (extraído do ícone oficial do
+ *  app, em alta resolução e sem corte), à esquerda, com o respiro da prancha. */
 export function Header() {
   return (
     <header className="header">
-      <img src={`${BASE}marca-t.webp`} width="198" height="160" alt="Touchline" />
+      <img src={`${BASE}simbolo-t.webp`} width="298" height="240" alt="Touchline" />
     </header>
   );
 }

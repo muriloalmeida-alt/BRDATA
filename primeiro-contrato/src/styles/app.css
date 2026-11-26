@@ -11,8 +11,10 @@ button, input, select { font: inherit; color: inherit; }
 /* ── Tela ─────────────────────────────────────────────────────────────── */
 .tela { position: relative; min-height: 100dvh; display: flex; flex-direction: column; isolation: isolate; overflow-x: clip; }
 .tela-corpo { position: relative; z-index: 1; flex: 1; display: flex; flex-direction: column; padding: 0 var(--bd-gutter); }
-.header { position: relative; z-index: 2; display: flex; align-items: center; padding: calc(var(--bd-safe-top) + 14px) var(--bd-gutter) 0; height: calc(var(--bd-safe-top) + 46px); }
-.header img { height: 28px; width: auto; display: block; }
+/* Respiro da prancha: ~20 px abaixo da barra de status e ~28 px até o título
+   (12 px aqui + 14 px do início do conteúdo). */
+.header { position: relative; z-index: 2; display: flex; align-items: center; flex: none; padding: calc(var(--bd-safe-top) + 20px) var(--bd-gutter) 12px; }
+.header img { height: 30px; width: auto; aspect-ratio: 298 / 240; display: block; }
 
 .titulo { margin: 0; font-family: var(--bd-font-display); font-weight: 700; font-size: 38px; line-height: 1.05; letter-spacing: .003em; overflow-wrap: anywhere; }
 .titulo--lg { font-size: 42px; }
@@ -249,7 +251,7 @@ button, input, select { font: inherit; color: inherit; }
 .fundo--palco { top: 34%; bottom: 0; }
 .fundo--palco img { opacity: .85; }
 .fundo--palco::after { background: linear-gradient(180deg, var(--bd-bg) 0%, rgba(8,14,24,.15) 22%, rgba(8,14,24,.25) 60%, var(--bd-bg) 100%); }
-.espaco-flex { flex: 1 1 auto; min-height: 16px; }
+.espaco-flex { flex: 1 1 auto; min-height: 8px; }
 .grade-dados { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 16px; margin: 12px 0 0; padding: 10px 0; border-top: 1px solid var(--bd-line); border-bottom: 1px solid var(--bd-line); }
 .grade-dados div { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
 .grade-dados dt { font-family: var(--bd-font-text); font-weight: 400; font-size: 13px; color: var(--bd-muted); }
@@ -270,10 +272,11 @@ button, input, select { font: inherit; color: inherit; }
   .tela-corpo .estimativa { font-size: 12px; }
   .meta { font-size: 15px !important; }
   .titulo--lg { font-size: 36px; }
-  .header { height: calc(var(--bd-safe-top) + 40px); padding-top: calc(var(--bd-safe-top) + 10px); }
-  .header img { height: 24px; }
-  .situacao { margin-top: 10px; font-size: 36px; }
-  .numeros { margin-top: 10px; }
+  .header { padding-top: calc(var(--bd-safe-top) + 14px); padding-bottom: 8px; }
+  .header img { height: 28px; }
+  .situacao { margin-top: 6px; font-size: 32px; }
+  .numeros { margin-top: 6px; }
+  .espaco-flex { min-height: 6px; }
   .numero b { font-size: 32px; }
   .partida { padding: 10px 14px; }
   .placar { margin-top: 4px; }

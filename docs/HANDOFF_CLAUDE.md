@@ -39,6 +39,15 @@ dizia o contrário, por engano). Eles entram no PR seguinte:
   - medido com a rolagem no topo: o botão principal fica 0 px fora da
     primeira dobra em todas as telas, em 430×932, 390×844, 390×664,
     375×667 e 360×740.
+- logo do header achatada e sem respiro:
+  - o `marca-t.webp` (198×160) era um recorte com o topo do T cortado;
+  - o símbolo passa a ser extraído do ícone oficial do pacote
+    (`Touchline_Icone_App.png`), em alta resolução (`simbolo-t.webp`), com a
+    mesma proporção (1,24);
+  - o header ganhou o respiro da prancha: 20 px acima, símbolo de 30 px e
+    26 px até o título;
+  - o botão principal continua 0 px fora da primeira dobra nos tamanhos
+    medidos.
 
 Aprovação final reconfirmada pelo Murilo em 26/11/2026 ("Aprovado").
 

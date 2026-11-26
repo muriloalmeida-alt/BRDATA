@@ -80,7 +80,7 @@ export function TelaLegado({ cat, c, onNova, onTrajetoria }: { cat: Catalogo; c:
         <Titulo grande>Seu legado</Titulo>
         <figure className="cartao-legado" aria-label={`Cartão de ${nomeExibicao(c.atleta)}: ${tot.jogos} jogos, ${tot.metrica} ${tot.rotulo.toLowerCase()}`}>
           <img className="foto-legado" src={`${BASE}fundos/04_despedida.webp`} alt="" aria-hidden="true" />
-          <img className="marca" src={`${BASE}marca-t.webp`} alt="" aria-hidden="true" />
+          <img className="marca" src={`${BASE}simbolo-t.webp`} alt="" aria-hidden="true" />
           <span className="num-camisa" aria-hidden="true">{c.atleta.numero}</span>
           <figcaption className="legado-corpo">
             <p className="legado-nome">{nomeExibicao(c.atleta)}</p>

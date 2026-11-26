@@ -35,7 +35,7 @@ const base = "http://localhost:8787";
     const fam = (s) => { const c = getComputedStyle(document.querySelector(s)); return `${c.fontFamily.split(",")[0].replace(/"/g, "")} ${c.fontWeight}`; };
     return { filhos: h.children.length, img: h.querySelector("img")?.getAttribute("src"), titulo: fam("h1"), cta: fam(".cta"), apoio: fam(".apoio") };
   });
-  check("3) header só com o T:", header.filhos === 1 && /marca-t\.webp$/.test(header.img || ""), header.img);
+  check("3) header só com o T:", header.filhos === 1 && /simbolo-t\.webp$/.test(header.img || ""), header.img);
   check("3) fontes:", header.titulo === "Barlow Condensed 700" && header.cta === "Barlow Condensed 600" && header.apoio === "Barlow 400", JSON.stringify(header));
 
   await page.getByRole("button", { name: "Nova carreira" }).click();
