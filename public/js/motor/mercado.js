@@ -491,6 +491,9 @@ export function motivoDoVendedor(r, nomeClube) {
 export function avaliacaoAtleta(player, oferta, ctx = {}, P = MER_PARAMETROS) {
   const A = P.atleta;
   const atual = Math.max(1, player.wage || 1);
+  // MERCADO-001 (v6): a referência do atleta pesa a faixa do destino para o
+  // papel oferecido (economia.salarioDeReferencia); sem ela, o salário atual.
+  const ref = Math.max(1, ctx.salarioReferencia || atual);
   const salario = Math.max(1, oferta.salario || atual);
   // VENDA-DISPONIVEL: à venda, ele aceita o salário atual se for titular ou
   // rotação no seu time.
@@ -498,7 +501,7 @@ export function avaliacaoAtleta(player, oferta, ctx = {}, P = MER_PARAMETROS) {
     return { decisao: "aceita", motivo: null, utilidade: 0, termos: {}, aVenda: true };
   }
   const termos = {
-    salario: A.salario * Math.log(salario / atual),
+    salario: A.salario * Math.log(salario / ref),
     papel: A.papel * ((RANK_PAPEL[oferta.papel] ?? 1) - (RANK_PAPEL[ctx.papelAtual] ?? 1)),
     divisao: A.divisao * ((ctx.divisaoAtual ?? 0) - (ctx.divisaoComprador ?? 0)),
     forca: A.forca * clamp(((ctx.forcaComprador ?? 70) - (ctx.forcaAtual ?? 70)) / 10, -2, 2),
@@ -511,8 +514,8 @@ export function avaliacaoAtleta(player, oferta, ctx = {}, P = MER_PARAMETROS) {
   const semSalario = utilidade - termos.salario;
   // Arredonda para cima (R$ 100) e fica sempre acima do oferecido: pedir o
   // mesmo salário, ou menos, não faria sentido na tela.
-  const salarioPedido = Math.max(Math.ceil((atual * Math.exp((0.02 - semSalario) / A.salario)) / 100) * 100, Math.ceil((salario + 1) / 100) * 100);
-  if (utilidade >= -A.faixaConversa && salarioPedido <= atual * A.salarioPedidoTeto) {
+  const salarioPedido = Math.max(Math.ceil((ref * Math.exp((0.02 - semSalario) / A.salario)) / 100) * 100, Math.ceil((salario + 1) / 100) * 100);
+  if (utilidade >= -A.faixaConversa && salarioPedido <= ref * A.salarioPedidoTeto) {
     return { decisao: "pede", salarioPedido, motivo: "Ele aceita com um salário maior.", utilidade, termos };
   }
   return { decisao: "recusa", motivo: motivoDoAtleta(termos, ctx, oferta), utilidade, termos };

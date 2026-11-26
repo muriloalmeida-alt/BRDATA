@@ -62,7 +62,19 @@ export function contextoDoAtleta(p, clubId) {
     forcaComprador: forcaMediaDoElenco(CAREER.clubId),
     reputacao: CAREER.reputation == null ? 50 : CAREER.reputation,
     aVenda: motivosAVendaNoClube(p, clubId).length > 0, // VENDA-DISPONIVEL
+    salarioReferencia: salarioDeReferenciaNoDestino(p, CAREER.clubId, CAREER.squad),
   };
+}
+// MERCADO-001 (v6): o salário de referência do atleta no destino (a faixa da
+// divisão do comprador para o papel que ele teria lá); sem v6, null.
+export function salarioDeReferenciaNoDestino(p, destinoId, rosterDestino) {
+  const CAREER = carreiraAtual();
+  if (!economia.economiaV6(CAREER) || !CAREER.economia.salarios) return null;
+  const x = CAREER.economia.escalas[String(destinoId)];
+  const faixas = x && CAREER.economia.salarios[x[1]];
+  if (!faixas) return null;
+  const papel = economia.papelSalarial(p, mercado.papelNoElenco(p, rosterDestino || leagueSquadFor(destinoId)), 0);
+  return economia.salarioDeReferencia(p, faixas[papel] || faixas.reserva);
 }
 
 // Termos da proposta, com padrão para propostas de antes (sem os campos).
@@ -125,6 +137,8 @@ export function resolverProposta(o, round) {
     // reposição e sem cobertura não é negociado.
     const r = mercado.reservaParaProposta(p, marketClub(o.clubId), { baseValue: Math.round(o.marketValue * demanda / 1000) * 1000, fimDeJanela: fimDeJanela(), aVenda, pedidaV5: economia.economiaV5(CAREER), seasonYear: CAREER.seasonYear, caixaApertado: caixaApertado(o.clubId) });
     if (r.recusa) { recusar(o, mercado.motivoDoVendedor(r, o.clubName), "clube", round); return true; }
+    // v6: com percentual de revenda, o vendedor aceita uma taxa fixa menor.
+    if (o.revendaPct && economia.economiaV6(CAREER)) r.reserva = Math.round((r.reserva * economia.fatorDaRevenda(o.revendaPct)) / 1000) * 1000;
     const usadas = o.counterRounds || 0;
     // VENDA-DISPONIVEL: à venda, a partir da reserva (90%) o clube aceita.
     let d = aVenda && o.offerValue >= r.reserva ? { action: "accept", value: o.offerValue } : mercado.sellerNegotiationDecision(o.offerValue, r.reserva, rng);
@@ -294,6 +308,7 @@ export function contextoDoAtletaEntreClubes(p, deId, paraId) {
     forcaComprador: forcaMediaDoElenco(paraId),
     reputacao: 50,
     aVenda: motivosAVendaNoClube(p, deId).length > 0,
+    salarioReferencia: salarioDeReferenciaNoDestino(p, paraId),
   };
 }
 // O vendedor da CPU com o caixa abaixo de 1 mês de folha aceita pedir menos.

@@ -700,7 +700,7 @@ const MOTIVO_V5 = {
   fluxo: (f) => `O caixa ficaria negativo em ${fmtBRL(f)} ao longo do compromisso.`,
 };
 // Meses que faltam na temporada (pelo calendário).
-function mesesNaTemporada(CAREER) {
+export function mesesNaTemporada(CAREER) {
   const cal = CAREER.calendar;
   if (!cal || !cal.weeks) return 12;
   const meses = new Set();
@@ -723,6 +723,8 @@ export function estadoFinanceiroDoTecnico(CAREER = carreiraAtual()) {
     caixa: CAREER.finances.cash, folha: financas.wageBill(CAREER.squad), teto: CAREER.finances.wageCap,
     receitaMensal: (clube.receitaAnual || 0) / 12, despesasMensais: clube.despesasMensais || 0, margem: clube.margem || 0,
     parcelasMensais, recebiveis,
+    // v6: compromissos futuros (obrigação de compra de empréstimo).
+    compromissos: (CAREER.compromissos || []).map((c) => ({ mes: c.mes, valor: c.valor })),
     entradasPrometidas: pendentes.reduce((t, o) => t + (o.meses ? o.entrada || 0 : o.counterValue || o.offerValue || 0), 0),
     folhaPrometida: pendentes.reduce((t, o) => t + (o.salarioPedido || o.salario || 0), 0),
     // O orçamento da temporada: o da base − o gasto + as vendas recebidas na temporada.
@@ -812,6 +814,8 @@ export function finalizeIncomingPurchase(o) {
   if (o.salario) p.wage = salario;
   if (o.anos) p.contractUntil = CAREER.seasonYear + Math.max(1, Number(o.anos)) - 1;
   if (o.papel) p.promessa = { papel: o.papel, temporada: CAREER.seasonYear };
+  // v6: o percentual de revenda acordado fica com o atleta até a próxima venda.
+  if (o.revendaPct) p.revenda = { clubId: String(o.clubId), pct: o.revendaPct };
   CAREER.squad.push(p);
   pushTransferLog(`Você contratou ${p.name} do ${o.clubName} por ${fmtBRL(o.offerValue)}${o.installments > 1 ? ` (${o.installments}x)` : ""}.`, CAREER.currentRound);
   pushLedger("transferencia", `Contratação — ${p.name} (${o.clubName})${mensal ? ` — entrada (saldo em ${o.meses} meses)` : o.installments > 1 ? ` — 1ª de ${o.installments} parcelas` : ""}`, -firstPayment, CAREER.currentRound);
@@ -998,8 +1002,19 @@ export function processPendingReceivables() {
   const CAREER = carreiraAtual();
   const { total, remaining } = financas.settleInstallments(CAREER.pendingReceivables);
   CAREER.finances.cash += total;
+  // MERCADO-001 (v6): o percentual de revenda sai de cada recebimento.
+  for (const r of CAREER.pendingReceivables || []) if (r.revenda) pagarRevenda(CAREER, r.revenda, r.perRoundAmount, r.label);
   CAREER.pendingReceivables = remaining;
   return total;
+}
+// O percentual de revenda devido ao clube anterior, sobre o que entrou agora.
+export function pagarRevenda(CAREER, revenda, recebido, label) {
+  const parte = economia.parteDaRevenda(revenda, recebido);
+  if (!parte) return 0;
+  CAREER.finances.cash -= parte;
+  moverCaixaCpu(revenda.clubId, parte);
+  pushLedger("transferencia", `Percentual de revenda (${revenda.pct}%) — ${label || "venda"}`, -parte, CAREER.currentRound);
+  return parte;
 }
 
 export const UF_TO_REGION = {

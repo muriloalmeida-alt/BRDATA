@@ -31,7 +31,7 @@
 =================================================================== */
 import { CAMBIO } from "./texto.js";
 
-export const VERSAO_ECONOMIA = 5;
+export const VERSAO_ECONOMIA = 6;
 export const PERIODO_REFERENCIA = "2024/25–2025/26";
 
 // Fonte de um número: { valor, moeda, periodo, item, tipo, fonte, confianca }.
@@ -827,6 +827,11 @@ export function avaliarOperacao(e, op) {
     for (const p of e.parcelasMensais || []) if (m <= (p.meses || 0)) caixa -= p.valor;
     if (m <= meses) caixa -= porMes;
     for (const r of e.recebiveis || []) if (r.mes === m) caixa += r.valor;
+    // v6: compromissos futuros (obrigação de compra de empréstimo e a da operação).
+    for (const c of e.compromissos || []) if (c.mes === m) caixa -= c.valor;
+    // A obrigação de compra da operação: o valor no mês dela e, dali em
+    // diante, a diferença para o salário cheio (`salarioExtra`).
+    for (const c of op.compromissos || []) { if (c.mes === m) caixa -= c.valor; if (c.salarioExtra && m >= c.mes) caixa -= c.salarioExtra; }
     pior = Math.min(pior, caixa);
   }
   let motivo = null, faltam = 0;
@@ -839,6 +844,63 @@ export function avaliarOperacao(e, op) {
   return { ok: !motivo, motivo, faltam: Math.round(faltam), paga: { agora: entrada, porMes, meses, total: taxa, salario }, antes, depois, piorCaixa: Math.round(pior) };
 }
 export function economiaV5(CAREER) { return !!(CAREER && CAREER.economia && CAREER.economia.versao >= 5); }
+export function economiaV6(CAREER) { return !!(CAREER && CAREER.economia && CAREER.economia.versao >= 6); }
+
+/* ---------- Mercado, etapa 3: salários, agente livre, empréstimos e revenda (economia v6) ----------
+   Handoff do mercado, seções 3 e 4. */
+// Catálogo salarial por divisão e papel (jovem, reserva, titular, destaque):
+// faixas [p25, p75] dos salários da divisão por papel, montadas na criação da
+// carreira a partir dos contratos (o salário vigente de cada atleta fica).
+export const PAPEIS_SALARIAIS = ["jovem", "reserva", "titular", "destaque"];
+export function papelSalarial(p, papelNoElenco, percentilOverall) {
+  if ((p.age || 30) <= 21 && papelNoElenco !== "titular") return "jovem";
+  if (papelNoElenco === "titular" && percentilOverall >= 0.9) return "destaque";
+  return papelNoElenco === "titular" ? "titular" : "reserva";
+}
+export function faixasSalariais(jogadores) {
+  // jogadores: [{ wage, papel }] (papel salarial)
+  const q = (xs, f) => { const v = xs.slice().sort((a, b) => a - b); return v.length ? v[Math.min(v.length - 1, Math.floor(f * v.length))] : 0; };
+  const out = {};
+  for (const papel of PAPEIS_SALARIAIS) {
+    const ws = jogadores.filter((j) => j.papel === papel && j.wage > 0).map((j) => j.wage);
+    if (ws.length) out[papel] = [Math.round(q(ws, 0.25) / 100) * 100, Math.round(q(ws, 0.75) / 100) * 100];
+  }
+  return out;
+}
+// Salário de referência para uma oferta: a média geométrica entre o salário
+// atual e o meio da faixa do destino para o papel oferecido; o veterano livre
+// (31+) aceita até VETERANO_REDUCAO a menos pela estabilidade.
+export const VETERANO_REDUCAO = 0.2;
+export function salarioDeReferencia(p, faixa, livre = false) {
+  const atual = Math.max(0, p.wage || 0);
+  const meio = faixa ? (faixa[0] + faixa[1]) / 2 : atual;
+  let ref = atual > 0 && meio > 0 ? Math.sqrt(atual * meio) : Math.max(atual, meio);
+  if (livre && (p.age || 0) >= 31) ref *= 1 - VETERANO_REDUCAO;
+  return Math.max(100, Math.round(ref / 100) * 100);
+}
+// Agente livre: taxa zero; luvas e comissão do agente em meses de salário.
+export const LIVRE = { luvasMeses: 2, comissaoMeses: 1 };
+export function custosDoLivre(salario) {
+  return { luvas: Math.round(salario * LIVRE.luvasMeses), comissao: Math.round(salario * LIVRE.comissaoMeses) };
+}
+// Empréstimos (seção 4): desenvolvimento (destino paga 20%–50% do salário,
+// sem taxa; para jovem de até 23 anos que vai jogar) e fora dos planos
+// (destino paga 50%–100%; a taxa cai conforme o destino assume mais salário:
+// TAXA_EMPRESTIMO do valor com 50%, zero com 100%).
+export const EMPRESTIMO_V6 = { percentuais: [20, 30, 40, 50, 75, 100], desenvolvimentoMax: 50, desenvolvimentoIdade: 23, taxa: 0.1 };
+export function modalidadeDoEmprestimo(p, pct) {
+  return pct < EMPRESTIMO_V6.desenvolvimentoMax || ((p.age || 30) <= EMPRESTIMO_V6.desenvolvimentoIdade && pct === EMPRESTIMO_V6.desenvolvimentoMax) ? "desenvolvimento" : "fora-dos-planos";
+}
+export function taxaDeEmprestimo(p, pct) {
+  if (modalidadeDoEmprestimo(p, pct) === "desenvolvimento") return 0;
+  return Math.round(((p.value || 0) * EMPRESTIMO_V6.taxa * Math.max(0, (100 - pct) / 50)) / 1000) * 1000;
+}
+// Percentual de revenda (seção 3): 10%–20% da próxima venda em troca de uma
+// taxa fixa menor (o vendedor abate REVENDA_DESCONTO × o percentual).
+export const REVENDA = { faixa: [10, 20], desconto: 0.5 };
+export const fatorDaRevenda = (pct) => (pct >= REVENDA.faixa[0] && pct <= REVENDA.faixa[1] ? 1 - (REVENDA.desconto * pct) / 100 : 1);
+// O que sai de cada recebimento de uma venda para o dono do percentual.
+export const parteDaRevenda = (revenda, recebido) => (revenda && revenda.pct > 0 ? Math.round((recebido * revenda.pct) / 100) : 0);
 
 // Distribuição de preços (FIFA 2025, com taxa, em US$): fração até US$ 500
 // mil, até US$ 1 mi e acima de US$ 20 mi.

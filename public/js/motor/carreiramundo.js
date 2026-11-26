@@ -1030,11 +1030,20 @@ export function ativarEconomiaV2(CAREER, indice) {
   CAREER.economia = { versao: E.VERSAO_ECONOMIA, escalas, ligas, clube: null };
   // v5: receita e resultado anuais de cada clube (a avaliação da CPU).
   CAREER.economia.receitas = Object.fromEntries(Object.keys(receitas).map((id) => [id, [receitas[id], resultados[id]]]));
+  CAREER.economia.salarios = {};
   // Contratos: todos os elencos do save, uma vez.
   for (const id of Object.keys(escalas)) {
     const e = E.escalaDe(CAREER, id);
     elencoDoClube(CAREER, id).forEach((p) => E.aplicarEscalaNoAtleta(p, e));
     ((CAREER.basesCpu && CAREER.basesCpu[id]) || []).forEach((p) => E.aplicarEscalaNoAtleta(p, e));
+  }
+  // v6: o catálogo salarial por divisão e papel, dos contratos já escalados.
+  if (E.economiaV6(CAREER)) for (const liga of estado.divisoesDoPais(CAREER)) {
+    const ids = Object.keys(escalas).filter((id) => escalas[id][1] === liga);
+    const todos = ids.flatMap((id) => elencoDoClube(CAREER, id).filter((p) => p.origin !== "base").map((p) => ({ p, roster: elencoDoClube(CAREER, id) })));
+    const ovs = todos.map((x) => x.p.overall || 0).sort((a, b) => a - b);
+    const pct = (ov) => { let i = 0; while (i < ovs.length && ovs[i] < ov) i++; return ovs.length ? i / ovs.length : 0; };
+    CAREER.economia.salarios[liga] = E.faixasSalariais(todos.map(({ p, roster }) => ({ wage: p.wage, papel: E.papelSalarial(p, mercado.papelNoElenco(p, roster), pct(p.overall || 0)) })));
   }
   // Agentes livres: o nível e o formato da liga do técnico.
   const Lt = ligas[CAREER.competitionId];

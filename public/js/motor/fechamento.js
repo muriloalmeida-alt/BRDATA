@@ -21,8 +21,9 @@
 import { carreiraAtual, ligaAtual, todosTimes, timePorId, forcaMediaDoElenco, ganchosMundo, PARIDADE_CPU, forcaDeJogo, partidaAtual } from "./estado.js";
 import { pushNotification, generateRoundNews } from "./registro.js";
 import { fmtBRL, abbreviateName } from "./texto.js";
-import { advanceCalendarWeek, ambiente, applyFinanceEntries, avisar, calendarOn, finalizeIncomingPurchase, leagueSquadFor, maybeGenerateOffer, moverCaixaCpu, processPendingInstallments, processPendingReceivables, pushLedger, pushTransferLog, refreshAvailability, resolveLoanListingsRound, resolvePendingListingsRound, resolvePendingOffersOutRound, simulateAiTransfers, tickScoutMissions, tickStadiumUpgrade, transferWindowStatus, entrarNoElencoCpu, aplicarSuspensaoPendente, caixaDaCpu } from "./semana.js";
+import { advanceCalendarWeek, ambiente, applyFinanceEntries, avisar, calendarOn, finalizeIncomingPurchase, leagueSquadFor, maybeGenerateOffer, moverCaixaCpu, processPendingInstallments, estadoFinanceiroDoTecnico, processPendingReceivables, pushLedger, pushTransferLog, refreshAvailability, resolveLoanListingsRound, resolvePendingListingsRound, resolvePendingOffersOutRound, simulateAiTransfers, tickScoutMissions, tickStadiumUpgrade, transferWindowStatus, entrarNoElencoCpu, aplicarSuspensaoPendente, caixaDaCpu } from "./semana.js";
 import * as financas from "./financas.js";
+import * as economia from "./economia.js";
 import * as partida from "./partida.js";
 import * as rodada from "./rodada.js";
 import * as treino from "./treino.js";
@@ -782,8 +783,13 @@ export function settleLoanIn(p) {
       // não sai mais pelo valor reduzido do empréstimo).
       const wageAfter = wageBillOf(CAREER.squad) - p.wage + p.loanOriginalWage;
       buys = CAREER.finances.cash >= option.value && wageAfter <= CAREER.finances.wageCap;
+      // MERCADO-001 (v6): a opção revalida caixa, folha, parcelas e orçamento
+      // pela mesma avaliação (a taxa fixada na assinatura e o salário cheio).
+      if (buys && economia.economiaV6(CAREER)) buys = economia.avaliarOperacao(estadoFinanceiroDoTecnico(CAREER), { taxa: option.value, salario: Math.max(0, p.loanOriginalWage - p.wage) }).ok;
     }
   }
+  // A obrigação registrada na assinatura sai dos compromissos (uma vez).
+  if (CAREER.compromissos) CAREER.compromissos = CAREER.compromissos.filter((c) => c.playerId !== p.id);
   if (buys) {
     CAREER.finances.cash -= option.value;
     moverCaixaCpu(p.loanFromClubId, option.value); // PARIDADE-CPU · E3 (D2)
