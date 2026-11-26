@@ -3,9 +3,9 @@
 // idempotência (handoff em docs/economia/04_Handoff_Mercado.md, seções 3 e 4).
 // Confere, sem navegador:
 //   1) catálogo salarial por divisão e papel (jovem, reserva, titular,
-//      destaque) na criação; o atleta pesa a faixa do destino: num clube
-//      mais rico ele pede mais que o salário atual, e pode recusar condições
-//      mesmo com o clube vendedor de acordo;
+//      destaque) na criação; a oferta sugerida sai no nível da faixa do
+//      destino; o atleta pode recusar condições mesmo com o clube vendedor de
+//      acordo;
 //   2) agente livre: taxa zero ao clube anterior, salário pela faixa (o
 //      veterano aceita menos), luvas e comissão pagas e lançadas no extrato,
 //      e bloqueio pela mesma avaliação quando não cabem;
@@ -74,10 +74,12 @@ const imp = (m) => import(pathToFileURL(path.join(ROOT, "public/js/motor", m)).h
     const p = C.leagueSquads[ch].slice().sort((a, b) => b.overall - a.overall)[0];
     const ref = negociacao.salarioDeReferenciaNoDestino(p, pl);
     assert.ok(ref > p.wage, `referência ${ref} x atual ${p.wage}`);
-    const a = mercado.avaliacaoAtleta(p, { salario: p.wage, papel: "titular", anos: 3 }, { salarioReferencia: ref, papelAtual: "titular", divisaoAtual: 1, divisaoComprador: 1 });
-    assert.ok(a.decisao !== "aceita", "com o salário atual, ele não aceita: pede mais ou recusa");
-    const b = mercado.avaliacaoAtleta(p, { salario: Math.round(ref * 1.1), papel: "titular", anos: 3 }, { salarioReferencia: ref, papelAtual: "titular", divisaoAtual: 1, divisaoComprador: 1 });
-    assert.ok(b.utilidade > a.utilidade);
+    // A oferta sugerida já sai no nível do destino (não abaixo da referência).
+    assert.ok(mercado.salarioSugerido(p, "titular", { salarioReferencia: ref, papelAtual: "titular", divisaoAtual: 1, divisaoComprador: 1 }) >= ref);
+    // O atleta pode recusar condições mesmo com o clube vendedor de acordo:
+    // perder a titularidade e cair de divisão com o salário atual.
+    const a = mercado.avaliacaoAtleta(p, { salario: p.wage, papel: "reserva", anos: 3 }, { papelAtual: "titular", divisaoAtual: 0, divisaoComprador: 1, forcaAtual: 75, forcaComprador: 65 });
+    assert.strictEqual(a.decisao, "recusa");
   });
 
   await check("agente livre: taxa zero, salário pela faixa (veterano aceita menos), luvas e comissão no extrato; bloqueio pela avaliação", async () => {

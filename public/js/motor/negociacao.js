@@ -332,7 +332,9 @@ export function negociacaoCpu(p, deId, paraId) {
   const papel = mercado.papelNoElenco(p, leagueSquadFor(paraId));
   const a = mercado.avaliacaoAtleta(p, { salario: p.wage, papel, anos: 3 }, contextoDoAtletaEntreClubes(p, deId, paraId));
   if (a.decisao === "recusa") return { ok: false, motivo: "atleta recusou", atleta: a.motivo };
-  const salario = a.decisao === "pede" ? a.salarioPedido : p.wage;
+  // MERCADO-001 (v6): a CPU oferece pelo menos a referência do destino.
+  const ctxAtleta = contextoDoAtletaEntreClubes(p, deId, paraId);
+  const salario = Math.max(a.decisao === "pede" ? a.salarioPedido : p.wage, ctxAtleta.salarioReferencia || 0);
   const { wageCap, cash } = mercado.clubBudget(comprador);
   if (wageBill(leagueSquadFor(paraId)) + salario > wageCap) return { ok: false, motivo: "folha do comprador" };
   // ECON-001b: a mesma capacidade de compra do técnico (caixa com 1 mês de

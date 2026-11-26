@@ -126,13 +126,18 @@ O que foi feito:
   contratado não muda;
 - referência salarial do atleta numa oferta: a média geométrica entre o
   salário atual e o meio da faixa do destino para o papel que ele teria
-  lá. Ele pede mais para ir a um clube de divisão mais rica e pode recusar
-  mesmo com o clube vendedor de acordo;
+  lá. A oferta sugerida na tela e o salário que a CPU oferece não ficam
+  abaixo dela. A decisão do atleta segue contra o salário atual: na 1ª
+  versão a referência entrava na decisão, e quem subia da Série B recusava
+  o salário atual, travando compras comuns (7 testes de mercado no CI). O
+  atleta ainda pode recusar condições com o clube vendedor de acordo
+  (papel, divisão, força);
 - agente livre:
   - taxa zero ao clube anterior;
   - salário pela faixa do seu clube (o veterano de 31+ aceita 20% menos);
   - luvas (2 salários) e comissão do agente (1 salário) pela mesma
-    avaliação, lançadas no extrato;
+    avaliação, lançadas no extrato (os testes de agente livre passaram a
+    contar esses custos);
   - pré-contrato não é suportado hoje (fica como pendência);
 - empréstimos:
   - desenvolvimento: 20% a 50% do salário, sem taxa; só para jovem de até
