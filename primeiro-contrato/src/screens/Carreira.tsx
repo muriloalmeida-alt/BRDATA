@@ -77,12 +77,16 @@ export function TelaTemporada({ cat, c, onAvancar, onExibir, onTrajetoria, ocupa
         <p className="situacao">{situacao(c, mostrados)}</p>
         <Numeros itens={[[res.jogos, "Jogos"], [res.minutos.toLocaleString("pt-BR"), "Minutos"], [res.metrica, res.rotulo]]} />
         <p className="estimativa">Temporada {t.ano} · rodada {mostrados} de {t.jogosTotal}{t.simplificada ? " · temporada simplificada (calendário e resultados simulados)" : ""}</p>
-        <Foto nome={fundoDaPartida(card)} altura={card ? 200 : 250} />
-        {card && (
-          <div className={`partida-wrap${reduzido.current ? "" : " partida-wrap--anim"}`} key={card.chave} aria-live={emReproducao && !pausado ? "off" : "polite"}>
-            <CardPartida cat={cat} p={card} clubeId={t.clubeId} ligaNome={ligaNome} simplificada={t.simplificada} funcao={t.funcao} />
-          </div>
-        )}
+        {/* Palco: a foto é só fundo; o card do jogo fica sempre inteiro na base
+            e é a foto que encolhe quando falta altura (nunca o card). */}
+        <div className={`palco${card ? " palco--jogo" : ""}`}>
+          <Foto nome={fundoDaPartida(card)} />
+          {card && (
+            <div className={`partida-wrap${reduzido.current ? "" : " partida-wrap--anim"}`} key={card.chave} aria-live={emReproducao && !pausado ? "off" : "polite"}>
+              <CardPartida cat={cat} p={card} clubeId={t.clubeId} ligaNome={ligaNome} simplificada={t.simplificada} funcao={t.funcao} />
+            </div>
+          )}
+        </div>
       </div>
       <div className="acoes">
         {emReproducao ? (

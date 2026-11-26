@@ -189,7 +189,12 @@ button, input, select { font: inherit; color: inherit; }
 .estimativa { margin: 10px 0 0; font-size: 13px; color: var(--bd-muted); }
 
 /* ── PC-002: partida, controles e balanço detalhado ───────────────────── */
-.partida-wrap { position: relative; z-index: 2; margin-top: -84px; }
+.partida-wrap { position: relative; z-index: 2; }
+/* Palco da temporada: foto de fundo + card do jogo na base. */
+.palco { position: relative; display: flex; flex-direction: column; justify-content: flex-end; flex: 1 1 0; min-height: 120px; max-height: 420px; margin: 0 calc(-1 * var(--bd-gutter)); padding: 0 var(--bd-gutter); }
+.palco > .foto { position: absolute; inset: 0; margin: 0; min-height: 0; max-height: none; }
+.palco--jogo { flex: 1 0 auto; min-height: 0; max-height: none; padding-top: 24px; }
+.tela--fixa .palco--jogo { flex: 1 0 auto; }
 .partida-wrap--anim { animation: pc-entra .28s ease-out; }
 @keyframes pc-entra { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 .partida { padding: 14px 16px; border: 1px solid rgba(245,247,250,.35); border-radius: 14px; background: rgba(7,15,24,.9); }
@@ -231,8 +236,10 @@ button, input, select { font: inherit; color: inherit; }
 /* ── Ajuste de rolagem (26/11/2026): telas com foto têm a altura da janela;
    a foto ocupa só o espaço que sobra e a tela rola apenas se nem assim couber. */
 .tela--fixa { height: 100dvh; min-height: 0; overflow-y: auto; overscroll-behavior-y: contain; }
-.tela--fixa .tela-corpo { flex: 1 1 auto; min-height: 0; }
+.tela--fixa .tela-corpo { flex: 1 0 auto; }
 .tela--fixa .foto { flex: 1 1 0; min-height: 120px; }
+.tela--fixa .palco > .foto { min-height: 0; }
+.tela--fixa .acoes { position: relative; }
 .espaco-foto { flex: 1 1 0; min-height: 120px; }
 .grade-dados { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 16px; margin: 12px 0 0; padding: 10px 0; border-top: 1px solid var(--bd-line); border-bottom: 1px solid var(--bd-line); }
 .grade-dados div { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
@@ -249,6 +256,19 @@ button, input, select { font: inherit; color: inherit; }
 @media (max-height: 760px) {
   .propostas { gap: 10px; }
   .proposta { min-height: 66px; padding-top: 8px; padding-bottom: 8px; }
+}
+@media (max-height: 700px) {
+  .header { height: calc(var(--bd-safe-top) + 40px); padding-top: calc(var(--bd-safe-top) + 10px); }
+  .header img { height: 24px; }
+  .situacao { margin-top: 10px; font-size: 36px; }
+  .numeros { margin-top: 10px; }
+  .numero b { font-size: 32px; }
+  .partida { padding: 10px 14px; }
+  .placar { margin-top: 4px; }
+  .placar-num { font-size: 34px; }
+  .partida-adv { margin-top: 4px; font-size: 14px; }
+  .partida-sit { margin-top: 4px; font-size: 18px; }
+  .partida-marcos { margin-top: 6px; }
 }
 @media (max-width: 360px) {
   .titulo { font-size: 34px; }
