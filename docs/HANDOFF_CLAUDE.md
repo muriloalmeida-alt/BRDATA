@@ -15,7 +15,14 @@ Status: APROVADO (Murilo, 26/11/2026, "Aprovado"). Código commitado na
 branch `claude/new-session-ygru7q` (recriada a partir de `main` em cd175c2,
 #175). Os pontos de homologação 1 a 6 do relatório foram aprovados junto com
 a entrega; o ritmo dos trechos curtos pode ser ajustado depois de testado no
-iPhone.
+iPhone. Mesclado em `main` (#176, ab0e0cc), com dois ajustes pedidos pelo
+Murilo depois da aprovação:
+- rolagens desnecessárias: medido em 390×844 e 360×740, 13 estados de tela
+  rolavam; agora só rolam a lista de clubes e as trajetórias longas;
+- o card do jogo não fica mais sob Pausar/Acelerar: sobreposição 0 de
+  390×844 a 320×568.
+
+Aprovação final reconfirmada pelo Murilo em 26/11/2026 ("Aprovado").
 
 Origem: pacote "Temporada" do Murilo (26/11/2026), versionado em
 `docs/primeiro-contrato/v2/` (`LEIA_PRIMEIRO_CLAUDE.md` e `ASSETS.md`). Os 5
