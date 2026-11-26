@@ -1,0 +1,25 @@
+{
+  "name": "touchline-primeiro-contrato",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Touchline · Primeiro Contrato — carreira de atleta (app independente, rota /primeiro-contrato). Build versionado em public/primeiro-contrato/.",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "catalogo": "node scripts/importar-catalogo.mjs",
+    "build": "tsc --noEmit && vite build",
+    "typecheck": "tsc --noEmit",
+    "test": "node --test --experimental-strip-types 'src/**/*.test.ts' 'scripts/*.test.mjs'"
+  },
+  "dependencies": {
+    "react": "18.3.1",
+    "react-dom": "18.3.1"
+  },
+  "devDependencies": {
+    "@types/react": "18.3.12",
+    "@types/react-dom": "18.3.1",
+    "@vitejs/plugin-react": "4.3.4",
+    "typescript": "5.6.3",
+    "vite": "5.4.11"
+  }
+}

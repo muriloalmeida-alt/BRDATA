@@ -79,6 +79,23 @@ bump.
 
 ## Histórico completo (mais recente primeiro)
 
+### 2026-11-26 — v13.0.0  (PC-001, branch `claude/new-session-ygru7q`)
+
+- **Touchline · Primeiro Contrato** (PC-001, aprovado pelo Murilo em
+  26/11/2026): app independente de carreira de atleta em
+  `primeiro-contrato/`, com build em `public/primeiro-contrato/` e rota
+  `/primeiro-contrato`. Entraram:
+  - 16 telas das pranchas;
+  - motor puro e determinístico;
+  - catálogo versionado: 795 clubes, 34 ligas, escudos por ID;
+  - save em IndexedDB;
+  - empréstimo com retorno;
+  - aposentadoria com confirmação;
+  - cartão de legado exportável;
+  - testes do motor (18) e E2E `test_primeiro_contrato.js`.
+
+  O MERCADO-001 fica pausado na etapa 2.
+
 ### 2026-11-24 — v12.0.0  (MUNDO-001, PRs #154 a #157)
 
 > **Bump MAJOR porque:** a carreira passa de um Brasil com 3 divisões para um

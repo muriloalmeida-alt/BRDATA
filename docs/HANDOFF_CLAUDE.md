@@ -11,10 +11,10 @@ Demandas vigentes
 
 PC-001 — Touchline · Primeiro Contrato (carreira de atleta, app independente)
 
-Status: REVISÃO DO PM NECESSÁRIA (26/11/2026), branch `claude/new-session-ygru7q`.
-Base: `main` em 5060b61 (#172).
-Código ainda NÃO commitado: aguarda a aprovação do Murilo (ver "Commit" no
-relatório abaixo).
+Status: APROVADO (Murilo, 26/11/2026, "Aprovado"). Código commitado na
+branch `claude/new-session-ygru7q`. Base: `main` em 5060b61 (#172).
+As divergências visuais 1 a 9 do relatório foram aprovadas junto com a
+entrega. As fotos que faltam podem ser trocadas quando chegarem os ativos.
 
 Origem: o Murilo enviou o pacote "Primeiro Contrato" (26/11/2026). O pacote
 está versionado em `docs/primeiro-contrato/`:
