@@ -9,6 +9,55 @@ divergências, aprovação) — elas não são repetidas aqui.
 
 Demandas vigentes
 
+PC-002 — Primeiro Contrato: temporada visível, treinador e imprensa, evolução coerente
+
+Status: EM IMPLEMENTAÇÃO (26/11/2026), branch `claude/new-session-ygru7q`,
+recriada a partir de `main` em cd175c2 (#175).
+
+Origem: pacote "Temporada" do Murilo (26/11/2026), versionado em
+`docs/primeiro-contrato/v2/` (`LEIA_PRIMEIRO_CLAUDE.md` e `ASSETS.md`). Os 5
+fundos novos (WebP) estão em `primeiro-contrato/public/fundos/`.
+
+Especificação (chapéu PM; o pacote é a especificação, com estes recortes):
+1. **Temporada visível:**
+   - o motor gera o calendário da liga (rodízio entre os clubes da inscrição)
+     e o placar de todos os jogos da rodada;
+   - gols e assistências do atleta saem dos gols do próprio time;
+   - a classificação é calculada da mesma fonte;
+   - cada partida do atleta é gravada com chave estável `ano:rodada` (rodada,
+     adversário, mando, placar, situação titular/entrou/banco/indisponível,
+     minutos, nota e destaques da função);
+   - a reprodução na tela é separada do avanço do domínio: o motor avança até
+     a decisão e a tela reproduz os jogos novos em trechos de 8–15 s;
+   - controles **Pausar**, **Acelerar** e **Ir à próxima decisão**;
+   - o ponteiro da reprodução é persistido no save;
+   - com movimento reduzido, não há animação.
+2. **Treinador e imprensa**, como eventos tipados do sistema atual:
+   - plano do treinador na pré-temporada;
+   - disputa por vaga: é o evento de perda de espaço já existente, com a
+     cena nova e os textos da prancha aprovada;
+   - entrevista pós-jogo por atuação marcante ou gol decisivo do registro;
+   - rumor de saída quando há interesse concreto, com reação conforme o
+     desfecho real da janela;
+   - volta ao treino, com a cena nova na decisão de retorno.
+
+   Limite: uma conversa de pré-temporada e até duas interrupções novas
+   (entrevista e rumor) por temporada.
+3. **Evolução:**
+   - nível (capacidade duradoura);
+   - forma e confiança (no clube, mudam mais rápido após transferência,
+     adaptação ou mudança de papel);
+   - reputação (lenta; entra na observação e no mercado).
+4. **Save:**
+   - esquema v2 com migração v1 → v2;
+   - temporadas antigas preservadas com a origem "resumo";
+   - temporada em andamento migrada sem perder pendência nem jogos.
+
+Fora deste recorte: validação no Safari de um iPhone real (fica com o
+Murilo; entrego as capturas e os tempos de reprodução).
+
+⸻
+
 PC-001 — Touchline · Primeiro Contrato (carreira de atleta, app independente)
 
 Status: APROVADO (Murilo, 26/11/2026, "Aprovado"). Código commitado na
