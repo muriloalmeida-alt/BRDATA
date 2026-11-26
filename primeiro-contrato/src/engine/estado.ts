@@ -5,7 +5,7 @@ import type { Atleta } from "./atleta.ts";
 import type { Concorrente, Papel } from "./elenco.ts";
 import type { ChaveMetrica, Posicao } from "./posicoes.ts";
 
-export const SCHEMA_VERSAO = 2;
+export const SCHEMA_VERSAO = 3;
 
 export type Estatisticas = {
   gols: number;
@@ -19,6 +19,13 @@ export type Estatisticas = {
 
 export const statsVazias = (): Estatisticas => ({ gols: 0, assistencias: 0, passesDecisivos: 0, desarmes: 0, interceptacoes: 0, defesas: 0, semSofrer: 0 });
 
+// ── PC-003: termos financeiros (estimativas do jogo) ──
+export type Moeda = "BRL" | "EUR" | "GBP" | "USD";
+/** Salário mensal na moeda do país do clube. */
+export type Dinheiro = { valor: number; moeda: Moeda };
+/** Bônus único por condição cumprida (jogos na temporada). */
+export type Bonus = { jogos: number; valor: number; moeda: Moeda; ano: number; pago: boolean };
+
 export type Vinculo = {
   clubeId: string;
   clubeNome: string; // cópia para o save continuar legível se o catálogo mudar
@@ -26,6 +33,8 @@ export type Vinculo = {
   fim: number; // última temporada coberta
   papel: Papel;
   previsao: [number, number]; // % dos minutos (estimativa)
+  salario?: Dinheiro | null; // PC-003 (ausente em vínculos de saves antigos: não mapeado)
+  bonus?: Bonus | null;
 };
 
 export type Emprestimo = {
@@ -61,7 +70,11 @@ export type Partida = {
   desarmes: number;
   defesas: number;
   semSofrer: boolean;
-  marcos: Array<"estreia" | "retorno" | "golDecisivo" | "atuacao">;
+  marcos: Array<"estreia" | "retorno" | "golDecisivo" | "atuacao" | "classico">;
+  // PC-003 (ausentes em partidas antigas: contam como 0)
+  passes?: number; // passes decisivos
+  intercept?: number;
+  recepcao?: "aplausos" | "vaias" | "dividida"; // jogo no estádio do ex-clube
 };
 
 export type Campanha = { v: number; e: number; d: number; gp: number; gc: number; pts: number };
@@ -104,6 +117,9 @@ export type Temporada = {
   exibidos: number; // ponteiro da reprodução na tela (persistido)
   interrupcoes: number; // eventos novos (entrevista, rumor) nesta temporada
   origemParcial: number; // jogos anteriores à migração (sem registro por partida)
+  // PC-003
+  ausencia?: { concorrenteId: string; nome: string; de: number; ate: number } | null; // vaga aberta (índices de jogo)
+  reforco?: boolean; // o clube contratou um reforço na posição nesta temporada
 };
 
 export type RegistroTemporada = {
@@ -140,6 +156,11 @@ export type RegistroTemporada = {
   campanha?: Campanha | null;
   participantesTotal?: number;
   reputacaoDelta?: number;
+  // PC-003
+  salario?: Dinheiro | null;
+  bonusPago?: Dinheiro | null;
+  identificacao?: number; // identificação da torcida no fim da temporada
+  manchetes?: string[];
 };
 
 export type Marco = { tipo: "estreia" | "convocacao" | "titulo" | "transferencia" | "emprestimo" | "retorno" | "aposentadoria"; ano: number; texto: string; clubeId?: string };
@@ -158,11 +179,79 @@ export type Oferta = {
   motivo: string;
   taxa: number; // € mi (simulado; 0 em renovação/livre)
   salarioDestino?: number;
+  // PC-003
+  salario?: Dinheiro | null;
+  bonus?: { jogos: number; valor: number; moeda: Moeda } | null;
+  revisaoRodada?: number | null; // compromisso de revisão de papel
+  emprestimoAutorizado?: boolean;
+  validaAte?: number; // ano da janela em que a proposta vale
+  vaga?: string; // qual vaga existe no clube
+  manterVinculo?: boolean; // "ficar" negociado: mantém o contrato vigente
 };
+
+export type Pedido = "espaco" | "curto" | "condicoes" | "emprestimo";
+
+/** Uma única rodada de negociação por proposta (PC-003). */
+export type Negociacao = {
+  chave: string; // `${ano}:${caminhoId}`
+  caminhoId: string;
+  pedido: Pedido;
+  resposta: "aceita" | "alternativa" | "recusa" | "retirada";
+  razao: string;
+  termos: Oferta | null; // termos atualizados (aceita/alternativa)
+};
+
+/** Compromisso assumido pela diretoria (PC-003). */
+export type Compromisso = {
+  id: string;
+  clubeId: string;
+  clubeNome: string;
+  origem: string; // chave da decisão que o criou
+  tipo: "revisaoPapel" | "bonus" | "emprestimoAutorizado";
+  termos: string;
+  ano: number; // temporada em que vale
+  rodadaRevisao: number | null; // rodada (1..) da revisão
+  estado: "ativo" | "cumprido" | "naoCumprido" | "encerrado";
+  evidencia: string | null;
+  motivo: string | null;
+};
+
+export type ChaveCriterio = "defesas" | "defensivas" | "criacao" | "participacao" | "golsAssist";
+
+/** Plano do técnico com janela de avaliação (PC-003). */
+export type Plano = {
+  id: string;
+  clubeId: string;
+  ano: number;
+  origem: string; // chave do evento que o criou
+  tipo: "vagaAberta" | "missaoTitular" | "ajusteFuncao" | "reforco" | "treino" | "adaptacao" | "revisado";
+  funcao: Posicao;
+  criterio: { chave: ChaveCriterio; alvo90: number; rotulo: string };
+  inicio: number; // índice do primeiro jogo da janela
+  partidas: number; // partidas elegíveis na janela
+  estado: "ativo" | "atingido" | "naoAtingido" | "amostraInsuficiente" | "encerrado";
+  resultado: { jogos: number; minutos: number; valor90: number; texto: string } | null;
+};
+
+export type Declaracao = {
+  id: string;
+  ano: number;
+  rodada: number | null;
+  clubeId: string;
+  tipo: "permanencia" | "portaAberta" | "ambicao" | "grupo" | "disputa" | "fase" | "evitar";
+  texto: string;
+  origem: string; // chave da decisão
+  reapareceu: boolean;
+};
+
+export type TorcidaClube = { identificacao: number; jogos: number; marcantes: number; temporadas: number; saida: "boa" | "neutra" | "ruim" | null; ultimoAno: number };
+
+export type Manchete = { ano: number; rodada: number | null; clubeId: string; texto: string; tom: -1 | 0 | 1 };
 
 export type Opcao = { id: string; rotulo: string; detalhe?: string };
 
-export type TipoEvento = "planoTreinador" | "adaptacao" | "recuperacao" | "perdaEspaco" | "entrevista" | "rumor" | "convocacao" | "janela" | "aposentadoria";
+export type TipoEvento = "planoTreinador" | "adaptacao" | "recuperacao" | "perdaEspaco" | "entrevista" | "rumor" | "convocacao" | "janela" | "aposentadoria"
+  | "vagaAberta" | "boasEntradas" | "reforco" | "revisaoPlano" | "revisaoCompromisso" | "classico" | "arquibancada";
 
 export type Pendente = {
   tipo: TipoEvento;
@@ -171,6 +260,7 @@ export type Pendente = {
   opcoes: Opcao[];
   contexto: Record<string, string | number | boolean | null>;
   ofertas?: Oferta[];
+  negociacoes?: Record<string, Negociacao>; // PC-003: por caminho da janela
 };
 
 export type Decisao = { chave: string; tipo: TipoEvento; opcao: string; ano: number; consequencia: string };
@@ -199,6 +289,12 @@ export type Carreira = {
   ultimaConsequencia: string | null;
   convocado: boolean;
   rumor: Rumor | null; // PC-002
+  // PC-003
+  compromissos: Compromisso[];
+  planos: Plano[];
+  declaracoes: Declaracao[];
+  torcida: Record<string, TorcidaClube>;
+  manchetes: Manchete[];
 };
 
 export type Resumo = { jogos: number; minutos: number; metrica: number; chave: ChaveMetrica };

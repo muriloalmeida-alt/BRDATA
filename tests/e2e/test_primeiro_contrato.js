@@ -54,7 +54,7 @@ const base = "http://localhost:8787";
   await page.getByRole("button", { name: "Ver proposta" }).click();
   await page.waitForSelector("text=Seu primeiro contrato");
   const dados = await page.locator(".linhas-dados dd").allTextContents();
-  check("5) contrato (papel, intervalo, vínculo):", dados.length === 3 && /\d+–\d+%/.test(dados[1]) && /temporadas/.test(dados[2]), dados.join(" | "));
+  check("5) contrato (papel, intervalo, vínculo, salário):", dados.length === 4 && /(R\$|€|£|US\$)/.test(dados[3]) && /\d+–\d+%/.test(dados[1]) && /temporadas/.test(dados[2]), dados.join(" | "));
   await page.getByRole("button", { name: "Assinar contrato" }).click();
   await page.waitForSelector("text=Sua temporada");
   check("5) temporada aberta:", true);

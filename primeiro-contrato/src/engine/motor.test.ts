@@ -181,7 +181,7 @@ test("save: migra v0, recusa versão futura e lixo", () => {
   const v0 = JSON.parse(JSON.stringify(c));
   delete v0.schema; delete v0.chavesUsadas;
   const m = migrarSave(v0)!;
-  assert.equal(m.schema, 2);
+  assert.equal(m.schema, 3);
   assert.deepEqual(m.chavesUsadas, []);
   assert.equal(migrarSave({ ...c, schema: 99 }), null);
   assert.equal(migrarSave("x"), null);

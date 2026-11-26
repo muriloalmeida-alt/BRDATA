@@ -29,7 +29,7 @@ export function TelaTrajetoria({ cat, c, onVoltar, rotuloVoltar }: { cat: Catalo
                 <button type="button" aria-expanded={aberta === i} onClick={() => setAberta(aberta === i ? null : i)}>
                   <Escudo cat={cat} clubeId={p.clubeId} nome={p.clubeNome} tamanho={46} />
                   <span className="passagem-titulo">{p.inicio} · {p.clubeNome}
-                    <small>{p.emprestimo ? "Empréstimo · " : ""}{p.temporadas.length} {p.temporadas.length === 1 ? "temporada" : "temporadas"}{marcos.length ? ` · ${marcos.length} ${marcos.length === 1 ? "marco" : "marcos"}` : ""}</small>
+                    <small>{p.emprestimo ? "Empréstimo · " : ""}{p.temporadas.length} {p.temporadas.length === 1 ? "temporada" : "temporadas"}{marcos.length ? ` · ${marcos.length} ${marcos.length === 1 ? "marco" : "marcos"}` : ""}{c.torcida?.[p.clubeId] ? ` · torcida ${Math.round(c.torcida[p.clubeId].identificacao)}/100` : ""}</small>
                   </span>
                   <Direita />
                 </button>

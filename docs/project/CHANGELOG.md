@@ -79,6 +79,31 @@ bump.
 
 ## Histórico completo (mais recente primeiro)
 
+### 2026-11-26 (3) — v13.2.0  (PC-003, branch `claude/new-session-ygru7q`)
+
+- **Primeiro Contrato: relações e evolução de carreira** (PC-003, aprovado
+  pelo Murilo em 26/11/2026).
+  - **Diretoria:**
+    - negociação com um pedido por proposta;
+    - respostas: aceita, contraproposta, recusa ou retirada;
+    - salário por liga e papel, na moeda do país;
+    - bônus único por jogos;
+    - compromissos com revisão na rodada combinada.
+  - **Técnico:** planos com janela de 4 jogos e meta por função; vaga
+    aberta, boas entradas e reforço.
+  - **Imprensa e torcida:**
+    - declarações com memória e manchetes;
+    - identificação por clube;
+    - gol em clássico (rivalidades cadastradas);
+    - arquibancada;
+    - reencontro com o ex-clube.
+  - **Evolução:** sem ganho por prestígio da liga; reputação com exposição;
+    a oferta explica a vaga.
+  - **Save v3** com migração.
+  - **Testes:** 36 do motor (10 novos).
+  - **Ajustes de tela do PC-002** (#177): rolagem, card do jogo, primeira
+    dobra e símbolo do header.
+
 ### 2026-11-26 (2) — v13.1.0  (PC-002, branch `claude/new-session-ygru7q`)
 
 - **Primeiro Contrato: temporada visível, treinador e imprensa, evolução**

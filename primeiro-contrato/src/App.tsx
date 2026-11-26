@@ -5,18 +5,18 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { sugerirNacionalidade } from "./engine/atleta.ts";
 import type { Catalogo } from "./engine/catalogo.ts";
-import { abrirJanela, assinarPrimeiroContrato, avancar, decidir, marcarExibidos, novaCarreira, reproducaoPendente } from "./engine/carreira.ts";
+import { abrirJanela, assinarPrimeiroContrato, avancar, decidir, marcarExibidos, negociar, novaCarreira, reproducaoPendente } from "./engine/carreira.ts";
 import type { Carreira } from "./engine/estado.ts";
 import { novaSemente } from "./engine/rng.ts";
 import { catalogoAtivo, catalogoDoSave } from "./store/catalogo.ts";
 import { apagarSave, carregarSave, gravarSave } from "./store/persistencia.ts";
 import { TelaClube, TelaContrato, TelaInicio, TelaJogador, TelaPosicao, type Rascunho } from "./screens/Entrada.tsx";
-import { TelaBalanco, TelaConvocacao, TelaEntrevista, TelaPerdaEspaco, TelaRecuperacao, TelaRumor, TelaTemporada, TelaTreinador } from "./screens/Carreira.tsx";
-import { TelaAposentadoria, TelaComparar, TelaJanela } from "./screens/Mercado.tsx";
+import { TelaArquibancada, TelaBalanco, TelaConvocacao, TelaEntrevista, TelaPerdaEspaco, TelaRecuperacao, TelaRevisao, TelaRumor, TelaTemporada, TelaTreinador } from "./screens/Carreira.tsx";
+import { TelaAposentadoria, TelaComparar, TelaJanela, TelaNegociar } from "./screens/Mercado.tsx";
 import { TelaLegado, TelaTrajetoria } from "./screens/Legado.tsx";
 import { Dialogo } from "./ui/componentes.tsx";
 
-type Rota = "inicio" | "jogador" | "posicao" | "clube" | "contrato" | "carreira" | "trajetoria" | "comparar";
+type Rota = "inicio" | "jogador" | "posicao" | "clube" | "contrato" | "carreira" | "trajetoria" | "comparar" | "negociar";
 
 const rascunhoNovo = (): Rascunho => ({
   semente: novaSemente(), apelido: "", numero: 10, posicao: null, clubeId: null,
@@ -34,6 +34,7 @@ export function App() {
   const [rascunho, setRascunho] = useState<Rascunho>(rascunhoNovo);
   const [lista, setLista] = useState(listaInicial);
   const [janelaSel, setJanelaSel] = useState<string | null>(null);
+  const [negociando, setNegociando] = useState<string | null>(null);
   const [confirmarNova, setConfirmarNova] = useState(false);
   const [ocupado, setOcupado] = useState(false);
   const pilhaRef = useRef(pilha);
@@ -149,11 +150,19 @@ export function App() {
   if (reproducaoPendente(c) && c.fase !== "encerrada") return telaTemporada;
   const p = c.pendente;
   if (p?.tipo === "janela") {
-    if (rota === "comparar") return <TelaComparar cat={cat} c={c} p={p} selecionado={janelaSel} onDecidir={(id) => void decidirEm(id)} />;
+    if (rota === "negociar" && negociando) {
+      return <TelaNegociar key={negociando} cat={cat} c={c} p={p} caminhoId={negociando}
+        onPedir={(pedido) => void atualizar(negociar(cat, c, negociando, pedido))}
+        onDecidir={(id) => void decidirEm(id)} onVoltar={voltar} />;
+    }
+    if (rota === "comparar") return <TelaComparar cat={cat} c={c} p={p} selecionado={janelaSel} onDecidir={(id) => void decidirEm(id)} onNegociar={(id) => { setNegociando(id); ir("negociar"); }} />;
     return <TelaJanela cat={cat} c={c} p={p} selecionado={janelaSel} onSelecionar={setJanelaSel} onComparar={() => ir("comparar")} />;
   }
   if (p?.tipo === "aposentadoria") return <TelaAposentadoria c={c} p={p} onDecidir={(id) => void decidirEm(id)} />;
-  if (p?.tipo === "adaptacao" || p?.tipo === "planoTreinador") return <TelaTreinador key={p.chave} p={p} onDecidir={(id) => void decidirEm(id)} />;
+  if (p?.tipo === "adaptacao" || p?.tipo === "planoTreinador" || p?.tipo === "vagaAberta" || p?.tipo === "boasEntradas" || p?.tipo === "reforco") return <TelaTreinador key={p.chave} p={p} onDecidir={(id) => void decidirEm(id)} />;
+  if (p?.tipo === "revisaoPlano" || p?.tipo === "revisaoCompromisso") return <TelaRevisao key={p.chave} p={p} onDecidir={(id) => void decidirEm(id)} />;
+  if (p?.tipo === "classico") return <TelaEntrevista key={p.chave} p={p} onDecidir={(id) => void decidirEm(id)} />;
+  if (p?.tipo === "arquibancada") return <TelaArquibancada key={p.chave} p={p} onDecidir={(id) => void decidirEm(id)} />;
   if (p?.tipo === "recuperacao") return <TelaRecuperacao key={p.chave} p={p} onDecidir={(id) => void decidirEm(id)} />;
   if (p?.tipo === "perdaEspaco") return <TelaPerdaEspaco key={p.chave} p={p} onDecidir={(id) => void decidirEm(id)} />;
   if (p?.tipo === "entrevista") return <TelaEntrevista key={p.chave} p={p} onDecidir={(id) => void decidirEm(id)} />;

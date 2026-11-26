@@ -259,6 +259,13 @@ button, input, select { font: inherit; color: inherit; }
 .disclosures-botoes { display: flex; flex-wrap: wrap; gap: 0 20px; }
 .cmp-motivo { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 
+/* PC-003: estados de revisão, relações e imprensa */
+.chip-estado { align-self: flex-start; margin: 12px 0 0; padding: 3px 10px; border-radius: 12px; background: var(--bd-neutral-chip); font-family: var(--bd-font-display); font-weight: 600; font-size: 15px; }
+.chip-marco--neutro { background: var(--bd-neutral-chip); color: var(--bd-text); }
+.lista-relacoes { list-style: none; margin: 10px 0 0; padding: 0; display: flex; flex-direction: column; gap: 6px; font-size: 14px; line-height: 1.35; }
+.lista-relacoes b { font-family: var(--bd-font-display); font-weight: 600; font-size: 16px; }
+.manchete { margin: 10px 0 0; padding-left: 10px; border-left: 3px solid var(--bd-gold); font-size: 15px; font-style: italic; color: var(--bd-text); }
+
 @media (prefers-reduced-motion: reduce) {
   .partida-wrap--anim { animation: none; }
   .carregando::after { animation: none; width: 100%; opacity: .5; }
