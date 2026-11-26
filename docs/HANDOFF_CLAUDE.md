@@ -11,8 +11,10 @@ Demandas vigentes
 
 PC-001 — Touchline · Primeiro Contrato (carreira de atleta, app independente)
 
-Status: EM IMPLEMENTAÇÃO (26/11/2026), branch `claude/new-session-ygru7q`.
+Status: REVISÃO DO PM NECESSÁRIA (26/11/2026), branch `claude/new-session-ygru7q`.
 Base: `main` em 5060b61 (#172).
+Código ainda NÃO commitado: aguarda a aprovação do Murilo (ver "Commit" no
+relatório abaixo).
 
 Origem: o Murilo enviou o pacote "Primeiro Contrato" (26/11/2026). O pacote
 está versionado em `docs/primeiro-contrato/`:
@@ -102,6 +104,169 @@ Riscos e lacunas conhecidos:
 - 70 dos 795 clubes não têm escudo no índice e caem nas iniciais (fallback
   previsto). Outros 60 usam URL externa (sportmonks), que também cai nas
   iniciais se falhar.
+
+Relatório de implementação (26/11/2026)
+
+O que foi feito, etapas 1 e 2 completas, nas 16 telas do mapa:
+- **App independente** `primeiro-contrato/`:
+  - Vite, React e TypeScript nas mesmas versões da `carreira-v2`;
+  - build versionado em `public/primeiro-contrato/`;
+  - rota `/primeiro-contrato` no `server.js` (index da raiz do app; asset
+    inexistente é 404, como na v2);
+  - não importa nada do Modo Técnico: nem estado global, nem sessão, nem
+    `public/js/motor`.
+- **Fundação:**
+  - tokens e fontes originais do pacote (WOFF2 locais, OFL);
+  - símbolo T original (`marca-t.webp`, o mesmo da v2) como único elemento do
+    header.
+- **Catálogo:**
+  - importador `scripts/importar-catalogo.mjs`, com validação de duplicata,
+    país, liga e inscrição órfã;
+  - snapshot imutável por versão (`public/primeiro-contrato/catalogo/2026.11-1.json`)
+    e ponteiro `ativo.json`. Uma versão já publicada não é sobrescrita;
+  - escudo por ID: a cópia local do BRDATA (`LOCAL_CREST_BY_ID`, ESCUDOS-001)
+    tem precedência sobre a URL externa do índice. Com isso, 0 escudos externos
+    e 725 locais;
+  - os 70 clubes sem ativo caem nas iniciais;
+  - busca sem acento por nome e sigla, também antes dos filtros;
+  - filtros de país (agrupados por continente) e de liga;
+  - três sugestões com papéis diferentes;
+  - lista paginada de 40 em 40, com volta à posição anterior da lista.
+- **Motor puro** (`src/engine/`, sem DOM, determinístico por semente):
+  - atleta com perfis próprios de goleiro e de linha;
+  - concorrentes fictícios persistidos, marcados como simulados e calibrados
+    pela força do clube (nível da liga ± perfil de ataque e defesa do
+    catálogo);
+  - previsão de minutos em intervalo;
+  - simulação jogo a jogo, limitada às rodadas da liga. Sem formato
+    verificado (14 das 34 ligas), a temporada é "simplificada", identificada
+    na tela, sem classificação nem título;
+  - métricas por posição: gols, assistências, desarmes e jogos sem sofrer gol;
+  - evolução por idade e minutos, com pico e declínio (goleiro mais tarde);
+  - eventos tipados (id, prioridade, chave de repetição, condição, opções,
+    efeitos, texto da consequência): adaptação, volta antes da hora, perda de
+    espaço e primeira convocação;
+  - janela com renovação, transferência (taxa dentro da capacidade do
+    comprador), empréstimo (só com vaga e orçamento no destino), compra
+    depois do empréstimo e agente livre;
+  - empréstimo com origem e destino separados, retorno automático e passagem
+    preservada;
+  - aposentadoria só com confirmação: opcional a partir dos 33 anos,
+    obrigatória aos 40.
+- **Save** em IndexedDB (localStorage e memória como reserva):
+  - versão de esquema, versão do catálogo e migração explícita v0 → v1;
+  - uma única transação por avanço ou decisão;
+  - a decisão pendente volta igual depois de recarregar;
+  - repetir a resposta não aplica o efeito de novo.
+- **Cartão de legado:** PNG de 1080×1350, com compartilhamento nativo quando o
+  aparelho aceita arquivo e download como alternativa.
+
+Testes:
+- motor e importador: `npm test` em `primeiro-contrato/`, 18/18:
+  - determinismo;
+  - decisões divergentes;
+  - pendência após recarregar;
+  - efeito único;
+  - empréstimo com retorno;
+  - aposentadoria;
+  - calendário;
+  - métricas por posição;
+  - convocação única;
+  - migração;
+  - catálogo e escudos;
+- E2E novo `tests/e2e/test_primeiro_contrato.js`, PASS:
+  - rota e catálogo;
+  - 404 de asset;
+  - header só com o T;
+  - famílias e pesos computados;
+  - 11 posições com seleção única;
+  - busca sem acento;
+  - contrato;
+  - decisão;
+  - retomada depois de recarregar;
+- rota rápida 65/65;
+- suíte completa: ver abaixo;
+- `verificar-tela-antiga`: OK;
+- typecheck limpo;
+- balanceamento em 200 carreiras automáticas:
+  - fim mediano aos 35 anos;
+  - cerca de 500 jogos (p25 de 473, p75 de 521);
+  - nível de pico mediano de 76;
+  - 35% de convocados;
+  - 83% com empréstimo, com uma política de decisões que força empréstimos.
+
+Evidência (`docs/primeiro-contrato/evidencia/`):
+- as 4 pranchas com as 4 telas reais a 390 px embaixo
+  (`*_comparacao.jpg`);
+- as 16 telas a 360 px com nome longo (`360/`);
+- os estados selecionados (lima + Confirmar) e o detalhe da convocação
+  (`estado_*.jpg`);
+- o cartão exportado (`cartao_legado.jpg`).
+
+As 16 telas foram alcançadas jogando pela interface (Playwright), sem erro de
+console. Famílias computadas depois de `document.fonts.ready`:
+- título: Barlow Condensed 700;
+- CTA: Barlow Condensed 600;
+- apoio e campos: Barlow 400;
+- rótulos: Barlow 500.
+
+A navegação só por teclado foi exercitada: foco visível e setas no campo de
+posições.
+
+Divergências visuais para aprovação do Murilo:
+1. **Fotos ausentes no pacote** (`fundos/` só tem 4):
+   - lesão, banco, convocação na escada e camisa 9 de costas: usei o
+     02_estadio e o 01_tunel;
+   - retrato do cartão de legado: usei o 04_despedida.
+2. **Camisa de "Seu jogador":** é vetorial, com número dinâmico, no lugar da
+   foto.
+3. **Confirmação:** nas telas de decisão, a resposta escolhida fica lima e
+   surge o CTA "Confirmar", conforme a regra "Decisões" do briefing. As
+   pranchas mostram a ênfase direto na opção.
+4. **Textos dependentes do dado:**
+   - "O clássico é domingo" virou "O próximo jogo é contra {adversário da
+     liga}";
+   - "Tentar jogar o clássico" virou "Tentar jogar o próximo jogo";
+   - "Duas propostas chegaram" conta as propostas reais.
+5. **Elementos de apoio a mais:**
+   - em "Escolha seu clube": os grupos "Sugestões para você" e "Todos os
+     clubes · temporada 2026", e a linha do catálogo (versão e fonte);
+   - linha de jogo/temporada simplificada em "Sua temporada";
+   - fato explicativo e aviso de simulação no balanço (PROJETO.md: "um fato
+     que explique o resultado");
+   - linha "Interesse" na comparação (PROJETO.md: "exibir motivos do
+     interesse");
+   - nota "estimativas" na janela;
+   - consequência da decisão em "Sua temporada".
+6. **Título do balanço** conforme o resultado:
+   - "Você ganhou espaço";
+   - "Temporada de afirmação";
+   - "Temporada de pouco espaço";
+   - "Temporada interrompida".
+7. **Métrica principal** por posição: o meia mostra assistências, enquanto a
+   prancha mostra gols com MEI selecionado. A regra 3 do PROJETO.md prevalece
+   sobre o exemplo.
+8. **Liga com o nome canônico do catálogo** ("Brasileirão Série B"), em vez do
+   curto da prancha ("Série B").
+9. **Trajetória e comparação:** escudos por ID no lugar das letras.
+
+Gaps e riscos:
+- capturas no Chromium (emulação de 390 px), sem Safari iOS real: falta a
+  validação em iPhone (safe areas via `env()`; zoom não bloqueado);
+- "marcar interesse" em clubes durante a carreira está no motor
+  (`clubesDeInteresse` aumenta a chance de proposta), mas ainda sem tela;
+- métricas de produto (início, conclusão, compartilhamento) ficaram fora,
+  conforme o escopo;
+- a primeira convocação depende do nível (exigência de 70 a 79 pela tradição
+  da seleção), e 65% das carreiras não chegam lá.
+
+Commit: o commit do código foi barrado nesta sessão, de acordo com a regra de
+governança "sem commit de código antes da aprovação". Nesta branch estão só o
+handoff, o pacote e a evidência. O código está na área de trabalho do
+container (efêmera) e precisa ser commitado assim que o Murilo autorizar.
+
+Recomendação: aprovar a fundação e o motor, e decidir as divergências 1 a 9
+(principalmente as fotos que faltam).
 
 ⸻
 
