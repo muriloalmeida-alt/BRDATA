@@ -1,14 +1,16 @@
-// Orquestração da carreira (PC-001). API pura: cada função recebe o save e
-// devolve um save novo (nunca muta a entrada). Determinística por semente.
+// Orquestração da carreira (PC-001, PC-002). API pura: cada função recebe o
+// save e devolve um save novo (nunca muta a entrada). Determinística por
+// semente: a reprodução na tela não muda nenhum resultado.
 //
-// Loop: contrato → temporada (avança jogo a jogo até uma decisão ou o fim)
-// → balanço → janela (ou "Mais uma temporada?") → próxima temporada …
-// → encerrada.
-import { criarAtleta, evoluir, nivelNaFuncao, NAC, nomeExibicao, type Atleta } from "./atleta.ts";
+// Loop: contrato → temporada (pré-temporada; avança jogo a jogo até uma
+// decisão ou o fim) → balanço → janela (ou "Mais uma temporada?") → próxima
+// temporada … → encerrada.
+import { confiancaInicial, criarAtleta, evoluir, nivelNaFuncao, NAC, nomeExibicao, type Atleta } from "./atleta.ts";
 import { forcaClube, jogosDaTemporada, nivelLiga, type Catalogo } from "./catalogo.ts";
+import { classificacao, jogoDoClube, montarCalendario, participantes, type Calendario } from "./calendario.ts";
 import { chanceEntrar, chanceTitular, gerarConcorrentes, intervaloMinutos, papelPorParticipacao, participacaoEsperada, principalConcorrente } from "./elenco.ts";
-import { SCHEMA_VERSAO, statsVazias, type Carreira, type Decisao, type Lesao, type Oferta, type Pendente, type RegistroTemporada, type Temporada } from "./estado.ts";
-import { gerarOfertas, idadeEm, projetarPapel } from "./mercado.ts";
+import { SCHEMA_VERSAO, statsVazias, type Campanha, type Carreira, type Decisao, type Lesao, type Oferta, type Partida, type Pendente, type RegistroTemporada, type Temporada } from "./estado.ts";
+import { gerarOfertas, idadeEm, interesseConcreto, projetarPapel } from "./mercado.ts";
 import { metricaPrincipal, POS, RELACIONADAS, type Posicao } from "./posicoes.ts";
 import { clamp, rngFrom, type Rng } from "./rng.ts";
 
@@ -16,6 +18,7 @@ export const CONFIG = {
   anoInicial: 2027,
   idadeAposentadoriaVoluntaria: 33, // a partir daqui a janela pergunta "Mais uma temporada?"
   idadeLimite: 40,
+  interrupcoesPorTemporada: 2, // eventos novos (entrevista, rumor) por temporada
 };
 
 const clone = <T,>(x: T): T => JSON.parse(JSON.stringify(x)) as T;
@@ -32,6 +35,7 @@ export function novaCarreira(cat: Catalogo, d: DadosCriacao): Carreira {
     atleta: criarAtleta(d.semente, { apelido: d.apelido, nacionalidade: d.nacionalidade, numero: d.numero, posicao: d.posicao, anoInicio: anoInicial }),
     vinculo: null, emprestimo: null, temporada: null, historico: [], marcos: [], pendente: null,
     decisoes: [], chavesUsadas: [], interesseEmprestimo: false, clubesDeInteresse: [], ultimaConsequencia: null, convocado: false,
+    rumor: null,
   };
 }
 
@@ -58,8 +62,8 @@ export function sugestoesIniciais(cat: Catalogo, c: Carreira): string[] {
     const ord = pool.map((cl) => ({ id: cl.id, d: Math.abs(forcaClube(cat, cl.id) - (ef + delta)) + r.next() * 3 })).sort((a, b) => a.d - b.d);
     return ord[0]?.id;
   };
-  // Titular (clube abaixo do nível), Rotação (parelho), Promessa (clube forte,
-  // em qualquer país do catálogo).
+  // Promessa (clube forte, em qualquer país do catálogo), Rotação (parelho)
+  // e Titular (clube abaixo do nível).
   const ids = [alvo(18, cat.clubes), alvo(3, base), alvo(-6, base)].filter(Boolean) as string[];
   return [...new Set(ids)];
 }
@@ -85,18 +89,44 @@ function iniciarTemporada(cat: Catalogo, c: Carreira, ano: number) {
   const clube = cat.clube(clubeId);
   const liga = clube ? cat.liga(clube.ligaId) : undefined;
   const anterior = c.temporada;
-  const funcao: Posicao = anterior && anterior.clubeId === clubeId ? anterior.funcao : c.atleta.posicao;
+  const mesmoClube = !!anterior && anterior.clubeId === clubeId;
+  const funcao: Posicao = mesmoClube ? anterior!.funcao : c.atleta.posicao;
   const conc = gerarConcorrentes(cat, c.semente, clubeId, funcao, ano);
-  const part = participacaoEsperada(nivelNaFuncao(c.atleta, funcao), conc);
   const { jogos, simplificada } = jogosDaTemporada(liga);
+  if (!mesmoClube) {
+    // Clube novo: a confiança recomeça pelo papel previsto.
+    const papelPrev = papelPorParticipacao(participacaoEsperada(nivelNaFuncao({ ...c.atleta, confianca: 0.5 }, funcao), conc));
+    c.atleta.confianca = confiancaInicial(papelPrev);
+  }
+  const part = participacaoEsperada(nivelNaFuncao(c.atleta, funcao), conc);
   c.ano = ano;
   c.fase = "temporada";
+  if (c.rumor && c.rumor.ano < ano) c.rumor = null;
   c.temporada = {
     ano, clubeId, ligaId: clube?.ligaId ?? "", funcao, jogosTotal: jogos, simplificada, jogoAtual: 0,
     jogos: 0, titularidades: 0, minutos: 0, stats: statsVazias(), notas: 0, minutosPorJogo: [],
     concorrentes: conc, previsao: intervaloMinutos(part), papel: papelPorParticipacao(part),
     nivelInicio: c.atleta.nivel, lesao: null, riscoRecaida: 0, bonusTreino: 0, bonusAvaliacao: 0, lesoes: 0,
+    participantes: participantes(cat, liga, clubeId, jogos, c.semente, ano),
+    partidas: [], exibidos: 0, interrupcoes: 0, origemParcial: 0,
   };
+}
+
+const calCache = new Map<string, Calendario>();
+
+/** Calendário da temporada (regenerado da semente; nunca gravado inteiro). */
+export function calendarioDa(cat: Catalogo, semente: string, t: Temporada): Calendario {
+  if (!t.participantes || t.participantes.length < 2) {
+    t.participantes = participantes(cat, cat.liga(t.ligaId), t.clubeId, t.jogosTotal, semente, t.ano);
+  }
+  const chave = `${semente}|${t.ano}|${t.ligaId}|${t.jogosTotal}|${t.participantes.join(",")}`;
+  let cal = calCache.get(chave);
+  if (!cal) {
+    cal = montarCalendario(cat, semente, t.ano, t.ligaId, t.participantes, t.jogosTotal);
+    if (calCache.size > 64) calCache.clear();
+    calCache.set(chave, cal);
+  }
+  return cal;
 }
 
 function poisson(r: Rng, lambda: number): number {
@@ -106,58 +136,99 @@ function poisson(r: Rng, lambda: number): number {
   return k - 1;
 }
 
+/** Participação nos gols do time (por gol com o atleta em campo) e ações
+ *  defensivas por 90 minutos. */
 const TAXAS: Record<Posicao, { g: number; a: number; pd: number; d: number; i: number }> = {
-  CA: { g: 0.42, a: 0.12, pd: 0.8, d: 0.3, i: 0.1 },
-  PE: { g: 0.26, a: 0.2, pd: 1.3, d: 0.6, i: 0.2 },
-  PD: { g: 0.26, a: 0.2, pd: 1.3, d: 0.6, i: 0.2 },
-  MEI: { g: 0.15, a: 0.26, pd: 1.8, d: 0.9, i: 0.4 },
-  VOLE: { g: 0.05, a: 0.08, pd: 0.8, d: 2.4, i: 1.3 },
-  VOLD: { g: 0.05, a: 0.08, pd: 0.8, d: 2.4, i: 1.3 },
-  LE: { g: 0.04, a: 0.1, pd: 0.7, d: 1.7, i: 1.1 },
-  LD: { g: 0.04, a: 0.1, pd: 0.7, d: 1.7, i: 1.1 },
-  ZAGE: { g: 0.05, a: 0.03, pd: 0.2, d: 2.1, i: 1.8 },
-  ZAGD: { g: 0.05, a: 0.03, pd: 0.2, d: 2.1, i: 1.8 },
+  CA: { g: 0.3, a: 0.09, pd: 0.8, d: 0.3, i: 0.1 },
+  PE: { g: 0.17, a: 0.15, pd: 1.3, d: 0.6, i: 0.2 },
+  PD: { g: 0.17, a: 0.15, pd: 1.3, d: 0.6, i: 0.2 },
+  MEI: { g: 0.11, a: 0.2, pd: 1.8, d: 0.9, i: 0.4 },
+  VOLE: { g: 0.04, a: 0.07, pd: 0.8, d: 2.4, i: 1.3 },
+  VOLD: { g: 0.04, a: 0.07, pd: 0.8, d: 2.4, i: 1.3 },
+  LE: { g: 0.03, a: 0.08, pd: 0.7, d: 1.7, i: 1.1 },
+  LD: { g: 0.03, a: 0.08, pd: 0.7, d: 1.7, i: 1.1 },
+  ZAGE: { g: 0.04, a: 0.02, pd: 0.2, d: 2.1, i: 1.8 },
+  ZAGD: { g: 0.04, a: 0.02, pd: 0.2, d: 2.1, i: 1.8 },
   GOL: { g: 0, a: 0, pd: 0, d: 0, i: 0 },
 };
 
-/** Simula o jogo `t.jogoAtual`. */
+function jaJogouNaCarreira(c: Carreira, t: Temporada): boolean {
+  return t.jogos > 0 || c.historico.some((h) => h.jogos > 0);
+}
+
+/** Simula a rodada `t.jogoAtual` e grava a partida do atleta. */
 function simularJogo(cat: Catalogo, c: Carreira, t: Temporada) {
   const i = t.jogoAtual;
   const r = rngFrom(c.semente, "jogo", t.ano, i);
   const a = c.atleta;
+  const cal = calendarioDa(cat, c.semente, t);
+  const jogo = jogoDoClube(cat, c.semente, cal, i, t.clubeId);
+  const vinhaDeLesao = !!t.lesao;
   if (t.lesao && i >= t.lesao.retorno) t.lesao = null;
+  const f = forcaClube(cat, t.clubeId);
+  const golsPro = jogo?.golsPro ?? 0, golsContra = jogo?.golsContra ?? 0;
   let minutos = 0;
+  let situacao: Partida["situacao"] = "indisponivel";
+  const p: Partida = {
+    chave: `${t.ano}:${i + 1}`, rodada: i + 1, adversarioId: jogo?.adversarioId ?? "", adversarioNome: cat.clube(jogo?.adversarioId ?? "")?.nome ?? "",
+    mandante: jogo?.mandante ?? true, golsPro, golsContra, situacao, minutos, nota: null,
+    gols: 0, assistencias: 0, desarmes: 0, defesas: 0, semSofrer: false, marcos: [],
+  };
   if (!t.lesao) {
     const ef = nivelNaFuncao(a, t.funcao) + t.bonusAvaliacao;
     if (r.chance(chanceTitular(ef, t.concorrentes))) {
       minutos = r.chance(0.25) ? r.int(62, 85) : 90;
+      situacao = "titular";
       t.titularidades++;
     } else if (r.chance(chanceEntrar(ef, t.concorrentes))) {
       minutos = r.int(10, 32);
+      situacao = "entrou";
+    } else {
+      situacao = "banco";
     }
+    p.situacao = situacao;
     if (minutos > 0) {
-      const f = forcaClube(cat, t.clubeId);
       const q = clamp(1 + (ef - f) / 30, 0.6, 1.5);
-      const k = (minutos / 90) * q;
       const tx = TAXAS[t.funcao];
-      const s = t.stats;
-      const g = poisson(r, tx.g * k), as = poisson(r, tx.a * k);
-      s.gols += g; s.assistencias += as;
-      s.passesDecisivos += poisson(r, tx.pd * k);
-      s.desarmes += poisson(r, tx.d * k);
-      s.interceptacoes += poisson(r, tx.i * k);
-      let bonusNota = 0.6 * g + 0.35 * as;
-      if (t.funcao === "GOL") {
-        s.defesas += poisson(r, 2.6 * (minutos / 90));
-        const liga = cat.liga(t.ligaId);
-        if (minutos >= 90 && r.chance(clamp(0.3 + (f - nivelLiga(liga)) / 40, 0.12, 0.5))) { s.semSofrer++; bonusNota += 0.5; }
+      const emCampo = minutos / 90;
+      // Cada gol do time: o atleta em campo pode marcar ou dar a assistência.
+      let g = 0, as = 0;
+      for (let k = 0; k < golsPro; k++) {
+        if (!r.chance(emCampo)) continue;
+        const x = r.next();
+        if (x < tx.g * q) g++;
+        else if (x < (tx.g + tx.a) * q) as++;
       }
-      const nota = clamp(6.3 + (ef - f) / 12 + bonusNota + r.normal(0, 0.6), 4, 10);
+      const s = t.stats;
+      s.gols += g; s.assistencias += as;
+      s.passesDecisivos += poisson(r, tx.pd * emCampo * q);
+      const des = poisson(r, tx.d * emCampo * q);
+      s.desarmes += des;
+      s.interceptacoes += poisson(r, tx.i * emCampo * q);
+      p.gols = g; p.assistencias = as; p.desarmes = des;
+      let bonusNota = 0.6 * g + 0.35 * as;
+      const saldo = golsPro - golsContra;
+      bonusNota += (saldo > 0 ? 0.3 : saldo < 0 ? -0.3 : 0) * emCampo;
+      if (t.funcao === "GOL") {
+        const def = poisson(r, 2.6 * emCampo * (1 + golsContra * 0.15));
+        s.defesas += def;
+        p.defesas = def;
+        if (situacao === "titular" && minutos === 90 && golsContra === 0) { s.semSofrer++; p.semSofrer = true; bonusNota += 0.5; }
+        bonusNota -= golsContra * 0.15;
+      }
+      const nota = Math.round(clamp(6.3 + (ef - f) / 12 + bonusNota + r.normal(0, 0.6), 4, 10) * 10) / 10;
+      p.nota = nota;
+      p.minutos = minutos;
+      if (!jaJogouNaCarreira(c, t)) p.marcos.push("estreia");
+      if (vinhaDeLesao || t.partidas[t.partidas.length - 1]?.situacao === "indisponivel") p.marcos.push("retorno");
+      if (g > 0 && saldo >= 0 && saldo <= 1) p.marcos.push("golDecisivo");
+      if (nota >= 7.8) p.marcos.push("atuacao");
       t.notas += nota;
       t.jogos++;
       t.minutos += minutos;
       a.forma = clamp(a.forma * 0.8 + (nota - 6.5) * 0.25, -1, 1);
-      a.familiaridade[t.funcao] = clamp((a.familiaridade[t.funcao] ?? 0) + (minutos / 90) * 0.015, 0, 1);
+      a.confianca = clamp((a.confianca ?? 0.5) + (nota - 6.5) * 0.02, 0.05, 0.95);
+      a.familiaridade[t.funcao] = clamp((a.familiaridade[t.funcao] ?? 0) + emCampo * 0.015, 0, 1);
       // Lesão: risco base e risco residual depois de voltar antes da hora.
       const risco = 0.011 + (t.riscoRecaida > 0 ? 0.07 : 0);
       if (t.riscoRecaida > 0) t.riscoRecaida--;
@@ -171,19 +242,23 @@ function simularJogo(cat: Catalogo, c: Carreira, t: Temporada) {
       }
     } else {
       a.forma = clamp(a.forma * 0.9, -1, 1);
+      a.confianca = clamp((a.confianca ?? 0.5) - 0.004, 0.05, 0.95);
     }
   }
   t.minutosPorJogo.push(minutos);
+  t.partidas.push(p);
   t.jogoAtual++;
 }
 
 /** Situação mostrada em "Sua temporada" (derivada, nunca gravada). */
-export function situacao(c: Carreira): string {
+export function situacao(c: Carreira, ate?: number): string {
   const t = c.temporada;
   if (!t) return "";
-  if (t.lesao && t.jogoAtual < t.lesao.retorno) return "Em recuperação";
-  if (t.jogoAtual === 0) return c.emprestimo ? "Emprestado" : t.papel === "Titular" ? "Titular previsto" : "Pré-temporada";
-  const ult = t.minutosPorJogo.slice(-8);
+  const n = ate ?? t.minutosPorJogo.length;
+  const ultimaPartida = t.partidas[Math.min(n, t.partidas.length) - 1];
+  if (ate !== undefined ? ultimaPartida?.situacao === "indisponivel" : (t.lesao && t.jogoAtual < t.lesao.retorno)) return "Em recuperação";
+  if (n === 0) return c.emprestimo ? "Emprestado" : t.papel === "Titular" ? "Titular previsto" : "Pré-temporada";
+  const ult = t.minutosPorJogo.slice(0, n).slice(-8);
   const part = ult.reduce((s, m) => s + m, 0) / (Math.max(1, ult.length) * 90);
   if (part >= 0.75) return "Titular absoluto";
   if (part >= 0.5) return "Ganhando espaço";
@@ -194,10 +269,13 @@ export function situacao(c: Carreira): string {
 // ─────────────────────────────── eventos tipados ───────────────────────────────
 
 type Ctx = { cat: Catalogo; c: Carreira; t: Temporada };
+type Momento = "pre" | "checkpoint" | "posJogo" | "sempre";
 
 type DefEvento = {
   id: Pendente["tipo"];
   prioridade: number;
+  momento: Momento;
+  novo?: boolean; // conta no limite de interrupções novas da temporada
   chave: (x: Ctx) => string;
   condicao: (x: Ctx) => boolean;
   criar: (x: Ctx) => Omit<Pendente, "tipo" | "chave" | "ano">;
@@ -228,21 +306,44 @@ function exigenciaSelecao(c: Carreira): number {
   return 79 - 9 * (1 - (nac?.tradicao ?? 0.5));
 }
 
+const OPCOES_ADAPTACAO = [
+  { id: "aceitar", rotulo: "Aceitar a adaptação", detalhe: "Mais chances de jogar" },
+  { id: "manter", rotulo: "Manter minha posição", detalhe: "Evolução na função atual" },
+];
+
+function aplicarAdaptacao({ cat, c, t }: Ctx, opcao: string, p: Pendente): string {
+  const rel = p.contexto.funcao as Posicao;
+  if (opcao === "aceitar") {
+    c.atleta.familiaridade[rel] = Math.max(c.atleta.familiaridade[rel] ?? 0, 0.35);
+    t.funcao = rel;
+    t.concorrentes = gerarConcorrentes(cat, c.semente, t.clubeId, rel, t.ano);
+    c.atleta.confianca = clamp((c.atleta.confianca ?? 0.5) - 0.05, 0.05, 0.95);
+    const part = participacaoEsperada(nivelNaFuncao(c.atleta, rel), t.concorrentes);
+    t.previsao = intervaloMinutos(part);
+    t.papel = papelPorParticipacao(part);
+    return `Você passa a disputar a vaga de ${POS[rel].nome.toLowerCase()} (previsão de ${t.previsao[0]}–${t.previsao[1]}% dos minutos). A familiaridade com a função cresce com os minutos.`;
+  }
+  t.bonusTreino += 0.06;
+  return `Você segue como ${POS[t.funcao].nome.toLowerCase()}, com o treino concentrado na sua função.`;
+}
+
+const ultimaPartida = (t: Temporada) => t.partidas[t.partidas.length - 1];
+
 export const EVENTOS: readonly DefEvento[] = [
   {
-    id: "recuperacao", prioridade: 100,
+    id: "recuperacao", prioridade: 100, momento: "sempre",
     chave: ({ t }) => `recuperacao:${t.ano}:${t.lesao?.inicio ?? -1}`,
     condicao: ({ t }) => !!t.lesao && t.lesao.liberacao === t.jogoAtual && t.jogoAtual < t.lesao.retorno && t.jogoAtual < t.jogosTotal,
-    criar: ({ cat, t }) => {
-      const adv = cat.clubesDaLiga(t.ligaId).filter((x) => x.id !== t.clubeId);
-      const r = rngFrom("adversario", t.ano, t.jogoAtual, t.clubeId);
-      const rival = adv.length ? r.pick(adv).nome : "o adversário";
+    criar: ({ cat, c, t }) => {
+      const cal = calendarioDa(cat, c.semente, t);
+      const prox = jogoDoClube(cat, c.semente, cal, t.jogoAtual, t.clubeId);
+      const rival = prox ? cat.clube(prox.adversarioId)?.nome ?? "o adversário" : "o adversário";
       return {
         opcoes: [
           { id: "esperar", rotulo: "Esperar a recuperação", detalhe: "Menos risco de recaída" },
           { id: "jogar", rotulo: "Tentar jogar o próximo jogo", detalhe: "Chance de jogar · risco maior" },
         ],
-        contexto: { rival, faltam: (t.lesao?.retorno ?? 0) - t.jogoAtual },
+        contexto: { rival, rivalId: prox?.adversarioId ?? null, rodada: t.jogoAtual + 1, faltam: (t.lesao?.retorno ?? 0) - t.jogoAtual },
       };
     },
     aplicar: ({ t }, opcao, p) => {
@@ -256,16 +357,29 @@ export const EVENTOS: readonly DefEvento[] = [
     },
   },
   {
-    id: "perdaEspaco", prioridade: 30,
+    // Plano do treinador: conversa de pré-temporada quando o clube tem
+    // necessidade numa função compatível.
+    id: "planoTreinador", prioridade: 90, momento: "pre",
+    chave: ({ t }) => `planoTreinador:${t.ano}`,
+    condicao: (x) => x.t.funcao !== "GOL" && x.t.jogoAtual === 0 && funcaoComNecessidade(x) !== null,
+    criar: (x) => {
+      const rel = funcaoComNecessidade(x)!;
+      return { opcoes: OPCOES_ADAPTACAO, contexto: { funcao: rel, pergunta: `Aceita jogar ${POS[rel].funcao}?`, plano: true } };
+    },
+    aplicar: aplicarAdaptacao,
+  },
+  {
+    // Disputa por vaga: participação recente abaixo do papel previsto.
+    id: "perdaEspaco", prioridade: 30, momento: "checkpoint",
     chave: ({ t }) => `perdaEspaco:${t.ano}`,
-    condicao: ({ t }) => t.jogoAtual >= 8 && !t.lesao && participacaoRecente(t) < Math.min(0.3, t.previsao[0] / 100 - 0.05),
-    criar: () => ({
+    condicao: ({ t }) => t.jogoAtual >= 8 && !t.lesao && participacaoRecente(t) < Math.min(0.5, t.previsao[0] / 100 - 0.05),
+    criar: ({ t }) => ({
       opcoes: [
         { id: "conversar", rotulo: "Pedir uma conversa" },
         { id: "treinar", rotulo: "Focar no treino" },
         { id: "emprestimo", rotulo: "Buscar um empréstimo" },
       ],
-      contexto: {},
+      contexto: { recente: Math.round(participacaoRecente(t) * 100), previsto: `${t.previsao[0]}–${t.previsao[1]}` },
     }),
     aplicar: ({ c, t }, opcao) => {
       const top = principalConcorrente(t.concorrentes);
@@ -286,66 +400,117 @@ export const EVENTOS: readonly DefEvento[] = [
     },
   },
   {
-    id: "adaptacao", prioridade: 20,
+    id: "adaptacao", prioridade: 20, momento: "checkpoint",
     chave: ({ t }) => `adaptacao:${t.ano}`,
-    condicao: (x) => x.t.funcao !== "GOL" && x.t.jogoAtual >= 6 && participacaoRecente(x.t) < 0.5 && !x.t.lesao && funcaoComNecessidade(x) !== null,
+    condicao: (x) => x.t.funcao !== "GOL" && x.t.jogoAtual >= 6 && !x.c.chavesUsadas.includes(`planoTreinador:${x.t.ano}`)
+      && participacaoRecente(x.t) < 0.5 && !x.t.lesao && funcaoComNecessidade(x) !== null,
     criar: (x) => {
       const rel = funcaoComNecessidade(x)!;
+      return { opcoes: OPCOES_ADAPTACAO, contexto: { funcao: rel, pergunta: `Aceita jogar ${POS[rel].funcao}?` } };
+    },
+    aplicar: aplicarAdaptacao,
+  },
+  {
+    // Entrevista pós-jogo: atuação marcante confirmada no registro da partida.
+    id: "entrevista", prioridade: 25, momento: "posJogo", novo: true,
+    chave: ({ t }) => `entrevista:${t.ano}`,
+    condicao: ({ t }) => {
+      const p = ultimaPartida(t);
+      return !!p && (p.marcos.includes("golDecisivo") || (p.nota ?? 0) >= 8);
+    },
+    criar: ({ t }) => {
+      const p = ultimaPartida(t)!;
+      const decisivo = p.marcos.includes("golDecisivo");
+      const resultado = p.golsPro > p.golsContra ? "vitória" : p.golsPro < p.golsContra ? "derrota" : "empate";
       return {
         opcoes: [
-          { id: "aceitar", rotulo: "Aceitar a adaptação", detalhe: "Mais chances de jogar" },
-          { id: "manter", rotulo: "Manter minha posição", detalhe: "Evolução na função atual" },
+          { id: "valorizar", rotulo: "Valorizar o time", detalhe: "O grupo em primeiro lugar" },
+          { id: "ambicao", rotulo: "Assumir a ambição", detalhe: "Mais holofote, mais cobrança" },
+          { id: "evitar", rotulo: "Evitar a questão", detalhe: "Sem repercussão" },
         ],
-        contexto: { funcao: rel, pergunta: `Aceita jogar ${POS[rel].funcao}?` },
+        contexto: {
+          partida: p.chave, rodada: p.rodada, adversario: p.adversarioNome, adversarioId: p.adversarioId, golsPro: p.golsPro, golsContra: p.golsContra,
+          decisivo, nota: p.nota, gols: p.gols,
+          fato: decisivo ? `Seu gol garantiu ${resultado === "vitória" ? "a vitória" : "o empate"} por ${p.golsPro} × ${p.golsContra} contra o ${p.adversarioNome}.` : `Nota ${String(p.nota).replace(".", ",")} na ${resultado} por ${p.golsPro} × ${p.golsContra} contra o ${p.adversarioNome}.`,
+        },
       };
     },
-    aplicar: ({ cat, c, t }, opcao, p) => {
-      const rel = p.contexto.funcao as Posicao;
-      if (opcao === "aceitar") {
-        c.atleta.familiaridade[rel] = Math.max(c.atleta.familiaridade[rel] ?? 0, 0.35);
-        t.funcao = rel;
-        t.concorrentes = gerarConcorrentes(cat, c.semente, t.clubeId, rel, t.ano);
-        return `Você passa a disputar a vaga de ${POS[rel].nome.toLowerCase()}. A familiaridade com a função cresce com os minutos.`;
+    aplicar: ({ c }, opcao) => {
+      const a = c.atleta;
+      if (opcao === "valorizar") {
+        a.reputacao = clamp(a.reputacao + 1, 0, 100); a.cobertura += 1;
+        a.confianca = clamp(a.confianca + 0.05, 0.05, 0.95);
+        return "A fala repercutiu bem no vestiário: mais confiança do treinador e +1 de reputação.";
       }
-      t.bonusTreino += 0.06;
-      return `Você segue como ${POS[t.funcao].nome.toLowerCase()}, com o treino concentrado na sua função.`;
+      if (opcao === "ambicao") {
+        a.reputacao = clamp(a.reputacao + 3, 0, 100); a.cobertura += 2; a.expectativa = clamp(a.expectativa + 1, 0, 3);
+        return "A frase virou manchete: +3 de reputação e mais cobrança. Uma temporada abaixo da previsão vai pesar no balanço.";
+      }
+      return "Você saiu sem polêmica. A atuação fica registrada, sem repercussão extra.";
     },
   },
   {
-    id: "convocacao", prioridade: 10,
+    // Rumor de saída: interesse concreto de outro clube, que vira proposta na
+    // janela se ainda couber no orçamento dele.
+    id: "rumor", prioridade: 15, momento: "checkpoint", novo: true,
+    chave: ({ t }) => `rumor:${t.ano}`,
+    condicao: ({ cat, c, t }) => t.jogoAtual >= Math.floor(t.jogosTotal * 0.6) && !c.emprestimo && interesseConcreto(cat, c) !== null,
+    criar: ({ cat, c }) => {
+      const id = interesseConcreto(cat, c)!;
+      return {
+        opcoes: [
+          { id: "ficar", rotulo: "Declarar que quer ficar", detalhe: "Compromisso com o clube" },
+          { id: "aberta", rotulo: "Manter a porta aberta", detalhe: "Sinal para o mercado" },
+          { id: "evitar", rotulo: "Evitar o assunto", detalhe: "Sem compromisso" },
+        ],
+        contexto: { clubeId: id, clube: cat.clube(id)?.nome ?? id },
+      };
+    },
+    aplicar: ({ c, t }, opcao, p) => {
+      c.rumor = { clubeId: String(p.contexto.clubeId), clubeNome: String(p.contexto.clube), ano: t.ano, resposta: opcao as "ficar" | "aberta" | "evitar" };
+      if (opcao === "ficar") return `Você disse que quer ficar. A reação depende do que acontecer na janela, se o ${p.contexto.clube} fizer proposta.`;
+      if (opcao === "aberta") return `Você deixou a porta aberta. O ${p.contexto.clube} segue atento; a reação do clube depende da janela.`;
+      return "Você evitou o assunto. O interesse continua, sem compromisso.";
+    },
+  },
+  {
+    id: "convocacao", prioridade: 10, momento: "checkpoint",
     chave: () => "convocacao",
     condicao: ({ cat, c, t }) => {
       if (c.convocado || idadeEm(c.atleta, t.ano) < 18) return false;
       const part = t.jogoAtual >= 8 ? t.minutos / (90 * t.jogoAtual) : (c.historico[c.historico.length - 1]?.participacao ?? 0);
-      return c.atleta.nivel >= exigenciaSelecao(c) && part >= 0.5 && nivelLiga(cat.liga(t.ligaId)) >= 60;
+      return c.atleta.nivel + (c.atleta.reputacao ?? 0) / 25 >= exigenciaSelecao(c) && part >= 0.5 && nivelLiga(cat.liga(t.ligaId)) >= 60;
     },
     criar: ({ c, t }) => {
       const nac = NAC[c.atleta.nacionalidade];
       return {
         opcoes: [{ id: "ok", rotulo: "Continuar" }],
-        contexto: { selecao: nac?.selecao ?? "Seleção", ano: t.ano, nivel: c.atleta.nivel, exigencia: Math.round(exigenciaSelecao(c)) },
+        contexto: { selecao: nac?.selecao ?? "Seleção", ano: t.ano, nivel: c.atleta.nivel, exigencia: Math.round(exigenciaSelecao(c)), reputacao: Math.round(c.atleta.reputacao ?? 0) },
       };
     },
     aplicar: ({ c, t }, _o, p) => {
       c.convocado = true;
+      c.atleta.reputacao = clamp((c.atleta.reputacao ?? 0) + 5, 0, 100);
       c.marcos.push({ tipo: "convocacao", ano: t.ano, texto: `Primeira convocação · ${p.contexto.selecao}` });
-      return "Convocação registrada na sua trajetória.";
+      return "Convocação registrada na sua trajetória (+5 de reputação).";
     },
   },
 ];
 
 const EVENTO = Object.fromEntries(EVENTOS.map((e) => [e.id, e])) as Record<Pendente["tipo"], DefEvento>;
 
-function avaliarEventos(cat: Catalogo, c: Carreira, emCheckpoint: boolean): boolean {
+function avaliarEventos(cat: Catalogo, c: Carreira, momentos: Momento[]): boolean {
   const t = c.temporada!;
   const x: Ctx = { cat, c, t };
   const cand = [...EVENTOS].sort((a, b) => b.prioridade - a.prioridade);
   for (const ev of cand) {
-    if (ev.id !== "recuperacao" && !emCheckpoint) continue;
+    if (!momentos.includes(ev.momento)) continue;
+    if (ev.novo && t.interrupcoes >= CONFIG.interrupcoesPorTemporada) continue;
     const chave = ev.chave(x);
     if (c.chavesUsadas.includes(chave)) continue;
     if (!ev.condicao(x)) continue;
     c.pendente = { tipo: ev.id, chave, ano: t.ano, ...ev.criar(x) };
+    if (ev.novo) t.interrupcoes++;
     return true;
   }
   return false;
@@ -360,15 +525,49 @@ export function avancar(cat: Catalogo, entrada: Carreira): Carreira {
   c.ultimaConsequencia = null;
   const t = c.temporada!;
   while (t.jogoAtual < t.jogosTotal) {
-    const cp = checkpoints(t).includes(t.jogoAtual);
-    if (avaliarEventos(cat, c, cp)) return c;
+    const momentos: Momento[] = ["sempre"];
+    if (t.jogoAtual === 0) momentos.push("pre");
+    if (checkpoints(t).includes(t.jogoAtual)) momentos.push("checkpoint");
+    if (avaliarEventos(cat, c, momentos)) return c;
     simularJogo(cat, c, t);
+    if (avaliarEventos(cat, c, ["posJogo"])) return c;
   }
   encerrarTemporada(cat, c);
   return c;
 }
 
+/** Ponteiro da reprodução (a tela persiste até onde já mostrou). */
+export function marcarExibidos(entrada: Carreira, n: number): Carreira {
+  const t = entrada.temporada;
+  if (!t) return entrada;
+  const alvo = clamp(Math.round(n), t.exibidos, t.partidas.length);
+  if (alvo === t.exibidos) return entrada;
+  return { ...entrada, temporada: { ...t, exibidos: alvo } };
+}
+
+export function reproducaoPendente(c: Carreira): boolean {
+  const t = c.temporada;
+  return !!t && t.exibidos < t.partidas.length;
+}
+
 // ─────────────────────────────── fim de temporada ───────────────────────────────
+
+/** Rodada em que o atleta ganhou (ou perdeu) a vaga: começa uma sequência de
+ *  4 titularidades em 5 jogos (ou sai dela). */
+export function rodadaDaVaga(partidas: readonly Partida[], tipo: "ganhou" | "perdeu"): number | null {
+  const tit = partidas.map((p) => p.situacao === "titular");
+  const seq = (i: number) => tit.slice(i, i + 5).filter(Boolean).length >= 4;
+  if (tipo === "ganhou") {
+    for (let i = 0; i + 5 <= tit.length; i++) if (seq(i) && (i === 0 ? false : !seq(i - 1)) && tit[i]) return partidas[i].rodada;
+    return null;
+  }
+  let antes = false;
+  for (let i = 0; i + 5 <= tit.length; i++) {
+    if (seq(i)) antes = true;
+    else if (antes && !seq(i)) return partidas[i].rodada;
+  }
+  return null;
+}
 
 function encerrarTemporada(cat: Catalogo, c: Carreira) {
   const t = c.temporada!;
@@ -377,13 +576,18 @@ function encerrarTemporada(cat: Catalogo, c: Carreira) {
   const liga = cat.liga(t.ligaId);
   const idade = idadeEm(a, t.ano);
   const part = t.minutos / (90 * t.jogosTotal);
-  const delta = evoluir(a, idade, part, t.bonusTreino, c.semente, t.ano);
-  let posicaoLiga: number | null = null;
-  if (!t.simplificada && liga) {
-    const r = rngFrom(c.semente, "classificacao", t.ano, t.ligaId);
-    const tabela = cat.clubesDaLiga(liga.id).map((x) => ({ id: x.id, v: forcaClube(cat, x.id) + r.normal(0, 4) })).sort((p, q) => q.v - p.v);
-    posicaoLiga = tabela.findIndex((x) => x.id === t.clubeId) + 1 || null;
-  }
+  const media = t.jogos ? Math.round((t.notas / t.jogos) * 10) / 10 : 0;
+  const qualidade = t.jogos ? clamp((media - 5.8) / 1.2, 0.6, 1.3) : 1;
+  // Ambiente de treino: um clube acima do nível do atleta acelera a evolução
+  // (mantém viável a rota de banco em clube maior, sem igualar os minutos).
+  const ambiente = clamp((forcaClube(cat, t.clubeId) - a.nivel) / 30, 0, 0.5);
+  evoluir(a, idade, clamp(part * qualidade, 0, 1), t.bonusTreino + ambiente, c.semente, t.ano);
+  // Classificação e campanha da mesma fonte dos placares.
+  const cal = calendarioDa(cat, c.semente, t);
+  const tabela = classificacao(cat, c.semente, cal, t.jogosTotal);
+  const linha = tabela.find((l) => l.clubeId === t.clubeId);
+  const campanha: Campanha | null = linha ? { v: linha.v, e: linha.e, d: linha.d, gp: linha.gp, gc: linha.gc, pts: linha.pts } : null;
+  const posicaoLiga = !t.simplificada && linha ? tabela.indexOf(linha) + 1 : null;
   const titulo = posicaoLiga === 1;
   const anterior = c.historico[c.historico.length - 1];
   const top = principalConcorrente(t.concorrentes);
@@ -392,14 +596,28 @@ function encerrarTemporada(cat: Catalogo, c: Carreira) {
   else if (part * 100 >= t.previsao[1] || (anterior && part - anterior.participacao >= 0.15)) resultado = "ganhou";
   else if (part * 100 < t.previsao[0] - 5) resultado = "perdeu";
   else resultado = "manteve";
-  const media = t.jogos ? Math.round((t.notas / t.jogos) * 10) / 10 : 0;
+  const pct = Math.round(part * 100);
+  const vagaG = rodadaDaVaga(t.partidas, "ganhou");
+  const vagaP = rodadaDaVaga(t.partidas, "perdeu");
+  const primeiraLesao = t.partidas.find((p) => p.situacao === "indisponivel");
+  const fora = t.partidas.filter((p) => p.situacao === "indisponivel").length;
   const fato = resultado === "ganhou"
-    ? (top ? `Você superou ${top.nome} (concorrente simulado, nível ${top.nivel}) e jogou ${Math.round(part * 100)}% dos minutos; a previsão era ${t.previsao[0]}–${t.previsao[1]}%.` : `Você jogou ${Math.round(part * 100)}% dos minutos.`)
+    ? (vagaG ? `Você ganhou a vaga na rodada ${vagaG} e terminou com ${pct}% dos minutos (previsão: ${t.previsao[0]}–${t.previsao[1]}%).`
+      : top ? `Você superou ${top.nome} (concorrente simulado, nível ${top.nivel}) e jogou ${pct}% dos minutos; a previsão era ${t.previsao[0]}–${t.previsao[1]}%.` : `Você jogou ${pct}% dos minutos.`)
     : resultado === "perdeu"
-      ? `${top ? `${top.nome} (concorrente simulado, nível ${top.nivel}) ficou com a vaga` : "A concorrência ficou com a vaga"}: você jogou ${Math.round(part * 100)}% dos minutos, abaixo da previsão de ${t.previsao[0]}–${t.previsao[1]}%.`
+      ? (vagaP ? `Você perdeu a vaga na rodada ${vagaP} e terminou com ${pct}% dos minutos, abaixo da previsão de ${t.previsao[0]}–${t.previsao[1]}%.`
+        : `${top ? `${top.nome} (concorrente simulado, nível ${top.nivel}) ficou com a vaga` : "A concorrência ficou com a vaga"}: você jogou ${pct}% dos minutos, abaixo da previsão de ${t.previsao[0]}–${t.previsao[1]}%.`)
       : resultado === "lesao"
-        ? `As lesões tiraram você de ${t.minutosPorJogo.filter((m) => m === 0).length} jogos.`
+        ? (primeiraLesao ? `Uma lesão na rodada ${primeiraLesao.rodada} tirou você de ${fora} jogos.` : `As lesões tiraram você de ${t.minutosPorJogo.filter((m) => m === 0).length} jogos.`)
         : `Média ${media.toLocaleString("pt-BR")} em ${t.jogos} jogos, dentro da previsão de ${t.previsao[0]}–${t.previsao[1]}% dos minutos.`;
+  // Reputação: efeito lento dos feitos, da competição e da cobertura.
+  const m = metricaPrincipal(a.posicao);
+  const repAntes = a.reputacao ?? 0;
+  let rep = repAntes * 0.96 + part * 3 * (nivelLiga(liga) / 70) + (t.jogos ? (media - 6.5) * 2 * part : 0)
+    + t.stats.gols * 0.12 + t.stats.assistencias * 0.08 + (titulo ? 4 : 0);
+  if ((a.expectativa ?? 0) > 0 && resultado === "perdeu") rep -= a.expectativa * 1.5;
+  a.reputacao = clamp(Math.round(rep * 10) / 10, 0, 100);
+  a.expectativa = 0;
   const reg: RegistroTemporada = {
     ano: t.ano, idade, clubeId: t.clubeId, clubeNome: clube?.nome ?? c.emprestimo?.clubeNome ?? c.vinculo?.clubeNome ?? "",
     ligaId: t.ligaId, ligaNome: liga?.nome ?? "", pais: liga?.pais ?? "",
@@ -407,8 +625,10 @@ function encerrarTemporada(cat: Catalogo, c: Carreira) {
     papel: papelPorParticipacao(part), previsao: t.previsao, jogos: t.jogos, jogosTotal: t.jogosTotal, minutos: t.minutos,
     participacao: Math.round(part * 1000) / 1000, stats: t.stats, media, nivelInicio: t.nivelInicio, nivelFim: a.nivel,
     posicaoLiga, titulo, simplificada: t.simplificada, lesoes: t.lesoes, fato, resultado,
+    origem: t.origemParcial > 0 ? "resumo" : "jogo-a-jogo", titularidades: t.titularidades, partidas: t.partidas,
+    campanha, participantesTotal: t.participantes.length, reputacaoDelta: Math.round((a.reputacao - repAntes) * 10) / 10,
   };
-  void delta;
+  void m;
   c.historico.push(reg);
   if (titulo) c.marcos.push({ tipo: "titulo", ano: t.ano, texto: `Campeão · ${liga?.nome ?? ""}`, clubeId: t.clubeId });
   // Empréstimo termina: o atleta volta ao clube de origem.
@@ -418,7 +638,6 @@ function encerrarTemporada(cat: Catalogo, c: Carreira) {
   }
   c.interesseEmprestimo = c.interesseEmprestimo && part < 0.5;
   c.fase = "balanco";
-  // A primeira convocação também pode sair no fechamento da temporada.
   avaliarConvocacaoFinal(cat, c);
 }
 
@@ -430,11 +649,28 @@ function avaliarConvocacaoFinal(cat: Catalogo, c: Carreira) {
   if (!c.chavesUsadas.includes(chave) && ev.condicao(x)) c.pendente = { tipo: "convocacao", chave, ano: t.ano, ...ev.criar(x) };
 }
 
-export function resumoTemporada(c: Carreira) {
+/** Totais das partidas já mostradas (ou de todas). */
+export function resumoTemporada(c: Carreira, ate?: number) {
   const t = c.temporada;
   if (!t) return null;
-  const m = metricaPrincipal(t.funcao === "GOL" ? "GOL" : c.atleta.posicao);
-  return { jogos: t.jogos, minutos: t.minutos, metrica: t.stats[m.chave], rotulo: m.rotulo };
+  const m = metricaPrincipal(c.atleta.posicao);
+  const total = { jogos: t.jogos, minutos: t.minutos, metrica: t.stats[m.chave], rotulo: m.rotulo };
+  if (ate === undefined || ate >= t.partidas.length) return total;
+  // Totais até a partida `ate`: o total menos as partidas ainda não mostradas.
+  const val = (p: Partida) => (m.chave === "gols" ? p.gols : m.chave === "assistencias" ? p.assistencias : m.chave === "desarmes" ? p.desarmes : p.semSofrer ? 1 : 0);
+  const resto = t.partidas.slice(Math.max(0, ate));
+  return {
+    jogos: total.jogos - resto.filter((p) => p.minutos > 0).length,
+    minutos: total.minutos - resto.reduce((s, p) => s + p.minutos, 0),
+    metrica: total.metrica - resto.reduce((s, p) => s + val(p), 0), rotulo: m.rotulo,
+  };
+}
+
+/** Tabela da temporada corrente até a rodada `ate` (mesma fonte). */
+export function tabelaDaTemporada(cat: Catalogo, c: Carreira, ate?: number) {
+  const t = c.temporada;
+  if (!t) return [];
+  return classificacao(cat, c.semente, calendarioDa(cat, c.semente, t), ate ?? t.jogoAtual);
 }
 
 // ─────────────────────────── janela e aposentadoria ───────────────────────────
@@ -480,7 +716,7 @@ function criarJanela(c: Carreira, ofertas: Oferta[]) {
   };
 }
 
-function aceitarOferta(cat: Catalogo, c: Carreira, o: Oferta) {
+function aceitarOferta(c: Carreira, o: Oferta) {
   const anoNovo = c.ano + 1;
   if (o.tipo === "renovacao" && c.vinculo) {
     c.vinculo = { ...c.vinculo, fim: c.ano + o.duracao, papel: o.papel, previsao: o.previsao };
@@ -498,8 +734,26 @@ function aceitarOferta(cat: Catalogo, c: Carreira, o: Oferta) {
   c.emprestimo = null;
   c.interesseEmprestimo = false;
   c.marcos.push({ tipo: "transferencia", ano: anoNovo, texto: `${o.tipo === "compra" ? "Comprado pelo" : "Transferência para o"} ${o.clubeNome}`, clubeId: o.clubeId });
-  void cat;
   return `Contrato com o ${o.clubeNome} até ${c.vinculo.fim}.`;
+}
+
+/** Reação ao rumor conforme o desfecho real da janela. */
+function reacaoAoRumor(c: Carreira, foiPara: string | null): string {
+  const r = c.rumor;
+  c.rumor = null;
+  if (!r || r.ano !== c.ano || !r.resposta) return "";
+  const a = c.atleta;
+  const foiParaRumor = foiPara === r.clubeId;
+  if (r.resposta === "ficar") {
+    if (foiParaRumor) { a.reputacao = clamp(a.reputacao - 2, 0, 100); return ` Você tinha dito que queria ficar; a ida ao ${r.clubeNome} repercutiu mal (−2 de reputação).`; }
+    if (foiPara === null) { a.confianca = clamp(a.confianca + 0.1, 0.05, 0.95); return " O clube valorizou sua palavra: mais confiança do treinador."; }
+    return "";
+  }
+  if (r.resposta === "aberta") {
+    if (foiParaRumor) { a.reputacao = clamp(a.reputacao + 1, 0, 100); return ` A saída para o ${r.clubeNome} foi coerente com o que você disse (+1 de reputação).`; }
+    if (foiPara === null) { a.confianca = clamp(a.confianca - 0.05, 0.05, 0.95); return " Ficar depois de deixar a porta aberta esfriou a relação com o treinador."; }
+  }
+  return "";
 }
 
 // ─────────────────────────────────── decisões ───────────────────────────────────
@@ -515,7 +769,9 @@ export function decidir(cat: Catalogo, entrada: Carreira, opcao: string): Carrei
   let consequencia = "";
   if (pend.tipo === "janela") {
     const o = pend.ofertas?.find((x) => x.id === opcao);
-    consequencia = o ? aceitarOferta(cat, c, o) : (pend.contexto.voltaDeEmprestimo ? `Você volta ao ${c.vinculo?.clubeNome}.` : `Você segue no ${c.vinculo?.clubeNome}.`);
+    consequencia = o ? aceitarOferta(c, o) : (pend.contexto.voltaDeEmprestimo ? `Você volta ao ${c.vinculo?.clubeNome}.` : `Você segue no ${c.vinculo?.clubeNome}.`);
+    const ficou = !o || o.tipo === "renovacao";
+    consequencia += reacaoAoRumor(c, ficou ? null : o!.clubeId);
     iniciarTemporada(cat, c, c.ano + 1);
   } else if (pend.tipo === "aposentadoria") {
     if (opcao === "encerrar") {

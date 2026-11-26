@@ -5,7 +5,7 @@ import { nivelNaFuncao, type Atleta } from "./atleta.ts";
 import { forcaClube, jogosDaTemporada, type Catalogo } from "./catalogo.ts";
 import { gerarConcorrentes, intervaloMinutos, papelPorParticipacao, participacaoEsperada, principalConcorrente } from "./elenco.ts";
 import type { Carreira, Oferta, TipoOferta } from "./estado.ts";
-import { POS, type Posicao } from "./posicoes.ts";
+import { metricaPrincipal, POS, type Posicao } from "./posicoes.ts";
 import { clamp, rngFrom } from "./rng.ts";
 
 export const idadeEm = (a: Atleta, ano: number) => ano - a.anoNascimento;
@@ -24,7 +24,9 @@ export function capacidadeClube(forca: number): number {
 /** Papel e previsão do atleta num clube, para a temporada `ano`. */
 export function projetarPapel(cat: Catalogo, c: Carreira, clubeId: string, ano: number, funcao: Posicao = c.atleta.posicao) {
   const conc = gerarConcorrentes(cat, c.semente, clubeId, funcao, ano);
-  const ef = nivelNaFuncao(c.atleta, funcao);
+  // Em outro clube a confiança é neutra (a do clube atual não se transfere).
+  const atual = (c.emprestimo?.clubeId ?? c.vinculo?.clubeId) === clubeId;
+  const ef = nivelNaFuncao(atual ? c.atleta : { ...c.atleta, confianca: 0.5 }, funcao);
   const part = participacaoEsperada(ef, conc);
   const previsao = intervaloMinutos(part);
   const clube = cat.clube(clubeId);
@@ -49,9 +51,11 @@ function motivoInteresse(cat: Catalogo, c: Carreira, clubeId: string, anoNovo: n
   const top = principalConcorrente(conc);
   const ult = c.historico[c.historico.length - 1];
   const idade = idadeEm(a, anoNovo);
-  if (top && top.nivel < nivelNaFuncao(a, a.posicao)) return `Busca ${POS[a.posicao].nome.toLowerCase()}: o titular simulado tem nível ${top.nivel}.`;
+  const m = metricaPrincipal(a.posicao);
+  const temporada = ult && ult.jogos > 0 ? `${ult.jogos} jogos${ult.stats[m.chave] ? `, ${ult.stats[m.chave]} ${m.rotulo.toLowerCase()}` : ""} e nota ${ult.media.toLocaleString("pt-BR")} em ${ult.ano}` : null;
+  if (top && top.nivel < nivelNaFuncao({ ...a, confianca: 0.5 }, a.posicao)) return `Busca ${POS[a.posicao].nome.toLowerCase()}: o titular simulado tem nível ${top.nivel}.${temporada ? ` Viu seus ${temporada}.` : ""}`;
+  if (temporada) return `Acompanhou seus ${temporada}.`;
   if (idade <= 21 && a.potencial - a.nivel >= 8) return "Aposta no seu potencial.";
-  if (ult && ult.jogos > 0) return `Acompanhou seus ${ult.jogos} jogos em ${ult.ano}.`;
   return "Quer reforçar a posição.";
 }
 
@@ -97,9 +101,22 @@ export function gerarOfertas(cat: Catalogo, c: Carreira): Oferta[] {
     }
   }
 
-  // Transferências definitivas.
-  const desempenho = clamp(0.35 + part * 0.9 + (ult ? (ult.media - 6.5) * 0.25 : 0), 0.15, 1.3);
-  const teto = ef + 4 + (idade <= 22 ? Math.max(0, a.potencial - a.nivel) * 0.35 : 0) + part * 3;
+  // Rumor da temporada: o interesse concreto vira proposta se ainda couber
+  // no orçamento do clube (a reação ao rumor depende deste desfecho).
+  if (c.rumor && c.rumor.ano === ano && !usados.has(c.rumor.clubeId) && idade < 39) {
+    const f = forcaClube(cat, c.rumor.clubeId);
+    const taxa = restante >= 1 ? valor : 0;
+    if (taxa <= capacidadeClube(f) * 0.8) {
+      ofertas.push(montarOferta(cat, c, "transferencia", c.rumor.clubeId, anoNovo, idade >= 31 ? 1 : idade >= 27 ? 2 : 3,
+        `O interesse noticiado em ${ano} virou proposta. ${motivoInteresse(cat, c, c.rumor.clubeId, anoNovo)}`, taxa));
+      usados.add(c.rumor.clubeId);
+    }
+  }
+
+  // Transferências definitivas. A reputação amplia a observação e o teto.
+  const rep = a.reputacao ?? 0;
+  const desempenho = clamp(0.35 + part * 0.9 + (ult ? (ult.media - 6.5) * 0.25 : 0) + rep / 80, 0.15, 1.8);
+  const teto = ef + 4 + (idade <= 22 ? Math.max(0, a.potencial - a.nivel) * 0.35 : 0) + part * 3 + rep / 12;
   const piso = ef - 14;
   const candidatos = cat.clubes
     .filter((cl) => !usados.has(cl.id))
@@ -108,7 +125,7 @@ export function gerarOfertas(cat: Catalogo, c: Carreira): Oferta[] {
     .sort((x, y) => x.sorte - y.sorte);
   let transf = 0;
   for (const { cl, f, sorte } of candidatos) {
-    if (transf >= 2 || idade >= 39) break;
+    if (transf + ofertas.filter((o) => o.tipo === "transferencia").length >= 2 || idade >= 39) break;
     const interesse = c.clubesDeInteresse.includes(cl.id) ? 0.35 : 0;
     if (sorte > 0.08 * desempenho + interesse + (idade > 33 ? -0.03 : 0)) continue;
     const taxa = restante >= 1 ? valor : 0;
@@ -161,3 +178,36 @@ export function vinculoTexto(o: Oferta): string {
   return o.tipo === "renovacao" ? `Renovação (${anos})` : o.tipo === "emprestimo" ? "Empréstimo (1 ano)" : `${o.tipo === "compra" ? "Compra" : "Transferência"} (${anos})`;
 }
 
+
+/**
+ * Interesse concreto de outro clube durante a temporada (rumor de saída):
+ * um clube com necessidade na posição, nível compatível e orçamento para a
+ * taxa, observando o desempenho até aqui. Determinístico por semente e ano.
+ */
+export function interesseConcreto(cat: Catalogo, c: Carreira): string | null {
+  const t = c.temporada;
+  if (!t || !c.vinculo || t.jogoAtual < 8) return null;
+  const a = c.atleta;
+  const idade = idadeEm(a, t.ano + 1);
+  if (idade >= 34) return null;
+  const part = t.minutos / (90 * t.jogoAtual);
+  const media = t.jogos ? t.notas / t.jogos : 0;
+  const rep = a.reputacao ?? 0;
+  if (part < 0.45 || media < 6.6) return null;
+  const r = rngFrom(c.semente, "rumor", t.ano);
+  if (!r.chance(clamp(0.25 + (media - 6.6) * 0.5 + rep / 100, 0, 0.85))) return null;
+  const ef = nivelNaFuncao({ ...a, confianca: 0.5 }, a.posicao);
+  const fAtual = forcaClube(cat, t.clubeId);
+  const restante = c.vinculo.fim - t.ano;
+  const taxa = restante >= 1 ? valorMercado(a, idade) : 0;
+  const cands = cat.clubes
+    .filter((cl) => cl.id !== t.clubeId && cl.id !== c.vinculo!.clubeId)
+    .map((cl) => ({ id: cl.id, f: forcaClube(cat, cl.id), s: r.next() }))
+    .filter((x) => x.f > fAtual && x.f <= ef + 6 + rep / 12 && taxa <= capacidadeClube(x.f) * 0.8)
+    .filter((x) => {
+      const top = principalConcorrente(gerarConcorrentes(cat, c.semente, x.id, a.posicao, t.ano + 1));
+      return !!top && top.nivel <= ef + 3; // necessidade na posição
+    })
+    .sort((x, y) => x.s - y.s);
+  return cands[0]?.id ?? null;
+}

@@ -5,7 +5,7 @@ import type { Atleta } from "./atleta.ts";
 import type { Concorrente, Papel } from "./elenco.ts";
 import type { ChaveMetrica, Posicao } from "./posicoes.ts";
 
-export const SCHEMA_VERSAO = 1;
+export const SCHEMA_VERSAO = 2;
 
 export type Estatisticas = {
   gols: number;
@@ -41,6 +41,33 @@ export type Emprestimo = {
   previsao: [number, number];
 };
 
+export type Situacao = "titular" | "entrou" | "banco" | "indisponivel";
+
+/** Uma partida do clube na temporada, do ponto de vista do atleta (PC-002).
+ *  Chave estável `ano:rodada`. Gols e assistências saem dos gols do time. */
+export type Partida = {
+  chave: string;
+  rodada: number; // 1..
+  adversarioId: string;
+  adversarioNome: string;
+  mandante: boolean;
+  golsPro: number;
+  golsContra: number;
+  situacao: Situacao;
+  minutos: number;
+  nota: number | null;
+  gols: number;
+  assistencias: number;
+  desarmes: number;
+  defesas: number;
+  semSofrer: boolean;
+  marcos: Array<"estreia" | "retorno" | "golDecisivo" | "atuacao">;
+};
+
+export type Campanha = { v: number; e: number; d: number; gp: number; gc: number; pts: number };
+
+export type Rumor = { clubeId: string; clubeNome: string; ano: number; resposta: "ficar" | "aberta" | "evitar" | null };
+
 export type Lesao = {
   inicio: number; // índice do jogo
   retorno: number; // jogo em que volta sem risco
@@ -71,6 +98,12 @@ export type Temporada = {
   bonusTreino: number;
   bonusAvaliacao: number; // efeito do "focar no treino" na próxima avaliação
   lesoes: number;
+  // PC-002
+  participantes: string[]; // clubes do calendário (grupo simulado na temporada simplificada)
+  partidas: Partida[];
+  exibidos: number; // ponteiro da reprodução na tela (persistido)
+  interrupcoes: number; // eventos novos (entrevista, rumor) nesta temporada
+  origemParcial: number; // jogos anteriores à migração (sem registro por partida)
 };
 
 export type RegistroTemporada = {
@@ -100,6 +133,13 @@ export type RegistroTemporada = {
   lesoes: number;
   fato: string;
   resultado: "ganhou" | "manteve" | "perdeu" | "lesao";
+  // PC-002 (ausentes em temporadas de saves antigos: origem "resumo")
+  origem?: "jogo-a-jogo" | "resumo";
+  titularidades?: number;
+  partidas?: Partida[];
+  campanha?: Campanha | null;
+  participantesTotal?: number;
+  reputacaoDelta?: number;
 };
 
 export type Marco = { tipo: "estreia" | "convocacao" | "titulo" | "transferencia" | "emprestimo" | "retorno" | "aposentadoria"; ano: number; texto: string; clubeId?: string };
@@ -122,7 +162,7 @@ export type Oferta = {
 
 export type Opcao = { id: string; rotulo: string; detalhe?: string };
 
-export type TipoEvento = "adaptacao" | "recuperacao" | "perdaEspaco" | "convocacao" | "janela" | "aposentadoria";
+export type TipoEvento = "planoTreinador" | "adaptacao" | "recuperacao" | "perdaEspaco" | "entrevista" | "rumor" | "convocacao" | "janela" | "aposentadoria";
 
 export type Pendente = {
   tipo: TipoEvento;
@@ -158,6 +198,7 @@ export type Carreira = {
   clubesDeInteresse: string[];
   ultimaConsequencia: string | null;
   convocado: boolean;
+  rumor: Rumor | null; // PC-002
 };
 
 export type Resumo = { jogos: number; minutos: number; metrica: number; chave: ChaveMetrica };

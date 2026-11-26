@@ -81,22 +81,33 @@ export function Escudo({ cat, clubeId, nome, tamanho }: { cat: Catalogo | null; 
   );
 }
 
-export type NomeFundo = "01_tunel" | "02_estadio" | "03_conversa_treinador" | "04_despedida";
-const FOCO: Record<NomeFundo, string> = { "01_tunel": "64% 53%", "02_estadio": "50% 49%", "03_conversa_treinador": "50% 45%", "04_despedida": "52% 49%" };
+export type NomeFundo = "01_tunel" | "02_estadio" | "03_conversa_treinador" | "04_despedida"
+  | "plano-treinador" | "disputa-por-vaga" | "entrevista-pos-jogo" | "volta-ao-treino" | "gol-decisivo";
+const FOCO: Record<NomeFundo, string> = {
+  "01_tunel": "64% 53%", "02_estadio": "50% 49%", "03_conversa_treinador": "50% 45%", "04_despedida": "52% 49%",
+  // PC-002 (ASSETS.md): preservar rostos e a ação principal no recorte.
+  "plano-treinador": "35% 50%", "disputa-por-vaga": "45% 42%", "entrevista-pos-jogo": "55% 40%", "volta-ao-treino": "55% 45%", "gol-decisivo": "55% 50%",
+};
 
 /** Fundo de produção como camada independente, fora da árvore acessível. */
-export function Fundo({ nome, modo, foco }: { nome: NomeFundo; modo: "cheio" | "topo"; foco?: string }) {
+export function Fundo({ nome, modo, foco, reserva = "02_estadio" }: { nome: NomeFundo; modo: "cheio" | "topo"; foco?: string; reserva?: NomeFundo }) {
+  const [falhou, setFalhou] = useState(false);
+  const n = falhou ? reserva : nome;
   return (
     <div className={`fundo fundo--${modo}`} aria-hidden="true">
-      <img src={`${BASE}fundos/${nome}.webp`} alt="" decoding="async" style={{ objectPosition: foco ?? FOCO[nome] }} />
+      <img key={n} src={`${BASE}fundos/${n}.webp`} alt="" decoding="async" style={{ objectPosition: falhou ? FOCO[n] : foco ?? FOCO[n] }} onError={() => setFalhou(true)} />
     </div>
   );
 }
 
-export function Foto({ nome, foco, altura }: { nome: NomeFundo; foco?: string; altura?: number }) {
+/** Foto no fluxo da tela. Se a cena falhar, usa o fundo original
+ *  compatível (`reserva`), como pede o ASSETS.md. */
+export function Foto({ nome, foco, altura, reserva = "02_estadio" }: { nome: NomeFundo; foco?: string; altura?: number; reserva?: NomeFundo }) {
+  const [falhou, setFalhou] = useState(false);
+  const n = falhou ? reserva : nome;
   return (
     <div className="foto" aria-hidden="true" style={altura ? { flexBasis: altura } : undefined}>
-      <img src={`${BASE}fundos/${nome}.webp`} alt="" decoding="async" style={{ objectPosition: foco ?? FOCO[nome] }} />
+      <img key={n} src={`${BASE}fundos/${n}.webp`} alt="" decoding="async" style={{ objectPosition: falhou ? FOCO[n] : foco ?? FOCO[n] }} onError={() => setFalhou(true)} />
     </div>
   );
 }

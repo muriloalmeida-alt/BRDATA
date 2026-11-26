@@ -9,6 +9,223 @@ divergências, aprovação) — elas não são repetidas aqui.
 
 Demandas vigentes
 
+PC-002 — Primeiro Contrato: temporada visível, treinador e imprensa, evolução coerente
+
+Status: APROVADO (Murilo, 26/11/2026, "Aprovado"). Código commitado na
+branch `claude/new-session-ygru7q` (recriada a partir de `main` em cd175c2,
+#175). Os pontos de homologação 1 a 6 do relatório foram aprovados junto com
+a entrega; o ritmo dos trechos curtos pode ser ajustado depois de testado no
+iPhone.
+
+Origem: pacote "Temporada" do Murilo (26/11/2026), versionado em
+`docs/primeiro-contrato/v2/` (`LEIA_PRIMEIRO_CLAUDE.md` e `ASSETS.md`). Os 5
+fundos novos (WebP) estão em `primeiro-contrato/public/fundos/`.
+
+Especificação (chapéu PM; o pacote é a especificação, com estes recortes):
+1. **Temporada visível:**
+   - o motor gera o calendário da liga (rodízio entre os clubes da inscrição)
+     e o placar de todos os jogos da rodada;
+   - gols e assistências do atleta saem dos gols do próprio time;
+   - a classificação é calculada da mesma fonte;
+   - cada partida do atleta é gravada com chave estável `ano:rodada` (rodada,
+     adversário, mando, placar, situação titular/entrou/banco/indisponível,
+     minutos, nota e destaques da função);
+   - a reprodução na tela é separada do avanço do domínio: o motor avança até
+     a decisão e a tela reproduz os jogos novos em trechos de 8–15 s;
+   - controles **Pausar**, **Acelerar** e **Ir à próxima decisão**;
+   - o ponteiro da reprodução é persistido no save;
+   - com movimento reduzido, não há animação.
+2. **Treinador e imprensa**, como eventos tipados do sistema atual:
+   - plano do treinador na pré-temporada;
+   - disputa por vaga: é o evento de perda de espaço já existente, com a
+     cena nova e os textos da prancha aprovada;
+   - entrevista pós-jogo por atuação marcante ou gol decisivo do registro;
+   - rumor de saída quando há interesse concreto, com reação conforme o
+     desfecho real da janela;
+   - volta ao treino, com a cena nova na decisão de retorno.
+
+   Limite: uma conversa de pré-temporada e até duas interrupções novas
+   (entrevista e rumor) por temporada.
+3. **Evolução:**
+   - nível (capacidade duradoura);
+   - forma e confiança (no clube, mudam mais rápido após transferência,
+     adaptação ou mudança de papel);
+   - reputação (lenta; entra na observação e no mercado).
+4. **Save:**
+   - esquema v2 com migração v1 → v2;
+   - temporadas antigas preservadas com a origem "resumo";
+   - temporada em andamento migrada sem perder pendência nem jogos.
+
+Fora deste recorte: validação no Safari de um iPhone real (fica com o
+Murilo; entrego as capturas e os tempos de reprodução).
+
+Relatório de implementação (26/11/2026)
+
+**Temporada visível (motor):**
+- módulo novo `src/engine/calendario.ts`:
+  - participantes: com formato verificado, todos os inscritos da liga; na
+    temporada simplificada, um grupo simulado do tamanho do calendário;
+  - rodízio pelo método do círculo (turno e returno);
+  - placar de cada jogo pelo perfil de ataque e defesa do catálogo e pela
+    força relativa;
+  - classificação calculada desses mesmos placares;
+  - tudo regenerado da semente e nunca gravado inteiro.
+- o simulador por jogo de `carreira.ts` foi reaproveitado:
+  - situação: titular, entrou, banco ou indisponível;
+  - gols e assistências do atleta saem de cada gol do próprio time com ele
+    em campo, então nunca passam do placar;
+  - goleiro: jogo sem sofrer gol só como titular por 90 minutos com 0 gol
+    contra;
+  - cada partida é gravada com chave `ano:rodada`, adversário, mando, placar,
+    minutos, nota, destaques e marcos (estreia, volta da lesão, gol decisivo,
+    atuação acima da média).
+- **Balanço:**
+  - minutos previstos × realizados, titularidades, nota média, métricas da
+    posição e reputação;
+  - motivo verificável, por exemplo "Você ganhou a vaga na rodada 18…",
+    calculado pela sequência de titularidades;
+  - campanha (V/E/D, pontos), com posição e título só com formato
+    verificado;
+  - jogos da temporada e classificação consultáveis.
+
+**Reprodução (tela):**
+- o motor avança até a decisão, e "Sua temporada" reproduz os jogos novos;
+- CTA "Iniciar temporada" no primeiro trecho e "Continuar temporada" nos
+  seguintes;
+- trecho de 8 a 15 s (8 s + 0,25 s por jogo);
+- Pausar, Acelerar (1×, 2×, 4×) e Ir à próxima decisão (só pula a
+  exibição);
+- o ponteiro `exibidos` é gravado no save a cada jogo; recarregar retoma do
+  ponto (rodada 9 → 9 na captura);
+- com movimento reduzido, a entrada do card não é animada;
+- a cena muda com o marco: gol decisivo usa `gol-decisivo` e volta da lesão
+  usa `volta-ao-treino`;
+- se uma cena falhar, a tela usa o fundo original.
+
+**Treinador e imprensa** (eventos tipados, com chave de repetição e a
+referência ao fato no contexto):
+- **plano do treinador:** na pré-temporada, quando há necessidade numa função
+  compatível. Usa a cena `plano-treinador`, o título aprovado "O treinador te
+  chamou" e as respostas da prancha. A adaptação do meio da temporada não se
+  repete no mesmo ano;
+- **disputa por vaga:** é o evento de perda de espaço, agora com o gatilho
+  "participação recente abaixo do papel previsto", a cena `disputa-por-vaga`
+  e a linha "Nos últimos 8 jogos você teve X% dos minutos; a previsão era
+  Y%";
+- **entrevista pós-jogo:** dispara por gol decisivo ou nota 8+ no registro.
+  "Valorizar o time" dá confiança e +1 de reputação; "Assumir a ambição" dá
+  +3 de reputação e expectativa, que pesa no balanço se a temporada ficar
+  abaixo da previsão;
+- **rumor de saída:** dispara por interesse concreto (clube com necessidade
+  na posição, nível compatível e orçamento para a taxa). O rumor vira
+  proposta na janela se ainda couber no orçamento, e a reação ao que o atleta
+  disse é aplicada conforme o desfecho real;
+- **volta ao treino:** a decisão "Voltar antes da hora?" usa a cena
+  `volta-ao-treino`, com as mesmas regras de indisponibilidade e recaída;
+- **limite:** uma conversa de pré-temporada e até 2 interrupções novas por
+  temporada. Os eventos obrigatórios de antes continuam.
+
+**Evolução:**
+- confiança no clube (0–1):
+  - entra no nível efetivo da escalação;
+  - recomeça pelo papel em clube novo;
+  - cai com a adaptação;
+  - muda jogo a jogo;
+- reputação (0–100, lenta):
+  - vem de minutos, nível da liga, nota, gols, títulos, convocação e
+    entrevistas;
+  - amplia a observação e o teto das propostas;
+  - entra no critério da convocação;
+- a evolução usa os minutos ponderados pela nota e o ambiente de treino (um
+  clube acima do nível do atleta acelera a evolução);
+- o motivo das propostas cita a temporada ("Acompanhou seus 31 jogos, 9 gols
+  e nota 7,1 em 2028").
+
+**Calibração (60 sementes, meia de potencial 80, nível mediano):**
+
+| Rota | Aos 20 anos | Aos 24 anos | Jogos em 8 temporadas |
+|---|---|---|---|
+| Titular em clube menor | 73 | 77 | 268 |
+| Com empréstimo | 69 | 74 | 201 |
+| Banco em clube maior | 66 | 71 | 126 |
+
+As três rotas são viáveis. Sem o ajuste do ambiente de treino, a rota de
+banco ficava em 68 aos 24 anos.
+
+Em 200 carreiras automáticas: cerca de 470 jogos, pico mediano de 75,
+cerca de uma entrevista a cada duas temporadas e 29% de convocados.
+
+**Save v2:**
+- migração v1 → v2: confiança 0,5, reputação estimada pelo histórico,
+  temporadas antigas com origem "resumo";
+- a temporada em andamento guarda `origemParcial` (jogos sem registro) e
+  segue sem perder a pendência;
+- trajetória e balanço indicam a origem.
+
+**Testes:**
+- `primeiro-contrato`: 26/26. São 8 novos, cobrindo:
+  - rodízio;
+  - totais = soma das partidas;
+  - gols cabem no placar;
+  - campanha e tabela;
+  - título com formato verificado;
+  - mesmos resultados com reprodução normal, acelerada ou pulada (com
+    recargas);
+  - sem duplicação após recarregar;
+  - eventos e limite;
+  - migração v1 → v2;
+  - determinismo;
+- E2E `test_primeiro_contrato.js`: atualizado para o CTA inicial, o card com
+  placar e a reprodução; passou;
+- rota rápida: 65/65;
+- suíte completa: 205/206. O `test_v2_semana.js`, da carreira do treinador,
+  estourou o tempo de espera; rodado de novo isolado, passou;
+- `verificar-tela-antiga`: OK;
+- typecheck limpo.
+
+**Evidência** (`docs/primeiro-contrato/v2/evidencia/`):
+- reprodução: início, jogando, pausado, marco e trecho seguinte;
+- plano do treinador e disputa (opção selecionada e consequência);
+- entrevista, rumor e volta ao treino;
+- balanço com jogos e classificação;
+- conjunto a 360 px;
+- as 16 telas anteriores continuam alcançáveis pela interface (rodada de
+  regressão sem erro).
+
+Tempos medidos no app (log por rodada):
+
+| Trecho | Velocidade | Tempo | Esperado pela fórmula |
+|---|---|---|---|
+| 9 jogos | normal | 10,1 s | 10,25 s |
+| 16 jogos | normal | 11,9 s | 12 s |
+| 25 jogos | normal | 14,3 s | — |
+| 13 jogos | 2× | 5,7 s | — |
+| temporada inteira (38 jogos) | normal | 15 s | teto de 15 s |
+
+**Para homologação com o Murilo:**
+1. O ritmo: um trecho de 1 jogo dura 8 s, o piso da faixa. Talvez valha um
+   piso menor para trechos curtos.
+2. As telas novas "Entrevista pós-jogo" e "Rumor de saída" não têm prancha;
+   usam os mesmos componentes e tokens.
+3. Na tela "O treinador te chamou" do plano, entrou o subtítulo "Plano para
+   a temporada {ano}".
+4. A linha de contexto da disputa por vaga (minutos recentes × previsão) é
+   nova.
+5. O card da partida aparece só durante a reprodução; parado, a tela mostra
+   os totais.
+6. Na temporada simplificada (14 ligas sem rodadas no catálogo, entre elas a
+   Série B), o card mostra "simulada" e o balanço mostra a campanha sem
+   classificação.
+
+**Gaps e riscos:**
+- o placar do clube não depende da atuação do atleta: é a mesma fonte para a
+  tabela, ao custo de o atleta não mudar o resultado do time;
+- o save cresce cerca de 8 KB por temporada com o registro jogo a jogo
+  (IndexedDB, sem limite prático);
+- falta validar no Safari de um iPhone real.
+
+⸻
+
 PC-001 — Touchline · Primeiro Contrato (carreira de atleta, app independente)
 
 Status: APROVADO (Murilo, 26/11/2026, "Aprovado"). Código commitado na
